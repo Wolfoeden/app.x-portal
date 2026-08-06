@@ -1,0 +1,127 @@
+"use client";
+
+import type { Provider } from "@supabase/supabase-js";
+
+import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
+
+const supportedOauthProviders = {
+  google: "google",
+  microsoft: "azure",
+} as const satisfies Record<string, Provider>;
+
+function siteUrl() {
+  return (
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
+    window.location.origin
+  );
+}
+
+export async function ensureGuestSession() {
+  const supabase = getBrowserSupabaseClient();
+  const { data: existing } = await supabase.auth.getClaims();
+  if (existing?.claims?.sub) return existing.claims;
+
+  const { error } = await supabase.auth.signInAnonymously();
+  if (error) {
+    throw new Error(
+      "Der Gastmodus ist noch nicht verfügbar. Bitte versuchen Sie es später erneut.",
+      { cause: error },
+    );
+  }
+
+  const { data, error: claimsError } = await supabase.auth.getClaims();
+  if (claimsError || !data?.claims?.sub) {
+    throw new Error(
+      "Der Gastmodus konnte nicht sicher gestartet werden. Bitte versuchen Sie es später erneut.",
+      { cause: claimsError },
+    );
+  }
+
+  return data.claims;
+}
+
+export async function claimPreparedGuestWorkspace() {
+  const response = await fetch("/api/auth/claim", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | { claimed?: boolean; reason?: string }
+    | null;
+
+  if (!response.ok || payload?.claimed !== true) {
+    throw new Error(
+      "Die bisherige Gastanfrage konnte nicht übertragen werden. Bitte wenden Sie sich an Roman Dering.",
+    );
+  }
+  return true;
+}
+
+export async function prepareGuestClaim() {
+  const response = await fetch("/api/auth/prepare-claim", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  });
+
+  if (!response.ok) {
+    throw new Error("The guest workspace could not be prepared for sign-in.");
+  }
+}
+
+export async function startOauthUpgrade(
+  providerName: keyof typeof supportedOauthProviders,
+) {
+  const supabase = getBrowserSupabaseClient();
+  const claims = await ensureGuestSession();
+  await prepareGuestClaim();
+  const provider = supportedOauthProviders[providerName];
+  const redirectTo = `${siteUrl()}/auth/callback?next=/`;
+
+  if (claims.is_anonymous === true) {
+    const { error } = await supabase.auth.linkIdentity({
+      provider,
+      options: { redirectTo },
+    });
+    if (!error) return;
+  }
+
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: { redirectTo },
+  });
+  if (error) throw error;
+}
+
+export async function beginEmailUpgrade(email: string) {
+  const supabase = getBrowserSupabaseClient();
+  await ensureGuestSession();
+  await prepareGuestClaim();
+  const { error } = await supabase.auth.updateUser(
+    { email },
+    { emailRedirectTo: `${siteUrl()}/auth/confirm?next=/?set-password=1` },
+  );
+  if (error) throw error;
+}
+
+export async function signInExistingAccount(email: string, password: string) {
+  const supabase = getBrowserSupabaseClient();
+  await ensureGuestSession();
+  await prepareGuestClaim();
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+
+  await claimPreparedGuestWorkspace();
+}
+
+export async function setAccountPassword(password: string) {
+  const supabase = getBrowserSupabaseClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw error;
+}
+
+export async function signOut() {
+  const { error } = await getBrowserSupabaseClient().auth.signOut();
+  if (error) throw error;
+}
