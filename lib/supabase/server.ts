@@ -23,8 +23,8 @@ export async function createServerSupabaseClient() {
             cookieStore.set(name, value, options);
           }
         } catch {
-          // Server Components cannot always write cookies. proxy.ts refreshes
-          // sessions on the response path, while Route Handlers can write here.
+          // Server Components cannot always write cookies. The browser client
+          // refreshes sessions on mount, while Route Handlers can write here.
         }
       },
     },
