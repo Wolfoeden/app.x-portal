@@ -21,6 +21,21 @@ describe("deterministic fallback brief parser", () => {
     ]);
   });
 
+  it("extracts common German copy-and-paste wording without an AI provider", () => {
+    const brief = parseFallbackBrief(
+      "Wir benötigen deutschsprachige Unterstützung im Anforderungsmanagement. Der Einsatz ist remote, startet nächsten Monat und dauert sechs Wochen. Der maximale Tagessatz beträgt EUR 800.",
+      { now: fixedNow },
+    );
+
+    expect(brief).toMatchObject({
+      requiredSkills: ["Requirements Management"],
+      language: "German",
+      workMode: "remote",
+      duration: { value: 6, unit: "weeks" },
+      rate: { min: null, max: 800, currency: "EUR", unit: "day" },
+    });
+  });
+
   it("produces a schema-valid golden brief from explicit facts", () => {
     const input =
       "I need a React freelancer in German, remote, available next month, for six weeks, max EUR 90 per hour. Optional: Next.js.";

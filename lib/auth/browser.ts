@@ -2,6 +2,7 @@
 
 import type { Provider } from "@supabase/supabase-js";
 
+import { appPath } from "@/lib/app-path";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 const supportedOauthProviders = {
@@ -41,7 +42,7 @@ export async function ensureGuestSession() {
 }
 
 export async function claimPreparedGuestWorkspace() {
-  const response = await fetch("/api/auth/claim", {
+  const response = await fetch(appPath("/api/auth/claim"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: "{}",
@@ -59,7 +60,7 @@ export async function claimPreparedGuestWorkspace() {
 }
 
 export async function prepareGuestClaim() {
-  const response = await fetch("/api/auth/prepare-claim", {
+  const response = await fetch(appPath("/api/auth/prepare-claim"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: "{}",
@@ -77,7 +78,8 @@ export async function startOauthUpgrade(
   const claims = await ensureGuestSession();
   await prepareGuestClaim();
   const provider = supportedOauthProviders[providerName];
-  const redirectTo = `${siteUrl()}/auth/callback?next=/`;
+  const destination = appPath("/");
+  const redirectTo = `${siteUrl()}${appPath("/auth/callback")}?next=${encodeURIComponent(destination)}`;
 
   if (claims.is_anonymous === true) {
     const { error } = await supabase.auth.linkIdentity({
@@ -98,9 +100,12 @@ export async function beginEmailUpgrade(email: string) {
   const supabase = getBrowserSupabaseClient();
   await ensureGuestSession();
   await prepareGuestClaim();
+  const destination = `${appPath("/")}?set-password=1`;
   const { error } = await supabase.auth.updateUser(
     { email },
-    { emailRedirectTo: `${siteUrl()}/auth/confirm?next=/?set-password=1` },
+    {
+      emailRedirectTo: `${siteUrl()}${appPath("/auth/confirm")}?next=${encodeURIComponent(destination)}`,
+    },
   );
   if (error) throw error;
 }

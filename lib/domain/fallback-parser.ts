@@ -162,7 +162,7 @@ function parseLanguage(
       `\\bin\\s+${escaped}\\b`,
       `\\bspeaks?\\s+${escaped}\\b`,
       `\\b(?:language|sprache|sprachlich)\\s*[:=]\\s*${escaped}\\b`,
-      `\\b${escaped}(?:[- ]speaking|sprachig)\\b`,
+      `\\b${escaped}(?:[- ]speaking|sprachig(?:e[rmns]?)?)\\b`,
       `\\b${escaped}\\s+(?:speaker|sprachkenntnisse)\\b`,
     ];
     if (new RegExp(explicitPatterns.join("|"), "iu").test(text)) return canonical;
@@ -223,7 +223,7 @@ function parseNumericToken(value: string): number | null {
 }
 
 function parseDuration(text: string): ProjectDuration | null {
-  const match = /(?:\bfor|\bfür|\bdauer\s*[:=]?)\s*(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|ein|eine|einen|zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn|elf|zwölf)\s*(hours?|stunden?|days?|tage?n?|weeks?|wochen?|months?|monate?n?)\b/iu.exec(text);
+  const match = /(?:\bfor|\bfür|\bdauer\s*[:=]?|\bdauert?)\s*(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|ein|eine|einen|zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn|elf|zwölf)\s*(hours?|stunden?|days?|tage?n?|weeks?|wochen?|months?|monate?n?)\b/iu.exec(text);
   if (!match?.[1] || !match[2]) return null;
   const value = parseNumericToken(match[1]);
   if (value === null) return null;
@@ -278,6 +278,24 @@ function parseBudget(text: string): MoneyRange | null {
 }
 
 function parseRate(text: string): RateRange | null {
+  const labeledPattern = /\b(max(?:imal)?(?:e[rmns]?)?\s+)?(stundensatz|tagessatz)\s*(?:beträgt|ist|von|:|=|bis|up to)?\s*(?:(€|EUR|\$|USD|£|GBP)\s*([0-9][0-9., ]*)|([0-9][0-9., ]*)\s*(€|EUR|\$|USD|£|GBP))\b/iu;
+  const labeled = labeledPattern.exec(text);
+  if (labeled?.[2] && labeled.index !== undefined) {
+    if (isInstructionToInvent(text.slice(Math.max(0, labeled.index - 35), labeled.index))) {
+      return null;
+    }
+    const currency = currencyFromToken(labeled[3] || labeled[6] || "");
+    const amount = parseAmount(labeled[4] || labeled[5] || "");
+    if (currency !== null && amount !== null) {
+      return {
+        min: labeled[1] ? null : amount,
+        max: amount,
+        currency,
+        unit: /^stundensatz$/iu.test(labeled[2]) ? "hour" : "day",
+      };
+    }
+  }
+
   const pattern = /(?:\brate|\bstundensatz|\btagessatz|\bhourly|\bdaily)?\s*(?:is|of|:|=|bis|max(?:imum)?|up to)?\s*(€|EUR|\$|USD|£|GBP)\s*([0-9][0-9., ]*)(?:\s*(?:-|to|bis)\s*(€|EUR|\$|USD|£|GBP)?\s*([0-9][0-9., ]*))?\s*(?:per|\/|pro)\s*(hour|hr|stunde|tag|day)\b/iu;
   const match = pattern.exec(text);
   if (!match?.[2] || !match[5] || match.index === undefined) return null;

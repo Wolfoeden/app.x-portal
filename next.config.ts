@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const isProduction = process.env.NODE_ENV === "production";
+const configuredBasePath = process.env.NEXT_PUBLIC_APP_BASE_PATH
+  ?.trim()
+  .replace(/^\/+|\/+$/gu, "");
+const basePath = configuredBasePath ? `/${configuredBasePath}` : undefined;
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -17,6 +21,7 @@ const contentSecurityPolicy = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  basePath,
   output: "standalone",
   poweredByHeader: false,
   typedRoutes: false,
