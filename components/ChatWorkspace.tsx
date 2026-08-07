@@ -404,10 +404,1264 @@ async function parseStreamResponse(
 
   const consume = (line: string) => {
     const cleaned = line.startsWith("data:") ? line.slice(5).trim() : line.trim();
-×tÒÚ$z{-®éÜj×4ôåD5Eõ„ôäUôÄ$TÇÓÂöà¢ÂöF—cà ¢ÆF—b6Æ74æÖSÒ&’Öæ÷FR#ãÇ7â&–Ö†–FFVãÒ'G'VR#æ“Â÷7ããÇãÇ7G&öæsåG&ç7&VçFRVçFW'7L;ÇG§VæsÂ÷7G&öæsäF–R´’7G'V·GW&–W'B–‡&Ræg&vRâ&öf–ÆRvW&FVâæ6‚fW7FVâÂ;Æ&W',;Æf&&Vâ&VvVÆâvVf–ÇFW'BãÂ÷ãÂöF—cà¢ÂöF—cà¢“°§Ğ ¦gVæ7F–öâÖöFÂ‡²F—FÆT–BÂöä6Æ÷6RÂ6†–ÆG&VâÂ6—¦RÒ&FVfVÇB"Ó¢²F—FÆT–C¢7G&–æs²öä6Æ÷6S¢‚’Óâfö–C²6†–ÆG&Vã¢&V7DæöFS²6—¦Só¢&FVfVÇB"Â&Æ&vR"Ò’°¢6öç7B6Æ÷6U&VbÒW6U&VcÄ…DÔÄ'WGFöäVÆVÖVçCâ†çVÆÂ“°¢6öç7B6&E&VbÒW6U&VcÄ…DÔÄVÆVÖVçCâ†çVÆÂ“°¢W6TVffV7B‚‚’Óâ°¢6öç7B&Wf–÷W6Ç”fö7W6VBÒFö7VÖVçBæ7F—fTVÆVÖVçB–ç7Fæ6Vöb…DÔÄVÆVÖVçBòFö7VÖVçBæ7F—fTVÆVÖVçB¢çVÆÃ°¢6Æ÷6U&Vbæ7W'&VçCòæfö7W2‚“°¢6öç7Böä¶W’Ò†WfVçC¢vÆö&ÅF†—2ä¶W–&ö&DWfVçB’Óâ°¢–b†WfVçBæ¶W’ÓÓÒ$W66R"’öä6Æ÷6R‚“°¢–b†WfVçBæ¶W’ÓÓÒ%F""bb6&E&Vbæ7W'&VçB’°¢6öç7Bfö7W6&ÆRÒ'&’æg&öÒ€¢6&E&Vbæ7W'&VçBçVW'•6VÆV7F÷$ÆÃÄ…DÔÄVÆVÖVçCâ€¢v'WGFöã¦æ÷B…¶F—6&ÆVEÒ’Â¶‡&VeÒÂ–çWC¦æ÷B…¶F—6&ÆVEÒ’ÂFW‡F&V¦æ÷B…¶F—6&ÆVEÒ’Â·F&–æFW…Ó¦æ÷B…·F&–æFWƒÒ"Ó%Ò’rÀ¢’À¢“°¢6öç7Bf—'7BÒfö7W6&ÆU³Ó°¢6öç7BÆ7BÒfö7W6&ÆRæB‚Ó“°¢–b‚f—'7BÇÂÆ7B’&WGW&ã°¢–b†WfVçBç6†–gD¶W’bbFö7VÖVçBæ7F—fTVÆVÖVçBÓÓÒf—'7B’°¢WfVçBç&WfVçDFVfVÇB‚“°¢Æ7Bæfö7W2‚“°¢ÒVÇ6R–b‚WfVçBç6†–gD¶W’bbFö7VÖVçBæ7F—fTVÆVÖVçBÓÓÒÆ7B’°¢WfVçBç&WfVçDFVfVÇB‚“°¢f—'7Bæfö7W2‚“°¢Ğ¢Ğ¢Ó°¢Fö7VÖVçBæFDWfVçDÆ—7FVæW"‚&¶W–F÷vâ"Âöä¶W’“°¢&WGW&â‚’Óâ°¢Fö7VÖVçBç&VÖ÷fTWfVçDÆ—7FVæW"‚&¶W–F÷vâ"Âöä¶W’“°¢&Wf–÷W6Ç”fö7W6VCòæfö7W2‚“°¢Ó°¢ÒÂ¶öä6Æ÷6UÒ“°¢&WGW&â€¢ÆF—b6Æ74æÖSÒ&ÖöFÂÖ&6¶G&÷"&öÆSÒ'&W6VçFF–öâ"öäÖ÷W6TF÷vã×²†WfVçB’Óâ²–b†WfVçBçF&vWBÓÓÒWfVçBæ7W'&VçEF&vWB’öä6Æ÷6R‚“²×Óà¢Ç6V7F–öâ&Vc×¶6&E&VgÒ6Æ74æÖS×¶ÖöFÂÖ6&BG·6—¦RÓÓÒ&Æ&vR"ò&—2ÖÆ&vR"¢"'ÖÒ&öÆSÒ&F–Æör"&–ÖÖöFÃÒ'G'VR"&–ÖÆ&VÆÆVF'“×·F—FÆT–GÓà¢Æ'WGFöâ&Vc×¶6Æ÷6U&VgÒ6Æ74æÖSÒ&ÖöFÂÖ6Æ÷6R"G—SÒ&'WGFöâ"öä6Æ–6³×¶öä6Æ÷6WÒ&–ÖÆ&VÃÒ$F–Æör66†Æ–\9öVâ#ì9sÂö'WGFöãà¢¶6†–ÆG&VçĞ¢Â÷6V7F–öãà¢ÂöF—cà¢“°§Ğ ¦gVæ7F–öâWF„F–Æör‡°¢–æ—F–ÄÖöFRÀ¢öä6Æ÷6RÀ¢öäWF†VçF–6FVBÀ¢6†÷uFö7BÀ§Ó¢°¢–æ—F–ÄÖöFS¢&Æöv–â"Â'&Vv—7FW""Â'6WB×77v÷&B#°¢öä6Æ÷6S¢‚’Óâfö–C°¢öäWF†VçF–6FVC¢‚’Óâfö–C°¢6†÷uFö7C¢†ÖW76vS¢7G&–ærÂFöæSó¢Fö7E7FFU²'FöæR%Ò’Óâfö–C°§Ò’°¢6öç7B¶ÖöFRÂ6WDÖöFUÒÒW6U7FFR†–æ—F–ÄÖöFR“°¢6öç7B¶VÖ–ÂÂ6WDVÖ–ÅÒÒW6U7FFR‚""“°¢6öç7B·77v÷&BÂ6WE77v÷&EÒÒW6U7FFR‚""“°¢6öç7B·77v÷&E&WVBÂ6WE77v÷&E&WVEÒÒW6U7FFR‚""“°¢6öç7B¶6öæf—&ÖF–öå6VçBÂ6WD6öæf—&ÖF–öå6VçEÒÒW6U7FFR†fÇ6R“°¢6öç7B¶'W7’Â6WD'W7•ÒÒW6U7FFSÂ&vöövÆR"Â&Ö–7&÷6ögB"Â&VÖ–Â"ÂçVÆÃâ†çVÆÂ“°¢6öç7B¶W'&÷"Â6WDW'&÷%ÒÒW6U7FFSÇ7G&–ærÂçVÆÃâ†çVÆÂ“° ¢6öç7B6öææV7E&÷f–FW"Ò7–æ2‡&÷f–FW#¢&vöövÆR"Â&Ö–7&÷6ögB"’Óâ°¢6WD'W7’‡&÷f–FW"“°¢6WDW'&÷"†çVÆÂ“°¢G'’°¢v—B7F'DöWF…Ww&FR‡&÷f–FW"“°¢Ò6F6‚‡&÷f–FW$W'&÷"’°¢6WDW'&÷"‡&÷f–FW$W'&÷"–ç7Fæ6VöbW'&÷"ò&÷f–FW$W'&÷"æÖW76vR¢$æÖVÆGVær¶öæçFRæ–6‡BvW7F'FWBvW&FVââ"“°¢6WD'W7’†çVÆÂ“°¢Ğ¢Ó° ¢6öç7B7V&Ö—DVÖ–ÂÒ7–æ2†WfVçC¢f÷&ÔWfVçCÄ…DÔÄf÷&ÔVÆVÖVçCâ’Óâ°¢WfVçBç&WfVçDFVfVÇB‚“°¢6WD'W7’‚&VÖ–Â"“°¢6WDW'&÷"†çVÆÂ“°¢–b†ÖöFRÓÓÒ'6WB×77v÷&B"bb77v÷&BÓÒ77v÷&E&WVB’°¢6WDW'&÷"‚$F–R&V–FVâ77|;g'FW"7F–ÖÖVâæ–6‡B;Æ&W&V–ââ"“°¢6WD'W7’†çVÆÂ“°¢&WGW&ã°¢Ğ¢G'’°¢–b†ÖöFRÓÓÒ&Æöv–â"’°¢v—B6–vä–äW†—7F–æt66÷VçB†VÖ–ÂÂ77v÷&B“°¢6†÷uFö7B‚$æÖVÆGVærW&föÆw&V–6‚â–‡&RW7v†Âv—&Bf÷'FvW6WG§Bâ"“°¢öäWF†VçF–6FVB‚“°¢ÒVÇ6R–b†ÖöFRÓÓÒ'&Vv—7FW""’°¢v—B&Vv–äVÖ–ÅWw&FR†VÖ–Â“°¢6WD6öæf—&ÖF–öå6VçB‡G'VR“°¢6WD'W7’†çVÆÂ“°¢ÒVÇ6R°¢v—B6WD66÷VçE77v÷&B‡77v÷&B“°¢6öç7B6ÆVåW&ÂÒG·v–æF÷ræÆö6F–öâçF†æÖWÒG·v–æF÷ræÆö6F–öâæ†6‡Ö°¢v–æF÷ræ†—7F÷'’ç&WÆ6U7FFR‡·ÒÂ""Â6ÆVåW&Â“°¢6†÷uFö7B‚$–‡"¶öçFò—7BV–ævW&–6‡FWBâ–‡&RW7v†Âv—&Bf÷'FvW6WG§Bâ"“°¢öäWF†VçF–6FVB‚“°¢Ğ¢Ò6F6‚†VÖ–ÄW'&÷"’°¢6WDW'&÷"€¢VÖ–ÄW'&÷"–ç7Fæ6VöbW'&÷ ¢òVÖ–ÄW'&÷"æÖW76vP¢¢ÖöFRÓÓÒ&Æöv–â ¢ò$RÔÖ–ÂöFW"77v÷'B—7Bæ–6‡B¶÷'&V·Bâ ¢¢$F2¶öçFò¶öæçFRvW&FRæ–6‡BV–ævW&–6‡FWBvW&FVââ"À¢“°¢6WD'W7’†çVÆÂ“°¢Ğ¢Ó° ¢&WGW&â€¢ÄÖöFÂF—FÆT–CÒ&WF‚×F—FÆR"öä6Æ÷6S×¶öä6Æ÷6WÓà¢ÆF—b6Æ74æÖSÒ&WF‚ÖF–Æör#à¢Ç7â6Æ74æÖSÒ&F–ÆörÖW–V'&÷r#äW7v†Â6–6†W&ãÂ÷7ãà¢Æƒ"–CÒ&WF‚×F—FÆR#à¢¶ÖöFRÓÓÒ'6WB×77v÷&B"ò$¶öçFòfW'F–rV–ç&–6‡FVâ"¢$æÖVÆFVâVæBF—&V·Bf÷'Ff‡&Vâ'Ğ¢Âöƒ#à¢Çà¢¶ÖöFRÓÓÒ'6WB×77v÷&B ¢ò$–‡&RRÔÖ–ÂwW&FR&W7L:GF–wBâÆVvVâ6–R¦WG§B–‡"77v÷'BfW7Bâ ¢¢$–‡&Ræg&vR&ÆV–'BW&†ÇFVââæ6‚FW"æÖVÆGVær¶V‡&Vâ6–RvVæR§R–‡&VÒW6vW|:F†ÇFVâ&öf–Â§W,;Æ6²â'Ğ¢Â÷à ¢¶ÖöFRÓÒ'6WB×77v÷&B"ò€¢Ãà¢ÆF—b6Æ74æÖSÒ'&÷f–FW"Ö'WGFöç2#à¢Æ'WGFöâG—SÒ&'WGFöâ"öä6Æ–6³×²‚’Óâfö–B6öææV7E&÷f–FW"‚&vöövÆR"—ÒF—6&ÆVC×´&ööÆVâ†'W7’—ÓãÇ7â6Æ74æÖSÒ'&÷f–FW"ÖÆWGFW""&–Ö†–FFVãÒ'G'VR#äsÂ÷7ãç¶'W7’ÓÓÒ&vöövÆR"ò$vöövÆRv—&Bv\;fffæWB(
-b"¢$Ö—BvöövÆRf÷'Ff‡&Vâ'ÓÂö'WGFöãà¢Æ'WGFöâG—SÒ&'WGFöâ"öä6Æ–6³×²‚’Óâfö–B6öææV7E&÷f–FW"‚&Ö–7&÷6ögB"—ÒF—6&ÆVC×´&ööÆVâ†'W7’—ÓãÇ7â6Æ74æÖSÒ'&÷f–FW"ÖÆWGFW"Ö–7&÷6ögB"&–Ö†–FFVãÒ'G'VR#äÓÂ÷7ãç¶'W7’ÓÓÒ&Ö–7&÷6ögB"ò$Ö–7&÷6ögBv—&Bv\;fffæWB(
-b"¢$Ö—BÖ–7&÷6ögBf÷'Ff‡&Vâ'ÓÂö'WGFöãà¢ÂöF—cà¢ÆF—b6Æ74æÖSÒ&÷"ÖF—f–FW"#ãÇ7ãæöFW#Â÷7ããÂöF—cà¢ÆF—b6Æ74æÖSÒ&WF‚ÖÖöFR×F'2"&öÆSÒ'F&Æ—7B"&–ÖÆ&VÃÒ$RÔÖ–ÂÕ§Vvær#à¢Æ'WGFöâG—SÒ&'WGFöâ"&öÆSÒ'F""&–×6VÆV7FVC×¶ÖöFRÓÓÒ&Æöv–â'Ò6Æ74æÖS×¶ÖöFRÓÓÒ&Æöv–â"ò&7F—fR"¢"'Òöä6Æ–6³×²‚’Óâ²6WDÖöFR‚&Æöv–â"“²6WDW'&÷"†çVÆÂ“²×Óä&W7FV†VæFW2¶öçFóÂö'WGFöãà¢Æ'WGFöâG—SÒ&'WGFöâ"&öÆSÒ'F""&–×6VÆV7FVC×¶ÖöFRÓÓÒ'&Vv—7FW"'Ò6Æ74æÖS×¶ÖöFRÓÓÒ'&Vv—7FW""ò&7F—fR"¢"'Òöä6Æ–6³×²‚’Óâ²6WDÖöFR‚'&Vv—7FW""“²6WDW'&÷"†çVÆÂ“²×ÓäæWVW2¶öçFóÂö'WGFöãà¢ÂöF—cà¢Âóà¢’¢çVÆÇĞ ¢¶6öæf—&ÖF–öå6VçBò€¢ÆF—b6Æ74æÖSÒ&6öæf—&ÖF–öâ×7FFR"&öÆSÒ'7FGW2#à¢Ç7â&–Ö†–FFVãÒ'G'VR#î)É3Â÷7ãà¢Æƒ3ä&W7L:GF–wVæw6Æ–æ²fW'6VæFWCÂöƒ3à¢Çì9fffæVâ6–RFVâÆ–æ²–âFW"RÔÖ–ÂâÇ7G&öæsç¶VÖ–ÇÓÂ÷7G&öæsââç66†Æ–\9öVæBÆVvVâ6–R†–W"–‡"77v÷'BfW7BVæBf‡&VâÖ—B–‡&W"W7v†Âf÷'BãÂ÷à¢Æ'WGFöâG—SÒ&'WGFöâ"öä6Æ–6³×¶öä6Æ÷6WÓåfW'7FæFVãÂö'WGFöãà¢ÂöF—cà¢’¢€¢Æf÷&Ò6Æ74æÖSÒ&VÖ–ÂÖÆöv–â"öå7V&Ö—C×·7V&Ö—DVÖ–ÇÓà¢¶ÖöFRÓÒ'6WB×77v÷&B"ò€¢Ãà¢ÆÆ&VÂ‡FÖÄf÷#Ò&Æöv–âÖVÖ–Â#äRÔÖ–ÂÔG&W76SÂöÆ&VÃà¢Æ–çWB–CÒ&Æöv–âÖVÖ–Â"G—SÒ&VÖ–Â"fÇVS×¶VÖ–ÇÒöä6†ævS×²†WfVçB’Óâ6WDVÖ–Â†WfVçBçF&vWBçfÇVR—ÒWFô6ö×ÆWFSÒ&VÖ–Â"&WV—&VBóà¢Âóà¢’¢çVÆÇĞ¢¶ÖöFRÓÒ'&Vv—7FW""ò€¢Ãà¢ÆÆ&VÂ‡FÖÄf÷#Ò&Æöv–â×77v÷&B#ç¶ÖöFRÓÓÒ'6WB×77v÷&B"ò$æWVW277v÷'B"¢%77v÷'B'ÓÂöÆ&VÃà¢Æ–çWB–CÒ&Æöv–â×77v÷&B"G—SÒ'77v÷&B"fÇVS×·77v÷&GÒöä6†ævS×²†WfVçB’Óâ6WE77v÷&B†WfVçBçF&vWBçfÇVR—ÒWFô6ö×ÆWFS×¶ÖöFRÓÓÒ'6WB×77v÷&B"ò&æWr×77v÷&B"¢&7W'&VçB×77v÷&B'ÒÖ–äÆVæwFƒ×³‡Ò&WV—&VBóà¢Âóà¢’¢çVÆÇĞ¢¶ÖöFRÓÓÒ'6WB×77v÷&B"ò€¢Ãà¢ÆÆ&VÂ‡FÖÄf÷#Ò&Æöv–â×77v÷&B×&WVB#å77v÷'Bv–VFW&†öÆVãÂöÆ&VÃà¢Æ–çWB–CÒ&Æöv–â×77v÷&B×&WVB"G—SÒ'77v÷&B"fÇVS×·77v÷&E&WVGÒöä6†ævS×²†WfVçB’Óâ6WE77v÷&E&WVB†WfVçBçF&vWBçfÇVR—ÒWFô6ö×ÆWFSÒ&æWr×77v÷&B"Ö–äÆVæwFƒ×³‡Ò&WV—&VBóà¢Âóà¢’¢çVÆÇĞ¢¶W'&÷"òÇ6Æ74æÖSÒ&f÷&ÒÖW'&÷""&öÆSÒ&ÆW'B#ç¶W'&÷'ÓÂ÷â¢çVÆÇĞ¢Æ'WGFöâ6Æ74æÖSÒ&WF‚×7V&Ö—B"G—SÒ'7V&Ö—B"F—6&ÆVC×´&ööÆVâ†'W7’—Óà¢¶'W7’ÓÓÒ&VÖ–Â ¢ò$&—GFRv'FVâ(
-b ¢¢ÖöFRÓÓÒ&Æöv–â ¢ò$Ö—BRÔÖ–ÂæÖVÆFVâ ¢¢ÖöFRÓÓÒ'&Vv—7FW" ¢ò$&W7L:GF–wVæw6Æ–æ²6VæFVâ ¢¢%77v÷'B7V–6†W&âbf÷'Ff‡&Vâ'Ğ¢Âö'WGFöãà¢Âöf÷&Óà¢—Ğ¢Ç6Æ74æÖSÒ&WF‚×&—f7’#äF–RæÖVÆGVærF–VçBF§RÂ&ö¦V·FRvW,:GF\;Æ&W&w&V–fVæB§W§V÷&FæVâVæBV–æR&öf–Çv†Â6–6†W"f÷'G§W6WG¦VâãÂ÷à¢ÂöF—cà¢ÂôÖöFÃà¢“°§Ğ ¦gVæ7F–öâ6öçF7DF–Æör‡²&öf–ÆRÂöä6Æ÷6RÂöå&V6÷&D–çG&öGV7F–öâÓ¢²&öf–ÆS¢g&VVÆæ6W%&öf–ÆU&W7VÇC²öä6Æ÷6S¢‚’Óâfö–C²öå&V6÷&D–çG&öGV7F–öã¢†–FV×÷FVæ7”¶W“¢7G&–ær’Óâ&öÖ—6SÆ&ööÆVãâÒ’°¢6öç7B¶6ÆVæFÇ”ÆöFVBÂ6WD6ÆVæFÇ”ÆöFVEÒÒW6U7FFR†fÇ6R“°¢6öç7B·&WVW7E7FFRÂ6WE&WVW7E7FFUÒÒW6U7FFSÂ&–FÆR"Â'6VæF–ær"Â'6VçB"Â&W'&÷"#â‚&–FÆR"“°¢6öç7B–çG&öGV7F–öä¶W’ÒW6U&Vb†Ö¶T–B‚&–çG&ò"’“°¢6öç7B6ä&öö´F—&V7FÇ’Ò&öf–ÆRæ–çG&õöÆ–7’çG—RÓÓÒ&g&VR"ÇÂ&öf–ÆRæ–çG&õöÆ–7’ç&VG•Fô&öö²ÓÓÒG'VS°¢6öç7BÆöD6ÆVæFÇ’Ò7–æ2‚’Óâ°¢6WE&WVW7E7FFR‚'6VæF–ær"“°¢6öç7B&V6÷&FVBÒv—Böå&V6÷&D–çG&öGV7F–öâ†–çG&öGV7F–öä¶W’æ7W'&VçB“°¢–b‚&V6÷&FVB’°¢6WE&WVW7E7FFR‚&W'&÷""“°¢&WGW&ã°¢Ğ¢6WE&WVW7E7FFR‚'6VçB"“°¢6WD6ÆVæFÇ”ÆöFVB‡G'VR“°¢Ó°¢6öç7B&WVW7D&÷fÂÒ7–æ2‚’Óâ°¢6WE&WVW7E7FFR‚'6VæF–ær"“°¢6öç7B&V6÷&FVBÒv—Böå&V6÷&D–çG&öGV7F–öâ†–çG&öGV7F–öä¶W’æ7W'&VçB“°¢6WE&WVW7E7FFR‡&V6÷&FVBò'6VçB"¢&W'&÷""“°¢Ó°¢&WGW&â€¢ÄÖöFÂF—FÆT–CÒ&6öçF7B×F—FÆR"öä6Æ÷6S×¶öä6Æ÷6WÒ6—¦SÒ&Æ&vR#à¢ÆF—b6Æ74æÖSÒ&6öçF7BÖF–Æör#à¢ÆF—b6Æ74æÖSÒ&6öçF7BÖF–ÆörÖ†VFW"#à¢ÆF—b6Æ74æÖSÒ&6öçF7B×&öf–ÆRÖfF""&–Ö†–FFVãÒ'G'VR#ç¶–æ—F–Ç2‡&öf–ÆRæF—7Æ”æÖR—ÓÂöF—cà¢ÆF—cãÇ7â6Æ74æÖSÒ&F–ÆörÖW–V'&÷r#ç·&öf–ÆRæFVÖõ7FGW2ÓÓÒ&FVÖò"ò$FVÖòÕ&öf–ÂW6vW|:F†ÇB"¢%&öf–ÂW6vW|:F†ÇB'ÓÂ÷7ããÆƒ"–CÒ&6öçF7B×F—FÆR#ç·&öf–ÆRæFVÖõ7FGW2ÓÓÒ&FVÖò"òFVÖòÔ&ÆVbl;Ç"G·&öf–ÆRæF—7Æ”æÖWÖ¢V–æl;Æ‡'Vær§RG·&öf–ÆRæF—7Æ”æÖWÖÓÂöƒ#ãÇç·&öf–ÆRç&öÆWÓÂ÷ãÂöF—cà¢ÂöF—cà¢ÆF—b6Æ74æÖSÒ&6öçF7BÖÆ–÷WB#à¢ÆF—b6Æ74æÖSÒ&6öçF7BÖ6÷’#à¢ÆF—b6Æ74æÖSÒ'&öÖâÖ6&B#à¢ÆF—b6Æ74æÖSÒ&Æ—fR×&÷r#ãÇ7â6Æ74æÖSÒ&Æ—fRÖF÷B"&–Ö†–FFVãÒ'G'VR"óâÆ—fRW'&V–6†&#ÂöF—cà¢Æƒ3å&öÖâFW&–ær¶ö÷&F–æ–W'BFVâ¶öçF·CÂöƒ3à¢Çç·&öf–ÆRæFVÖõ7FGW2ÓÓÒ&FVÖò"ò$F–W6W2&öf–Â—7B7–çF†WF—66‚âFW"¶öçF·Bl;Æ‡'BW766†Æ–\9öÆ–6‚§R&öÖâFW&–ærÂVÒFVâ&ÆVb§RFVÖöç7G&–W&Vââ"¢&öf–ÆRæ–çG&õöÆ–7’æÖçVÄ&÷fÅ&WV—&VBò%&öÖâ,;ÆgBF–RV–æl;Æ‡'VærW'<;fæÆ–6‚VæB&W7L:GF–wBFVâì:F6‡7FVâ66‡&—GB·W'¦g&—7F–râ"¢%|:F†ÆVâ6–RF—&V·BV–æVâFW&Ö–âöFW"'VfVâ6–Rââ&öÖâ&VvÆV—FWBF–RV–æl;Æ‡'Værâ'ÓÂ÷à¢Æ6Æ74æÖSÒ'†öæRÖ7F–öâ"‡&Vc×¶FVÃ¢G´4ôåD5Eõ„ôäWÖÒöä6Æ–6³×²‚’Óâfö–Böå&V6÷&D–çG&öGV7F–öâ†–çG&öGV7F–öä¶W’æ7W'&VçB—ÓãÇ7â&–Ö†–FFVãÒ'G'VR#î)ˆãÂ÷7ããÇ7ããÇ6ÖÆÃäF—&V·Bç'VfVãÂ÷6ÖÆÃç´4ôåD5Eõ„ôäUôÄ$TÇÓÂ÷7ããÂöà¢ÂöF—cà¢ÆF—b6Æ74æÖSÒ&6öçF–çVRÖæ÷FR#ãÇ7â&–Ö†–FFVãÒ'G'VR#îûÈ³Â÷7ããÇãÇ7G&öæsäæö6‚WGv2W&|:Fç¦VãóÂ÷7G&öæså66†Æ–\9öVâ6–RF–W6W2fVç7FW"VæB66‡&V–&Vâ6–Rg&V’–Ò6†BvV—FW"âF–RFW&Ö–æ÷F–öâ&ÆV–'B6–6‡F&"ãÂ÷ãÂöF—cà¢ÂöF—cà¢ÆF—b6Æ74æÖSÒ&6ÆVæF"Ö&V#à¢¶6ä&öö´F—&V7FÇ’bb6ÆVæFÇ”ÆöFVBò€¢Æ–g&ÖR6Æ74æÖSÒ&6ÆVæFÇ’Ög&ÖR"7&3×´4ÄTäDÅ•õU$ÇÒF—FÆSÒ%FW&Ö–âÖ—B&öÖâFW&–ær;Æ&W"6ÆVæFÇ’'V6†Vâ"ÆöF–æsÒ&Æ§’"óà¢’¢6ä&öö´F—&V7FÇ’ò€¢ÆF—b6Æ74æÖSÒ&6ÆVæF"Ö6öç6VçB#à¢ÆF—b6Æ74æÖSÒ&6ÆVæF"×7–Ö&öÂ"&–Ö†–FFVãÒ'G'VR#ãÇ7ãã3Â÷7ããÇ6ÖÆÃä„UUDSÂ÷6ÖÆÃãÂöF—cà¢Æƒ3ã3Ö–çWFVâ&W6W'f–W&VãÂöƒ3à¢Çä6ÆVæFÇ’v—&BW'7Bæ6‚–‡&VÒ¶Æ–6²vVÆFVââF&V’v—&BV–æRfW&&–æGVær§R6ÆVæFÇ’†W&vW7FVÆÇBãÂ÷à¢·&WVW7E7FFRÓÓÒ&W'&÷""òÇ6Æ74æÖSÒ&&÷fÂÖW'&÷""&öÆSÒ&ÆW'B#äF–RW7v†Â¶öæçFRæ–6‡BvW7V–6†W'BvW&FVââ&—GFRfW'7V6†Vâ6–RW2W&æWWBãÂ÷â¢çVÆÇĞ¢Æ'WGFöâG—SÒ&'WGFöâ"öä6Æ–6³×²‚’Óâfö–BÆöD6ÆVæFÇ’‚—ÒF—6&ÆVC×·&WVW7E7FFRÓÓÒ'6VæF–ær'Óç·&WVW7E7FFRÓÓÒ'6VæF–ær"ò$W7v†Âv—&BvW7V–6†W'B(
-b"¢$6ÆVæFÇ’ÆFVâbFW&Ö–â|:F†ÆVâ'ÒÇ7â&–Ö†–FFVãÒ'G'VR#î(i#Â÷7ããÂö'WGFöãà¢Æ‡&Vc×´4ÄTäDÅ•õU$ÇÒF&vWCÒ%ö&Ææ²"&VÃÒ&æ÷&VfW'&W""öä6Æ–6³×²‚’Óâfö–Böå&V6÷&D–çG&öGV7F–öâ†–çG&öGV7F–öä¶W’æ7W'&VçB—ÓäÇFW&æF—b–âæWVVÒF";fffæVãÂöà¢ÂöF—cà¢’¢€¢ÆF—b6Æ74æÖSÒ&6ÆVæF"Ö6öç6VçB&÷fÂÖ6öç6VçB#à¢ÆF—b6Æ74æÖSÒ&&÷fÂ×7–Ö&öÂ"&–Ö†–FFVãÒ'G'VR#î)É3ÂöF—cà¢Æƒ3åW'<;fæÆ–6†Rg&V–v&SÂöƒ3à¢Çäl;Ç"F–W6W2&öf–Â&W7L:GF–wB&öÖâFW&–ær§VW'7BF–RV–æl;Æ‡'VærâV–æRFW&Ö–çv†Âv—&BW'7BFæ6‚g&V–vW66†ÇFWBãÂ÷à¢·&WVW7E7FFRÓÓÒ'6VçB"ò€¢ÆF—b6Æ74æÖSÒ&&÷fÂ×6VçB"&öÆSÒ'7FGW2#ãÇ7â&–Ö†–FFVãÒ'G'VR#î)É3Â÷7ããÆF—cãÇ7G&öæsä¶öçF·Fæg&vR;Æ&W&Ö—GFVÇCÂ÷7G&öæsãÇ6ÖÆÃå&öÖâÖVÆFWB6–6‚·W'¦g&—7F–r§VÒì:F6‡7FVâ66‡&—GBãÂ÷6ÖÆÃãÂöF—cãÂöF—cà¢’¢€¢Ãà¢·&WVW7E7FFRÓÓÒ&W'&÷""òÇ6Æ74æÖSÒ&&÷fÂÖW'&÷""&öÆSÒ&ÆW'B#äF–Ræg&vR¶öæçFRæ–6‡BvW7V–6†W'BvW&FVââfW'7V6†Vâ6–RW2W&æWWBöFW"'VfVâ6–RF—&V·BâãÂ÷â¢çVÆÇĞ¢Æ'WGFöâG—SÒ&'WGFöâ"öä6Æ–6³×²‚’Óâfö–B&WVW7D&÷fÂ‚—ÒF—6&ÆVC×·&WVW7E7FFRÓÓÒ'6VæF–ær'Óç·&WVW7E7FFRÓÓÒ'6VæF–ær"ò$æg&vRv—&BvW6VæFWB(
-b"¢&WVW7E7FFRÓÓÒ&W'&÷""ò$W&æWWB6VæFVâ"¢$¶öçF·Fæg&vRâ&öÖâ6VæFVâ'ÓÂö'WGFöãà¢Âóà¢—Ğ¢Æ‡&Vc×¶FVÃ¢G´4ôåD5Eõ„ôäWÖÒöä6Æ–6³×²‚’Óâfö–Böå&V6÷&D–çG&öGV7F–öâ†–çG&öGV7F–öä¶W’æ7W'&VçB—ÓäöFW"F—&V·Bç'VfVã¢´4ôåD5Eõ„ôäUôÄ$TÇÓÂöà¢ÂöF—cà¢—Ğ¢ÂöF—cà¢ÂöF—cà¢ÂöF—cà¢ÂôÖöFÃà¢“°§Ğ ¦gVæ7F–öâ6öæf—&ÔFVÆWFTF–Æör‡²'W7’Âöä6Æ÷6RÂöä6öæf—&ÒÓ¢²'W7“¢&ööÆVã²öä6Æ÷6S¢‚’Óâfö–C²öä6öæf—&Ó¢‚’Óâfö–BÒ’°¢&WGW&â€¢ÄÖöFÂF—FÆT–CÒ&FVÆWFR×F—FÆR"öä6Æ÷6S×¶öä6Æ÷6WÓà¢ÆF—b6Æ74æÖSÒ&FVÆWFRÖF–Æör#à¢Ç7â6Æ74æÖSÒ&FævW"×7–Ö&öÂ"&–Ö†–FFVãÒ'G'VR#âÂ÷7ãà¢Æƒ"–CÒ&FVÆWFR×F—FÆR#äçvVæGVæw6FFVâÌ;g66†VãóÂöƒ#à¢Çä–‡&R&ö¦V·FRÂæ6‡&–6‡FVâVæBvW7V–6†W'FVâW&vV&æ—76RvW&FVâVçG7&V6†VæBFW"vVÇFVæFVâVf&Wv‡'Væw7&VvVÆâvVÌ;g66‡BöFW"æöç–Ö—6–W'BâF–W6W"66‡&—GB¶æâæ–6‡B,;Æ6¶|:Fæv–rvVÖ6‡BvW&FVâãÂ÷à¢ÆF—b6Æ74æÖSÒ&F–ÆörÖ7F–öç2#à¢Æ'WGFöâ6Æ74æÖSÒ'6V6öæF'’Ö7F–öâ"G—SÒ&'WGFöâ"öä6Æ–6³×¶öä6Æ÷6WÒF—6&ÆVC×¶'W7—Óä&'&V6†VãÂö'WGFöãà¢Æ'WGFöâ6Æ74æÖSÒ&FævW"Ö7F–öâ"G—SÒ&'WGFöâ"öä6Æ–6³×¶öä6öæf—&×ÒF—6&ÆVC×¶'W7—Óç¶'W7’ò%v—&BvVÌ;g66‡B(
-b"¢$FFVâVæF|;ÆÇF–rÌ;g66†Vâ'ÓÂö'WGFöãà¢ÂöF—cà¢ÂöF—cà¢ÂôÖöFÃà¢“°§Ğ
+    if (!cleaned || cleaned === "[DONE]") return;
+    try {
+      const event = JSON.parse(cleaned) as ChatStreamEvent;
+      if (event.type === "text_delta") {
+        textContent += event.delta;
+        onDelta(textContent);
+      } else if (event.type === "progress") {
+        onDelta(textContent, event.label);
+      } else if (event.type === "result") {
+        result = normalizeChatResponse(event.data, fallbackTitle);
+      } else if (event.type === "error") {
+        throw new Error(event.message);
+      }
+    } catch (error) {
+      if (error instanceof SyntaxError) return;
+      throw error;
+    }
+  };
+
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value, { stream: !done });
+    const lines = buffer.split(/\r?\n/);
+    buffer = lines.pop() ?? "";
+    lines.forEach(consume);
+    if (done) break;
+  }
+  consume(buffer);
+
+  if (result) return result;
+  if (textContent) {
+    throw new Error("Die Antwort war unvollstÃ¤ndig. Ihre Anfrage bleibt erhalten.");
+  }
+  throw new Error("Die Serverantwort war unvollstÃ¤ndig.");
+}
+
+export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
+  const apiPaths = useMemo(
+    () => ({ ...defaultChatApiPaths, ...apiOverrides }),
+    [apiOverrides],
+  );
+  const [auth, setAuth] = useState<AuthView>(emptyAuth);
+  const [authReady, setAuthReady] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authInitialMode, setAuthInitialMode] = useState<"login" | "register" | "set-password">("login");
+  const [projects, setProjects] = useState<ProjectListItem[]>([]);
+  const [activeProject, setActiveProject] = useState<ProjectListItem | null>(null);
+  const [messages, setMessages] = useState<ConversationMessage[]>([]);
+  const [brief, setBrief] = useState<StructuredBrief | null>(null);
+  const [profiles, setProfiles] = useState<FreelancerProfileResult[]>([]);
+  const [hasResult, setHasResult] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [pendingAssistant, setPendingAssistant] = useState<PendingAssistant | null>(null);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const [pendingProfileId, setPendingProfileId] = useState<string | null>(null);
+  const [contactOpen, setContactOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(true);
+  const [loadingProjectId, setLoadingProjectId] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
+  const [dataAction, setDataAction] = useState<"export" | "delete" | null>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const endRef = useRef<HTMLDivElement>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const selectedProfile = profiles.find((profile) => profile.id === selectedProfileId) ?? null;
+  const isAccountUser = auth.authenticated && !auth.anonymous;
+
+  const showToast = useCallback((message: string, tone: ToastState["tone"] = "neutral") => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ id: Date.now(), message, tone });
+    toastTimerRef.current = setTimeout(() => setToast(null), 5000);
+  }, []);
+
+  const refreshAuth = useCallback(async () => {
+    const claims = await ensureGuestSession();
+    const view = authViewFromClaims(claims);
+    setAuth(view);
+    return view;
+  }, []);
+
+  const loadProjects = useCallback(async () => {
+    try {
+      const response = await fetch(apiPaths.projects, {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) return;
+      const body: unknown = await response.json();
+      const source = Array.isArray(body)
+        ? body
+        : isRecord(body) && Array.isArray(body.projects)
+          ? body.projects
+          : [];
+      setProjects(source.map((item) => normalizeProject(item, "Gespeichertes Projekt")));
+    } catch {
+      // A project list is helpful, but never blocks the chat shell.
+    }
+  }, [apiPaths.projects]);
+
+  const loadProject = useCallback(
+    async (project: ProjectListItem | string) => {
+      const projectId = typeof project === "string" ? project : project.id;
+      setLoadingProjectId(projectId);
+      setSidebarOpen(false);
+      try {
+        const response = await fetch(`${apiPaths.projects}/${encodeURIComponent(projectId)}`, {
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+        });
+        if (!response.ok) throw new Error("Projekt konnte nicht geladen werden.");
+        const detail = normalizeProjectDetail(await response.json());
+        setActiveProject(detail.project);
+        setMessages(detail.messages);
+        setBrief(detail.brief);
+        setProfiles(detail.profiles.slice(0, 3));
+        setHasResult(Boolean(detail.brief));
+        setSelectedProfileId(null);
+        return detail;
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : "Projekt konnte nicht geladen werden.", "error");
+        return null;
+      } finally {
+        setLoadingProjectId(null);
+      }
+    },
+    [apiPaths.projects, showToast],
+  );
+
+  useEffect(() => {
+    let alive = true;
+    const supabase = getBrowserSupabaseClient();
+
+    void (async () => {
+      try {
+        const view = await refreshAuth();
+        if (!alive) return;
+        const searchParams = new URLSearchParams(window.location.search);
+        if (searchParams.get("set-password") === "1") {
+          setAuthInitialMode("set-password");
+          setAuthOpen(true);
+        }
+        if (searchParams.get("claim_warning") === "transfer_pending" && !view.anonymous) {
+          try {
+            await claimPreparedGuestWorkspace();
+            searchParams.delete("claim_warning");
+            const cleanUrl = `${window.location.pathname}${
+              searchParams.size ? `?${searchParams.toString()}` : ""
+            }${window.location.hash}`;
+            window.history.replaceState({}, "", cleanUrl);
+          } catch (error) {
+            showToast(
+              error instanceof Error
+                ? error.message
+                : "Die Gastanfrage konnte nicht Ã¼bertragen werden.",
+              "error",
+            );
+          }
+        }
+        await loadProjects();
+        const pendingProject = sessionStorage.getItem("pending_project_id");
+        if (pendingProject && !view.anonymous) {
+          const detail = await loadProject(pendingProject);
+          sessionStorage.removeItem("pending_project_id");
+          const pendingProfile = sessionStorage.getItem("pending_profile_selection");
+          if (detail && pendingProfile && detail.profiles.some((profile) => profile.id === pendingProfile)) {
+            setSelectedProfileId(pendingProfile);
+            setContactOpen(true);
+            sessionStorage.removeItem("pending_profile_selection");
+          }
+        }
+      } catch {
+        if (alive) showToast("Der Gastmodus konnte nicht gestartet werden. Bitte neu laden.", "error");
+      } finally {
+        if (alive) setAuthReady(true);
+      }
+    })();
+
+    const { data: subscription } = supabase.auth.onAuthStateChange(() => {
+      void refreshAuth().catch(() => undefined);
+    });
+    return () => {
+      alive = false;
+      subscription.subscription.unsubscribe();
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, [loadProject, loadProjects, refreshAuth, showToast]);
+
+  useEffect(() => {
+    const textarea = composerRef.current;
+    if (!textarea) return;
+    textarea.style.height = "0px";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 180)}px`;
+  }, [draft]);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, pendingAssistant, profiles]);
+
+  const startNewProject = () => {
+    setActiveProject(null);
+    setMessages([]);
+    setBrief(null);
+    setProfiles([]);
+    setHasResult(false);
+    setDraft("");
+    setPendingAssistant(null);
+    setSelectedProfileId(null);
+    setContactOpen(false);
+    setSidebarOpen(false);
+    requestAnimationFrame(() => composerRef.current?.focus());
+  };
+
+  const startGuidedRequest = (suggestion: Suggestion) => {
+    setActiveProject(null);
+    setBrief(null);
+    setProfiles([]);
+    setHasResult(false);
+    setSelectedProfileId(null);
+    setContactOpen(false);
+    setPendingAssistant(null);
+    setMessages([
+      {
+        id: makeId("assistant-guide"),
+        role: "assistant",
+        content: suggestion.intro,
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+    setDraft(suggestion.draftPrefix);
+    requestAnimationFrame(() => {
+      const textarea = composerRef.current;
+      textarea?.focus();
+      textarea?.setSelectionRange(textarea.value.length, textarea.value.length);
+    });
+  };
+
+  const finishChatResponse = useCallback(
+    (result: ChatResponse) => {
+      const assistantMessage = normalizeMessage(result.message);
+      setMessages((current) => [...current, assistantMessage]);
+      setBrief(result.brief);
+      setProfiles(result.matches.slice(0, 3));
+      setHasResult(true);
+      setSelectedProfileId((current) =>
+        result.matches.some((profile) => profile.id === current) ? current : null,
+      );
+      setActiveProject(result.project);
+      setProjects((current) => {
+        const withoutCurrent = current.filter((project) => project.id !== result.project.id);
+        return [result.project, ...withoutCurrent];
+      });
+      if (result.notice) showToast(result.notice);
+    },
+    [showToast],
+  );
+
+  const sendMessage = useCallback(
+    async (
+      rawText: string,
+      appendUser = true,
+      existingClientMessageId?: string,
+    ) => {
+      const text = rawText.trim();
+      if (!text || pendingAssistant) return;
+      const optimistic: ConversationMessage = {
+        id: existingClientMessageId ?? makeId("user"),
+        role: "user",
+        content: text,
+        createdAt: new Date().toISOString(),
+      };
+      if (appendUser) setMessages((current) => [...current, optimistic]);
+      setDraft("");
+      setPendingAssistant({
+        id: makeId("assistant"),
+        clientMessageId: optimistic.id,
+        content: "",
+        progress: "Anfrage wird verstanden â€¦",
+        retryText: null,
+      });
+
+      try {
+        await refreshAuth();
+        const requestBody: ChatRequest = {
+          projectId: activeProject?.id ?? null,
+          message: text,
+          clientMessageId: optimistic.id,
+        };
+        const response = await fetch(apiPaths.chat, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream" },
+          body: JSON.stringify(requestBody),
+        });
+        if (!response.ok) {
+          const retryAfter = response.headers.get("Retry-After");
+          if (response.status === 429) {
+            throw new Error(
+              retryAfter
+                ? `Das Nutzungslimit ist erreicht. Erneut mÃ¶glich in ${retryAfter} Sekunden.`
+                : "Das Nutzungslimit ist erreicht. Bitte versuchen Sie es spÃ¤ter erneut.",
+            );
+          }
+          let message = "Die Anfrage konnte gerade nicht verarbeitet werden.";
+          try {
+            const body: unknown = await response.json();
+            if (isRecord(body)) message = stringValue(body.error ?? body.message, message);
+          } catch {
+            // Keep the safe generic error message.
+          }
+          throw new Error(message);
+        }
+
+        const contentType = response.headers.get("content-type") ?? "";
+        const result = contentType.includes("text/event-stream") || contentType.includes("x-ndjson")
+          ? await parseStreamResponse(
+              response,
+              (content, progress) => {
+                setPendingAssistant((current) =>
+                  current
+                    ? { ...current, content, progress: progress ?? current.progress }
+                    : current,
+                );
+              },
+              text.slice(0, 52),
+            )
+          : normalizeChatResponse(await response.json(), text.slice(0, 52));
+
+        finishChatResponse(result);
+        setPendingAssistant(null);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Die Anfrage konnte nicht verarbeitet werden.";
+        setPendingAssistant({
+          id: makeId("assistant-error"),
+          clientMessageId: optimistic.id,
+          content: `${message} Ihre Eingabe bleibt im Chat erhalten.`,
+          progress: "",
+          retryText: text,
+        });
+      }
+    },
+    [activeProject, apiPaths.chat, finishChatResponse, pendingAssistant, refreshAuth],
+  );
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void sendMessage(draft);
+  };
+
+  const handleComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      if (draft.trim() && !pendingAssistant) void sendMessage(draft);
+    }
+  };
+
+  const requestProfileSelection = (profile: FreelancerProfileResult) => {
+    if (!isAccountUser) {
+      setPendingProfileId(profile.id);
+      sessionStorage.setItem("pending_profile_selection", profile.id);
+      if (activeProject?.id) sessionStorage.setItem("pending_project_id", activeProject.id);
+      setAuthInitialMode("login");
+      setAuthOpen(true);
+      return;
+    }
+    setSelectedProfileId(profile.id);
+    setContactOpen(true);
+  };
+
+  const handleAuthenticated = async () => {
+    const view = await refreshAuth();
+    if (view.anonymous) return;
+    setAuthOpen(false);
+    if (pendingProfileId) {
+      setSelectedProfileId(pendingProfileId);
+      setPendingProfileId(null);
+      sessionStorage.removeItem("pending_profile_selection");
+      setContactOpen(true);
+    }
+    await loadProjects();
+  };
+
+  const recordIntroduction = useCallback(
+    async (profile: FreelancerProfileResult, idempotencyKey: string) => {
+      if (!activeProject) return false;
+      try {
+        const response = await fetch(apiPaths.introductions, {
+          method: "POST",
+          credentials: "same-origin",
+          keepalive: true,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            projectId: activeProject.id,
+            profileId: profile.id,
+            idempotencyKey,
+          }),
+        });
+        return response.ok;
+      } catch {
+        // Contact remains available even when the non-blocking audit request fails.
+        return false;
+      }
+    },
+    [activeProject, apiPaths.introductions],
+  );
+
+  const exportData = async () => {
+    setDataAction("export");
+    setAccountMenuOpen(false);
+    try {
+      const response = await fetch(apiPaths.exportData, { credentials: "same-origin" });
+      if (!response.ok) throw new Error("Export konnte nicht erstellt werden.");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "meine-projektdaten.json";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+      showToast("Der Datenexport wurde erstellt.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Export fehlgeschlagen.", "error");
+    } finally {
+      setDataAction(null);
+    }
+  };
+
+  const deleteData = async () => {
+    setDataAction("delete");
+    try {
+      const response = await fetch(apiPaths.deleteData, {
+        method: "DELETE",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!response.ok) throw new Error("Die Daten konnten nicht gelÃ¶scht werden.");
+      await signOutAccount();
+      setDeleteOpen(false);
+      startNewProject();
+      setProjects([]);
+      await refreshAuth();
+      showToast("Ihre Anwendungsdaten wurden gelÃ¶scht.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "LÃ¶schen fehlgeschlagen.", "error");
+    } finally {
+      setDataAction(null);
+    }
+  };
+
+  const signOut = async () => {
+    setAccountMenuOpen(false);
+    await signOutAccount();
+    startNewProject();
+    setProjects([]);
+    await refreshAuth();
+    showToast("Sie wurden abgemeldet. Ein neuer Gastzugang ist aktiv.");
+  };
+
+  return (
+    <div className={`app-shell ${detailsOpen ? "" : "details-hidden"}`}>
+      <a className="skip-link" href="#chat-composer">Direkt zur Nachricht</a>
+
+      <aside className={`project-sidebar ${sidebarOpen ? "is-open" : ""}`} aria-label="Projekte">
+        <div className="sidebar-top">
+          <div className="product-mark" aria-label="Freelancer-Suche">
+            <span className="mark-glyph" aria-hidden="true">F</span>
+            <span>Freelancer</span>
+          </div>
+          <button className="icon-button sidebar-close" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schlieÃŸen">Ã—</button>
+        </div>
+
+        <button className="new-chat-button" type="button" onClick={startNewProject}>
+          <span aria-hidden="true">ï¼‹</span>
+          Neues Projekt
+          <span className="new-chat-key" aria-hidden="true">âŒ˜ K</span>
+        </button>
+
+        <nav className="project-nav" aria-label="Gespeicherte Projekte">
+          <p className="nav-label">Ihre Projekte</p>
+          {projects.length === 0 ? (
+            <div className="empty-projects">
+              <span aria-hidden="true">â—‹</span>
+              <p>Noch keine gespeicherten Projekte</p>
+              <small>Die erste Anfrage erscheint automatisch hier.</small>
+            </div>
+          ) : (
+            <ul className="project-list">
+              {projects.map((project) => (
+                <li key={project.id}>
+                  <button
+                    type="button"
+                    className={activeProject?.id === project.id ? "active" : ""}
+                    onClick={() => void loadProject(project)}
+                    aria-current={activeProject?.id === project.id ? "page" : undefined}
+                  >
+                    <span className="project-title">{project.title}</span>
+                    <span className="project-meta">
+                      {loadingProjectId === project.id ? "Wird geladen â€¦" : formatRelativeDate(project.updatedAt)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </nav>
+
+        <div className="sidebar-footer">
+          <div className="privacy-note">
+            <span className="privacy-icon" aria-hidden="true">âœ“</span>
+            <div>
+              <strong>Privater Arbeitsbereich</strong>
+              <span>Ihre Projekte bleiben Ihrem Zugang zugeordnet.</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {sidebarOpen ? <button className="sidebar-scrim" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schlieÃŸen" /> : null}
+
+      <main className="chat-panel">
+        <header className="topbar">
+          <div className="topbar-left">
+            <button className="icon-button mobile-menu" type="button" onClick={() => setSidebarOpen(true)} aria-label="Projekte Ã¶ffnen">â˜°</button>
+            <div>
+              <p className="topbar-title">{activeProject?.title ?? "Freelancer finden"}</p>
+              <p className="topbar-subtitle">KI-gestÃ¼tzte Anfrage Â· Sie treffen jede Entscheidung</p>
+            </div>
+          </div>
+          <div className="topbar-actions">
+            <div className="guest-state" aria-label={isAccountUser ? "Angemeldetes Konto" : "Gastmodus aktiv"}>
+              <span className={`status-dot ${authReady && auth.authenticated ? "is-ready" : ""}`} aria-hidden="true" />
+              <span>{isAccountUser ? "Gespeichert" : "Gastmodus"}</span>
+            </div>
+            {!isAccountUser ? (
+              <button className="login-button" type="button" onClick={() => { setAuthInitialMode("login"); setAuthOpen(true); }}>Anmelden</button>
+            ) : null}
+            <div className="account-menu-wrap">
+              <button
+                className="account-button"
+                type="button"
+                aria-label="KontomenÃ¼ Ã¶ffnen"
+                aria-haspopup="menu"
+                aria-expanded={accountMenuOpen}
+                onClick={() => setAccountMenuOpen((current) => !current)}
+              >
+                {isAccountUser ? initials(auth.user?.displayName ?? auth.user?.email ?? "Konto") : "G"}
+              </button>
+              {accountMenuOpen ? (
+                <div className="account-popover" role="menu">
+                  <div className="account-identity">
+                    <strong>{isAccountUser ? auth.user?.displayName ?? "Ihr Konto" : "Gastzugang"}</strong>
+                    <span>{isAccountUser ? auth.user?.email ?? "Angemeldet" : "Ohne Registrierung nutzbar"}</span>
+                  </div>
+                  {isAccountUser ? (
+                    <>
+                      <button role="menuitem" type="button" onClick={() => void exportData()} disabled={dataAction === "export"}>Daten exportieren</button>
+                      <button role="menuitem" type="button" onClick={() => { setAccountMenuOpen(false); setDeleteOpen(true); }}>Daten & Konto lÃ¶schen</button>
+                      <div className="menu-divider" />
+                      <button role="menuitem" type="button" onClick={() => void signOut()}>Abmelden</button>
+                    </>
+                  ) : (
+                    <button role="menuitem" type="button" onClick={() => { setAccountMenuOpen(false); setAuthInitialMode("login"); setAuthOpen(true); }}>Anmelden und fortfahren</button>
+                  )}
+                </div>
+              ) : null}
+            </div>
+            <button className="icon-button details-toggle" type="button" onClick={() => setDetailsOpen((current) => !current)} aria-label={detailsOpen ? "ProjektÃ¼bersicht ausblenden" : "ProjektÃ¼bersicht einblenden"} aria-pressed={detailsOpen}>â–¥</button>
+          </div>
+        </header>
+
+        <div className="chat-scroll" aria-live="polite">
+          <div className="conversation">
+            {messages.length === 0 && !pendingAssistant ? (
+              <WelcomeState onSuggestion={startGuidedRequest} />
+            ) : (
+              <div className="message-list">
+                {messages.map((message) => <MessageBubble key={message.id} message={message} />)}
+                {pendingAssistant ? (
+                  <PendingMessage
+                    pending={pendingAssistant}
+                    onRetry={() => {
+                      const text = pendingAssistant.retryText;
+                      const clientMessageId = pendingAssistant.clientMessageId;
+                      setPendingAssistant(null);
+                      if (text) void sendMessage(text, false, clientMessageId);
+                    }}
+                  />
+                ) : null}
+                {hasResult && !pendingAssistant ? (
+                  <ResultSection
+                    brief={brief}
+                    profiles={profiles}
+                    selectedProfileId={selectedProfileId}
+                    onSelect={requestProfileSelection}
+                    onContact={(profile) => {
+                      setSelectedProfileId(profile.id);
+                      setContactOpen(true);
+                    }}
+                  />
+                ) : null}
+              </div>
+            )}
+            <div ref={endRef} />
+          </div>
+        </div>
+
+        <div className="composer-zone">
+          {selectedProfile ? (
+            <div className="selection-strip">
+              <div>
+                <span className="selection-check" aria-hidden="true">âœ“</span>
+                <span><strong>{selectedProfile.displayName}</strong> ausgewÃ¤hlt</span>
+              </div>
+              <button type="button" onClick={() => setContactOpen(true)}>Termin oder Kontakt</button>
+            </div>
+          ) : null}
+          <form className="composer" onSubmit={handleSubmit}>
+            <label className="sr-only" htmlFor="chat-composer">Projekt oder ErgÃ¤nzung beschreiben</label>
+            <textarea
+              id="chat-composer"
+              ref={composerRef}
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={handleComposerKeyDown}
+              placeholder={messages.length ? "Projektbeschreibung einfÃ¼gen oder weitere Informationen ergÃ¤nzen â€¦" : "Welchen Freelancer suchen Sie?"}
+              rows={1}
+              maxLength={12_000}
+            />
+            <div className="composer-bottom">
+              <div className="composer-hint"><span aria-hidden="true">ï¼‹</span> Details jederzeit frei ergÃ¤nzen</div>
+              <button className="send-button" type="submit" disabled={!draft.trim() || Boolean(pendingAssistant)} aria-label="Nachricht senden">â†‘</button>
+            </div>
+          </form>
+          <p className="composer-disclosure">KI kann Fehler machen. Profile werden regelbasiert gefiltert; Sie wÃ¤hlen selbst. Keine Gesundheitsdaten oder vertraulichen Daten Dritter eingeben.</p>
+        </div>
+      </main>
+
+      <aside className={`details-panel ${detailsOpen ? "is-open" : ""}`} aria-label="ProjektÃ¼bersicht">
+        <ProjectDetails
+          brief={brief}
+          selectedProfile={selectedProfile}
+          onContact={() => setContactOpen(true)}
+        />
+      </aside>
+
+      {authOpen ? (
+        <AuthDialog
+          initialMode={authInitialMode}
+          onClose={() => setAuthOpen(false)}
+          onAuthenticated={() => void handleAuthenticated()}
+          showToast={showToast}
+        />
+      ) : null}
+
+      {contactOpen && selectedProfile ? (
+        <ContactDialog
+          profile={selectedProfile}
+          onClose={() => setContactOpen(false)}
+          onRecordIntroduction={(idempotencyKey) => recordIntroduction(selectedProfile, idempotencyKey)}
+        />
+      ) : null}
+
+      {deleteOpen ? (
+        <ConfirmDeleteDialog
+          busy={dataAction === "delete"}
+          onClose={() => setDeleteOpen(false)}
+          onConfirm={() => void deleteData()}
+        />
+      ) : null}
+
+      {toast ? <div className={`toast ${toast.tone}`} role="status" key={toast.id}>{toast.message}</div> : null}
+    </div>
+  );
+}
+
+function WelcomeState({ onSuggestion }: { onSuggestion: (suggestion: Suggestion) => void }) {
+  return (
+    <section className="welcome-state" aria-labelledby="welcome-title">
+      <div className="assistant-emblem" aria-hidden="true"><span>âœ¦</span></div>
+      <p className="eyebrow">Freelancer-Suche</p>
+      <h1 id="welcome-title">Wobei kÃ¶nnen wir Sie unterstÃ¼tzen?</h1>
+      <p className="welcome-copy">
+        Beschreiben Sie das Projekt so, wie Sie es einem Kollegen erklÃ¤ren wÃ¼rden. Die KI strukturiert Ihre Angaben und zeigt bis zu drei nachvollziehbar passende Profile.
+      </p>
+      <div className="trust-row" aria-label="So funktioniert die Suche">
+        <span><b>1</b> Frei beschreiben</span>
+        <span className="trust-line" aria-hidden="true" />
+        <span><b>2</b> Profile vergleichen</span>
+        <span className="trust-line" aria-hidden="true" />
+        <span><b>3</b> Kontakt starten</span>
+      </div>
+      <div className="suggestion-grid" aria-label="Beispielanfragen">
+        {suggestions.map((suggestion) => (
+          <button key={suggestion.label} type="button" onClick={() => onSuggestion(suggestion)}>
+            <span className="suggestion-label">{suggestion.label}</span>
+            <span className="suggestion-description">{suggestion.description}</span>
+            <span className="suggestion-arrow" aria-hidden="true">â†’</span>
+          </button>
+        ))}
+      </div>
+      <p className="no-form-note"><span aria-hidden="true">âŒ</span> Kein Fragebogen â€“ fehlende Angaben bleiben sichtbar als â€nicht angegebenâ€œ.</p>
+    </section>
+  );
+}
+
+function MessageBubble({ message }: { message: ConversationMessage }) {
+  if (message.role === "user") {
+    return (
+      <article className="message-row user-message" aria-label="Ihre Nachricht">
+        <div className="message-content"><p>{message.content}</p></div>
+      </article>
+    );
+  }
+  return (
+    <article className="message-row assistant-message" aria-label="Antwort der KI">
+      <div className="message-avatar" aria-hidden="true">âœ¦</div>
+      <div className="message-content">
+        <div className="message-author">Assistent <span>KI</span></div>
+        <p>{message.content}</p>
+      </div>
+    </article>
+  );
+}
+
+function PendingMessage({ pending, onRetry }: { pending: PendingAssistant; onRetry: () => void }) {
+  const failed = Boolean(pending.retryText);
+  return (
+    <article className={`message-row assistant-message ${failed ? "has-error" : ""}`} aria-label={failed ? "Fehler" : "Antwort wird erstellt"}>
+      <div className="message-avatar" aria-hidden="true">{failed ? "!" : "âœ¦"}</div>
+      <div className="message-content">
+        <div className="message-author">Assistent <span>KI</span></div>
+        {pending.content ? <p>{pending.content}</p> : null}
+        {!failed ? (
+          <div className="thinking-line"><span className="thinking-dots" aria-hidden="true"><i /><i /><i /></span>{pending.progress}</div>
+        ) : (
+          <button className="text-button" type="button" onClick={onRetry}>Erneut versuchen</button>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function ResultSection({
+  brief,
+  profiles,
+  selectedProfileId,
+  onSelect,
+  onContact,
+}: {
+  brief: StructuredBrief | null;
+  profiles: FreelancerProfileResult[];
+  selectedProfileId: string | null;
+  onSelect: (profile: FreelancerProfileResult) => void;
+  onContact: (profile: FreelancerProfileResult) => void;
+}) {
+  return (
+    <section className="result-section" aria-label="Suchergebnis">
+      {brief ? <BriefCard brief={brief} /> : null}
+      <div className="shortlist-heading">
+        <div>
+          <p className="eyebrow">Regelbasierter Abgleich</p>
+          <h2>{profiles.length ? `${profiles.length} passende ${profiles.length === 1 ? "Person" : "Profile"}` : "Keine passende Person gefunden"}</h2>
+        </div>
+        {profiles.length ? <span className="result-count">Maximal 3 Ergebnisse</span> : null}
+      </div>
+      {profiles.length ? (
+        <>
+          <p className="matching-disclosure">Die Reihenfolge folgt dokumentierten Kriterien wie Pflichtkompetenzen, Sprache, Arbeitsmodus und VerfÃ¼gbarkeit. Die KI trifft keine Einstellungsentscheidung.</p>
+          <div className="profile-list">
+            {profiles.slice(0, 3).map((profile, index) => (
+              <ProfileCard
+                key={profile.id}
+                profile={profile}
+                position={index + 1}
+                selected={selectedProfileId === profile.id}
+                onSelect={() => onSelect(profile)}
+                onContact={() => onContact(profile)}
+              />
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="no-match-card">
+          <div className="no-match-icon" aria-hidden="true">âŒ•</div>
+          <div>
+            <strong>Aktuell gibt es keinen ausreichend passenden Treffer.</strong>
+            <p>Wir zeigen kein Ersatzprofil, wenn Pflichtkriterien nicht erfÃ¼llt sind. ErgÃ¤nzen oder Ã¤ndern Sie Ihre Angaben einfach im Chat.</p>
+            <a href={`tel:${CONTACT_PHONE}`}>Roman Dering direkt kontaktieren Â· {CONTACT_PHONE_LABEL}</a>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function BriefCard({ brief }: { brief: StructuredBrief }) {
+  const openFields = presentUnknownFields(brief.unknownFields);
+  return (
+    <article className="brief-card">
+      <div className="brief-header">
+        <div>
+          <p className="eyebrow">Strukturierte Projektanalyse</p>
+          <h2>{brief.projectTitle}</h2>
+        </div>
+        <span className="brief-status"><span aria-hidden="true">âœ“</span> Strukturiert</span>
+      </div>
+      {brief.summary ? <p className="brief-summary">{brief.summary}</p> : null}
+      <dl className="brief-grid brief-grid-detailed">
+        <DetailTerm label="Pflichtkompetenzen" value={brief.requiredSkills.length ? brief.requiredSkills.join(", ") : null} />
+        <DetailTerm label="Optionale Kompetenzen" value={brief.optionalSkills.length ? brief.optionalSkills.join(", ") : null} />
+        <DetailTerm label="Sprache" value={brief.languages.length ? brief.languages.join(", ") : null} />
+        <DetailTerm label="Arbeitsmodus / Ort" value={[brief.mode === "unknown" ? null : modeLabel(brief.mode), brief.location].filter(Boolean).join(" Â· ") || null} />
+        <DetailTerm label="Start & Dauer" value={[brief.startWindow, brief.duration].filter(Boolean).join(" Â· ") || null} />
+        <DetailTerm label="Budget / Satz" value={brief.budgetOrRate} />
+        <DetailTerm label="Qualifikationen" value={brief.qualifications.length ? brief.qualifications.join(", ") : null} />
+        <DetailTerm label="VerfÃ¼gbarkeit" value={brief.availabilityRequirement} />
+        <DetailTerm label="Vertragsanforderungen" value={brief.contractualRequirements.length ? brief.contractualRequirements.join(", ") : null} />
+        <DetailTerm label="Weitere Rahmenbedingungen" value={brief.constraints.length ? brief.constraints.join(", ") : null} />
+      </dl>
+      {openFields.length ? (
+        <div className="unknown-row"><span>Noch offen</span>{openFields.join(" Â· ")}</div>
+      ) : null}
+    </article>
+  );
+}
+
+function DetailTerm({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd className={!value ? "is-unknown" : ""}>{value ?? "Nicht angegeben"}</dd>
+    </div>
+  );
+}
+
+function ProfileCard({
+  profile,
+  position,
+  selected,
+  onSelect,
+  onContact,
+}: {
+  profile: FreelancerProfileResult;
+  position: number;
+  selected: boolean;
+  onSelect: () => void;
+  onContact: () => void;
+}) {
+  const verifiedFacts = profile.facts.filter((fact) => fact.verification === "verified");
+  const selfReportedFacts = profile.facts.filter((fact) => fact.verification === "self-reported");
+  return (
+    <article className={`profile-card ${selected ? "is-selected" : ""}`}>
+      <div className="profile-rank" aria-label={`Ergebnis ${position}`}>{position.toString().padStart(2, "0")}</div>
+      <div className="profile-main">
+        <header className="profile-header">
+          <div className="profile-identity">
+            <div className="profile-avatar" aria-hidden="true">{initials(profile.displayName)}</div>
+            <div>
+              <h3>{profile.displayName}</h3>
+              <p>{profile.role}</p>
+            </div>
+          </div>
+          <div className="profile-badges">
+            {profile.demoStatus === "demo" ? <span className="intro-badge demo">Demo-Profil</span> : null}
+            <span className={`availability ${profile.availabilityStatus}`}>{availabilityLabel(profile.availabilityStatus)}</span>
+            <span className={`intro-badge ${profile.introPolicy.type}`}>{profile.introPolicy.label}</span>
+          </div>
+        </header>
+
+        {profile.experienceSummary ? <p className="experience-summary">{profile.experienceSummary}</p> : null}
+
+        <div className="profile-tags">
+          {profile.skillTags.slice(0, 7).map((skill) => <span key={skill}>{skill}</span>)}
+        </div>
+
+        <div className="match-columns">
+          <div className="match-column reasons">
+            <h4><span aria-hidden="true">âœ“</span> Warum passend</h4>
+            {profile.matchReasons.length ? (
+              <ul>{profile.matchReasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+            ) : <p className="unknown-text">Keine BegrÃ¼ndung Ã¼bermittelt</p>}
+          </div>
+          <div className="match-column gaps">
+            <h4><span aria-hidden="true">â—‹</span> Bekannte LÃ¼cken</h4>
+            {profile.knownGaps.length ? (
+              <ul>{profile.knownGaps.map((gap) => <li key={gap}>{gap}</li>)}</ul>
+            ) : <p>Keine bekannten LÃ¼cken im Abgleich</p>}
+          </div>
+        </div>
+
+        <div className="fact-row">
+          <FactGroup label="Verifiziert" facts={verifiedFacts.map((fact) => `${fact.label}: ${fact.value}`)} verified />
+          <FactGroup label="Selbstauskunft" facts={selfReportedFacts.map((fact) => `${fact.label}: ${fact.value}`)} />
+        </div>
+
+        <dl className="profile-meta-grid">
+          <DetailTerm label="Arbeitsmodus" value={profile.remoteMode === "unknown" ? null : modeLabel(profile.remoteMode)} />
+          <DetailTerm label="Ort" value={profile.location} />
+          <DetailTerm label="Honorar" value={profile.rate} />
+          <DetailTerm label="VerfÃ¼gbarkeit geprÃ¼ft" value={profile.availabilityUpdatedAt ? formatDateTime(profile.availabilityUpdatedAt) : null} />
+        </dl>
+
+        {profile.referenceStatus ? <p className="reference-note"><span aria-hidden="true">âœ“</span> Referenzstatus: {profile.referenceStatus}</p> : null}
+
+        <footer className="profile-footer">
+          <div>
+            <strong>{profile.introPolicy.type === "free" ? "Direkte EinfÃ¼hrung" : "PersÃ¶nlich geprÃ¼fte EinfÃ¼hrung"}</strong>
+            <span>{profile.introPolicy.manualApprovalRequired ? "Roman Dering bestÃ¤tigt den Kontakt." : "Nach Ihrer Auswahl kann der Kontakt starten."}</span>
+          </div>
+          {selected ? (
+            <button className="secondary-action" type="button" onClick={onContact}><span aria-hidden="true">âœ“</span> AusgewÃ¤hlt Â· Kontakt</button>
+          ) : (
+            <button className="primary-action" type="button" onClick={onSelect}>{profile.demoStatus === "demo" ? "Demo-Ablauf ansehen" : "Profil auswÃ¤hlen"} <span aria-hidden="true">â†’</span></button>
+          )}
+        </footer>
+      </div>
+    </article>
+  );
+}
+
+function FactGroup({ label, facts, verified = false }: { label: string; facts: string[]; verified?: boolean }) {
+  return (
+    <div className="fact-group">
+      <span className={verified ? "verified-label" : "reported-label"}>{verified ? "âœ“" : "i"} {label}</span>
+      <p>{facts.length ? facts.join(" Â· ") : "Keine Angaben"}</p>
+    </div>
+  );
+}
+
+function ProjectDetails({
+  brief,
+  selectedProfile,
+  onContact,
+}: {
+  brief: StructuredBrief | null;
+  selectedProfile: FreelancerProfileResult | null;
+  onContact: () => void;
+}) {
+  return (
+    <div className="details-inner">
+      <div className="details-heading">
+        <p className="eyebrow">Projekt</p>
+        <h2>Ãœbersicht</h2>
+      </div>
+      {brief ? (
+        <>
+          <div className="project-status-line"><span aria-hidden="true">âœ“</span><div><strong>Anfrage strukturiert</strong><small>Angaben kÃ¶nnen jederzeit ergÃ¤nzt werden</small></div></div>
+          <dl className="side-details">
+            <DetailTerm label="Projekt" value={brief.projectTitle || null} />
+            <DetailTerm label="Pflichtkompetenzen" value={brief.requiredSkills.length ? brief.requiredSkills.join(", ") : null} />
+            <DetailTerm label="Optionale Kompetenzen" value={brief.optionalSkills.length ? brief.optionalSkills.join(", ") : null} />
+            <DetailTerm label="Sprache" value={brief.languages.length ? brief.languages.join(", ") : null} />
+            <DetailTerm label="Modus / Ort" value={[brief.mode === "unknown" ? null : modeLabel(brief.mode), brief.location].filter(Boolean).join(" Â· ") || null} />
+            <DetailTerm label="Budget / Satz" value={brief.budgetOrRate} />
+            <DetailTerm label="Qualifikationen" value={brief.qualifications.length ? brief.qualifications.join(", ") : null} />
+            <DetailTerm label="VerfÃ¼gbarkeit" value={brief.availabilityRequirement} />
+            <DetailTerm label="Vertragsanforderungen" value={brief.contractualRequirements.length ? brief.contractualRequirements.join(", ") : null} />
+            <DetailTerm label="Rahmenbedingungen" value={brief.constraints.length ? brief.constraints.join(", ") : null} />
+          </dl>
+        </>
+      ) : (
+        <div className="details-empty">
+          <span aria-hidden="true">âŒ</span>
+          <strong>Noch keine Projektdaten</strong>
+          <p>Schreiben Sie frei in den Chat. Die Ãœbersicht entsteht aus Ihren Angaben.</p>
+        </div>
+      )}
+
+      {selectedProfile ? (
+        <div className="selected-side-card">
+          <span className="side-card-label">AusgewÃ¤hlt</span>
+          <div className="selected-person"><span>{initials(selectedProfile.displayName)}</span><div><strong>{selectedProfile.displayName}</strong><small>{selectedProfile.role}</small></div></div>
+          <button type="button" onClick={onContact}>Termin oder Kontakt <span aria-hidden="true">â†’</span></button>
+          <small>Sie kÃ¶nnen vorher weiter im Chat ergÃ¤nzen.</small>
+        </div>
+      ) : null}
+
+      <div className="human-contact-card">
+        <div className="live-row"><span className="live-dot" aria-hidden="true" /> Live erreichbar</div>
+        <h3>Roman Dering</h3>
+        <p>PersÃ¶nlicher Ansprechpartner fÃ¼r Profilfragen und die EinfÃ¼hrung.</p>
+        <a href={`tel:${CONTACT_PHONE}`}>{CONTACT_PHONE_LABEL}</a>
+      </div>
+
+      <div className="ai-note"><span aria-hidden="true">i</span><p><strong>Transparente UnterstÃ¼tzung</strong>Die KI strukturiert Ihre Anfrage. Profile werden nach festen, Ã¼berprÃ¼fbaren Regeln gefiltert.</p></div>
+    </div>
+  );
+}
+
+function Modal({ titleId, onClose, children, size = "default" }: { titleId: string; onClose: () => void; children: ReactNode; size?: "default" | "large" }) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const cardRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    closeRef.current?.focus();
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+      if (event.key === "Tab" && cardRef.current) {
+        const focusable = Array.from(
+          cardRef.current.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          ),
+        );
+        const first = focusable[0];
+        const last = focusable.at(-1);
+        if (!first || !last) return;
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      previouslyFocused?.focus();
+    };
+  }, [onClose]);
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <section ref={cardRef} className={`modal-card ${size === "large" ? "is-large" : ""}`} role="dialog" aria-modal="true" aria-labelledby={titleId}>
+        <button ref={closeRef} className="modal-close" type="button" onClick={onClose} aria-label="Dialog schlieÃŸen">Ã—</button>
+        {children}
+      </section>
+    </div>
+  );
+}
+
+function AuthDialog({
+  initialMode,
+  onClose,
+  onAuthenticated,
+  showToast,
+}: {
+  initialMode: "login" | "register" | "set-password";
+  onClose: () => void;
+  onAuthenticated: () => void;
+  showToast: (message: string, tone?: ToastState["tone"]) => void;
+}) {
+  const [mode, setMode] = useState(initialMode);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordRepeat, setPasswordRepeat] = useState("");
+  const [confirmationSent, setConfirmationSent] = useState(false);
+  const [busy, setBusy] = useState<"google" | "microsoft" | "email" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const connectProvider = async (provider: "google" | "microsoft") => {
+    setBusy(provider);
+    setError(null);
+    try {
+      await startOauthUpgrade(provider);
+    } catch (providerError) {
+      setError(providerError instanceof Error ? providerError.message : "Anmeldung konnte nicht gestartet werden.");
+      setBusy(null);
+    }
+  };
+
+  const submitEmail = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setBusy("email");
+    setError(null);
+    if (mode === "set-password" && password !== passwordRepeat) {
+      setError("Die beiden PasswÃ¶rter stimmen nicht Ã¼berein.");
+      setBusy(null);
+      return;
+    }
+    try {
+      if (mode === "login") {
+        await signInExistingAccount(email, password);
+        showToast("Anmeldung erfolgreich. Ihre Auswahl wird fortgesetzt.");
+        onAuthenticated();
+      } else if (mode === "register") {
+        await beginEmailUpgrade(email);
+        setConfirmationSent(true);
+        setBusy(null);
+      } else {
+        await setAccountPassword(password);
+        const cleanUrl = `${window.location.pathname}${window.location.hash}`;
+        window.history.replaceState({}, "", cleanUrl);
+        showToast("Ihr Konto ist eingerichtet. Ihre Auswahl wird fortgesetzt.");
+        onAuthenticated();
+      }
+    } catch (emailError) {
+      setError(
+        emailError instanceof Error
+          ? emailError.message
+          : mode === "login"
+            ? "E-Mail oder Passwort ist nicht korrekt."
+            : "Das Konto konnte gerade nicht eingerichtet werden.",
+      );
+      setBusy(null);
+    }
+  };
+
+  return (
+    <Modal titleId="auth-title" onClose={onClose}>
+      <div className="auth-dialog">
+        <span className="dialog-eyebrow">Auswahl sichern</span>
+        <h2 id="auth-title">
+          {mode === "set-password" ? "Konto fertig einrichten" : "Anmelden und direkt fortfahren"}
+        </h2>
+        <p>
+          {mode === "set-password"
+            ? "Ihre E-Mail wurde bestÃ¤tigt. Legen Sie jetzt Ihr Passwort fest."
+            : "Ihre Anfrage bleibt erhalten. Nach der Anmeldung kehren Sie genau zu Ihrem ausgewÃ¤hlten Profil zurÃ¼ck."}
+        </p>
+
+        {mode !== "set-password" ? (
+          <>
+            <div className="provider-buttons">
+              <button type="button" onClick={() => void connectProvider("google")} disabled={Boolean(busy)}><span className="provider-letter" aria-hidden="true">G</span>{busy === "google" ? "Google wird geÃ¶ffnet â€¦" : "Mit Google fortfahren"}</button>
+              <button type="button" onClick={() => void connectProvider("microsoft")} disabled={Boolean(busy)}><span className="provider-letter microsoft" aria-hidden="true">M</span>{busy === "microsoft" ? "Microsoft wird geÃ¶ffnet â€¦" : "Mit Microsoft fortfahren"}</button>
+            </div>
+            <div className="or-divider"><span>oder</span></div>
+            <div className="auth-mode-tabs" role="tablist" aria-label="E-Mail-Zugang">
+              <button type="button" role="tab" aria-selected={mode === "login"} className={mode === "login" ? "active" : ""} onClick={() => { setMode("login"); setError(null); }}>Bestehendes Konto</button>
+              <button type="button" role="tab" aria-selected={mode === "register"} className={mode === "register" ? "active" : ""} onClick={() => { setMode("register"); setError(null); }}>Neues Konto</button>
+            </div>
+          </>
+        ) : null}
+
+        {confirmationSent ? (
+          <div className="confirmation-state" role="status">
+            <span aria-hidden="true">âœ“</span>
+            <h3>BestÃ¤tigungslink versendet</h3>
+            <p>Ã–ffnen Sie den Link in der E-Mail an <strong>{email}</strong>. AnschlieÃŸend legen Sie hier Ihr Passwort fest und fahren mit Ihrer Auswahl fort.</p>
+            <button type="button" onClick={onClose}>Verstanden</button>
+          </div>
+        ) : (
+          <form className="email-login" onSubmit={submitEmail}>
+            {mode !== "set-password" ? (
+              <>
+                <label htmlFor="login-email">E-Mail-Adresse</label>
+                <input id="login-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
+              </>
+            ) : null}
+            {mode !== "register" ? (
+              <>
+                <label htmlFor="login-password">{mode === "set-password" ? "Neues Passwort" : "Passwort"}</label>
+                <input id="login-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={mode === "set-password" ? "new-password" : "current-password"} minLength={8} required />
+              </>
+            ) : null}
+            {mode === "set-password" ? (
+              <>
+                <label htmlFor="login-password-repeat">Passwort wiederholen</label>
+                <input id="login-password-repeat" type="password" value={passwordRepeat} onChange={(event) => setPasswordRepeat(event.target.value)} autoComplete="new-password" minLength={8} required />
+              </>
+            ) : null}
+            {error ? <p className="form-error" role="alert">{error}</p> : null}
+            <button className="auth-submit" type="submit" disabled={Boolean(busy)}>
+              {busy === "email"
+                ? "Bitte warten â€¦"
+                : mode === "login"
+                  ? "Mit E-Mail anmelden"
+                  : mode === "register"
+                    ? "BestÃ¤tigungslink senden"
+                    : "Passwort speichern & fortfahren"}
+            </button>
+          </form>
+        )}
+        <p className="auth-privacy">Die Anmeldung dient dazu, Projekte gerÃ¤teÃ¼bergreifend zuzuordnen und eine Profilwahl sicher fortzusetzen.</p>
+      </div>
+    </Modal>
+  );
+}
+
+function ContactDialog({ profile, onClose, onRecordIntroduction }: { profile: FreelancerProfileResult; onClose: () => void; onRecordIntroduction: (idempotencyKey: string) => Promise<boolean> }) {
+  const [calendlyLoaded, setCalendlyLoaded] = useState(false);
+  const [requestState, setRequestState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const introductionKey = useRef(makeId("intro"));
+  const canBookDirectly = profile.introPolicy.type === "free" || profile.introPolicy.readyToBook === true;
+  const loadCalendly = async () => {
+    setRequestState("sending");
+    const recorded = await onRecordIntroduction(introductionKey.current);
+    if (!recorded) {
+      setRequestState("error");
+      return;
+    }
+    setRequestState("sent");
+    setCalendlyLoaded(true);
+  };
+  const requestApproval = async () => {
+    setRequestState("sending");
+    const recorded = await onRecordIntroduction(introductionKey.current);
+    setRequestState(recorded ? "sent" : "error");
+  };
+  return (
+    <Modal titleId="contact-title" onClose={onClose} size="large">
+      <div className="contact-dialog">
+        <div className="contact-dialog-header">
+          <div className="contact-profile-avatar" aria-hidden="true">{initials(profile.displayName)}</div>
+          <div><span className="dialog-eyebrow">{profile.demoStatus === "demo" ? "Demo-Profil ausgewÃ¤hlt" : "Profil ausgewÃ¤hlt"}</span><h2 id="contact-title">{profile.demoStatus === "demo" ? `Demo-Ablauf fÃ¼r ${profile.displayName}` : `EinfÃ¼hrung zu ${profile.displayName}`}</h2><p>{profile.role}</p></div>
+        </div>
+        <div className="contact-layout">
+          <div className="contact-copy">
+            <div className="roman-card">
+              <div className="live-row"><span className="live-dot" aria-hidden="true" /> Live erreichbar</div>
+              <h3>Roman Dering koordiniert den Kontakt</h3>
+              <p>{profile.demoStatus === "demo" ? "Dieses Profil ist synthetisch. Der Kontakt fÃ¼hrt ausschlieÃŸlich zu Roman Dering, um den Ablauf zu demonstrieren." : profile.introPolicy.manualApprovalRequired ? "Roman prÃ¼ft die EinfÃ¼hrung persÃ¶nlich und bestÃ¤tigt den nÃ¤chsten Schritt kurzfristig." : "WÃ¤hlen Sie direkt einen Termin oder rufen Sie an. Roman begleitet die EinfÃ¼hrung."}</p>
+              <a className="phone-action" href={`tel:${CONTACT_PHONE}`} onClick={() => void onRecordIntroduction(introductionKey.current)}><span aria-hidden="true">â˜</span><span><small>Direkt anrufen</small>{CONTACT_PHONE_LABEL}</span></a>
+            </div>
+            <div className="continue-note"><span aria-hidden="true">ï¼‹</span><p><strong>Noch etwas ergÃ¤nzen?</strong>SchlieÃŸen Sie dieses Fenster und schreiben Sie frei im Chat weiter. Die Terminoption bleibt sichtbar.</p></div>
+          </div>
+          <div className="calendar-area">
+            {canBookDirectly && calendlyLoaded ? (
+              <iframe className="calendly-frame" src={CALENDLY_URL} title="Termin mit Roman Dering Ã¼ber Calendly buchen" loading="lazy" />
+            ) : canBookDirectly ? (
+              <div className="calendar-consent">
+                <div className="calendar-symbol" aria-hidden="true"><span>13</span><small>HEUTE</small></div>
+                <h3>30 Minuten reservieren</h3>
+                <p>Calendly wird erst nach Ihrem Klick geladen. Dabei wird eine Verbindung zu Calendly hergestellt.</p>
+                {requestState === "error" ? <p className="approval-error" role="alert">Die Auswahl konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.</p> : null}
+                <button type="button" onClick={() => void loadCalendly()} disabled={requestState === "sending"}>{requestState === "sending" ? "Auswahl wird gespeichert â€¦" : "Calendly laden & Termin wÃ¤hlen"} <span aria-hidden="true">â†’</span></button>
+                <a href={CALENDLY_URL} target="_blank" rel="noreferrer" onClick={() => void onRecordIntroduction(introductionKey.current)}>Alternativ in neuem Tab Ã¶ffnen</a>
+              </div>
+            ) : (
+              <div className="calendar-consent approval-consent">
+                <div className="approval-symbol" aria-hidden="true">âœ“</div>
+                <h3>PersÃ¶nliche Freigabe</h3>
+                <p>FÃ¼r dieses Profil bestÃ¤tigt Roman Dering zuerst die EinfÃ¼hrung. Eine Terminwahl wird erst danach freigeschaltet.</p>
+                {requestState === "sent" ? (
+                  <div className="approval-sent" role="status"><span aria-hidden="true">âœ“</span><div><strong>Kontaktanfrage Ã¼bermittelt</strong><small>Roman meldet sich kurzfristig zum nÃ¤chsten Schritt.</small></div></div>
+                ) : (
+                  <>
+                    {requestState === "error" ? <p className="approval-error" role="alert">Die Anfrage konnte nicht gespeichert werden. Versuchen Sie es erneut oder rufen Sie direkt an.</p> : null}
+                    <button type="button" onClick={() => void requestApproval()} disabled={requestState === "sending"}>{requestState === "sending" ? "Anfrage wird gesendet â€¦" : requestState === "error" ? "Erneut senden" : "Kontaktanfrage an Roman senden"}</button>
+                  </>
+                )}
+                <a href={`tel:${CONTACT_PHONE}`} onClick={() => void onRecordIntroduction(introductionKey.current)}>Oder direkt anrufen: {CONTACT_PHONE_LABEL}</a>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function ConfirmDeleteDialog({ busy, onClose, onConfirm }: { busy: boolean; onClose: () => void; onConfirm: () => void }) {
+  return (
+    <Modal titleId="delete-title" onClose={onClose}>
+      <div className="delete-dialog">
+        <span className="danger-symbol" aria-hidden="true">!</span>
+        <h2 id="delete-title">Anwendungsdaten lÃ¶schen?</h2>
+        <p>Ihre Projekte, Nachrichten und gespeicherten Ergebnisse werden entsprechend der geltenden Aufbewahrungsregeln gelÃ¶scht oder anonymisiert. Dieser Schritt kann nicht rÃ¼ckgÃ¤ngig gemacht werden.</p>
+        <div className="dialog-actions">
+          <button className="secondary-action" type="button" onClick={onClose} disabled={busy}>Abbrechen</button>
+          <button className="danger-action" type="button" onClick={onConfirm} disabled={busy}>{busy ? "Wird gelÃ¶scht â€¦" : "Daten endgÃ¼ltig lÃ¶schen"}</button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
