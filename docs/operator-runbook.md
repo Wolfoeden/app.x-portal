@@ -70,6 +70,41 @@ project access list monthly.
     payloads, invitee data or access tokens.
 11. Save, reopen the row and perform the activation checklist below.
 
+### Table Editor field map
+
+Use this as the minimum checklist while inserting the row. This is the preferred
+V1 workflow for creating profiles yourself; it keeps profile maintenance out of
+the public application and avoids another privileged admin surface.
+
+| Table Editor field | Required entry |
+| --- | --- |
+| `slug` | Unique lowercase identifier, for example `max-muster-react` |
+| `display_name` | Public display name approved for publication |
+| `role_title` | Concise public role, for example `Senior React Developer` |
+| `skill_tags` | Lowercase array entries matching the controlled catalog |
+| `languages` | Language-code array such as `de`, `en` |
+| `location_text` | Public city/region only, or empty |
+| `work_modes` | Array containing `remote`, `on_site` and/or `hybrid` |
+| `experience_summary` | Public-safe factual summary; no confidential customer data |
+| `verified_facts` | Only individually evidenced public facts, otherwise empty |
+| `self_reported_facts` | Freelancer-provided public claims, otherwise empty |
+| `references_summary` | Public verification status, never source documents |
+| `verification_status` | `unverified`, `identity_checked`, `references_checked` or `operator_verified` |
+| `hourly_rate_minor` / `day_rate_minor` | Optional minor currency units, for example `9500` for EUR 95.00 |
+| `currency` | Three-letter code only when a rate is supplied, otherwise empty |
+| `intro_policy` | `free` or `manual_approval` |
+| `booking_url` | Optional approved HTTPS URL |
+| `profile_status` | Start with `paused` |
+| `availability_status` | Start with `unknown`; set to `available` only after confirmation |
+| `availability_from` | Confirmed date only, otherwise empty |
+| `demo_status` | Start with `demo`; use `real` only after the activation checklist |
+
+Do not edit database-generated fields (`id`, `version`, timestamps). Array
+columns must be entered as separate array values in Table Editor, not as one
+comma-separated text value. If a new skill name is needed, normalize and approve
+it before adding both the profile tag and matching alias; otherwise the profile
+can be valid but never qualify for the intended search.
+
 ## Activation checklist
 
 A profile may become eligible only after all answers are **yes**:

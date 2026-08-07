@@ -39,14 +39,32 @@ Requirements: Node.js 22.13 or newer, pnpm 11.16.0, Docker and Supabase CLI
    `supabase migration list`, then run `supabase db push --include-seed`.
 5. Add server-only `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, and a random
    `IP_HASH_SECRET` of at least 32 characters.
-6. Run:
+6. For a stable local test instance on port 3001, run:
 
 ```powershell
 pnpm install --frozen-lockfile
-pnpm dev -- --port 3001
+pnpm local:start
 ```
 
 Open `http://localhost:3001/`.
+
+The Netlify production build sets `NEXT_PUBLIC_APP_BASE_PATH=/chat`, so the
+application and its server routes are emitted below `x-portal.eu/chat`. Local
+development keeps the root path unless that environment variable is supplied.
+
+`local:start` creates a production build, starts it as a detached Windows
+process and stores its PID and logs below `.local/`. It refuses to start a
+second server when the port is already occupied. Use these commands to inspect
+or stop the instance:
+
+```powershell
+pnpm local:status
+pnpm local:stop
+```
+
+For active UI development, `pnpm dev -- --port 3001` is still available, but
+that foreground development server lives only as long as its terminal and is
+not the persistent local test instance.
 
 Without the OpenAI key, the original request is still persisted and the
 deterministic fallback remains usable. Real provider calls must never be

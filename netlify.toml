@@ -1,0 +1,14 @@
+[build]
+command = "pnpm build"
+publish = ".next"
+
+[build.environment]
+NODE_VERSION = "22.14.0"
+PNPM_VERSION = "11.16.0"
+NEXT_PUBLIC_APP_BASE_PATH = "/chat"
+
+[[headers]]
+for = "/chat/*"
+[headers.values]
+X-Robots-Tag = "noindex, nofollow"
+Cache-Control = "private, no-store"

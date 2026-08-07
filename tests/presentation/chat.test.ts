@@ -28,6 +28,25 @@ describe("chat presentation", () => {
     expect(result.projectTitle).toBe("Freelancer-Anfrage");
     expect(result.location).toBeNull();
     expect(result.unknownFields).toContain("location");
+    expect(result.qualifications).toEqual([]);
+    expect(result.availabilityRequirement).toBeNull();
+    expect(result.contractualRequirements).toEqual([]);
+  });
+
+  it("exposes the detailed, source-grounded analysis fields", () => {
+    const result = presentBrief(makeBrief({
+      qualifications: ["IREB CPRE"],
+      availabilityRequirement: "ab September 2026",
+      contractualRequirements: ["NDA"],
+      constraints: ["EU residency"],
+    }));
+
+    expect(result).toMatchObject({
+      qualifications: ["IREB CPRE"],
+      availabilityRequirement: "ab September 2026",
+      contractualRequirements: ["NDA"],
+      constraints: ["EU residency"],
+    });
   });
 
   it("shows provenance and premium manual approval", () => {

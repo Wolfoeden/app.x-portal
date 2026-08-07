@@ -22,6 +22,8 @@
 *.tsbuildinfo
 *.log
 .DS_Store
+/.local
+/.netlify
 
 # Supabase local runtime
 /supabase/.branches

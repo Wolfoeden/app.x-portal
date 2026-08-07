@@ -8,6 +8,9 @@
   },
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0",
+    "local:start": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/local/start-local.ps1",
+    "local:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/local/stop-local.ps1",
+    "local:status": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/local/status-local.ps1",
     "build": "next build",
     "start": "next start --hostname 0.0.0.0",
     "lint": "eslint .",

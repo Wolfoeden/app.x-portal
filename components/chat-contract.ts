@@ -5,6 +5,8 @@
  * Missing facts are represented as null/empty arrays and must never be invented.
  */
 
+import { appPath } from "@/lib/app-path";
+
 export type ProjectMode = "remote" | "on-site" | "hybrid" | "unknown";
 
 export interface StructuredBrief {
@@ -19,6 +21,9 @@ export interface StructuredBrief {
   duration: string | null;
   budgetOrRate: string | null;
   constraints: string[];
+  qualifications: string[];
+  availabilityRequirement: string | null;
+  contractualRequirements: string[];
   unknownFields: string[];
 }
 
@@ -135,14 +140,14 @@ export interface ChatApiPaths {
 }
 
 export const defaultChatApiPaths: ChatApiPaths = {
-  chat: "/api/chat",
-  projects: "/api/projects",
-  session: "/api/auth/session",
-  emailLogin: "/api/auth/login",
-  emailRegister: "/api/auth/register",
-  providerLogin: "/auth/sign-in",
-  logout: "/api/auth/logout",
-  exportData: "/api/account/export",
-  deleteData: "/api/account/delete",
-  introductions: "/api/introductions",
+  chat: appPath("/api/chat"),
+  projects: appPath("/api/projects"),
+  session: appPath("/api/auth/session"),
+  emailLogin: appPath("/api/auth/login"),
+  emailRegister: appPath("/api/auth/register"),
+  providerLogin: appPath("/auth/sign-in"),
+  logout: appPath("/api/auth/logout"),
+  exportData: appPath("/api/account/export"),
+  deleteData: appPath("/api/account/delete"),
+  introductions: appPath("/api/introductions"),
 };

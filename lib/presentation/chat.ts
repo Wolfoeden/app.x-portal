@@ -48,6 +48,9 @@ export function presentBrief(brief: ProjectBrief): StructuredBrief {
     duration: brief.duration?.raw ?? null,
     budgetOrRate: formatMoney(brief.rate) ?? formatMoney(brief.budget),
     constraints: brief.constraints ?? [],
+    qualifications: brief.qualifications ?? [],
+    availabilityRequirement: brief.availabilityRequirement,
+    contractualRequirements: brief.contractualRequirements ?? [],
     unknownFields: brief.unknownFields,
   };
 }
