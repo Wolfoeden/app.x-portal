@@ -7,15 +7,19 @@ import {
   type LabeledFact,
 } from "./profile";
 
-export const MATCHING_RULE_VERSION = "freelancer-match-v1" as const;
+export const MATCHING_RULE_VERSION = "freelancer-match-v2" as const;
 
 /**
  * Public and reviewable ordering rule. Eligibility is evaluated first. Eligible
- * profiles are then ordered by: optional skill matches (descending), verified
- * required-skill matches (descending), available-from date (ascending, unknown
- * last), normalized display name (ascending), and profile id (ascending).
+ * profiles are then ordered by: exact required-skill matches (descending),
+ * availability confidence, optional skill matches (descending), verified
+ * required-skill matches (descending), available-from date (ascending,
+ * unknown last), normalized display name (ascending), and profile id
+ * (ascending).
  */
 export const MATCHING_ORDER_RULE = [
+  "exact_required_skill_matches_desc",
+  "availability_status_priority",
   "optional_skill_matches_desc",
   "verified_required_skill_matches_desc",
   "available_from_asc_unknown_last",
@@ -30,6 +34,7 @@ export const ProfileEvaluationSchema = z
     matchReasons: z.array(z.string()),
     knownGaps: z.array(z.string()),
     optionalSkillMatches: z.array(z.string()),
+    exactRequiredSkillMatches: z.array(z.string()),
     verifiedRequiredSkillMatches: z.array(z.string()),
   })
   .strict();
@@ -41,13 +46,15 @@ export const ShortlistMatchSchema = z
     knownGaps: z.array(z.string()),
     verifiedFacts: z.array(z.string()),
     selfReportedFacts: z.array(z.string()),
-    availabilityStatus: z.literal("available"),
+    availabilityStatus: z.enum(["available", "limited", "unavailable", "unknown"]),
     availabilityCheckedAt: z.iso.datetime({ offset: true }),
     profileDataVersion: z.string(),
     orderingEvidence: z
       .object({
         optionalSkillMatchCount: z.number().int().nonnegative(),
+        exactRequiredSkillMatchCount: z.number().int().nonnegative(),
         verifiedRequiredSkillMatchCount: z.number().int().nonnegative(),
+        availabilityPriority: z.number().int().min(0).max(3),
         availableFrom: z.iso.date().nullable(),
       })
       .strict(),
@@ -58,6 +65,8 @@ export const ShortlistSchema = z
   .object({
     ruleVersion: z.literal(MATCHING_RULE_VERSION),
     orderingRule: z.tuple([
+      z.literal("exact_required_skill_matches_desc"),
+      z.literal("availability_status_priority"),
       z.literal("optional_skill_matches_desc"),
       z.literal("verified_required_skill_matches_desc"),
       z.literal("available_from_asc_unknown_last"),
@@ -80,9 +89,98 @@ function normalize(value: string): string {
     .replace(/\s+/gu, " ");
 }
 
-function includesFact(facts: readonly LabeledFact[], requested: string): LabeledFact | undefined {
+const SKILL_FAMILIES: ReadonlyArray<{
+  canonical: string;
+  aliases: readonly string[];
+}> = [
+  {
+    canonical: "requirements management",
+    aliases: [
+      "requirements management",
+      "requirements engineering",
+      "requirements analysis",
+    ],
+  },
+  {
+    canonical: "process management",
+    aliases: [
+      "process management",
+      "process analysis",
+      "process optimization",
+      "process improvement",
+      "process modelling",
+      "continuous improvement",
+      "process development",
+    ],
+  },
+  {
+    canonical: "project management",
+    aliases: [
+      "project management",
+      "technical project management",
+      "salesforce project management",
+      "agile project management",
+      "project coordination",
+      "program management",
+    ],
+  },
+  {
+    canonical: "information security",
+    aliases: [
+      "information security",
+      "it security",
+      "cybersecurity",
+      "cyber security",
+      "isms",
+    ],
+  },
+] as const;
+
+function skillFamily(value: string): string | null {
+  const key = normalize(value);
+  return SKILL_FAMILIES.find((family) =>
+    family.aliases.some((alias) => normalize(alias) === key),
+  )?.canonical ?? null;
+}
+
+function matchingFact(
+  facts: readonly LabeledFact[],
+  requested: string,
+): LabeledFact | undefined {
+  const key = normalize(requested);
+  const exact = facts.find((fact) => normalize(fact.value) === key);
+  if (exact) return exact;
+  const requestedFamily = skillFamily(requested);
+  return requestedFamily
+    ? facts.find((fact) => skillFamily(fact.value) === requestedFamily)
+    : undefined;
+}
+
+function includesFact(
+  facts: readonly LabeledFact[],
+  requested: string,
+): LabeledFact | undefined {
   const key = normalize(requested);
   return facts.find((fact) => normalize(fact.value) === key);
+}
+
+function secureBookingUrl(profile: FreelancerProfile): boolean {
+  const value = profile.introPolicy.bookingUrl;
+  if (!value) return false;
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function availabilityPriority(
+  status: FreelancerProfile["availability"]["status"],
+): 0 | 1 | 2 | 3 {
+  if (status === "available") return 0;
+  if (status === "limited") return 1;
+  if (status === "unknown") return 2;
+  return 3;
 }
 
 function compareText(left: string, right: string): number {
@@ -102,8 +200,9 @@ function locationMatches(profileLocation: string, requestedLocation: string): bo
 }
 
 function availableBy(profile: FreelancerProfile, brief: ProjectBrief): boolean {
+  if (profile.availability.status === "unavailable") return false;
   if (!brief.startWindow) return true;
-  if (!profile.availability.availableFrom) return false;
+  if (!profile.availability.availableFrom) return true;
   const deadline = brief.startWindow.latest ?? brief.startWindow.earliest;
   return deadline === null || profile.availability.availableFrom <= deadline;
 }
@@ -126,10 +225,10 @@ function commercialEligibility(
       return { eligible: false, reasons, gaps };
     }
     reasons.push(
-      `${brief.rate.unit === "hour" ? "Hourly" : "Daily"} rate is within the supplied ${brief.rate.currency} constraint.`,
+      `${brief.rate.unit === "hour" ? "Stunden" : "Tages"}satz liegt innerhalb der angegebenen ${brief.rate.currency}-Grenze.`,
     );
   } else if (profile.hourlyRate === null && profile.dayRate === null) {
-    gaps.push("No hourly or daily rate is supplied on the profile.");
+    gaps.push("Im Profil ist kein Stunden- oder Tagessatz angegeben.");
   }
 
   if (brief.budget) {
@@ -139,7 +238,7 @@ function commercialEligibility(
     if (brief.budget.max !== null && minimum.amount > brief.budget.max) {
       return { eligible: false, reasons, gaps };
     }
-    reasons.push(`Minimum project value is within the supplied ${brief.budget.currency} budget.`);
+    reasons.push(`Der Mindestprojektwert liegt innerhalb des angegebenen ${brief.budget.currency}-Budgets.`);
   }
 
   return { eligible: true, reasons, gaps };
@@ -156,94 +255,109 @@ export function evaluateProfile(
   const knownGaps: string[] = [];
 
   if (profile.profileStatus !== "active") {
-    rejectionReasons.push("Profile is not active.");
+    rejectionReasons.push("Profil ist nicht aktiv.");
   } else {
-    matchReasons.push("Profile is active in the curated directory.");
+    matchReasons.push("Profil ist im kuratierten Verzeichnis aktiv.");
   }
-  if (profile.availability.status !== "available") {
-    rejectionReasons.push("Profile is not marked available.");
+  if (profile.demoStatus !== "real") {
+    rejectionReasons.push("Profil ist kein reales Produktionsprofil.");
+  }
+  if (!secureBookingUrl(profile)) {
+    rejectionReasons.push("Profil hat keinen sicheren direkten Booking-Link.");
+  }
+  if (profile.availability.status === "unavailable") {
+    rejectionReasons.push("Profil ist als nicht verfügbar markiert.");
+  } else if (profile.availability.status === "available") {
+    matchReasons.push("Projektverfügbarkeit ist aktuell bestätigt.");
+  } else if (profile.availability.status === "limited") {
+    knownGaps.push("Projektverfügbarkeit ist begrenzt; den genauen Zeitraum beim Termin abstimmen.");
   } else {
-    matchReasons.push("Availability is currently confirmed.");
+    knownGaps.push("Projektverfügbarkeit ist nicht bestätigt; der Booking-Kalender ist verfügbar.");
   }
 
   const requiredSkills = brief.requiredSkills ?? [];
   const missingRequiredSkills = requiredSkills.filter(
-    (skill) => !includesFact(profile.skillTags, skill),
+    (skill) => !matchingFact(profile.skillTags, skill),
   );
   if (missingRequiredSkills.length) {
-    rejectionReasons.push(`Missing required skills: ${missingRequiredSkills.join(", ")}.`);
+    rejectionReasons.push(`Fehlende Pflichtkompetenzen: ${missingRequiredSkills.join(", ")}.`);
   } else if (requiredSkills.length) {
-    matchReasons.push(`Required skills matched: ${requiredSkills.join(", ")}.`);
+    matchReasons.push(`Pflichtkompetenzen passend: ${requiredSkills.join(", ")}.`);
   }
 
   if (brief.language) {
     if (!includesFact(profile.languages, brief.language)) {
-      rejectionReasons.push(`Required language not confirmed: ${brief.language}.`);
+      rejectionReasons.push(`Geforderte Sprache nicht bestätigt: ${brief.language}.`);
     } else {
-      matchReasons.push(`Language matched: ${brief.language}.`);
+      matchReasons.push(`Sprache passend: ${brief.language}.`);
     }
   }
 
   if (brief.workMode !== "unknown") {
     if (!profile.workModes.includes(brief.workMode)) {
-      rejectionReasons.push(`Work mode not supported: ${brief.workMode}.`);
+      rejectionReasons.push(`Arbeitsmodus wird nicht unterstützt: ${brief.workMode}.`);
     } else {
-      matchReasons.push(`Work mode matched: ${brief.workMode}.`);
+      matchReasons.push(`Arbeitsmodus passend: ${brief.workMode}.`);
     }
   }
 
   if (brief.location) {
     if (!profile.location || !locationMatches(profile.location.value, brief.location)) {
-      rejectionReasons.push(`Location not confirmed: ${brief.location}.`);
+      rejectionReasons.push(`Ort nicht bestätigt: ${brief.location}.`);
     } else {
-      matchReasons.push(`Location matched: ${brief.location}.`);
+      matchReasons.push(`Ort passend: ${brief.location}.`);
     }
   }
 
   if (!availableBy(profile, brief)) {
-    rejectionReasons.push("Availability is not confirmed within the supplied start window.");
+    rejectionReasons.push("Verfügbarkeit ist im angegebenen Startfenster nicht bestätigt.");
+  } else if (brief.startWindow && profile.availability.availableFrom) {
+    matchReasons.push("Verfügbarkeit ist im angegebenen Startfenster bestätigt.");
   } else if (brief.startWindow) {
-    matchReasons.push("Availability is confirmed within the supplied start window.");
+    knownGaps.push("Das gewünschte Startfenster ist im Profil nicht separat bestätigt.");
   }
 
   const missingQualifications = (brief.qualifications ?? []).filter(
     (qualification) => !includesFact(profile.qualifications, qualification),
   );
   if (missingQualifications.length) {
-    rejectionReasons.push(`Qualifications not confirmed: ${missingQualifications.join(", ")}.`);
+    rejectionReasons.push(`Qualifikationen nicht bestätigt: ${missingQualifications.join(", ")}.`);
   } else if (brief.qualifications?.length) {
-    matchReasons.push(`Qualifications matched: ${brief.qualifications.join(", ")}.`);
+    matchReasons.push(`Qualifikationen passend: ${brief.qualifications.join(", ")}.`);
   }
 
   const missingContractTerms = (brief.contractualRequirements ?? []).filter(
     (term) => !includesFact(profile.contractualCapabilities, term),
   );
   if (missingContractTerms.length) {
-    rejectionReasons.push(`Contractual requirements not confirmed: ${missingContractTerms.join(", ")}.`);
+    rejectionReasons.push(`Vertragsanforderungen nicht bestätigt: ${missingContractTerms.join(", ")}.`);
   } else if (brief.contractualRequirements?.length) {
-    matchReasons.push(`Contractual requirements matched: ${brief.contractualRequirements.join(", ")}.`);
+    matchReasons.push(`Vertragsanforderungen passend: ${brief.contractualRequirements.join(", ")}.`);
   }
 
   const commercial = commercialEligibility(profile, brief);
-  if (!commercial.eligible) rejectionReasons.push("Supplied commercial constraints are not confirmed.");
+  if (!commercial.eligible) rejectionReasons.push("Angegebene kaufmännische Rahmenbedingungen sind nicht bestätigt.");
   matchReasons.push(...commercial.reasons);
   knownGaps.push(...commercial.gaps);
 
   const optionalSkillMatches = (brief.optionalSkills ?? []).filter((skill) =>
-    includesFact(profile.skillTags, skill),
+    matchingFact(profile.skillTags, skill),
   );
   const missingOptionalSkills = (brief.optionalSkills ?? []).filter(
-    (skill) => !includesFact(profile.skillTags, skill),
+    (skill) => !matchingFact(profile.skillTags, skill),
   );
   if (optionalSkillMatches.length) {
-    matchReasons.push(`Optional skills matched: ${optionalSkillMatches.join(", ")}.`);
+    matchReasons.push(`Optionale Kompetenzen passend: ${optionalSkillMatches.join(", ")}.`);
   }
   if (missingOptionalSkills.length) {
-    knownGaps.push(`Optional skills not listed: ${missingOptionalSkills.join(", ")}.`);
+    knownGaps.push(`Optionale Kompetenzen nicht aufgeführt: ${missingOptionalSkills.join(", ")}.`);
   }
 
+  const exactRequiredSkillMatches = requiredSkills.filter((skill) =>
+    includesFact(profile.skillTags, skill),
+  );
   const verifiedRequiredSkillMatches = requiredSkills.filter(
-    (skill) => includesFact(profile.skillTags, skill)?.source === "verified",
+    (skill) => matchingFact(profile.skillTags, skill)?.source === "verified",
   );
 
   return ProfileEvaluationSchema.parse({
@@ -252,6 +366,7 @@ export function evaluateProfile(
     matchReasons,
     knownGaps,
     optionalSkillMatches,
+    exactRequiredSkillMatches,
     verifiedRequiredSkillMatches,
   });
 }
@@ -267,14 +382,14 @@ function sourceDisclosures(profile: FreelancerProfile): {
     (fact.source === "verified" ? verifiedFacts : selfReportedFacts).push(output);
   };
 
-  profile.skillTags.forEach((fact) => add("Skill", fact));
-  profile.languages.forEach((fact) => add("Language", fact));
-  if (profile.location) add("Location", profile.location);
-  profile.qualifications.forEach((fact) => add("Qualification", fact));
-  profile.contractualCapabilities.forEach((fact) => add("Contract capability", fact));
+  profile.skillTags.forEach((fact) => add("Kompetenz", fact));
+  profile.languages.forEach((fact) => add("Sprache", fact));
+  if (profile.location) add("Ort", profile.location);
+  profile.qualifications.forEach((fact) => add("Qualifikation", fact));
+  profile.contractualCapabilities.forEach((fact) => add("Vertragsfähigkeit", fact));
   const experienceTarget =
     profile.experienceSummary.source === "verified" ? verifiedFacts : selfReportedFacts;
-  experienceTarget.push(`Experience: ${profile.experienceSummary.value}`);
+  experienceTarget.push(`Erfahrung: ${profile.experienceSummary.value}`);
 
   return { verifiedFacts, selfReportedFacts };
 }
@@ -291,6 +406,14 @@ export function buildShortlist(
 
   const eligible = evaluated.filter((item) => item.evaluation.eligible);
   eligible.sort((left, right) => {
+    const exactRequiredDifference =
+      right.evaluation.exactRequiredSkillMatches.length -
+      left.evaluation.exactRequiredSkillMatches.length;
+    if (exactRequiredDifference) return exactRequiredDifference;
+    const availabilityDifference =
+      availabilityPriority(left.profile.availability.status) -
+      availabilityPriority(right.profile.availability.status);
+    if (availabilityDifference) return availabilityDifference;
     const optionalDifference =
       right.evaluation.optionalSkillMatches.length - left.evaluation.optionalSkillMatches.length;
     if (optionalDifference) return optionalDifference;
@@ -311,12 +434,14 @@ export function buildShortlist(
     matchReasons: evaluation.matchReasons,
     knownGaps: evaluation.knownGaps,
     ...sourceDisclosures(profile),
-    availabilityStatus: "available" as const,
+    availabilityStatus: profile.availability.status,
     availabilityCheckedAt: profile.availability.checkedAt,
     profileDataVersion: profile.dataVersion,
     orderingEvidence: {
       optionalSkillMatchCount: evaluation.optionalSkillMatches.length,
+      exactRequiredSkillMatchCount: evaluation.exactRequiredSkillMatches.length,
       verifiedRequiredSkillMatchCount: evaluation.verifiedRequiredSkillMatches.length,
+      availabilityPriority: availabilityPriority(profile.availability.status),
       availableFrom: profile.availability.availableFrom,
     },
   }));

@@ -36,6 +36,9 @@ export type FreelancerProfileRow = {
   version: number;
 };
 
+const FREELANCER_PROFILE_SELECT =
+  "id,display_name,role_title,skill_tags,languages,location_text,work_modes,experience_summary,verified_facts,self_reported_facts,verification_status,hourly_rate_minor,day_rate_minor,currency,profile_status,availability_status,availability_from,availability_updated_at,intro_policy,booking_url,demo_status,version";
+
 function normalizeFact(value: string): string {
   return value.normalize("NFKC").trim().toLocaleLowerCase("en-US");
 }
@@ -89,6 +92,24 @@ function factsWithPrefix(facts: readonly string[], prefix: string): string[] {
   });
 }
 
+function searchableSkillTags(values: readonly string[]): string[] {
+  const prefixedSkills = factsWithPrefix(values, "Skill");
+  if (prefixedSkills.length) return prefixedSkills;
+
+  // Older curated rows may contain plain skill values. Metadata prefixed with
+  // another category must never accidentally become a matching signal.
+  return values.filter((value) => !/^[\p{L}\s_-]+:/u.test(value.trim()));
+}
+
+function isSecureBookingUrl(value: string | null): value is string {
+  if (!value) return false;
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function rateFromMinor(
   amount: number | null,
   currency: FreelancerProfileRow["currency"],
@@ -129,7 +150,7 @@ export function mapFreelancerProfileRow(
     profileStatus: row.profile_status === "active" ? "active" : row.profile_status === "archived" ? "archived" : "paused",
     displayName: row.display_name,
     role: row.role_title,
-    skillTags: labeledFacts(row.skill_tags, "Skill", row),
+    skillTags: labeledFacts(searchableSkillTags(row.skill_tags), "Skill", row),
     languages: labeledFacts(
       row.languages.map(canonicalLanguage),
       "Language",
@@ -164,11 +185,9 @@ export function mapFreelancerProfileRow(
     minimumProjectBudget: null,
     availability: {
       status:
-        row.profile_status === "active" && row.availability_status === "available"
-          ? "available"
-          : row.availability_status === "unknown"
-            ? "unknown"
-            : "unavailable",
+        row.profile_status !== "active"
+          ? "unavailable"
+          : row.availability_status,
       availableFrom: row.availability_from,
       checkedAt: row.availability_updated_at,
     },
@@ -183,17 +202,44 @@ export function mapFreelancerProfileRow(
   });
 }
 
-export async function fetchActiveAvailableProfiles(
+export async function fetchActiveBookableRealProfiles(
   supabase: SupabaseClient,
 ): Promise<FreelancerProfile[]> {
   const { data, error } = await supabase
     .from("freelancer_profiles")
-    .select(
-      "id,display_name,role_title,skill_tags,languages,location_text,work_modes,experience_summary,verified_facts,self_reported_facts,verification_status,hourly_rate_minor,day_rate_minor,currency,profile_status,availability_status,availability_from,availability_updated_at,intro_policy,booking_url,demo_status,version",
-    )
+    .select(FREELANCER_PROFILE_SELECT)
     .eq("profile_status", "active")
-    .eq("availability_status", "available");
+    .eq("demo_status", "real")
+    .not("booking_url", "is", null)
+    .in("availability_status", ["available", "limited", "unknown"]);
 
   if (error) throw error;
-  return (data as FreelancerProfileRow[]).map(mapFreelancerProfileRow);
+  return (data as FreelancerProfileRow[])
+    .filter(
+      (row) =>
+        row.profile_status === "active" &&
+        row.demo_status === "real" &&
+        row.availability_status !== "unavailable" &&
+        isSecureBookingUrl(row.booking_url),
+    )
+    .map(mapFreelancerProfileRow);
+}
+
+export async function fetchRealProfilesByIds(
+  supabase: SupabaseClient,
+  profileIds: readonly string[],
+): Promise<FreelancerProfile[]> {
+  const ids = [...new Set(profileIds)];
+  if (!ids.length) return [];
+
+  const { data, error } = await supabase
+    .from("freelancer_profiles")
+    .select(FREELANCER_PROFILE_SELECT)
+    .eq("demo_status", "real")
+    .in("id", ids);
+
+  if (error) throw error;
+  return (data as FreelancerProfileRow[])
+    .filter((row) => row.demo_status === "real")
+    .map(mapFreelancerProfileRow);
 }

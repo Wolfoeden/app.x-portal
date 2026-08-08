@@ -154,28 +154,25 @@ content.
   `availability_status='unavailable'`. Update the availability date only when a
   real new date is known.
 - **Limited/uncertain availability:** set `availability_status='limited'` or
-  `unknown`; both are excluded from V1 matching.
+  `unknown`. Active, real profiles with a secure booking URL remain eligible,
+  but the uncertainty is disclosed and they rank behind otherwise equal
+  profiles with confirmed availability.
 - **Permanent retirement:** set `profile_status='archived'`. Do not hard-delete a
   referenced profile; foreign keys intentionally protect historical records.
 
-After every state change, run a new search that would previously have matched
-the person. The profile must be absent. Existing shortlist snapshots must remain
-readable and clearly timestamped.
+After a pause, unavailable or archive change, run a new search that would
+previously have matched the person. The profile must be absent from new results.
+After a limited/unknown change, verify the visible disclosure and ordering.
+Existing shortlist snapshots must remain readable and clearly timestamped; a
+profile that is no longer active/bookable must have no active booking button.
 
 ## Introduction operations (no payments)
 
-The application creates an `intro_bookings` row only after an explicit customer
-click and supplies a retry-safe idempotency key. Operators must not create an
-introduction merely because AI text mentions one.
-
-- `free`: progress from `requested` to `ready_to_book`, `booked`, `completed` or
-  `cancelled` based on evidence.
-- `manual_approval`: use `manual_review` until the named operator approves the
-  introduction, then `ready_to_book`.
-- Record only `calendly` or `manual` as provider, an approved HTTPS URL and a
-  minimal external reference. Do not paste invitee answers or full webhooks.
-- Set `confirmed_at` only after a provider/operator confirms the booking. Set
-  `cancelled_at` only with `status='cancelled'`.
+An explicit customer click opens the freelancer's approved HTTPS booking page
+in a new tab. V1 does not create an `intro_bookings` record merely for opening
+that link and does not infer whether a meeting was booked. Operators manage the
+appointment in the linked booking provider. Do not paste invitee answers,
+calendar payloads or other unnecessary personal data into Supabase.
 
 There is no premium charge, payment unlock, Stripe event, invoice or bank
 transfer in V1. If someone requests payment handling, stop and route it to a
@@ -199,14 +196,15 @@ infer contract value, outcome or dispute status from AI output.
 
 ## Demo seed review
 
-`supabase/seed.sql` creates six synthetic profiles covering free/manual approval
-and active/paused/unavailable states. Before production launch:
+`supabase/seed.sql` retains legacy synthetic fixtures only to keep older
+database checks reproducible, then deletes every `demo_status='demo'` row in the
+same seed run. After a reset, confirm that no demo profile and no `example.com`
+booking URL remains. Never relabel a synthetic person as `real`.
 
-1. Confirm every seed row has `demo_status='demo'`.
-2. Confirm `example.com` URLs are not presented as live booking actions.
-3. Decide whether demos remain hidden behind a staging/demo flag or are archived
-   in production.
-4. Never relabel a synthetic person as `real`.
+The production application additionally enforces `demo_status='real'`. Existing
+production demo rows should be archived and marked `unavailable` rather than
+relabelled; this preserves historical evidence while keeping them out of every
+new result.
 
 ## AI quota and privacy operations
 

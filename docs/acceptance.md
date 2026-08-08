@@ -9,11 +9,12 @@
       home screen.
 - [ ] Same data and rule version reproduce the same shortlist.
 - [ ] Every card shows reasons, gaps, fact provenance, availability timestamp
-      and introduction policy.
+      and the real freelancer's direct HTTPS booking link.
 - [ ] No match produces an honest empty state and human-contact option.
 - [ ] No introduction or engagement is created without an explicit click.
-- [ ] Premium introductions use manual approval; no payment UI or table exists.
-- [ ] Calendly makes no network request before the user clicks to load it.
+- [ ] No payment or login blocks the direct meeting link in this release.
+- [ ] No booking provider makes a network request before the user clicks.
+- [ ] Demo profiles and profiles without a secure booking link never render.
 
 ## Identity and isolation
 

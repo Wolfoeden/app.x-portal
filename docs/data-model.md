@@ -89,25 +89,32 @@ the brief/UI may use canonical labels (`German`, `English`, `Spanish`). The
 server mapper owns this explicit label-to-code conversion before matching; SQL
 must never compare an unnormalized display label directly.
 
-## Deterministic matching rule (`deterministic-v1`)
+## Deterministic matching rule (`freelancer-match-v2`)
 
 Eligibility is a hard filter, evaluated before ordering:
 
-1. `profile_status = 'active'` and `availability_status = 'available'`.
-2. Every required skill is present in normalized `skill_tags`.
+1. `profile_status = 'active'`, `demo_status = 'real'`, a valid HTTPS
+   `booking_url` is present, and availability is not `unavailable`.
+2. Every required skill is present in normalized `skill_tags`, either exactly
+   or through one of the documented skill families in `lib/domain/matching.ts`.
 3. A requested language is present in `languages`.
 4. The requested work mode is present in `work_modes`; an on-site location must
    pass the documented exact/normalized location rule in the server.
-5. The availability date satisfies the supplied start window.
+5. A known availability date satisfies the supplied start window. `limited`
+   and `unknown` project availability remain visible as a known gap because the
+   freelancer's meeting calendar is directly bookable.
 6. A supplied rate/budget ceiling is respected; an absent commercial value is
    not invented.
 
 Eligible rows are ordered by this visible, stable rule:
 
-1. Count of explicitly requested optional skills, descending.
-2. Earliest known `availability_from`, unknown last.
-3. Most recently confirmed `availability_updated_at`, descending.
-4. UUID ascending as the final stable tie-breaker.
+1. Count of exact required-skill matches, descending.
+2. Availability confidence: `available`, then `limited`, then `unknown`.
+3. Count of explicitly requested optional skills, descending.
+4. Count of verified required-skill matches, descending.
+5. Earliest known `availability_from`, unknown last.
+6. Normalized display name ascending.
+7. UUID ascending as the final stable tie-breaker.
 
 The first three rows are returned. There is no hidden score and no automated
 hiring decision. Each result stores reasons, known gaps, verified facts,
@@ -128,27 +135,33 @@ evidence. `self_reported_facts` contains claims supplied by the freelancer.
 `verification_status` summarizes the completed operator process; it does not
 turn self-reported content into verified content.
 
-Only the following combination is eligible:
+Only the following database boundary is eligible for evaluation:
 
 ```text
-profile_status = active AND availability_status = available
+profile_status = active
+AND demo_status = real
+AND booking_url uses HTTPS
+AND availability_status IN (available, limited, unknown)
 ```
 
-`paused`, `unavailable`, `archived`, `limited`, `unknown` and unavailable rows
-are excluded immediately. `version` increments on every profile update and the
-availability timestamp refreshes when status or availability changes.
+`paused`, `unavailable`, `archived`, demo rows and rows without a secure booking
+URL are excluded immediately. `limited` and `unknown` are disclosed on every
+affected card and rank below confirmed availability. `version` increments on
+every profile update and the availability timestamp refreshes when status or
+availability changes.
 
-`intro_policy` is either `free` or `manual_approval`. “Manual approval” is the
-V1 treatment for premium profiles; it is not a payment state. No Stripe, bank
-transfer, charge, invoice, fee or payment table/field exists.
+`intro_policy` remains either `free` or `manual_approval` for future commercial
+flows. In this release, every eligible real profile with a booking URL exposes
+that URL directly and no payment or manual approval blocks the meeting. No
+Stripe, bank transfer, charge, invoice, fee or payment table/field exists.
 
 ## Explicit actions and idempotency
 
-An introduction is created only after a server route receives an explicit
-customer click. The row requires `explicit_confirmation_at` and a client/server
-idempotency key unique per owner. Replaying the same click returns the existing
-record. Calendly or other third-party content stays click-to-load; only the
-minimal provider, URL and booking reference are stored.
+No booking or engagement is created by model output. The customer opens a
+freelancer booking URL only through an explicit click. If an application-side
+introduction record is created from the secondary contact flow, it requires
+`explicit_confirmation_at` and a client/server idempotency key unique per
+owner. Calendly or other third-party content stays click-to-load.
 
 An engagement row requires `confirmation_source` and `confirmed_at`; model
 output cannot create it. Statuses are `proposed`, `accepted`, `active`,

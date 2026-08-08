@@ -92,10 +92,12 @@ function formatRate(match: ShortlistMatch): string | null {
 export function presentMatch(match: ShortlistMatch): FreelancerProfileResult {
   const profile = match.profile;
   const firstMode = profile.workModes[0] ?? "unknown";
+  const bookingUrl = profile.introPolicy.bookingUrl;
 
   return {
     id: profile.id,
     demoStatus: profile.demoStatus,
+    bookingUrl,
     displayName: profile.displayName,
     role: profile.role,
     skillTags: profile.skillTags.map(({ value }) => value),
@@ -111,15 +113,15 @@ export function presentMatch(match: ShortlistMatch): FreelancerProfileResult {
           ? "Selbstauskunft"
           : "Verifiziert",
     rate: formatRate(match),
-    availabilityStatus: "available",
+    availabilityStatus: match.availabilityStatus,
     availabilityUpdatedAt: match.availabilityCheckedAt,
     matchReasons: match.matchReasons,
     knownGaps: match.knownGaps,
     introPolicy: {
-      type: profile.introPolicy.type,
-      label: profile.introPolicy.label,
-      manualApprovalRequired: profile.introPolicy.type === "premium",
-      readyToBook: profile.introPolicy.type === "free",
+      type: bookingUrl ? "free" : "premium",
+      label: bookingUrl ? "Direkt buchbares Erstgespräch" : "Aktuell nicht direkt buchbar",
+      manualApprovalRequired: !bookingUrl,
+      readyToBook: Boolean(bookingUrl),
     },
   };
 }

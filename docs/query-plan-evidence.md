@@ -11,9 +11,9 @@ On 2026-08-06 the script passed against the managed EU acceptance project on
 PostgreSQL 17.6. All four query assertions returned `PASS`, no public foreign
 key was missing a leading-column index, and the plans used the documented
 project, message and freelancer indexes without a full scan of the guarded
-relations. A follow-up count confirmed zero synthetic projects, messages,
-profiles or Auth users remained and the original six demo profiles were
-unchanged.
+relations. A follow-up count confirmed that the evidence run retained no
+synthetic projects, messages, profiles or Auth users. Production demo-profile
+lifecycle is documented separately in the operator runbook.
 
 ## What it checks
 
@@ -22,7 +22,7 @@ unchanged.
   sequential scan of `projects`.
 - Conversation reload uses either the project/message or owner/project/message
   timeline index without a sequential scan of `messages`.
-- The current active/available catalog load uses
+- The current active/real/bookable catalog load uses
   `freelancer_profiles_status_availability_idx`.
 - A scalability guard for the equivalent SQL-side deterministic filters uses
   at least one accepted eligibility or GIN index and does not sequentially scan

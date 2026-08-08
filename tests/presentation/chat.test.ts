@@ -49,7 +49,7 @@ describe("chat presentation", () => {
     });
   });
 
-  it("shows provenance and premium manual approval", () => {
+  it("shows provenance and the direct booking link", () => {
     const brief = makeBrief({
       requiredSkills: ["React"],
       language: "German",
@@ -60,7 +60,7 @@ describe("chat presentation", () => {
       introPolicy: {
         type: "premium",
         label: "Freigabe durch Roman Dering",
-        bookingUrl: null,
+        bookingUrl: "https://calendly.com/example/anna",
       },
     } as const;
     const match = buildShortlist(brief, [premiumProfile]).matches[0];
@@ -68,6 +68,34 @@ describe("chat presentation", () => {
     expect(match).toBeDefined();
     const result = presentMatch(match!);
     expect(result.facts.some((fact) => fact.verification === "verified")).toBe(true);
-    expect(result.introPolicy.manualApprovalRequired).toBe(true);
+    expect(result.bookingUrl).toBe("https://calendly.com/example/anna");
+    expect(result.introPolicy.manualApprovalRequired).toBe(false);
+    expect(result.introPolicy.readyToBook).toBe(true);
+  });
+
+  it("keeps a historical match visible without exposing a stale booking link", () => {
+    const brief = makeBrief({ requiredSkills: ["React"], workMode: "remote" });
+    const liveMatch = buildShortlist(brief, [profileFixtures[0]!]).matches[0]!;
+    const historicalMatch = {
+      ...liveMatch,
+      profile: {
+        ...liveMatch.profile,
+        availability: {
+          ...liveMatch.profile.availability,
+          status: "unavailable" as const,
+        },
+        introPolicy: {
+          ...liveMatch.profile.introPolicy,
+          bookingUrl: null,
+        },
+      },
+      availabilityStatus: "unavailable" as const,
+    };
+
+    const result = presentMatch(historicalMatch);
+
+    expect(result.bookingUrl).toBeNull();
+    expect(result.availabilityStatus).toBe("unavailable");
+    expect(result.introPolicy.readyToBook).toBe(false);
   });
 });

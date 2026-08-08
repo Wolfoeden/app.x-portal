@@ -1,7 +1,6 @@
--- Safe V1 seed data.
--- Every freelancer row is synthetic and explicitly marked `demo`. The
--- example.com URLs are non-booking placeholders and must never be presented as
--- live. Convert a row to `real` only after the operator runbook checks pass.
+-- Legacy synthetic acceptance fixtures. They are inserted only to keep older
+-- database checks reproducible and are removed again in this same seed file.
+-- A completed reset must contain no demo freelancer profile.
 
 insert into public.freelancer_profiles (
   id,
@@ -253,6 +252,11 @@ insert into public.freelancer_profiles (
     'demo'
   )
 on conflict (slug) do nothing;
+
+-- Production and freshly reset environments use only operator-curated real
+-- profiles. Synthetic people and example.com booking URLs must not survive the
+-- seed transaction.
+delete from public.freelancer_profiles where demo_status = 'demo';
 
 -- Provisional defaults: the controller must approve these periods before
 -- production. They configure cleanup; they do not schedule destructive jobs.

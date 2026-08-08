@@ -36,6 +36,15 @@ describe("deterministic fallback brief parser", () => {
     });
   });
 
+  it("accepts a natural language label without punctuation", () => {
+    const brief = parseFallbackBrief(
+      "Anforderungsmanagement, remote, Sprache Deutsch.",
+      { now: fixedNow },
+    );
+
+    expect(brief.language).toBe("German");
+  });
+
   it("produces a schema-valid golden brief from explicit facts", () => {
     const input =
       "I need a React freelancer in German, remote, available next month, for six weeks, max EUR 90 per hour. Optional: Next.js.";

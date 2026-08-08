@@ -37,7 +37,6 @@ import {
   defaultChatApiPaths,
 } from "./chat-contract";
 
-const CALENDLY_URL = process.env.NEXT_PUBLIC_CALENDLY_URL ?? "https://calendly.com/romandering/30min";
 const CONTACT_PHONE = process.env.NEXT_PUBLIC_CONTACT_PHONE ?? "+491758934338";
 const CONTACT_PHONE_LABEL = "+49 175 8934338";
 
@@ -119,6 +118,16 @@ function nullableString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value : null;
 }
 
+function secureBookingUrl(value: unknown): string | null {
+  const candidate = nullableString(value);
+  if (!candidate) return null;
+  try {
+    return new URL(candidate).protocol === "https:" ? candidate : null;
+  } catch {
+    return null;
+  }
+}
+
 function stringList(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
@@ -187,13 +196,22 @@ function normalizeProfile(value: unknown): FreelancerProfileResult | null {
     ? (profileSource.introPolicy ?? profileSource.intro_policy) as Record<string, unknown>
     : {};
   const introType = introSource.type === "premium" ? "premium" : "free";
+  const demoStatus =
+    profileSource.demoStatus === "real" || profileSource.demo_status === "real"
+      ? "real"
+      : "demo";
+  const bookingUrl = secureBookingUrl(
+    profileSource.bookingUrl ??
+      profileSource.booking_url ??
+      introSource.bookingUrl ??
+      introSource.booking_url,
+  );
+  if (demoStatus !== "real") return null;
 
   return {
     id,
-    demoStatus:
-      profileSource.demoStatus === "real" || profileSource.demo_status === "real"
-        ? "real"
-        : "demo",
+    demoStatus,
+    bookingUrl,
     displayName: stringValue(profileSource.displayName ?? profileSource.display_name, "Profil"),
     role: stringValue(profileSource.role, "Freelancer"),
     skillTags: stringList(profileSource.skillTags ?? profileSource.skill_tags),
@@ -273,7 +291,12 @@ function normalizeChatResponse(value: unknown, fallbackTitle: string): ChatRespo
   if (!isRecord(response)) throw new Error("Die Serverantwort hatte kein gültiges Format.");
   const matchSource = response.matches ?? response.profiles ?? response.shortlist;
   const matches = Array.isArray(matchSource)
-    ? matchSource.map(normalizeProfile).filter((item): item is FreelancerProfileResult => item !== null)
+    ? matchSource
+        .map(normalizeProfile)
+        .filter(
+          (item): item is FreelancerProfileResult =>
+            item !== null && item.bookingUrl !== null,
+        )
     : [];
 
   return {
@@ -363,10 +386,10 @@ function modeLabel(mode: ProjectMode) {
 }
 
 function availabilityLabel(status: AvailabilityStatus) {
-  if (status === "available") return "Verfügbar";
-  if (status === "limited") return "Begrenzt verfügbar";
+  if (status === "available") return "Projektverfügbarkeit bestätigt";
+  if (status === "limited") return "Projektverfügbarkeit begrenzt";
   if (status === "unavailable") return "Nicht verfügbar";
-  return "Status unbekannt";
+  return "Projektverfügbarkeit nicht bestätigt";
 }
 
 const unknownFieldLabels: Readonly<Record<string, string>> = {
@@ -788,30 +811,6 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
     await loadProjects();
   };
 
-  const recordIntroduction = useCallback(
-    async (profile: FreelancerProfileResult, idempotencyKey: string) => {
-      if (!activeProject) return false;
-      try {
-        const response = await fetch(apiPaths.introductions, {
-          method: "POST",
-          credentials: "same-origin",
-          keepalive: true,
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            projectId: activeProject.id,
-            profileId: profile.id,
-            idempotencyKey,
-          }),
-        });
-        return response.ok;
-      } catch {
-        // Contact remains available even when the non-blocking audit request fails.
-        return false;
-      }
-    },
-    [activeProject, apiPaths.introductions],
-  );
-
   const exportData = async () => {
     setDataAction("export");
     setAccountMenuOpen(false);
@@ -1066,7 +1065,6 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
         <ContactDialog
           profile={selectedProfile}
           onClose={() => setContactOpen(false)}
-          onRecordIntroduction={(idempotencyKey) => recordIntroduction(selectedProfile, idempotencyKey)}
         />
       ) : null}
 
@@ -1271,9 +1269,7 @@ function ProfileCard({
             </div>
           </div>
           <div className="profile-badges">
-            {profile.demoStatus === "demo" ? <span className="intro-badge demo">Demo-Profil</span> : null}
             <span className={`availability ${profile.availabilityStatus}`}>{availabilityLabel(profile.availabilityStatus)}</span>
-            <span className={`intro-badge ${profile.introPolicy.type}`}>{profile.introPolicy.label}</span>
           </div>
         </header>
 
@@ -1299,8 +1295,10 @@ function ProfileCard({
         </div>
 
         <div className="fact-row">
-          <FactGroup label="Verifiziert" facts={verifiedFacts.map((fact) => `${fact.label}: ${fact.value}`)} verified />
-          <FactGroup label="Selbstauskunft" facts={selfReportedFacts.map((fact) => `${fact.label}: ${fact.value}`)} />
+          {verifiedFacts.length ? (
+            <FactGroup label="Verifiziert" facts={verifiedFacts.map((fact) => fact.value)} verified />
+          ) : null}
+          <FactGroup label="Selbstauskunft" facts={selfReportedFacts.map((fact) => fact.value)} />
         </div>
 
         <dl className="profile-meta-grid">
@@ -1310,18 +1308,37 @@ function ProfileCard({
           <DetailTerm label="Verfügbarkeit geprüft" value={profile.availabilityUpdatedAt ? formatDateTime(profile.availabilityUpdatedAt) : null} />
         </dl>
 
-        {profile.referenceStatus ? <p className="reference-note"><span aria-hidden="true">✓</span> Referenzstatus: {profile.referenceStatus}</p> : null}
+        {profile.referenceStatus ? (
+          <p className={`reference-note ${profile.referenceStatus === "Verifiziert" ? "is-verified" : "is-unverified"}`}>
+            <span aria-hidden="true">{profile.referenceStatus === "Verifiziert" ? "✓" : "i"}</span> Referenzstatus: {profile.referenceStatus}
+          </p>
+        ) : null}
 
         <footer className="profile-footer">
           <div>
-            <strong>{profile.introPolicy.type === "free" ? "Direkte Einführung" : "Persönlich geprüfte Einführung"}</strong>
-            <span>{profile.introPolicy.manualApprovalRequired ? "Roman Dering bestätigt den Kontakt." : "Nach Ihrer Auswahl kann der Kontakt starten."}</span>
+            <strong>{profile.bookingUrl ? "Direktes Erstgespräch" : "Historisches Match"}</strong>
+            <span>{profile.bookingUrl ? "Der Booking-Link des Freelancers öffnet sich in einem neuen Tab." : "Dieses Profil ist aktuell nicht direkt buchbar."}</span>
           </div>
-          {selected ? (
-            <button className="secondary-action" type="button" onClick={onContact}><span aria-hidden="true">✓</span> Ausgewählt · Kontakt</button>
-          ) : (
-            <button className="primary-action" type="button" onClick={onSelect}>{profile.demoStatus === "demo" ? "Demo-Ablauf ansehen" : "Profil auswählen"} <span aria-hidden="true">→</span></button>
-          )}
+          <div className="profile-actions">
+            {selected ? (
+              <button className="secondary-action" type="button" onClick={onContact}><span aria-hidden="true">✓</span> Kontaktoptionen</button>
+            ) : (
+              <button className="secondary-action" type="button" onClick={onSelect}>Profil merken</button>
+            )}
+            {profile.bookingUrl ? (
+              <a
+                className="primary-action"
+                href={profile.bookingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Meeting mit ${profile.displayName} buchen`}
+              >
+                Meeting buchen <span aria-hidden="true">→</span>
+              </a>
+            ) : (
+              <button className="primary-action" type="button" disabled>Nicht mehr buchbar</button>
+            )}
+          </div>
         </footer>
       </div>
     </article>
@@ -1329,10 +1346,15 @@ function ProfileCard({
 }
 
 function FactGroup({ label, facts, verified = false }: { label: string; facts: string[]; verified?: boolean }) {
+  const visibleFacts = facts.slice(0, 5);
+  const remaining = facts.length - visibleFacts.length;
   return (
     <div className="fact-group">
       <span className={verified ? "verified-label" : "reported-label"}>{verified ? "✓" : "i"} {label}</span>
-      <p>{facts.length ? facts.join(" · ") : "Keine Angaben"}</p>
+      <p>
+        {visibleFacts.length ? visibleFacts.join(" · ") : "Keine Angaben"}
+        {remaining > 0 ? ` · +${remaining} weitere Angaben` : ""}
+      </p>
     </div>
   );
 }
@@ -1578,71 +1600,42 @@ function AuthDialog({
   );
 }
 
-function ContactDialog({ profile, onClose, onRecordIntroduction }: { profile: FreelancerProfileResult; onClose: () => void; onRecordIntroduction: (idempotencyKey: string) => Promise<boolean> }) {
-  const [calendlyLoaded, setCalendlyLoaded] = useState(false);
-  const [requestState, setRequestState] = useState<"idle" | "sending" | "sent" | "error">("idle");
-  const introductionKey = useRef(makeId("intro"));
-  const canBookDirectly = profile.introPolicy.type === "free" || profile.introPolicy.readyToBook === true;
-  const loadCalendly = async () => {
-    setRequestState("sending");
-    const recorded = await onRecordIntroduction(introductionKey.current);
-    if (!recorded) {
-      setRequestState("error");
-      return;
-    }
-    setRequestState("sent");
-    setCalendlyLoaded(true);
-  };
-  const requestApproval = async () => {
-    setRequestState("sending");
-    const recorded = await onRecordIntroduction(introductionKey.current);
-    setRequestState(recorded ? "sent" : "error");
-  };
+function ContactDialog({ profile, onClose }: { profile: FreelancerProfileResult; onClose: () => void }) {
   return (
     <Modal titleId="contact-title" onClose={onClose} size="large">
       <div className="contact-dialog">
         <div className="contact-dialog-header">
           <div className="contact-profile-avatar" aria-hidden="true">{initials(profile.displayName)}</div>
-          <div><span className="dialog-eyebrow">{profile.demoStatus === "demo" ? "Demo-Profil ausgewählt" : "Profil ausgewählt"}</span><h2 id="contact-title">{profile.demoStatus === "demo" ? `Demo-Ablauf für ${profile.displayName}` : `Einführung zu ${profile.displayName}`}</h2><p>{profile.role}</p></div>
+          <div><span className="dialog-eyebrow">Reales Profil ausgewählt</span><h2 id="contact-title">Termin mit {profile.displayName}</h2><p>{profile.role}</p></div>
         </div>
         <div className="contact-layout">
           <div className="contact-copy">
             <div className="roman-card">
               <div className="live-row"><span className="live-dot" aria-hidden="true" /> Live erreichbar</div>
-              <h3>Roman Dering koordiniert den Kontakt</h3>
-              <p>{profile.demoStatus === "demo" ? "Dieses Profil ist synthetisch. Der Kontakt führt ausschließlich zu Roman Dering, um den Ablauf zu demonstrieren." : profile.introPolicy.manualApprovalRequired ? "Roman prüft die Einführung persönlich und bestätigt den nächsten Schritt kurzfristig." : "Wählen Sie direkt einen Termin oder rufen Sie an. Roman begleitet die Einführung."}</p>
-              <a className="phone-action" href={`tel:${CONTACT_PHONE}`} onClick={() => void onRecordIntroduction(introductionKey.current)}><span aria-hidden="true">☎</span><span><small>Direkt anrufen</small>{CONTACT_PHONE_LABEL}</span></a>
+              <h3>Roman Dering begleitet den Kontakt</h3>
+              <p>{profile.bookingUrl ? "Buchen Sie direkt einen freien Termin beim Freelancer. Bei Rückfragen ist Roman Dering zusätzlich erreichbar." : "Dieses historische Match ist derzeit nicht direkt buchbar. Roman Dering hilft bei Rückfragen oder Alternativen."}</p>
+              <a className="phone-action" href={`tel:${CONTACT_PHONE}`}><span aria-hidden="true">☎</span><span><small>Direkt anrufen</small>{CONTACT_PHONE_LABEL}</span></a>
             </div>
             <div className="continue-note"><span aria-hidden="true">＋</span><p><strong>Noch etwas ergänzen?</strong>Schließen Sie dieses Fenster und schreiben Sie frei im Chat weiter. Die Terminoption bleibt sichtbar.</p></div>
           </div>
           <div className="calendar-area">
-            {canBookDirectly && calendlyLoaded ? (
-              <iframe className="calendly-frame" src={CALENDLY_URL} title="Termin mit Roman Dering über Calendly buchen" loading="lazy" />
-            ) : canBookDirectly ? (
-              <div className="calendar-consent">
-                <div className="calendar-symbol" aria-hidden="true"><span>13</span><small>HEUTE</small></div>
-                <h3>30 Minuten reservieren</h3>
-                <p>Calendly wird erst nach Ihrem Klick geladen. Dabei wird eine Verbindung zu Calendly hergestellt.</p>
-                {requestState === "error" ? <p className="approval-error" role="alert">Die Auswahl konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.</p> : null}
-                <button type="button" onClick={() => void loadCalendly()} disabled={requestState === "sending"}>{requestState === "sending" ? "Auswahl wird gespeichert …" : "Calendly laden & Termin wählen"} <span aria-hidden="true">→</span></button>
-                <a href={CALENDLY_URL} target="_blank" rel="noreferrer" onClick={() => void onRecordIntroduction(introductionKey.current)}>Alternativ in neuem Tab öffnen</a>
-              </div>
-            ) : (
-              <div className="calendar-consent approval-consent">
-                <div className="approval-symbol" aria-hidden="true">✓</div>
-                <h3>Persönliche Freigabe</h3>
-                <p>Für dieses Profil bestätigt Roman Dering zuerst die Einführung. Eine Terminwahl wird erst danach freigeschaltet.</p>
-                {requestState === "sent" ? (
-                  <div className="approval-sent" role="status"><span aria-hidden="true">✓</span><div><strong>Kontaktanfrage übermittelt</strong><small>Roman meldet sich kurzfristig zum nächsten Schritt.</small></div></div>
-                ) : (
-                  <>
-                    {requestState === "error" ? <p className="approval-error" role="alert">Die Anfrage konnte nicht gespeichert werden. Versuchen Sie es erneut oder rufen Sie direkt an.</p> : null}
-                    <button type="button" onClick={() => void requestApproval()} disabled={requestState === "sending"}>{requestState === "sending" ? "Anfrage wird gesendet …" : requestState === "error" ? "Erneut senden" : "Kontaktanfrage an Roman senden"}</button>
-                  </>
-                )}
-                <a href={`tel:${CONTACT_PHONE}`} onClick={() => void onRecordIntroduction(introductionKey.current)}>Oder direkt anrufen: {CONTACT_PHONE_LABEL}</a>
-              </div>
-            )}
+            <div className="calendar-consent">
+              <div className="calendar-symbol" aria-hidden="true"><span>↗</span><small>BOOKING</small></div>
+              <h3>{profile.bookingUrl ? "Direkt Termin wählen" : "Aktuell nicht buchbar"}</h3>
+              <p>{profile.bookingUrl ? `Die Buchungsseite von ${profile.displayName} wird erst nach Ihrem Klick in einem neuen Tab geöffnet.` : "Der frühere Treffer bleibt zur Nachvollziehbarkeit sichtbar, aber es ist kein aktueller Booking-Link freigegeben."}</p>
+              {profile.bookingUrl ? (
+                <a
+                  className="booking-link-action"
+                  href={profile.bookingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Meeting buchen <span aria-hidden="true">→</span>
+                </a>
+              ) : (
+                <span className="booking-unavailable">Aktuell kein direkter Booking-Link</span>
+              )}
+            </div>
           </div>
         </div>
       </div>

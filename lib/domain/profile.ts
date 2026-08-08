@@ -28,7 +28,7 @@ export const ProfileRateSchema = z
 
 export const AvailabilitySchema = z
   .object({
-    status: z.enum(["available", "unavailable", "unknown"]),
+    status: z.enum(["available", "limited", "unavailable", "unknown"]),
     availableFrom: z.iso.date().nullable(),
     checkedAt: z.iso.datetime({ offset: true }),
   })

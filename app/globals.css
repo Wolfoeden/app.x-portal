@@ -1239,8 +1239,12 @@ dd.is-unknown,
   font-size: 8.75px;
 }
 
-.reference-note span {
+.reference-note.is-verified span {
   color: var(--green);
+}
+
+.reference-note.is-unverified span {
+  color: var(--muted-light);
 }
 
 .profile-footer {
@@ -1260,6 +1264,12 @@ dd.is-unknown,
   gap: 1px;
 }
 
+.profile-footer > .profile-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .profile-footer strong {
   font-size: 9.5px;
 }
@@ -1272,6 +1282,9 @@ dd.is-unknown,
 .primary-action,
 .secondary-action,
 .danger-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 34px;
   cursor: pointer;
   border-radius: 8px;
@@ -1282,12 +1295,19 @@ dd.is-unknown,
 }
 
 .primary-action {
+  border: 1px solid var(--ink);
   background: var(--ink);
   color: #fff;
+  text-decoration: none;
 }
 
 .primary-action span {
   margin-left: 5px;
+}
+
+.primary-action:disabled {
+  cursor: not-allowed;
+  opacity: .48;
 }
 
 .secondary-action {
@@ -2171,6 +2191,32 @@ dd.is-unknown,
   color: var(--muted);
   font-size: 8.5px;
   text-underline-offset: 3px;
+}
+
+.calendar-consent a.booking-link-action {
+  display: inline-flex;
+  min-height: 39px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 18px;
+  border-radius: 9px;
+  background: var(--ink);
+  color: #fff;
+  padding: 0 15px;
+  font-size: 9.5px;
+  font-weight: 680;
+  text-decoration: none;
+}
+
+.booking-link-action span {
+  margin-left: 5px;
+}
+
+.booking-unavailable {
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 9.5px;
+  font-weight: 650;
 }
 
 .approval-symbol {

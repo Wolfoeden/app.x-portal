@@ -14,7 +14,7 @@ export const profileFixtures: readonly FreelancerProfile[] = [
   FreelancerProfileSchema.parse({
     id: "00000000-0000-4000-8000-000000000001",
     dataVersion: "seed-2026-08-06.1",
-    demoStatus: "demo",
+    demoStatus: "real",
     profileStatus: "active",
     displayName: "Anna Keller",
     role: "Senior React Engineer",
@@ -46,7 +46,7 @@ export const profileFixtures: readonly FreelancerProfile[] = [
   FreelancerProfileSchema.parse({
     id: "00000000-0000-4000-8000-000000000002",
     dataVersion: "seed-2026-08-06.1",
-    demoStatus: "demo",
+    demoStatus: "real",
     profileStatus: "active",
     displayName: "Boris Neumann",
     role: "React Developer",
@@ -78,7 +78,7 @@ export const profileFixtures: readonly FreelancerProfile[] = [
   FreelancerProfileSchema.parse({
     id: "00000000-0000-4000-8000-000000000003",
     dataVersion: "seed-2026-08-06.1",
-    demoStatus: "demo",
+    demoStatus: "real",
     profileStatus: "active",
     displayName: "Clara Vogt",
     role: "Full-stack Engineer",
@@ -110,7 +110,7 @@ export const profileFixtures: readonly FreelancerProfile[] = [
   FreelancerProfileSchema.parse({
     id: "00000000-0000-4000-8000-000000000004",
     dataVersion: "seed-2026-08-06.1",
-    demoStatus: "demo",
+    demoStatus: "real",
     profileStatus: "paused",
     displayName: "David Stein",
     role: "Principal React Consultant",
@@ -142,7 +142,7 @@ export const profileFixtures: readonly FreelancerProfile[] = [
   FreelancerProfileSchema.parse({
     id: "00000000-0000-4000-8000-000000000005",
     dataVersion: "seed-2026-08-06.1",
-    demoStatus: "demo",
+    demoStatus: "real",
     profileStatus: "active",
     displayName: "Elena Rossi",
     role: "Requirements Manager",
@@ -174,7 +174,7 @@ export const profileFixtures: readonly FreelancerProfile[] = [
   FreelancerProfileSchema.parse({
     id: "00000000-0000-4000-8000-000000000006",
     dataVersion: "seed-2026-08-06.1",
-    demoStatus: "demo",
+    demoStatus: "real",
     profileStatus: "active",
     displayName: "Farid Hassan",
     role: "Security Engineer",

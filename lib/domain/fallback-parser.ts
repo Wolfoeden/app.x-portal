@@ -161,7 +161,7 @@ function parseLanguage(
     const explicitPatterns = [
       `\\bin\\s+${escaped}\\b`,
       `\\bspeaks?\\s+${escaped}\\b`,
-      `\\b(?:language|sprache|sprachlich)\\s*[:=]\\s*${escaped}\\b`,
+      `\\b(?:language|sprache|sprachlich)\\s*(?::|=)?\\s*${escaped}\\b`,
       `\\b${escaped}(?:[- ]speaking|sprachig(?:e[rmns]?)?)\\b`,
       `\\b${escaped}\\s+(?:speaker|sprachkenntnisse)\\b`,
     ];

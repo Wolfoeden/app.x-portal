@@ -55,9 +55,60 @@ describe("deterministic freelancer matching", () => {
     );
 
     expect(paused.eligible).toBe(false);
-    expect(paused.rejectionReasons).toContain("Profile is not active.");
+    expect(paused.rejectionReasons).toContain("Profil ist nicht aktiv.");
     expect(unavailable.eligible).toBe(false);
-    expect(unavailable.rejectionReasons).toContain("Profile is not marked available.");
+    expect(unavailable.rejectionReasons).toContain("Profil ist als nicht verfügbar markiert.");
+  });
+
+  it("allows bookable profiles with unknown project availability and ranks confirmed availability first", () => {
+    const brief = parseFallbackBrief("React freelancer in German, remote", { now });
+    const unknownProfile = {
+      ...profileFixtures[0]!,
+      id: "00000000-0000-4000-8000-000000000007",
+      displayName: "Aardvark Consulting",
+      availability: {
+        status: "unknown" as const,
+        availableFrom: null,
+        checkedAt: "2026-08-08T08:00:00.000Z",
+      },
+    };
+
+    const shortlist = buildShortlist(brief, [unknownProfile, profileFixtures[0]!]);
+
+    expect(shortlist.matches.map((match) => match.profile.displayName)).toEqual([
+      "Anna Keller",
+      "Aardvark Consulting",
+    ]);
+    expect(shortlist.matches[1]?.availabilityStatus).toBe("unknown");
+    expect(shortlist.matches[1]?.knownGaps).toContain(
+      "Projektverfügbarkeit ist nicht bestätigt; der Booking-Kalender ist verfügbar.",
+    );
+  });
+
+  it("matches only documented skill-family aliases", () => {
+    const brief = parseFallbackBrief("Requirements Management freelancer, remote", { now });
+    const requirementsEngineer = {
+      ...profileFixtures[0]!,
+      skillTags: [{ value: "Requirements Engineering", source: "self_reported" as const }],
+    };
+
+    expect(evaluateProfile(brief, requirementsEngineer).eligible).toBe(true);
+  });
+
+  it("rejects demo profiles and profiles without a secure booking link", () => {
+    const brief = parseFallbackBrief("React freelancer in German, remote", { now });
+    const demo = { ...profileFixtures[0]!, demoStatus: "demo" as const };
+    const withoutBooking = {
+      ...profileFixtures[0]!,
+      introPolicy: { ...profileFixtures[0]!.introPolicy, bookingUrl: null },
+    };
+
+    expect(evaluateProfile(brief, demo).rejectionReasons).toContain(
+      "Profil ist kein reales Produktionsprofil.",
+    );
+    expect(evaluateProfile(brief, withoutBooking).rejectionReasons).toContain(
+      "Profil hat keinen sicheren direkten Booking-Link.",
+    );
   });
 
   it("returns an honest empty result when no profile satisfies hard facts", () => {
@@ -87,14 +138,14 @@ describe("deterministic freelancer matching", () => {
     const brief = parseFallbackBrief("React freelancer in German, remote", { now });
     const match = buildShortlist(brief, [profileFixtures[1]!]).matches[0]!;
 
-    expect(match.verifiedFacts).toContain("Skill: TypeScript");
-    expect(match.selfReportedFacts).toContain("Skill: React");
-    expect(match.selfReportedFacts).toContain("Language: German");
-    expect(match.verifiedFacts).not.toContain("Skill: React");
+    expect(match.verifiedFacts).toContain("Kompetenz: TypeScript");
+    expect(match.selfReportedFacts).toContain("Kompetenz: React");
+    expect(match.selfReportedFacts).toContain("Sprache: German");
+    expect(match.verifiedFacts).not.toContain("Kompetenz: React");
     expect(match.matchReasons).toEqual(expect.arrayContaining([
-      "Required skills matched: React.",
-      "Language matched: German.",
-      "Work mode matched: remote.",
+      "Pflichtkompetenzen passend: React.",
+      "Sprache passend: German.",
+      "Arbeitsmodus passend: remote.",
     ]));
     expect(match.profileDataVersion).toBe("seed-2026-08-06.1");
     expect(match.availabilityCheckedAt).toBe("2026-08-06T08:05:00.000Z");
@@ -107,7 +158,7 @@ describe("deterministic freelancer matching", () => {
     );
     const match = buildShortlist(brief, [profileFixtures[0]!]).matches[0]!;
 
-    expect(match.knownGaps).toContain("Optional skills not listed: Information Security.");
+    expect(match.knownGaps).toContain("Optionale Kompetenzen nicht aufgeführt: Information Security.");
     expect(match.knownGaps.join(" ")).not.toMatch(/probably|likely|suitable|best/iu);
   });
 

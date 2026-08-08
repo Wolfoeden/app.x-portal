@@ -40,6 +40,7 @@ export interface ProfileFact {
 export interface FreelancerProfileResult {
   id: string;
   demoStatus?: "demo" | "real";
+  bookingUrl: string | null;
   displayName: string;
   role: string;
   skillTags: string[];

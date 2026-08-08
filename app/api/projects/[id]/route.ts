@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { requireCurrentUser } from "@/lib/auth/current-user";
+import { fetchRealProfilesByIds } from "@/lib/data/freelancers";
 import { presentProject, type ProjectRow } from "@/lib/data/projects";
 import {
   FreelancerProfileSchema,
+  type FreelancerProfile,
   type ShortlistMatch,
 } from "@/lib/domain";
 import { presentBrief, presentMatch } from "@/lib/presentation/chat";
@@ -15,6 +17,7 @@ export const dynamic = "force-dynamic";
 
 type StoredMatchRow = {
   id: string;
+  freelancer_profile_id: string;
   position: number;
   match_reasons: string[];
   known_gaps: string[];
@@ -25,22 +28,101 @@ type StoredMatchRow = {
   profile_data_version: number;
 };
 
-function restoreMatch(row: StoredMatchRow): ShortlistMatch | null {
-  const profile = FreelancerProfileSchema.safeParse(row.profile_snapshot);
-  if (!profile.success) return null;
+function availabilityPriority(
+  status: FreelancerProfile["availability"]["status"],
+): 0 | 1 | 2 | 3 {
+  if (status === "available") return 0;
+  if (status === "limited") return 1;
+  if (status === "unknown") return 2;
+  return 3;
+}
+
+function withoutStatusAvailabilityCopy(values: readonly string[]): string[] {
+  return values.filter(
+    (value) =>
+      !/^(?:Availability is currently confirmed\.|Project availability is (?:limited|not confirmed);|Projektverfügbarkeit ist (?:aktuell bestätigt\.|begrenzt;|nicht bestätigt;)|Verfügbarkeit ist im angegebenen Startfenster (?:bestätigt|nicht bestätigt)\.|Das gewünschte Startfenster ist im Profil nicht separat bestätigt\.)/u.test(
+        value,
+      ),
+  );
+}
+
+function currentBookingUrl(profile: FreelancerProfile): string | null {
+  const bookingUrl = profile.introPolicy.bookingUrl;
+  if (
+    profile.profileStatus !== "active" ||
+    profile.availability.status === "unavailable" ||
+    !bookingUrl
+  ) {
+    return null;
+  }
+  try {
+    return new URL(bookingUrl).protocol === "https:" ? bookingUrl : null;
+  } catch {
+    return null;
+  }
+}
+
+function restoreMatch(
+  row: StoredMatchRow,
+  currentProfile: FreelancerProfile | undefined,
+): ShortlistMatch | null {
+  const storedProfile = FreelancerProfileSchema.safeParse(row.profile_snapshot);
+  if (!storedProfile.success || storedProfile.data.demoStatus !== "real") return null;
+  const currentState = currentProfile ?? FreelancerProfileSchema.parse({
+    ...storedProfile.data,
+    profileStatus: "archived",
+    availability: {
+      ...storedProfile.data.availability,
+      status: "unavailable",
+    },
+    introPolicy: {
+      ...storedProfile.data.introPolicy,
+      bookingUrl: null,
+    },
+  });
+  const profile = FreelancerProfileSchema.parse({
+    ...storedProfile.data,
+    demoStatus: currentState.demoStatus,
+    profileStatus: currentState.profileStatus,
+    availability: currentState.availability,
+    introPolicy: {
+      ...storedProfile.data.introPolicy,
+      bookingUrl: currentBookingUrl(currentState),
+    },
+  });
+  const matchReasons = withoutStatusAvailabilityCopy(row.match_reasons).filter(
+    (value) =>
+      profile.profileStatus === "active" ||
+      value !== "Profil ist im kuratierten Verzeichnis aktiv.",
+  );
+  const knownGaps = withoutStatusAvailabilityCopy(row.known_gaps);
+  if (profile.availability.status === "available") {
+    matchReasons.splice(1, 0, "Projektverfügbarkeit ist aktuell bestätigt.");
+  } else if (profile.availability.status === "limited") {
+    knownGaps.unshift("Projektverfügbarkeit ist begrenzt; den genauen Zeitraum beim Termin abstimmen.");
+  } else if (profile.availability.status === "unknown") {
+    knownGaps.unshift("Projektverfügbarkeit ist nicht bestätigt; der Booking-Kalender ist verfügbar.");
+  } else {
+    knownGaps.unshift("Profil ist aktuell nicht verfügbar.");
+  }
+  if (!profile.introPolicy.bookingUrl) {
+    knownGaps.unshift("Direkter Booking-Link ist aktuell nicht verfügbar.");
+  }
   return {
-    profile: profile.data,
-    matchReasons: row.match_reasons,
-    knownGaps: row.known_gaps,
+    profile,
+    matchReasons,
+    knownGaps,
     verifiedFacts: row.verified_facts_snapshot,
     selfReportedFacts: row.self_reported_facts_snapshot,
-    availabilityStatus: "available",
-    availabilityCheckedAt: profile.data.availability.checkedAt,
+    availabilityStatus: profile.availability.status,
+    availabilityCheckedAt: profile.availability.checkedAt,
     profileDataVersion: `profile-v${row.profile_data_version}`,
     orderingEvidence: {
       optionalSkillMatchCount: 0,
+      exactRequiredSkillMatchCount: 0,
       verifiedRequiredSkillMatchCount: 0,
-      availableFrom: profile.data.availability.availableFrom,
+      availabilityPriority: availabilityPriority(profile.availability.status),
+      availableFrom: profile.availability.availableFrom,
     },
   };
 }
@@ -90,14 +172,22 @@ export async function GET(
       const { data: rows, error } = await admin
         .from("matches")
         .select(
-          "id,position,match_reasons,known_gaps,verified_facts_snapshot,self_reported_facts_snapshot,profile_snapshot,matching_rule_version,profile_data_version",
+          "id,freelancer_profile_id,position,match_reasons,known_gaps,verified_facts_snapshot,self_reported_facts_snapshot,profile_snapshot,matching_rule_version,profile_data_version",
         )
         .eq("shortlist_id", shortlist.id)
         .eq("owner_user_id", user.id)
         .order("position", { ascending: true });
       if (error) throw error;
-      profiles = (rows as StoredMatchRow[])
-        .map(restoreMatch)
+      const storedRows = rows as StoredMatchRow[];
+      const currentProfiles = await fetchRealProfilesByIds(
+        admin,
+        storedRows.map((row) => row.freelancer_profile_id),
+      );
+      const currentProfilesById = new Map(
+        currentProfiles.map((profile) => [profile.id, profile]),
+      );
+      profiles = storedRows
+        .map((row) => restoreMatch(row, currentProfilesById.get(row.freelancer_profile_id)))
         .filter((match): match is ShortlistMatch => match !== null)
         .map(presentMatch);
     }

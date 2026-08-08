@@ -11,7 +11,7 @@ import {
 } from "@/lib/ai/quota";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { deriveProjectTitle, presentProject, type ProjectRow } from "@/lib/data/projects";
-import { fetchActiveAvailableProfiles } from "@/lib/data/freelancers";
+import { fetchActiveBookableRealProfiles } from "@/lib/data/freelancers";
 import {
   buildShortlist,
   FreelancerProfileSchema,
@@ -96,11 +96,11 @@ function catalogVersion(profiles: readonly { id: string; dataVersion: string }[]
 
 function assistantText(resultCount: number): string {
   if (resultCount === 0) {
-    return "Ich habe Ihre Angaben strukturiert. Aktuell erfüllt kein aktives und verfügbares Profil alle erkannten Pflichtkriterien. Ergänzen oder ändern Sie die Anfrage einfach hier im Chat.";
+    return "Ich habe Ihre Angaben strukturiert. Aktuell erfüllt kein reales, direkt buchbares Profil alle erkannten Pflichtkriterien. Ergänzen oder ändern Sie die Anfrage einfach hier im Chat.";
   }
   return `Ich habe Ihre Angaben strukturiert und ${resultCount} ${
     resultCount === 1 ? "aktuell passendes Profil" : "aktuell passende Profile"
-  } nach den dokumentierten Regeln gefunden. Sie entscheiden selbst, wen Sie auswählen.`;
+  } nach den dokumentierten Regeln gefunden. Sie können das gewünschte Erstgespräch direkt über den jeweiligen Booking-Link buchen.`;
 }
 
 async function ownedProject(
@@ -277,7 +277,7 @@ export async function POST(request: Request) {
 
     // The model never receives this data. Filtering and ordering are wholly
     // deterministic and run only after the brief has been accepted.
-    const profiles = await fetchActiveAvailableProfiles(admin);
+    const profiles = await fetchActiveBookableRealProfiles(admin);
     const shortlist = buildShortlist(extraction.brief, profiles);
     const shortlistId = randomUUID();
     const profileCatalogVersion = catalogVersion(profiles);
