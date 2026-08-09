@@ -7,6 +7,12 @@ NODE_VERSION = "22.14.0"
 PNPM_VERSION = "11.16.0"
 
 [[headers]]
+for = "/chat"
+[headers.values]
+X-Robots-Tag = "noindex, nofollow"
+Cache-Control = "private, no-store"
+
+[[headers]]
 for = "/chat/*"
 [headers.values]
 X-Robots-Tag = "noindex, nofollow"
