@@ -3,9 +3,13 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Freelancer finden",
+  metadataBase: new URL("https://x-portal.eu"),
+  title: {
+    default: "XPORTAL",
+    template: "%s",
+  },
   description:
-    "Beschreiben Sie Ihr Projekt im Chat und erhalten Sie eine nachvollziehbare Auswahl passender Freelancer.",
+    "One intelligent conversational interface connecting insights and specialized digital spaces.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

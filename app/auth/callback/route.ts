@@ -9,7 +9,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 function safeNext(request: Request) {
   const value = new URL(request.url).searchParams.get("next");
-  return value?.startsWith("/") && !value.startsWith("//") ? value : "/";
+  return value?.startsWith("/") && !value.startsWith("//") ? value : "/chat";
 }
 
 export async function GET(request: Request) {

@@ -78,7 +78,7 @@ export async function startOauthUpgrade(
   const claims = await ensureGuestSession();
   await prepareGuestClaim();
   const provider = supportedOauthProviders[providerName];
-  const destination = appPath("/");
+  const destination = appPath("/chat");
   const redirectTo = `${siteUrl()}${appPath("/auth/callback")}?next=${encodeURIComponent(destination)}`;
 
   if (claims.is_anonymous === true) {
@@ -100,7 +100,7 @@ export async function beginEmailUpgrade(email: string) {
   const supabase = getBrowserSupabaseClient();
   await ensureGuestSession();
   await prepareGuestClaim();
-  const destination = `${appPath("/")}?set-password=1`;
+  const destination = `${appPath("/chat")}?set-password=1`;
   const { error } = await supabase.auth.updateUser(
     { email },
     {

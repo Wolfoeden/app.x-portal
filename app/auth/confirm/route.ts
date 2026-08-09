@@ -21,7 +21,7 @@ export async function GET(request: Request) {
   const candidateType = url.searchParams.get("type") as EmailOtpType | null;
   const next = url.searchParams.get("next");
   const destination = new URL(
-    next?.startsWith("/") && !next.startsWith("//") ? next : "/",
+    next?.startsWith("/") && !next.startsWith("//") ? next : "/chat",
     url.origin,
   );
 

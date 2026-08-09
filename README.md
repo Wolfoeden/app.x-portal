@@ -46,11 +46,12 @@ pnpm install --frozen-lockfile
 pnpm local:start
 ```
 
-Open `http://localhost:3001/`.
+Open `http://localhost:3001/home` for the public landing page or
+`http://localhost:3001/chat` for the freelancer application.
 
-The Netlify production build sets `NEXT_PUBLIC_APP_BASE_PATH=/chat`, so the
-application and its server routes are emitted below `x-portal.eu/chat`. Local
-development keeps the root path unless that environment variable is supplied.
+The production application uses real routes: `x-portal.eu/home` for the public
+XPORTAL landing page, `x-portal.eu/chat` for the freelancer application and
+`x-portal.eu/api/*` for server routes. The root URL redirects to `/home`.
 
 `local:start` creates a production build, starts it as a detached Windows
 process and stores its PID and logs below `.local/`. It refuses to start a
