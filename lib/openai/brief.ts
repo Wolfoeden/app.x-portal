@@ -16,6 +16,7 @@ import {
 
 export const DEFAULT_OPENAI_BRIEF_MODEL = "gpt-5.6-luna";
 export const DEFAULT_OPENAI_TIMEOUT_MS = 12_000;
+export const MAX_OPENAI_BRIEF_OUTPUT_TOKENS = 1_800;
 
 const MAX_SOURCE_LENGTH = 20_000;
 const MIN_TIMEOUT_MS = 100;
@@ -118,8 +119,16 @@ export interface BriefRequestOptions {
 export interface BriefProviderResponse {
   output_parsed: unknown;
   id?: string;
+  /** Exact model identifier returned by the provider response. */
+  model?: string;
   usage?: {
     input_tokens: number;
+    input_tokens_details?: {
+      /** Cache reads are already included in input_tokens. */
+      cached_tokens?: number;
+      /** Present for models that report explicit cache writes. */
+      cache_write_tokens?: number;
+    } | null;
     output_tokens: number;
     total_tokens: number;
   } | null;
@@ -152,12 +161,17 @@ export type BriefFallbackReason =
 export interface ExtractProjectBriefResult {
   brief: ProjectBrief;
   mode: "openai" | "fallback";
+  /** True once a Responses request has actually been handed to the client. */
+  providerAttempted: boolean;
   notice?: string;
   fallbackReason?: BriefFallbackReason;
   provider?: {
+    requestedModel: string;
+    /** Exact response model when supplied, otherwise the requested model. */
     model: string;
     responseId?: string;
     inputTokens?: number;
+    cachedInputTokens?: number;
     outputTokens?: number;
     totalTokens?: number;
   };
@@ -543,6 +557,8 @@ export function reconcileAiBrief(
 function fallbackResult(
   brief: ProjectBrief,
   fallbackReason: BriefFallbackReason,
+  provider?: ExtractProjectBriefResult["provider"],
+  providerAttempted = false,
 ): ExtractProjectBriefResult {
   const notices: Record<BriefFallbackReason, string> = {
     budget_denied:
@@ -561,8 +577,10 @@ function fallbackResult(
   return {
     brief,
     mode: "fallback",
+    providerAttempted,
     fallbackReason,
     notice: notices[fallbackReason],
+    ...(provider ? { provider } : {}),
   };
 }
 
@@ -620,9 +638,40 @@ function providerRequest(
     text: {
       format: zodTextFormat(AiBriefCandidateSchema, "freelancer_project_brief"),
     },
-    max_output_tokens: 1_800,
+    max_output_tokens: MAX_OPENAI_BRIEF_OUTPUT_TOKENS,
     safety_identifier: safetyIdentifier,
     store: false,
+  };
+}
+
+/**
+ * Conservative preflight ceiling used for an atomic quota/credit reservation.
+ * Responses usage is still authoritative after the call. JSON UTF-8 bytes are
+ * intentionally used as an upper bound for byte-pair encoded input tokens so
+ * a large guest request cannot reserve the former fixed 4,000-token estimate.
+ */
+export function estimateProjectBriefTokenCeiling(
+  rawInput: ExtractProjectBriefInput,
+  options: Pick<ExtractProjectBriefOptions, "model" | "now"> = {},
+): { inputTokens: number; outputTokens: number; totalTokens: number; model: string } {
+  const parsedInput = ExtractProjectBriefInputSchema.parse(rawInput);
+  const deterministic = buildDeterministicBrief(parsedInput, options.now);
+  const model =
+    options.model?.trim() ||
+    process.env.OPENAI_MODEL?.trim() ||
+    DEFAULT_OPENAI_BRIEF_MODEL;
+  const request = providerRequest(
+    deterministic.originalRequest,
+    parsedInput.latestMessage,
+    model,
+    parsedInput.safetyIdentifier ?? "quota_preflight",
+  );
+  const inputTokens = Buffer.byteLength(JSON.stringify(request), "utf8");
+  return {
+    inputTokens,
+    outputTokens: MAX_OPENAI_BRIEF_OUTPUT_TOKENS,
+    totalTokens: inputTokens + MAX_OPENAI_BRIEF_OUTPUT_TOKENS,
+    model,
   };
 }
 
@@ -684,6 +733,8 @@ export async function extractProjectBrief(
     process.env.OPENAI_MODEL?.trim() ||
     DEFAULT_OPENAI_BRIEF_MODEL;
   const timeoutMs = configuredTimeout(options.timeoutMs);
+  let provider: ExtractProjectBriefResult["provider"];
+  let providerAttempted = false;
   try {
     const request = providerRequest(
       deterministic.originalRequest,
@@ -692,17 +743,28 @@ export async function extractProjectBrief(
       parsedInput.safetyIdentifier,
     );
     const response = await withHardTimeout(
-      (signal) =>
-        responsesClient.parse(request, {
+      (signal) => {
+        providerAttempted = true;
+        return responsesClient.parse(request, {
           timeout: timeoutMs,
           maxRetries: 0,
           signal,
-        }),
+        });
+      },
       timeoutMs,
     );
+    provider = {
+      requestedModel: model,
+      model: response.model?.trim() || model,
+      responseId: response.id,
+      inputTokens: response.usage?.input_tokens,
+      cachedInputTokens: response.usage?.input_tokens_details?.cached_tokens,
+      outputTokens: response.usage?.output_tokens,
+      totalTokens: response.usage?.total_tokens,
+    };
     const candidate = AiBriefCandidateSchema.safeParse(response.output_parsed);
     if (!candidate.success) {
-      return fallbackResult(deterministic, "invalid_output");
+      return fallbackResult(deterministic, "invalid_output", provider, true);
     }
 
     const brief = reconcileAiBrief(
@@ -713,18 +775,15 @@ export async function extractProjectBrief(
     return {
       brief,
       mode: "openai",
-      provider: {
-        model,
-        responseId: response.id,
-        inputTokens: response.usage?.input_tokens,
-        outputTokens: response.usage?.output_tokens,
-        totalTokens: response.usage?.total_tokens,
-      },
+      providerAttempted: true,
+      provider,
     };
   } catch (error) {
     return fallbackResult(
       deterministic,
       isTimeoutError(error) ? "provider_timeout" : "provider_error",
+      provider,
+      providerAttempted,
     );
   }
 }

@@ -1,0 +1,125 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  calculateEstimatedProviderCost,
+  formatNanoUsdAsUsd,
+  normalizeAiTokenUsage,
+  OPENAI_PRICING_SOURCE_URL,
+  resolveModelPricing,
+} from "@/lib/ai/model-pricing";
+
+describe("model pricing", () => {
+  it("calculates the verified GPT-5.6 Luna prices exactly", () => {
+    const result = calculateEstimatedProviderCost({
+      requestedModel: "gpt-5.6-luna",
+      inputTokens: 1_000_000,
+      cachedInputTokens: 0,
+      outputTokens: 1_000_000,
+    });
+
+    expect(result.estimatedCostNanoUsd).toBe("1400000000");
+    expect(result.estimatedCostUsd).toBe("1.4");
+    expect(result.pricingModel).toBe("gpt-5.6-luna");
+    expect(result.pricingVersion).toBe("openai-model-pricing-2026-08-10");
+  });
+
+  it("prices cached tokens as a subset of input tokens", () => {
+    const result = calculateEstimatedProviderCost({
+      requestedModel: "gpt-5.6-luna",
+      inputTokens: 1_000_000,
+      cachedInputTokens: 250_000,
+      outputTokens: 0,
+    });
+
+    expect(result.usage.uncachedInputTokens).toBe(750_000);
+    expect(result.usage.totalTokens).toBe(1_000_000);
+    expect(result.estimatedCostNanoUsd).toBe("155000000");
+    expect(result.estimatedCostUsd).toBe("0.155");
+  });
+
+  it("does not double-count a fully cached input", () => {
+    const result = calculateEstimatedProviderCost({
+      requestedModel: "gpt-5.6-luna",
+      inputTokens: 1_000_000,
+      cachedInputTokens: 1_000_000,
+      outputTokens: 0,
+    });
+
+    expect(result.estimatedCostNanoUsd).toBe("20000000");
+    expect(result.estimatedCostUsd).toBe("0.02");
+  });
+
+  it("uses the actual model when the provider returns one", () => {
+    const knownActual = calculateEstimatedProviderCost({
+      requestedModel: "routing-alias",
+      actualModel: "gpt-5.6-luna",
+      inputTokens: 10,
+      outputTokens: 2,
+    });
+    const unknownActual = calculateEstimatedProviderCost({
+      requestedModel: "gpt-5.6-luna",
+      actualModel: "future-model-not-yet-priced",
+      inputTokens: 10,
+      outputTokens: 2,
+    });
+
+    expect(knownActual.meteredModel).toBe("gpt-5.6-luna");
+    expect(knownActual.estimatedCostNanoUsd).toBe("4400");
+    expect(unknownActual.meteredModel).toBe("future-model-not-yet-priced");
+    expect(unknownActual.estimatedCostNanoUsd).toBeNull();
+    expect(unknownActual.estimatedCostUsd).toBeNull();
+  });
+
+  it("uses the reviewed base price for an explicit dated Luna snapshot", () => {
+    const result = calculateEstimatedProviderCost({
+      requestedModel: "gpt-5.6-luna",
+      actualModel: "gpt-5.6-luna-2026-07-15",
+      inputTokens: 10,
+      outputTokens: 2,
+    });
+
+    expect(result.meteredModel).toBe("gpt-5.6-luna-2026-07-15");
+    expect(result.pricingModel).toBe("gpt-5.6-luna");
+    expect(result.estimatedCostNanoUsd).toBe("4400");
+  });
+
+  it("returns a null estimate for an unknown model without failing", () => {
+    const result = calculateEstimatedProviderCost({
+      requestedModel: "unknown-model",
+      inputTokens: 123,
+      cachedInputTokens: 23,
+      outputTokens: 45,
+    });
+
+    expect(result.pricingModel).toBeNull();
+    expect(result.pricingVersion).toBeNull();
+    expect(result.estimatedCostNanoUsd).toBeNull();
+    expect(result.usage.totalTokens).toBe(168);
+  });
+
+  it("rejects impossible cached-token usage", () => {
+    expect(() =>
+      normalizeAiTokenUsage({
+        inputTokens: 10,
+        cachedInputTokens: 11,
+        outputTokens: 0,
+      }),
+    ).toThrow(/subset of input tokens/);
+  });
+
+  it("keeps source metadata with the price snapshot", () => {
+    expect(
+      resolveModelPricing({ requestedModel: "gpt-5.6-luna" }),
+    ).toMatchObject({
+      sourceUrl: OPENAI_PRICING_SOURCE_URL,
+      sourceCheckedOn: "2026-08-10",
+      effectiveOn: "2026-08-10",
+    });
+  });
+
+  it("formats nano-USD without floating-point arithmetic", () => {
+    expect(formatNanoUsdAsUsd("1")).toBe("0.000000001");
+    expect(formatNanoUsdAsUsd(1_400_000_000n)).toBe("1.4");
+    expect(formatNanoUsdAsUsd(0n)).toBe("0");
+  });
+});

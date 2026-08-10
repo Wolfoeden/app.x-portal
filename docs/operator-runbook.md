@@ -2,11 +2,13 @@
 
 ## Scope and safety rule
 
-Supabase Studio/Table Editor is the V1 operator interface. There is no custom
-admin screen and no payment workflow. This runbook covers curated freelancer
-profiles, availability, introductions, engagements and retention configuration.
-It does not authorize editing customer messages, bypassing RLS, running copied
-SQL, exposing secrets or changing production infrastructure.
+Supabase Studio/Table Editor is the V1 profile/operator interface. The only
+application admin screen is a protected, read-only AI-usage report; there is no
+general profile/customer admin and no payment workflow. This runbook covers
+curated freelancer profiles, availability, introductions, engagements,
+retention and approved credit operations. It does not authorize editing
+customer messages, bypassing RLS, running copied SQL, exposing secrets or
+changing production infrastructure.
 
 Use staging first for every new procedure. Stop and contact the technical owner
 if a field, record state or requested action is not described here.
@@ -209,19 +211,47 @@ new result.
 ## AI quota and privacy operations
 
 Do not edit live `ai_usage_buckets`, `ai_usage_reservations` or `guest_claims` in
-Table Editor during normal operation.
+Table Editor during normal operation. Settled usage is intentionally immutable.
 
 - These tables contain server-generated HMAC subject values, never raw IPs.
 - The application calls `consume_ai_quota` before OpenAI and
-  `record_ai_usage` after every success, provider error, timeout or cancellation.
-- A reservation still marked `reserved` after the incident window fails closed.
-  Investigate its trace/request key in redacted application monitoring, then use
-  the approved server reconciliation command. Do not manually zero counters.
+  `record_ai_usage` after a response with trustworthy usage. A request that
+  definitely never reached the provider is released as zero. A provider attempt
+  without usage stays reserved and fail-closed.
+- The `xportal-ai-usage-reconcile` Cron job runs every five minutes and closes
+  reservations older than 15 minutes with their conservative estimate and
+  outcome `reconciled_estimate`. Investigate any row still open after 20 minutes
+  using only redacted trace/request identifiers. Do not manually zero counters.
 - Configure alerts below the provider monthly hard cap and test the stop path in
   staging.
 - Rotate the HMAC secret through the server secret-rotation procedure. Rotation
   changes future subject hashes; document the boundary and retain neither raw IP
   nor old secret.
+
+### AI usage dashboard and credit accounts
+
+- `/chat/admin/ai-usage` is available only to a named, non-anonymous Supabase
+  user with `app_metadata.role=admin`, or a user ID explicitly configured in the
+  server-only `ADMIN_USER_IDS` variable. Never grant admin through user-editable
+  metadata.
+- The dashboard is read-only and separates provider tokens/estimated USD cost
+  from internal XPORTAL credits. Unknown model prices stay visibly unknown.
+- A successful dashboard response requires its database audit event. An audit
+  storage failure blocks the sensitive view instead of silently serving it.
+- Credit balances live in `user_ai_credit_accounts`. They are internal usage
+  allowances, not money, provider tokens or a transferable asset.
+- A manual balance correction requires a recorded approval, a staging rehearsal
+  and a before/after audit note. Change `credits_total` only; never reduce it
+  below `credits_used + credits_reserved`, and never edit `credits_used` or
+  `credits_reserved` to make a balance appear available.
+- Default guest/account allocations apply only when an account is first created.
+  Changing an environment default does not silently rewrite existing balances.
+- A guest receives both per-user and HMAC-IP daily enforcement. Clearing browser
+  storage therefore does not remove the shared IP abuse boundary; raw IPs are
+  never stored.
+
+See `docs/ai-usage-and-credits.md` for the versioned policy, environment values,
+reporting fields and incident reconciliation checklist.
 
 ## Export and deletion request
 
@@ -253,8 +283,9 @@ Expired guest claims and abandoned anonymous Auth users require cleanup, but do
 not delete an anonymous user that still owns an active project or unconsumed
 claim. Stale AI reservations must be reconciled before their buckets are
 deleted. Each month verify the Cron job's last run in **Database → Cron Jobs**,
-its `retention_cleanup` audit event, and any unresolved `reserved` row older
-than one day.
+its `retention_cleanup` audit event, the `xportal-ai-usage-reconcile` job and
+`ai_usage_stale_reconciled` events. Investigate any unresolved `reserved` row
+older than 20 minutes immediately.
 
 ## Incident and rollback
 

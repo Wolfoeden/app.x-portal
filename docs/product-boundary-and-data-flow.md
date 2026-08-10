@@ -12,7 +12,9 @@ lets the business explicitly request an introduction.
 
 - Customer: controls the project text and selects a displayed profile.
 - Freelancer: has a curated public-safe profile; is never automatically hired.
-- Operator: trusted internal user working in Supabase Studio.
+- Operator: trusted internal user working in Supabase Studio for profiles.
+- Application administrator: named non-anonymous user who may inspect the
+  protected, read-only AI-usage dashboard.
 - Application server: validates inputs, calls providers and performs privileged
   operations.
 - OpenAI: converts customer text into the approved brief schema only.
@@ -50,6 +52,7 @@ content from the application and is not requested until the user clicks.
 | Engagement | Operator-confirmed lifecycle and optional contract value | Post-introduction status |
 | Audit | Actor pseudonym/reference, action, target, result, trace ID | Security and accountability |
 | AI usage | Pseudonymous subject/IP HMAC and token counters | Abuse and provider cost control |
+| AI credits | Internal allocation, used/reserved balance and policy version | Product usage control; not money or provider tokens |
 
 The chat is free text and may contain unnecessary personal or confidential
 information. The UI warns users not to submit special-category or third-party
@@ -58,7 +61,9 @@ secrets or raw IP addresses.
 
 ## Decisions and exclusions
 
-- No payment, credit, escrow or invoice data in V1.
+- No payment, monetary credit, escrow or invoice data in V1. Internal XPORTAL
+  AI credits are usage units only and cannot be purchased, transferred or
+  redeemed in this release.
 - No automated hiring decision or hidden suitability score.
 - Missing budget, location, availability, qualification and contractual facts
   remain `null`/unknown.
@@ -84,7 +89,8 @@ there are no duplicate environment-variable overrides.
 | Introduction records | 730 days | Operator review before deletion |
 | Engagements | 2,555 days | Operator/legal review before deletion |
 | Audit events | 730 days | Pseudonymize on account deletion; then delete after approved period |
-| AI usage buckets and settled reservations | 90 days | Delete after reconciliation |
+| AI usage buckets and settled reservations | 90 days | Delete after reconciliation; preserve only approved aggregate reporting |
+| AI credit account | Account lifetime | Delete with Auth user; no monetary value |
 | Unsettled AI reservations | Review after 1 day | Reconcile first; never silently release |
 | Paused/archived profiles | Contract-dependent | Operator review |
 

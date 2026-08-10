@@ -16,13 +16,14 @@ Included:
 - deterministic matching against curated Supabase profiles;
 - free introduction or premium/manual-approval introduction workflows;
 - click-to-load Calendly, direct human contact, export and deletion paths;
-- Supabase Studio/Table Editor as the trusted internal operator interface.
+- Supabase Studio/Table Editor for profile operations plus a protected,
+  read-only AI-usage dashboard for named administrators.
 
 Explicitly excluded:
 
 - payments, invoices, Stripe and bank-transfer workflows;
 - AI scoring, ranking or selection of freelancer profiles;
-- custom admin UI;
+- a custom profile, customer or workflow administration UI;
 - travel, food, medical, wallet/NFT and other product modules;
 - mobile application work.
 
@@ -38,7 +39,8 @@ Requirements: Node.js 22.13 or newer, pnpm 11.16.0, Docker and Supabase CLI
    staging run `supabase link --project-ref <STAGING_PROJECT_REF>`, verify with
    `supabase migration list`, then run `supabase db push --include-seed`.
 5. Add server-only `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, and a random
-   `IP_HASH_SECRET` of at least 32 characters.
+   `IP_HASH_SECRET` of at least 32 characters. Configure an administrator with
+   the Supabase `app_metadata.role=admin` claim or `ADMIN_USER_IDS`.
 6. For a stable local test instance on port 3001, run:
 
 ```powershell
@@ -95,6 +97,6 @@ handover.
 
 The browser receives only the Supabase publishable key. RLS remains the primary
 database boundary. The Supabase secret/service role and OpenAI key are
-server-only. Supabase Studio is for a named, trusted operator and grants broader
-project access than a table-specific custom admin would; MFA and the operator
-runbook are therefore mandatory.
+server-only. Supabase Studio remains the profile operator interface and grants
+broader project access than the protected, read-only AI-usage dashboard; MFA,
+named accounts and the operator runbook are therefore mandatory.

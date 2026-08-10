@@ -5,7 +5,9 @@ vi.mock("server-only", () => ({}));
 import { parseFallbackBrief } from "@/lib/domain";
 import {
   DEFAULT_OPENAI_BRIEF_MODEL,
+  MAX_OPENAI_BRIEF_OUTPUT_TOKENS,
   buildDeterministicBrief,
+  estimateProjectBriefTokenCeiling,
   extractProjectBrief,
   type AiBriefCandidate,
   type BriefResponsesClient,
@@ -40,9 +42,13 @@ function candidate(
 function mockClient(output: unknown) {
   const parse = vi.fn<BriefResponsesClient["parse"]>().mockResolvedValue({
     id: "resp_test_123",
+    model: "gpt-5.6-luna-2026-07-15",
     output_parsed: output,
     usage: {
       input_tokens: 101,
+      input_tokens_details: {
+        cached_tokens: 40,
+      },
       output_tokens: 52,
       total_tokens: 153,
     },
@@ -56,6 +62,23 @@ afterEach(() => {
 });
 
 describe("extractProjectBrief", () => {
+  it("builds a request-specific conservative reservation ceiling", () => {
+    const shortRequest = estimateProjectBriefTokenCeiling({
+      originalRequest: "React freelancer",
+      safetyIdentifier: SAFETY_IDENTIFIER,
+    });
+    const longRequest = estimateProjectBriefTokenCeiling({
+      originalRequest: `React freelancer ${"with requirements ".repeat(300)}`,
+      safetyIdentifier: SAFETY_IDENTIFIER,
+    });
+
+    expect(shortRequest.outputTokens).toBe(MAX_OPENAI_BRIEF_OUTPUT_TOKENS);
+    expect(shortRequest.totalTokens).toBe(
+      shortRequest.inputTokens + shortRequest.outputTokens,
+    );
+    expect(longRequest.inputTokens).toBeGreaterThan(shortRequest.inputTokens);
+  });
+
   it("uses the deterministic fallback when the server key is unavailable", async () => {
     const originalRequest = "Ich suche einen React Freelancer, remote.";
     const result = await extractProjectBrief(
@@ -68,6 +91,7 @@ describe("extractProjectBrief", () => {
 
     expect(result.mode).toBe("fallback");
     expect(result.fallbackReason).toBe("provider_unavailable");
+    expect(result.providerAttempted).toBe(false);
     expect(result.brief.originalRequest).toBe(originalRequest);
     expect(result.brief.requiredSkills).toEqual(["React"]);
     expect(result.brief.workMode).toBe("remote");
@@ -87,6 +111,7 @@ describe("extractProjectBrief", () => {
 
     expect(result.mode).toBe("fallback");
     expect(result.fallbackReason).toBe("budget_denied");
+    expect(result.providerAttempted).toBe(false);
     expect(parse).not.toHaveBeenCalled();
   });
 
@@ -99,6 +124,7 @@ describe("extractProjectBrief", () => {
 
     expect(result.mode).toBe("fallback");
     expect(result.fallbackReason).toBe("safety_identifier_unavailable");
+    expect(result.providerAttempted).toBe(false);
     expect(parse).not.toHaveBeenCalled();
   });
 
@@ -117,11 +143,14 @@ describe("extractProjectBrief", () => {
     );
 
     expect(result.mode).toBe("openai");
+    expect(result.providerAttempted).toBe(true);
     expect(result.brief.requiredSkills).toEqual(["Kubernetes"]);
     expect(result.provider).toEqual({
-      model: DEFAULT_OPENAI_BRIEF_MODEL,
+      requestedModel: DEFAULT_OPENAI_BRIEF_MODEL,
+      model: "gpt-5.6-luna-2026-07-15",
       responseId: "resp_test_123",
       inputTokens: 101,
+      cachedInputTokens: 40,
       outputTokens: 52,
       totalTokens: 153,
     });
@@ -233,7 +262,15 @@ describe("extractProjectBrief", () => {
 
     expect(result.mode).toBe("fallback");
     expect(result.fallbackReason).toBe("invalid_output");
+    expect(result.providerAttempted).toBe(true);
     expect(result.brief.requiredSkills).toEqual(["Python"]);
+    expect(result.provider).toMatchObject({
+      responseId: "resp_test_123",
+      inputTokens: 101,
+      cachedInputTokens: 40,
+      outputTokens: 52,
+      totalTokens: 153,
+    });
   });
 
   it("aborts a hung provider and returns the preserved fallback", async () => {
@@ -259,6 +296,7 @@ describe("extractProjectBrief", () => {
     expect(requestSignal?.aborted).toBe(true);
     expect(result.mode).toBe("fallback");
     expect(result.fallbackReason).toBe("provider_timeout");
+    expect(result.providerAttempted).toBe(true);
     expect(result.brief.originalRequest).toBe("Need a React freelancer.");
   });
 
@@ -275,6 +313,7 @@ describe("extractProjectBrief", () => {
     );
 
     expect(result.fallbackReason).toBe("provider_error");
+    expect(result.providerAttempted).toBe(true);
     expect(result.notice).not.toContain("secret provider detail");
   });
 

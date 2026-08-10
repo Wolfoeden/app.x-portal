@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
 
+import { getContext } from "@netlify/functions";
 import type { NextRequest } from "next/server";
 
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -40,12 +41,34 @@ export async function readJsonWithLimit(
 }
 
 export function getClientIp(request: NextRequest | Request) {
-  return (
-    request.headers.get("cf-connecting-ip")?.trim() ||
-    request.headers.get("x-real-ip")?.trim() ||
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    "unknown"
-  ).slice(0, 128);
+  try {
+    const netlifyIp = getContext().ip?.trim();
+    if (netlifyIp) return netlifyIp.slice(0, 128);
+  } catch {
+    // Expected outside an active Netlify Functions request.
+  }
+
+  if (process.env.NETLIFY === "true") {
+    return (
+      request.headers.get("x-nf-client-connection-ip")?.trim() || "unknown"
+    ).slice(0, 128);
+  }
+
+  // Generic forwarding headers are safe only when an explicitly trusted
+  // ingress strips client-supplied values. Local development enables them for
+  // convenience; other production hosts must opt in after proxy verification.
+  if (
+    process.env.NODE_ENV !== "production" ||
+    process.env.TRUST_PROXY_IP_HEADERS === "true"
+  ) {
+    return (
+      request.headers.get("x-real-ip")?.trim() ||
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      "unknown"
+    ).slice(0, 128);
+  }
+
+  return "unknown";
 }
 
 export function pseudonymizeSubject(subject: string) {

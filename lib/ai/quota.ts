@@ -2,16 +2,38 @@ import "server-only";
 
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
+export type AiCreditSnapshot = {
+  total: number;
+  used: number;
+  reserved: number;
+  remaining: number;
+};
+
 export type AiQuotaReservation = {
   allowed: boolean;
   reason: string;
   retryAfterSeconds: number | null;
   reservationId: string | null;
+  credits: AiCreditSnapshot | null;
 };
+
+export type AiUsageOutcome =
+  | "succeeded"
+  | "provider_error"
+  | "timeout"
+  | "cancelled"
+  | "reconciled_estimate";
 
 function positiveInteger(name: string, fallback: number): number {
   const parsed = Number.parseInt(process.env[name] ?? "", 10);
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function nonNegativeInteger(name: string, fallback: number): number {
+  const raw = process.env[name]?.trim() ?? "";
+  if (!/^\d+$/u.test(raw)) return fallback;
+  const parsed = Number(raw);
+  return Number.isSafeInteger(parsed) ? parsed : fallback;
 }
 
 function nonNegativeNumber(name: string, fallback: number): number {
@@ -19,6 +41,63 @@ function nonNegativeNumber(name: string, fallback: number): number {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
+function integerValue(value: unknown): number | null {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && /^\d+$/u.test(value)
+        ? Number(value)
+        : Number.NaN;
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function creditSnapshot(row: unknown): AiCreditSnapshot | null {
+  if (!row || typeof row !== "object") return null;
+  const record = row as Record<string, unknown>;
+  const total = integerValue(record.credits_total);
+  const used = integerValue(record.credits_used);
+  const reserved = integerValue(record.credits_reserved);
+  const remaining = integerValue(record.credits_remaining);
+  return total === null || used === null || reserved === null || remaining === null
+    ? null
+    : { total, used, reserved, remaining };
+}
+
+function firstRow(data: unknown): Record<string, unknown> | null {
+  const row = Array.isArray(data) ? data[0] : data;
+  return row && typeof row === "object"
+    ? (row as Record<string, unknown>)
+    : null;
+}
+
+export function configuredInitialCredits(isAnonymous: boolean): number {
+  return nonNegativeInteger(
+    isAnonymous ? "AI_CREDITS_GUEST_TOTAL" : "AI_CREDITS_USER_TOTAL",
+    isAnonymous ? 500 : 50_000,
+  );
+}
+
+export function configuredDailyTokenLimit(isAnonymous: boolean): number {
+  return nonNegativeInteger(
+    isAnonymous
+      ? "AI_DAILY_TOKEN_LIMIT_GUEST"
+      : "AI_DAILY_TOKEN_LIMIT_USER",
+    isAnonymous ? 20_000 : 100_000,
+  );
+}
+
+export function configuredMonthlyProviderBudgetCents(): number {
+  return nonNegativeInteger("AI_MONTHLY_PROVIDER_BUDGET_CENTS", 5_000);
+}
+
+export function configuredUnknownModelEstimatedCostCents(): number {
+  return nonNegativeInteger("AI_UNKNOWN_MODEL_ESTIMATED_COST_CENTS", 100);
+}
+
+/**
+ * Legacy cent estimate retained only for the existing provider-wide monthly
+ * safety bucket. Per-request reporting uses exact, model-specific nano-USD.
+ */
 export function calculateProviderCostCents(
   inputTokens: number,
   outputTokens: number,
@@ -40,19 +119,54 @@ export function calculateProviderCostCents(
       Math.max(0, outputTokens) * outputUsdPerMillion) /
       1_000_000) *
     residencyMultiplier;
-
-  // Decimal price configuration is represented as IEEE-754. Normalizing well
-  // below one cent avoids a phantom extra cent at exact boundaries.
   return Math.ceil(Number((usd * 100).toFixed(9)));
+}
+
+export function nanoUsdToCeilingCents(value: string | null): number {
+  if (value === null) return 0;
+  if (!/^\d+$/u.test(value)) throw new RangeError("Invalid nano-USD amount");
+  const nanoUsd = BigInt(value);
+  const cents = (nanoUsd + 9_999_999n) / 10_000_000n;
+  if (cents > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new RangeError("Provider cost exceeds the safe integer range");
+  }
+  return Number(cents);
+}
+
+export async function getAiCreditSnapshot(input: {
+  userId: string;
+  isAnonymous: boolean;
+}): Promise<AiCreditSnapshot> {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
+    throw new Error("quota_service_not_configured");
+  }
+  const admin = createAdminSupabaseClient();
+  const { data, error } = await admin.rpc("get_ai_credit_snapshot", {
+    p_user_id: input.userId,
+    p_is_anonymous: input.isAnonymous,
+    p_initial_credit_total: configuredInitialCredits(input.isAnonymous),
+  });
+  if (error) throw error;
+  const credits = creditSnapshot(firstRow(data));
+  if (!credits) throw new Error("invalid_credit_snapshot");
+  return credits;
 }
 
 export async function reserveAiQuota(input: {
   requestKey: string;
+  userId: string;
+  interactionId: string;
   userHash: string;
   ipHash: string;
   isAnonymous: boolean;
-  estimatedTokens?: number;
-  estimatedCostCents?: number;
+  requestedModel: string;
+  purpose: string;
+  estimatedInputTokens: number;
+  estimatedOutputTokens: number;
+  estimatedCredits: number;
+  estimatedCostNanoUsd: string | null;
+  pricingVersion: string | null;
+  creditPolicyVersion: string;
 }): Promise<AiQuotaReservation> {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
     return {
@@ -60,9 +174,16 @@ export async function reserveAiQuota(input: {
       reason: "quota_service_not_configured",
       retryAfterSeconds: null,
       reservationId: null,
+      credits: null,
     };
   }
 
+  const estimatedTokens =
+    input.estimatedInputTokens + input.estimatedOutputTokens;
+  const estimatedCostCents =
+    input.estimatedCostNanoUsd === null
+      ? configuredUnknownModelEstimatedCostCents()
+      : nanoUsdToCeilingCents(input.estimatedCostNanoUsd);
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin.rpc("consume_ai_quota", {
     p_request_key: input.requestKey,
@@ -70,18 +191,19 @@ export async function reserveAiQuota(input: {
     p_ip_hash: input.ipHash,
     p_is_anonymous: input.isAnonymous,
     p_request_limit: positiveInteger("AI_REQUESTS_PER_MINUTE", 6),
-    p_daily_token_limit: positiveInteger(
-      input.isAnonymous
-        ? "AI_DAILY_TOKEN_LIMIT_GUEST"
-        : "AI_DAILY_TOKEN_LIMIT_USER",
-      input.isAnonymous ? 20_000 : 100_000,
-    ),
-    p_monthly_budget_cents: positiveInteger(
-      "AI_MONTHLY_PROVIDER_BUDGET_CENTS",
-      5_000,
-    ),
-    p_estimated_tokens: input.estimatedTokens ?? 4_000,
-    p_estimated_cost_cents: input.estimatedCostCents ?? 1,
+    p_daily_token_limit: configuredDailyTokenLimit(input.isAnonymous),
+    p_monthly_budget_cents: configuredMonthlyProviderBudgetCents(),
+    p_estimated_tokens: estimatedTokens,
+    p_estimated_cost_cents: estimatedCostCents,
+    p_user_id: input.userId,
+    p_interaction_id: input.interactionId,
+    p_requested_model: input.requestedModel,
+    p_purpose: input.purpose,
+    p_estimated_credits: input.estimatedCredits,
+    p_initial_credit_total: configuredInitialCredits(input.isAnonymous),
+    p_estimated_cost_nano_usd: input.estimatedCostNanoUsd,
+    p_pricing_version: input.pricingVersion,
+    p_credit_policy_version: input.creditPolicyVersion,
   });
 
   if (error) {
@@ -90,10 +212,11 @@ export async function reserveAiQuota(input: {
       reason: "quota_service_error",
       retryAfterSeconds: null,
       reservationId: null,
+      credits: null,
     };
   }
 
-  const row = Array.isArray(data) ? data[0] : data;
+  const row = firstRow(data);
   const retryAt =
     typeof row?.retry_after === "string"
       ? Date.parse(row.retry_after)
@@ -106,26 +229,51 @@ export async function reserveAiQuota(input: {
       : null,
     reservationId:
       typeof row?.reservation_id === "string" ? row.reservation_id : null,
+    credits: creditSnapshot(row),
   };
 }
 
 export async function recordAiUsage(input: {
   requestKey: string;
+  actualModel: string | null;
+  providerResponseId: string | null;
   inputTokens: number;
+  cachedInputTokens: number;
   outputTokens: number;
-  actualCostCents: number;
-  outcome: "succeeded" | "provider_error" | "timeout" | "cancelled";
-}): Promise<void> {
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) return;
+  totalTokens: number;
+  actualCostNanoUsd: string | null;
+  actualCredits: number;
+  actualCostCents: number | null;
+  pricingVersion: string | null;
+  creditPolicyVersion: string;
+  outcome: AiUsageOutcome;
+}): Promise<AiCreditSnapshot | null> {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) return null;
 
   const admin = createAdminSupabaseClient();
-  const { error } = await admin.rpc("record_ai_usage", {
+  const { data, error } = await admin.rpc("record_ai_usage", {
     p_request_key: input.requestKey,
     p_actual_input_tokens: input.inputTokens,
+    p_actual_cached_input_tokens: input.cachedInputTokens,
     p_actual_output_tokens: input.outputTokens,
+    p_actual_total_tokens: input.totalTokens,
     p_actual_cost_cents: input.actualCostCents,
+    p_actual_cost_nano_usd: input.actualCostNanoUsd,
+    p_actual_credits: input.actualCredits,
     p_outcome: input.outcome,
+    p_actual_model: input.actualModel,
+    p_provider_response_id: input.providerResponseId,
+    p_pricing_version: input.pricingVersion,
+    p_credit_policy_version: input.creditPolicyVersion,
   });
 
   if (error) throw error;
+  const row = firstRow(data);
+  if (row?.recorded !== true) {
+    const reason = typeof row?.reason === "string" ? row.reason : "unknown";
+    throw new Error(`ai_usage_not_recorded:${reason}`);
+  }
+  const credits = creditSnapshot(row);
+  if (!credits) throw new Error("invalid_credit_settlement_snapshot");
+  return credits;
 }

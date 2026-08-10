@@ -1,7 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  insert: vi.fn(async () => ({ error: null })),
+  insert: vi.fn(
+    async (_input: unknown): Promise<{
+      error: { message: string } | null;
+    }> => {
+      void _input;
+      return { error: null };
+    },
+  ),
   logEvent: vi.fn(),
 }));
 
@@ -18,7 +25,8 @@ import { writeAuditEvent } from "@/lib/audit/write";
 describe("audit writer", () => {
   afterEach(() => {
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
-    mocks.insert.mockClear();
+    mocks.insert.mockReset();
+    mocks.insert.mockResolvedValue({ error: null });
     mocks.logEvent.mockClear();
   });
 
@@ -42,5 +50,32 @@ describe("audit writer", () => {
         outcome: "failed",
       }),
     );
+  });
+
+  it("fails closed for a required audit when persistence fails", async () => {
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test-only-service-key";
+    mocks.insert.mockResolvedValue({ error: { message: "database down" } });
+
+    await expect(
+      writeAuditEvent({
+        actorUserId: "00000000-0000-4000-8000-000000000002",
+        action: "ai_usage_admin_viewed",
+        targetType: "ai_usage",
+        outcome: "success",
+        required: true,
+      }),
+    ).rejects.toThrow("required_audit_write_failed");
+  });
+
+  it("fails closed for a required audit when the service is not configured", async () => {
+    await expect(
+      writeAuditEvent({
+        actorUserId: "00000000-0000-4000-8000-000000000003",
+        action: "ai_usage_admin_viewed",
+        targetType: "ai_usage",
+        outcome: "success",
+        required: true,
+      }),
+    ).rejects.toThrow("required_audit_not_configured");
   });
 });

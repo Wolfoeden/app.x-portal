@@ -4,11 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { writeAuditEvent } from "@/lib/audit/write";
-import {
-  calculateProviderCostCents,
-  recordAiUsage,
-  reserveAiQuota,
-} from "@/lib/ai/quota";
+import { executeTrackedAiRequest } from "@/lib/ai/gateway";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { deriveProjectTitle, presentProject, type ProjectRow } from "@/lib/data/projects";
 import { fetchActiveBookableRealProfiles } from "@/lib/data/freelancers";
@@ -21,6 +17,7 @@ import {
 } from "@/lib/domain";
 import {
   buildDeterministicBrief,
+  estimateProjectBriefTokenCeiling,
   extractProjectBrief,
 } from "@/lib/openai";
 import { presentBrief, presentMatch } from "@/lib/presentation/chat";
@@ -94,6 +91,11 @@ function catalogVersion(profiles: readonly { id: string; dataVersion: string }[]
     .digest("hex");
 }
 
+function interactionIdFromRequestKey(requestKey: string): string {
+  const value = requestKey.slice(0, 32);
+  return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
+}
+
 function assistantText(resultCount: number): string {
   if (resultCount === 0) {
     return "Ich habe Ihre Angaben strukturiert. Aktuell erfüllt kein reales, direkt buchbares Profil alle erkannten Pflichtkriterien. Ergänzen oder ändern Sie die Anfrage einfach hier im Chat.";
@@ -101,6 +103,40 @@ function assistantText(resultCount: number): string {
   return `Ich habe Ihre Angaben strukturiert und ${resultCount} ${
     resultCount === 1 ? "aktuell passendes Profil" : "aktuell passende Profile"
   } nach den dokumentierten Regeln gefunden. Sie können das gewünschte Erstgespräch direkt über den jeweiligen Booking-Link buchen.`;
+}
+
+function fallbackNotice(
+  reason: string,
+  isAnonymous: boolean,
+  fallbackReason: string | undefined,
+): string {
+  if (reason === "provider_monthly_budget") {
+    return "Das monatliche KI-Budget ist erreicht. Ihre Anfrage wurde sicher lokal verarbeitet.";
+  }
+  if (reason === "insufficient_credits") {
+    return isAnonymous
+      ? "Ihre Gast-Credits reichen für diese KI-Analyse nicht mehr aus. Die Anfrage wurde gespeichert; nach der Anmeldung können Sie mit dem Account-Kontingent fortfahren."
+      : "Ihre AI Credits reichen für diese KI-Analyse nicht aus. Die Anfrage wurde gespeichert und mit der sicheren Basislogik verarbeitet.";
+  }
+  if (
+    reason === "anonymous_user_daily_token_limit" ||
+    reason === "anonymous_ip_daily_token_limit"
+  ) {
+    return "Das tägliche KI-Limit für den Gastzugang ist erreicht. Ihre Anfrage wurde gespeichert und ohne weiteren Provider-Aufruf verarbeitet.";
+  }
+  if (fallbackReason === "provider_timeout") {
+    return "Die KI-Analyse hat das Zeitlimit erreicht. Ihre Anfrage wurde gespeichert und mit der sicheren Basislogik verarbeitet.";
+  }
+  if (fallbackReason === "invalid_output") {
+    return "Die KI-Antwort war nicht zuverlässig strukturiert. Ihre Anfrage wurde gespeichert und mit der sicheren Basislogik verarbeitet.";
+  }
+  if (fallbackReason === "provider_error") {
+    return "Die KI-Analyse war vorübergehend nicht verfügbar. Ihre Anfrage wurde gespeichert und mit der sicheren Basislogik verarbeitet.";
+  }
+  if (fallbackReason === "provider_unavailable") {
+    return "Der KI-Provider ist noch nicht konfiguriert. Ihre Anfrage wurde gespeichert und mit der sicheren Basislogik verarbeitet.";
+  }
+  return "Ihre Anfrage wurde gespeichert und ohne Provider-Abhängigkeit strukturiert.";
 }
 
 async function ownedProject(
@@ -234,46 +270,75 @@ export async function POST(request: Request) {
     const requestKey = createHash("sha256")
       .update(`${user.id}:${project.id}:${clientMessageId}`)
       .digest("hex");
-    const quota =
-      userHash && ipHash
-        ? await reserveAiQuota({
-            requestKey,
-            userHash,
-            ipHash,
-            isAnonymous: user.isAnonymous,
-          })
-        : {
-            allowed: false,
-            reason: "pseudonym_configuration_missing",
-            retryAfterSeconds: null,
-            reservationId: null,
-          };
-
-    const extraction = await extractProjectBrief({
+    const interactionId = interactionIdFromRequestKey(requestKey);
+    const extractionInput = {
       originalRequest: existing?.original_request ?? input.message,
       latestMessage: existing ? input.message : undefined,
       previousBrief: previousBrief(existing),
       safetyIdentifier: userHash ?? undefined,
-      allowProvider: quota.allowed,
-    });
-
-    if (quota.allowed) {
-      const inputTokens = extraction.provider?.inputTokens ?? 0;
-      const outputTokens = extraction.provider?.outputTokens ?? 0;
-      const outcome =
-        extraction.mode === "openai"
-          ? "succeeded"
-          : extraction.fallbackReason === "provider_timeout"
-            ? "timeout"
-            : "provider_error";
-      await recordAiUsage({
-        requestKey,
-        inputTokens,
-        outputTokens,
-        actualCostCents: calculateProviderCostCents(inputTokens, outputTokens),
-        outcome,
-      }).catch(() => undefined);
-    }
+    };
+    const estimate = estimateProjectBriefTokenCeiling(extractionInput);
+    const tracked =
+      userHash && ipHash
+        ? await executeTrackedAiRequest({
+            requestKey,
+            interactionId,
+            userId: user.id,
+            userHash,
+            ipHash,
+            isAnonymous: user.isAnonymous,
+            purpose: "project_brief",
+            requestedModel: estimate.model,
+            estimatedInputTokens: estimate.inputTokens,
+            estimatedOutputTokens: estimate.outputTokens,
+            operation: async (providerAllowed) => {
+              const extraction = await extractProjectBrief({
+                ...extractionInput,
+                allowProvider: providerAllowed,
+              });
+              return {
+                value: extraction,
+                providerAttempted: extraction.providerAttempted,
+                outcome:
+                  extraction.mode === "openai"
+                    ? ("succeeded" as const)
+                    : extraction.fallbackReason === "provider_timeout"
+                      ? ("timeout" as const)
+                      : ("provider_error" as const),
+                usage:
+                  extraction.provider &&
+                  Number.isSafeInteger(extraction.provider.inputTokens) &&
+                  Number.isSafeInteger(extraction.provider.outputTokens)
+                  ? {
+                      requestedModel: extraction.provider.requestedModel,
+                      actualModel: extraction.provider.model,
+                      providerResponseId: extraction.provider.responseId,
+                      inputTokens: extraction.provider.inputTokens!,
+                      cachedInputTokens:
+                        extraction.provider.cachedInputTokens ?? 0,
+                      outputTokens: extraction.provider.outputTokens!,
+                      totalTokens: extraction.provider.totalTokens,
+                    }
+                  : undefined,
+              };
+            },
+          })
+        : {
+            value: await extractProjectBrief({
+              ...extractionInput,
+              allowProvider: false,
+            }),
+            quota: {
+              allowed: false,
+              reason: "pseudonym_configuration_missing",
+              retryAfterSeconds: null,
+              reservationId: null,
+              credits: null,
+            },
+            credits: null,
+          };
+    const extraction = tracked.value;
+    const quota = tracked.quota;
 
     // The model never receives this data. Filtering and ordering are wholly
     // deterministic and run only after the brief has been accepted.
@@ -308,9 +373,9 @@ export async function POST(request: Request) {
           ...match.profile,
           introPolicy: {
             ...match.profile.introPolicy,
-            // A booking URL is released only by the introduction route after
-            // an explicit authenticated click. It is never stored in a
-            // browser-readable match snapshot.
+            // Historical browser-readable match snapshots never retain a
+            // booking URL. The current response may expose the approved URL,
+            // but only an explicit user click can open it.
             bookingUrl: null,
           },
         }),
@@ -395,9 +460,11 @@ export async function POST(request: Request) {
         mode: extraction.mode === "openai" ? "ai" : "fallback",
         notice:
           extraction.mode === "fallback"
-            ? quota.reason === "provider_monthly_budget"
-              ? "Das monatliche KI-Budget ist erreicht. Ihre Anfrage wurde sicher lokal verarbeitet."
-              : "Ihre Anfrage wurde gespeichert und ohne Provider-Abhängigkeit strukturiert."
+            ? fallbackNotice(
+                quota.reason,
+                user.isAnonymous,
+                extraction.fallbackReason,
+              )
             : undefined,
         match: {
           id: shortlistId,
@@ -409,6 +476,16 @@ export async function POST(request: Request) {
           remainingRequests: Math.min(userLimit.remaining, ipLimit.remaining),
           retryAfterSeconds: quota.retryAfterSeconds,
         },
+        credits: tracked.credits
+          ? {
+              ...tracked.credits,
+              exhausted: tracked.credits.remaining <= 0,
+              low:
+                tracked.credits.remaining > 0 &&
+                tracked.credits.remaining <=
+                  Math.max(1, Math.ceil(tracked.credits.total * 0.2)),
+            }
+          : undefined,
       },
       { headers: { "Cache-Control": "no-store" } },
     );

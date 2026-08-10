@@ -84,6 +84,19 @@ export interface ChatRequest {
   clientMessageId?: string;
 }
 
+/**
+ * Product-facing usage balance. These values are XPORTAL AI Credits and must
+ * not be presented as provider tokens or provider cost in the customer UI.
+ */
+export interface AiCreditSnapshot {
+  total: number;
+  used: number;
+  remaining: number;
+  reserved?: number;
+  low?: boolean;
+  exhausted?: boolean;
+}
+
 export interface ChatResponse {
   project: ProjectListItem;
   message: ConversationMessage | string;
@@ -102,6 +115,7 @@ export interface ChatResponse {
     remainingRequests: number | null;
     retryAfterSeconds: number | null;
   };
+  credits?: AiCreditSnapshot;
 }
 
 export type ChatStreamEvent =
@@ -115,11 +129,14 @@ export interface ProjectDetailResponse {
   messages: ConversationMessage[];
   brief: StructuredBrief | null;
   profiles: FreelancerProfileResult[];
+  analysisMode?: "ai" | "fallback";
+  analysisNotice?: string | null;
 }
 
 export interface SessionResponse {
   authenticated: boolean;
   anonymous: boolean;
+  admin?: boolean;
   user: null | {
     id: string;
     displayName: string | null;
@@ -131,6 +148,10 @@ export interface ChatApiPaths {
   chat: string;
   projects: string;
   session: string;
+  /** Omit or set to an empty string to keep the optional credit UI disabled. */
+  credits?: string;
+  /** Protected operator-only usage dashboard. */
+  adminUsage?: string;
   emailLogin: string;
   emailRegister: string;
   providerLogin: string;
@@ -144,6 +165,8 @@ export const defaultChatApiPaths: ChatApiPaths = {
   chat: appPath("/api/chat"),
   projects: appPath("/api/projects"),
   session: appPath("/api/auth/session"),
+  credits: appPath("/api/ai/credits"),
+  adminUsage: appPath("/chat/admin/ai-usage"),
   emailLogin: appPath("/api/auth/login"),
   emailRegister: appPath("/api/auth/register"),
   providerLogin: appPath("/auth/sign-in"),

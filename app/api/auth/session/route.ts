@@ -10,6 +10,7 @@ export async function GET() {
     {
       authenticated: user !== null,
       anonymous: user?.isAnonymous ?? true,
+      admin: user?.isAdmin ?? false,
       user: user
         ? {
             id: user.id,

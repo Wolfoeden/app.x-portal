@@ -4,9 +4,10 @@
 
 V1 uses one managed Supabase project in a client-approved EU region. Supabase
 Auth provides anonymous, Google, Microsoft and email identities; PostgreSQL is
-the application store; Supabase Studio/Table Editor is the operator interface.
-There is no custom admin application and no payment functionality in this
-version.
+the application store; Supabase Studio/Table Editor remains the profile
+operator interface. A narrow, protected application page reports AI usage and
+internal credit balances; it is not a general profile/customer admin. There is
+no payment functionality in this version.
 
 The EU region is an infrastructure setting, not a SQL setting. Acceptance
 evidence must therefore include the Supabase project reference, selected EU
@@ -23,6 +24,7 @@ flowchart LR
   Server -->|"service role; never client-side"| DB["EU Supabase PostgreSQL"]
   Server -->|"brief text only; store=false"| OpenAI["OpenAI Responses API"]
   Studio["Named trusted operator + MFA"] -->|"curated profile/status edits"| DB
+  Admin["Named application administrator"] -->|"read-only AI usage report"| Server
   DB --> Match["Deterministic matching"]
   Match --> Snapshot["0-3 result shortlist snapshot"]
   Browser -->|"explicit click"| Server
@@ -53,7 +55,9 @@ logs.
 | `engagement_status_events` | Append-style visible engagement status history | Own rows, read-only | Database trigger |
 | `audit_events` | Redacted security/business trace | None | Service/trigger insert; controlled actor anonymization only |
 | `ai_usage_buckets` | Minute/day/month counters | None | Quota RPCs through service role |
-| `ai_usage_reservations` | Idempotent estimate-to-actual reconciliation | None | Quota RPCs through service role |
+| `ai_usage_reservations` | Canonical idempotent request ledger with estimated and actual provider usage/cost/credits | None | Quota RPCs through service role |
+| `ai_usage_events` | Service-only settled-usage view over `ai_usage_reservations`; not a second ledger | None | Read-only service-role view |
+| `user_ai_credit_accounts` | Internal XPORTAL-credit allocation, used and reserved balances | None | Credit/quota RPCs through service role; approved Studio adjustment only |
 | `guest_claims` | Hashed, expiring one-time workspace claims | None | Guest-claim service route/RPC |
 | `retention_policies` | Operator-configurable retention rules | None | Supabase Studio/service role |
 
@@ -187,7 +191,9 @@ identity tokens and user metadata are never used as authorization data.
 
 ## AI quota contracts
 
-Only server routes may execute either RPC:
+Only server routes may execute these RPCs. The shortened legacy overloads stay
+temporarily available for a rolling deployment, but all new AI calls use the
+extended contracts:
 
 ```text
 consume_ai_quota(
@@ -199,24 +205,46 @@ consume_ai_quota(
   p_daily_token_limit bigint,
   p_monthly_budget_cents bigint,
   p_estimated_tokens bigint,
-  p_estimated_cost_cents bigint
-) -> allowed, reason, retry_after, reservation_id
+  p_estimated_cost_cents bigint,
+  p_user_id uuid,
+  p_interaction_id uuid,
+  p_requested_model text,
+  p_purpose text,
+  p_estimated_credits bigint,
+  p_initial_credit_total bigint,
+  p_estimated_cost_nano_usd bigint|null,
+  p_pricing_version text|null,
+  p_credit_policy_version text
+) -> allowed, reason, retry_after, reservation_id, credit snapshot
 
 record_ai_usage(
   p_request_key text,
   p_actual_input_tokens bigint,
+  p_actual_cached_input_tokens bigint,
   p_actual_output_tokens bigint,
-  p_actual_cost_cents bigint,
-  p_outcome text
-) -> recorded, reason
+  p_actual_total_tokens bigint,
+  p_actual_cost_cents bigint|null,
+  p_actual_cost_nano_usd bigint|null,
+  p_actual_credits bigint,
+  p_outcome text,
+  p_actual_model text|null,
+  p_provider_response_id text|null,
+  p_pricing_version text|null,
+  p_credit_policy_version text
+) -> recorded, reason, credit snapshot
 ```
 
 `consume_ai_quota` atomically checks user and IP minute limits, user daily token
 limits, anonymous-IP daily token limits and the provider monthly cost cap. It
-reserves estimated tokens/cost under a stable request key. `record_ai_usage`
-reconciles that reservation exactly once with actual provider usage. Failed or
-timed-out calls must also be reconciled; stale reservations fail closed until an
-operator-approved server job records their final outcome.
+reserves estimated tokens, provider cost and internal credits under a stable
+request key. `record_ai_usage` reconciles that reservation exactly once with the
+actual model, input/cached-input/output tokens, precise nano-USD estimate and
+versioned internal credits. Failed or timed-out calls use reported usage when
+available. If usage is unknown after a provider attempt, the reservation stays
+fail-closed until the service-only five-minute reconciliation job closes rows
+older than 15 minutes with the conservative estimate and outcome
+`reconciled_estimate`. Only a request that provably never reached the provider
+may be settled as zero usage.
 
 A repeated request key returns `allowed=false`, `reason='already_reserved'` and
 the existing reservation ID. The server must resume/replay its own stored result;
@@ -226,6 +254,14 @@ The server derives `p_user_hash` and `p_ip_hash` with HMAC-SHA-256 using a
 rotatable server secret. Plain auth IDs and IP addresses are not accepted into
 these tables. The `provider:openai` month bucket is the configurable hard stop;
 alerting should trigger before the cap in application monitoring.
+
+XPORTAL credits are a versioned internal product unit, not provider tokens,
+money or a payment balance. The current policy and provider-price registry live
+in `lib/ai/credit-policy.ts` and `lib/ai/model-pricing.ts`. Unknown actual models
+retain token usage but no invented precise cost; the provider hard-cap keeps the
+conservative preflight cents reservation. The protected read-only dashboard is
+available at `/chat/admin/ai-usage` only to a non-anonymous Supabase user with
+`app_metadata.role=admin` (or a server-configured `ADMIN_USER_IDS` entry).
 
 ## Deletion and retention
 
@@ -240,6 +276,9 @@ public.prepare_user_deletion(p_user_id uuid) -> actor_tombstone text
 It replaces user-linked audit actors with a random tombstone and records the
 preparation event without chat, identity or token content. Deleting the Auth
 user then removes owned app rows and leaves only the pseudonymous audit trace.
+Any in-flight provider reservation is conservatively closed as
+`reconciled_estimate` before identifiers are tombstoned. The foreign-key trigger
+enforces the same rule if an Auth user is deleted without the application path.
 
 `retention_policies` contains the controller-configurable defaults used by
 `run_retention_cleanup()`. Supabase Cron invokes the function daily at 02:25
@@ -248,21 +287,25 @@ UTC. Only `hard_delete` and the approved audit expiry are automated;
 affects the next run, so every production change requires the operator review
 and evidence procedure.
 
-## Supabase Studio caveat
+## Operator surfaces and Supabase Studio caveat
 
-V1 intentionally uses Studio instead of a custom admin. A Supabase project
-Developer/Administrator can have broader project visibility than the business
-task “edit freelancer profiles”. Therefore Studio access is limited to named,
-trusted internal operators with MFA, separate accounts and a written runbook.
-Do not invite external freelancers or customers into the Supabase project.
+V1 intentionally uses Studio instead of a custom profile/customer admin. The
+application admin page is limited to read-only AI usage and credit reporting.
+A Supabase project Developer/Administrator can have broader project visibility
+than the business task “edit freelancer profiles”. Therefore Studio access is
+limited to named, trusted internal operators with MFA, separate accounts and a
+written runbook. Do not invite external freelancers or customers into the
+Supabase project.
 
 ## Verification artefacts
 
 - Migration: `supabase/migrations/20260806103000_freelancer_v1.sql`
 - Security/retention hardening: `supabase/migrations/20260806130000_v1_security_hardening.sql`
 - Booking-URL scrub: `supabase/migrations/20260806133000_scrub_match_booking_urls.sql`
+- AI usage and credits: `supabase/migrations/20260810120000_ai_usage_credits.sql`
 - Synthetic seed: `supabase/seed.sql`
 - Cross-user/negative tests: `supabase/tests/database/rls_isolation.test.sql`
+- AI usage/credit tests: `supabase/tests/database/ai_credits.test.sql`
 - Query-plan evidence: `supabase/tests/database/query_plan_evidence.sql`
 - Operator procedure: `docs/operator-runbook.md`
 

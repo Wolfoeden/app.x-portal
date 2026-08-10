@@ -21,6 +21,7 @@ import {
   startOauthUpgrade,
 } from "@/lib/auth/browser";
 import {
+  type AiCreditSnapshot,
   type AvailabilityStatus,
   type ChatApiPaths,
   type ChatRequest,
@@ -96,6 +97,7 @@ interface ChatWorkspaceProps {
 const emptyAuth: AuthView = {
   authenticated: false,
   anonymous: true,
+  admin: false,
   user: null,
 };
 
@@ -116,6 +118,40 @@ function stringValue(value: unknown, fallback = ""): string {
 
 function nullableString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value : null;
+}
+
+function nonNegativeNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+function normalizeCreditSnapshot(value: unknown): AiCreditSnapshot | null {
+  const wrapper = isRecord(value) && isRecord(value.data) ? value.data : value;
+  if (!isRecord(wrapper)) return null;
+  const source = isRecord(wrapper.credits)
+    ? wrapper.credits
+    : isRecord(wrapper.creditSnapshot)
+      ? wrapper.creditSnapshot
+      : isRecord(wrapper.credit_snapshot)
+        ? wrapper.credit_snapshot
+        : wrapper;
+  const total = nonNegativeNumber(source.total ?? source.creditsTotal ?? source.credits_total);
+  const used = nonNegativeNumber(source.used ?? source.creditsUsed ?? source.credits_used);
+  const remaining = nonNegativeNumber(
+    source.remaining ?? source.creditsRemaining ?? source.credits_remaining,
+  );
+  if (total === null || used === null || remaining === null) return null;
+  const reserved = nonNegativeNumber(
+    source.reserved ?? source.creditsReserved ?? source.credits_reserved,
+  );
+
+  return {
+    total,
+    used,
+    remaining,
+    ...(reserved === null ? {} : { reserved }),
+    ...(typeof source.low === "boolean" ? { low: source.low } : {}),
+    ...(typeof source.exhausted === "boolean" ? { exhausted: source.exhausted } : {}),
+  };
 }
 
 function secureBookingUrl(value: unknown): string | null {
@@ -298,6 +334,9 @@ function normalizeChatResponse(value: unknown, fallbackTitle: string): ChatRespo
             item !== null && item.bookingUrl !== null,
         )
     : [];
+  const credits = normalizeCreditSnapshot(
+    response.credits ?? response.creditSnapshot ?? response.credit_snapshot,
+  );
 
   return {
     project: normalizeProject(response.project, fallbackTitle),
@@ -306,6 +345,7 @@ function normalizeChatResponse(value: unknown, fallbackTitle: string): ChatRespo
     matches: matches.slice(0, 3),
     mode: response.mode === "fallback" ? "fallback" : "ai",
     notice: nullableString(response.notice) ?? undefined,
+    ...(credits ? { credits } : {}),
   };
 }
 
@@ -322,22 +362,41 @@ function normalizeProjectDetail(value: unknown): ProjectDetailResponse {
     messages,
     brief: response.brief ? normalizeBrief(response.brief) : null,
     profiles: profiles.slice(0, 3),
+    ...(response.analysisMode === "ai" || response.analysisMode === "fallback"
+      ? { analysisMode: response.analysisMode }
+      : {}),
+    analysisNotice: nullableString(response.analysisNotice),
   };
 }
 
 function authViewFromClaims(data: unknown): AuthView {
   const wrapper = isRecord(data) ? data : {};
   const claims = isRecord(wrapper.claims) ? wrapper.claims : wrapper;
-  const userId = nullableString(claims.sub);
-  const anonymous = claims.is_anonymous !== false;
+  const sessionUser = isRecord(wrapper.user) ? wrapper.user : {};
+  const appMetadata = isRecord(claims.app_metadata) ? claims.app_metadata : {};
+  const metadataRoles = Array.isArray(appMetadata.roles)
+    ? appMetadata.roles
+    : [];
+  const userId = nullableString(claims.sub ?? sessionUser.id);
+  const anonymous =
+    typeof wrapper.anonymous === "boolean"
+      ? wrapper.anonymous
+      : claims.is_anonymous !== false;
   return {
-    authenticated: Boolean(userId),
+    authenticated: wrapper.authenticated === false ? false : Boolean(userId),
     anonymous,
+    admin:
+      wrapper.admin === true ||
+      claims.admin === true ||
+      appMetadata.role === "admin" ||
+      metadataRoles.includes("admin"),
     user: userId
       ? {
           id: userId,
-          displayName: nullableString(claims.name ?? claims.full_name),
-          email: nullableString(claims.email),
+          displayName: nullableString(
+            sessionUser.displayName ?? claims.name ?? claims.full_name,
+          ),
+          email: nullableString(sessionUser.email ?? claims.email),
         }
       : null,
   };
@@ -353,6 +412,19 @@ function formatRelativeDate(value: string) {
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `Vor ${hours} Std.`;
   return new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "short" }).format(date);
+}
+
+function formatCredits(value: number) {
+  return new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 }).format(value);
+}
+
+function creditIsExhausted(credits: AiCreditSnapshot) {
+  return credits.exhausted ?? credits.remaining <= 0;
+}
+
+function creditIsLow(credits: AiCreditSnapshot) {
+  if (creditIsExhausted(credits)) return false;
+  return credits.low ?? (credits.total > 0 && credits.remaining / credits.total <= 0.2);
 }
 
 function formatDateTime(value: string | null) {
@@ -478,12 +550,16 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
   const [brief, setBrief] = useState<StructuredBrief | null>(null);
   const [profiles, setProfiles] = useState<FreelancerProfileResult[]>([]);
   const [hasResult, setHasResult] = useState(false);
+  const [analysisMode, setAnalysisMode] = useState<"ai" | "fallback" | null>(null);
+  const [analysisNotice, setAnalysisNotice] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [pendingAssistant, setPendingAssistant] = useState<PendingAssistant | null>(null);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [pendingProfileId, setPendingProfileId] = useState<string | null>(null);
   const [contactOpen, setContactOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [creditsOpen, setCreditsOpen] = useState(false);
+  const [credits, setCredits] = useState<AiCreditSnapshot | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(true);
@@ -496,6 +572,8 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
 
   const selectedProfile = profiles.find((profile) => profile.id === selectedProfileId) ?? null;
   const isAccountUser = auth.authenticated && !auth.anonymous;
+  const creditsExhausted = Boolean(credits && creditIsExhausted(credits));
+  const creditsLow = Boolean(credits && creditIsLow(credits));
 
   const showToast = useCallback((message: string, tone: ToastState["tone"] = "neutral") => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -505,10 +583,49 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
 
   const refreshAuth = useCallback(async () => {
     const claims = await ensureGuestSession();
-    const view = authViewFromClaims(claims);
+    let view = authViewFromClaims(claims);
+    try {
+      const response = await fetch(apiPaths.session, {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+      if (response.ok) view = authViewFromClaims(await response.json());
+    } catch {
+      // The verified browser session remains a safe UI fallback. Protected
+      // routes independently enforce server-side authorization.
+    }
     setAuth(view);
     return view;
-  }, []);
+  }, [apiPaths.session]);
+
+  const refreshCredits = useCallback(async () => {
+    if (!apiPaths.credits) {
+      setCredits(null);
+      setCreditsOpen(false);
+      return null;
+    }
+    try {
+      const response = await fetch(apiPaths.credits, {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        if (response.status === 404 || response.status === 501) {
+          setCredits(null);
+          setCreditsOpen(false);
+        }
+        return null;
+      }
+      const snapshot = normalizeCreditSnapshot(await response.json());
+      if (snapshot) setCredits(snapshot);
+      return snapshot;
+    } catch {
+      // Credits are supplementary product information and never block the chat shell.
+      return null;
+    }
+  }, [apiPaths.credits]);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -546,6 +663,8 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
         setBrief(detail.brief);
         setProfiles(detail.profiles.slice(0, 3));
         setHasResult(Boolean(detail.brief));
+        setAnalysisMode(detail.analysisMode ?? null);
+        setAnalysisNotice(detail.analysisNotice ?? null);
         setSelectedProfileId(null);
         return detail;
       } catch (error) {
@@ -565,6 +684,8 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
     void (async () => {
       try {
         const view = await refreshAuth();
+        if (!alive) return;
+        await refreshCredits();
         if (!alive) return;
         const searchParams = new URLSearchParams(window.location.search);
         if (searchParams.get("set-password") === "1") {
@@ -608,14 +729,18 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
     })();
 
     const { data: subscription } = supabase.auth.onAuthStateChange(() => {
-      void refreshAuth().catch(() => undefined);
+      setCredits(null);
+      setCreditsOpen(false);
+      void refreshAuth()
+        .then(() => refreshCredits())
+        .catch(() => undefined);
     });
     return () => {
       alive = false;
       subscription.subscription.unsubscribe();
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     };
-  }, [loadProject, loadProjects, refreshAuth, showToast]);
+  }, [loadProject, loadProjects, refreshAuth, refreshCredits, showToast]);
 
   useEffect(() => {
     const textarea = composerRef.current;
@@ -634,6 +759,8 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
     setBrief(null);
     setProfiles([]);
     setHasResult(false);
+    setAnalysisMode(null);
+    setAnalysisNotice(null);
     setDraft("");
     setPendingAssistant(null);
     setSelectedProfileId(null);
@@ -647,6 +774,8 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
     setBrief(null);
     setProfiles([]);
     setHasResult(false);
+    setAnalysisMode(null);
+    setAnalysisNotice(null);
     setSelectedProfileId(null);
     setContactOpen(false);
     setPendingAssistant(null);
@@ -673,6 +802,8 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
       setBrief(result.brief);
       setProfiles(result.matches.slice(0, 3));
       setHasResult(true);
+      setAnalysisMode(result.mode ?? "ai");
+      setAnalysisNotice(result.mode === "fallback" ? result.notice ?? null : null);
       setSelectedProfileId((current) =>
         result.matches.some((profile) => profile.id === current) ? current : null,
       );
@@ -681,9 +812,11 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
         const withoutCurrent = current.filter((project) => project.id !== result.project.id);
         return [result.project, ...withoutCurrent];
       });
+      if (result.credits) setCredits(result.credits);
+      void refreshCredits();
       if (result.notice) showToast(result.notice);
     },
-    [showToast],
+    [refreshCredits, showToast],
   );
 
   const sendMessage = useCallback(
@@ -726,6 +859,8 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
         if (!response.ok) {
           const retryAfter = response.headers.get("Retry-After");
           if (response.status === 429) {
+            setDraft(text);
+            void refreshCredits();
             throw new Error(
               retryAfter
                 ? `Das Nutzungslimit ist erreicht. Erneut möglich in ${retryAfter} Sekunden.`
@@ -770,7 +905,14 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
         });
       }
     },
-    [activeProject, apiPaths.chat, finishChatResponse, pendingAssistant, refreshAuth],
+    [
+      activeProject,
+      apiPaths.chat,
+      finishChatResponse,
+      pendingAssistant,
+      refreshAuth,
+      refreshCredits,
+    ],
   );
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -943,6 +1085,19 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
             {!isAccountUser ? (
               <button className="login-button" type="button" onClick={() => { setAuthInitialMode("login"); setAuthOpen(true); }}>Anmelden</button>
             ) : null}
+            {credits ? (
+              <CreditMenu
+                credits={credits}
+                guest={!isAccountUser}
+                open={creditsOpen}
+                onToggle={() => {
+                  setAccountMenuOpen(false);
+                  if (!creditsOpen) void refreshCredits();
+                  setCreditsOpen((current) => !current);
+                }}
+                onClose={() => setCreditsOpen(false)}
+              />
+            ) : null}
             <div className="account-menu-wrap">
               <button
                 className="account-button"
@@ -950,7 +1105,10 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
                 aria-label="Kontomenü öffnen"
                 aria-haspopup="menu"
                 aria-expanded={accountMenuOpen}
-                onClick={() => setAccountMenuOpen((current) => !current)}
+                onClick={() => {
+                  setCreditsOpen(false);
+                  setAccountMenuOpen((current) => !current);
+                }}
               >
                 {isAccountUser ? initials(auth.user?.displayName ?? auth.user?.email ?? "Konto") : "G"}
               </button>
@@ -962,6 +1120,15 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
                   </div>
                   {isAccountUser ? (
                     <>
+                      {auth.admin && apiPaths.adminUsage ? (
+                        <button
+                          role="menuitem"
+                          type="button"
+                          onClick={() => window.location.assign(apiPaths.adminUsage!)}
+                        >
+                          AI Usage verwalten
+                        </button>
+                      ) : null}
                       <button role="menuitem" type="button" onClick={() => void exportData()} disabled={dataAction === "export"}>Daten exportieren</button>
                       <button role="menuitem" type="button" onClick={() => { setAccountMenuOpen(false); setDeleteOpen(true); }}>Daten & Konto löschen</button>
                       <div className="menu-divider" />
@@ -995,6 +1162,13 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
                     }}
                   />
                 ) : null}
+                {hasResult && analysisMode === "fallback" && !pendingAssistant ? (
+                  <p className="analysis-mode-note" role="status">
+                    <strong>Basisanalyse aktiv.</strong>{" "}
+                    {analysisNotice ??
+                      "Diese Projektübersicht wurde ohne bestätigte KI-Auswertung aus Ihren gespeicherten Angaben erstellt."}
+                  </p>
+                ) : null}
                 {hasResult && !pendingAssistant ? (
                   <ResultSection
                     brief={brief}
@@ -1023,7 +1197,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
               <button type="button" onClick={() => setContactOpen(true)}>Termin oder Kontakt</button>
             </div>
           ) : null}
-          <form className="composer" onSubmit={handleSubmit}>
+          <form className={`composer ${creditsExhausted ? "is-credit-exhausted" : ""}`} onSubmit={handleSubmit}>
             <label className="sr-only" htmlFor="chat-composer">Projekt oder Ergänzung beschreiben</label>
             <textarea
               id="chat-composer"
@@ -1037,9 +1211,23 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
             />
             <div className="composer-bottom">
               <div className="composer-hint"><span aria-hidden="true">＋</span> Details jederzeit frei ergänzen</div>
-              <button className="send-button" type="submit" disabled={!draft.trim() || Boolean(pendingAssistant)} aria-label="Nachricht senden">↑</button>
+              <button
+                className="send-button"
+                type="submit"
+                disabled={!draft.trim() || Boolean(pendingAssistant)}
+                aria-label={creditsExhausted ? "Nachricht ohne KI-Analyse senden" : "Nachricht senden"}
+              >
+                ↑
+              </button>
             </div>
           </form>
+          {credits && (creditsExhausted || creditsLow) ? (
+            <p className={`composer-credit-status ${creditsExhausted ? "is-exhausted" : ""}`} role="status">
+              {creditsExhausted
+                ? `${isAccountUser ? "Ihre AI Credits" : "Ihre Gast-Credits"} sind aufgebraucht. Sie können weiterarbeiten; neue Angaben werden ohne KI-Provider verarbeitet.`
+                : `${isAccountUser ? "Ihre AI Credits" : "Ihre Gast-Credits"} werden knapp: ${formatCredits(credits.remaining)} verfügbar.`}
+            </p>
+          ) : null}
           <p className="composer-disclosure">KI kann Fehler machen. Profile werden regelbasiert gefiltert; Sie wählen selbst. Keine Gesundheitsdaten oder vertraulichen Daten Dritter eingeben.</p>
         </div>
       </main>
@@ -1077,6 +1265,104 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
       ) : null}
 
       {toast ? <div className={`toast ${toast.tone}`} role="status" key={toast.id}>{toast.message}</div> : null}
+    </div>
+  );
+}
+
+function CreditMenu({
+  credits,
+  guest,
+  open,
+  onToggle,
+  onClose,
+}: {
+  credits: AiCreditSnapshot;
+  guest: boolean;
+  open: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+}) {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const label = guest ? "Gast-Credits" : "AI Credits";
+  const exhausted = creditIsExhausted(credits);
+  const low = creditIsLow(credits);
+  const unavailable = credits.used + (credits.reserved ?? 0);
+  const progress = credits.total > 0
+    ? Math.min(100, Math.max(0, (unavailable / credits.total) * 100))
+    : 0;
+  const popoverId = "xportal-credit-details";
+  const titleId = "xportal-credit-title";
+  const closeAndRestoreFocus = () => {
+    onClose();
+    requestAnimationFrame(() => triggerRef.current?.focus());
+  };
+
+  return (
+    <div
+      className={`credit-menu-wrap ${exhausted ? "is-exhausted" : low ? "is-low" : ""}`}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeAndRestoreFocus();
+        }
+      }}
+    >
+      <button
+        ref={triggerRef}
+        className="credit-chip"
+        type="button"
+        aria-label={`${label}: ${formatCredits(credits.remaining)} verfügbar`}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-controls={open ? popoverId : undefined}
+        onClick={onToggle}
+      >
+        <span>{label}</span>
+        <strong aria-live="polite">{formatCredits(credits.remaining)}</strong>
+      </button>
+      {open ? (
+        <div
+          className="credit-popover"
+          id={popoverId}
+          role="dialog"
+          aria-labelledby={titleId}
+        >
+          <div className="credit-popover-header">
+            <div>
+              <strong id={titleId}>XPORTAL {label}</strong>
+              <span>Ihr Kontingent für KI-Funktionen</span>
+            </div>
+            <button type="button" onClick={closeAndRestoreFocus} aria-label="Credit-Details schließen">×</button>
+          </div>
+          <div
+            className="credit-progress"
+            role="progressbar"
+            aria-label={`${formatCredits(unavailable)} von ${formatCredits(credits.total)} Credits verwendet oder reserviert`}
+            aria-valuemin={0}
+            aria-valuemax={Math.max(credits.total, 1)}
+            aria-valuenow={Math.min(unavailable, Math.max(credits.total, 1))}
+          >
+            <span style={{ width: `${progress}%` }} />
+          </div>
+          <dl className="credit-stats">
+            <div><dt>Verwendet</dt><dd>{formatCredits(credits.used)}</dd></div>
+            {(credits.reserved ?? 0) > 0 ? (
+              <div><dt>Reserviert</dt><dd>{formatCredits(credits.reserved ?? 0)}</dd></div>
+            ) : null}
+            <div><dt>Verfügbar</dt><dd>{formatCredits(credits.remaining)}</dd></div>
+            <div><dt>Gesamt</dt><dd>{formatCredits(credits.total)}</dd></div>
+          </dl>
+          <p className={`credit-status-copy ${exhausted ? "is-exhausted" : low ? "is-low" : ""}`}>
+            {exhausted
+              ? "Das KI-Kontingent ist aufgebraucht. Sie können mit der sicheren Basislogik weiterarbeiten."
+              : low
+                ? guest
+                  ? "Ihr kostenloses Gastkontingent wird knapp."
+                  : "Ihre verfügbaren AI Credits werden knapp."
+                : "AI Credits steuern die KI-Nutzung in diesem Arbeitsbereich."}
+          </p>
+        </div>
+      ) : null}
     </div>
   );
 }

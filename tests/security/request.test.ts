@@ -1,12 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   assertSameOrigin,
+  getClientIp,
   pseudonymizeIp,
   readJsonWithLimit,
 } from "@/lib/security/request";
 
 describe("request security", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
   it("rejects a cross-origin write", () => {
     const request = new Request("https://app.example/api/chat", {
       method: "POST",
@@ -42,5 +45,29 @@ describe("request security", () => {
     expect(first).toBe(second);
     expect(first).not.toContain("203.0.113.8");
     expect(first).toHaveLength(64);
+  });
+
+  it("uses only the Netlify-owned connection header on a Netlify fallback", () => {
+    vi.stubEnv("NETLIFY", "true");
+    const request = new Request("https://app.example/api/chat", {
+      headers: {
+        "x-nf-client-connection-ip": "203.0.113.9",
+        "cf-connecting-ip": "198.51.100.77",
+        "x-forwarded-for": "198.51.100.88",
+      },
+    });
+
+    expect(getClientIp(request)).toBe("203.0.113.9");
+  });
+
+  it("does not trust generic forwarding headers in another production host", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NETLIFY", "false");
+    vi.stubEnv("TRUST_PROXY_IP_HEADERS", "false");
+    const request = new Request("https://app.example/api/chat", {
+      headers: { "x-forwarded-for": "198.51.100.88" },
+    });
+
+    expect(getClientIp(request)).toBe("unknown");
   });
 });

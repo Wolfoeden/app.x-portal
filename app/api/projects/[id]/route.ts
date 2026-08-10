@@ -212,6 +212,17 @@ export async function GET(
         })),
         brief: brief.success ? presentBrief(brief.data) : null,
         profiles,
+        analysisMode:
+          project.brief_status === "ready"
+            ? "ai"
+            : project.brief_status === "manual" ||
+                project.brief_status === "failed"
+              ? "fallback"
+              : undefined,
+        analysisNotice:
+          project.brief_status === "manual" || project.brief_status === "failed"
+            ? "Diese gespeicherte Projektanalyse wurde mit der sicheren Basislogik erstellt; es liegt keine bestätigte KI-Auswertung für diesen Stand vor."
+            : undefined,
       },
       { headers: { "Cache-Control": "no-store" } },
     );

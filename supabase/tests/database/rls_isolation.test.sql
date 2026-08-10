@@ -249,7 +249,8 @@ select is(
         'user_profiles', 'projects', 'messages', 'freelancer_profiles',
         'shortlists', 'matches', 'intro_bookings', 'engagements',
         'engagement_status_events', 'audit_events', 'ai_usage_buckets',
-        'ai_usage_reservations', 'guest_claims', 'retention_policies'
+        'ai_usage_reservations', 'user_ai_credit_accounts', 'guest_claims',
+        'retention_policies'
       )
       and not c.relrowsecurity
   ),
@@ -286,6 +287,7 @@ select ok(
 select ok(
   not has_table_privilege('authenticated', 'public.ai_usage_buckets', 'SELECT')
   and not has_table_privilege('authenticated', 'public.ai_usage_reservations', 'SELECT')
+  and not has_table_privilege('authenticated', 'public.user_ai_credit_accounts', 'SELECT')
   and not has_table_privilege('authenticated', 'public.guest_claims', 'SELECT')
   and not has_table_privilege('authenticated', 'public.audit_events', 'SELECT'),
   'privileged operational tables are unavailable to authenticated clients'

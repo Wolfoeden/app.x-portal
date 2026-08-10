@@ -1,0 +1,293 @@
+.shell {
+  min-height: 100vh;
+  background: #f6f6f3;
+  color: #20201e;
+  padding: 38px clamp(24px, 5vw, 72px) 72px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 32px;
+  max-width: 1440px;
+  margin: 0 auto 28px;
+}
+
+.header h1 {
+  margin: 4px 0 8px;
+  font-size: clamp(30px, 4vw, 48px);
+  letter-spacing: -0.045em;
+}
+
+.header > div > p:last-child {
+  max-width: 650px;
+  margin: 0;
+  color: #6d6d67;
+}
+
+.eyebrow,
+.panelHeading p,
+.detail p {
+  margin: 0;
+  color: #8b8b84;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.backLink,
+.filters a,
+.panelHeading a {
+  color: #333330;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.backLink {
+  border: 1px solid #d8d8d2;
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px 14px;
+}
+
+.filters {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  max-width: 1440px;
+  margin: 0 auto 18px;
+}
+
+.filters label {
+  display: grid;
+  gap: 5px;
+  color: #777770;
+  font-size: 10px;
+}
+
+.filters input,
+.filters button {
+  min-height: 38px;
+  border: 1px solid #d8d8d2;
+  border-radius: 9px;
+  background: #fff;
+  padding: 0 11px;
+  color: #292927;
+  font: inherit;
+}
+
+.filters button {
+  cursor: pointer;
+  border-color: #2c2c29;
+  background: #2c2c29;
+  color: #fff;
+}
+
+.filters a {
+  padding: 11px 8px;
+}
+
+.notice {
+  max-width: 1440px;
+  margin: 0 auto 18px;
+  border: 1px solid #e7d39e;
+  border-radius: 10px;
+  background: #fff9e9;
+  padding: 10px 12px;
+  color: #73591f;
+  font-size: 12px;
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  max-width: 1440px;
+  margin: 0 auto 14px;
+}
+
+.kpis article,
+.panel,
+.detail {
+  border: 1px solid #dfdfda;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(29, 29, 26, 0.035);
+}
+
+.kpis article {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+}
+
+.kpis span,
+.kpis small {
+  color: #82827b;
+  font-size: 10px;
+}
+
+.kpis strong {
+  font-size: clamp(22px, 2.3vw, 31px);
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+}
+
+.panel,
+.detail {
+  max-width: 1440px;
+  margin: 0 auto 14px;
+}
+
+.panelHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 20px;
+  border-bottom: 1px solid #ecece8;
+}
+
+.panelHeading h2,
+.detail h2 {
+  margin: 3px 0 0;
+  font-size: 17px;
+}
+
+.panelHeading > span,
+.detail > div > span {
+  color: #8b8b84;
+  font-size: 10px;
+}
+
+.tableScroll {
+  overflow-x: auto;
+}
+
+.panel table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.panel th,
+.panel td {
+  padding: 12px 20px;
+  border-bottom: 1px solid #efefeb;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.panel th {
+  color: #898982;
+  background: #fbfbf9;
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.panel tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.panel tbody tr:hover,
+.selected {
+  background: #fafaf7;
+}
+
+.panel td a {
+  color: #242422;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.panel td small {
+  display: block;
+  max-width: 260px;
+  overflow: hidden;
+  margin-top: 3px;
+  color: #9a9a93;
+  font-size: 8px;
+  text-overflow: ellipsis;
+}
+
+.panel code {
+  border-radius: 5px;
+  background: #f1f1ed;
+  padding: 3px 5px;
+  font-size: 9px;
+}
+
+.status {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 4px 7px;
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.statusSuccess {
+  background: #edf5ed;
+  color: #426742;
+}
+
+.statusWarning {
+  background: #faf2dd;
+  color: #785f24;
+}
+
+.statusError {
+  background: #faece9;
+  color: #8d4138;
+}
+
+.detail {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+  padding: 20px;
+}
+
+.detail dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(110px, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.detail dl > div {
+  display: grid;
+  gap: 3px;
+}
+
+.detail dt {
+  color: #8a8a83;
+  font-size: 9px;
+}
+
+.detail dd {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 980px) {
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .detail {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .detail dl {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

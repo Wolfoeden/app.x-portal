@@ -25,6 +25,8 @@ export async function writeAuditEvent(input: {
   outcome: "success" | "denied" | "failed";
   traceId?: string;
   metadata?: Record<string, string | number | boolean | null>;
+  /** Use only for sensitive reads that must not proceed without a DB audit. */
+  required?: boolean;
 }): Promise<string> {
   const traceId = input.traceId ?? randomUUID();
   const metadata = redactedMetadata(input.metadata ?? {});
@@ -36,6 +38,7 @@ export async function writeAuditEvent(input: {
       targetType: input.targetType,
       outcome: input.outcome,
     });
+    if (input.required) throw new Error("required_audit_not_configured");
     return traceId;
   }
 
@@ -53,6 +56,7 @@ export async function writeAuditEvent(input: {
 
   if (error) {
     logEvent("audit_write_failed", { traceId, action: input.action });
+    if (input.required) throw new Error("required_audit_write_failed");
   }
   return traceId;
 }

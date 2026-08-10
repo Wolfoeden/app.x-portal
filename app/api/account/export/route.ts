@@ -28,6 +28,8 @@ export async function GET() {
       introductions,
       engagements,
       engagementStatusEvents,
+      creditAccount,
+      aiUsage,
       auditEvents,
     ] = await Promise.all([
         admin.from("user_profiles").select("*").eq("id", user.id).maybeSingle(),
@@ -38,6 +40,20 @@ export async function GET() {
         owned("intro_bookings"),
         owned("engagements"),
         owned("engagement_status_events"),
+        admin
+          .from("user_ai_credit_accounts")
+          .select(
+            "is_anonymous,credits_total,credits_used,credits_reserved,created_at,updated_at",
+          )
+          .eq("user_id", user.id)
+          .maybeSingle(),
+        admin
+          .from("ai_usage_events")
+          .select(
+            "interaction_id,provider_response_id,requested_model,actual_model,purpose,input_tokens,cached_input_tokens,output_tokens,total_tokens,estimated_cost_nano_usd,actual_cost_nano_usd,credits_consumed,pricing_version,credit_policy_version,outcome,reserved_at,settled_at",
+          )
+          .eq("user_id", user.id)
+          .order("settled_at", { ascending: true }),
         admin
           .from("audit_events")
           .select(
@@ -54,6 +70,8 @@ export async function GET() {
       introductions,
       engagements,
       engagementStatusEvents,
+      creditAccount,
+      aiUsage,
       auditEvents,
     ].find((result) => result.error);
     if (failed?.error) throw failed.error;
@@ -68,7 +86,7 @@ export async function GET() {
 
     return NextResponse.json(
       {
-        formatVersion: 1,
+        formatVersion: 2,
         generatedAt: new Date().toISOString(),
         user: { id: user.id, email: user.email },
         userProfile: userProfile.data ?? null,
@@ -79,6 +97,8 @@ export async function GET() {
         introductions: introductions.data ?? [],
         engagements: engagements.data ?? [],
         engagementStatusEvents: engagementStatusEvents.data ?? [],
+        aiCredits: creditAccount.data ?? null,
+        aiUsage: aiUsage.data ?? [],
         auditEvents: auditEvents.data ?? [],
       },
       {
