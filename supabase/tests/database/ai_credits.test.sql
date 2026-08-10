@@ -43,6 +43,34 @@ insert into auth.users (
 
 set local role service_role;
 
+select ok(
+  coalesce(
+    (
+      select p.prosecdef
+        and pg_get_userbyid(p.proowner) = 'postgres'
+      from pg_proc p
+      where p.oid =
+        'public.get_ai_credit_snapshot(uuid,boolean,bigint)'::regprocedure
+    ),
+    false
+  ),
+  'credit snapshot RPC is SECURITY DEFINER and owned by trusted postgres role'
+);
+
+select ok(
+  coalesce(
+    (
+      select p.prosecdef
+        and pg_get_userbyid(p.proowner) = 'postgres'
+      from pg_proc p
+      where p.oid =
+        'public.consume_ai_quota(text,text,text,boolean,integer,bigint,bigint,bigint,bigint,uuid,uuid,text,text,bigint,bigint,bigint,text,text)'::regprocedure
+    ),
+    false
+  ),
+  'extended quota RPC is SECURITY DEFINER and owned by trusted postgres role'
+);
+
 select is(
   (
     select s.credits_total::text || ':' || s.credits_remaining
@@ -715,6 +743,26 @@ select ok(
   )
   and not has_function_privilege(
     'authenticated',
+    'public.consume_ai_quota(text,text,text,boolean,integer,bigint,bigint,bigint,bigint,uuid,uuid,text,text,bigint,bigint,bigint,text,text)',
+    'EXECUTE'
+  )
+  and not has_function_privilege(
+    'anon',
+    'public.get_ai_credit_snapshot(uuid,boolean,bigint)',
+    'EXECUTE'
+  )
+  and not has_function_privilege(
+    'anon',
+    'public.consume_ai_quota(text,text,text,boolean,integer,bigint,bigint,bigint,bigint,uuid,uuid,text,text,bigint,bigint,bigint,text,text)',
+    'EXECUTE'
+  )
+  and has_function_privilege(
+    'service_role',
+    'public.get_ai_credit_snapshot(uuid,boolean,bigint)',
+    'EXECUTE'
+  )
+  and has_function_privilege(
+    'service_role',
     'public.consume_ai_quota(text,text,text,boolean,integer,bigint,bigint,bigint,bigint,uuid,uuid,text,text,bigint,bigint,bigint,text,text)',
     'EXECUTE'
   )
