@@ -14,6 +14,13 @@ $productionUrl = "https://x-portal.eu"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 Set-Location $repoRoot
 
+foreach ($proxyName in @("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY")) {
+  $proxyValue = [Environment]::GetEnvironmentVariable($proxyName)
+  if ($proxyValue -match '^https?://127\.0\.0\.1:9/?$') {
+    [Environment]::SetEnvironmentVariable($proxyName, $null)
+  }
+}
+
 function Invoke-Checked {
   param([string]$Command, [string[]]$Arguments)
   & $Command @Arguments
@@ -22,8 +29,12 @@ function Invoke-Checked {
   }
 }
 
-$login = (& gh api user --jq .login).Trim()
-if ($LASTEXITCODE -ne 0 -or $login -cne $expectedLogin) {
+$loginResult = & gh api user --jq .login
+if ($LASTEXITCODE -ne 0) {
+  throw "Release refused: GitHub CLI authentication is unavailable."
+}
+$login = "$loginResult".Trim()
+if ($login -cne $expectedLogin) {
   throw "Release refused: GitHub login must be exactly '$expectedLogin' (current: '$login')."
 }
 
