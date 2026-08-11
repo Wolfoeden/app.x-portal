@@ -87,8 +87,14 @@ if ($remoteMain -ne $sha) {
 $deadline = (Get-Date).AddSeconds($NetlifyTimeoutSeconds)
 $netlifyUrl = $null
 do {
-  $checks = @(gh api "repos/Wolfoeden/app.x-portal/commits/$sha/check-runs" --jq '.check_runs[] | select(.app.slug == "netlify") | [.status, (.conclusion // ""), .details_url] | @tsv' 2>$null)
-  $statuses = @(gh api "repos/Wolfoeden/app.x-portal/commits/$sha/status" --jq '.statuses[] | select(.context | test("netlify"; "i")) | [.state, .target_url] | @tsv' 2>$null)
+  $checkData = ((gh api "repos/Wolfoeden/app.x-portal/commits/$sha/check-runs" 2>$null) -join "`n") | ConvertFrom-Json
+  $statusData = ((gh api "repos/Wolfoeden/app.x-portal/commits/$sha/status" 2>$null) -join "`n") | ConvertFrom-Json
+  $checks = @($checkData.check_runs | Where-Object { $_.app.slug -eq "netlify" } | ForEach-Object {
+    "$($_.status)`t$($_.conclusion)`t$($_.details_url)"
+  })
+  $statuses = @($statusData.statuses | Where-Object { $_.context -match "netlify" } | ForEach-Object {
+    "$($_.state)`t$($_.target_url)"
+  })
   $failed = @($checks + $statuses) | Where-Object { $_ -match '^(completed\s+(failure|cancelled|timed_out)|failure\s)' }
   if (@($failed).Count -gt 0) {
     throw "Netlify deployment failed: $($failed -join '; ')"
