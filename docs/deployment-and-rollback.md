@@ -1,36 +1,5 @@
 # Deployment and rollback runbook
 
-## Current XPORTAL web release path
-
-The production site is `app-x-portal-chat` on Netlify (site ID
-`a269db81-61d6-4f3b-95a1-01097bf8d256`). Its only source repository is
-`https://github.com/Wolfoeden/app.x-portal.git`; `main` is the production
-branch. The Netlify GitHub App may be granted access to additional repositories
-later, but a release from this project must still pass the exact account and
-remote checks in `scripts/release-main.ps1`.
-
-One-time configuration:
-
-1. Authorize the Netlify GitHub App for `Wolfoeden/app.x-portal`.
-2. Link the existing Netlify site to that repository and production branch
-   `main`.
-3. Keep `pnpm build`, publish directory `.next`, Node `22.14.0` and pnpm
-   `11.16.0` in `netlify.toml`.
-4. Store all provider secrets in Netlify environment variables, never in Git.
-
-Normal release:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-main.ps1
-```
-
-The script fails closed unless GitHub is authenticated exactly as `Wolfoeden`,
-the remote is exact, the worktree is clean and the quality checks pass. It
-pushes the current commit to `main`, waits for the Netlify GitHub check for the
-same commit, and smokes `/home`, `/chat` and `/api/health`. Use
-`-SkipQualityChecks` only when the exact commit has already passed the complete
-check suite in the same release run.
-
 ## Environments
 
 Use separate Supabase projects and separate secrets for staging and production.
