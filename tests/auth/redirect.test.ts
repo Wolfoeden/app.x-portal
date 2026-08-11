@@ -3,12 +3,22 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   applicationDestination,
   applicationOrigin,
+  safeApplicationPath,
 } from "@/lib/auth/redirect";
 
 const originalSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
 afterEach(() => {
   process.env.NEXT_PUBLIC_SITE_URL = originalSiteUrl;
+});
+
+describe("safeApplicationPath", () => {
+  it("preserves the recovery destination without permitting another origin", () => {
+    expect(safeApplicationPath("/chat?set-password=1")).toBe(
+      "/chat?set-password=1",
+    );
+    expect(safeApplicationPath("/%5Cevil.example")).toBe("/chat");
+  });
 });
 
 describe("applicationOrigin", () => {

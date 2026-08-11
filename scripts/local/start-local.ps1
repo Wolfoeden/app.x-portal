@@ -111,17 +111,13 @@ if (-not $SkipBuild) {
   }
 }
 
-$standalonePath = Join-Path $repoPath '.next\standalone'
-$serverPath = Join-Path $standalonePath 'server.js'
-$staticSource = Join-Path $repoPath '.next\static'
-$staticTarget = Join-Path $standalonePath '.next\static'
-if (-not (Test-Path -LiteralPath $serverPath -PathType Leaf)) {
+$nextCliPath = Join-Path $repoPath 'node_modules\next\dist\bin\next'
+$buildIdPath = Join-Path $repoPath '.next\BUILD_ID'
+if (
+  -not (Test-Path -LiteralPath $nextCliPath -PathType Leaf) -or
+  -not (Test-Path -LiteralPath $buildIdPath -PathType Leaf)
+) {
   throw 'No production build exists. Run without -SkipBuild first.'
-}
-
-if (Test-Path -LiteralPath $staticSource -PathType Container) {
-  New-Item -ItemType Directory -Path $staticTarget -Force | Out-Null
-  Copy-Item -Path (Join-Path $staticSource '*') -Destination $staticTarget -Recurse -Force
 }
 
 $environmentFile = Join-Path $repoPath '.env.local'
@@ -147,11 +143,11 @@ if (Test-Path -LiteralPath $environmentFile -PathType Leaf) {
 New-Item -ItemType Directory -Path $logPath -Force | Out-Null
 $env:PORT = [string]$Port
 $env:HOSTNAME = '0.0.0.0'
-$quotedServerPath = '"' + $serverPath + '"'
+$quotedNextCliPath = '"' + $nextCliPath + '"'
 $serverProcess = Start-Process `
   -FilePath $nodePath `
-  -ArgumentList @($quotedServerPath) `
-  -WorkingDirectory $standalonePath `
+  -ArgumentList @($quotedNextCliPath, 'start', '--hostname', '0.0.0.0', '--port', [string]$Port) `
+  -WorkingDirectory $repoPath `
   -RedirectStandardOutput $standardLog `
   -RedirectStandardError $errorLog `
   -WindowStyle Hidden `

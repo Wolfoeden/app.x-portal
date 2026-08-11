@@ -9,6 +9,8 @@ const auth = {
   signInWithPassword: vi.fn(),
   updateUser: vi.fn(),
   resetPasswordForEmail: vi.fn(),
+  setSession: vi.fn(),
+  exchangeCodeForSession: vi.fn(),
   signOut: vi.fn(),
 };
 
@@ -17,6 +19,7 @@ vi.mock("@/lib/supabase/browser", () => ({
 }));
 
 import {
+  completeEmailAuthSession,
   registerEmailAccount,
   requestPasswordRecovery,
   startOauthUpgrade,
@@ -36,12 +39,30 @@ describe("browser authentication journeys", () => {
     auth.signInWithOAuth.mockResolvedValue({ data: {}, error: null });
     auth.signUp.mockResolvedValue({ data: { session: null, user: {} }, error: null });
     auth.resetPasswordForEmail.mockResolvedValue({ data: {}, error: null });
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ prepared: true }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
+    auth.setSession.mockResolvedValue({ data: { session: {} }, error: null });
+    auth.exchangeCodeForSession.mockResolvedValue({
+      data: { session: {} },
+      error: null,
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request, init?: RequestInit) => {
+        if (String(input) === "/api/auth/email-state" && init?.method === "POST") {
+          return Promise.resolve(
+            new Response(JSON.stringify({ state: "email-state" }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            }),
+          );
+        }
+        return Promise.resolve(
+          new Response(JSON.stringify({ prepared: true }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        );
       }),
-    ));
+    );
   });
 
   afterEach(() => {
@@ -95,7 +116,7 @@ describe("browser authentication journeys", () => {
       email: "user@example.com",
       password: "secure-password",
       options: {
-        emailRedirectTo: "https://x-portal.eu/auth/callback?next=%2Fchat",
+        emailRedirectTo: "https://x-portal.eu/auth/complete?next=%2Fchat&state=email-state",
       },
     });
   });
@@ -104,6 +125,7 @@ describe("browser authentication journeys", () => {
     auth.signUp.mockResolvedValueOnce({ data: { session: {}, user: {} }, error: null });
     vi.mocked(fetch)
       .mockResolvedValueOnce(new Response(JSON.stringify({ prepared: true }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ state: "email-state" }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ claimed: true }), { status: 200 }));
 
     await expect(registerEmailAccount("user@example.com", "secure-password")).resolves.toEqual({
@@ -118,8 +140,90 @@ describe("browser authentication journeys", () => {
     expect(auth.resetPasswordForEmail).toHaveBeenCalledWith(
       "user@example.com",
       {
-        redirectTo: "https://x-portal.eu/auth/callback?next=%2Fchat%3Fset-password%3D1",
+        redirectTo: "https://x-portal.eu/auth/complete?next=%2Fchat%3Fset-password%3D1&state=email-state",
       },
     );
+  });
+
+  it("completes a default Supabase email link from fragment session tokens", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ verified: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ claimed: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+    await expect(
+      completeEmailAuthSession({
+        accessToken: "access-token",
+        code: null,
+        refreshToken: "refresh-token",
+        state: "email-state",
+      }),
+    ).resolves.toEqual({ claimWarning: false });
+
+    expect(auth.setSession).toHaveBeenCalledWith({
+      access_token: "access-token",
+      refresh_token: "refresh-token",
+    });
+    expect(auth.exchangeCodeForSession).not.toHaveBeenCalled();
+  });
+
+  it("also completes PKCE email links when Supabase returns a code", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ verified: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ claimed: false, reason: "claim_cookie_missing" }),
+          {
+            status: 409,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      );
+
+    await expect(
+      completeEmailAuthSession({
+        accessToken: null,
+        code: "pkce-code",
+        refreshToken: null,
+        state: "email-state",
+      }),
+    ).resolves.toEqual({ claimWarning: false });
+
+    expect(auth.exchangeCodeForSession).toHaveBeenCalledWith("pkce-code");
+  });
+
+  it("rejects an unbound email link before creating a session", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ verified: false }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await expect(
+      completeEmailAuthSession({
+        accessToken: "attacker-access",
+        code: null,
+        refreshToken: "attacker-refresh",
+        state: "foreign-state",
+      }),
+    ).rejects.toThrow("invalid or expired");
+
+    expect(auth.setSession).not.toHaveBeenCalled();
+    expect(auth.exchangeCodeForSession).not.toHaveBeenCalled();
   });
 });

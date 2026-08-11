@@ -3213,6 +3213,52 @@ dd.is-unknown,
 .cookie-options strong { display: block; margin-top: 22px; font-size: 18px; }
 .cookie-options p { margin: 8px 0 0; color: #999994; font-size: 11px; }
 
+/* Authentication completion ------------------------------------------------ */
+
+.auth-completion-page {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #f7f7f5;
+  color: #111;
+}
+.auth-completion-card {
+  width: min(100%, 440px);
+  padding: 42px;
+  border: 1px solid #d9d9d4;
+  border-radius: 22px;
+  background: white;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .08);
+  text-align: center;
+}
+.auth-completion-mark {
+  width: 42px;
+  height: 42px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #111;
+  color: white;
+  font-weight: 720;
+}
+.auth-completion-kicker {
+  margin: 22px 0 10px;
+  color: #777;
+  font: 10px ui-monospace, monospace;
+  letter-spacing: .14em;
+}
+.auth-completion-card h1 {
+  margin: 0;
+  font-size: 28px;
+  letter-spacing: -.035em;
+}
+.auth-completion-card > p:last-child {
+  margin: 14px 0 0;
+  color: #666;
+  line-height: 1.55;
+}
+
 /* Public legal pages -------------------------------------------------------- */
 
 .xlegal { min-height: 100svh; background: #f1f1ec; color: #090909; }

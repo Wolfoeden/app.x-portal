@@ -10,6 +10,7 @@ import { applicationDestination } from "@/lib/auth/redirect";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const allowedTypes = new Set<EmailOtpType>([
+  "email",
   "email_change",
   "signup",
   "magiclink",

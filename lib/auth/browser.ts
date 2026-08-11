@@ -104,16 +104,64 @@ export async function startOauthUpgrade(
   if (error) throw error;
 }
 
+async function attemptPreparedGuestWorkspaceClaim() {
+  const response = await fetch(appPath("/api/auth/claim"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | { claimed?: boolean; reason?: string }
+    | null;
+
+  if (response.ok && payload?.claimed === true) return "claimed" as const;
+  if (response.status === 409 && payload?.reason === "claim_cookie_missing") {
+    return "not_prepared" as const;
+  }
+  return "failed" as const;
+}
+
+async function prepareEmailAuthState() {
+  const response = await fetch(appPath("/api/auth/email-state"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | { state?: string }
+    | null;
+  if (!response.ok || !payload?.state) {
+    throw new Error("The email authentication flow could not be prepared.");
+  }
+  return payload.state;
+}
+
+async function consumeEmailAuthState(state: string | null) {
+  if (!state) throw new Error("The email authentication state is missing.");
+  const response = await fetch(appPath("/api/auth/email-state"), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ state }),
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | { verified?: boolean }
+    | null;
+  if (!response.ok || payload?.verified !== true) {
+    throw new Error("The email authentication state is invalid or expired.");
+  }
+}
+
 export async function registerEmailAccount(email: string, password: string) {
   const supabase = getBrowserSupabaseClient();
   await ensureGuestSession();
   await prepareGuestClaim();
   const destination = appPath("/chat");
+  const state = await prepareEmailAuthState();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: `${siteUrl()}${appPath("/auth/callback")}?next=${encodeURIComponent(destination)}`,
+      emailRedirectTo: `${siteUrl()}${appPath("/auth/complete")}?next=${encodeURIComponent(destination)}&state=${encodeURIComponent(state)}`,
     },
   });
   if (error) throw error;
@@ -147,10 +195,43 @@ export async function requestPasswordRecovery(email: string) {
   await ensureGuestSession();
   await prepareGuestClaim();
   const destination = `${appPath("/chat")}?set-password=1`;
+  const state = await prepareEmailAuthState();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${siteUrl()}${appPath("/auth/callback")}?next=${encodeURIComponent(destination)}`,
+    redirectTo: `${siteUrl()}${appPath("/auth/complete")}?next=${encodeURIComponent(destination)}&state=${encodeURIComponent(state)}`,
   });
   if (error) throw error;
+}
+
+export async function completeEmailAuthSession({
+  accessToken,
+  code,
+  refreshToken,
+  state,
+}: {
+  accessToken: string | null;
+  code: string | null;
+  refreshToken: string | null;
+  state: string | null;
+}) {
+  const supabase = getBrowserSupabaseClient();
+
+  await consumeEmailAuthState(state);
+
+  if (accessToken && refreshToken) {
+    const { error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    if (error) throw error;
+  } else if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) throw error;
+  } else {
+    throw new Error("The email authentication link is incomplete.");
+  }
+
+  const claimStatus = await attemptPreparedGuestWorkspaceClaim();
+  return { claimWarning: claimStatus === "failed" } as const;
 }
 
 export async function signOut() {
