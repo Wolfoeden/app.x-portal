@@ -25,7 +25,7 @@ export async function ensureGuestSession() {
   const { error } = await supabase.auth.signInAnonymously();
   if (error) {
     throw new Error(
-      "Der Gastmodus ist noch nicht verfügbar. Bitte versuchen Sie es später erneut.",
+      "Der temporäre Zugang ist noch nicht verfügbar. Bitte versuchen Sie es später erneut.",
       { cause: error },
     );
   }
@@ -33,7 +33,7 @@ export async function ensureGuestSession() {
   const { data, error: claimsError } = await supabase.auth.getClaims();
   if (claimsError || !data?.claims?.sub) {
     throw new Error(
-      "Der Gastmodus konnte nicht sicher gestartet werden. Bitte versuchen Sie es später erneut.",
+      "Der temporäre Zugang konnte nicht sicher gestartet werden. Bitte versuchen Sie es später erneut.",
       { cause: claimsError },
     );
   }
@@ -80,34 +80,46 @@ export async function startOauthUpgrade(
   const provider = supportedOauthProviders[providerName];
   const destination = appPath("/chat");
   const redirectTo = `${siteUrl()}${appPath("/auth/callback")}?next=${encodeURIComponent(destination)}`;
+  const options = {
+    redirectTo,
+    ...(providerName === "microsoft" ? { scopes: "email" } : {}),
+  };
 
   if (claims.is_anonymous === true) {
     const { error } = await supabase.auth.linkIdentity({
       provider,
-      options: { redirectTo },
+      options,
     });
     if (!error) return;
   }
 
   const { error } = await supabase.auth.signInWithOAuth({
     provider,
-    options: { redirectTo },
+    options,
   });
   if (error) throw error;
 }
 
-export async function beginEmailUpgrade(email: string) {
+export async function registerEmailAccount(email: string, password: string) {
   const supabase = getBrowserSupabaseClient();
   await ensureGuestSession();
   await prepareGuestClaim();
-  const destination = `${appPath("/chat")}?set-password=1`;
-  const { error } = await supabase.auth.updateUser(
-    { email },
-    {
-      emailRedirectTo: `${siteUrl()}${appPath("/auth/confirm")}?next=${encodeURIComponent(destination)}`,
+  const destination = appPath("/chat");
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${siteUrl()}${appPath("/auth/callback")}?next=${encodeURIComponent(destination)}`,
     },
-  );
+  });
   if (error) throw error;
+
+  if (data.session) {
+    await claimPreparedGuestWorkspace();
+    return { confirmationRequired: false } as const;
+  }
+
+  return { confirmationRequired: true } as const;
 }
 
 export async function signInExistingAccount(email: string, password: string) {
@@ -123,6 +135,17 @@ export async function signInExistingAccount(email: string, password: string) {
 export async function setAccountPassword(password: string) {
   const supabase = getBrowserSupabaseClient();
   const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw error;
+}
+
+export async function requestPasswordRecovery(email: string) {
+  const supabase = getBrowserSupabaseClient();
+  await ensureGuestSession();
+  await prepareGuestClaim();
+  const destination = `${appPath("/chat")}?set-password=1`;
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${siteUrl()}${appPath("/auth/callback")}?next=${encodeURIComponent(destination)}`,
+  });
   if (error) throw error;
 }
 

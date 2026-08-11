@@ -115,7 +115,7 @@ function fallbackNotice(
   }
   if (reason === "insufficient_credits") {
     return isAnonymous
-      ? "Ihre Gast-Credits reichen für diese KI-Analyse nicht mehr aus. Die Anfrage wurde gespeichert; nach der Anmeldung können Sie mit dem Account-Kontingent fortfahren."
+      ? "Ihr kostenloses KI-Kontingent reicht für diese Analyse nicht mehr aus. Die Anfrage wurde gespeichert; nach der Anmeldung können Sie mit dem Account-Kontingent fortfahren."
       : "Ihre AI Credits reichen für diese KI-Analyse nicht aus. Die Anfrage wurde gespeichert und mit der sicheren Basislogik verarbeitet.";
   }
   if (

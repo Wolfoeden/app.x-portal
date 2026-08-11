@@ -12,9 +12,10 @@ import {
 } from "react";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 import {
-  beginEmailUpgrade,
   claimPreparedGuestWorkspace,
   ensureGuestSession,
+  registerEmailAccount,
+  requestPasswordRecovery,
   setAccountPassword,
   signInExistingAccount,
   signOut as signOutAccount,
@@ -40,6 +41,8 @@ import {
 
 const CONTACT_PHONE = process.env.NEXT_PUBLIC_CONTACT_PHONE ?? "+491758934338";
 const CONTACT_PHONE_LABEL = "+49 175 8934338";
+const GOOGLE_AUTH_ENABLED = process.env.NEXT_PUBLIC_AUTH_GOOGLE_ENABLED === "true";
+const MICROSOFT_AUTH_ENABLED = process.env.NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED === "true";
 
 const suggestions = [
   {
@@ -75,6 +78,7 @@ const suggestions = [
 type Suggestion = (typeof suggestions)[number];
 
 type AuthView = SessionResponse;
+type AuthDialogMode = "login" | "register" | "recover" | "set-password";
 
 type ToastState = {
   id: number;
@@ -541,9 +545,8 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
     [apiOverrides],
   );
   const [auth, setAuth] = useState<AuthView>(emptyAuth);
-  const [authReady, setAuthReady] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
-  const [authInitialMode, setAuthInitialMode] = useState<"login" | "register" | "set-password">("login");
+  const [authInitialMode, setAuthInitialMode] = useState<AuthDialogMode>("login");
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
   const [activeProject, setActiveProject] = useState<ProjectListItem | null>(null);
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
@@ -558,7 +561,6 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
   const [pendingProfileId, setPendingProfileId] = useState<string | null>(null);
   const [contactOpen, setContactOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [creditsOpen, setCreditsOpen] = useState(false);
   const [credits, setCredits] = useState<AiCreditSnapshot | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -602,7 +604,6 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
   const refreshCredits = useCallback(async () => {
     if (!apiPaths.credits) {
       setCredits(null);
-      setCreditsOpen(false);
       return null;
     }
     try {
@@ -614,7 +615,6 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
       if (!response.ok) {
         if (response.status === 404 || response.status === 501) {
           setCredits(null);
-          setCreditsOpen(false);
         }
         return null;
       }
@@ -688,6 +688,20 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
         await refreshCredits();
         if (!alive) return;
         const searchParams = new URLSearchParams(window.location.search);
+        const authError = searchParams.get("auth_error");
+        if (authError) {
+          showToast(
+            authError === "exchange_failed" || authError === "confirmation_failed"
+              ? "Der Anmeldelink ist ungültig oder abgelaufen. Bitte starten Sie die Anmeldung erneut."
+              : "Die Anmeldung konnte nicht abgeschlossen werden. Bitte versuchen Sie es erneut.",
+            "error",
+          );
+          searchParams.delete("auth_error");
+          const cleanUrl = `${window.location.pathname}${
+            searchParams.size ? `?${searchParams.toString()}` : ""
+          }${window.location.hash}`;
+          window.history.replaceState({}, "", cleanUrl);
+        }
         if (searchParams.get("set-password") === "1") {
           setAuthInitialMode("set-password");
           setAuthOpen(true);
@@ -722,15 +736,12 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
           }
         }
       } catch {
-        if (alive) showToast("Der Gastmodus konnte nicht gestartet werden. Bitte neu laden.", "error");
-      } finally {
-        if (alive) setAuthReady(true);
+        if (alive) showToast("Der temporäre Zugang konnte nicht gestartet werden. Bitte neu laden.", "error");
       }
     })();
 
     const { data: subscription } = supabase.auth.onAuthStateChange(() => {
       setCredits(null);
-      setCreditsOpen(false);
       void refreshAuth()
         .then(() => refreshCredits())
         .catch(() => undefined);
@@ -1056,12 +1067,55 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
         </nav>
 
         <div className="sidebar-footer">
-          <div className="privacy-note">
-            <span className="privacy-icon" aria-hidden="true">✓</span>
-            <div>
-              <strong>Privater Arbeitsbereich</strong>
-              <span>Ihre Projekte bleiben Ihrem Zugang zugeordnet.</span>
-            </div>
+          <div className="account-menu-wrap sidebar-account-menu-wrap">
+            {accountMenuOpen ? (
+              <div className="account-popover sidebar-account-popover" role="dialog" aria-label="Konto und Einstellungen">
+                <div className="account-identity">
+                  <strong>{isAccountUser ? auth.user?.displayName ?? "Ihr Konto" : "Ohne Konto"}</strong>
+                  <span>{isAccountUser ? auth.user?.email ?? "Angemeldet" : "Aktuelle Anfrage bleibt in diesem Browser verfügbar"}</span>
+                </div>
+                {credits ? <CreditUsage credits={credits} guest={!isAccountUser} /> : null}
+                {isAccountUser ? (
+                  <>
+                    {auth.admin && apiPaths.adminUsage ? (
+                      <button
+                        type="button"
+                        onClick={() => window.location.assign(apiPaths.adminUsage!)}
+                      >
+                        Geschütztes AI-Usage-Dashboard
+                      </button>
+                    ) : null}
+                    <button type="button" onClick={() => void exportData()} disabled={dataAction === "export"}>Daten exportieren</button>
+                    <button type="button" onClick={() => { setAccountMenuOpen(false); setDeleteOpen(true); }}>Daten & Konto löschen</button>
+                    <div className="menu-divider" />
+                    <button type="button" onClick={() => void signOut()}>Abmelden</button>
+                  </>
+                ) : (
+                  <button type="button" onClick={() => { setAccountMenuOpen(false); setSidebarOpen(false); setAuthInitialMode("login"); setAuthOpen(true); }}>Anmelden oder Konto erstellen</button>
+                )}
+                <p className="account-privacy-note">Projekte werden nur Ihrem aktuellen Zugang zugeordnet.</p>
+              </div>
+            ) : null}
+            <button
+              className="sidebar-account-button"
+              type="button"
+              aria-label={isAccountUser ? "Konto und Einstellungen öffnen" : "Anmelden oder Konto erstellen"}
+              aria-haspopup="dialog"
+              aria-expanded={accountMenuOpen}
+              onClick={() => {
+                if (!accountMenuOpen) void refreshCredits();
+                setAccountMenuOpen((current) => !current);
+              }}
+            >
+              <span className="sidebar-account-avatar" aria-hidden="true">
+                {isAccountUser ? initials(auth.user?.displayName ?? auth.user?.email ?? "Konto") : "G"}
+              </span>
+              <span className="sidebar-account-copy">
+                <strong>{isAccountUser ? auth.user?.displayName ?? auth.user?.email ?? "Ihr Konto" : "Anmelden"}</strong>
+                <span>{isAccountUser ? auth.user?.email ?? "Konto verwalten" : "Projekte dauerhaft speichern"}</span>
+              </span>
+              <span className="sidebar-account-more" aria-hidden="true">•••</span>
+            </button>
           </div>
         </div>
       </aside>
@@ -1078,68 +1132,6 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
             </div>
           </div>
           <div className="topbar-actions">
-            <div className="guest-state" aria-label={isAccountUser ? "Angemeldetes Konto" : "Gastmodus aktiv"}>
-              <span className={`status-dot ${authReady && auth.authenticated ? "is-ready" : ""}`} aria-hidden="true" />
-              <span>{isAccountUser ? "Gespeichert" : "Gastmodus"}</span>
-            </div>
-            {!isAccountUser ? (
-              <button className="login-button" type="button" onClick={() => { setAuthInitialMode("login"); setAuthOpen(true); }}>Anmelden</button>
-            ) : null}
-            {credits ? (
-              <CreditMenu
-                credits={credits}
-                guest={!isAccountUser}
-                open={creditsOpen}
-                onToggle={() => {
-                  setAccountMenuOpen(false);
-                  if (!creditsOpen) void refreshCredits();
-                  setCreditsOpen((current) => !current);
-                }}
-                onClose={() => setCreditsOpen(false)}
-              />
-            ) : null}
-            <div className="account-menu-wrap">
-              <button
-                className="account-button"
-                type="button"
-                aria-label="Kontomenü öffnen"
-                aria-haspopup="menu"
-                aria-expanded={accountMenuOpen}
-                onClick={() => {
-                  setCreditsOpen(false);
-                  setAccountMenuOpen((current) => !current);
-                }}
-              >
-                {isAccountUser ? initials(auth.user?.displayName ?? auth.user?.email ?? "Konto") : "G"}
-              </button>
-              {accountMenuOpen ? (
-                <div className="account-popover" role="menu">
-                  <div className="account-identity">
-                    <strong>{isAccountUser ? auth.user?.displayName ?? "Ihr Konto" : "Gastzugang"}</strong>
-                    <span>{isAccountUser ? auth.user?.email ?? "Angemeldet" : "Ohne Registrierung nutzbar"}</span>
-                  </div>
-                  {isAccountUser ? (
-                    <>
-                      {auth.admin && apiPaths.adminUsage ? (
-                        <button
-                          role="menuitem"
-                          type="button"
-                          onClick={() => window.location.assign(apiPaths.adminUsage!)}
-                        >
-                          AI Usage verwalten
-                        </button>
-                      ) : null}
-                      <button role="menuitem" type="button" onClick={() => void exportData()} disabled={dataAction === "export"}>Daten exportieren</button>
-                      <button role="menuitem" type="button" onClick={() => { setAccountMenuOpen(false); setDeleteOpen(true); }}>Daten & Konto löschen</button>
-                      <div className="menu-divider" />
-                      <button role="menuitem" type="button" onClick={() => void signOut()}>Abmelden</button>
-                    </>
-                  ) : (
-                    <button role="menuitem" type="button" onClick={() => { setAccountMenuOpen(false); setAuthInitialMode("login"); setAuthOpen(true); }}>Anmelden und fortfahren</button>
-                  )}
-                </div>
-              ) : null}
-            </div>
             <button className="icon-button details-toggle" type="button" onClick={() => setDetailsOpen((current) => !current)} aria-label={detailsOpen ? "Projektübersicht ausblenden" : "Projektübersicht einblenden"} aria-pressed={detailsOpen}>▥</button>
           </div>
         </header>
@@ -1224,8 +1216,8 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
           {credits && (creditsExhausted || creditsLow) ? (
             <p className={`composer-credit-status ${creditsExhausted ? "is-exhausted" : ""}`} role="status">
               {creditsExhausted
-                ? `${isAccountUser ? "Ihre AI Credits" : "Ihre Gast-Credits"} sind aufgebraucht. Sie können weiterarbeiten; neue Angaben werden ohne KI-Provider verarbeitet.`
-                : `${isAccountUser ? "Ihre AI Credits" : "Ihre Gast-Credits"} werden knapp: ${formatCredits(credits.remaining)} verfügbar.`}
+                ? `${isAccountUser ? "Ihr KI-Kontingent" : "Ihr kostenloses KI-Kontingent"} ist aufgebraucht. Sie können weiterarbeiten; neue Angaben werden ohne KI-Provider verarbeitet.`
+                : `${isAccountUser ? "Ihr KI-Kontingent" : "Ihr kostenloses KI-Kontingent"} wird knapp: ${formatCredits(credits.remaining)} verfügbar.`}
             </p>
           ) : null}
           <p className="composer-disclosure">KI kann Fehler machen. Profile werden regelbasiert gefiltert; Sie wählen selbst. Keine Gesundheitsdaten oder vertraulichen Daten Dritter eingeben.</p>
@@ -1269,101 +1261,53 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
   );
 }
 
-function CreditMenu({
+function CreditUsage({
   credits,
   guest,
-  open,
-  onToggle,
-  onClose,
 }: {
   credits: AiCreditSnapshot;
   guest: boolean;
-  open: boolean;
-  onToggle: () => void;
-  onClose: () => void;
 }) {
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const label = guest ? "Gast-Credits" : "AI Credits";
   const exhausted = creditIsExhausted(credits);
   const low = creditIsLow(credits);
   const unavailable = credits.used + (credits.reserved ?? 0);
   const progress = credits.total > 0
     ? Math.min(100, Math.max(0, (unavailable / credits.total) * 100))
     : 0;
-  const popoverId = "xportal-credit-details";
-  const titleId = "xportal-credit-title";
-  const closeAndRestoreFocus = () => {
-    onClose();
-    requestAnimationFrame(() => triggerRef.current?.focus());
-  };
 
   return (
-    <div
-      className={`credit-menu-wrap ${exhausted ? "is-exhausted" : low ? "is-low" : ""}`}
-      onKeyDown={(event) => {
-        if (event.key === "Escape") {
-          event.preventDefault();
-          closeAndRestoreFocus();
-        }
-      }}
-    >
-      <button
-        ref={triggerRef}
-        className="credit-chip"
-        type="button"
-        aria-label={`${label}: ${formatCredits(credits.remaining)} verfügbar`}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-controls={open ? popoverId : undefined}
-        onClick={onToggle}
+    <section className={`credit-usage ${exhausted ? "is-exhausted" : low ? "is-low" : ""}`} aria-label="KI-Nutzung">
+      <div className="credit-usage-heading">
+        <span>KI-Nutzung</span>
+        <strong>{formatCredits(credits.remaining)} verfügbar</strong>
+      </div>
+      <div
+        className="credit-progress"
+        role="progressbar"
+        aria-label={`${formatCredits(unavailable)} von ${formatCredits(credits.total)} Credits verwendet oder reserviert`}
+        aria-valuemin={0}
+        aria-valuemax={Math.max(credits.total, 1)}
+        aria-valuenow={Math.min(unavailable, Math.max(credits.total, 1))}
       >
-        <span>{label}</span>
-        <strong aria-live="polite">{formatCredits(credits.remaining)}</strong>
-      </button>
-      {open ? (
-        <div
-          className="credit-popover"
-          id={popoverId}
-          role="dialog"
-          aria-labelledby={titleId}
-        >
-          <div className="credit-popover-header">
-            <div>
-              <strong id={titleId}>XPORTAL {label}</strong>
-              <span>Ihr Kontingent für KI-Funktionen</span>
-            </div>
-            <button type="button" onClick={closeAndRestoreFocus} aria-label="Credit-Details schließen">×</button>
-          </div>
-          <div
-            className="credit-progress"
-            role="progressbar"
-            aria-label={`${formatCredits(unavailable)} von ${formatCredits(credits.total)} Credits verwendet oder reserviert`}
-            aria-valuemin={0}
-            aria-valuemax={Math.max(credits.total, 1)}
-            aria-valuenow={Math.min(unavailable, Math.max(credits.total, 1))}
-          >
-            <span style={{ width: `${progress}%` }} />
-          </div>
-          <dl className="credit-stats">
-            <div><dt>Verwendet</dt><dd>{formatCredits(credits.used)}</dd></div>
-            {(credits.reserved ?? 0) > 0 ? (
-              <div><dt>Reserviert</dt><dd>{formatCredits(credits.reserved ?? 0)}</dd></div>
-            ) : null}
-            <div><dt>Verfügbar</dt><dd>{formatCredits(credits.remaining)}</dd></div>
-            <div><dt>Gesamt</dt><dd>{formatCredits(credits.total)}</dd></div>
-          </dl>
-          <p className={`credit-status-copy ${exhausted ? "is-exhausted" : low ? "is-low" : ""}`}>
-            {exhausted
-              ? "Das KI-Kontingent ist aufgebraucht. Sie können mit der sicheren Basislogik weiterarbeiten."
-              : low
-                ? guest
-                  ? "Ihr kostenloses Gastkontingent wird knapp."
-                  : "Ihre verfügbaren AI Credits werden knapp."
-                : "AI Credits steuern die KI-Nutzung in diesem Arbeitsbereich."}
-          </p>
-        </div>
-      ) : null}
-    </div>
+        <span style={{ width: `${progress}%` }} />
+      </div>
+      <dl className="credit-stats">
+        <div><dt>Verwendet</dt><dd>{formatCredits(credits.used)}</dd></div>
+        {(credits.reserved ?? 0) > 0 ? (
+          <div><dt>Reserviert</dt><dd>{formatCredits(credits.reserved ?? 0)}</dd></div>
+        ) : null}
+        <div><dt>Gesamt</dt><dd>{formatCredits(credits.total)}</dd></div>
+      </dl>
+      <p className={`credit-status-copy ${exhausted ? "is-exhausted" : low ? "is-low" : ""}`}>
+        {exhausted
+          ? "Das KI-Kontingent ist aufgebraucht. Die Basisanalyse bleibt verfügbar."
+          : low
+            ? guest
+              ? "Das kostenlose Kontingent wird knapp. Nach der Anmeldung steht das Account-Kontingent bereit."
+              : "Ihr verfügbares KI-Kontingent wird knapp."
+            : "Kontingent für KI-gestützte Projektanalysen."}
+      </p>
+    </section>
   );
 }
 
@@ -1753,7 +1697,7 @@ function AuthDialog({
   onAuthenticated,
   showToast,
 }: {
-  initialMode: "login" | "register" | "set-password";
+  initialMode: AuthDialogMode;
   onClose: () => void;
   onAuthenticated: () => void;
   showToast: (message: string, tone?: ToastState["tone"]) => void;
@@ -1781,7 +1725,7 @@ function AuthDialog({
     event.preventDefault();
     setBusy("email");
     setError(null);
-    if (mode === "set-password" && password !== passwordRepeat) {
+    if ((mode === "register" || mode === "set-password") && password !== passwordRepeat) {
       setError("Die beiden Passwörter stimmen nicht überein.");
       setBusy(null);
       return;
@@ -1792,7 +1736,16 @@ function AuthDialog({
         showToast("Anmeldung erfolgreich. Ihre Auswahl wird fortgesetzt.");
         onAuthenticated();
       } else if (mode === "register") {
-        await beginEmailUpgrade(email);
+        const result = await registerEmailAccount(email, password);
+        if (result.confirmationRequired) {
+          setConfirmationSent(true);
+          setBusy(null);
+        } else {
+          showToast("Konto erstellt. Ihre Auswahl wird fortgesetzt.");
+          onAuthenticated();
+        }
+      } else if (mode === "recover") {
+        await requestPasswordRecovery(email);
         setConfirmationSent(true);
         setBusy(null);
       } else {
@@ -1803,12 +1756,18 @@ function AuthDialog({
         onAuthenticated();
       }
     } catch (emailError) {
+      const fallback = mode === "login"
+        ? "E-Mail oder Passwort ist nicht korrekt. Nutzen Sie bei Bedarf ‚Passwort vergessen?‘."
+        : mode === "recover"
+          ? "Der Wiederherstellungslink konnte gerade nicht versendet werden."
+          : mode === "register"
+            ? "Das Konto konnte gerade nicht erstellt werden. Prüfen Sie E-Mail und Passwort."
+            : "Das neue Passwort konnte gerade nicht gespeichert werden.";
+      const message = emailError instanceof Error ? emailError.message.toLowerCase() : "";
       setError(
-        emailError instanceof Error
-          ? emailError.message
-          : mode === "login"
-            ? "E-Mail oder Passwort ist nicht korrekt."
-            : "Das Konto konnte gerade nicht eingerichtet werden.",
+        mode === "login" && (message.includes("invalid login") || message.includes("invalid credentials"))
+          ? "E-Mail oder Passwort ist nicht korrekt. Nutzen Sie bei Bedarf ‚Passwort vergessen?‘."
+          : fallback,
       );
       setBusy(null);
     }
@@ -1819,21 +1778,37 @@ function AuthDialog({
       <div className="auth-dialog">
         <span className="dialog-eyebrow">Auswahl sichern</span>
         <h2 id="auth-title">
-          {mode === "set-password" ? "Konto fertig einrichten" : "Anmelden und direkt fortfahren"}
+          {mode === "set-password"
+            ? "Neues Passwort festlegen"
+            : mode === "recover"
+              ? "Zugang wiederherstellen"
+              : mode === "register"
+                ? "Konto erstellen"
+                : "Anmelden und direkt fortfahren"}
         </h2>
         <p>
           {mode === "set-password"
-            ? "Ihre E-Mail wurde bestätigt. Legen Sie jetzt Ihr Passwort fest."
-            : "Ihre Anfrage bleibt erhalten. Nach der Anmeldung kehren Sie genau zu Ihrem ausgewählten Profil zurück."}
+            ? "Legen Sie jetzt ein neues Passwort für Ihr bestätigtes Konto fest."
+            : mode === "recover"
+              ? "Wir senden einen sicheren Link an Ihre E-Mail-Adresse. Ihre aktuelle Anfrage bleibt dabei erhalten."
+              : "Ihre Anfrage bleibt erhalten. Nach der Anmeldung kehren Sie genau zu Ihrem ausgewählten Profil zurück."}
         </p>
 
-        {mode !== "set-password" ? (
+        {mode !== "set-password" && mode !== "recover" ? (
           <>
-            <div className="provider-buttons">
-              <button type="button" onClick={() => void connectProvider("google")} disabled={Boolean(busy)}><span className="provider-letter" aria-hidden="true">G</span>{busy === "google" ? "Google wird geöffnet …" : "Mit Google fortfahren"}</button>
-              <button type="button" onClick={() => void connectProvider("microsoft")} disabled={Boolean(busy)}><span className="provider-letter microsoft" aria-hidden="true">M</span>{busy === "microsoft" ? "Microsoft wird geöffnet …" : "Mit Microsoft fortfahren"}</button>
-            </div>
-            <div className="or-divider"><span>oder</span></div>
+            {GOOGLE_AUTH_ENABLED || MICROSOFT_AUTH_ENABLED ? (
+              <>
+                <div className="provider-buttons">
+                  {GOOGLE_AUTH_ENABLED ? (
+                    <button type="button" onClick={() => void connectProvider("google")} disabled={Boolean(busy)}><span className="provider-letter" aria-hidden="true">G</span>{busy === "google" ? "Google wird geöffnet …" : "Mit Google fortfahren"}</button>
+                  ) : null}
+                  {MICROSOFT_AUTH_ENABLED ? (
+                    <button type="button" onClick={() => void connectProvider("microsoft")} disabled={Boolean(busy)}><span className="provider-letter microsoft" aria-hidden="true">M</span>{busy === "microsoft" ? "Microsoft wird geöffnet …" : "Mit Microsoft fortfahren"}</button>
+                  ) : null}
+                </div>
+                <div className="or-divider"><span>oder</span></div>
+              </>
+            ) : null}
             <div className="auth-mode-tabs" role="tablist" aria-label="E-Mail-Zugang">
               <button type="button" role="tab" aria-selected={mode === "login"} className={mode === "login" ? "active" : ""} onClick={() => { setMode("login"); setError(null); }}>Bestehendes Konto</button>
               <button type="button" role="tab" aria-selected={mode === "register"} className={mode === "register" ? "active" : ""} onClick={() => { setMode("register"); setError(null); }}>Neues Konto</button>
@@ -1844,8 +1819,14 @@ function AuthDialog({
         {confirmationSent ? (
           <div className="confirmation-state" role="status">
             <span aria-hidden="true">✓</span>
-            <h3>Bestätigungslink versendet</h3>
-            <p>Öffnen Sie den Link in der E-Mail an <strong>{email}</strong>. Anschließend legen Sie hier Ihr Passwort fest und fahren mit Ihrer Auswahl fort.</p>
+            <h3>{mode === "recover" ? "Wiederherstellungslink versendet" : "Bestätigungslink versendet"}</h3>
+            <p>
+              {mode === "recover" ? (
+                <>Öffnen Sie den Link in der E-Mail an <strong>{email}</strong> und legen Sie anschließend ein neues Passwort fest.</>
+              ) : (
+                <>Öffnen Sie den Link in der E-Mail an <strong>{email}</strong>, um Ihr Konto mit dem gewählten Passwort zu aktivieren.</>
+              )}
+            </p>
             <button type="button" onClick={onClose}>Verstanden</button>
           </div>
         ) : (
@@ -1856,17 +1837,27 @@ function AuthDialog({
                 <input id="login-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
               </>
             ) : null}
-            {mode !== "register" ? (
+            {mode === "login" || mode === "register" || mode === "set-password" ? (
               <>
                 <label htmlFor="login-password">{mode === "set-password" ? "Neues Passwort" : "Passwort"}</label>
-                <input id="login-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={mode === "set-password" ? "new-password" : "current-password"} minLength={8} required />
+                <input id="login-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={mode === "login" ? "current-password" : "new-password"} minLength={8} required />
               </>
             ) : null}
-            {mode === "set-password" ? (
+            {mode === "register" || mode === "set-password" ? (
               <>
                 <label htmlFor="login-password-repeat">Passwort wiederholen</label>
                 <input id="login-password-repeat" type="password" value={passwordRepeat} onChange={(event) => setPasswordRepeat(event.target.value)} autoComplete="new-password" minLength={8} required />
               </>
+            ) : null}
+            {mode === "login" ? (
+              <button className="forgot-password" type="button" onClick={() => { setMode("recover"); setError(null); setPassword(""); }}>
+                Passwort vergessen?
+              </button>
+            ) : null}
+            {mode === "recover" ? (
+              <button className="back-to-login" type="button" onClick={() => { setMode("login"); setError(null); }}>
+                Zurück zur Anmeldung
+              </button>
             ) : null}
             {error ? <p className="form-error" role="alert">{error}</p> : null}
             <button className="auth-submit" type="submit" disabled={Boolean(busy)}>
@@ -1875,8 +1866,10 @@ function AuthDialog({
                 : mode === "login"
                   ? "Mit E-Mail anmelden"
                   : mode === "register"
-                    ? "Bestätigungslink senden"
-                    : "Passwort speichern & fortfahren"}
+                    ? "Konto erstellen"
+                    : mode === "recover"
+                      ? "Wiederherstellungslink senden"
+                      : "Passwort speichern & fortfahren"}
             </button>
           </form>
         )}
