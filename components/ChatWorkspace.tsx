@@ -703,6 +703,14 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
           }${window.location.hash}`;
           window.history.replaceState({}, "", cleanUrl);
         }
+        if (!view.anonymous && searchParams.has("code")) {
+          searchParams.delete("code");
+          searchParams.delete("next");
+          const cleanUrl = `${window.location.pathname}${
+            searchParams.size ? `?${searchParams.toString()}` : ""
+          }${window.location.hash}`;
+          window.history.replaceState({}, "", cleanUrl);
+        }
         if (!authError && searchParams.get("set-password") === "1") {
           if (view.anonymous) {
             showToast(
