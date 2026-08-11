@@ -6,6 +6,7 @@ import {
   consumeGuestClaim,
   GUEST_CLAIM_COOKIE,
 } from "@/lib/auth/guest-claim";
+import { applicationDestination } from "@/lib/auth/redirect";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const allowedTypes = new Set<EmailOtpType>([
@@ -19,10 +20,9 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const tokenHash = url.searchParams.get("token_hash");
   const candidateType = url.searchParams.get("type") as EmailOtpType | null;
-  const next = url.searchParams.get("next");
-  const destination = new URL(
-    next?.startsWith("/") && !next.startsWith("//") ? next : "/chat",
-    url.origin,
+  const destination = applicationDestination(
+    request,
+    url.searchParams.get("next"),
   );
 
   if (!tokenHash || !candidateType || !allowedTypes.has(candidateType)) {

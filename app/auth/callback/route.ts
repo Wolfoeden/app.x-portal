@@ -5,17 +5,16 @@ import {
   consumeGuestClaim,
   GUEST_CLAIM_COOKIE,
 } from "@/lib/auth/guest-claim";
+import { applicationDestination } from "@/lib/auth/redirect";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-
-function safeNext(request: Request) {
-  const value = new URL(request.url).searchParams.get("next");
-  return value?.startsWith("/") && !value.startsWith("//") ? value : "/chat";
-}
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const destination = new URL(safeNext(request), url.origin);
+  const destination = applicationDestination(
+    request,
+    url.searchParams.get("next"),
+  );
 
   if (!code) {
     destination.searchParams.set("auth_error", "missing_code");

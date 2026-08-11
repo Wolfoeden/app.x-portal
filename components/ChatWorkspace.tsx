@@ -697,14 +697,27 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
             "error",
           );
           searchParams.delete("auth_error");
+          searchParams.delete("set-password");
           const cleanUrl = `${window.location.pathname}${
             searchParams.size ? `?${searchParams.toString()}` : ""
           }${window.location.hash}`;
           window.history.replaceState({}, "", cleanUrl);
         }
-        if (searchParams.get("set-password") === "1") {
-          setAuthInitialMode("set-password");
-          setAuthOpen(true);
+        if (!authError && searchParams.get("set-password") === "1") {
+          if (view.anonymous) {
+            showToast(
+              "Der Link zum Zurücksetzen ist ungültig oder abgelaufen. Bitte fordern Sie einen neuen Link an.",
+              "error",
+            );
+            searchParams.delete("set-password");
+            const cleanUrl = `${window.location.pathname}${
+              searchParams.size ? `?${searchParams.toString()}` : ""
+            }${window.location.hash}`;
+            window.history.replaceState({}, "", cleanUrl);
+          } else {
+            setAuthInitialMode("set-password");
+            setAuthOpen(true);
+          }
         }
         if (searchParams.get("claim_warning") === "transfer_pending" && !view.anonymous) {
           try {
