@@ -46,7 +46,7 @@ if ($LASTEXITCODE -ne 0 -or $remote -cne $expectedRemote) {
 $changes = @(git status --porcelain --untracked-files=all) | Where-Object {
   $_ -notmatch '^\?\? (AGENTS\.md|CLAUDE\.md)$'
 }
-if ($changes.Count -gt 0) {
+if (@($changes).Count -gt 0) {
   throw "Release refused: commit the intended changes first.`n$($changes -join "`n")"
 }
 
@@ -90,7 +90,7 @@ do {
   $checks = @(gh api "repos/Wolfoeden/app.x-portal/commits/$sha/check-runs" --jq '.check_runs[] | select(.app.slug == "netlify") | [.status, (.conclusion // ""), .details_url] | @tsv' 2>$null)
   $statuses = @(gh api "repos/Wolfoeden/app.x-portal/commits/$sha/status" --jq '.statuses[] | select(.context | test("netlify"; "i")) | [.state, .target_url] | @tsv' 2>$null)
   $failed = @($checks + $statuses) | Where-Object { $_ -match '^(completed\s+(failure|cancelled|timed_out)|failure\s)' }
-  if ($failed.Count -gt 0) {
+  if (@($failed).Count -gt 0) {
     throw "Netlify deployment failed: $($failed -join '; ')"
   }
   $successful = @($checks + $statuses) | Where-Object { $_ -match '^(completed\s+success|success\s)' } | Select-Object -First 1
