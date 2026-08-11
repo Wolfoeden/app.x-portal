@@ -71,7 +71,7 @@ gh auth token
 '@ | Set-Content -LiteralPath $askPass -Encoding Ascii
   $env:GIT_ASKPASS = $askPass
   $env:GIT_TERMINAL_PROMPT = "0"
-  Invoke-Checked "git" @("-c", "credential.helper=", "push", "origin", "HEAD:main")
+  Invoke-Checked "git" @("-c", "http.sslBackend=openssl", "-c", "credential.helper=", "push", "origin", "HEAD:main")
 }
 finally {
   $env:GIT_ASKPASS = $previousAskPass
@@ -79,7 +79,7 @@ finally {
   Remove-Item -LiteralPath $askPass -Force -ErrorAction SilentlyContinue
 }
 
-$remoteMain = ((git ls-remote origin refs/heads/main) -split "\s+")[0]
+$remoteMain = ((git -c http.sslBackend=openssl ls-remote origin refs/heads/main) -split "\s+")[0]
 if ($remoteMain -ne $sha) {
   throw "GitHub verification failed: main is '$remoteMain', expected '$sha'."
 }
