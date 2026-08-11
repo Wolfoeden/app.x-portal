@@ -22,7 +22,6 @@ const contentSecurityPolicy = [
 
 const nextConfig: NextConfig = {
   basePath,
-  output: "standalone",
   poweredByHeader: false,
   typedRoutes: false,
   async headers() {
