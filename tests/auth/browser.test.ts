@@ -62,6 +62,19 @@ describe("browser authentication journeys", () => {
     expect(auth.signInWithOAuth).not.toHaveBeenCalled();
   });
 
+  it("uses the active browser origin instead of a stale build-time site URL", async () => {
+    vi.stubGlobal("window", { location: { origin: "https://portal.example" } });
+
+    await startOauthUpgrade("google");
+
+    expect(auth.linkIdentity).toHaveBeenCalledWith({
+      provider: "google",
+      options: {
+        redirectTo: "https://portal.example/auth/callback?next=%2Fchat",
+      },
+    });
+  });
+
   it("keeps the Microsoft integration ready with the required email scope", async () => {
     await startOauthUpgrade("microsoft");
 

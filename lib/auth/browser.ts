@@ -11,9 +11,13 @@ const supportedOauthProviders = {
 } as const satisfies Record<string, Provider>;
 
 function siteUrl() {
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+
   return (
     process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
-    window.location.origin
+    "http://localhost:3001"
   );
 }
 
