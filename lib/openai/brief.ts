@@ -241,6 +241,280 @@ function groundedList(
   return deduplicate(proposed.filter((value) => sourceContains(source, value)));
 }
 
+interface SkillEvidenceGroup {
+  canonical: string;
+  aliases: readonly string[];
+}
+
+const SKILL_EVIDENCE_GROUPS: readonly SkillEvidenceGroup[] = [
+  {
+    canonical: "Requirements Management",
+    aliases: [
+      "Requirements Management",
+      "Requirements Engineering",
+      "Requirements Analysis",
+      "Anforderungsmanagement",
+      "Anforderungsanalyse",
+    ],
+  },
+  {
+    canonical: "Process Management",
+    aliases: [
+      "Process Management",
+      "Process Optimization",
+      "Prozessmanagement",
+      "Prozessoptimierung",
+    ],
+  },
+  {
+    canonical: "Information Security",
+    aliases: [
+      "Information Security",
+      "IT Security",
+      "Informationssicherheit",
+      "IT-Sicherheit",
+      "ISMS",
+    ],
+  },
+  {
+    canonical: "Project Management",
+    aliases: [
+      "Project Management",
+      "Project Leadership",
+      "Projektmanagement",
+      "Projektleitung",
+    ],
+  },
+  {
+    canonical: "React",
+    aliases: ["React", "React Development", "React-Entwicklung"],
+  },
+] as const;
+
+function flexibleTermPattern(value: string): string {
+  return escapeRegex(normalizeText(value)).replace(/ +/gu, "\\s+");
+}
+
+function skillEvidenceGroup(value: string): SkillEvidenceGroup | null {
+  const normalized = normalizeText(value);
+  return (
+    SKILL_EVIDENCE_GROUPS.find((group) =>
+      group.aliases.some((alias) => normalizeText(alias) === normalized),
+    ) ?? null
+  );
+}
+
+function skillHasOptionalContext(source: string, terms: readonly string[]): boolean {
+  const normalizedSource = normalizeText(source);
+  return terms.some((term) => {
+    const pattern = flexibleTermPattern(term);
+    return new RegExp(
+      `(?:optional|nice\\s+to\\s+have|ideally|wuenschenswert|wünschenswert|von\\s+vorteil)[^.;\\n]{0,60}${pattern}|${pattern}[^.;\\n]{0,40}(?:optional|nice\\s+to\\s+have|wuenschenswert|wünschenswert|von\\s+vorteil)`,
+      "iu",
+    ).test(normalizedSource);
+  });
+}
+
+function groundedSkillList(
+  proposed: string[] | null,
+  source: string,
+  kind: "required" | "optional",
+): string[] | null {
+  if (!proposed) return null;
+  const accepted: string[] = [];
+
+  for (const value of proposed) {
+    const group = skillEvidenceGroup(value);
+    const terms = group?.aliases ?? [value];
+    if (!terms.some((term) => sourceContains(source, term))) continue;
+
+    const optional = skillHasOptionalContext(source, terms);
+    if (kind === "optional" ? optional : !optional) {
+      accepted.push(group?.canonical ?? value);
+    }
+  }
+
+  return deduplicate(accepted);
+}
+
+const DURATION_NUMBER_WORDS: Readonly<Record<number, readonly string[]>> = {
+  1: ["one", "ein", "eine", "einen"],
+  2: ["two", "zwei"],
+  3: ["three", "drei"],
+  4: ["four", "vier"],
+  5: ["five", "fünf", "fuenf"],
+  6: ["six", "sechs"],
+  7: ["seven", "sieben"],
+  8: ["eight", "acht"],
+  9: ["nine", "neun"],
+  10: ["ten", "zehn"],
+  11: ["eleven", "elf"],
+  12: ["twelve", "zwölf", "zwoelf"],
+};
+
+const DURATION_UNIT_PATTERNS: Readonly<
+  Record<NonNullable<AiBriefCandidate["duration"]>["unit"], string>
+> = {
+  hours: "(?:hours?|hrs?|stunden?)",
+  days: "(?:days?|tage?n?)",
+  weeks: "(?:weeks?|wochen?)",
+  months: "(?:months?|monate?n?)",
+};
+
+function groundedDuration(
+  proposed: AiBriefCandidate["duration"],
+  source: string,
+): ProjectBrief["duration"] {
+  if (!proposed) return null;
+  const numbers = [
+    String(proposed.value),
+    ...(DURATION_NUMBER_WORDS[proposed.value] ?? []),
+  ]
+    .map(escapeRegex)
+    .join("|");
+  const unit = DURATION_UNIT_PATTERNS[proposed.unit];
+  const match = new RegExp(
+    `(?:\\b(?:for|für|dauer(?:t)?(?:\\s+von)?|laufzeit(?:\\s+von)?)\\s*)?(?:${numbers})[ -]*(?:${unit})\\b`,
+    "iu",
+  ).exec(source);
+  if (!match?.[0]) return null;
+  return { raw: match[0].trim(), value: proposed.value, unit: proposed.unit };
+}
+
+function evidenceSegments(source: string): string[] {
+  return source
+    .split(/[\n;!?]+|(?<!\d)\.(?!\d)/gu)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function parseEvidenceNumber(raw: string): number | null {
+  const compact = raw.replace(/\s/gu, "");
+  if (!compact) return null;
+  const comma = compact.lastIndexOf(",");
+  const dot = compact.lastIndexOf(".");
+  const separator = Math.max(comma, dot);
+  if (separator < 0) return Number(compact);
+
+  const decimals = compact.length - separator - 1;
+  if (decimals === 3 && separator > 0) {
+    const thousands = Number(compact.replace(/[.,]/gu, ""));
+    return Number.isFinite(thousands) ? thousands : null;
+  }
+
+  const decimalMark = comma > dot ? "," : ".";
+  const normalized =
+    decimalMark === ","
+      ? compact.replace(/\./gu, "").replace(",", ".")
+      : compact.replace(/,/gu, "");
+  const value = Number(normalized);
+  return Number.isFinite(value) ? value : null;
+}
+
+function segmentHasAmount(segment: string, amount: number | null): boolean {
+  if (amount === null) return true;
+  const values = segment.match(/\d[\d., ]*/gu) ?? [];
+  return values.some((value) => parseEvidenceNumber(value) === amount);
+}
+
+function hasCurrencyEvidence(
+  source: string,
+  currency: "EUR" | "USD" | "GBP",
+): boolean {
+  const patterns = {
+    EUR: /(?:€|\beur\b|\beuros?\b)/iu,
+    USD: /(?:\$|\busd\b|\bdollars?\b)/iu,
+    GBP: /(?:£|\bgbp\b|\bpounds?\b)/iu,
+  } as const;
+  return patterns[currency].test(source);
+}
+
+const MAXIMUM_QUALIFIER =
+  /(?:\bmax(?:imal(?:e[rmns]?)?)?\b|\bup\s+to\b|\bat\s+most\b|\bcap(?:ped)?\b|\bceiling\b|\blimit\b|\bbis\s+zu\b|\bhöchstens\b|\bgedeckelt\b|\bobergrenze\b)/iu;
+const MINIMUM_QUALIFIER =
+  /(?:\bmin(?:imum|destens)?\b|\bat\s+least\b|\buntergrenze\b)/iu;
+const RANGE_QUALIFIER = /(?:\bbetween\b|\bzwischen\b|\bvon\b.+\bbis\b|\bto\b|[-–—])/iu;
+
+function rangeSemanticsAreGrounded(
+  segment: string,
+  value: { min: number | null; max: number | null },
+): boolean {
+  if (!segmentHasAmount(segment, value.min) || !segmentHasAmount(segment, value.max)) {
+    return false;
+  }
+  if (value.min === null) return value.max !== null && MAXIMUM_QUALIFIER.test(segment);
+  if (value.max === null) return MINIMUM_QUALIFIER.test(segment);
+  if (value.min === value.max) {
+    return !MAXIMUM_QUALIFIER.test(segment) && !MINIMUM_QUALIFIER.test(segment);
+  }
+  return RANGE_QUALIFIER.test(segment);
+}
+
+function groundedBudget(
+  proposed: AiBriefCandidate["budget"],
+  source: string,
+): ProjectBrief["budget"] {
+  if (!proposed) return null;
+  const budgetEvidence =
+    /(?:\bbudget\b|\bcost\s+ceiling\b|\bspending\s+limit\b|\bfinancial\s+frame(?:work)?\b|\bprojektbudget\b|\bgesamtbudget\b|\bbudgetrahmen\b|\bkostenrahmen\b|\bfinanziell(?:e[rmns]?)?\s+rahmen\b)/iu;
+  const segment = evidenceSegments(source).find(
+    (part) =>
+      budgetEvidence.test(part) &&
+      hasCurrencyEvidence(part, proposed.currency) &&
+      rangeSemanticsAreGrounded(part, proposed),
+  );
+  return segment ? proposed : null;
+}
+
+function groundedRate(
+  proposed: AiBriefCandidate["rate"],
+  source: string,
+): ProjectBrief["rate"] {
+  if (!proposed) return null;
+  const rateEvidence =
+    /(?:\brate\b|\bdaily\s+(?:fee|rate)\b|\bhourly\s+(?:fee|rate)\b|\btagessatz\b|\bstundensatz\b|\btäglich(?:e[rmns]?)?\s+vergütung\b|\bstündlich(?:e[rmns]?)?\s+vergütung\b|\bhonorar\b)/iu;
+  const unitEvidence =
+    proposed.unit === "day"
+      ? /(?:\bper\s+day\b|\bpro\s+tag\b|\bday\b|\bdaily\b|\btagessatz\b|\btäglich)/iu
+      : /(?:\bper\s+hour\b|\bpro\s+stunde\b|\bhour(?:ly)?\b|\bstundensatz\b|\bstündlich)/iu;
+  const segment = evidenceSegments(source).find(
+    (part) =>
+      rateEvidence.test(part) &&
+      unitEvidence.test(part) &&
+      hasCurrencyEvidence(part, proposed.currency) &&
+      rangeSemanticsAreGrounded(part, proposed),
+  );
+  return segment ? proposed : null;
+}
+
+function groundedWorkMode(
+  proposed: AiBriefCandidate["workMode"],
+  source: string,
+): Exclude<ProjectBrief["workMode"], "unknown"> | null {
+  if (proposed === "unknown") return null;
+  const withoutNegatedModes = normalizeText(source).replace(
+    /\b(?:kein|keine|nicht|no|not|without|ohne)\s+(?:fully\s+)?(?:remote|remotely|homeoffice|home\s+office|on\s+site|onsite|vor\s+ort|hybrid)\b/giu,
+    " ",
+  );
+  const remote =
+    /\b(?:remote|remotely|homeoffice|home\s+office|ortsunabhängig|location\s+independent|work\s+from\s+home)\b/iu.test(
+      withoutNegatedModes,
+    );
+  const onSite =
+    /\b(?:on\s+site|onsite|vor\s+ort|in\s+präsenz|beim\s+kunden|am\s+standort)\b/iu.test(
+      withoutNegatedModes,
+    );
+  const hybrid =
+    /\b(?:hybrid|teilweise\s+remote|partly\s+remote|mix\s+aus\s+remote)\b/iu.test(
+      withoutNegatedModes,
+    ) ||
+    (remote && onSite);
+
+  if (proposed === "hybrid") return hybrid ? proposed : null;
+  if (proposed === "remote") return remote && !hybrid ? proposed : null;
+  return onSite && !hybrid ? proposed : null;
+}
+
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -460,8 +734,9 @@ function groundedStartWindow(
 }
 
 /**
- * Security boundary: factual model output is accepted only when the source
- * contains direct evidence. Money/rate/duration remain deterministic-only.
+ * Security boundary: factual model output is accepted only when field-specific
+ * evidence in the source proves the value and its semantics. The deterministic
+ * parse remains authoritative whenever it already recognized a fact.
  */
 export function reconcileAiBrief(
   deterministic: ProjectBrief,
@@ -472,8 +747,16 @@ export function reconcileAiBrief(
   const source = deterministic.originalRequest;
   const latest = latestMessage?.trim() ?? source;
 
-  const proposedRequired = groundedList(proposed.requiredSkills, source);
-  const proposedOptional = groundedList(proposed.optionalSkills, source);
+  const proposedRequired = groundedSkillList(
+    proposed.requiredSkills,
+    source,
+    "required",
+  );
+  const proposedOptional = groundedSkillList(
+    proposed.optionalSkills,
+    source,
+    "optional",
+  );
   const proposedLocation =
     proposed.location &&
     sourceContains(latest, proposed.location) &&
@@ -538,11 +821,17 @@ export function reconcileAiBrief(
       ),
       latest,
     ),
-    // Never trust model-generated commercial or derived temporal facts.
-    duration: deterministic.duration,
-    budget: deterministic.budget,
-    rate: deterministic.rate,
-    workMode: deterministic.workMode,
+    duration: latestMessage
+      ? (groundedDuration(proposed.duration, latest) ?? deterministic.duration)
+      : (deterministic.duration ?? groundedDuration(proposed.duration, latest)),
+    budget: latestMessage
+      ? (groundedBudget(proposed.budget, latest) ?? deterministic.budget)
+      : (deterministic.budget ?? groundedBudget(proposed.budget, latest)),
+    rate: latestMessage
+      ? (groundedRate(proposed.rate, latest) ?? deterministic.rate)
+      : (deterministic.rate ?? groundedRate(proposed.rate, latest)),
+    workMode:
+      groundedWorkMode(proposed.workMode, latest) ?? deterministic.workMode,
   };
 
   const removedFields = getExplicitlyRemovedFields(latest);

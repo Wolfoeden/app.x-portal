@@ -274,4 +274,43 @@ describe("deterministic freelancer matching", () => {
       "Weitere Rahmenbedingung bestätigt: EU residency.",
     );
   });
+
+  it("treats an unconfirmed generic explicit constraint as a hard eligibility filter", () => {
+    const brief = parseFallbackBrief(
+      "React freelancer in German, remote. Constraints: no travel.",
+      { now },
+    );
+
+    const evaluation = evaluateProfile(brief, profileFixtures[0]!);
+
+    expect(evaluation.eligible).toBe(false);
+    expect(evaluation.rejectionReasons).toContain(
+      "Weitere Pflichtbedingung im Profil nicht bestätigt: no travel.",
+    );
+    expect(evaluation.knownGaps).not.toContain(
+      "Weitere Rahmenbedingung im Profil nicht bestätigt: no travel.",
+    );
+  });
+
+  it("evaluates a constraint only once when it is also a contractual requirement", () => {
+    const brief = applyBriefPatch(
+      parseFallbackBrief("React freelancer in German, remote", { now }),
+      {
+        constraints: ["Security clearance"],
+        contractualRequirements: ["Security clearance"],
+      },
+    );
+
+    const evaluation = evaluateProfile(brief, profileFixtures[0]!);
+
+    expect(evaluation.eligible).toBe(false);
+    expect(evaluation.rejectionReasons).toContain(
+      "Vertragsanforderungen nicht bestätigt: Security clearance.",
+    );
+    expect(
+      evaluation.rejectionReasons.filter((reason) =>
+        reason.includes("Security clearance"),
+      ),
+    ).toHaveLength(1);
+  });
 });

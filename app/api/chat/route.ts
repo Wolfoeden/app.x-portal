@@ -16,6 +16,11 @@ import {
   type ProjectBrief,
 } from "@/lib/domain";
 import {
+  createChatRequestKey,
+  interactionIdForChatRequest,
+  projectIdForChatRequest,
+} from "@/lib/domain/chat-idempotency";
+import {
   buildDeterministicBrief,
   estimateProjectBriefTokenCeiling,
   extractProjectBrief,
@@ -92,11 +97,6 @@ function catalogVersion(profiles: readonly { id: string; dataVersion: string }[]
     .digest("hex");
 }
 
-function interactionIdFromRequestKey(requestKey: string): string {
-  const value = requestKey.slice(0, 32);
-  return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
-}
-
 function assistantText(resultCount: number): string {
   if (resultCount === 0) {
     return "Ich habe Ihre Angaben strukturiert. Aktuell erfüllt kein reales, direkt buchbares Profil alle erkannten Pflichtkriterien. Sie können die Anfrage im Chat ergänzen oder ausdrücklich eine getrennte KI-Websuche nach öffentlich belegten Profilen mit direktem Buchungslink starten.";
@@ -162,6 +162,31 @@ function previousBrief(row: ProjectRow | null): ProjectBrief | undefined {
   return result.success ? result.data : undefined;
 }
 
+function duplicateMessageResponse(
+  projectId: string,
+  conflict: boolean,
+  traceId: string,
+): Response {
+  return NextResponse.json(
+    conflict
+      ? {
+          error:
+            "Diese Nachrichten-ID wurde bereits mit einem anderen Inhalt verwendet.",
+          code: "client_message_conflict",
+          projectId,
+          traceId,
+        }
+      : {
+          error:
+            "Diese Nachricht wurde bereits verarbeitet. Das gespeicherte Projekt wird geladen.",
+          code: "request_already_processed",
+          projectId,
+          traceId,
+        },
+    { status: 409, headers: { "Cache-Control": "no-store" } },
+  );
+}
+
 type ProgressReporter = (label: string) => void;
 
 async function processChatRequest(
@@ -173,6 +198,13 @@ async function processChatRequest(
     assertSameOrigin(request);
     const input = ChatInputSchema.parse(await readJsonWithLimit(request, 16_000));
     const user = await requireCurrentUser();
+    const clientMessageId = input.clientMessageId ?? `server-${randomUUID()}`;
+    const requestKey = createChatRequestKey(
+      user.id,
+      clientMessageId,
+      input.projectId,
+    );
+    const interactionId = interactionIdForChatRequest(requestKey);
     const ipAddress = getClientIp(request);
 
     let userHash: string | null = null;
@@ -222,6 +254,26 @@ async function processChatRequest(
 
     progress("Projekt wird sicher gespeichert …");
     const admin = createAdminSupabaseClient();
+    const targetProjectId =
+      input.projectId ?? projectIdForChatRequest(requestKey);
+    const { data: priorMessage, error: priorMessageError } = await admin
+      .from("messages")
+      .select("project_id,content")
+      .eq("project_id", targetProjectId)
+      .eq("owner_user_id", user.id)
+      .eq("role", "user")
+      .eq("client_message_id", clientMessageId)
+      .limit(1)
+      .maybeSingle();
+    if (priorMessageError) throw priorMessageError;
+    if (priorMessage) {
+      return duplicateMessageResponse(
+        priorMessage.project_id,
+        priorMessage.content !== input.message,
+        traceId,
+      );
+    }
+
     const existing = input.projectId
       ? await ownedProject(admin, input.projectId, user.id)
       : null;
@@ -251,6 +303,7 @@ async function processChatRequest(
       const { data, error } = await admin
         .from("projects")
         .insert({
+          id: targetProjectId,
           owner_user_id: user.id,
           title: deriveProjectTitle(input.message),
           original_request: deterministic.originalRequest,
@@ -260,11 +313,18 @@ async function processChatRequest(
         })
         .select("*")
         .single();
-      if (error) throw error;
-      project = data as ProjectRow;
+      if (error?.code === "23505") {
+        project = await ownedProject(
+          admin,
+          targetProjectId,
+          user.id,
+        );
+      } else {
+        if (error) throw error;
+        project = data as ProjectRow;
+      }
     }
 
-    const clientMessageId = input.clientMessageId ?? `server-${randomUUID()}`;
     const { error: messageError } = await admin.from("messages").insert({
       project_id: project.id,
       owner_user_id: user.id,
@@ -272,12 +332,22 @@ async function processChatRequest(
       content: input.message,
       client_message_id: clientMessageId,
     });
-    if (messageError && messageError.code !== "23505") throw messageError;
+    if (messageError?.code === "23505") {
+      const { data: duplicate, error: duplicateError } = await admin
+        .from("messages")
+        .select("project_id,content")
+        .eq("project_id", project.id)
+        .eq("client_message_id", clientMessageId)
+        .single();
+      if (duplicateError) throw duplicateError;
+      return duplicateMessageResponse(
+        duplicate.project_id,
+        duplicate.content !== input.message,
+        traceId,
+      );
+    }
+    if (messageError) throw messageError;
 
-    const requestKey = createHash("sha256")
-      .update(`${user.id}:${project.id}:${clientMessageId}`)
-      .digest("hex");
-    const interactionId = interactionIdFromRequestKey(requestKey);
     const extractionInput = {
       originalRequest: existing?.original_request ?? input.message,
       latestMessage: existing ? input.message : undefined,
@@ -589,10 +659,26 @@ export async function POST(request: Request): Promise<Response> {
               typeof body.error === "string"
                 ? body.error
                 : "Die Anfrage konnte gerade nicht verarbeitet werden.";
+            const code =
+              typeof body === "object" &&
+              body !== null &&
+              "code" in body &&
+              typeof body.code === "string"
+                ? body.code
+                : undefined;
+            const projectId =
+              typeof body === "object" &&
+              body !== null &&
+              "projectId" in body &&
+              typeof body.projectId === "string"
+                ? body.projectId
+                : undefined;
             streamEvent(controller, {
               type: "error",
               message,
               retryable: response.status >= 500 || response.status === 429,
+              code,
+              projectId,
             });
           }
         })

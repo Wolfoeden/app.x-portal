@@ -93,7 +93,7 @@ the brief/UI may use canonical labels (`German`, `English`, `Spanish`). The
 server mapper owns this explicit label-to-code conversion before matching; SQL
 must never compare an unnormalized display label directly.
 
-## Deterministic matching rule (`freelancer-match-v2`)
+## Deterministic matching rule (`freelancer-match-v4`)
 
 Eligibility is a hard filter, evaluated before ordering:
 
@@ -107,18 +107,23 @@ Eligibility is a hard filter, evaluated before ordering:
 5. A known availability date satisfies the supplied start window. `limited`
    and `unknown` project availability remain visible as a known gap because the
    freelancer's meeting calendar is directly bookable.
-6. A supplied rate/budget ceiling is respected; an absent commercial value is
-   not invented.
+6. Explicit qualifications, contractual requirements and other constraints are
+   required eligibility conditions. The same normalized constraint is checked
+   only once when it is also represented as a contractual requirement.
+7. A supplied rate/budget ceiling is respected; an absent commercial value is
+   not invented and remains an explicitly disclosed gap.
 
 Eligible rows are ordered by this visible, stable rule:
 
-1. Count of exact required-skill matches, descending.
-2. Availability confidence: `available`, then `limited`, then `unknown`.
-3. Count of explicitly requested optional skills, descending.
-4. Count of verified required-skill matches, descending.
-5. Earliest known `availability_from`, unknown last.
-6. Normalized display name ascending.
-7. UUID ascending as the final stable tie-breaker.
+1. Confirmed commercial compatibility before unknown compatibility when the
+   user supplied a rate or budget constraint.
+2. Count of exact required-skill matches, descending.
+3. Availability confidence: `available`, then `limited`, then `unknown`.
+4. Count of explicitly requested optional skills, descending.
+5. Count of verified required-skill matches, descending.
+6. Earliest known `availability_from`, unknown last.
+7. Normalized display name ascending.
+8. UUID ascending as the final stable tie-breaker.
 
 The first three rows are returned. There is no hidden score and no automated
 hiring decision. Each result stores reasons, known gaps, verified facts,

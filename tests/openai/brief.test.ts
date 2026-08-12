@@ -250,6 +250,80 @@ describe("extractProjectBrief", () => {
     expect(result.brief.contractualRequirements).toEqual(["NDA"]);
   });
 
+  it("accepts field-specific AI paraphrases only when the source proves them", async () => {
+    const originalRequest =
+      "Anforderungsanalyse wird vorausgesetzt. Nice to have: React-Entwicklung. " +
+      "Die Zusammenarbeit erfolgt ortsunabhängig. Geplant ist ein Einsatz über sechs Wochen. " +
+      "Der finanzielle Rahmen ist auf 12.000 EUR gedeckelt. " +
+      "Die tägliche Vergütung ist auf 750 EUR gedeckelt.";
+    const { client } = mockClient(
+      candidate({
+        requiredSkills: ["Requirements Engineering"],
+        optionalSkills: ["React Development"],
+        workMode: "remote",
+        duration: { raw: "six weeks", value: 6, unit: "weeks" },
+        budget: { min: null, max: 12_000, currency: "EUR" },
+        rate: { min: null, max: 750, currency: "EUR", unit: "day" },
+      }),
+    );
+
+    const result = await extractProjectBrief(
+      { originalRequest, safetyIdentifier: SAFETY_IDENTIFIER },
+      { responsesClient: client, now: FIXED_NOW },
+    );
+
+    expect(result.mode).toBe("openai");
+    expect(result.brief.requiredSkills).toContain("Requirements Management");
+    expect(result.brief.optionalSkills).toContain("React");
+    expect(result.brief.workMode).toBe("remote");
+    expect(result.brief.duration).toEqual({
+      raw: "sechs Wochen",
+      value: 6,
+      unit: "weeks",
+    });
+    expect(result.brief.budget).toEqual({
+      min: null,
+      max: 12_000,
+      currency: "EUR",
+    });
+    expect(result.brief.rate).toEqual({
+      min: null,
+      max: 750,
+      currency: "EUR",
+      unit: "day",
+    });
+  });
+
+  it("rejects invented or cross-assigned interpreted values", async () => {
+    const originalRequest =
+      "React support. Die Zusammenarbeit erfolgt ortsunabhängig. " +
+      "Geplant ist ein Einsatz über sechs Wochen. " +
+      "Der finanzielle Rahmen ist auf 12.000 EUR gedeckelt. " +
+      "Die tägliche Vergütung ist auf 750 EUR gedeckelt.";
+    const { client } = mockClient(
+      candidate({
+        requiredSkills: ["Process Management"],
+        workMode: "on_site",
+        duration: { raw: "eight weeks", value: 8, unit: "weeks" },
+        // Both numbers occur, but only in the opposite commercial field.
+        budget: { min: null, max: 750, currency: "EUR" },
+        rate: { min: null, max: 12_000, currency: "EUR", unit: "day" },
+      }),
+    );
+
+    const result = await extractProjectBrief(
+      { originalRequest, safetyIdentifier: SAFETY_IDENTIFIER },
+      { responsesClient: client, now: FIXED_NOW },
+    );
+
+    expect(result.mode).toBe("openai");
+    expect(result.brief.requiredSkills).toEqual(["React"]);
+    expect(result.brief.workMode).toBe("unknown");
+    expect(result.brief.duration).toBeNull();
+    expect(result.brief.budget).toBeNull();
+    expect(result.brief.rate).toBeNull();
+  });
+
   it("falls back on invalid structured output", async () => {
     const { client } = mockClient({ projectTitle: "incomplete" });
     const result = await extractProjectBrief(

@@ -171,7 +171,13 @@ export type ChatStreamEvent =
   | { type: "progress"; label: string }
   | { type: "text_delta"; delta: string }
   | { type: "result"; data: ChatResponse }
-  | { type: "error"; message: string; retryable: boolean };
+  | {
+      type: "error";
+      message: string;
+      retryable: boolean;
+      code?: string;
+      projectId?: string;
+    };
 
 export interface ProjectDetailResponse {
   project: ProjectListItem;

@@ -581,6 +581,16 @@ function presentUnknownFields(fields: string[]) {
   return fields.map((field) => unknownFieldLabels[field] ?? field);
 }
 
+class ProcessedRequestError extends Error {
+  constructor(
+    message: string,
+    readonly projectId: string,
+  ) {
+    super(message);
+    this.name = "ProcessedRequestError";
+  }
+}
+
 async function parseStreamResponse(
   response: Response,
   onDelta: (content: string, progress?: string) => void,
@@ -606,6 +616,9 @@ async function parseStreamResponse(
       } else if (event.type === "result") {
         result = normalizeChatResponse(event.data, fallbackTitle);
       } else if (event.type === "error") {
+        if (event.code === "request_already_processed" && event.projectId) {
+          throw new ProcessedRequestError(event.message, event.projectId);
+        }
         throw new Error(event.message);
       }
     } catch (error) {
@@ -1007,11 +1020,25 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
             );
           }
           let message = "Die Anfrage konnte gerade nicht verarbeitet werden.";
+          let processedProjectId: string | null = null;
           try {
             const body: unknown = await response.json();
-            if (isRecord(body)) message = stringValue(body.error ?? body.message, message);
+            if (isRecord(body)) {
+              message = stringValue(body.error ?? body.message, message);
+              if (
+                body.code === "request_already_processed" &&
+                typeof body.projectId === "string"
+              ) {
+                processedProjectId = body.projectId;
+              }
+            }
           } catch {
             // Keep the safe generic error message.
+          }
+          if (processedProjectId) {
+            await loadProject(processedProjectId);
+            setPendingAssistant(null);
+            return;
           }
           throw new Error(message);
         }
@@ -1034,6 +1061,11 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
         finishChatResponse(result);
         setPendingAssistant(null);
       } catch (error) {
+        if (error instanceof ProcessedRequestError) {
+          await loadProject(error.projectId);
+          setPendingAssistant(null);
+          return;
+        }
         const message = error instanceof Error ? error.message : "Die Anfrage konnte nicht verarbeitet werden.";
         setPendingAssistant({
           id: makeId("assistant-error"),
@@ -1048,6 +1080,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
       activeProject,
       apiPaths.chat,
       finishChatResponse,
+      loadProject,
       pendingAssistant,
       refreshAuth,
       refreshCredits,

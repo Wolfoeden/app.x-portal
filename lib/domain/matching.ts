@@ -7,7 +7,7 @@ import {
   type LabeledFact,
 } from "./profile";
 
-export const MATCHING_RULE_VERSION = "freelancer-match-v3" as const;
+export const MATCHING_RULE_VERSION = "freelancer-match-v4" as const;
 
 /**
  * Public and reviewable ordering rule. Eligibility is evaluated first. Eligible
@@ -411,9 +411,11 @@ export function evaluateProfile(
     matchReasons.push(`Vertragsanforderungen passend: ${brief.contractualRequirements.join(", ")}.`);
   }
 
-  // Free-form constraints remain visible even when the profile schema cannot
-  // prove them. We confirm only verbatim public profile evidence and never
-  // infer facts such as residency from a current location.
+  // An explicitly supplied constraint is a hard eligibility condition. We
+  // confirm only verbatim public profile evidence and never infer facts such
+  // as residency from a current location. Constraints already represented as
+  // contractual requirements were evaluated above and must not be counted a
+  // second time.
   const publicConstraintFacts = [
     ...profile.skillTags,
     ...profile.languages,
@@ -422,12 +424,18 @@ export function evaluateProfile(
     ...(profile.location ? [profile.location] : []),
     profile.experienceSummary,
   ];
+  const contractualRequirementKeys = new Set(
+    (brief.contractualRequirements ?? []).map(normalize),
+  );
   for (const constraint of brief.constraints ?? []) {
+    if (contractualRequirementKeys.has(normalize(constraint))) {
+      continue;
+    }
     if (includesFact(publicConstraintFacts, constraint)) {
       matchReasons.push(`Weitere Rahmenbedingung bestätigt: ${constraint}.`);
     } else {
-      knownGaps.push(
-        `Weitere Rahmenbedingung im Profil nicht bestätigt: ${constraint}.`,
+      rejectionReasons.push(
+        `Weitere Pflichtbedingung im Profil nicht bestätigt: ${constraint}.`,
       );
     }
   }

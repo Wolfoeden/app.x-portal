@@ -40,11 +40,11 @@ function candidate(overrides: Record<string, unknown> = {}) {
     summary: "Öffentlich beschriebenes React-Profil.",
     matchedRequirements: ["React"],
     knownGaps: ["Verfügbarkeit nicht bestätigt"],
-    profileUrl: "https://portfolio.example/anna",
-    bookingUrl: "https://calendly.com/anna/30min",
+    profileUrl: "https://portfolio.example/anna-beispiel",
+    bookingUrl: "https://calendly.com/annabeispiel/30min",
     sourceUrls: [
-      "https://portfolio.example/anna",
-      "https://calendly.com/anna/30min",
+      "https://portfolio.example/anna-beispiel",
+      "https://calendly.com/annabeispiel/30min",
     ],
     ...overrides,
   };
@@ -62,8 +62,8 @@ describe("external freelancer web search", () => {
       model: "gpt-5.6-luna-2026-07-15",
       output_parsed: { candidates: [candidate()] },
       output: webOutput([
-        "https://portfolio.example/anna",
-        "https://calendly.com/anna/30min",
+        "https://portfolio.example/anna-beispiel",
+        "https://calendly.com/annabeispiel/30min",
       ]),
       usage: {
         input_tokens: 120,
@@ -97,31 +97,67 @@ describe("external freelancer web search", () => {
   it("rejects invented URLs that are not present in provider evidence", () => {
     const reconciled = reconcileExternalCandidates(
       { candidates: [candidate()] },
-      webOutput(["https://portfolio.example/anna"]),
+      webOutput(["https://portfolio.example/anna-beispiel"]),
     );
 
     expect(reconciled.candidates).toEqual([]);
     expect(reconciled.evidence.urls).not.toContain(
-      "https://calendly.com/anna/30min",
+      "https://calendly.com/annabeispiel/30min",
     );
   });
 
   it("rejects a contact page even when the model calls it a booking link", () => {
-    const contact = "https://portfolio.example/anna/contact";
+    const contact = "https://portfolio.example/anna-beispiel/contact";
     const reconciled = reconcileExternalCandidates(
       {
         candidates: [
           candidate({ bookingUrl: contact, sourceUrls: [
-            "https://portfolio.example/anna",
+            "https://portfolio.example/anna-beispiel",
             contact,
           ] }),
         ],
       },
-      webOutput(["https://portfolio.example/anna", contact]),
+      webOutput(["https://portfolio.example/anna-beispiel", contact]),
     );
 
     expect(isDirectBookingUrl(contact)).toBe(false);
     expect(reconciled.candidates).toEqual([]);
+  });
+
+  it("rejects a globally evidenced booking URL belonging to another person", () => {
+    const annaProfile = "https://portfolio.example/anna-beispiel";
+    const bobBooking = "https://calendly.com/bob-smith/30min";
+    const reconciled = reconcileExternalCandidates(
+      {
+        candidates: [
+          candidate({
+            profileUrl: annaProfile,
+            bookingUrl: bobBooking,
+            sourceUrls: [annaProfile, bobBooking],
+          }),
+        ],
+      },
+      webOutput([annaProfile, bobBooking]),
+    );
+
+    expect(reconciled.evidence.urls).toContain(bobBooking);
+    expect(reconciled.candidates).toEqual([]);
+  });
+
+  it("accepts hyphenated and compact forms of the candidate's full name", () => {
+    const profileUrl = "https://portfolio.example/anna-beispiel";
+    const bookingUrl = "https://cal.com/annabeispiel/intro";
+    const reconciled = reconcileExternalCandidates(
+      {
+        candidates: [
+          candidate({ profileUrl, bookingUrl, sourceUrls: [profileUrl, bookingUrl] }),
+        ],
+      },
+      webOutput([profileUrl, bookingUrl]),
+    );
+
+    expect(reconciled.candidates).toHaveLength(1);
+    expect(reconciled.candidates[0]).toMatchObject({ profileUrl, bookingUrl });
   });
 
   it("returns at most three unique evidenced booking results", () => {
