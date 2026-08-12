@@ -3,7 +3,10 @@ import { createHash, randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import type { AiAnalysisTrace } from "@/components/chat-contract";
+import type {
+  AiAnalysisProviderStatus,
+  AiAnalysisTrace,
+} from "@/components/chat-contract";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { executeTrackedAiRequest } from "@/lib/ai/gateway";
 import { requireCurrentUser } from "@/lib/auth/current-user";
@@ -75,14 +78,14 @@ function errorResponse(error: unknown, traceId: string = randomUUID()): Response
   if (error instanceof Response) return error;
   if (error instanceof z.ZodError) {
     return NextResponse.json(
-      { error: "Die Anfrage hat ein ungÃ¼ltiges Format.", traceId },
+      { error: "Die Anfrage hat ein ungültiges Format.", traceId },
       { status: 400 },
     );
   }
   return NextResponse.json(
     {
       error:
-        "Die Anfrage wurde gespeichert, konnte aber gerade nicht vollstÃ¤ndig verarbeitet werden.",
+        "Die Anfrage wurde gespeichert, konnte aber gerade nicht vollständig verarbeitet werden.",
       traceId,
     },
     { status: 503 },
@@ -105,13 +108,16 @@ function catalogVersion(profiles: readonly { id: string; dataVersion: string }[]
     .digest("hex");
 }
 
-function assistantText(resultCount: number): string {
+function assistantText(resultCount: number, analysisCompleted: boolean): string {
+  if (!analysisCompleted) {
+    return "Die OpenAI-Analyse konnte für diesen Stand nicht bestätigt werden. Ihre Anfrage wurde gespeichert; damit keine ungeprüften Ergebnisse erscheinen, wurde noch kein Freelancer-Matching ausgeführt.";
+  }
   if (resultCount === 0) {
-    return "Ich habe Ihre Angaben strukturiert. Aktuell erfÃ¼llt kein reales, direkt buchbares Profil alle erkannten Pflichtkriterien. Sie kÃ¶nnen die Anfrage im Chat ergÃ¤nzen oder ausdrÃ¼cklich eine getrennte KI-Websuche nach Ã¶ffentlich belegten Profilen mit direktem Buchungslink starten.";
+    return "Ich habe Ihre Angaben strukturiert. Aktuell erfüllt kein reales, direkt buchbares Profil alle erkannten Pflichtkriterien. Sie können die Anfrage im Chat ergänzen oder ausdrücklich eine getrennte KI-Websuche nach öffentlich belegten Profilen mit direktem Buchungslink starten.";
   }
   return `Ich habe Ihre Angaben strukturiert und ${resultCount} ${
     resultCount === 1 ? "aktuell passendes Profil" : "aktuell passende Profile"
-  } nach den dokumentierten Regeln gefunden. Sie kÃ¶nnen das gewÃ¼nschte ErstgesprÃ¤ch direkt Ã¼ber den jeweiligen Booking-Link buchen.`;
+  } nach den dokumentierten Regeln gefunden. Sie können das gewünschte Erstgespräch direkt über den jeweiligen Booking-Link buchen.`;
 }
 
 function fallbackNotice(
@@ -120,35 +126,59 @@ function fallbackNotice(
   fallbackReason: string | undefined,
 ): string {
   if (reason === "provider_monthly_budget") {
-    return "Das monatliche KI-Budget ist erreicht. Ihre Anfrage wurde sicher lokal verarbeitet.";
+    return "Das monatliche KI-Budget ist erreicht. Ihre Anfrage wurde gespeichert; es wurde kein Freelancer-Matching ausgeführt.";
   }
   if (reason === "insufficient_credits") {
     return isAnonymous
-      ? "Ihr kostenloses KI-Kontingent reicht fÃ¼r diese Analyse nicht mehr aus. Die Anfrage wurde gespeichert; nach der Anmeldung kÃ¶nnen Sie mit dem Account-Kontingent fortfahren."
-      : "Ihre AI Credits reichen fÃ¼r diese KI-Analyse nicht aus. Die Anfrage wurde gespeichert und mit der sicheren Basislogik verarbeitet.";
+      ? "Ihr kostenloses KI-Kontingent reicht für diese Analyse nicht mehr aus. Die Anfrage wurde gespeichert; nach der Anmeldung können Sie mit dem Account-Kontingent fortfahren."
+      : "Ihre AI Credits reichen für diese KI-Analyse nicht aus. Die Anfrage wurde gespeichert; es wurde kein Freelancer-Matching ausgeführt.";
   }
   if (
     reason === "anonymous_user_daily_token_limit" ||
     reason === "anonymous_ip_daily_token_limit"
   ) {
-    return "Das tÃ¤gliche KI-Limit fÃ¼r den Gastzugang ist erreicht. Ihre Anfrage wurde gespeichert und ohne weiteren Provider-Aufruf verarbeitet.";
+    return "Das tägliche KI-Limit für den Gastzugang ist erreicht. Ihre Anfrage wurde gespeichert; OpenAI und das Freelancer-Matching wurden nicht ausgeführt.";
   }
   if (reason === "user_daily_token_limit") {
-    return "Das tÃ¤gliche interne XPORTAL-KI-Limit fÃ¼r dieses Konto ist erreicht. OpenAI wurde nicht aufgerufen; Ihre Anfrage wurde sicher gespeichert.";
+    return "Das tägliche interne XPORTAL-KI-Limit für dieses Konto ist erreicht. OpenAI wurde nicht aufgerufen; Ihre Anfrage wurde sicher gespeichert.";
   }
   if (fallbackReason === "provider_timeout") {
-    return "Die KI-Analyse hat das Zeitlimit erreicht. Ihre Anfrage wurde gespeichert und mit der sicheren Basislogik verarbeitet.";
+    return "Die KI-Analyse hat das Zeitlimit erreicht. Ihre Anfrage wurde gespeichert; es wurde kein Freelancer-Matching ausgeführt.";
   }
   if (fallbackReason === "invalid_output") {
-    return "Die KI-Antwort war nicht zuverlÃ¤ssig strukturiert. Ihre Anfrage wurde gespeichert und mit der sicheren Basislogik verarbeitet.";
+    return "Die KI-Antwort war nicht zuverlässig strukturiert. Ihre Anfrage wurde gespeichert; es wurde kein Freelancer-Matching ausgeführt.";
   }
   if (fallbackReason === "provider_error") {
-    return "Die KI-Analyse war vorÃ¼bergehend nicht verfÃ¼gbar. Ihre Anfrage wurde gespeichert und mit der sicheren Basislogik verarbeitet.";
+    return "Die KI-Analyse war vorübergehend nicht verfügbar. Ihre Anfrage wurde gespeichert; es wurde kein Freelancer-Matching ausgeführt.";
   }
   if (fallbackReason === "provider_unavailable") {
-    return "Der KI-Provider ist noch nicht konfiguriert. Ihre Anfrage wurde gespeichert und mit der sicheren Basislogik verarbeitet.";
+    return "Der KI-Provider ist noch nicht konfiguriert. Ihre Anfrage wurde gespeichert; es wurde kein Freelancer-Matching ausgeführt.";
   }
-  return "Ihre Anfrage wurde gespeichert und ohne Provider-AbhÃ¤ngigkeit strukturiert.";
+  return "Ihre Anfrage wurde gespeichert. Ohne bestätigte OpenAI-Analyse wurde kein Freelancer-Matching ausgeführt.";
+}
+
+function providerFailureCategory(
+  extraction: {
+    mode: "openai" | "fallback";
+    fallbackReason?: string;
+    providerFailure?: Exclude<
+      NonNullable<AiAnalysisProviderStatus["failureCategory"]>,
+      "application_limit" | "invalid_output" | "unconfigured"
+    >;
+  },
+): AiAnalysisProviderStatus["failureCategory"] {
+  if (extraction.mode === "openai") return null;
+  if (extraction.providerFailure) return extraction.providerFailure;
+  if (extraction.fallbackReason === "invalid_output") return "invalid_output";
+  if (extraction.fallbackReason === "provider_unavailable") return "unconfigured";
+  if (extraction.fallbackReason === "budget_denied") {
+    return "application_limit";
+  }
+  if (extraction.fallbackReason === "safety_identifier_unavailable") {
+    return "unconfigured";
+  }
+  if (extraction.fallbackReason === "provider_timeout") return "timeout";
+  return "provider_error";
 }
 
 async function ownedProject(
@@ -258,12 +288,12 @@ async function processChatRequest(
 
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
       throw new Response(
-        "Die serverseitige Supabase-Konfiguration ist noch nicht vollstÃ¤ndig.",
+        "Die serverseitige Supabase-Konfiguration ist noch nicht vollständig.",
         { status: 503 },
       );
     }
 
-    progress("Projekt wird sicher gespeichert â€¦");
+    progress("Projekt wird sicher gespeichert …");
     const admin = createAdminSupabaseClient();
     const targetProjectId =
       input.projectId ?? projectIdForChatRequest(requestKey);
@@ -367,7 +397,7 @@ async function processChatRequest(
     };
     const estimate = estimateProjectBriefTokenCeiling(extractionInput);
     const providerConnection = resolveOpenAiConnection();
-    progress("KI analysiert und strukturiert die Anforderungen â€¦");
+    progress("KI analysiert und strukturiert die Anforderungen …");
     const tracked =
       userHash && ipHash
         ? await executeTrackedAiRequest({
@@ -433,22 +463,30 @@ async function processChatRequest(
     const extraction = tracked.value;
     const quota = tracked.quota;
     const providerSucceeded = Boolean(extraction.provider);
+    const analysisCompleted = extraction.mode === "openai";
     progress(
-      extraction.mode === "openai"
-        ? "Anforderungen sind strukturiert Â· interne Profile werden geladen â€¦"
-        : "Sichere Basisanalyse aktiv Â· interne Profile werden geladen â€¦",
+      analysisCompleted
+        ? "Anforderungen sind strukturiert · interne Profile werden geladen …"
+        : "OpenAI-Analyse nicht bestätigt · Matching wird nicht ausgeführt …",
     );
 
     // The model never receives this data. Filtering and ordering are wholly
-    // deterministic and run only after the brief has been accepted.
-    const profiles = await fetchActiveBookableRealProfiles(admin);
-    progress(`${profiles.length} aktive Profile werden regelbasiert abgeglichen â€¦`);
-    const shortlist = buildShortlist(extraction.brief, profiles);
-    progress(
-      shortlist.matches.length
-        ? `${shortlist.matches.length} passende Profile werden nachvollziehbar aufbereitet â€¦`
-        : "Kein interner Treffer Â· alternative Suche wird vorbereitet â€¦",
-    );
+    // deterministic. It runs only after a schema-valid provider analysis was
+    // accepted; a fallback never produces or preserves apparent AI matches.
+    const profiles = analysisCompleted
+      ? await fetchActiveBookableRealProfiles(admin)
+      : [];
+    const shortlist = analysisCompleted
+      ? buildShortlist(extraction.brief, profiles)
+      : { matches: [] };
+    if (analysisCompleted) {
+      progress(`${profiles.length} aktive Profile werden regelbasiert abgeglichen …`);
+      progress(
+        shortlist.matches.length
+          ? `${shortlist.matches.length} passende Profile werden nachvollziehbar aufbereitet …`
+          : "Kein interner Treffer · alternative Suche wird vorbereitet …",
+      );
+    }
     const shortlistId = randomUUID();
     const profileCatalogVersion = catalogVersion(profiles);
 
@@ -491,7 +529,7 @@ async function processChatRequest(
       if (error) throw error;
     }
 
-    const text = assistantText(shortlist.matches.length);
+    const text = assistantText(shortlist.matches.length, analysisCompleted);
     const assistantClientMessageId = `assistant-${requestKey}`;
     const { data: insertedAssistant, error: assistantError } = await admin
       .from("messages")
@@ -529,7 +567,10 @@ async function processChatRequest(
         original_request: extraction.brief.originalRequest,
         structured_brief: extraction.brief,
         brief_status: extraction.mode === "openai" ? "ready" : "manual",
-        status: shortlist.matches.length ? "shortlisted" : "matching",
+        status:
+          analysisCompleted && shortlist.matches.length
+            ? "shortlisted"
+            : "matching",
       })
       .eq("id", project.id)
       .eq("owner_user_id", user.id)
@@ -608,6 +649,7 @@ async function processChatRequest(
             actualModel: providerSucceeded
               ? extraction.provider?.model ?? null
               : null,
+            failureCategory: providerFailureCategory(extraction),
           },
           steps: [
             {
@@ -619,17 +661,26 @@ async function processChatRequest(
               status: extraction.mode === "openai" ? "completed" : "warning",
             },
             {
-              label: "Interne Datenbank geprÃ¼ft",
-              detail: `${profiles.length} aktive, reale und direkt buchbare Supabase-Profile wurden berÃ¼cksichtigt.`,
-              status: "completed",
+              label: analysisCompleted
+                ? "Interne Datenbank geprüft"
+                : "Interner Abgleich nicht ausgeführt",
+              detail: analysisCompleted
+                ? `${profiles.length} aktive, reale und direkt buchbare Supabase-Profile wurden berücksichtigt.`
+                : "Ohne bestätigte OpenAI-Strukturierung werden keine Freelancer-Profile als Treffer angezeigt.",
+              status: analysisCompleted ? "completed" : "warning",
             },
             {
-              label: "Pflichtkriterien angewendet",
-              detail: `${shortlist.matches.length} Treffer werden nach Regel ${MATCHING_RULE_VERSION} angezeigt; die KI entscheidet nicht Ã¼ber die Auswahl.`,
-              status: "completed",
+              label: analysisCompleted
+                ? "Pflichtkriterien angewendet"
+                : "Matching wartet auf KI-Analyse",
+              detail: analysisCompleted
+                ? `${shortlist.matches.length} Treffer werden nach Regel ${MATCHING_RULE_VERSION} angezeigt; die KI entscheidet nicht über die Auswahl.`
+                : "Die Anfrage bleibt gespeichert und kann erneut analysiert werden; es wurde kein Ergebnis erfunden.",
+              status: analysisCompleted ? "completed" : "warning",
             },
           ],
-          externalSearchAvailable: shortlist.matches.length === 0,
+          externalSearchAvailable:
+            analysisCompleted && shortlist.matches.length === 0,
         } satisfies AiAnalysisTrace,
       },
       { headers: { "Cache-Control": "no-store" } },

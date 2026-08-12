@@ -25,7 +25,7 @@ export type AiCreditPolicy = {
 };
 
 export const XPORTAL_AI_CREDIT_POLICY_VERSION =
-  "xportal-ai-credits-mvp-2026-08-12";
+  "xportal-ai-credits-mvp-2026-08-12-v2";
 
 /**
  * Simple MVP policy:
@@ -49,10 +49,14 @@ export const XPORTAL_AI_CREDIT_POLICY = {
   defaultPurposeMultiplierBasisPoints: 10_000,
   purposeMultiplierBasisPoints: {
     chat: 10_000,
-    project_brief: 10_000,
+    // The public product limits guests separately by daily provider tokens.
+    // These two multipliers keep one normal Terra brief plus an optional
+    // no-match research request inside the 500-credit guest allocation instead
+    // of blocking the provider before the first request is sent.
+    project_brief: 1_000,
     insight: 10_000,
     router: 10_000,
-    research: 10_000,
+    research: 1_000,
     analysis: 10_000,
     mesh_agent: 10_000,
     final_synthesis: 10_000,

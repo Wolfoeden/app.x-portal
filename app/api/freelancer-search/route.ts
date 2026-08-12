@@ -75,6 +75,12 @@ async function ownedProjectWithBrief(
     .maybeSingle();
   if (error) throw error;
   if (!data) throw new Response("Projekt nicht gefunden.", { status: 404 });
+  if (data.brief_status !== "ready") {
+    throw new Response(
+      "Die externe Suche ist erst nach einer bestätigten KI-Projektanalyse verfügbar.",
+      { status: 409 },
+    );
+  }
   const brief = ProjectBriefSchema.safeParse(data.structured_brief);
   if (!brief.success) {
     throw new Response("Das Projekt enthält noch keine gültige Analyse.", {

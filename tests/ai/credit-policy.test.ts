@@ -64,14 +64,14 @@ describe("XPORTAL AI credit policy", () => {
     expect(result.creditsConsumed).toBe(1);
     expect(result.unitLabel).toBe("XPORTAL_AI_CREDIT");
     expect(result.policyVersion).toBe(
-      "xportal-ai-credits-mvp-2026-08-12",
+      "xportal-ai-credits-mvp-2026-08-12-v2",
     );
   });
 
   it("meters the higher-cost Terra model with an explicit multiplier", () => {
     const result = calculateCreditsConsumed({
       requestedModel: "gpt-5.6-terra",
-      purpose: "project_brief",
+      purpose: "chat",
       inputTokens: 100,
       outputTokens: 0,
     });
@@ -79,6 +79,19 @@ describe("XPORTAL AI credit policy", () => {
     expect(result.creditsConsumed).toBe(10);
     expect(result.modelMultiplierBasisPoints).toBe(100_000);
     expect(result.usedDefaultModelMultiplier).toBe(false);
+  });
+
+  it("allows one representative Terra project brief within the guest allocation", () => {
+    const result = calculateCreditsConsumed({
+      requestedModel: "gpt-5.6-terra",
+      purpose: "project_brief",
+      inputTokens: 15_000,
+      outputTokens: 1_800,
+    });
+
+    expect(result.creditsConsumed).toBe(258);
+    expect(result.purposeMultiplierBasisPoints).toBe(1_000);
+    expect(result.creditsConsumed).toBeLessThanOrEqual(500);
   });
 
   it("uses the actual model identifier when provided", () => {

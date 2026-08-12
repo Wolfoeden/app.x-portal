@@ -47,6 +47,10 @@ const CONTACT_PHONE_LABEL = "+49 175 8934338";
 const GOOGLE_AUTH_ENABLED = process.env.NEXT_PUBLIC_AUTH_GOOGLE_ENABLED === "true";
 const MICROSOFT_AUTH_ENABLED = process.env.NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED === "true";
 
+export function sidebarAccountButtonClassName(isAccountUser: boolean): string {
+  return `sidebar-account-button${isAccountUser ? "" : " is-guest-login"}`;
+}
+
 const suggestions = [
   {
     label: "React-Entwicklung",
@@ -194,6 +198,18 @@ export function normalizeAnalysisTrace(value: unknown): AiAnalysisTrace | undefi
       ? provider.requestedTransport
       : "unconfigured";
   const succeeded = provider.attempted && provider.succeeded;
+  const failureCategory =
+    provider.failureCategory === "application_limit" ||
+    provider.failureCategory === "auth_error" ||
+    provider.failureCategory === "billing_or_quota" ||
+    provider.failureCategory === "permission" ||
+    provider.failureCategory === "model_unavailable" ||
+    provider.failureCategory === "timeout" ||
+    provider.failureCategory === "invalid_output" ||
+    provider.failureCategory === "provider_error" ||
+    provider.failureCategory === "unconfigured"
+      ? provider.failureCategory
+      : null;
   const actualTransport =
     succeeded &&
     (provider.actualTransport === "direct_openai" ||
@@ -224,6 +240,7 @@ export function normalizeAnalysisTrace(value: unknown): AiAnalysisTrace | undefi
       actualTransport,
       requestedModel: nullableString(provider.requestedModel),
       actualModel: succeeded ? nullableString(provider.actualModel) : null,
+      failureCategory: succeeded && !provider.fallback ? null : failureCategory,
     },
     steps,
     externalSearchAvailable: value.externalSearchAvailable === true,
@@ -1293,9 +1310,9 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
 
       <aside className={`project-sidebar ${sidebarOpen ? "is-open" : ""}`} aria-label="Projekte">
         <div className="sidebar-top">
-          <div className="product-mark" aria-label="Freelancer-Suche">
+          <div className="product-mark" aria-label="Freelancer Beta">
             <span className="mark-glyph" aria-hidden="true">F</span>
-            <span>Freelancer</span>
+            <span>Freelancer Beta</span>
           </div>
           <button className="icon-button sidebar-close" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schließen">×</button>
         </div>
@@ -1366,7 +1383,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
               </div>
             ) : null}
             <button
-              className="sidebar-account-button"
+              className={sidebarAccountButtonClassName(isAccountUser)}
               type="button"
               aria-label={isAccountUser ? "Konto und Einstellungen öffnen" : "Anmelden oder Konto erstellen"}
               aria-haspopup="dialog"
@@ -1411,7 +1428,9 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
               <WelcomeState onSuggestion={startGuidedRequest} />
             ) : (
               <div className="message-list">
-                {messages.map((message) => <MessageBubble key={message.id} message={message} />)}
+                {messages.map((message) => (
+                  <MessageBubble key={message.id} message={message} />
+                ))}
                 {pendingAssistant ? (
                   <PendingMessage
                     pending={pendingAssistant}
@@ -1440,6 +1459,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
                     brief={brief}
                     profiles={profiles}
                     analysis={analysisTrace}
+                    analysisMode={analysisMode}
                     externalSearch={externalSearch}
                     externalSearchState={externalSearchState}
                     onExternalSearch={() => void runExternalFreelancerSearch()}
@@ -1619,6 +1639,17 @@ function WelcomeState({ onSuggestion }: { onSuggestion: (suggestion: Suggestion)
   );
 }
 
+export function assistantAttribution(): {
+  ariaLabel: string;
+  author: string;
+  badge: string | null;
+} {
+  // Persisted messages do not yet carry their own provider snapshot. A neutral
+  // attribution stays truthful when one project contains both AI and fallback
+  // turns; the adjacent analysis trace identifies the actual provider state.
+  return { ariaLabel: "Nachricht von XPORTAL", author: "XPORTAL", badge: null };
+}
+
 function MessageBubble({ message }: { message: ConversationMessage }) {
   if (message.role === "user") {
     return (
@@ -1627,11 +1658,15 @@ function MessageBubble({ message }: { message: ConversationMessage }) {
       </article>
     );
   }
+  const attribution = assistantAttribution();
   return (
-    <article className="message-row assistant-message" aria-label="Antwort der KI">
+    <article className="message-row assistant-message" aria-label={attribution.ariaLabel}>
       <div className="message-avatar" aria-hidden="true">✦</div>
       <div className="message-content">
-        <div className="message-author">Assistent <span>KI</span></div>
+        <div className="message-author">
+          {attribution.author}
+          {attribution.badge ? <span>{attribution.badge}</span> : null}
+        </div>
         <p>{message.content}</p>
       </div>
     </article>
@@ -1660,6 +1695,7 @@ function ResultSection({
   brief,
   profiles,
   analysis,
+  analysisMode,
   externalSearch,
   externalSearchState,
   onExternalSearch,
@@ -1670,6 +1706,7 @@ function ResultSection({
   brief: StructuredBrief | null;
   profiles: FreelancerProfileResult[];
   analysis: AiAnalysisTrace | null;
+  analysisMode: "ai" | "fallback" | null;
   externalSearch: ExternalFreelancerSearchResponse | null;
   externalSearchState: "idle" | "searching" | "error";
   onExternalSearch: () => void;
@@ -1684,7 +1721,13 @@ function ResultSection({
       <div className="shortlist-heading">
         <div>
           <p className="eyebrow">Regelbasierter Abgleich</p>
-          <h2>{profiles.length ? `${profiles.length} passende ${profiles.length === 1 ? "Person" : "Profile"}` : "Keine passende Person gefunden"}</h2>
+          <h2>
+            {profiles.length
+              ? `${profiles.length} passende ${profiles.length === 1 ? "Person" : "Profile"}`
+              : analysisMode === "fallback"
+                ? "Matching noch nicht ausgeführt"
+                : "Keine passende Person gefunden"}
+          </h2>
         </div>
         {profiles.length ? <span className="result-count">Maximal 3 Ergebnisse</span> : null}
       </div>
@@ -1709,26 +1752,39 @@ function ResultSection({
           <div className="no-match-card">
             <div className="no-match-icon" aria-hidden="true">⌕</div>
             <div>
-              <strong>Aktuell gibt es keinen ausreichend passenden internen Treffer.</strong>
-              <p>Wir zeigen kein Ersatzprofil, wenn Pflichtkriterien nicht erfüllt sind. Ihre Angaben können Sie jederzeit im Chat ergänzen.</p>
-              <button
-                className="external-search-button"
-                type="button"
-                onClick={onExternalSearch}
-                disabled={externalSearchState === "searching"}
-              >
-                {externalSearchState === "searching"
-                  ? "KI sucht öffentlich zugängliche Profile …"
-                  : "Soll ein KI-Agent im Internet nach passenden Freelancern mit direktem Buchungslink suchen?"}
-              </button>
-              {externalSearchState === "searching" ? (
-                <p className="external-search-progress" role="status">
-                  <span className="thinking-dots" aria-hidden="true"><i /><i /><i /></span>
-                  KI sucht · Quellen und Buchungslinks werden geprüft
-                </p>
-              ) : null}
-              {externalSearchState === "error" ? (
-                <button className="text-button" type="button" onClick={onExternalSearch}>Websuche erneut versuchen</button>
+              <strong>
+                {analysisMode === "fallback"
+                  ? "Die OpenAI-Analyse wurde für diesen Stand nicht bestätigt."
+                  : "Aktuell gibt es keinen ausreichend passenden internen Treffer."}
+              </strong>
+              <p>
+                {analysisMode === "fallback"
+                  ? "Deshalb wurden weder interne Profile abgeglichen noch externe Treffer erzeugt. Ihre Anfrage bleibt gespeichert und kann erneut gesendet werden."
+                  : "Wir zeigen kein Ersatzprofil, wenn Pflichtkriterien nicht erfüllt sind. Ihre Angaben können Sie jederzeit im Chat ergänzen."}
+              </p>
+              {analysisMode === "ai" &&
+              (analysis?.externalSearchAvailable ?? true) ? (
+                <>
+                  <button
+                    className="external-search-button"
+                    type="button"
+                    onClick={onExternalSearch}
+                    disabled={externalSearchState === "searching"}
+                  >
+                    {externalSearchState === "searching"
+                      ? "KI sucht öffentlich zugängliche Profile …"
+                      : "Soll ein KI-Agent im Internet nach passenden Freelancern mit direktem Buchungslink suchen?"}
+                  </button>
+                  {externalSearchState === "searching" ? (
+                    <p className="external-search-progress" role="status">
+                      <span className="thinking-dots" aria-hidden="true"><i /><i /><i /></span>
+                      KI sucht · Quellen und Buchungslinks werden geprüft
+                    </p>
+                  ) : null}
+                  {externalSearchState === "error" ? (
+                    <button className="text-button" type="button" onClick={onExternalSearch}>Websuche erneut versuchen</button>
+                  ) : null}
+                </>
               ) : null}
               <a href={`tel:${CONTACT_PHONE}`}>Roman Dering direkt kontaktieren · {CONTACT_PHONE_LABEL}</a>
             </div>
@@ -1748,6 +1804,30 @@ function actualProviderLabel(trace: AiAnalysisTrace): string {
 }
 
 function failedProviderCallLabel(trace: AiAnalysisTrace): string {
+  if (trace.provider.failureCategory === "auth_error") {
+    return "OpenAI hat den API-Schlüssel abgelehnt";
+  }
+  if (trace.provider.failureCategory === "billing_or_quota") {
+    return "OpenAI-Abrechnung oder Provider-Limit blockiert";
+  }
+  if (trace.provider.failureCategory === "permission") {
+    return "OpenAI-Projektberechtigung fehlt";
+  }
+  if (trace.provider.failureCategory === "model_unavailable") {
+    return "Angefordertes OpenAI-Modell nicht verfügbar";
+  }
+  if (trace.provider.failureCategory === "timeout") {
+    return "OpenAI-Aufruf hat das Zeitlimit erreicht";
+  }
+  if (trace.provider.failureCategory === "invalid_output") {
+    return "OpenAI-Antwort war nicht verwendbar";
+  }
+  if (trace.provider.failureCategory === "application_limit") {
+    return "XPORTAL-Nutzungslimit vor OpenAI erreicht";
+  }
+  if (trace.provider.failureCategory === "unconfigured") {
+    return "Kein OpenAI-Schlüssel konfiguriert";
+  }
   if (trace.provider.requestedTransport === "direct_openai") {
     return "OpenAI-Aufruf fehlgeschlagen";
   }
@@ -1767,6 +1847,9 @@ export function providerStatusLabel(trace: AiAnalysisTrace): string {
       return "Basisanalyse · OpenAI-Antwort nicht verwendet";
     }
     return `Basisanalyse · Antwort über ${actualProviderLabel(trace)} nicht verwendet`;
+  }
+  if (trace.provider.failureCategory) {
+    return `Basisanalyse · ${failedProviderCallLabel(trace)}`;
   }
   if (trace.provider.attempted) {
     return `Basisanalyse · ${failedProviderCallLabel(trace)}`;
@@ -1794,9 +1877,9 @@ export function analysisDisclosure(trace: AiAnalysisTrace): string {
     return "Die Angaben wurden anhand der bestätigten Provider-Antwort strukturiert. Die interne Auswahl bleibt ein reproduzierbarer Regelabgleich; Sie treffen die Entscheidung.";
   }
   if (trace.provider.succeeded) {
-    return "Eine Provider-Antwort wurde empfangen, aber nicht für die Strukturierung verwendet. Die Basisanalyse und der interne Regelabgleich bleiben reproduzierbar.";
+    return "Eine Provider-Antwort wurde empfangen, aber nicht für die Strukturierung verwendet. Für diesen Stand wurde deshalb kein Freelancer-Matching ausgeführt.";
   }
-  return "Die Angaben wurden ohne bestätigte Provider-Antwort mit der Basislogik strukturiert. Die interne Auswahl bleibt ein reproduzierbarer Regelabgleich.";
+  return "Die Anfrage wurde ohne bestätigte Provider-Antwort gespeichert. Für diesen Stand wurde deshalb kein Freelancer-Matching ausgeführt.";
 }
 
 function AnalysisTrace({ trace }: { trace: AiAnalysisTrace }) {

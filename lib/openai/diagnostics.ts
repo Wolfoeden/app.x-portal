@@ -130,7 +130,9 @@ function isNamedError(error: unknown, name: string): boolean {
   return errorName(error) === name;
 }
 
-function classifyProviderError(error: unknown): OpenAiDiagnosticStatus {
+export function classifyOpenAiProviderError(
+  error: unknown,
+): OpenAiDiagnosticStatus {
   const status = safeHttpStatus(errorField(error, "status"));
   const code = errorCode(error);
 
@@ -254,7 +256,7 @@ export async function diagnoseOpenAiProvider(
   } catch (error: unknown) {
     return {
       ...baseResult,
-      status: classifyProviderError(error),
+      status: classifyOpenAiProviderError(error),
       ...errorMetadata(error),
     };
   }

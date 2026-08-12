@@ -125,6 +125,18 @@ export interface AiAnalysisProviderStatus {
   requestedModel: string | null;
   /** Model reported by the provider response; null until a response exists. */
   actualModel: string | null;
+  /** Redacted reason when no usable provider analysis was accepted. */
+  failureCategory:
+    | "application_limit"
+    | "auth_error"
+    | "billing_or_quota"
+    | "permission"
+    | "model_unavailable"
+    | "timeout"
+    | "invalid_output"
+    | "provider_error"
+    | "unconfigured"
+    | null;
 }
 
 export interface AiAnalysisStep {

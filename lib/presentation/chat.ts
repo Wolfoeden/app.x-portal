@@ -35,10 +35,41 @@ function formatMoney(
     : range;
 }
 
+function briefSummary(brief: ProjectBrief): string {
+  const details: string[] = [];
+  const requiredSkills = (brief.requiredSkills ?? []).slice(0, 4);
+  if (requiredSkills.length) {
+    details.push(`Pflichtkompetenzen: ${requiredSkills.join(", ")}`);
+  }
+  if (brief.language) details.push(`Sprache: ${brief.language}`);
+  if (brief.workMode !== "unknown") {
+    details.push(
+      brief.workMode === "on_site"
+        ? "Arbeitsmodus: vor Ort"
+        : `Arbeitsmodus: ${brief.workMode}`,
+    );
+  }
+  if (brief.location) details.push(`Ort: ${brief.location}`);
+  if (brief.startWindow?.raw) details.push(`Start: ${brief.startWindow.raw}`);
+  if (brief.duration?.raw) details.push(`Dauer: ${brief.duration.raw}`);
+  const commercial = formatMoney(brief.rate) ?? formatMoney(brief.budget);
+  if (commercial) details.push(`Budget / Satz: ${commercial}`);
+  const constraints = (brief.constraints ?? []).slice(0, 3);
+  if (constraints.length) {
+    details.push(`Rahmenbedingungen: ${constraints.join(", ")}`);
+  }
+
+  return details.length
+    ? details.join(" · ")
+    : "Die Anfrage enthält noch keine sicher erkannten Projektdetails.";
+}
+
 export function presentBrief(brief: ProjectBrief): StructuredBrief {
   return {
     projectTitle: brief.projectTitle ?? "Freelancer-Anfrage",
-    summary: brief.summary,
+    // Never repeat the accumulated raw prompt as an apparent AI summary.
+    // Every visible statement below comes from the accepted structured brief.
+    summary: briefSummary(brief),
     requiredSkills: brief.requiredSkills ?? [],
     optionalSkills: brief.optionalSkills ?? [],
     languages: brief.language ? [brief.language] : [],

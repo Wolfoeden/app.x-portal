@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import { parseFallbackBrief } from "@/lib/domain";
+import { calculateCreditsConsumed } from "@/lib/ai/credit-policy";
 import {
   DEFAULT_OPENAI_BRIEF_MODEL,
   MAX_OPENAI_BRIEF_OUTPUT_TOKENS,
@@ -78,6 +79,14 @@ describe("extractProjectBrief", () => {
       shortRequest.inputTokens + shortRequest.outputTokens,
     );
     expect(longRequest.inputTokens).toBeGreaterThan(shortRequest.inputTokens);
+    expect(
+      calculateCreditsConsumed({
+        requestedModel: shortRequest.model,
+        purpose: "project_brief",
+        inputTokens: shortRequest.inputTokens,
+        outputTokens: shortRequest.outputTokens,
+      }).creditsConsumed,
+    ).toBeLessThanOrEqual(500);
   });
 
   it("uses the deterministic fallback when the server key is unavailable", async () => {
@@ -372,6 +381,7 @@ describe("extractProjectBrief", () => {
     expect(requestSignal?.aborted).toBe(true);
     expect(result.mode).toBe("fallback");
     expect(result.fallbackReason).toBe("provider_timeout");
+    expect(result.providerFailure).toBe("timeout");
     expect(result.providerAttempted).toBe(true);
     expect(result.brief.originalRequest).toBe("Need a React freelancer.");
   });
@@ -389,6 +399,7 @@ describe("extractProjectBrief", () => {
     );
 
     expect(result.fallbackReason).toBe("provider_error");
+    expect(result.providerFailure).toBe("provider_error");
     expect(result.providerAttempted).toBe(true);
     expect(result.notice).not.toContain("secret provider detail");
   });

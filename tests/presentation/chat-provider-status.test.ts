@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   analysisDisclosure,
+  assistantAttribution,
   normalizeAnalysisTrace,
   providerModelLabel,
   providerStatusLabel,
+  sidebarAccountButtonClassName,
 } from "@/components/ChatWorkspace";
 import type { AiAnalysisTrace } from "@/components/chat-contract";
 
@@ -21,6 +23,7 @@ function trace(
       actualTransport: null,
       requestedModel: "gpt-requested",
       actualModel: null,
+      failureCategory: null,
       ...provider,
     },
     steps: [],
@@ -73,6 +76,19 @@ describe("truthful chat provider status", () => {
     expect(analysisDisclosure(failed)).toContain("ohne bestätigte Provider-Antwort");
   });
 
+  it("surfaces a redacted billing or provider-quota failure", () => {
+    const failed = trace({
+      configured: true,
+      attempted: true,
+      requestedTransport: "direct_openai",
+      failureCategory: "billing_or_quota",
+    });
+
+    expect(providerStatusLabel(failed)).toBe(
+      "Basisanalyse · OpenAI-Abrechnung oder Provider-Limit blockiert",
+    );
+  });
+
   it("distinguishes a configured but skipped provider request", () => {
     const skipped = trace({
       configured: true,
@@ -121,5 +137,20 @@ describe("truthful chat provider status", () => {
       "Antwortmodell: gpt-response-snapshot",
     );
     expect(analysisDisclosure(invalidOutput)).toContain("nicht für die Strukturierung verwendet");
+  });
+});
+
+describe("chat guest affordance", () => {
+  it("highlights the account button only for guests", () => {
+    expect(sidebarAccountButtonClassName(false)).toContain("is-guest-login");
+    expect(sidebarAccountButtonClassName(true)).toBe("sidebar-account-button");
+  });
+
+  it("does not label a deterministic fallback as an AI answer", () => {
+    expect(assistantAttribution()).toEqual({
+      ariaLabel: "Nachricht von XPORTAL",
+      author: "XPORTAL",
+      badge: null,
+    });
   });
 });

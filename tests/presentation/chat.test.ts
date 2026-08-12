@@ -21,6 +21,26 @@ function makeBrief(patch: Partial<ProjectBrief> = {}): ProjectBrief {
 }
 
 describe("chat presentation", () => {
+  it("builds the visible summary only from accepted structured fields", () => {
+    const brief = makeBrief({
+      summary: "Untrusted raw prompt that must not be repeated",
+      requiredSkills: ["React"],
+      language: "German",
+      workMode: "remote",
+      duration: { value: 6, unit: "weeks", raw: "sechs Wochen" },
+      rate: { min: null, max: 800, currency: "EUR", unit: "day" },
+      constraints: ["EU residency"],
+    });
+
+    const result = presentBrief(brief);
+
+    expect(result.summary).toContain("Pflichtkompetenzen: React");
+    expect(result.summary).toContain("Dauer: sechs Wochen");
+    expect(result.summary).toContain("800");
+    expect(result.summary).toContain("EU residency");
+    expect(result.summary).not.toContain("Untrusted raw prompt");
+  });
+
   it("keeps unknown facts explicit in the UI contract", () => {
     const brief = makeBrief({ projectTitle: null, location: null });
     const result = presentBrief(brief);

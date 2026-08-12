@@ -40,7 +40,7 @@ body {
   background: var(--surface);
   color: var(--ink);
   font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.5;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -147,7 +147,7 @@ a {
   align-items: center;
   gap: 10px;
   color: var(--ink);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 650;
   letter-spacing: -0.015em;
 }
@@ -236,7 +236,7 @@ a {
 .nav-label {
   margin: 0 9px 8px;
   color: var(--muted-light);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -259,13 +259,13 @@ a {
 .empty-projects p {
   margin: 0 0 4px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 550;
 }
 
 .empty-projects small {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
@@ -299,7 +299,7 @@ a {
 
 .project-title {
   overflow: hidden;
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 560;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -307,7 +307,7 @@ a {
 
 .project-meta {
   color: var(--muted-light);
-  font-size: 10.5px;
+  font-size: 11.5px;
 }
 
 .sidebar-footer {
@@ -333,6 +333,29 @@ a {
 .sidebar-account-button:hover,
 .sidebar-account-button[aria-expanded="true"] {
   background: #ecece8;
+}
+
+.sidebar-account-button.is-guest-login {
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  box-shadow: 0 5px 18px rgba(24, 24, 23, 0.14);
+  color: #fff;
+}
+
+.sidebar-account-button.is-guest-login:hover,
+.sidebar-account-button.is-guest-login[aria-expanded="true"] {
+  background: #333330;
+}
+
+.sidebar-account-button.is-guest-login .sidebar-account-avatar {
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.sidebar-account-button.is-guest-login .sidebar-account-copy span,
+.sidebar-account-button.is-guest-login .sidebar-account-more {
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .sidebar-account-avatar {
@@ -364,13 +387,13 @@ a {
 }
 
 .sidebar-account-copy strong {
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 650;
 }
 
 .sidebar-account-copy span {
   color: var(--muted-light);
-  font-size: 9.5px;
+  font-size: 10.5px;
 }
 
 .sidebar-account-more {
@@ -425,7 +448,7 @@ a {
 
 .topbar-title {
   max-width: 520px;
-  font-size: 13.5px;
+  font-size: 14.5px;
   font-weight: 650;
   letter-spacing: -0.01em;
 }
@@ -433,7 +456,7 @@ a {
 .topbar-subtitle {
   margin-top: 1px;
   color: var(--muted-light);
-  font-size: 10.5px;
+  font-size: 11.5px;
 }
 
 .topbar-actions {
@@ -859,7 +882,7 @@ a {
   max-width: 650px;
   margin: 14px 0 0;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.65;
 }
 
@@ -870,7 +893,7 @@ a {
   gap: 10px;
   margin: 23px 0 26px;
   color: var(--muted);
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 540;
 }
 
@@ -927,14 +950,14 @@ a {
 }
 
 .suggestion-label {
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 660;
 }
 
 .suggestion-description {
   overflow: hidden;
   color: var(--muted);
-  font-size: 10.5px;
+  font-size: 11.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -960,7 +983,7 @@ a {
   gap: 7px;
   margin: 15px 2px 0;
   color: var(--muted-light);
-  font-size: 9.5px;
+  font-size: 10.5px;
 }
 
 .no-form-note span {
@@ -981,7 +1004,7 @@ a {
   background: #fbf8ef;
   padding: 10px 12px;
   color: #685a38;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.5;
 }
 
@@ -1041,7 +1064,7 @@ a {
 
 .assistant-message .message-content > p {
   color: var(--ink-soft);
-  font-size: 13.5px;
+  font-size: 14.5px;
   line-height: 1.7;
 }
 
@@ -1050,7 +1073,7 @@ a {
   align-items: center;
   gap: 6px;
   margin-bottom: 5px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 680;
 }
 
@@ -1068,7 +1091,7 @@ a {
   align-items: center;
   gap: 9px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .thinking-dots {
@@ -1160,7 +1183,7 @@ a {
 .brief-summary {
   margin: 10px 0 15px;
   color: var(--muted);
-  font-size: 11.5px;
+  font-size: 12.5px;
   line-height: 1.6;
 }
 
@@ -1188,7 +1211,7 @@ a {
 .side-details dt {
   margin-bottom: 3px;
   color: var(--muted-light);
-  font-size: 8.5px;
+  font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.065em;
   text-transform: uppercase;
@@ -1200,7 +1223,7 @@ a {
   overflow-wrap: anywhere;
   margin: 0;
   color: var(--ink-soft);
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 560;
 }
 
@@ -1318,7 +1341,7 @@ dd.is-unknown,
 
 .profile-identity h3 {
   margin: 0;
-  font-size: 13.5px;
+  font-size: 14.5px;
   font-weight: 680;
   letter-spacing: -0.01em;
 }
@@ -1327,7 +1350,7 @@ dd.is-unknown,
 .contact-dialog-header p {
   margin: 1px 0 0;
   color: var(--muted);
-  font-size: 10.5px;
+  font-size: 11.5px;
 }
 
 .profile-badges {
@@ -1384,7 +1407,7 @@ dd.is-unknown,
 .experience-summary {
   margin: 12px 0;
   color: var(--muted);
-  font-size: 10.5px;
+  font-size: 11.5px;
   line-height: 1.55;
 }
 
@@ -1543,8 +1566,8 @@ dd.is-unknown,
   gap: 2px;
 }
 
-.analysis-trace summary strong { font-size: 10.5px; }
-.analysis-trace summary small { color: var(--muted-light); font-size: 8.5px; }
+.analysis-trace summary strong { font-size: 11.5px; }
+.analysis-trace summary small { color: var(--muted-light); font-size: 9.5px; }
 .analysis-trace-toggle { color: var(--muted-light); transition: transform .16s ease; }
 .analysis-trace[open] .analysis-trace-toggle { transform: rotate(180deg); }
 
@@ -1571,9 +1594,9 @@ dd.is-unknown,
   font-weight: 800;
 }
 .analysis-trace li.is-warning > span { background: #fbf2d8; color: #7a6225; }
-.analysis-trace li strong { font-size: 9.5px; }
-.analysis-trace li p { margin: 2px 0 0; color: var(--muted); font-size: 9px; line-height: 1.45; }
-.analysis-trace-disclosure { margin: 0; padding: 0 14px 12px 40px; color: var(--muted-light); font-size: 8.5px; }
+.analysis-trace li strong { font-size: 10.5px; }
+.analysis-trace li p { margin: 2px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.analysis-trace-disclosure { margin: 0; padding: 0 14px 12px 40px; color: var(--muted-light); font-size: 9.5px; }
 
 .reference-note.is-unverified span {
   color: var(--muted-light);
@@ -1766,7 +1789,7 @@ dd.is-unknown,
   margin: 11px 0 9px;
   padding: 9px 12px;
   text-align: left;
-  font-size: 9.5px;
+  font-size: 10.5px;
   font-weight: 650;
   line-height: 1.4;
 }
@@ -1818,7 +1841,7 @@ dd.is-unknown,
   margin-top: 7px;
   margin-bottom: 0;
   color: #765b20;
-  font-size: 9.5px;
+  font-size: 10.5px;
   line-height: 1.4;
 }
 
@@ -1837,7 +1860,7 @@ dd.is-unknown,
   outline: 0;
   background: transparent;
   padding: 15px 16px 5px;
-  font-size: 12.5px;
+  font-size: 13.5px;
   line-height: 1.5;
 }
 
@@ -2322,7 +2345,7 @@ dd.is-unknown,
   background: transparent;
   color: var(--muted);
   padding: 3px 0;
-  font-size: 9.5px;
+  font-size: 10.5px;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -2610,7 +2633,7 @@ dd.is-unknown,
 .calendar-consent a {
   margin-top: 10px;
   color: var(--muted);
-  font-size: 8.5px;
+  font-size: 9.5px;
   text-underline-offset: 3px;
 }
 
@@ -2873,7 +2896,7 @@ dd.is-unknown,
 
   .topbar-title {
     max-width: 155px;
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .login-button {
@@ -2920,7 +2943,7 @@ dd.is-unknown,
   }
 
   .welcome-copy {
-    font-size: 12.5px;
+    font-size: 13.5px;
   }
 
   .trust-row {

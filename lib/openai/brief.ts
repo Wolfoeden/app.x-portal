@@ -12,6 +12,10 @@ import {
   type BriefFactField,
   type ProjectBrief,
 } from "@/lib/domain";
+import {
+  classifyOpenAiProviderError,
+  type OpenAiDiagnosticStatus,
+} from "@/lib/openai/diagnostics";
 import { createOpenAiClient } from "@/lib/openai/provider";
 
 export const DEFAULT_OPENAI_BRIEF_MODEL = "gpt-5.6-terra";
@@ -165,6 +169,8 @@ export interface ExtractProjectBriefResult {
   providerAttempted: boolean;
   notice?: string;
   fallbackReason?: BriefFallbackReason;
+  /** Redacted provider category for operator/user diagnostics; never raw text. */
+  providerFailure?: Exclude<OpenAiDiagnosticStatus, "reachable" | "unconfigured">;
   provider?: {
     requestedModel: string;
     /** Exact response model when supplied, otherwise the requested model. */
@@ -852,6 +858,7 @@ function fallbackResult(
   fallbackReason: BriefFallbackReason,
   provider?: ExtractProjectBriefResult["provider"],
   providerAttempted = false,
+  providerFailure?: ExtractProjectBriefResult["providerFailure"],
 ): ExtractProjectBriefResult {
   const notices: Record<BriefFallbackReason, string> = {
     budget_denied:
@@ -874,6 +881,7 @@ function fallbackResult(
     fallbackReason,
     notice: notices[fallbackReason],
     ...(provider ? { provider } : {}),
+    ...(providerFailure ? { providerFailure } : {}),
   };
 }
 
@@ -1075,11 +1083,18 @@ export async function extractProjectBrief(
       provider,
     };
   } catch (error) {
+    const timedOut = isTimeoutError(error);
+    const classified = timedOut
+      ? "timeout"
+      : classifyOpenAiProviderError(error);
     return fallbackResult(
       deterministic,
-      isTimeoutError(error) ? "provider_timeout" : "provider_error",
+      timedOut ? "provider_timeout" : "provider_error",
       provider,
       providerAttempted,
+      classified === "reachable" || classified === "unconfigured"
+        ? "provider_error"
+        : classified,
     );
   }
 }

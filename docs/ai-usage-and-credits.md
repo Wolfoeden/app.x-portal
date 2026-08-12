@@ -29,6 +29,10 @@ The policy in `lib/ai/credit-policy.ts` counts weighted token work:
 One XPORTAL AI credit covers 1,000 weighted units, rounded up per settled
 request. Purpose/model multipliers are explicit, centralized and versioned; the
 Luna multiplier is 1.0 and Terra is 10.0 to reflect its higher text-token price.
+For the MVP, `project_brief` and the explicitly requested `research` action use
+a 0.1 purpose multiplier. This prevents the 500-credit guest allocation from
+blocking an ordinary Terra request before OpenAI is called; the independent
+20,000-token daily guest ceiling and request limits remain enforced.
 Never infer a historical balance using a newer
 policy version: every reservation stores its own `credit_policy_version`.
 
@@ -81,8 +85,9 @@ an explicit hard stop; invalid or missing values use the documented defaults.
    `reconciled_estimate`. This prevents both free unmetered calls and permanently
    stranded credit reservations after a process timeout or deployment.
 
-The deterministic brief fallback always retains the original request and keeps
-the project usable when quota, credits, provider budget or OpenAI fails.
+The deterministic brief fallback always retains the original request. When
+quota, credits, provider budget or OpenAI fails, no internal shortlist or
+external-search offer is presented as an AI result for that project state.
 
 ## User and administrator views
 
