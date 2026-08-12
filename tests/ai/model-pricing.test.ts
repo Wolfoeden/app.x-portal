@@ -15,12 +15,14 @@ describe("model pricing", () => {
       "gpt-5.6-luna": {
         inputNanoUsdPerToken: "200",
         cachedInputNanoUsdPerToken: "20",
+        cacheWriteNanoUsdPerToken: "250",
         outputNanoUsdPerToken: "1200",
         sourceCheckedOn: "2026-08-12",
       },
       "gpt-5.6-terra": {
         inputNanoUsdPerToken: "2000",
         cachedInputNanoUsdPerToken: "200",
+        cacheWriteNanoUsdPerToken: "2500",
         outputNanoUsdPerToken: "12000",
         sourceCheckedOn: "2026-08-12",
       },
@@ -65,6 +67,20 @@ describe("model pricing", () => {
 
     expect(result.estimatedCostNanoUsd).toBe("20000000");
     expect(result.estimatedCostUsd).toBe("0.02");
+  });
+
+  it("prices cache writes at 1.25 times uncached input", () => {
+    const result = calculateEstimatedProviderCost({
+      requestedModel: "gpt-5.6-luna",
+      inputTokens: 1_000_000,
+      cachedInputTokens: 0,
+      cacheWriteTokens: 1_000_000,
+      outputTokens: 0,
+    });
+
+    expect(result.usage.uncachedInputTokens).toBe(0);
+    expect(result.usage.cacheWriteTokens).toBe(1_000_000);
+    expect(result.estimatedCostUsd).toBe("0.25");
   });
 
   it("uses the actual model when the provider returns one", () => {
@@ -147,7 +163,7 @@ describe("model pricing", () => {
         cachedInputTokens: 11,
         outputTokens: 0,
       }),
-    ).toThrow(/subset of input tokens/);
+    ).toThrow(/cannot be greater than inputTokens/);
   });
 
   it("keeps source metadata with the price snapshot", () => {

@@ -65,6 +65,7 @@ describe("executeTrackedAiRequest", () => {
         providerResponseId: "resp_123",
         inputTokens: 100,
         cachedInputTokens: 40,
+        cacheWriteTokens: 10,
         outputTokens: 20,
         totalTokens: 120,
       },
@@ -85,7 +86,7 @@ describe("executeTrackedAiRequest", () => {
         cachedInputTokens: 40,
         outputTokens: 20,
         totalTokens: 120,
-        actualCostNanoUsd: "36800",
+        actualCostNanoUsd: "37300",
         outcome: "succeeded",
       }),
     );

@@ -90,6 +90,7 @@ export type ExternalFreelancerSearchResult = {
     responseId?: string;
     inputTokens?: number;
     cachedInputTokens?: number;
+    cacheWriteTokens?: number;
     outputTokens?: number;
     totalTokens?: number;
   };
@@ -113,7 +114,10 @@ export interface ExternalSearchProviderResponse {
   model?: string;
   usage?: {
     input_tokens: number;
-    input_tokens_details?: { cached_tokens?: number } | null;
+    input_tokens_details?: {
+      cached_tokens?: number;
+      cache_write_tokens?: number;
+    } | null;
     output_tokens: number;
     total_tokens: number;
   } | null;
@@ -528,6 +532,8 @@ export async function searchExternalFreelancers(
       responseId: response.id,
       inputTokens: response.usage?.input_tokens,
       cachedInputTokens: response.usage?.input_tokens_details?.cached_tokens,
+      cacheWriteTokens:
+        response.usage?.input_tokens_details?.cache_write_tokens,
       outputTokens: response.usage?.output_tokens,
       totalTokens: response.usage?.total_tokens,
     };

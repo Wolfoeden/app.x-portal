@@ -1,9 +1,6 @@
 import "server-only";
 
-import {
-  calculateEstimatedProviderCost,
-  formatNanoUsdAsUsd,
-} from "@/lib/ai/model-pricing";
+import { formatNanoUsdAsUsd } from "@/lib/ai/model-pricing";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export type AdminUsageSourceRow = {
@@ -144,41 +141,10 @@ export function classifyAdminUsageRow(
   return "confirmed_provider";
 }
 
-function calculatedProviderCostNanoUsd(
-  row: AdminUsageSourceRow,
-): string | null {
-  const inputTokens = validCount(row.input_tokens);
-  const cachedInputTokens = validCount(row.cached_input_tokens);
-  const outputTokens = validCount(row.output_tokens);
-  if (
-    inputTokens === null ||
-    cachedInputTokens === null ||
-    outputTokens === null ||
-    cachedInputTokens > inputTokens
-  ) {
-    return null;
-  }
-
-  return calculateEstimatedProviderCost({
-    requestedModel: row.requested_model ?? "",
-    actualModel: row.actual_model,
-    inputTokens,
-    cachedInputTokens,
-    outputTokens,
-  }).estimatedCostNanoUsd;
-}
-
-function rowCostNanoUsd(
-  row: AdminUsageSourceRow,
-  usageBasis: "confirmed_provider" | "estimated_or_reconciled",
-): string | null {
-  // OpenAI returns token usage, not a billed USD amount. Confirmed rows are
-  // therefore priced from their provider-reported token fields using the
-  // reviewed registry. Conservative/reconciled rows retain the cost estimate
-  // that was reserved by the policy active at request time.
-  return usageBasis === "confirmed_provider"
-    ? calculatedProviderCostNanoUsd(row)
-    : validNanoUsd(row.actual_cost_nano_usd);
+function rowCostNanoUsd(row: AdminUsageSourceRow): string | null {
+  // This value was calculated and versioned at settlement time. Keeping it
+  // avoids silently repricing historical usage when the live registry changes.
+  return validNanoUsd(row.actual_cost_nano_usd);
 }
 
 function emptyProviderTotals(): AdminProviderUsageTotals {
@@ -208,14 +174,13 @@ function emptyTotals(): AdminUsageTotals {
 function addProviderRow(
   total: AdminProviderUsageTotals,
   row: AdminUsageSourceRow,
-  usageBasis: "confirmed_provider" | "estimated_or_reconciled",
 ): void {
   total.requests += 1;
   total.inputTokens += count(row.input_tokens);
   total.cachedInputTokens += count(row.cached_input_tokens);
   total.outputTokens += count(row.output_tokens);
   total.totalTokens += count(row.total_tokens);
-  const costNanoUsd = rowCostNanoUsd(row, usageBasis);
+  const costNanoUsd = rowCostNanoUsd(row);
   if (costNanoUsd === null) {
     total.unknownCostRequests += 1;
   } else {
@@ -234,7 +199,6 @@ function addRow(total: AdminUsageTotals, row: AdminUsageSourceRow): void {
       ? total.confirmedProvider
       : total.estimatedOrReconciled,
     row,
-    usageBasis,
   );
   if (row.outcome === "reconciled_estimate") {
     total.reconciledEstimates += 1;
@@ -279,7 +243,7 @@ function presentInteraction(
   email: string | null,
 ): AdminUsageInteraction {
   const usageBasis = classifyAdminUsageRow(row);
-  const cost = rowCostNanoUsd(row, usageBasis);
+  const cost = rowCostNanoUsd(row);
   return {
     id: row.interaction_id ?? row.id,
     userId: row.user_id,

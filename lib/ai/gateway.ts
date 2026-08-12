@@ -130,6 +130,7 @@ export async function executeTrackedAiRequest<T>(input: {
       actualModel: usage.actualModel,
       inputTokens: usage.inputTokens,
       cachedInputTokens: usage.cachedInputTokens ?? 0,
+      cacheWriteTokens: usage.cacheWriteTokens ?? 0,
       outputTokens: usage.outputTokens,
     });
     actualCreditCalculation = calculateCreditsConsumed({
@@ -137,6 +138,7 @@ export async function executeTrackedAiRequest<T>(input: {
       actualModel: usage.actualModel,
       inputTokens: usage.inputTokens,
       cachedInputTokens: usage.cachedInputTokens ?? 0,
+      cacheWriteTokens: usage.cacheWriteTokens ?? 0,
       outputTokens: usage.outputTokens,
       purpose: input.purpose,
     });

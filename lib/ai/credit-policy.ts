@@ -150,7 +150,7 @@ export function calculateCreditsConsumed(
   );
 
   const baseWeightedUnits =
-    BigInt(usage.uncachedInputTokens) *
+    BigInt(usage.uncachedInputTokens + usage.cacheWriteTokens) *
       BigInt(policy.tokenWeights.uncachedInput) +
     BigInt(usage.cachedInputTokens) *
       BigInt(policy.tokenWeights.cachedInput) +

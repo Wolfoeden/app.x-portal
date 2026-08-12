@@ -396,6 +396,8 @@ async function processChatRequest(
                       inputTokens: extraction.provider.inputTokens!,
                       cachedInputTokens:
                         extraction.provider.cachedInputTokens ?? 0,
+                      cacheWriteTokens:
+                        extraction.provider.cacheWriteTokens ?? 0,
                       outputTokens: extraction.provider.outputTokens!,
                       totalTokens: extraction.provider.totalTokens,
                     }

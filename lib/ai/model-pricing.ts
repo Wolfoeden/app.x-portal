@@ -10,12 +10,14 @@
 export type AiTokenUsage = {
   inputTokens: number;
   cachedInputTokens?: number;
+  cacheWriteTokens?: number;
   outputTokens: number;
 };
 
 export type NormalizedAiTokenUsage = {
   inputTokens: number;
   cachedInputTokens: number;
+  cacheWriteTokens: number;
   uncachedInputTokens: number;
   outputTokens: number;
   totalTokens: number;
@@ -31,6 +33,7 @@ export type ModelPricingSnapshot = {
   currency: "USD";
   inputNanoUsdPerToken: string;
   cachedInputNanoUsdPerToken: string;
+  cacheWriteNanoUsdPerToken: string;
   outputNanoUsdPerToken: string;
   pricingVersion: string;
   effectiveOn: string;
@@ -53,6 +56,7 @@ export const MODEL_PRICING_REGISTRY = {
     currency: "USD",
     inputNanoUsdPerToken: "200",
     cachedInputNanoUsdPerToken: "20",
+    cacheWriteNanoUsdPerToken: "250",
     outputNanoUsdPerToken: "1200",
     pricingVersion: OPENAI_PRICING_VERSION,
     effectiveOn: "2026-08-12",
@@ -64,6 +68,7 @@ export const MODEL_PRICING_REGISTRY = {
     currency: "USD",
     inputNanoUsdPerToken: "2000",
     cachedInputNanoUsdPerToken: "200",
+    cacheWriteNanoUsdPerToken: "2500",
     outputNanoUsdPerToken: "12000",
     pricingVersion: OPENAI_PRICING_VERSION,
     effectiveOn: "2026-08-12",
@@ -97,14 +102,16 @@ export function normalizeAiTokenUsage(
   usage: AiTokenUsage,
 ): NormalizedAiTokenUsage {
   const cachedInputTokens = usage.cachedInputTokens ?? 0;
+  const cacheWriteTokens = usage.cacheWriteTokens ?? 0;
 
   assertTokenCount("inputTokens", usage.inputTokens);
   assertTokenCount("cachedInputTokens", cachedInputTokens);
+  assertTokenCount("cacheWriteTokens", cacheWriteTokens);
   assertTokenCount("outputTokens", usage.outputTokens);
 
-  if (cachedInputTokens > usage.inputTokens) {
+  if (cachedInputTokens + cacheWriteTokens > usage.inputTokens) {
     throw new RangeError(
-      "cachedInputTokens cannot be greater than inputTokens because cached tokens are a subset of input tokens",
+      "cachedInputTokens plus cacheWriteTokens cannot be greater than inputTokens",
     );
   }
 
@@ -116,7 +123,9 @@ export function normalizeAiTokenUsage(
   return {
     inputTokens: usage.inputTokens,
     cachedInputTokens,
-    uncachedInputTokens: usage.inputTokens - cachedInputTokens,
+    cacheWriteTokens,
+    uncachedInputTokens:
+      usage.inputTokens - cachedInputTokens - cacheWriteTokens,
     outputTokens: usage.outputTokens,
     totalTokens,
   };
@@ -200,6 +209,8 @@ export function calculateEstimatedProviderCost(
       BigInt(pricing.inputNanoUsdPerToken) +
     BigInt(usage.cachedInputTokens) *
       BigInt(pricing.cachedInputNanoUsdPerToken) +
+    BigInt(usage.cacheWriteTokens) *
+      BigInt(pricing.cacheWriteNanoUsdPerToken) +
     BigInt(usage.outputTokens) * BigInt(pricing.outputNanoUsdPerToken);
 
   return {

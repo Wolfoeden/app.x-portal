@@ -48,6 +48,7 @@ function mockClient(output: unknown) {
       input_tokens: 101,
       input_tokens_details: {
         cached_tokens: 40,
+        cache_write_tokens: 10,
       },
       output_tokens: 52,
       total_tokens: 153,
@@ -151,6 +152,7 @@ describe("extractProjectBrief", () => {
       responseId: "resp_test_123",
       inputTokens: 101,
       cachedInputTokens: 40,
+      cacheWriteTokens: 10,
       outputTokens: 52,
       totalTokens: 153,
     });

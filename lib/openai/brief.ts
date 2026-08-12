@@ -172,6 +172,7 @@ export interface ExtractProjectBriefResult {
     responseId?: string;
     inputTokens?: number;
     cachedInputTokens?: number;
+    cacheWriteTokens?: number;
     outputTokens?: number;
     totalTokens?: number;
   };
@@ -1052,6 +1053,8 @@ export async function extractProjectBrief(
       responseId: response.id,
       inputTokens: response.usage?.input_tokens,
       cachedInputTokens: response.usage?.input_tokens_details?.cached_tokens,
+      cacheWriteTokens:
+        response.usage?.input_tokens_details?.cache_write_tokens,
       outputTokens: response.usage?.output_tokens,
       totalTokens: response.usage?.total_tokens,
     };

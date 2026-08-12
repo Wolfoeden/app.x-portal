@@ -34,9 +34,10 @@ policy version: every reservation stores its own `credit_policy_version`.
 
 The provider-price registry in `lib/ai/model-pricing.ts` is independent of this
 policy. It stores exact integer nano-USD rates and the source/check date. Cached
-input is a subset of input. The actual provider-returned model takes precedence
-over the requested model. Explicit dated Luna or Terra snapshots use the
-reviewed family price; other unknown models still record token/credit
+reads and cache writes are subsets of input and use their separate official
+rates. The actual provider-returned model takes precedence over the requested
+model. Explicit dated Luna or Terra snapshots use the reviewed family price;
+other unknown models still record token/credit
 usage but leave precise cost null rather than inventing a rate.
 
 ## Default controls

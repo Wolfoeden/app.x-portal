@@ -153,9 +153,10 @@ export default async function AiUsageAdminPage({
       <p className={styles.basisNotice}>
         <strong>Messgrundlage:</strong> „Provider bestätigt“ erfordert eine
         Provider-Response-ID, das tatsächliche Modell sowie konsistente
-        Tokenfelder. Die ausgewiesenen Text-Token-Kosten werden aus diesen
-        Tokens mit dem datierten Preisregister errechnet; Tool-Gebühren sind
-        darin nicht enthalten und die Werte sind keine Provider-Rechnung.
+        Tokenfelder. Die ausgewiesenen Text-Token-Kosten wurden beim jeweiligen
+        Request mit dem damals gespeicherten Preisregister errechnet;
+        Tool-Gebühren sind darin nicht enthalten und die Werte sind keine
+        Provider-Rechnung.
         Unvollständige und abgeglichene Datensätze bleiben
         ausdrücklich Schätzungen. XPORTAL Credits sind eine separate interne
         Produkteinheit.

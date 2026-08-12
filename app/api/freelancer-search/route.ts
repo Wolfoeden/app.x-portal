@@ -197,6 +197,7 @@ export async function POST(request: Request) {
                   providerResponseId: result.provider.responseId,
                   inputTokens: result.provider.inputTokens!,
                   cachedInputTokens: result.provider.cachedInputTokens ?? 0,
+                  cacheWriteTokens: result.provider.cacheWriteTokens ?? 0,
                   outputTokens: result.provider.outputTokens!,
                   totalTokens: result.provider.totalTokens,
                 }

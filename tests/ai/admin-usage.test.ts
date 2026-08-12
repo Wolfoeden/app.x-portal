@@ -113,8 +113,8 @@ describe("admin AI usage truthfulness", () => {
       confirmedProvider: {
         requests: 2,
         totalTokens: 37,
-        costNanoUsd: "14040",
-        costUsd: "0.00001404",
+        costNanoUsd: "3000",
+        costUsd: "0.000003",
         unknownCostRequests: 0,
       },
       estimatedOrReconciled: {
