@@ -46,6 +46,7 @@ export async function executeTrackedAiRequest<T>(input: {
   userHash: string;
   ipHash: string;
   isAnonymous: boolean;
+  isAdmin?: boolean;
   purpose: string;
   requestedModel: string;
   estimatedInputTokens: number;
@@ -72,6 +73,7 @@ export async function executeTrackedAiRequest<T>(input: {
     userHash: input.userHash,
     ipHash: input.ipHash,
     isAnonymous: input.isAnonymous,
+    isAdmin: input.isAdmin,
     requestedModel: input.requestedModel,
     purpose: input.purpose,
     estimatedInputTokens: input.estimatedInputTokens,

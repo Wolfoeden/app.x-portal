@@ -126,6 +126,9 @@ function fallbackNotice(
   ) {
     return "Das tägliche KI-Limit für den Gastzugang ist erreicht. Ihre Anfrage wurde gespeichert und ohne weiteren Provider-Aufruf verarbeitet.";
   }
+  if (reason === "user_daily_token_limit") {
+    return "Das tägliche interne XPORTAL-KI-Limit für dieses Konto ist erreicht. OpenAI wurde nicht aufgerufen; Ihre Anfrage wurde sicher gespeichert.";
+  }
   if (fallbackReason === "provider_timeout") {
     return "Die KI-Analyse hat das Zeitlimit erreicht. Ihre Anfrage wurde gespeichert und mit der sicheren Basislogik verarbeitet.";
   }
@@ -351,371 +354,187 @@ async function processChatRequest(
 
     const extractionInput = {
       originalRequest: existing?.original_request ?? input.message,
-      latestMessage: existing ? input.message : undefined,
-      previousBrief: previousBrief(existing),
-      safetyIdentifier: userHash ?? undefined,
-    };
-    const estimate = estimateProjectBriefTokenCeiling(extractionInput);
-    const providerConnection = resolveOpenAiConnection();
-    progress("KI analysiert und strukturiert die Anforderungen …");
-    const tracked =
-      userHash && ipHash
-        ? await executeTrackedAiRequest({
-            requestKey,
-            interactionId,
-            userId: user.id,
-            userHash,
-            ipHash,
-            isAnonymous: user.isAnonymous,
-            purpose: "project_brief",
-            requestedModel: estimate.model,
-            estimatedInputTokens: estimate.inputTokens,
-            estimatedOutputTokens: estimate.outputTokens,
-            operation: async (providerAllowed) => {
-              const extraction = await extractProjectBrief({
-                ...extractionInput,
-                allowProvider: providerAllowed,
-              });
-              return {
-                value: extraction,
-                providerAttempted: extraction.providerAttempted,
-                outcome:
-                  extraction.mode === "openai"
-                    ? ("succeeded" as const)
-                    : extraction.fallbackReason === "provider_timeout"
-                      ? ("timeout" as const)
-                      : ("provider_error" as const),
-                usage:
-                  extraction.provider &&
-                  Number.isSafeInteger(extraction.provider.inputTokens) &&
-                  Number.isSafeInteger(extraction.provider.outputTokens)
-                  ? {
-                      requestedModel: extraction.provider.requestedModel,
-                      actualModel: extraction.provider.model,
-                      providerResponseId: extraction.provider.responseId,
-                      inputTokens: extraction.provider.inputTokens!,
-                      cachedInputTokens:
-                        extraction.provider.cachedInputTokens ?? 0,
-                      cacheWriteTokens:
-                        extraction.provider.cacheWriteTokens ?? 0,
-                      outputTokens: extraction.provider.outputTokens!,
-                      totalTokens: extraction.provider.totalTokens,
-                    }
-                  : undefined,
-              };
-            },
-          })
-        : {
-            value: await extractProjectBrief({
-              ...extractionInput,
-              allowProvider: false,
-            }),
-            quota: {
-              allowed: false,
-              reason: "pseudonym_configuration_missing",
-              retryAfterSeconds: null,
-              reservationId: null,
-              credits: null,
-            },
-            credits: null,
-          };
-    const extraction = tracked.value;
-    const quota = tracked.quota;
-    const providerSucceeded = Boolean(extraction.provider);
-    progress(
-      extraction.mode === "openai"
-        ? "Anforderungen sind strukturiert · interne Profile werden geladen …"
-        : "Sichere Basisanalyse aktiv · interne Profile werden geladen …",
-    );
-
-    // The model never receives this data. Filtering and ordering are wholly
-    // deterministic and run only after the brief has been accepted.
-    const profiles = await fetchActiveBookableRealProfiles(admin);
-    progress(`${profiles.length} aktive Profile werden regelbasiert abgeglichen …`);
-    const shortlist = buildShortlist(extraction.brief, profiles);
-    progress(
-      shortlist.matches.length
-        ? `${shortlist.matches.length} passende Profile werden nachvollziehbar aufbereitet …`
-        : "Kein interner Treffer · alternative Suche wird vorbereitet …",
-    );
-    const shortlistId = randomUUID();
-    const profileCatalogVersion = catalogVersion(profiles);
-
-    const { error: shortlistError } = await admin.from("shortlists").insert({
-      id: shortlistId,
-      project_id: project.id,
-      owner_user_id: user.id,
-      matching_rule_version: MATCHING_RULE_VERSION,
-      brief_snapshot: extraction.brief,
-      result_count: shortlist.matches.length,
-      profile_catalog_version: profileCatalogVersion,
-    });
-    if (shortlistError) throw shortlistError;
-
-    if (shortlist.matches.length) {
-      const rows: MatchInsert[] = shortlist.matches.map((match, index) => ({
-        shortlist_id: shortlistId,
-        project_id: project.id,
-        owner_user_id: user.id,
-        freelancer_profile_id: match.profile.id,
-        position: index + 1,
-        match_reasons: match.matchReasons,
-        known_gaps: match.knownGaps,
-        verified_facts_snapshot: match.verifiedFacts,
-        self_reported_facts_snapshot: match.selfReportedFacts,
-        profile_snapshot: FreelancerProfileSchema.parse({
-          ...match.profile,
-          introPolicy: {
-            ...match.profile.introPolicy,
-            // Historical browser-readable match snapshots never retain a
-            // booking URL. The current response may expose the approved URL,
-            // but only an explicit user click can open it.
-            bookingUrl: null,
-          },
-        }),
-        matching_rule_version: MATCHING_RULE_VERSION,
-        profile_data_version: profileVersionNumber(match.profileDataVersion),
-      }));
-      const { error } = await admin.from("matches").insert(rows);
-      if (error) throw error;
-    }
-
-    const text = assistantText(shortlist.matches.length);
-    const assistantClientMessageId = `assistant-${requestKey}`;
-    const { data: insertedAssistant, error: assistantError } = await admin
-      .from("messages")
-      .insert({
-        project_id: project.id,
-        owner_user_id: user.id,
-        role: "assistant",
-        content: text,
-        client_message_id: assistantClientMessageId,
-        structured_payload: {
-          shortlistId,
-          matchingRuleVersion: MATCHING_RULE_VERSION,
-          requestKey,
+      latestMessage: existing ? input.mz׎�����k�w��]);
+          return query;
         },
-      })
-      .select("id,role,content,created_at")
-      .maybeSingle();
-    if (assistantError && assistantError.code !== "23505") throw assistantError;
-    let assistantMessage = insertedAssistant;
-    if (!assistantMessage) {
-      const { data, error } = await admin
-        .from("messages")
-        .select("id,role,content,created_at")
-        .eq("project_id", project.id)
-        .eq("client_message_id", assistantClientMessageId)
-        .single();
-      if (error) throw error;
-      assistantMessage = data;
-    }
-
-    const { data: updatedProject, error: projectError } = await admin
-      .from("projects")
-      .update({
-        title: extraction.brief.projectTitle ?? project.title,
-        original_request: extraction.brief.originalRequest,
-        structured_brief: extraction.brief,
-        brief_status: extraction.mode === "openai" ? "ready" : "manual",
-        status: shortlist.matches.length ? "shortlisted" : "matching",
-      })
-      .eq("id", project.id)
-      .eq("owner_user_id", user.id)
-      .select("*")
-      .single();
-    if (projectError) throw projectError;
-
-    await writeAuditEvent({
-      actorUserId: user.id,
-      action: "project_chat_processed",
-      targetType: "project",
-      targetId: project.id,
-      outcome: "success",
-      traceId,
-      metadata: {
-        resultCount: shortlist.matches.length,
-        matchingRuleVersion: MATCHING_RULE_VERSION,
-        extractionMode: extraction.mode,
-      },
-    });
-
-    return NextResponse.json(
-      {
-        project: presentProject(updatedProject as ProjectRow),
-        message: {
-          id: assistantMessage.id,
-          role: assistantMessage.role,
-          content: assistantMessage.content,
-          createdAt: assistantMessage.created_at,
-        },
-        brief: presentBrief(extraction.brief),
-        matches: shortlist.matches.map(presentMatch),
-        mode: extraction.mode === "openai" ? "ai" : "fallback",
-        notice:
-          extraction.mode === "fallback"
-            ? fallbackNotice(
-                quota.reason,
-                user.isAnonymous,
-                extraction.fallbackReason,
-              )
-            : undefined,
-        match: {
-          id: shortlistId,
-          ruleVersion: MATCHING_RULE_VERSION,
-          profileDataVersion: profileCatalogVersion,
-          createdAt: new Date().toISOString(),
-        },
-        quota: {
-          remainingRequests: Math.min(userLimit.remaining, ipLimit.remaining),
-          retryAfterSeconds: quota.retryAfterSeconds,
-        },
-        credits: tracked.credits
-          ? {
-              ...tracked.credits,
-              exhausted: tracked.credits.remaining <= 0,
-              low:
-                tracked.credits.remaining > 0 &&
-                tracked.credits.remaining <=
-                  Math.max(1, Math.ceil(tracked.credits.total * 0.2)),
-            }
-          : undefined,
-        analysis: {
-          provider: {
-            configured: providerConnection.configured,
-            attempted: extraction.providerAttempted,
-            succeeded: providerSucceeded,
-            fallback: extraction.mode === "fallback",
-            requestedTransport: providerConnection.transport,
-            actualTransport:
-              providerSucceeded &&
-              providerConnection.transport !== "unconfigured"
-                ? providerConnection.transport
-                : null,
-            requestedModel:
-              extraction.provider?.requestedModel ?? estimate.model,
-            actualModel: providerSucceeded
-              ? extraction.provider?.model ?? null
-              : null,
-          },
-          steps: [
-            {
-              label: "Anforderungen strukturiert",
-              detail:
-                extraction.mode === "openai"
-                  ? "Die Angaben wurden serverseitig mit GPT in das Projektschema eingeordnet."
-                  : "Die Anfrage wurde mit der sicheren Basislogik strukturiert; fehlende Fakten bleiben offen.",
-              status: extraction.mode === "openai" ? "completed" : "warning",
-            },
-            {
-              label: "Interne Datenbank geprüft",
-              detail: `${profiles.length} aktive, reale und direkt buchbare Supabase-Profile wurden berücksichtigt.`,
-              status: "completed",
-            },
-            {
-              label: "Pflichtkriterien angewendet",
-              detail: `${shortlist.matches.length} Treffer werden nach Regel ${MATCHING_RULE_VERSION} angezeigt; die KI entscheidet nicht über die Auswahl.`,
-              status: "completed",
-            },
-          ],
-          externalSearchAvailable: shortlist.matches.length === 0,
-        } satisfies AiAnalysisTrace,
-      },
-      { headers: { "Cache-Control": "no-store" } },
-    );
-  } catch (error) {
-    await writeAuditEvent({
-      actorUserId: null,
-      action: "project_chat_failed",
-      targetType: "project",
-      outcome: "failed",
-      traceId,
-    }).catch(() => undefined);
-    return errorResponse(error, traceId);
-  }
-}
-
-function streamEvent(
-  controller: ReadableStreamDefaultController<Uint8Array>,
-  event: unknown,
-): void {
-  controller.enqueue(
-    new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`),
-  );
-}
-
-export async function POST(request: Request): Promise<Response> {
-  const acceptsStream = (request.headers.get("accept") ?? "").includes(
-    "text/event-stream",
-  );
-  const traceId = randomUUID();
-  if (!acceptsStream) {
-    return processChatRequest(request, traceId, () => undefined);
-  }
-
-  const stream = new ReadableStream<Uint8Array>({
-    start(controller) {
-      const progress: ProgressReporter = (label) => {
-        streamEvent(controller, { type: "progress", label });
+        maybeSingle: () =>
+          Promise.resolve({ data: mocks.project, error: null }),
       };
-      void processChatRequest(request, traceId, progress)
-        .then(async (response) => {
-          let body: unknown;
-          try {
-            body = await response.clone().json();
-          } catch {
-            body = { error: await response.text() };
-          }
-          if (response.ok) {
-            streamEvent(controller, { type: "result", data: body });
-          } else {
-            const message =
-              typeof body === "object" &&
-              body !== null &&
-              "error" in body &&
-              typeof body.error === "string"
-                ? body.error
-                : "Die Anfrage konnte gerade nicht verarbeitet werden.";
-            const code =
-              typeof body === "object" &&
-              body !== null &&
-              "code" in body &&
-              typeof body.code === "string"
-                ? body.code
-                : undefined;
-            const projectId =
-              typeof body === "object" &&
-              body !== null &&
-              "projectId" in body &&
-              typeof body.projectId === "string"
-                ? body.projectId
-                : undefined;
-            streamEvent(controller, {
-              type: "error",
-              message,
-              retryable: response.status >= 500 || response.status === 429,
-              code,
-              projectId,
-            });
-          }
-        })
-        .catch(() => {
-          streamEvent(controller, {
-            type: "error",
-            message: "Die Anfrage konnte gerade nicht verarbeitet werden.",
-            retryable: true,
-          });
-        })
-        .finally(() => controller.close());
+      return query;
     },
-  });
+  }),
+}));
 
-  return new Response(stream, {
+import { parseFallbackBrief } from "@/lib/domain";
+import { POST } from "@/app/api/freelancer-search/route";
+import { resetRateLimitsForTests } from "@/lib/security/rate-limit";
+
+const PROJECT_ID = "00000000-0000-4000-8000-000000000010";
+
+function project() {
+  return {
+    id: PROJECT_ID,
+    owner_user_id: "00000000-0000-4000-8000-000000000001",
+    title: "React project",
+    original_request: "React freelancer, remote",
+    structured_brief: parseFallbackBrief("React freelancer, remote"),
+    brief_status: "ready",
+    status: "matching",
+    created_at: "2026-08-12T08:00:00.000Z",
+    updated_at: "2026-08-12T08:00:00.000Z",
+  };
+}
+
+function request(
+  origin = "https://x-portal.eu",
+  projectId = PROJECT_ID,
+) {
+  return new Request("https://x-portal.eu/api/freelancer-search", {
+    method: "POST",
     headers: {
-      "Cache-Control": "no-store",
-      "Content-Type": "text/event-stream; charset=utf-8",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no",
+      "content-type": "application/json",
+      origin,
+      "x-forwarded-for": "203.0.113.5",
     },
+    body: JSON.stringify({
+      projectId,
+      requestId: "search-request-1",
+    }),
   });
 }
+
+beforeEach(() => {
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-key";
+  process.env.IP_HASH_SECRET = "a-secure-test-secret-that-is-long-enough";
+  process.env.NEXT_PUBLIC_SITE_URL = "https://x-portal.eu";
+  mocks.project = project();
+  mocks.eqCalls.length = 0;
+  mocks.audit.mockClear();
+  mocks.fetchProfiles.mockClear();
+  mocks.buildShortlist.mockReset();
+  mocks.buildShortlist.mockReturnValue({ matches: [] });
+  mocks.search.mockReset();
+  mocks.execute.mockReset();
+  mocks.execute.mockImplementation(async (input) => {
+    const operation = await input.operation(true);
+    return {
+      value: operation.value,
+      quota: {
+        allowed: true,
+        reason: "reserved",
+        retryAfterSeconds: null,
+        reservationId: "00000000-0000-4000-8000-000000000020",
+        credits: null,
+      },
+      credits: null,
+    };
+  });
+  mocks.search.mockResolvedValue({
+    candidates: [],
+    mode: "openai",
+    providerAttempted: true,
+    searchTrace: {
+      queries: ["React freelancer booking"],
+      consultedSourceCount: 2,
+      returnedCandidateCount: 0,
+    },
+  });
+  resetRateLimitsForTests();
+});
+
+afterEach(() => {
+  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+  delete process.env.IP_HASH_SECRET;
+  delete process.env.NEXT_PUBLIC_SITE_URL;
+});
+
+describe("POST /api/freelancer-search", () => {
+  it("accepts historical PostgreSQL UUIDs without RFC version bits", async () => {
+    mocks.project = {
+      ...project(),
+      id: "00000000-0000-0000-0000-000000000010",
+    };
+
+    const response = await POST(
+      request(
+        "https://x-portal.eu",
+        "00000000-0000-0000-0000-000000000010",
+      ),
+    );
+
+    expect(response.status).not.toBe(400);
+  });
+
+  it("rejects cross-origin writes before provider work", async () => {
+    const response = await POST(request("https://attacker.example"));
+
+    expect(response.status).toBe(403);
+    expect(mocks.execute).not.toHaveBeenCalled();
+  });
+
+  it("enforces project ownership in the database lookup", async () => {
+    mocks.project = null;
+    const response = await POST(request());
+
+    expect(response.status).toBe(404);
+    expect(mocks.eqCalls).toContainEqual(["id", PROJECT_ID]);
+    expect(mocks.eqCalls).toContainEqual([
+      "owner_user_id",
+      "00000000-0000-4000-8000-000000000001",
+    ]);
+    expect(mocks.execute).not.toHaveBeenCalled();
+  });
+
+  it("does not spend on web search when an internal match now exists", async () => {
+    mocks.buildShortlist.mockReturnValue({ matches: [{}] });
+    const response = await POST(request());
+
+    expect(response.status).toBe(409);
+    expect(mocks.execute).not.toHaveBeenCalled();
+    expect(mocks.audit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "external_freelancer_search_denied_internal_match",
+        outcome: "denied",
+      }),
+    );
+  });
+
+  it("returns external results separately with an explicit disclosure", async () => {
+    mocks.search.mockResolvedValue({
+      candidates: [
+        {
+          displayName: "Anna Beispiel",
+          role: "React Freelancer",
+          summary: "Public profile summary",
+          matchedRequirements: ["React"],
+          knownGaps: ["Rate unknown"],
+          profileUrl: "https://portfolio.example/anna",
+          bookingUrl: "https://calendly.com/anna/30min",
+          sourceUrls: [
+            "https://portfolio.example/anna",
+            "https://calendly.com/anna/30min",
+          ],
+          verificationStatus: "external_unverified",
+        },
+      ],
+      mode: "openai",
+      providerAttempted: true,
+      searchTrace: {
+        queries: ["React freelancer booking"],
+        consultedSourceCount: 2,
+        returnedCandidateCount: 1,
+      },
+    });
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.candidates).toHaveLength(1);
+    expect(body.candidates[0].verificationStatus).toBe("external_unverified");
+    expect(body.disclosure).toContain("nicht von XPORTAL geprüft");
+    expect(mocks.search).toHaveBeenCalledWith(
+      expect.objectContaining({ allowProvider: true }),
+    );
+  });
+});

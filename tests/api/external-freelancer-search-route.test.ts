@@ -78,7 +78,10 @@ function project() {
   };
 }
 
-function request(origin = "https://x-portal.eu") {
+function request(
+  origin = "https://x-portal.eu",
+  projectId = PROJECT_ID,
+) {
   return new Request("https://x-portal.eu/api/freelancer-search", {
     method: "POST",
     headers: {
@@ -87,7 +90,7 @@ function request(origin = "https://x-portal.eu") {
       "x-forwarded-for": "203.0.113.5",
     },
     body: JSON.stringify({
-      projectId: PROJECT_ID,
+      projectId,
       requestId: "search-request-1",
     }),
   });
@@ -139,6 +142,22 @@ afterEach(() => {
 });
 
 describe("POST /api/freelancer-search", () => {
+  it("accepts historical PostgreSQL UUIDs without RFC version bits", async () => {
+    mocks.project = {
+      ...project(),
+      id: "00000000-0000-0000-0000-000000000010",
+    };
+
+    const response = await POST(
+      request(
+        "https://x-portal.eu",
+        "00000000-0000-0000-0000-000000000010",
+      ),
+    );
+
+    expect(response.status).not.toBe(400);
+  });
+
   it("rejects cross-origin writes before provider work", async () => {
     const response = await POST(request("https://attacker.example"));
 

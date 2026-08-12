@@ -7,7 +7,7 @@ import { z } from "zod";
 import { ProjectBriefSchema, type ProjectBrief } from "@/lib/domain";
 import { createOpenAiClient } from "@/lib/openai/provider";
 
-export const DEFAULT_OPENAI_WEB_SEARCH_MODEL = "gpt-5.6-luna";
+export const DEFAULT_OPENAI_WEB_SEARCH_MODEL = "gpt-5.6-terra";
 export const MAX_EXTERNAL_FREELANCER_RESULTS = 3;
 export const MAX_OPENAI_WEB_SEARCH_OUTPUT_TOKENS = 2_000;
 export const DEFAULT_OPENAI_WEB_SEARCH_TIMEOUT_MS = 20_000;
@@ -406,8 +406,8 @@ export function estimateExternalSearchTokenCeiling(input: {
   const brief = ProjectBriefSchema.parse(input.brief);
   const model =
     input.model?.trim() ||
-    process.env.OPENAI_WEB_SEARCH_MODEL?.trim() ||
     process.env.OPENAI_MODEL?.trim() ||
+    process.env.OPENAI_WEB_SEARCH_MODEL?.trim() ||
     DEFAULT_OPENAI_WEB_SEARCH_MODEL;
   const request = providerRequest(brief, model, "quota_preflight");
   const inputTokens = Buffer.byteLength(JSON.stringify(request), "utf8");
@@ -507,8 +507,8 @@ export async function searchExternalFreelancers(
 
   const model =
     options.model?.trim() ||
-    process.env.OPENAI_WEB_SEARCH_MODEL?.trim() ||
     process.env.OPENAI_MODEL?.trim() ||
+    process.env.OPENAI_WEB_SEARCH_MODEL?.trim() ||
     DEFAULT_OPENAI_WEB_SEARCH_MODEL;
   const timeoutMs = configuredTimeout(options.timeoutMs);
   let providerAttempted = false;

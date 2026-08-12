@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { writeAuditEvent } from "@/lib/audit/write";
 import {
@@ -8,6 +8,7 @@ import {
   getAdminUserUsageInteractions,
 } from "@/lib/ai/admin-usage";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { appPath } from "@/lib/app-path";
 import { resolveOpenAiConnection } from "@/lib/openai/provider";
 import { ProviderDiagnosticPanel } from "./ProviderDiagnosticPanel";
 import styles from "./usage.module.css";
@@ -79,7 +80,10 @@ export default async function AiUsageAdminPage({
   searchParams: Promise<{ from?: string; to?: string; user?: string }>;
 }) {
   const currentUser = await getCurrentUser();
-  if (!currentUser?.isAdmin || currentUser.isAnonymous) notFound();
+  if (!currentUser || currentUser.isAnonymous) {
+    redirect(`${appPath("/chat")}?admin-login=1`);
+  }
+  if (!currentUser.isAdmin) notFound();
 
   const params = await searchParams;
   const providerConnection = resolveOpenAiConnection();
@@ -173,188 +177,138 @@ export default async function AiUsageAdminPage({
         </article>
         <article>
           <span>Bestätigte Provider-Tokens</span>
-          <strong>{numberFormat.format(dashboard.totals.confirmedProvider.totalTokens)}</strong>
-          <small>
-            {numberFormat.format(dashboard.totals.confirmedProvider.cachedInputTokens)} cached
-          </small>
-        </article>
-        <article>
-          <span>Geschätzte Text-Token-Kosten</span>
-          <strong>{formatUsageCost(dashboard.totals.estimatedOrReconciled)}</strong>
-          <small>
-            {dashboard.totals.estimatedOrReconciled.unknownCostRequests
-              ? `${dashboard.totals.estimatedOrReconciled.unknownCostRequests} ohne Preis`
-              : "Schätzung, nicht Provider-bestätigt"}
-          </small>
-        </article>
-        <article>
-          <span>Geschätzte / abgeglichene Tokens</span>
-          <strong>{numberFormat.format(dashboard.totals.estimatedOrReconciled.totalTokens)}</strong>
-          <small>
-            {numberFormat.format(dashboard.totals.reconciledEstimates)} automatische Abgleiche
-          </small>
-        </article>
-        <article>
-          <span>Usage-Versuche</span>
-          <strong>{numberFormat.format(dashboard.totals.settlements)}</strong>
-          <small>{numberFormat.format(dashboard.totals.failedAttempts)} fehlgeschlagen</small>
-        </article>
-        <article>
-          <span>XPORTAL Credits Used</span>
-          <strong>{numberFormat.format(dashboard.totals.creditsUsed)}</strong>
-          <small>Interne Produkteinheit</small>
-        </article>
-      </section>
+          <strong>{numberFormat.format(dm���-�G����ƭy�OFT_AUTH_ENABLED ? (
+                    <button type="button" onClick={() => void connectProvider("microsoft")} disabled={Boolean(busy)}><span className="provider-letter microsoft" aria-hidden="true">M</span>{busy === "microsoft" ? "Microsoft wird geöffnet …" : "Mit Microsoft fortfahren"}</button>
+                  ) : null}
+                </div>
+                <div className="or-divider"><span>oder</span></div>
+              </>
+            ) : null}
+            <div className="auth-mode-tabs" role="tablist" aria-label="E-Mail-Zugang">
+              <button type="button" role="tab" aria-selected={mode === "login"} className={mode === "login" ? "active" : ""} onClick={() => { setMode("login"); setError(null); }}>Bestehendes Konto</button>
+              <button type="button" role="tab" aria-selected={mode === "register"} className={mode === "register" ? "active" : ""} onClick={() => { setMode("register"); setError(null); }}>Neues Konto</button>
+            </div>
+          </>
+        ) : null}
 
-      <section className={styles.panel}>
-        <div className={styles.panelHeading}>
-          <div>
-            <p>USAGE BY MODEL</p>
-            <h2>Modelle</h2>
-          </div>
-          <span>Stand {when(dashboard.generatedAt)}</span>
-        </div>
-        <div className={styles.tableScroll}>
-          <table>
-            <thead>
-              <tr>
-                <th>Modell</th>
-                <th>Settlements</th>
-                <th>Bestätigte Tokens</th>
-                <th>Text-Token-Kosten</th>
-                <th>Schätzungen / Abgleiche</th>
-                <th>Geschätzte Tokens</th>
-                <th>Geschätzte Text-Token-Kosten</th>
-                <th>Fehler</th>
-              </tr>
-            </thead>
-            <tbody>
-              {dashboard.byModel.length ? (
-                dashboard.byModel.map((model) => (
-                  <tr key={model.key}>
-                    <td><code>{model.key}</code></td>
-                    <td>{numberFormat.format(model.settlements)}</td>
-                    <td>{numberFormat.format(model.confirmedProvider.totalTokens)}</td>
-                    <td>{formatUsageCost(model.confirmedProvider)}</td>
-                    <td>{numberFormat.format(model.estimatedOrReconciled.requests)}</td>
-                    <td>{numberFormat.format(model.estimatedOrReconciled.totalTokens)}</td>
-                    <td>{formatUsageCost(model.estimatedOrReconciled)}</td>
-                    <td>{numberFormat.format(model.failedAttempts)}</td>
-                  </tr>
-                ))
+        {confirmationSent ? (
+          <div className="confirmation-state" role="status">
+            <span aria-hidden="true">✓</span>
+            <h3>{mode === "recover" ? "Wiederherstellungslink versendet" : "Bestätigungslink versendet"}</h3>
+            <p>
+              {mode === "recover" ? (
+                <>Öffnen Sie den Link in der E-Mail an <strong>{email}</strong> und legen Sie anschließend ein neues Passwort fest.</>
               ) : (
-                <tr><td colSpan={8}>Noch keine abgerechnete AI-Nutzung.</td></tr>
+                <>Öffnen Sie den Link in der E-Mail an <strong>{email}</strong>, um Ihr Konto mit dem gewählten Passwort zu aktivieren.</>
               )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className={styles.panel}>
-        <div className={styles.panelHeading}>
-          <div>
-            <p>USAGE BY USER</p>
-            <h2>Nutzer und Credit-Konten</h2>
+            </p>
+            <button type="button" onClick={onClose}>Verstanden</button>
           </div>
-          {selectedUser ? (
-            <Link href={{ pathname: "/chat/admin/ai-usage", query: { from: params.from, to: params.to } }}>
-              Detail schließen
-            </Link>
-          ) : null}
-        </div>
-        <div className={styles.tableScroll}>
-          <table>
-            <thead>
-              <tr>
-                <th>User</th>
-                <th>Settlements</th>
-                <th>Bestätigte Tokens</th>
-                <th>Text-Token-Kosten</th>
-                <th>Geschätzte Tokens</th>
-                <th>Geschätzte Text-Token-Kosten</th>
-                <th>XPORTAL Credits</th>
-                <th>Credits Remaining</th>
-              </tr>
-            </thead>
-            <tbody>
-              {dashboard.users.map((user) => (
-                <tr key={user.userId} className={selectedUser?.userId === user.userId ? styles.selected : undefined}>
-                  <td>
-                    <Link href={{ pathname: "/chat/admin/ai-usage", query: { from: params.from, to: params.to, user: user.userId } }}>
-                      {user.email ?? (user.anonymous ? "Anonymer Gast" : user.userId)}
-                    </Link>
-                    <small>{user.anonymous ? "Gast" : user.userId}</small>
-                  </td>
-                  <td>{numberFormat.format(user.settlements)}</td>
-                  <td>{numberFormat.format(user.confirmedProvider.totalTokens)}</td>
-                  <td>{formatUsageCost(user.confirmedProvider)}</td>
-                  <td>{numberFormat.format(user.estimatedOrReconciled.totalTokens)}</td>
-                  <td>{formatUsageCost(user.estimatedOrReconciled)}</td>
-                  <td>{numberFormat.format(user.creditsUsed)}</td>
-                  <td>{numberFormat.format(user.creditsRemaining)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+        ) : (
+          <form className="email-login" onSubmit={submitEmail}>
+            {mode !== "set-password" ? (
+              <>
+                <label htmlFor="login-email">E-Mail-Adresse</label>
+                <input id="login-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
+              </>
+            ) : null}
+            {mode === "login" || mode === "register" || mode === "set-password" ? (
+              <>
+                <label htmlFor="login-password">{mode === "set-password" ? "Neues Passwort" : "Passwort"}</label>
+                <input id="login-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={mode === "login" ? "current-password" : "new-password"} minLength={8} required />
+              </>
+            ) : null}
+            {mode === "register" || mode === "set-password" ? (
+              <>
+                <label htmlFor="login-password-repeat">Passwort wiederholen</label>
+                <input id="login-password-repeat" type="password" value={passwordRepeat} onChange={(event) => setPasswordRepeat(event.target.value)} autoComplete="new-password" minLength={8} required />
+              </>
+            ) : null}
+            {mode === "login" ? (
+              <button className="forgot-password" type="button" onClick={() => { setMode("recover"); setError(null); setPassword(""); }}>
+                Passwort vergessen?
+              </button>
+            ) : null}
+            {mode === "recover" ? (
+              <button className="back-to-login" type="button" onClick={() => { setMode("login"); setError(null); }}>
+                Zurück zur Anmeldung
+              </button>
+            ) : null}
+            {error ? <p className="form-error" role="alert">{error}</p> : null}
+            <button className="auth-submit" type="submit" disabled={Boolean(busy)}>
+              {busy === "email"
+                ? "Bitte warten …"
+                : mode === "login"
+                  ? "Mit E-Mail anmelden"
+                  : mode === "register"
+                    ? "Konto erstellen"
+                    : mode === "recover"
+                      ? "Wiederherstellungslink senden"
+                      : "Passwort speichern & fortfahren"}
+            </button>
+          </form>
+        )}
+        <p className="auth-privacy">Die Anmeldung dient dazu, Projekte geräteübergreifend zuzuordnen und eine Profilwahl sicher fortzusetzen.</p>
+      </div>
+    </Modal>
+  );
+}
 
-      {selectedUser ? (
-        <section className={styles.detail}>
-          <div>
-            <p>USER DETAIL</p>
-            <h2>{selectedUser.email ?? selectedUser.userId}</h2>
-            <span>Letzte Nutzung: {when(selectedUser.lastUsedAt)}</span>
+function ContactDialog({ profile, onClose }: { profile: FreelancerProfileResult; onClose: () => void }) {
+  return (
+    <Modal titleId="contact-title" onClose={onClose} size="large">
+      <div className="contact-dialog">
+        <div className="contact-dialog-header">
+          <div className="contact-profile-avatar" aria-hidden="true">{initials(profile.displayName)}</div>
+          <div><span className="dialog-eyebrow">Reales Profil ausgewählt</span><h2 id="contact-title">Termin mit {profile.displayName}</h2><p>{profile.role}</p></div>
+        </div>
+        <div className="contact-layout">
+          <div className="contact-copy">
+            <div className="roman-card">
+              <div className="live-row"><span className="live-dot" aria-hidden="true" /> Live erreichbar</div>
+              <h3>Roman Dering begleitet den Kontakt</h3>
+              <p>{profile.bookingUrl ? "Buchen Sie direkt einen freien Termin beim Freelancer. Bei Rückfragen ist Roman Dering zusätzlich erreichbar." : "Dieses historische Match ist derzeit nicht direkt buchbar. Roman Dering hilft bei Rückfragen oder Alternativen."}</p>
+              <a className="phone-action" href={`tel:${CONTACT_PHONE}`}><span aria-hidden="true">☎</span><span><small>Direkt anrufen</small>{CONTACT_PHONE_LABEL}</span></a>
+            </div>
+            <div className="continue-note"><span aria-hidden="true">＋</span><p><strong>Noch etwas ergänzen?</strong>Schließen Sie dieses Fenster und schreiben Sie frei im Chat weiter. Die Terminoption bleibt sichtbar.</p></div>
           </div>
-          <dl>
-            <div><dt>Credit Balance</dt><dd>{numberFormat.format(selectedUser.creditsRemaining)} / {numberFormat.format(selectedUser.creditsTotal)}</dd></div>
-            <div><dt>Reserviert</dt><dd>{numberFormat.format(selectedUser.creditsReserved)}</dd></div>
-            <div><dt>Bestätigte Tokens</dt><dd>{numberFormat.format(selectedUser.confirmedProvider.totalTokens)}</dd></div>
-            <div><dt>Text-Token-Kosten</dt><dd>{formatUsageCost(selectedUser.confirmedProvider)}</dd></div>
-            <div><dt>Geschätzte Tokens</dt><dd>{numberFormat.format(selectedUser.estimatedOrReconciled.totalTokens)}</dd></div>
-            <div><dt>Geschätzte Text-Token-Kosten</dt><dd>{formatUsageCost(selectedUser.estimatedOrReconciled)}</dd></div>
-          </dl>
-        </section>
-      ) : null}
+          <div className="calendar-area">
+            <div className="calendar-consent">
+              <div className="calendar-symbol" aria-hidden="true"><span>↗</span><small>BOOKING</small></div>
+              <h3>{profile.bookingUrl ? "Direkt Termin wählen" : "Aktuell nicht buchbar"}</h3>
+              <p>{profile.bookingUrl ? `Die Buchungsseite von ${profile.displayName} wird erst nach Ihrem Klick in einem neuen Tab geöffnet.` : "Der frühere Treffer bleibt zur Nachvollziehbarkeit sichtbar, aber es ist kein aktueller Booking-Link freigegeben."}</p>
+              {profile.bookingUrl ? (
+                <a
+                  className="booking-link-action"
+                  href={profile.bookingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Meeting buchen <span aria-hidden="true">→</span>
+                </a>
+              ) : (
+                <span className="booking-unavailable">Aktuell kein direkter Booking-Link</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
-      <section className={styles.panel}>
-        <div className={styles.panelHeading}>
-          <div>
-            <p>REQUESTS / INTERACTIONS</p>
-            <h2>{selectedUser ? "Nutzeraktivität" : "Neueste Aktivität"}</h2>
-          </div>
+function ConfirmDeleteDialog({ busy, onClose, onConfirm }: { busy: boolean; onClose: () => void; onConfirm: () => void }) {
+  return (
+    <Modal titleId="delete-title" onClose={onClose}>
+      <div className="delete-dialog">
+        <span className="danger-symbol" aria-hidden="true">!</span>
+        <h2 id="delete-title">Anwendungsdaten löschen?</h2>
+        <p>Ihre Projekte, Nachrichten und gespeicherten Ergebnisse werden entsprechend der geltenden Aufbewahrungsregeln gelöscht oder anonymisiert. Dieser Schritt kann nicht rückgängig gemacht werden.</p>
+        <div className="dialog-actions">
+          <button className="secondary-action" type="button" onClick={onClose} disabled={busy}>Abbrechen</button>
+          <button className="danger-action" type="button" onClick={onConfirm} disabled={busy}>{busy ? "Wird gelöscht …" : "Daten endgültig löschen"}</button>
         </div>
-        <div className={styles.tableScroll}>
-          <table>
-            <thead>
-              <tr><th>Zeit</th><th>User</th><th>Modell</th><th>Zweck</th><th>Messbasis</th><th>Tokens</th><th>Kosten</th><th>XPORTAL Credits</th><th>Status</th></tr>
-            </thead>
-            <tbody>
-              {selectedInteractions.length ? selectedInteractions.map((item, index) => (
-                <tr key={`${item.id}-${index}`}>
-                  <td>{when(item.settledAt)}</td>
-                  <td>{item.email ?? item.userId ?? "Gelöscht"}</td>
-                  <td><code>{item.model}</code></td>
-                  <td>{item.purpose}</td>
-                  <td>
-                    <span className={`${styles.usageBasis} ${item.usageBasis === "confirmed_provider" ? styles.usageConfirmed : styles.usageEstimated}`}>
-                      {usageBasisLabel(item.usageBasis)}
-                    </span>
-                  </td>
-                  <td>{numberFormat.format(item.tokens)}</td>
-                  <td>{item.costUsd === null ? "Unbekannt" : formatUsd(item.costUsd)}</td>
-                  <td>{numberFormat.format(item.credits)}</td>
-                  <td>
-                    <span className={`${styles.status} ${outcomeClass(item.outcome)}`}>
-                      {item.outcome}
-                    </span>
-                  </td>
-                </tr>
-              )) : <tr><td colSpan={9}>Keine Requests im gewählten Zeitraum.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </main>
+      </div>
+    </Modal>
   );
 }

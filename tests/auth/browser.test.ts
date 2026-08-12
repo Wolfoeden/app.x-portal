@@ -96,6 +96,26 @@ describe("browser authentication journeys", () => {
     });
   });
 
+  it("returns an admin login to the protected dashboard journey", async () => {
+    vi.stubGlobal("window", {
+      location: {
+        origin: "https://x-portal.eu",
+        pathname: "/chat",
+        search: "?admin-login=1",
+      },
+    });
+
+    await startOauthUpgrade("google");
+
+    expect(auth.linkIdentity).toHaveBeenCalledWith({
+      provider: "google",
+      options: {
+        redirectTo:
+          "https://x-portal.eu/auth/callback?next=%2Fchat%3Fadmin-login%3D1",
+      },
+    });
+  });
+
   it("keeps the Microsoft integration ready with the required email scope", async () => {
     await startOauthUpgrade("microsoft");
 

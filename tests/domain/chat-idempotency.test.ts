@@ -8,6 +8,8 @@ import {
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
+const RFC_UUID_V5_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 
 describe("chat request idempotency", () => {
   it("derives stable request, interaction and project identifiers", () => {
@@ -17,6 +19,8 @@ describe("chat request idempotency", () => {
     expect(replay).toBe(first);
     expect(interactionIdForChatRequest(first)).toMatch(UUID_PATTERN);
     expect(projectIdForChatRequest(first)).toMatch(UUID_PATTERN);
+    expect(interactionIdForChatRequest(first)).toMatch(RFC_UUID_V5_PATTERN);
+    expect(projectIdForChatRequest(first)).toMatch(RFC_UUID_V5_PATTERN);
     expect(projectIdForChatRequest(replay)).toBe(projectIdForChatRequest(first));
   });
 

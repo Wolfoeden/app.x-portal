@@ -77,12 +77,17 @@ export function configuredInitialCredits(isAnonymous: boolean): number {
   );
 }
 
-export function configuredDailyTokenLimit(isAnonymous: boolean): number {
+export function configuredDailyTokenLimit(
+  isAnonymous: boolean,
+  isAdmin = false,
+): number {
   return nonNegativeInteger(
-    isAnonymous
+    isAdmin && !isAnonymous
+      ? "AI_DAILY_TOKEN_LIMIT_ADMIN"
+      : isAnonymous
       ? "AI_DAILY_TOKEN_LIMIT_GUEST"
       : "AI_DAILY_TOKEN_LIMIT_USER",
-    isAnonymous ? 20_000 : 100_000,
+    isAdmin && !isAnonymous ? 1_000_000 : isAnonymous ? 20_000 : 100_000,
   );
 }
 
@@ -159,6 +164,7 @@ export async function reserveAiQuota(input: {
   userHash: string;
   ipHash: string;
   isAnonymous: boolean;
+  isAdmin?: boolean;
   requestedModel: string;
   purpose: string;
   estimatedInputTokens: number;
@@ -191,7 +197,10 @@ export async function reserveAiQuota(input: {
     p_ip_hash: input.ipHash,
     p_is_anonymous: input.isAnonymous,
     p_request_limit: positiveInteger("AI_REQUESTS_PER_MINUTE", 6),
-    p_daily_token_limit: configuredDailyTokenLimit(input.isAnonymous),
+    p_daily_token_limit: configuredDailyTokenLimit(
+      input.isAnonymous,
+      input.isAdmin,
+    ),
     p_monthly_budget_cents: configuredMonthlyProviderBudgetCents(),
     p_estimated_tokens: estimatedTokens,
     p_estimated_cost_cents: estimatedCostCents,

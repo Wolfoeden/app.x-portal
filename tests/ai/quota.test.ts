@@ -17,12 +17,22 @@ describe("provider cost reconciliation", () => {
     delete process.env.OPENAI_COST_MULTIPLIER;
     delete process.env.AI_CREDITS_GUEST_TOTAL;
     delete process.env.AI_DAILY_TOKEN_LIMIT_GUEST;
+    delete process.env.AI_DAILY_TOKEN_LIMIT_USER;
+    delete process.env.AI_DAILY_TOKEN_LIMIT_ADMIN;
     delete process.env.AI_MONTHLY_PROVIDER_BUDGET_CENTS;
     delete process.env.AI_UNKNOWN_MODEL_ESTIMATED_COST_CENTS;
   });
 
   it("rounds a non-zero provider use up to the next cent", () => {
     expect(calculateProviderCostCents(10_000, 2_000)).toBe(5);
+  });
+
+  it("keeps a separate internal daily allowance for operators", () => {
+    process.env.AI_DAILY_TOKEN_LIMIT_USER = "100000";
+    process.env.AI_DAILY_TOKEN_LIMIT_ADMIN = "1000000";
+
+    expect(configuredDailyTokenLimit(false)).toBe(100_000);
+    expect(configuredDailyTokenLimit(false, true)).toBe(1_000_000);
   });
 
   it("uses configurable model prices and residency multiplier", () => {

@@ -26,9 +26,16 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const PostgresUuidSchema = z
+  .string()
+  .trim()
+  .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu);
+
 const InputSchema = z
   .object({
-    projectId: z.string().uuid(),
+    // Older deterministic project IDs are valid PostgreSQL UUIDs even when
+    // their RFC version bits were not normalized.
+    projectId: PostgresUuidSchema,
     requestId: z.string().trim().min(8).max(160).optional(),
   })
   .strict();
@@ -168,6 +175,7 @@ export async function POST(request: Request) {
       userHash,
       ipHash,
       isAnonymous: user.isAnonymous,
+      isAdmin: user.isAdmin,
       purpose: "research",
       requestedModel: estimate.model,
       estimatedInputTokens: estimate.inputTokens,
