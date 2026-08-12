@@ -321,6 +321,17 @@ function parseLabeledList(text: string, labels: readonly string[]): string[] | n
   return canonicalList(value.split(/[,;]/u));
 }
 
+function contractualConstraints(values: string[] | null): string[] | null {
+  if (!values) return null;
+  return canonicalList(
+    values.filter((value) =>
+      /(?:\bresiden(?:cy|t)|\bwohn(?:sitz|haft)|\bnda\b|\bconfidentiality\b|\bvertraulichkeit|\binvoic(?:e|ing)|\brechnung(?:sfähig|sstellung)?|\bwork\s*(?:permit|authorization)|\barbeitserlaubnis|\bcitizenship|\bstaatsbürgerschaft|\bsecurity\s+clearance|\bsicherheitsüberprüfung)/iu.test(
+        value,
+      ),
+    ),
+  );
+}
+
 /**
  * Conservative, deterministic recovery path for provider failures. It extracts
  * only explicit, recognizable facts and keeps every other field null/unknown.
@@ -335,6 +346,8 @@ export function parseFallbackBrief(
   const skills = parseSkills(originalRequest, options.skillCatalog ?? DEFAULT_SKILL_CATALOG);
   const startWindow = parseStartWindow(originalRequest, now);
   const availabilityRequirement = startWindow?.raw ?? null;
+  const constraints = parseLabeledList(originalRequest, ["constraints", "einschränkungen"]);
+  const explicitContractualRequirements = parseLabeledList(originalRequest, ["contract terms", "contractual requirements", "vertragsanforderungen"]);
   const candidate = {
     schemaVersion: 1 as const,
     originalRequest,
@@ -349,10 +362,13 @@ export function parseFallbackBrief(
     duration: parseDuration(originalRequest),
     budget: parseBudget(originalRequest),
     rate: parseRate(originalRequest),
-    constraints: parseLabeledList(originalRequest, ["constraints", "einschränkungen"]),
+    constraints,
     qualifications: parseLabeledList(originalRequest, ["qualifications", "qualifikationen"]),
     availabilityRequirement,
-    contractualRequirements: parseLabeledList(originalRequest, ["contract terms", "contractual requirements", "vertragsanforderungen"]),
+    contractualRequirements: canonicalList([
+      ...(explicitContractualRequirements ?? []),
+      ...(contractualConstraints(constraints) ?? []),
+    ]),
   };
 
   return ProjectBriefSchema.parse({

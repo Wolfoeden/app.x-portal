@@ -20,6 +20,7 @@ import {
   estimateProjectBriefTokenCeiling,
   extractProjectBrief,
 } from "@/lib/openai";
+import { resolveOpenAiConnection } from "@/lib/openai/provider";
 import { presentBrief, presentMatch } from "@/lib/presentation/chat";
 import {
   assertSameOrigin,
@@ -57,7 +58,7 @@ type MatchInsert = {
   profile_data_version: number;
 };
 
-function errorResponse(error: unknown, traceId = randomUUID()): Response {
+function errorResponse(error: unknown, traceId: string = randomUUID()): Response {
   if (error instanceof Response) return error;
   if (error instanceof z.ZodError) {
     return NextResponse.json(
@@ -98,7 +99,7 @@ function interactionIdFromRequestKey(requestKey: string): string {
 
 function assistantText(resultCount: number): string {
   if (resultCount === 0) {
-    return "Ich habe Ihre Angaben strukturiert. Aktuell erfüllt kein reales, direkt buchbares Profil alle erkannten Pflichtkriterien. Ergänzen oder ändern Sie die Anfrage einfach hier im Chat.";
+    return "Ich habe Ihre Angaben strukturiert. Aktuell erfüllt kein reales, direkt buchbares Profil alle erkannten Pflichtkriterien. Sie können die Anfrage im Chat ergänzen oder ausdrücklich eine getrennte KI-Websuche nach öffentlich belegten Profilen mit direktem Buchungslink starten.";
   }
   return `Ich habe Ihre Angaben strukturiert und ${resultCount} ${
     resultCount === 1 ? "aktuell passendes Profil" : "aktuell passende Profile"
@@ -161,8 +162,13 @@ function previousBrief(row: ProjectRow | null): ProjectBrief | undefined {
   return result.success ? result.data : undefined;
 }
 
-export async function POST(request: Request) {
-  const traceId = randomUUID();
+type ProgressReporter = (label: string) => void;
+
+async function processChatRequest(
+  request: Request,
+  traceId: string,
+  progress: ProgressReporter,
+): Promise<Response> {
   try {
     assertSameOrigin(request);
     const input = ChatInputSchema.parse(await readJsonWithLimit(request, 16_000));
@@ -214,6 +220,7 @@ export async function POST(request: Request) {
       );
     }
 
+    progress("Projekt wird sicher gespeichert …");
     const admin = createAdminSupabaseClient();
     const existing = input.projectId
       ? await ownedProject(admin, input.projectId, user.id)
@@ -278,6 +285,7 @@ export async function POST(request: Request) {
       safetyIdentifier: userHash ?? undefined,
     };
     const estimate = estimateProjectBriefTokenCeiling(extractionInput);
+    progress("KI analysiert und strukturiert die Anforderungen …");
     const tracked =
       userHash && ipHash
         ? await executeTrackedAiRequest({
@@ -339,11 +347,22 @@ export async function POST(request: Request) {
           };
     const extraction = tracked.value;
     const quota = tracked.quota;
+    progress(
+      extraction.mode === "openai"
+        ? "Anforderungen sind strukturiert · interne Profile werden geladen …"
+        : "Sichere Basisanalyse aktiv · interne Profile werden geladen …",
+    );
 
     // The model never receives this data. Filtering and ordering are wholly
     // deterministic and run only after the brief has been accepted.
     const profiles = await fetchActiveBookableRealProfiles(admin);
+    progress(`${profiles.length} aktive Profile werden regelbasiert abgeglichen …`);
     const shortlist = buildShortlist(extraction.brief, profiles);
+    progress(
+      shortlist.matches.length
+        ? `${shortlist.matches.length} passende Profile werden nachvollziehbar aufbereitet …`
+        : "Kein interner Treffer · alternative Suche wird vorbereitet …",
+    );
     const shortlistId = randomUUID();
     const profileCatalogVersion = catalogVersion(profiles);
 
@@ -486,6 +505,34 @@ export async function POST(request: Request) {
                   Math.max(1, Math.ceil(tracked.credits.total * 0.2)),
             }
           : undefined,
+        analysis: {
+          provider: {
+            transport: resolveOpenAiConnection().transport,
+            mode: extraction.mode,
+            model: extraction.provider?.model ?? null,
+          },
+          steps: [
+            {
+              label: "Anforderungen strukturiert",
+              detail:
+                extraction.mode === "openai"
+                  ? "Die Angaben wurden serverseitig mit GPT in das Projektschema eingeordnet."
+                  : "Die Anfrage wurde mit der sicheren Basislogik strukturiert; fehlende Fakten bleiben offen.",
+              status: extraction.mode === "openai" ? "completed" : "warning",
+            },
+            {
+              label: "Interne Datenbank geprüft",
+              detail: `${profiles.length} aktive, reale und direkt buchbare Supabase-Profile wurden berücksichtigt.`,
+              status: "completed",
+            },
+            {
+              label: "Pflichtkriterien angewendet",
+              detail: `${shortlist.matches.length} Treffer werden nach Regel ${MATCHING_RULE_VERSION} angezeigt; die KI entscheidet nicht über die Auswahl.`,
+              status: "completed",
+            },
+          ],
+          externalSearchAvailable: shortlist.matches.length === 0,
+        },
       },
       { headers: { "Cache-Control": "no-store" } },
     );
@@ -499,4 +546,73 @@ export async function POST(request: Request) {
     }).catch(() => undefined);
     return errorResponse(error, traceId);
   }
+}
+
+function streamEvent(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  event: unknown,
+): void {
+  controller.enqueue(
+    new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`),
+  );
+}
+
+export async function POST(request: Request): Promise<Response> {
+  const acceptsStream = (request.headers.get("accept") ?? "").includes(
+    "text/event-stream",
+  );
+  const traceId = randomUUID();
+  if (!acceptsStream) {
+    return processChatRequest(request, traceId, () => undefined);
+  }
+
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const progress: ProgressReporter = (label) => {
+        streamEvent(controller, { type: "progress", label });
+      };
+      void processChatRequest(request, traceId, progress)
+        .then(async (response) => {
+          let body: unknown;
+          try {
+            body = await response.clone().json();
+          } catch {
+            body = { error: await response.text() };
+          }
+          if (response.ok) {
+            streamEvent(controller, { type: "result", data: body });
+          } else {
+            const message =
+              typeof body === "object" &&
+              body !== null &&
+              "error" in body &&
+              typeof body.error === "string"
+                ? body.error
+                : "Die Anfrage konnte gerade nicht verarbeitet werden.";
+            streamEvent(controller, {
+              type: "error",
+              message,
+              retryable: response.status >= 500 || response.status === 429,
+            });
+          }
+        })
+        .catch(() => {
+          streamEvent(controller, {
+            type: "error",
+            message: "Die Anfrage konnte gerade nicht verarbeitet werden.",
+            retryable: true,
+          });
+        })
+        .finally(() => controller.close());
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Cache-Control": "no-store",
+      "Content-Type": "text/event-stream; charset=utf-8",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    },
+  });
 }

@@ -7,17 +7,19 @@ import {
   type LabeledFact,
 } from "./profile";
 
-export const MATCHING_RULE_VERSION = "freelancer-match-v2" as const;
+export const MATCHING_RULE_VERSION = "freelancer-match-v3" as const;
 
 /**
  * Public and reviewable ordering rule. Eligibility is evaluated first. Eligible
- * profiles are then ordered by: exact required-skill matches (descending),
- * availability confidence, optional skill matches (descending), verified
- * required-skill matches (descending), available-from date (ascending,
- * unknown last), normalized display name (ascending), and profile id
- * (ascending).
+ * profiles are then ordered by: confirmed commercial compatibility when a
+ * commercial constraint was supplied, exact required-skill matches
+ * (descending), availability confidence, optional skill matches (descending),
+ * verified required-skill matches (descending), available-from date
+ * (ascending, unknown last), normalized display name (ascending), and profile
+ * id (ascending).
  */
 export const MATCHING_ORDER_RULE = [
+  "commercial_constraint_confidence_desc",
   "exact_required_skill_matches_desc",
   "availability_status_priority",
   "optional_skill_matches_desc",
@@ -36,6 +38,11 @@ export const ProfileEvaluationSchema = z
     optionalSkillMatches: z.array(z.string()),
     exactRequiredSkillMatches: z.array(z.string()),
     verifiedRequiredSkillMatches: z.array(z.string()),
+    commercialConstraintConfidence: z.enum([
+      "not_requested",
+      "unconfirmed",
+      "confirmed",
+    ]),
   })
   .strict();
 
@@ -54,6 +61,9 @@ export const ShortlistMatchSchema = z
         optionalSkillMatchCount: z.number().int().nonnegative(),
         exactRequiredSkillMatchCount: z.number().int().nonnegative(),
         verifiedRequiredSkillMatchCount: z.number().int().nonnegative(),
+        commercialConstraintConfidence: z
+          .enum(["not_requested", "unconfirmed", "confirmed"])
+          .optional(),
         availabilityPriority: z.number().int().min(0).max(3),
         availableFrom: z.iso.date().nullable(),
       })
@@ -65,6 +75,7 @@ export const ShortlistSchema = z
   .object({
     ruleVersion: z.literal(MATCHING_RULE_VERSION),
     orderingRule: z.tuple([
+      z.literal("commercial_constraint_confidence_desc"),
       z.literal("exact_required_skill_matches_desc"),
       z.literal("availability_status_priority"),
       z.literal("optional_skill_matches_desc"),
@@ -207,41 +218,106 @@ function availableBy(profile: FreelancerProfile, brief: ProjectBrief): boolean {
   return deadline === null || profile.availability.availableFrom <= deadline;
 }
 
+type CommercialConstraintConfidence =
+  | "not_requested"
+  | "unconfirmed"
+  | "confirmed";
+
+type CommercialEvaluation = {
+  rejectionReasons: string[];
+  reasons: string[];
+  gaps: string[];
+  confidence: CommercialConstraintConfidence;
+};
+
+function commercialConfidencePriority(
+  confidence: CommercialConstraintConfidence,
+): 0 | 1 | 2 {
+  if (confidence === "confirmed") return 2;
+  if (confidence === "unconfirmed") return 1;
+  return 0;
+}
+
+function formatCommercialAmount(amount: number, currency: string): string {
+  return `${new Intl.NumberFormat("de-DE", {
+    maximumFractionDigits: 2,
+  }).format(amount)} ${currency}`;
+}
+
 function commercialEligibility(
   profile: FreelancerProfile,
   brief: ProjectBrief,
-): { eligible: boolean; reasons: string[]; gaps: string[] } {
+): CommercialEvaluation {
+  const rejectionReasons: string[] = [];
   const reasons: string[] = [];
   const gaps: string[] = [];
+  const hasCommercialConstraint = brief.rate !== null || brief.budget !== null;
+  let hasUnconfirmedConstraint = false;
 
   if (brief.rate) {
     const profileRate = brief.rate.unit === "hour" ? profile.hourlyRate : profile.dayRate;
-    if (!profileRate) return { eligible: false, reasons, gaps };
-    if (profileRate.currency !== brief.rate.currency) return { eligible: false, reasons, gaps };
-    if (brief.rate.max !== null && profileRate.amount > brief.rate.max) {
-      return { eligible: false, reasons, gaps };
+    const rateLabel = brief.rate.unit === "hour" ? "Stundensatz" : "Tagessatz";
+
+    if (!profileRate) {
+      hasUnconfirmedConstraint = true;
+      gaps.push(`${rateLabel} noch nicht bestätigt; Preisgrenze vor der Buchung abstimmen.`);
+    } else if (profileRate.currency !== brief.rate.currency) {
+      hasUnconfirmedConstraint = true;
+      gaps.push(
+        `${rateLabel} ist nur in ${profileRate.currency} angegeben; ein verlässlicher Vergleich mit ${brief.rate.currency} ist nicht möglich.`,
+      );
+    } else if (brief.rate.max !== null && profileRate.amount > brief.rate.max) {
+      rejectionReasons.push(
+        `Bestätigter ${rateLabel} von ${formatCommercialAmount(profileRate.amount, profileRate.currency)} überschreitet die angegebene Obergrenze von ${formatCommercialAmount(brief.rate.max, brief.rate.currency)}.`,
+      );
+    } else if (
+      brief.rate.min !== null &&
+      brief.rate.max === null &&
+      profileRate.amount < brief.rate.min
+    ) {
+      rejectionReasons.push(
+        `Bestätigter ${rateLabel} von ${formatCommercialAmount(profileRate.amount, profileRate.currency)} liegt unter der ausdrücklich angegebenen Untergrenze von ${formatCommercialAmount(brief.rate.min, brief.rate.currency)}.`,
+      );
+    } else {
+      reasons.push(
+        `Bestätigter ${rateLabel} liegt innerhalb der angegebenen ${brief.rate.currency}-Grenze.`,
+      );
     }
-    if (brief.rate.min !== null && brief.rate.max === null && profileRate.amount < brief.rate.min) {
-      return { eligible: false, reasons, gaps };
-    }
-    reasons.push(
-      `${brief.rate.unit === "hour" ? "Stunden" : "Tages"}satz liegt innerhalb der angegebenen ${brief.rate.currency}-Grenze.`,
-    );
   } else if (profile.hourlyRate === null && profile.dayRate === null) {
     gaps.push("Im Profil ist kein Stunden- oder Tagessatz angegeben.");
   }
 
   if (brief.budget) {
     const minimum = profile.minimumProjectBudget;
-    if (!minimum) return { eligible: false, reasons, gaps };
-    if (minimum.currency !== brief.budget.currency) return { eligible: false, reasons, gaps };
-    if (brief.budget.max !== null && minimum.amount > brief.budget.max) {
-      return { eligible: false, reasons, gaps };
+    if (!minimum) {
+      hasUnconfirmedConstraint = true;
+      gaps.push("Mindestprojektbudget noch nicht bestätigt; Budgetpassung vor der Buchung abstimmen.");
+    } else if (minimum.currency !== brief.budget.currency) {
+      hasUnconfirmedConstraint = true;
+      gaps.push(
+        `Mindestprojektbudget ist nur in ${minimum.currency} angegeben; ein verlässlicher Vergleich mit ${brief.budget.currency} ist nicht möglich.`,
+      );
+    } else if (brief.budget.max !== null && minimum.amount > brief.budget.max) {
+      rejectionReasons.push(
+        `Bestätigtes Mindestprojektbudget von ${formatCommercialAmount(minimum.amount, minimum.currency)} überschreitet das angegebene Maximalbudget von ${formatCommercialAmount(brief.budget.max, brief.budget.currency)}.`,
+      );
+    } else {
+      reasons.push(
+        `Bestätigter Mindestprojektwert liegt innerhalb des angegebenen ${brief.budget.currency}-Budgets.`,
+      );
     }
-    reasons.push(`Der Mindestprojektwert liegt innerhalb des angegebenen ${brief.budget.currency}-Budgets.`);
   }
 
-  return { eligible: true, reasons, gaps };
+  return {
+    rejectionReasons,
+    reasons,
+    gaps,
+    confidence: !hasCommercialConstraint
+      ? "not_requested"
+      : hasUnconfirmedConstraint
+        ? "unconfirmed"
+        : "confirmed",
+  };
 }
 
 export function evaluateProfile(
@@ -335,8 +411,29 @@ export function evaluateProfile(
     matchReasons.push(`Vertragsanforderungen passend: ${brief.contractualRequirements.join(", ")}.`);
   }
 
+  // Free-form constraints remain visible even when the profile schema cannot
+  // prove them. We confirm only verbatim public profile evidence and never
+  // infer facts such as residency from a current location.
+  const publicConstraintFacts = [
+    ...profile.skillTags,
+    ...profile.languages,
+    ...profile.qualifications,
+    ...profile.contractualCapabilities,
+    ...(profile.location ? [profile.location] : []),
+    profile.experienceSummary,
+  ];
+  for (const constraint of brief.constraints ?? []) {
+    if (includesFact(publicConstraintFacts, constraint)) {
+      matchReasons.push(`Weitere Rahmenbedingung bestätigt: ${constraint}.`);
+    } else {
+      knownGaps.push(
+        `Weitere Rahmenbedingung im Profil nicht bestätigt: ${constraint}.`,
+      );
+    }
+  }
+
   const commercial = commercialEligibility(profile, brief);
-  if (!commercial.eligible) rejectionReasons.push("Angegebene kaufmännische Rahmenbedingungen sind nicht bestätigt.");
+  rejectionReasons.push(...commercial.rejectionReasons);
   matchReasons.push(...commercial.reasons);
   knownGaps.push(...commercial.gaps);
 
@@ -368,6 +465,7 @@ export function evaluateProfile(
     optionalSkillMatches,
     exactRequiredSkillMatches,
     verifiedRequiredSkillMatches,
+    commercialConstraintConfidence: commercial.confidence,
   });
 }
 
@@ -406,6 +504,10 @@ export function buildShortlist(
 
   const eligible = evaluated.filter((item) => item.evaluation.eligible);
   eligible.sort((left, right) => {
+    const commercialConfidenceDifference =
+      commercialConfidencePriority(right.evaluation.commercialConstraintConfidence) -
+      commercialConfidencePriority(left.evaluation.commercialConstraintConfidence);
+    if (commercialConfidenceDifference) return commercialConfidenceDifference;
     const exactRequiredDifference =
       right.evaluation.exactRequiredSkillMatches.length -
       left.evaluation.exactRequiredSkillMatches.length;
@@ -441,6 +543,7 @@ export function buildShortlist(
       optionalSkillMatchCount: evaluation.optionalSkillMatches.length,
       exactRequiredSkillMatchCount: evaluation.exactRequiredSkillMatches.length,
       verifiedRequiredSkillMatchCount: evaluation.verifiedRequiredSkillMatches.length,
+      commercialConstraintConfidence: evaluation.commercialConstraintConfidence,
       availabilityPriority: availabilityPriority(profile.availability.status),
       availableFrom: profile.availability.availableFrom,
     },

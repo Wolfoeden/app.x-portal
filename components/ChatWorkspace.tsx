@@ -22,6 +22,7 @@ import {
   startOauthUpgrade,
 } from "@/lib/auth/browser";
 import {
+  type AiAnalysisTrace,
   type AiCreditSnapshot,
   type AvailabilityStatus,
   type ChatApiPaths,
@@ -29,6 +30,8 @@ import {
   type ChatResponse,
   type ChatStreamEvent,
   type ConversationMessage,
+  type ExternalFreelancerCandidate,
+  type ExternalFreelancerSearchResponse,
   type FreelancerProfileResult,
   type ProjectDetailResponse,
   type ProjectListItem,
@@ -170,6 +173,93 @@ function secureBookingUrl(value: unknown): string | null {
 
 function stringList(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function normalizeAnalysisTrace(value: unknown): AiAnalysisTrace | undefined {
+  if (!isRecord(value)) return undefined;
+  const provider = isRecord(value.provider) ? value.provider : {};
+  const transport =
+    provider.transport === "direct_openai" ||
+    provider.transport === "netlify_ai_gateway" ||
+    provider.transport === "custom_gateway" ||
+    provider.transport === "unconfigured"
+      ? provider.transport
+      : "unconfigured";
+  const steps = Array.isArray(value.steps)
+    ? value.steps.flatMap((step) => {
+        if (!isRecord(step)) return [];
+        const label = nullableString(step.label);
+        const detail = nullableString(step.detail);
+        if (!label || !detail) return [];
+        return [{
+          label,
+          detail,
+          status: step.status === "warning" ? "warning" as const : "completed" as const,
+        }];
+      })
+    : [];
+  return {
+    provider: {
+      transport,
+      mode: provider.mode === "fallback" ? "fallback" : "ai",
+      model: nullableString(provider.model),
+    },
+    steps,
+    externalSearchAvailable: value.externalSearchAvailable === true,
+  };
+}
+
+function normalizeExternalCandidate(value: unknown): ExternalFreelancerCandidate | null {
+  if (!isRecord(value)) return null;
+  const displayName = nullableString(value.displayName);
+  const role = nullableString(value.role);
+  const summary = nullableString(value.summary);
+  const profileUrl = secureBookingUrl(value.profileUrl);
+  const bookingUrl = secureBookingUrl(value.bookingUrl);
+  if (!displayName || !role || !summary || !profileUrl || !bookingUrl) return null;
+  const sourceUrls = stringList(value.sourceUrls)
+    .map(secureBookingUrl)
+    .filter((url): url is string => Boolean(url));
+  return {
+    displayName,
+    role,
+    summary,
+    profileUrl,
+    bookingUrl,
+    sourceUrls,
+    matchedRequirements: stringList(value.matchedRequirements),
+    knownGaps: stringList(value.knownGaps),
+    verificationStatus: "external_unverified",
+  };
+}
+
+function normalizeExternalSearchResponse(value: unknown): ExternalFreelancerSearchResponse {
+  const response = isRecord(value) && isRecord(value.data) ? value.data : value;
+  if (!isRecord(response)) throw new Error("Die Websuche hatte kein gültiges Format.");
+  const trace = isRecord(response.searchTrace) ? response.searchTrace : {};
+  const candidates = Array.isArray(response.candidates)
+    ? response.candidates
+        .map(normalizeExternalCandidate)
+        .filter((candidate): candidate is ExternalFreelancerCandidate => candidate !== null)
+        .slice(0, 3)
+    : [];
+  const credits = normalizeCreditSnapshot(response.credits);
+  return {
+    projectId: stringValue(response.projectId),
+    candidates,
+    disclosure: stringValue(
+      response.disclosure,
+      "Externe Treffer stammen aus öffentlich zugänglichen Quellen und sind nicht durch XPORTAL verifiziert.",
+    ),
+    mode: response.mode === "openai" ? "openai" : "unavailable",
+    notice: nullableString(response.notice) ?? undefined,
+    searchTrace: {
+      queries: stringList(trace.queries),
+      consultedSourceCount: nonNegativeNumber(trace.consultedSourceCount) ?? 0,
+      returnedCandidateCount: nonNegativeNumber(trace.returnedCandidateCount) ?? candidates.length,
+    },
+    ...(credits ? { credits } : {}),
+  };
 }
 
 function normalizeMode(value: unknown): ProjectMode {
@@ -341,6 +431,7 @@ function normalizeChatResponse(value: unknown, fallbackTitle: string): ChatRespo
   const credits = normalizeCreditSnapshot(
     response.credits ?? response.creditSnapshot ?? response.credit_snapshot,
   );
+  const analysis = normalizeAnalysisTrace(response.analysis);
 
   return {
     project: normalizeProject(response.project, fallbackTitle),
@@ -350,6 +441,7 @@ function normalizeChatResponse(value: unknown, fallbackTitle: string): ChatRespo
     mode: response.mode === "fallback" ? "fallback" : "ai",
     notice: nullableString(response.notice) ?? undefined,
     ...(credits ? { credits } : {}),
+    ...(analysis ? { analysis } : {}),
   };
 }
 
@@ -555,6 +647,9 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
   const [hasResult, setHasResult] = useState(false);
   const [analysisMode, setAnalysisMode] = useState<"ai" | "fallback" | null>(null);
   const [analysisNotice, setAnalysisNotice] = useState<string | null>(null);
+  const [analysisTrace, setAnalysisTrace] = useState<AiAnalysisTrace | null>(null);
+  const [externalSearch, setExternalSearch] = useState<ExternalFreelancerSearchResponse | null>(null);
+  const [externalSearchState, setExternalSearchState] = useState<"idle" | "searching" | "error">("idle");
   const [draft, setDraft] = useState("");
   const [pendingAssistant, setPendingAssistant] = useState<PendingAssistant | null>(null);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
@@ -665,6 +760,9 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
         setHasResult(Boolean(detail.brief));
         setAnalysisMode(detail.analysisMode ?? null);
         setAnalysisNotice(detail.analysisNotice ?? null);
+        setAnalysisTrace(null);
+        setExternalSearch(null);
+        setExternalSearchState("idle");
         setSelectedProfileId(null);
         return detail;
       } catch (error) {
@@ -793,6 +891,9 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
     setHasResult(false);
     setAnalysisMode(null);
     setAnalysisNotice(null);
+    setAnalysisTrace(null);
+    setExternalSearch(null);
+    setExternalSearchState("idle");
     setDraft("");
     setPendingAssistant(null);
     setSelectedProfileId(null);
@@ -808,6 +909,9 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
     setHasResult(false);
     setAnalysisMode(null);
     setAnalysisNotice(null);
+    setAnalysisTrace(null);
+    setExternalSearch(null);
+    setExternalSearchState("idle");
     setSelectedProfileId(null);
     setContactOpen(false);
     setPendingAssistant(null);
@@ -836,6 +940,9 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
       setHasResult(true);
       setAnalysisMode(result.mode ?? "ai");
       setAnalysisNotice(result.mode === "fallback" ? result.notice ?? null : null);
+      setAnalysisTrace(result.analysis ?? null);
+      setExternalSearch(null);
+      setExternalSearchState("idle");
       setSelectedProfileId((current) =>
         result.matches.some((profile) => profile.id === current) ? current : null,
       );
@@ -950,6 +1057,46 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     void sendMessage(draft);
+  };
+
+  const runExternalFreelancerSearch = async () => {
+    if (!activeProject?.id || externalSearchState === "searching") return;
+    setExternalSearch(null);
+    setExternalSearchState("searching");
+    try {
+      const response = await fetch(apiPaths.freelancerSearch, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          projectId: activeProject.id,
+          requestId: makeId("external-search"),
+        }),
+      });
+      if (!response.ok) {
+        let message = "Die externe Suche konnte gerade nicht abgeschlossen werden.";
+        try {
+          const body: unknown = await response.json();
+          if (isRecord(body)) message = stringValue(body.error, message);
+        } catch {
+          // Keep the safe generic message.
+        }
+        throw new Error(message);
+      }
+      const result = normalizeExternalSearchResponse(await response.json());
+      setExternalSearch(result);
+      if (result.credits) setCredits(result.credits);
+      if (result.notice) showToast(result.notice);
+      setExternalSearchState("idle");
+    } catch (error) {
+      setExternalSearchState("error");
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "Die externe Suche konnte gerade nicht abgeschlossen werden.",
+        "error",
+      );
+    }
   };
 
   const handleComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -1186,6 +1333,10 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
                   <ResultSection
                     brief={brief}
                     profiles={profiles}
+                    analysis={analysisTrace}
+                    externalSearch={externalSearch}
+                    externalSearchState={externalSearchState}
+                    onExternalSearch={() => void runExternalFreelancerSearch()}
                     selectedProfileId={selectedProfileId}
                     onSelect={requestProfileSelection}
                     onContact={(profile) => {
@@ -1402,12 +1553,20 @@ function PendingMessage({ pending, onRetry }: { pending: PendingAssistant; onRet
 function ResultSection({
   brief,
   profiles,
+  analysis,
+  externalSearch,
+  externalSearchState,
+  onExternalSearch,
   selectedProfileId,
   onSelect,
   onContact,
 }: {
   brief: StructuredBrief | null;
   profiles: FreelancerProfileResult[];
+  analysis: AiAnalysisTrace | null;
+  externalSearch: ExternalFreelancerSearchResponse | null;
+  externalSearchState: "idle" | "searching" | "error";
+  onExternalSearch: () => void;
   selectedProfileId: string | null;
   onSelect: (profile: FreelancerProfileResult) => void;
   onContact: (profile: FreelancerProfileResult) => void;
@@ -1415,6 +1574,7 @@ function ResultSection({
   return (
     <section className="result-section" aria-label="Suchergebnis">
       {brief ? <BriefCard brief={brief} /> : null}
+      {analysis ? <AnalysisTrace trace={analysis} /> : null}
       <div className="shortlist-heading">
         <div>
           <p className="eyebrow">Regelbasierter Abgleich</p>
@@ -1439,15 +1599,114 @@ function ResultSection({
           </div>
         </>
       ) : (
-        <div className="no-match-card">
-          <div className="no-match-icon" aria-hidden="true">⌕</div>
-          <div>
-            <strong>Aktuell gibt es keinen ausreichend passenden Treffer.</strong>
-            <p>Wir zeigen kein Ersatzprofil, wenn Pflichtkriterien nicht erfüllt sind. Ergänzen oder ändern Sie Ihre Angaben einfach im Chat.</p>
-            <a href={`tel:${CONTACT_PHONE}`}>Roman Dering direkt kontaktieren · {CONTACT_PHONE_LABEL}</a>
+        <>
+          <div className="no-match-card">
+            <div className="no-match-icon" aria-hidden="true">⌕</div>
+            <div>
+              <strong>Aktuell gibt es keinen ausreichend passenden internen Treffer.</strong>
+              <p>Wir zeigen kein Ersatzprofil, wenn Pflichtkriterien nicht erfüllt sind. Ihre Angaben können Sie jederzeit im Chat ergänzen.</p>
+              <button
+                className="external-search-button"
+                type="button"
+                onClick={onExternalSearch}
+                disabled={externalSearchState === "searching"}
+              >
+                {externalSearchState === "searching"
+                  ? "KI sucht öffentlich zugängliche Profile …"
+                  : "Soll ein KI-Agent im Internet nach passenden Freelancern mit direktem Buchungslink suchen?"}
+              </button>
+              {externalSearchState === "searching" ? (
+                <p className="external-search-progress" role="status">
+                  <span className="thinking-dots" aria-hidden="true"><i /><i /><i /></span>
+                  KI sucht · Quellen und Buchungslinks werden geprüft
+                </p>
+              ) : null}
+              {externalSearchState === "error" ? (
+                <button className="text-button" type="button" onClick={onExternalSearch}>Websuche erneut versuchen</button>
+              ) : null}
+              <a href={`tel:${CONTACT_PHONE}`}>Roman Dering direkt kontaktieren · {CONTACT_PHONE_LABEL}</a>
+            </div>
           </div>
-        </div>
+          {externalSearch ? <ExternalSearchResults result={externalSearch} /> : null}
+        </>
       )}
+    </section>
+  );
+}
+
+function providerTransportLabel(trace: AiAnalysisTrace): string {
+  if (trace.provider.transport === "direct_openai") return "Direkte OpenAI API";
+  if (trace.provider.transport === "netlify_ai_gateway") return "Netlify AI Gateway";
+  if (trace.provider.transport === "custom_gateway") return "Konfigurierter AI-Gateway";
+  return "Kein KI-Provider";
+}
+
+function AnalysisTrace({ trace }: { trace: AiAnalysisTrace }) {
+  return (
+    <details className="analysis-trace" open>
+      <summary>
+        <span className="analysis-trace-icon" aria-hidden="true">✦</span>
+        <span>
+          <strong>So wurde Ihre Anfrage bearbeitet</strong>
+          <small>{providerTransportLabel(trace)}{trace.provider.model ? ` · ${trace.provider.model}` : ""}</small>
+        </span>
+        <span className="analysis-trace-toggle" aria-hidden="true">⌄</span>
+      </summary>
+      <ol>
+        {trace.steps.map((step, index) => (
+          <li className={step.status === "warning" ? "is-warning" : ""} key={`${step.label}-${index}`}>
+            <span aria-hidden="true">{step.status === "warning" ? "!" : "✓"}</span>
+            <div><strong>{step.label}</strong><p>{step.detail}</p></div>
+          </li>
+        ))}
+      </ol>
+      <p className="analysis-trace-disclosure">GPT strukturiert die Angaben. Die interne Auswahl bleibt ein reproduzierbarer Regelabgleich; Sie treffen die Entscheidung.</p>
+    </details>
+  );
+}
+
+function ExternalSearchResults({ result }: { result: ExternalFreelancerSearchResponse }) {
+  return (
+    <section className="external-results" aria-label="Externe, nicht verifizierte Suchergebnisse">
+      <div className="external-results-heading">
+        <div><p className="eyebrow">Optionale Websuche</p><h3>Öffentlich gefundene Profile</h3></div>
+        <span>Nicht durch XPORTAL verifiziert</span>
+      </div>
+      <p className="external-disclosure">{result.disclosure}</p>
+      {result.candidates.length ? (
+        <div className="external-profile-list">
+          {result.candidates.map((candidate) => (
+            <article className="external-profile-card" key={`${candidate.profileUrl}:${candidate.bookingUrl}`}>
+              <div className="external-profile-topline"><span>Extern</span><span>Angaben vor Buchung prüfen</span></div>
+              <h3>{candidate.displayName}</h3>
+              <p className="external-role">{candidate.role}</p>
+              <p>{candidate.summary}</p>
+              {candidate.matchedRequirements.length ? (
+                <div className="external-fact"><strong>Gefundene Übereinstimmungen</strong><p>{candidate.matchedRequirements.join(" · ")}</p></div>
+              ) : null}
+              {candidate.knownGaps.length ? (
+                <div className="external-fact is-gap"><strong>Offen / ungeprüft</strong><p>{candidate.knownGaps.join(" · ")}</p></div>
+              ) : null}
+              <div className="external-links">
+                <a href={candidate.profileUrl} target="_blank" rel="noopener noreferrer">Öffentliches Profil prüfen</a>
+                <a className="external-booking-link" href={candidate.bookingUrl} target="_blank" rel="noopener noreferrer">Buchungslink öffnen ↗</a>
+              </div>
+              {candidate.sourceUrls.length ? (
+                <p className="external-sources">Quellen: {candidate.sourceUrls.map((url, index) => (
+                  <span key={url}>{index ? " · " : ""}<a href={url} target="_blank" rel="noopener noreferrer">{new URL(url).hostname}</a></span>
+                ))}</p>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      ) : (
+        <p className="external-empty">Auch in der Websuche wurde kein Profil mit belegbarem öffentlichen Profil und direktem HTTPS-Buchungslink gefunden.</p>
+      )}
+      <details className="external-trace">
+        <summary>Suchschritte ansehen</summary>
+        <p>{result.searchTrace.consultedSourceCount} öffentlich zugängliche Quellen wurden berücksichtigt; {result.searchTrace.returnedCandidateCount} Ergebnis(se) erfüllten die Ausgaberegeln.</p>
+        {result.searchTrace.queries.length ? <ul>{result.searchTrace.queries.map((query) => <li key={query}>{query}</li>)}</ul> : null}
+      </details>
     </section>
   );
 }

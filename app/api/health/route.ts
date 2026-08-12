@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getSupabasePublicEnv } from "@/lib/supabase/env";
+import { resolveOpenAiConnection } from "@/lib/openai/provider";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ export async function GET(request: Request) {
 
   try {
     const { url, publishableKey } = getSupabasePublicEnv();
+    const openAi = resolveOpenAiConnection();
     if (deep) {
       const upstream = await fetch(`${url}/auth/v1/health`, {
         cache: "no-store",
@@ -27,7 +29,8 @@ export async function GET(request: Request) {
           application: true,
           supabaseConfigured: true,
           supabaseReachable: deep ? true : null,
-          openAiConfigured: Boolean(process.env.OPENAI_API_KEY?.trim()),
+          openAiConfigured: openAi.configured,
+          openAiTransport: openAi.transport,
         },
       },
       { headers: { "Cache-Control": "no-store" } },

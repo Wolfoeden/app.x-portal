@@ -1,0 +1,192 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
+
+import { parseFallbackBrief } from "@/lib/domain";
+import {
+  estimateExternalSearchTokenCeiling,
+  extractSearchEvidence,
+  isDirectBookingUrl,
+  reconcileExternalCandidates,
+  searchExternalFreelancers,
+  type ExternalSearchResponsesClient,
+} from "@/lib/openai/external-freelancer-search";
+
+const FIXED_NOW = new Date("2026-08-12T10:00:00.000Z");
+const SAFETY_IDENTIFIER = "usr_4e8a57f0b51c";
+const brief = parseFallbackBrief(
+  "React und TypeScript erforderlich, deutsch, remote.",
+  { now: FIXED_NOW },
+);
+
+function webOutput(urls: string[]) {
+  return [
+    {
+      type: "web_search_call",
+      action: {
+        type: "search",
+        queries: ["React freelancer direct booking"],
+        sources: urls.map((url) => ({ type: "url", url })),
+      },
+      status: "completed",
+    },
+  ];
+}
+
+function candidate(overrides: Record<string, unknown> = {}) {
+  return {
+    displayName: "Anna Beispiel",
+    role: "React Freelancer",
+    summary: "Öffentlich beschriebenes React-Profil.",
+    matchedRequirements: ["React"],
+    knownGaps: ["Verfügbarkeit nicht bestätigt"],
+    profileUrl: "https://portfolio.example/anna",
+    bookingUrl: "https://calendly.com/anna/30min",
+    sourceUrls: [
+      "https://portfolio.example/anna",
+      "https://calendly.com/anna/30min",
+    ],
+    ...overrides,
+  };
+}
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.useRealTimers();
+});
+
+describe("external freelancer web search", () => {
+  it("uses web_search, store=false, source inclusion and structured output", async () => {
+    const parse = vi.fn<ExternalSearchResponsesClient["parse"]>().mockResolvedValue({
+      id: "resp_web_1",
+      model: "gpt-5.6-luna-2026-07-15",
+      output_parsed: { candidates: [candidate()] },
+      output: webOutput([
+        "https://portfolio.example/anna",
+        "https://calendly.com/anna/30min",
+      ]),
+      usage: {
+        input_tokens: 120,
+        input_tokens_details: { cached_tokens: 20 },
+        output_tokens: 80,
+        total_tokens: 200,
+      },
+    });
+    const result = await searchExternalFreelancers(
+      { brief, safetyIdentifier: SAFETY_IDENTIFIER },
+      { responsesClient: { parse } },
+    );
+
+    expect(result.mode).toBe("openai");
+    expect(result.candidates).toHaveLength(1);
+    expect(result.candidates[0]?.verificationStatus).toBe(
+      "external_unverified",
+    );
+    const [body, requestOptions] = parse.mock.calls[0]!;
+    expect(body.store).toBe(false);
+    expect(body.tools).toContainEqual(
+      expect.objectContaining({ type: "web_search" }),
+    );
+    expect(body.tool_choice).toBe("required");
+    expect(body.include).toContain("web_search_call.action.sources");
+    expect(body.text?.format?.type).toBe("json_schema");
+    expect(body.safety_identifier).toBe(SAFETY_IDENTIFIER);
+    expect(requestOptions).toMatchObject({ maxRetries: 0, timeout: 20_000 });
+  });
+
+  it("rejects invented URLs that are not present in provider evidence", () => {
+    const reconciled = reconcileExternalCandidates(
+      { candidates: [candidate()] },
+      webOutput(["https://portfolio.example/anna"]),
+    );
+
+    expect(reconciled.candidates).toEqual([]);
+    expect(reconciled.evidence.urls).not.toContain(
+      "https://calendly.com/anna/30min",
+    );
+  });
+
+  it("rejects a contact page even when the model calls it a booking link", () => {
+    const contact = "https://portfolio.example/anna/contact";
+    const reconciled = reconcileExternalCandidates(
+      {
+        candidates: [
+          candidate({ bookingUrl: contact, sourceUrls: [
+            "https://portfolio.example/anna",
+            contact,
+          ] }),
+        ],
+      },
+      webOutput(["https://portfolio.example/anna", contact]),
+    );
+
+    expect(isDirectBookingUrl(contact)).toBe(false);
+    expect(reconciled.candidates).toEqual([]);
+  });
+
+  it("returns at most three unique evidenced booking results", () => {
+    const profileUrls = [1, 2, 3, 4].map(
+      (index) => `https://portfolio.example/person-${index}`,
+    );
+    const bookingUrls = [1, 2, 3, 4].map(
+      (index) => `https://cal.com/person-${index}/intro`,
+    );
+    const candidates = profileUrls.map((profileUrl, index) =>
+      candidate({
+        displayName: `Person ${index + 1}`,
+        profileUrl,
+        bookingUrl: bookingUrls[index],
+        sourceUrls: [profileUrl, bookingUrls[index]],
+      }),
+    );
+    const reconciled = reconcileExternalCandidates(
+      { candidates: candidates.slice(0, 3) },
+      webOutput([...profileUrls, ...bookingUrls]),
+    );
+
+    expect(reconciled.candidates).toHaveLength(3);
+  });
+
+  it("does not call the provider after quota denial", async () => {
+    const parse = vi.fn<ExternalSearchResponsesClient["parse"]>();
+    const result = await searchExternalFreelancers(
+      {
+        brief,
+        safetyIdentifier: SAFETY_IDENTIFIER,
+        allowProvider: false,
+      },
+      { responsesClient: { parse } },
+    );
+
+    expect(parse).not.toHaveBeenCalled();
+    expect(result.fallbackReason).toBe("budget_denied");
+    expect(result.providerAttempted).toBe(false);
+  });
+
+  it("requires a server key when no injected client is supplied", async () => {
+    const result = await searchExternalFreelancers(
+      { brief, safetyIdentifier: SAFETY_IDENTIFIER },
+      { apiKey: null },
+    );
+
+    expect(result.fallbackReason).toBe("provider_unavailable");
+    expect(result.providerAttempted).toBe(false);
+  });
+
+  it("extracts only HTTPS evidence and provides a bounded quota estimate", () => {
+    const evidence = extractSearchEvidence(
+      webOutput([
+        "https://valid.example/profile",
+        "http://insecure.example/profile",
+      ]),
+    );
+    const estimate = estimateExternalSearchTokenCeiling({ brief });
+
+    expect([...evidence.urls]).toEqual(["https://valid.example/profile"]);
+    expect(evidence.queries).toEqual(["React freelancer direct booking"]);
+    expect(estimate.inputTokens).toBeGreaterThan(0);
+    expect(estimate.totalTokens).toBe(
+      estimate.inputTokens + estimate.outputTokens,
+    );
+  });
+});

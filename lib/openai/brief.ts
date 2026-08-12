@@ -1,6 +1,5 @@
 import "server-only";
 
-import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import type { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 import { z } from "zod";
@@ -13,6 +12,7 @@ import {
   type BriefFactField,
   type ProjectBrief,
 } from "@/lib/domain";
+import { createOpenAiClient } from "@/lib/openai/provider";
 
 export const DEFAULT_OPENAI_BRIEF_MODEL = "gpt-5.6-luna";
 export const DEFAULT_OPENAI_TIMEOUT_MS = 12_000;
@@ -184,6 +184,9 @@ Rules:
 - Extract only facts the user explicitly supplied. Use null or "unknown" when absent.
 - Never infer a budget, rate, location, qualification, availability, date, or contractual fact.
 - Preserve corrections in the latest message over older statements.
+- Treat a follow-up as an addition unless it explicitly corrects or removes an earlier fact.
+- Put skills explicitly described as mandatory in requiredSkills and clearly optional skills in optionalSkills.
+- Put explicit certifications in qualifications. Put explicit supplier eligibility, residency, NDA, invoicing, compliance or other contract conditions in contractualRequirements. Keep other explicit boundaries in constraints. If the wording is unclear, retain it only as a constraint instead of guessing its legal effect.
 - A concise project title may summarize the request, but every other factual field must be grounded in the supplied text.
 - Do not select, score, rank, or discuss freelancer profiles.`;
 
@@ -596,7 +599,7 @@ function configuredTimeout(override?: number): number {
 }
 
 function createDefaultResponsesClient(apiKey: string): BriefResponsesClient {
-  const client = new OpenAI({ apiKey });
+  const client = createOpenAiClient(apiKey);
   return {
     async parse(body, options) {
       return client.responses.parse(body, options);

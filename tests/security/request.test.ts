@@ -28,6 +28,18 @@ describe("request security", () => {
     expect(() => assertSameOrigin(request)).not.toThrow();
   });
 
+  it("accepts the browser Host origin when the server listens on an internal address", () => {
+    const request = new Request("http://0.0.0.0:3011/api/chat", {
+      method: "POST",
+      headers: {
+        host: "localhost:3011",
+        origin: "http://localhost:3011",
+      },
+    });
+
+    expect(() => assertSameOrigin(request)).not.toThrow();
+  });
+
   it("rejects oversized bodies before JSON parsing", async () => {
     const request = new Request("https://app.example/api/chat", {
       method: "POST",

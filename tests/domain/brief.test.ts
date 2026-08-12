@@ -86,6 +86,7 @@ describe("deterministic fallback brief parser", () => {
     expect(brief.location).toBe("Berlin");
     expect(brief.duration).toEqual({ raw: "for 3 months", value: 3, unit: "months" });
     expect(brief.constraints).toEqual(["EU residency", "no travel"]);
+    expect(brief.contractualRequirements).toEqual(["EU residency"]);
     expect(brief.qualifications).toEqual(["IREB CPRE"]);
     expect(brief.budget).toBeNull();
     expect(brief.rate).toBeNull();

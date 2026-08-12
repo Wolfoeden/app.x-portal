@@ -97,6 +97,54 @@ export interface AiCreditSnapshot {
   exhausted?: boolean;
 }
 
+export type AiProviderTransport =
+  | "unconfigured"
+  | "direct_openai"
+  | "netlify_ai_gateway"
+  | "custom_gateway";
+
+export interface AiAnalysisStep {
+  label: string;
+  detail: string;
+  status: "completed" | "warning";
+}
+
+export interface AiAnalysisTrace {
+  provider: {
+    transport: AiProviderTransport;
+    mode: "ai" | "fallback";
+    model: string | null;
+  };
+  steps: AiAnalysisStep[];
+  externalSearchAvailable: boolean;
+}
+
+export interface ExternalFreelancerCandidate {
+  displayName: string;
+  role: string;
+  summary: string;
+  matchedRequirements: string[];
+  knownGaps: string[];
+  profileUrl: string;
+  bookingUrl: string;
+  sourceUrls: string[];
+  verificationStatus: "external_unverified";
+}
+
+export interface ExternalFreelancerSearchResponse {
+  projectId: string;
+  candidates: ExternalFreelancerCandidate[];
+  disclosure: string;
+  mode: "openai" | "unavailable";
+  notice?: string;
+  searchTrace: {
+    queries: string[];
+    consultedSourceCount: number;
+    returnedCandidateCount: number;
+  };
+  credits?: AiCreditSnapshot;
+}
+
 export interface ChatResponse {
   project: ProjectListItem;
   message: ConversationMessage | string;
@@ -116,6 +164,7 @@ export interface ChatResponse {
     retryAfterSeconds: number | null;
   };
   credits?: AiCreditSnapshot;
+  analysis?: AiAnalysisTrace;
 }
 
 export type ChatStreamEvent =
@@ -152,6 +201,8 @@ export interface ChatApiPaths {
   credits?: string;
   /** Protected operator-only usage dashboard. */
   adminUsage?: string;
+  /** Explicit, separately disclosed web search offered only after zero internal matches. */
+  freelancerSearch: string;
   emailLogin: string;
   emailRegister: string;
   providerLogin: string;
@@ -167,6 +218,7 @@ export const defaultChatApiPaths: ChatApiPaths = {
   session: appPath("/api/auth/session"),
   credits: appPath("/api/ai/credits"),
   adminUsage: appPath("/chat/admin/ai-usage"),
+  freelancerSearch: appPath("/api/freelancer-search"),
   emailLogin: appPath("/api/auth/login"),
   emailRegister: appPath("/api/auth/register"),
   providerLogin: appPath("/auth/sign-in"),

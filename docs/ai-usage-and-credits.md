@@ -43,6 +43,7 @@ usage but leave precise cost null rather than inventing a rate.
 | `AI_DAILY_TOKEN_LIMIT_GUEST` | 20,000 | Daily provider-token ceiling per anonymous user and HMAC IP |
 | `AI_DAILY_TOKEN_LIMIT_USER` | 100,000 | Daily provider-token ceiling per account |
 | `AI_REQUESTS_PER_MINUTE` | 6 | Per-user and per-IP burst limit |
+| `AI_WEB_SEARCH_REQUESTS_PER_MINUTE` | 2 | Separate per-user and per-IP limit for explicitly started public web research |
 | `AI_MONTHLY_PROVIDER_BUDGET_CENTS` | 5,000 | Conservative provider-wide monthly hard stop |
 | `AI_UNKNOWN_MODEL_ESTIMATED_COST_CENTS` | 100 | Conservative preflight reservation when requested-model pricing is unknown |
 
@@ -78,7 +79,7 @@ the project usable when quota, credits, provider budget or OpenAI fails.
 
 ## User and administrator views
 
-The `/chat` header shows only internal credit total/used/reserved/remaining. It
+The account control at the lower left of `/chat` shows only internal credit total/used/reserved/remaining. It
 does not expose provider cost or call credits “tokens”. The snapshot endpoint
 derives the current Supabase identity server-side and accepts no user ID.
 
@@ -92,6 +93,14 @@ stored.
 
 Profile maintenance remains in Supabase Studio; the usage page is not a general
 admin system.
+
+The health response exposes only the derived provider transport
+(`direct_openai`, `netlify_ai_gateway`, `custom_gateway` or `unconfigured`),
+never a key or base URL. For customer-owned direct OpenAI billing, configure
+`OPENAI_API_KEY` and leave `OPENAI_BASE_URL` unset. The optional external
+freelancer search starts only after an explicit click and only when the current
+curated shortlist is empty. Its results remain separate and visibly
+unverified; they are never inserted into `freelancer_profiles`.
 
 ## Operations and reconciliation
 

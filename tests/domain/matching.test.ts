@@ -162,7 +162,7 @@ describe("deterministic freelancer matching", () => {
     expect(match.knownGaps.join(" ")).not.toMatch(/probably|likely|suitable|best/iu);
   });
 
-  it("fails closed when a supplied commercial constraint cannot be confirmed", () => {
+  it("keeps unknown commercial facts eligible and discloses the gap", () => {
     const hourlyBrief = parseFallbackBrief(
       "Requirements Management freelancer, remote, max EUR 100 per hour.",
       { now },
@@ -171,9 +171,76 @@ describe("deterministic freelancer matching", () => {
       "React freelancer, remote, project budget EUR 1000.",
       { now },
     );
+    const unknownBudgetProfile = {
+      ...profileFixtures[0]!,
+      minimumProjectBudget: null,
+    };
 
-    expect(evaluateProfile(hourlyBrief, profileFixtures[4]!).eligible).toBe(false);
-    expect(buildShortlist(budgetBrief, profileFixtures).matches).toEqual([]);
+    const hourlyEvaluation = evaluateProfile(hourlyBrief, profileFixtures[4]!);
+    expect(hourlyEvaluation.eligible).toBe(true);
+    expect(hourlyEvaluation.commercialConstraintConfidence).toBe("unconfirmed");
+    expect(hourlyEvaluation.knownGaps).toContain(
+      "Stundensatz noch nicht bestätigt; Preisgrenze vor der Buchung abstimmen.",
+    );
+
+    const budgetMatch = buildShortlist(budgetBrief, [unknownBudgetProfile]).matches[0]!;
+    expect(budgetMatch.profile.displayName).toBe("Anna Keller");
+    expect(budgetMatch.orderingEvidence.commercialConstraintConfidence).toBe("unconfirmed");
+    expect(budgetMatch.knownGaps).toContain(
+      "Mindestprojektbudget noch nicht bestätigt; Budgetpassung vor der Buchung abstimmen.",
+    );
+  });
+
+  it("excludes confirmed rates over a supplied maximum and ranks confirmed-compatible rates above unknown", () => {
+    const brief = parseFallbackBrief(
+      "Requirements Management freelancer, remote, max EUR 800 per day.",
+      { now },
+    );
+    const unknownRate = {
+      ...profileFixtures[4]!,
+      id: "00000000-0000-4000-8000-000000000007",
+      displayName: "Aardvark Requirements",
+      dayRate: null,
+    };
+    const overMaximum = {
+      ...profileFixtures[4]!,
+      id: "00000000-0000-4000-8000-000000000008",
+      displayName: "Budget Overrun",
+      dayRate: { amount: 900, currency: "EUR" as const },
+    };
+
+    const shortlist = buildShortlist(brief, [unknownRate, overMaximum, profileFixtures[4]!]);
+
+    expect(shortlist.matches.map((match) => match.profile.displayName)).toEqual([
+      "Elena Rossi",
+      "Aardvark Requirements",
+    ]);
+    expect(shortlist.matches[0]?.orderingEvidence.commercialConstraintConfidence).toBe(
+      "confirmed",
+    );
+    expect(shortlist.matches[1]?.orderingEvidence.commercialConstraintConfidence).toBe(
+      "unconfirmed",
+    );
+    expect(shortlist.matches[1]?.knownGaps).toContain(
+      "Tagessatz noch nicht bestätigt; Preisgrenze vor der Buchung abstimmen.",
+    );
+    expect(evaluateProfile(brief, overMaximum).rejectionReasons).toContain(
+      "Bestätigter Tagessatz von 900 EUR überschreitet die angegebene Obergrenze von 800 EUR.",
+    );
+  });
+
+  it("does not apply an unstated rate or budget ceiling", () => {
+    const brief = parseFallbackBrief("React freelancer in German, remote", { now });
+    const expensiveProfile = {
+      ...profileFixtures[0]!,
+      hourlyRate: { amount: 250, currency: "EUR" as const },
+      dayRate: { amount: 2_000, currency: "EUR" as const },
+      minimumProjectBudget: { amount: 100_000, currency: "EUR" as const },
+    };
+
+    const evaluation = evaluateProfile(brief, expensiveProfile);
+    expect(evaluation.eligible).toBe(true);
+    expect(evaluation.commercialConstraintConfidence).toBe("not_requested");
   });
 
   it("applies explicit qualification and contract requirements as hard filters", () => {
@@ -185,5 +252,26 @@ describe("deterministic freelancer matching", () => {
     expect(buildShortlist(brief, profileFixtures).matches.map((match) => match.profile.displayName)).toEqual([
       "Elena Rossi",
     ]);
+  });
+
+  it("classifies an explicit residency constraint as hard without inferring it from location", () => {
+    const brief = parseFallbackBrief(
+      "Requirements Management freelancer, remote. Constraints: EU residency.",
+      { now },
+    );
+    const profile = {
+      ...profileFixtures[4]!,
+      location: { value: "Berlin, Germany", source: "self_reported" as const },
+    };
+
+    const evaluation = evaluateProfile(brief, profile);
+
+    expect(evaluation.eligible).toBe(false);
+    expect(evaluation.rejectionReasons).toContain(
+      "Vertragsanforderungen nicht bestätigt: EU residency.",
+    );
+    expect(evaluation.matchReasons).not.toContain(
+      "Weitere Rahmenbedingung bestätigt: EU residency.",
+    );
   });
 });

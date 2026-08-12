@@ -13,8 +13,22 @@ export function assertSameOrigin(request: Request) {
   const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL
     ? new URL(process.env.NEXT_PUBLIC_SITE_URL).origin
     : requestOrigin;
+  const host = request.headers.get("host")?.trim();
+  let hostOrigin: string | null = null;
+  if (host) {
+    try {
+      hostOrigin = new URL(`${new URL(request.url).protocol}//${host}`).origin;
+    } catch {
+      hostOrigin = null;
+    }
+  }
 
-  if (origin && origin !== requestOrigin && origin !== configuredOrigin) {
+  if (
+    origin &&
+    origin !== requestOrigin &&
+    origin !== configuredOrigin &&
+    origin !== hostOrigin
+  ) {
     throw new Response("Origin not allowed", { status: 403 });
   }
 }

@@ -7,6 +7,14 @@ vi.mock("@/lib/supabase/env", () => ({
   }),
 }));
 
+vi.mock("@/lib/openai/provider", () => ({
+  resolveOpenAiConnection: () => ({
+    configured: true,
+    transport: "direct_openai",
+    baseUrl: "https://api.openai.com/v1",
+  }),
+}));
+
 import { GET } from "@/app/api/health/route";
 
 afterEach(() => {
@@ -23,6 +31,12 @@ describe("health route", () => {
     );
 
     expect(response.status).toBe(200);
+    await expect(response.clone().json()).resolves.toMatchObject({
+      checks: {
+        openAiConfigured: true,
+        openAiTransport: "direct_openai",
+      },
+    });
     expect(fetchMock).toHaveBeenCalledWith(
       "https://example.supabase.co/auth/v1/health",
       expect.objectContaining({
