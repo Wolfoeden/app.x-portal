@@ -8,6 +8,8 @@ import {
   getAdminUserUsageInteractions,
 } from "@/lib/ai/admin-usage";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { resolveOpenAiConnection } from "@/lib/openai/provider";
+import { ProviderDiagnosticPanel } from "./ProviderDiagnosticPanel";
 import styles from "./usage.module.css";
 
 export const metadata: Metadata = {
@@ -28,6 +30,18 @@ const usdFormat = new Intl.NumberFormat("de-DE", {
 function formatUsd(value: string): string {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? usdFormat.format(numeric) : "–";
+}
+
+function formatUsageCost(value: {
+  costUsd: string;
+  requests: number;
+  unknownCostRequests: number;
+}): string {
+  if (value.requests > 0 && value.unknownCostRequests === value.requests) {
+    return "Unbekannt";
+  }
+  const known = formatUsd(value.costUsd);
+  return value.unknownCostRequests > 0 ? `${known} + unbekannt` : known;
 }
 
 function dateRange(value: string | undefined, end = false): string | undefined {
@@ -51,6 +65,14 @@ function outcomeClass(outcome: string): string {
   return styles.statusError;
 }
 
+function usageBasisLabel(
+  usageBasis: "confirmed_provider" | "estimated_or_reconciled",
+): string {
+  return usageBasis === "confirmed_provider"
+    ? "Provider bestätigt"
+    : "Schätzung / Abgleich";
+}
+
 export default async function AiUsageAdminPage({
   searchParams,
 }: {
@@ -60,6 +82,8 @@ export default async function AiUsageAdminPage({
   if (!currentUser?.isAdmin || currentUser.isAnonymous) notFound();
 
   const params = await searchParams;
+  const providerConnection = resolveOpenAiConnection();
+  const requestedModel = process.env.OPENAI_MODEL?.trim() || "gpt-5.6-terra";
   const dashboard = await getAdminUsageDashboard({
     from: dateRange(params.from),
     to: dateRange(params.to, true),
@@ -91,8 +115,8 @@ export default async function AiUsageAdminPage({
           <p className={styles.eyebrow}>XPORTAL · ADMIN</p>
           <h1>AI Usage & Credits</h1>
           <p>
-            Provider-Nutzung und interne XPORTAL Credits werden getrennt
-            ausgewertet.
+            Bestätigte Provider-Nutzung, konservative Schätzungen und interne
+            XPORTAL Credits werden getrennt ausgewiesen.
           </p>
         </div>
         <Link className={styles.backLink} href="/chat">
@@ -113,6 +137,11 @@ export default async function AiUsageAdminPage({
         <Link href="/chat/admin/ai-usage">Zurücksetzen</Link>
       </form>
 
+      <ProviderDiagnosticPanel
+        initialTransport={providerConnection.transport}
+        requestedModel={requestedModel}
+      />
+
       {dashboard.truncated ? (
         <p className={styles.notice}>
           Die Ansicht ist auf jeweils 20.000 Usage- und Credit-Datensätze
@@ -121,27 +150,53 @@ export default async function AiUsageAdminPage({
         </p>
       ) : null}
 
+      <p className={styles.basisNotice}>
+        <strong>Messgrundlage:</strong> „Provider bestätigt“ erfordert eine
+        Provider-Response-ID, das tatsächliche Modell sowie konsistente
+        Tokenfelder. Die ausgewiesenen Text-Token-Kosten werden aus diesen
+        Tokens mit dem datierten Preisregister errechnet; Tool-Gebühren sind
+        darin nicht enthalten und die Werte sind keine Provider-Rechnung.
+        Unvollständige und abgeglichene Datensätze bleiben
+        ausdrücklich Schätzungen. XPORTAL Credits sind eine separate interne
+        Produkteinheit.
+      </p>
+
       <section className={styles.kpis} aria-label="Gesamtnutzung">
         <article>
-          <span>Estimated API Cost</span>
-          <strong>{formatUsd(dashboard.totals.estimatedCostUsd)}</strong>
+          <span>Errechnete Text-Token-Kosten</span>
+          <strong>{formatUsageCost(dashboard.totals.confirmedProvider)}</strong>
           <small>
-            {dashboard.totals.unknownCostRequests
-              ? `${dashboard.totals.unknownCostRequests} ohne Preis`
-              : "Alle Modelle bepreist"}
+            {numberFormat.format(dashboard.totals.confirmedProvider.requests)}
+            {" "}Provider-Antworten
           </small>
         </article>
         <article>
-          <span>Total API Tokens</span>
-          <strong>{numberFormat.format(dashboard.totals.totalTokens)}</strong>
+          <span>Bestätigte Provider-Tokens</span>
+          <strong>{numberFormat.format(dashboard.totals.confirmedProvider.totalTokens)}</strong>
           <small>
-            {numberFormat.format(dashboard.totals.cachedInputTokens)} cached
+            {numberFormat.format(dashboard.totals.confirmedProvider.cachedInputTokens)} cached
           </small>
         </article>
         <article>
-          <span>AI Usage Settlements</span>
-          <strong>{numberFormat.format(dashboard.totals.requests)}</strong>
-          <small>Abgerechnete Versuche, inkl. Fehler/Fallbacks</small>
+          <span>Geschätzte Text-Token-Kosten</span>
+          <strong>{formatUsageCost(dashboard.totals.estimatedOrReconciled)}</strong>
+          <small>
+            {dashboard.totals.estimatedOrReconciled.unknownCostRequests
+              ? `${dashboard.totals.estimatedOrReconciled.unknownCostRequests} ohne Preis`
+              : "Schätzung, nicht Provider-bestätigt"}
+          </small>
+        </article>
+        <article>
+          <span>Geschätzte / abgeglichene Tokens</span>
+          <strong>{numberFormat.format(dashboard.totals.estimatedOrReconciled.totalTokens)}</strong>
+          <small>
+            {numberFormat.format(dashboard.totals.reconciledEstimates)} automatische Abgleiche
+          </small>
+        </article>
+        <article>
+          <span>Usage-Versuche</span>
+          <strong>{numberFormat.format(dashboard.totals.settlements)}</strong>
+          <small>{numberFormat.format(dashboard.totals.failedAttempts)} fehlgeschlagen</small>
         </article>
         <article>
           <span>XPORTAL Credits Used</span>
@@ -164,10 +219,12 @@ export default async function AiUsageAdminPage({
               <tr>
                 <th>Modell</th>
                 <th>Settlements</th>
-                <th>Input</th>
-                <th>Cached</th>
-                <th>Output</th>
-                <th>Kosten</th>
+                <th>Bestätigte Tokens</th>
+                <th>Text-Token-Kosten</th>
+                <th>Schätzungen / Abgleiche</th>
+                <th>Geschätzte Tokens</th>
+                <th>Geschätzte Text-Token-Kosten</th>
+                <th>Fehler</th>
               </tr>
             </thead>
             <tbody>
@@ -175,18 +232,17 @@ export default async function AiUsageAdminPage({
                 dashboard.byModel.map((model) => (
                   <tr key={model.key}>
                     <td><code>{model.key}</code></td>
-                    <td>{numberFormat.format(model.requests)}</td>
-                    <td>{numberFormat.format(model.inputTokens)}</td>
-                    <td>{numberFormat.format(model.cachedInputTokens)}</td>
-                    <td>{numberFormat.format(model.outputTokens)}</td>
-                    <td>
-                      {formatUsd(model.estimatedCostUsd)}
-                      {model.unknownCostRequests ? " + unknown" : ""}
-                    </td>
+                    <td>{numberFormat.format(model.settlements)}</td>
+                    <td>{numberFormat.format(model.confirmedProvider.totalTokens)}</td>
+                    <td>{formatUsageCost(model.confirmedProvider)}</td>
+                    <td>{numberFormat.format(model.estimatedOrReconciled.requests)}</td>
+                    <td>{numberFormat.format(model.estimatedOrReconciled.totalTokens)}</td>
+                    <td>{formatUsageCost(model.estimatedOrReconciled)}</td>
+                    <td>{numberFormat.format(model.failedAttempts)}</td>
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan={6}>Noch keine abgerechnete AI-Nutzung.</td></tr>
+                <tr><td colSpan={8}>Noch keine abgerechnete AI-Nutzung.</td></tr>
               )}
             </tbody>
           </table>
@@ -211,10 +267,12 @@ export default async function AiUsageAdminPage({
               <tr>
                 <th>User</th>
                 <th>Settlements</th>
-                <th>API Tokens</th>
-                <th>Credits im Zeitraum</th>
+                <th>Bestätigte Tokens</th>
+                <th>Text-Token-Kosten</th>
+                <th>Geschätzte Tokens</th>
+                <th>Geschätzte Text-Token-Kosten</th>
+                <th>XPORTAL Credits</th>
                 <th>Credits Remaining</th>
-                <th>Kosten</th>
               </tr>
             </thead>
             <tbody>
@@ -226,11 +284,13 @@ export default async function AiUsageAdminPage({
                     </Link>
                     <small>{user.anonymous ? "Gast" : user.userId}</small>
                   </td>
-                  <td>{numberFormat.format(user.requests)}</td>
-                  <td>{numberFormat.format(user.totalTokens)}</td>
+                  <td>{numberFormat.format(user.settlements)}</td>
+                  <td>{numberFormat.format(user.confirmedProvider.totalTokens)}</td>
+                  <td>{formatUsageCost(user.confirmedProvider)}</td>
+                  <td>{numberFormat.format(user.estimatedOrReconciled.totalTokens)}</td>
+                  <td>{formatUsageCost(user.estimatedOrReconciled)}</td>
                   <td>{numberFormat.format(user.creditsUsed)}</td>
                   <td>{numberFormat.format(user.creditsRemaining)}</td>
-                  <td>{formatUsd(user.estimatedCostUsd)}</td>
                 </tr>
               ))}
             </tbody>
@@ -248,8 +308,10 @@ export default async function AiUsageAdminPage({
           <dl>
             <div><dt>Credit Balance</dt><dd>{numberFormat.format(selectedUser.creditsRemaining)} / {numberFormat.format(selectedUser.creditsTotal)}</dd></div>
             <div><dt>Reserviert</dt><dd>{numberFormat.format(selectedUser.creditsReserved)}</dd></div>
-            <div><dt>API Tokens</dt><dd>{numberFormat.format(selectedUser.totalTokens)}</dd></div>
-            <div><dt>Estimated Cost</dt><dd>{formatUsd(selectedUser.estimatedCostUsd)}</dd></div>
+            <div><dt>Bestätigte Tokens</dt><dd>{numberFormat.format(selectedUser.confirmedProvider.totalTokens)}</dd></div>
+            <div><dt>Text-Token-Kosten</dt><dd>{formatUsageCost(selectedUser.confirmedProvider)}</dd></div>
+            <div><dt>Geschätzte Tokens</dt><dd>{numberFormat.format(selectedUser.estimatedOrReconciled.totalTokens)}</dd></div>
+            <div><dt>Geschätzte Text-Token-Kosten</dt><dd>{formatUsageCost(selectedUser.estimatedOrReconciled)}</dd></div>
           </dl>
         </section>
       ) : null}
@@ -264,7 +326,7 @@ export default async function AiUsageAdminPage({
         <div className={styles.tableScroll}>
           <table>
             <thead>
-              <tr><th>Zeit</th><th>User</th><th>Modell</th><th>Zweck</th><th>Tokens</th><th>Credits</th><th>Status</th></tr>
+              <tr><th>Zeit</th><th>User</th><th>Modell</th><th>Zweck</th><th>Messbasis</th><th>Tokens</th><th>Kosten</th><th>XPORTAL Credits</th><th>Status</th></tr>
             </thead>
             <tbody>
               {selectedInteractions.length ? selectedInteractions.map((item, index) => (
@@ -273,7 +335,13 @@ export default async function AiUsageAdminPage({
                   <td>{item.email ?? item.userId ?? "Gelöscht"}</td>
                   <td><code>{item.model}</code></td>
                   <td>{item.purpose}</td>
+                  <td>
+                    <span className={`${styles.usageBasis} ${item.usageBasis === "confirmed_provider" ? styles.usageConfirmed : styles.usageEstimated}`}>
+                      {usageBasisLabel(item.usageBasis)}
+                    </span>
+                  </td>
                   <td>{numberFormat.format(item.tokens)}</td>
+                  <td>{item.costUsd === null ? "Unbekannt" : formatUsd(item.costUsd)}</td>
                   <td>{numberFormat.format(item.credits)}</td>
                   <td>
                     <span className={`${styles.status} ${outcomeClass(item.outcome)}`}>
@@ -281,7 +349,7 @@ export default async function AiUsageAdminPage({
                     </span>
                   </td>
                 </tr>
-              )) : <tr><td colSpan={7}>Keine Requests im gewählten Zeitraum.</td></tr>}
+              )) : <tr><td colSpan={9}>Keine Requests im gewählten Zeitraum.</td></tr>}
             </tbody>
           </table>
         </div>

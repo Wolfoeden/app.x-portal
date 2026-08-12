@@ -3,8 +3,12 @@
 ## Boundary
 
 `ai_usage_reservations` is the canonical provider-request ledger. A request is
-reserved before OpenAI is called and settled exactly once with the actual model,
-token details, estimated provider cost and internal credit consumption.
+reserved before OpenAI is called and settled exactly once. Provider-returned
+model and token details are stored when available; otherwise the row retains a
+clearly identified conservative estimate. Provider cost is calculated locally
+from token metadata and the versioned price register, not copied from an OpenAI
+invoice. Displayed estimates cover registered text-token prices only; separate
+tool-call fees or other provider adjustments are not included.
 `ai_usage_events` is only a service-role, settled-row view over that table; it
 does not duplicate usage records.
 
@@ -24,14 +28,15 @@ The policy in `lib/ai/credit-policy.ts` counts weighted token work:
 
 One XPORTAL AI credit covers 1,000 weighted units, rounded up per settled
 request. Purpose/model multipliers are explicit, centralized and versioned; the
-current MVP multipliers are 1.0. Never infer a historical balance using a newer
+Luna multiplier is 1.0 and Terra is 10.0 to reflect its higher text-token price.
+Never infer a historical balance using a newer
 policy version: every reservation stores its own `credit_policy_version`.
 
 The provider-price registry in `lib/ai/model-pricing.ts` is independent of this
 policy. It stores exact integer nano-USD rates and the source/check date. Cached
 input is a subset of input. The actual provider-returned model takes precedence
-over the requested model. Explicit dated `gpt-5.6-luna-YYYY-MM-DD` snapshots use
-the reviewed Luna family price; other unknown models still record token/credit
+over the requested model. Explicit dated Luna or Terra snapshots use the
+reviewed family price; other unknown models still record token/credit
 usage but leave precise cost null rather than inventing a rate.
 
 ## Default controls
@@ -62,7 +67,8 @@ an explicit hard stop; invalid or missing values use the documented defaults.
    the estimated XPORTAL credits.
 4. Only an allowed reservation may reach OpenAI; the request uses `store=false`.
 5. `record_ai_usage` settles actual input, cached input, output, total tokens,
-   actual model, response ID, precise known cost and actual credits.
+   actual model, response ID, the locally calculated cost estimate and actual
+   internal credits.
 6. Provider failure/timeout is settled with reported usage when it is available.
    Zero is recorded only when the server can prove that no provider request was
    attempted. Missing or invalid usage remains reserved and fail-closed.
@@ -89,7 +95,11 @@ and recent settled interactions without chat bodies, raw IPs, secrets, identity
 tokens or provider payloads. Access requires `app_metadata.role=admin` (or the
 server-only `ADMIN_USER_IDS` allow-list) and must be paired with MFA. The
 sensitive view fails closed when its required database audit entry cannot be
-stored.
+stored. Confirmed provider usage requires a provider response ID, actual model
+and internally consistent provider token metadata. Reconciliations and
+incomplete rows are shown separately as estimates. A manual diagnostic checks
+only `GET /models/{model}`; it sends no prompt, consumes no model tokens and does
+not claim to prove paid inference.
 
 Profile maintenance remains in Supabase Studio; the usage page is not a general
 admin system.

@@ -14,7 +14,7 @@ import {
 } from "@/lib/domain";
 import { createOpenAiClient } from "@/lib/openai/provider";
 
-export const DEFAULT_OPENAI_BRIEF_MODEL = "gpt-5.6-luna";
+export const DEFAULT_OPENAI_BRIEF_MODEL = "gpt-5.6-terra";
 export const DEFAULT_OPENAI_TIMEOUT_MS = 12_000;
 export const MAX_OPENAI_BRIEF_OUTPUT_TOKENS = 1_800;
 
@@ -930,6 +930,7 @@ function providerRequest(
     text: {
       format: zodTextFormat(AiBriefCandidateSchema, "freelancer_project_brief"),
     },
+    reasoning: { effort: "low" },
     max_output_tokens: MAX_OPENAI_BRIEF_OUTPUT_TOKENS,
     safety_identifier: safetyIdentifier,
     store: false,

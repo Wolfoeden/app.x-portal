@@ -1,9 +1,12 @@
 import "server-only";
 
-import { formatNanoUsdAsUsd } from "@/lib/ai/model-pricing";
+import {
+  calculateEstimatedProviderCost,
+  formatNanoUsdAsUsd,
+} from "@/lib/ai/model-pricing";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
-type UsageRow = {
+export type AdminUsageSourceRow = {
   id: string;
   user_id: string | null;
   interaction_id: string | null;
@@ -29,16 +32,24 @@ type CreditRow = {
   credits_reserved: number | string;
 };
 
-export type AdminUsageTotals = {
+export type AdminProviderUsageTotals = {
   requests: number;
   inputTokens: number;
   cachedInputTokens: number;
   outputTokens: number;
   totalTokens: number;
-  creditsUsed: number;
-  estimatedCostNanoUsd: string;
-  estimatedCostUsd: string;
+  costNanoUsd: string;
+  costUsd: string;
   unknownCostRequests: number;
+};
+
+export type AdminUsageTotals = {
+  settlements: number;
+  confirmedProvider: AdminProviderUsageTotals;
+  estimatedOrReconciled: AdminProviderUsageTotals;
+  reconciledEstimates: number;
+  failedAttempts: number;
+  creditsUsed: number;
 };
 
 export type AdminUsageBreakdown = AdminUsageTotals & {
@@ -75,8 +86,9 @@ export type AdminUsageInteraction = {
   purpose: string;
   tokens: number;
   credits: number;
-  estimatedCostNanoUsd: string | null;
-  estimatedCostUsd: string | null;
+  usageBasis: "confirmed_provider" | "estimated_or_reconciled";
+  costNanoUsd: string | null;
+  costUsd: string | null;
   outcome: string;
   settledAt: string;
 };
@@ -86,60 +98,199 @@ function count(value: number | string | null | undefined): number {
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : 0;
 }
 
-function emptyTotals(): AdminUsageTotals {
+function validCount(
+  value: number | string | null | undefined,
+): number | null {
+  if (typeof value === "number") {
+    return Number.isSafeInteger(value) && value >= 0 ? value : null;
+  }
+  if (typeof value !== "string" || !/^\d+$/u.test(value)) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
+function validNanoUsd(
+  value: number | string | null | undefined,
+): string | null {
+  if (typeof value === "number") {
+    return Number.isSafeInteger(value) && value >= 0 ? String(value) : null;
+  }
+  return typeof value === "string" && /^\d+$/u.test(value) ? value : null;
+}
+
+export function classifyAdminUsageRow(
+  row: AdminUsageSourceRow,
+): "confirmed_provider" | "estimated_or_reconciled" {
+  if (row.outcome === "reconciled_estimate") {
+    return "estimated_or_reconciled";
+  }
+  if (!row.provider_response_id?.trim() || !row.actual_model?.trim()) {
+    return "estimated_or_reconciled";
+  }
+  const inputTokens = validCount(row.input_tokens);
+  const cachedInputTokens = validCount(row.cached_input_tokens);
+  const outputTokens = validCount(row.output_tokens);
+  const totalTokens = validCount(row.total_tokens);
+  if (
+    inputTokens === null ||
+    cachedInputTokens === null ||
+    outputTokens === null ||
+    totalTokens === null ||
+    cachedInputTokens > inputTokens ||
+    totalTokens !== inputTokens + outputTokens
+  ) {
+    return "estimated_or_reconciled";
+  }
+  return "confirmed_provider";
+}
+
+function calculatedProviderCostNanoUsd(
+  row: AdminUsageSourceRow,
+): string | null {
+  const inputTokens = validCount(row.input_tokens);
+  const cachedInputTokens = validCount(row.cached_input_tokens);
+  const outputTokens = validCount(row.output_tokens);
+  if (
+    inputTokens === null ||
+    cachedInputTokens === null ||
+    outputTokens === null ||
+    cachedInputTokens > inputTokens
+  ) {
+    return null;
+  }
+
+  return calculateEstimatedProviderCost({
+    requestedModel: row.requested_model ?? "",
+    actualModel: row.actual_model,
+    inputTokens,
+    cachedInputTokens,
+    outputTokens,
+  }).estimatedCostNanoUsd;
+}
+
+function rowCostNanoUsd(
+  row: AdminUsageSourceRow,
+  usageBasis: "confirmed_provider" | "estimated_or_reconciled",
+): string | null {
+  // OpenAI returns token usage, not a billed USD amount. Confirmed rows are
+  // therefore priced from their provider-reported token fields using the
+  // reviewed registry. Conservative/reconciled rows retain the cost estimate
+  // that was reserved by the policy active at request time.
+  return usageBasis === "confirmed_provider"
+    ? calculatedProviderCostNanoUsd(row)
+    : validNanoUsd(row.actual_cost_nano_usd);
+}
+
+function emptyProviderTotals(): AdminProviderUsageTotals {
   return {
     requests: 0,
     inputTokens: 0,
     cachedInputTokens: 0,
     outputTokens: 0,
     totalTokens: 0,
-    creditsUsed: 0,
-    estimatedCostNanoUsd: "0",
-    estimatedCostUsd: "0",
+    costNanoUsd: "0",
+    costUsd: "0",
     unknownCostRequests: 0,
   };
 }
 
-function addRow(total: AdminUsageTotals, row: UsageRow): void {
+function emptyTotals(): AdminUsageTotals {
+  return {
+    settlements: 0,
+    confirmedProvider: emptyProviderTotals(),
+    estimatedOrReconciled: emptyProviderTotals(),
+    reconciledEstimates: 0,
+    failedAttempts: 0,
+    creditsUsed: 0,
+  };
+}
+
+function addProviderRow(
+  total: AdminProviderUsageTotals,
+  row: AdminUsageSourceRow,
+  usageBasis: "confirmed_provider" | "estimated_or_reconciled",
+): void {
   total.requests += 1;
   total.inputTokens += count(row.input_tokens);
   total.cachedInputTokens += count(row.cached_input_tokens);
   total.outputTokens += count(row.output_tokens);
   total.totalTokens += count(row.total_tokens);
-  total.creditsUsed += count(row.credits_consumed);
-  if (row.actual_cost_nano_usd === null) {
+  const costNanoUsd = rowCostNanoUsd(row, usageBasis);
+  if (costNanoUsd === null) {
     total.unknownCostRequests += 1;
   } else {
-    total.estimatedCostNanoUsd = (
-      BigInt(total.estimatedCostNanoUsd) +
-      BigInt(String(row.actual_cost_nano_usd))
+    total.costNanoUsd = (
+      BigInt(total.costNanoUsd) + BigInt(costNanoUsd)
     ).toString();
   }
 }
 
+function addRow(total: AdminUsageTotals, row: AdminUsageSourceRow): void {
+  total.settlements += 1;
+  total.creditsUsed += count(row.credits_consumed);
+  const usageBasis = classifyAdminUsageRow(row);
+  addProviderRow(
+    usageBasis === "confirmed_provider"
+      ? total.confirmedProvider
+      : total.estimatedOrReconciled,
+    row,
+    usageBasis,
+  );
+  if (row.outcome === "reconciled_estimate") {
+    total.reconciledEstimates += 1;
+  }
+  if (["provider_error", "timeout", "cancelled"].includes(row.outcome)) {
+    total.failedAttempts += 1;
+  }
+}
+
+function finalizeProvider(total: AdminProviderUsageTotals): void {
+  total.costUsd = formatNanoUsdAsUsd(total.costNanoUsd);
+}
+
 function finalize<T extends AdminUsageTotals>(total: T): T {
-  total.estimatedCostUsd = formatNanoUsdAsUsd(total.estimatedCostNanoUsd);
+  finalizeProvider(total.confirmedProvider);
+  finalizeProvider(total.estimatedOrReconciled);
   return total;
 }
 
+export function aggregateAdminUsageRows(
+  rows: readonly AdminUsageSourceRow[],
+): AdminUsageTotals {
+  const totals = emptyTotals();
+  for (const row of rows) addRow(totals, row);
+  return finalize(totals);
+}
+
+function usageModel(row: AdminUsageSourceRow): string {
+  return classifyAdminUsageRow(row) === "confirmed_provider"
+    ? row.actual_model ?? "unknown"
+    : row.requested_model ?? row.actual_model ?? "unknown";
+}
+
+function compareNanoUsdDescending(left: string, right: string): number {
+  const leftValue = BigInt(left);
+  const rightValue = BigInt(right);
+  return rightValue > leftValue ? 1 : rightValue < leftValue ? -1 : 0;
+}
+
 function presentInteraction(
-  row: UsageRow,
+  row: AdminUsageSourceRow,
   email: string | null,
 ): AdminUsageInteraction {
-  const cost =
-    row.actual_cost_nano_usd === null
-      ? null
-      : String(row.actual_cost_nano_usd);
+  const usageBasis = classifyAdminUsageRow(row);
+  const cost = rowCostNanoUsd(row, usageBasis);
   return {
     id: row.interaction_id ?? row.id,
     userId: row.user_id,
     email,
-    model: row.actual_model ?? row.requested_model ?? "unknown",
+    model: usageModel(row),
     purpose: row.purpose ?? "unknown",
     tokens: count(row.total_tokens),
     credits: count(row.credits_consumed),
-    estimatedCostNanoUsd: cost,
-    estimatedCostUsd: cost === null ? null : formatNanoUsdAsUsd(cost),
+    usageBasis,
+    costNanoUsd: cost,
+    costUsd: cost === null ? null : formatNanoUsdAsUsd(cost),
     outcome: row.outcome,
     settledAt: row.settled_at,
   };
@@ -149,7 +300,7 @@ async function readUsageRows(input: { from?: string; to?: string }) {
   const admin = createAdminSupabaseClient();
   const pageSize = 1_000;
   const maxRows = 20_000;
-  const rows: UsageRow[] = [];
+  const rows: AdminUsageSourceRow[] = [];
 
   while (rows.length < maxRows) {
     let query = admin
@@ -164,7 +315,7 @@ async function readUsageRows(input: { from?: string; to?: string }) {
     if (input.to) query = query.lte("settled_at", input.to);
     const { data, error } = await query;
     if (error) throw error;
-    const page = (data ?? []) as UsageRow[];
+    const page = (data ?? []) as AdminUsageSourceRow[];
     rows.push(...page);
     if (page.length < pageSize) return { rows, truncated: false };
   }
@@ -244,7 +395,7 @@ export async function getAdminUsageDashboard(input: {
 
   for (const row of rows) {
     addRow(totals, row);
-    const model = row.actual_model ?? row.requested_model ?? "unknown";
+    const model = usageModel(row);
     const modelTotal = byModel.get(model) ?? { ...emptyTotals(), key: model };
     addRow(modelTotal, row);
     byModel.set(model, modelTotal);
@@ -272,14 +423,22 @@ export async function getAdminUsageDashboard(input: {
 
   const users = [...byUser.values()]
     .map(finalize)
-    .sort((left, right) => right.estimatedCostNanoUsd.localeCompare(
-      left.estimatedCostNanoUsd,
-      undefined,
-      { numeric: true },
-    ));
+    .sort((left, right) => {
+      const confirmedCostOrder = compareNanoUsdDescending(
+        left.confirmedProvider.costNanoUsd,
+        right.confirmedProvider.costNanoUsd,
+      );
+      return confirmedCostOrder || compareNanoUsdDescending(
+        left.estimatedOrReconciled.costNanoUsd,
+        right.estimatedOrReconciled.costNanoUsd,
+      );
+    });
   const modelRows = [...byModel.values()]
     .map(finalize)
-    .sort((left, right) => right.totalTokens - left.totalTokens);
+    .sort((left, right) =>
+      right.confirmedProvider.totalTokens - left.confirmedProvider.totalTokens ||
+      right.estimatedOrReconciled.totalTokens - left.estimatedOrReconciled.totalTokens,
+    );
 
   return {
     generatedAt: new Date().toISOString(),
@@ -325,7 +484,7 @@ export async function getAdminUserUsageInteractions(input: {
   if (input.to) query = query.lte("settled_at", input.to);
   const { data, error } = await query;
   if (error) throw error;
-  return ((data ?? []) as UsageRow[]).map((row) =>
+  return ((data ?? []) as AdminUsageSourceRow[]).map((row) =>
     presentInteraction(row, input.email),
   );
 }

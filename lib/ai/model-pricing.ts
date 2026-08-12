@@ -41,13 +41,11 @@ export type ModelPricingSnapshot = {
 export const OPENAI_PRICING_SOURCE_URL =
   "https://developers.openai.com/api/docs/models/compare";
 
-export const OPENAI_PRICING_VERSION = "openai-model-pricing-2026-08-10";
+export const OPENAI_PRICING_VERSION = "openai-model-pricing-2026-08-12";
 
 /**
- * Official OpenAI prices verified on 2026-08-10:
- * - input: $0.20 / 1M tokens = 200 nano-USD / token
- * - cached input: $0.02 / 1M tokens = 20 nano-USD / token
- * - output: $1.20 / 1M tokens = 1,200 nano-USD / token
+ * Official OpenAI prices checked on 2026-08-12. Per-token nano-USD values are
+ * exact conversions from the published per-1M-token prices.
  */
 export const MODEL_PRICING_REGISTRY = {
   "gpt-5.6-luna": {
@@ -57,9 +55,20 @@ export const MODEL_PRICING_REGISTRY = {
     cachedInputNanoUsdPerToken: "20",
     outputNanoUsdPerToken: "1200",
     pricingVersion: OPENAI_PRICING_VERSION,
-    effectiveOn: "2026-08-10",
+    effectiveOn: "2026-08-12",
     sourceUrl: OPENAI_PRICING_SOURCE_URL,
-    sourceCheckedOn: "2026-08-10",
+    sourceCheckedOn: "2026-08-12",
+  },
+  "gpt-5.6-terra": {
+    modelId: "gpt-5.6-terra",
+    currency: "USD",
+    inputNanoUsdPerToken: "2000",
+    cachedInputNanoUsdPerToken: "200",
+    outputNanoUsdPerToken: "12000",
+    pricingVersion: OPENAI_PRICING_VERSION,
+    effectiveOn: "2026-08-12",
+    sourceUrl: OPENAI_PRICING_SOURCE_URL,
+    sourceCheckedOn: "2026-08-12",
   },
 } as const satisfies Record<string, ModelPricingSnapshot>;
 
@@ -129,11 +138,16 @@ export function resolveModelPricing(
     ];
   if (exact) return exact;
 
-  // Responses may identify a dated snapshot of the requested Luna model. Only
-  // this explicit family pattern inherits the reviewed base-model price; other
-  // model identifiers remain unknown rather than being priced by similarity.
-  if (/^gpt-5\.6-luna-\d{4}-\d{2}-\d{2}$/u.test(meteredModel)) {
-    return MODEL_PRICING_REGISTRY["gpt-5.6-luna"];
+  // Responses may identify a dated snapshot. Only these explicit reviewed
+  // family patterns inherit their base-model price; other identifiers remain
+  // unknown rather than being priced by similarity.
+  const datedFamily = /^(gpt-5\.6-(?:luna|terra))-\d{4}-\d{2}-\d{2}$/u.exec(
+    meteredModel,
+  )?.[1];
+  if (datedFamily) {
+    return MODEL_PRICING_REGISTRY[
+      datedFamily as keyof typeof MODEL_PRICING_REGISTRY
+    ];
   }
   return null;
 }

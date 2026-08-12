@@ -175,16 +175,32 @@ function stringList(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
-function normalizeAnalysisTrace(value: unknown): AiAnalysisTrace | undefined {
+export function normalizeAnalysisTrace(value: unknown): AiAnalysisTrace | undefined {
   if (!isRecord(value)) return undefined;
   const provider = isRecord(value.provider) ? value.provider : {};
-  const transport =
-    provider.transport === "direct_openai" ||
-    provider.transport === "netlify_ai_gateway" ||
-    provider.transport === "custom_gateway" ||
-    provider.transport === "unconfigured"
-      ? provider.transport
+  if (
+    typeof provider.configured !== "boolean" ||
+    typeof provider.attempted !== "boolean" ||
+    typeof provider.succeeded !== "boolean" ||
+    typeof provider.fallback !== "boolean"
+  ) {
+    return undefined;
+  }
+  const requestedTransport =
+    provider.requestedTransport === "direct_openai" ||
+    provider.requestedTransport === "netlify_ai_gateway" ||
+    provider.requestedTransport === "custom_gateway" ||
+    provider.requestedTransport === "unconfigured"
+      ? provider.requestedTransport
       : "unconfigured";
+  const succeeded = provider.attempted && provider.succeeded;
+  const actualTransport =
+    succeeded &&
+    (provider.actualTransport === "direct_openai" ||
+      provider.actualTransport === "netlify_ai_gateway" ||
+      provider.actualTransport === "custom_gateway")
+      ? provider.actualTransport
+      : null;
   const steps = Array.isArray(value.steps)
     ? value.steps.flatMap((step) => {
         if (!isRecord(step)) return [];
@@ -200,9 +216,14 @@ function normalizeAnalysisTrace(value: unknown): AiAnalysisTrace | undefined {
     : [];
   return {
     provider: {
-      transport,
-      mode: provider.mode === "fallback" ? "fallback" : "ai",
-      model: nullableString(provider.model),
+      configured: provider.configured,
+      attempted: provider.attempted,
+      succeeded,
+      fallback: provider.fallback,
+      requestedTransport,
+      actualTransport,
+      requestedModel: nullableString(provider.requestedModel),
+      actualModel: succeeded ? nullableString(provider.actualModel) : null,
     },
     steps,
     externalSearchAvailable: value.externalSearchAvailable === true,
@@ -1357,7 +1378,12 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
                 ) : null}
                 {hasResult && analysisMode === "fallback" && !pendingAssistant ? (
                   <p className="analysis-mode-note" role="status">
-                    <strong>Basisanalyse aktiv.</strong>{" "}
+                    <strong>
+                      {analysisTrace
+                        ? providerStatusLabel(analysisTrace)
+                        : "Basisanalyse aktiv"}
+                      .
+                    </strong>{" "}
                     {analysisNotice ??
                       "Diese Projektübersicht wurde ohne bestätigte KI-Auswertung aus Ihren gespeicherten Angaben erstellt."}
                   </p>
@@ -1667,21 +1693,74 @@ function ResultSection({
   );
 }
 
-function providerTransportLabel(trace: AiAnalysisTrace): string {
-  if (trace.provider.transport === "direct_openai") return "Direkte OpenAI API";
-  if (trace.provider.transport === "netlify_ai_gateway") return "Netlify AI Gateway";
-  if (trace.provider.transport === "custom_gateway") return "Konfigurierter AI-Gateway";
-  return "Kein KI-Provider";
+function actualProviderLabel(trace: AiAnalysisTrace): string {
+  if (trace.provider.actualTransport === "direct_openai") return "Direkte OpenAI API";
+  if (trace.provider.actualTransport === "netlify_ai_gateway") return "Netlify AI Gateway";
+  if (trace.provider.actualTransport === "custom_gateway") return "KI-Gateway";
+  return "KI-Provider";
+}
+
+function failedProviderCallLabel(trace: AiAnalysisTrace): string {
+  if (trace.provider.requestedTransport === "direct_openai") {
+    return "OpenAI-Aufruf fehlgeschlagen";
+  }
+  if (trace.provider.requestedTransport === "netlify_ai_gateway") {
+    return "Netlify-AI-Gateway-Aufruf fehlgeschlagen";
+  }
+  if (trace.provider.requestedTransport === "custom_gateway") {
+    return "KI-Gateway-Aufruf fehlgeschlagen";
+  }
+  return "KI-Aufruf fehlgeschlagen";
+}
+
+export function providerStatusLabel(trace: AiAnalysisTrace): string {
+  if (trace.provider.succeeded) {
+    if (!trace.provider.fallback) return actualProviderLabel(trace);
+    if (trace.provider.actualTransport === "direct_openai") {
+      return "Basisanalyse · OpenAI-Antwort nicht verwendet";
+    }
+    return `Basisanalyse · Antwort über ${actualProviderLabel(trace)} nicht verwendet`;
+  }
+  if (trace.provider.attempted) {
+    return `Basisanalyse · ${failedProviderCallLabel(trace)}`;
+  }
+  if (trace.provider.configured) {
+    return "Basisanalyse · KI-Aufruf nicht gestartet";
+  }
+  return "Basisanalyse · Kein KI-Provider konfiguriert";
+}
+
+export function providerModelLabel(trace: AiAnalysisTrace): string | null {
+  if (trace.provider.succeeded) {
+    return trace.provider.actualModel
+      ? `Antwortmodell: ${trace.provider.actualModel}`
+      : null;
+  }
+  if (!trace.provider.requestedModel) return null;
+  return trace.provider.attempted
+    ? `Angefordert: ${trace.provider.requestedModel}`
+    : `Vorgesehen: ${trace.provider.requestedModel}`;
+}
+
+export function analysisDisclosure(trace: AiAnalysisTrace): string {
+  if (trace.provider.succeeded && !trace.provider.fallback) {
+    return "Die Angaben wurden anhand der bestätigten Provider-Antwort strukturiert. Die interne Auswahl bleibt ein reproduzierbarer Regelabgleich; Sie treffen die Entscheidung.";
+  }
+  if (trace.provider.succeeded) {
+    return "Eine Provider-Antwort wurde empfangen, aber nicht für die Strukturierung verwendet. Die Basisanalyse und der interne Regelabgleich bleiben reproduzierbar.";
+  }
+  return "Die Angaben wurden ohne bestätigte Provider-Antwort mit der Basislogik strukturiert. Die interne Auswahl bleibt ein reproduzierbarer Regelabgleich.";
 }
 
 function AnalysisTrace({ trace }: { trace: AiAnalysisTrace }) {
+  const modelLabel = providerModelLabel(trace);
   return (
     <details className="analysis-trace" open>
       <summary>
         <span className="analysis-trace-icon" aria-hidden="true">✦</span>
         <span>
           <strong>So wurde Ihre Anfrage bearbeitet</strong>
-          <small>{providerTransportLabel(trace)}{trace.provider.model ? ` · ${trace.provider.model}` : ""}</small>
+          <small>{providerStatusLabel(trace)}{modelLabel ? ` · ${modelLabel}` : ""}</small>
         </span>
         <span className="analysis-trace-toggle" aria-hidden="true">⌄</span>
       </summary>
@@ -1693,7 +1772,7 @@ function AnalysisTrace({ trace }: { trace: AiAnalysisTrace }) {
           </li>
         ))}
       </ol>
-      <p className="analysis-trace-disclosure">GPT strukturiert die Angaben. Die interne Auswahl bleibt ein reproduzierbarer Regelabgleich; Sie treffen die Entscheidung.</p>
+      <p className="analysis-trace-disclosure">{analysisDisclosure(trace)}</p>
     </details>
   );
 }

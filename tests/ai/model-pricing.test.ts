@@ -3,12 +3,30 @@ import { describe, expect, it } from "vitest";
 import {
   calculateEstimatedProviderCost,
   formatNanoUsdAsUsd,
+  MODEL_PRICING_REGISTRY,
   normalizeAiTokenUsage,
   OPENAI_PRICING_SOURCE_URL,
   resolveModelPricing,
 } from "@/lib/ai/model-pricing";
 
 describe("model pricing", () => {
+  it("stores exact nano-USD rates for Luna and Terra", () => {
+    expect(MODEL_PRICING_REGISTRY).toMatchObject({
+      "gpt-5.6-luna": {
+        inputNanoUsdPerToken: "200",
+        cachedInputNanoUsdPerToken: "20",
+        outputNanoUsdPerToken: "1200",
+        sourceCheckedOn: "2026-08-12",
+      },
+      "gpt-5.6-terra": {
+        inputNanoUsdPerToken: "2000",
+        cachedInputNanoUsdPerToken: "200",
+        outputNanoUsdPerToken: "12000",
+        sourceCheckedOn: "2026-08-12",
+      },
+    });
+  });
+
   it("calculates the verified GPT-5.6 Luna prices exactly", () => {
     const result = calculateEstimatedProviderCost({
       requestedModel: "gpt-5.6-luna",
@@ -20,7 +38,7 @@ describe("model pricing", () => {
     expect(result.estimatedCostNanoUsd).toBe("1400000000");
     expect(result.estimatedCostUsd).toBe("1.4");
     expect(result.pricingModel).toBe("gpt-5.6-luna");
-    expect(result.pricingVersion).toBe("openai-model-pricing-2026-08-10");
+    expect(result.pricingVersion).toBe("openai-model-pricing-2026-08-12");
   });
 
   it("prices cached tokens as a subset of input tokens", () => {
@@ -83,6 +101,31 @@ describe("model pricing", () => {
     expect(result.estimatedCostNanoUsd).toBe("4400");
   });
 
+  it("calculates the verified GPT-5.6 Terra prices exactly", () => {
+    const result = calculateEstimatedProviderCost({
+      requestedModel: "gpt-5.6-terra",
+      inputTokens: 1_000_000,
+      cachedInputTokens: 0,
+      outputTokens: 1_000_000,
+    });
+
+    expect(result.estimatedCostNanoUsd).toBe("14000000000");
+    expect(result.estimatedCostUsd).toBe("14");
+    expect(result.pricingModel).toBe("gpt-5.6-terra");
+  });
+
+  it("uses the reviewed base price for an explicit dated Terra snapshot", () => {
+    const result = calculateEstimatedProviderCost({
+      requestedModel: "gpt-5.6-terra",
+      actualModel: "gpt-5.6-terra-2026-07-15",
+      inputTokens: 10,
+      outputTokens: 2,
+    });
+
+    expect(result.pricingModel).toBe("gpt-5.6-terra");
+    expect(result.estimatedCostNanoUsd).toBe("44000");
+  });
+
   it("returns a null estimate for an unknown model without failing", () => {
     const result = calculateEstimatedProviderCost({
       requestedModel: "unknown-model",
@@ -112,8 +155,8 @@ describe("model pricing", () => {
       resolveModelPricing({ requestedModel: "gpt-5.6-luna" }),
     ).toMatchObject({
       sourceUrl: OPENAI_PRICING_SOURCE_URL,
-      sourceCheckedOn: "2026-08-10",
-      effectiveOn: "2026-08-10",
+      sourceCheckedOn: "2026-08-12",
+      effectiveOn: "2026-08-12",
     });
   });
 

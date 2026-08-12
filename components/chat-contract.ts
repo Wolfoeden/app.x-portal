@@ -103,6 +103,30 @@ export type AiProviderTransport =
   | "netlify_ai_gateway"
   | "custom_gateway";
 
+export type ActiveAiProviderTransport = Exclude<
+  AiProviderTransport,
+  "unconfigured"
+>;
+
+export interface AiAnalysisProviderStatus {
+  /** A provider key/endpoint is configured. This alone does not prove a call. */
+  configured: boolean;
+  /** The provider client was actually invoked for this analysis. */
+  attempted: boolean;
+  /** A provider response was received. This is independent of fallback use. */
+  succeeded: boolean;
+  /** The displayed brief came from the deterministic basis analysis. */
+  fallback: boolean;
+  /** Configured route targeted by the request; never present this as "used" alone. */
+  requestedTransport: AiProviderTransport;
+  /** Route that returned a response; null until `succeeded` is true. */
+  actualTransport: ActiveAiProviderTransport | null;
+  /** Model requested by the server, whether or not the call completed. */
+  requestedModel: string | null;
+  /** Model reported by the provider response; null until a response exists. */
+  actualModel: string | null;
+}
+
 export interface AiAnalysisStep {
   label: string;
   detail: string;
@@ -110,11 +134,7 @@ export interface AiAnalysisStep {
 }
 
 export interface AiAnalysisTrace {
-  provider: {
-    transport: AiProviderTransport;
-    mode: "ai" | "fallback";
-    model: string | null;
-  };
+  provider: AiAnalysisProviderStatus;
   steps: AiAnalysisStep[];
   externalSearchAvailable: boolean;
 }

@@ -22,7 +22,7 @@ describe("provider cost reconciliation", () => {
   });
 
   it("rounds a non-zero provider use up to the next cent", () => {
-    expect(calculateProviderCostCents(10_000, 2_000)).toBe(1);
+    expect(calculateProviderCostCents(10_000, 2_000)).toBe(5);
   });
 
   it("uses configurable model prices and residency multiplier", () => {

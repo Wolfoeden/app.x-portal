@@ -104,11 +104,11 @@ export function calculateProviderCostCents(
 ): number {
   const inputUsdPerMillion = nonNegativeNumber(
     "OPENAI_INPUT_USD_PER_MILLION",
-    0.2,
+    2,
   );
   const outputUsdPerMillion = nonNegativeNumber(
     "OPENAI_OUTPUT_USD_PER_MILLION",
-    1.2,
+    12,
   );
   const residencyMultiplier = nonNegativeNumber(
     "OPENAI_COST_MULTIPLIER",

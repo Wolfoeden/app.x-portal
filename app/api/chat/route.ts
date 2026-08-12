@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import type { AiAnalysisTrace } from "@/components/chat-contract";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { executeTrackedAiRequest } from "@/lib/ai/gateway";
 import { requireCurrentUser } from "@/lib/auth/current-user";
@@ -355,6 +356,7 @@ async function processChatRequest(
       safetyIdentifier: userHash ?? undefined,
     };
     const estimate = estimateProjectBriefTokenCeiling(extractionInput);
+    const providerConnection = resolveOpenAiConnection();
     progress("KI analysiert und strukturiert die Anforderungen …");
     const tracked =
       userHash && ipHash
@@ -417,6 +419,7 @@ async function processChatRequest(
           };
     const extraction = tracked.value;
     const quota = tracked.quota;
+    const providerSucceeded = Boolean(extraction.provider);
     progress(
       extraction.mode === "openai"
         ? "Anforderungen sind strukturiert · interne Profile werden geladen …"
@@ -577,9 +580,21 @@ async function processChatRequest(
           : undefined,
         analysis: {
           provider: {
-            transport: resolveOpenAiConnection().transport,
-            mode: extraction.mode,
-            model: extraction.provider?.model ?? null,
+            configured: providerConnection.configured,
+            attempted: extraction.providerAttempted,
+            succeeded: providerSucceeded,
+            fallback: extraction.mode === "fallback",
+            requestedTransport: providerConnection.transport,
+            actualTransport:
+              providerSucceeded &&
+              providerConnection.transport !== "unconfigured"
+                ? providerConnection.transport
+                : null,
+            requestedModel:
+              extraction.provider?.requestedModel ?? estimate.model,
+            actualModel: providerSucceeded
+              ? extraction.provider?.model ?? null
+              : null,
           },
           steps: [
             {
@@ -602,7 +617,7 @@ async function processChatRequest(
             },
           ],
           externalSearchAvailable: shortlist.matches.length === 0,
-        },
+        } satisfies AiAnalysisTrace,
       },
       { headers: { "Cache-Control": "no-store" } },
     );
