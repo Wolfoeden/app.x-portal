@@ -93,7 +93,7 @@ the brief/UI may use canonical labels (`German`, `English`, `Spanish`). The
 server mapper owns this explicit label-to-code conversion before matching; SQL
 must never compare an unnormalized display label directly.
 
-## Deterministic matching rule (`freelancer-match-v5`)
+## Deterministic matching rule (`freelancer-match-v6`)
 
 Eligibility is a hard filter, evaluated before ordering:
 
@@ -119,12 +119,14 @@ Eligible rows are ordered by this visible, stable rule:
 
 1. Confirmed commercial compatibility before unknown compatibility when the
    user supplied a rate or budget constraint.
-2. Count of exact required-skill matches, descending.
-3. Availability confidence: `available`, then `limited`, then `unknown`.
-4. Count of explicitly requested optional skills, descending.
-5. Count of verified required-skill matches, descending.
-6. Earliest known `availability_from`, unknown last.
-7. Normalized display name ascending.
+2. Exact match of the first named required core skill before profiles matching
+   only secondary or generic skills.
+3. Count of exact required-skill matches, descending.
+4. Availability confidence: `available`, then `limited`, then `unknown`.
+5. Count of explicitly requested optional skills, descending.
+6. Count of verified required-skill matches, descending.
+7. Earliest known `availability_from`, unknown last.
+8. Normalized display name ascending.
 8. UUID ascending as the final stable tie-breaker.
 
 The first three rows are returned. There is no hidden score and no automated

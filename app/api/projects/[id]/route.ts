@@ -119,6 +119,7 @@ function restoreMatch(
     profileDataVersion: `profile-v${row.profile_data_version}`,
     orderingEvidence: {
       optionalSkillMatchCount: 0,
+      primaryRequiredSkillExactMatch: false,
       exactRequiredSkillMatchCount: 0,
       verifiedRequiredSkillMatchCount: 0,
       availabilityPriority: availabilityPriority(profile.availability.status),

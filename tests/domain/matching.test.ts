@@ -380,4 +380,43 @@ describe("deterministic freelancer matching", () => {
     );
     expect(match?.knownGaps.join(" ")).not.toContain("800");
   });
+
+  it("ranks an exact primary SAP skill ahead of generic secondary matches", () => {
+    const brief = applyBriefPatch(
+      parseFallbackBrief("SAP S/4HANA consultant, German, remote", { now }),
+      {
+        requiredSkills: [
+          "SAP S/4HANA",
+          "SAP Integration",
+          "Project Management",
+          "Requirements Management",
+        ],
+      },
+    );
+    const primarySap = {
+      ...profileFixtures[4]!,
+      id: "00000000-0000-4000-8000-000000000010",
+      displayName: "Primary SAP",
+      skillTags: [
+        { value: "SAP S/4HANA", source: "self_reported" as const },
+        { value: "Requirements Management", source: "self_reported" as const },
+      ],
+    };
+    const genericSecondary = {
+      ...profileFixtures[4]!,
+      id: "00000000-0000-4000-8000-000000000011",
+      displayName: "Secondary Skills",
+      skillTags: [
+        { value: "SAP Integration", source: "self_reported" as const },
+        { value: "Project Management", source: "self_reported" as const },
+        { value: "Requirements Management", source: "self_reported" as const },
+      ],
+    };
+
+    const shortlist = buildShortlist(brief, [genericSecondary, primarySap]);
+    expect(shortlist.matches[0]?.profile.displayName).toBe("Primary SAP");
+    expect(
+      shortlist.matches[0]?.orderingEvidence.primaryRequiredSkillExactMatch,
+    ).toBe(true);
+  });
 });

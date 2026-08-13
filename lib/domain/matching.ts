@@ -7,7 +7,7 @@ import {
   type LabeledFact,
 } from "./profile";
 
-export const MATCHING_RULE_VERSION = "freelancer-match-v5" as const;
+export const MATCHING_RULE_VERSION = "freelancer-match-v6" as const;
 
 /**
  * Public and reviewable ordering rule. Eligibility is evaluated first. Eligible
@@ -20,6 +20,7 @@ export const MATCHING_RULE_VERSION = "freelancer-match-v5" as const;
  */
 export const MATCHING_ORDER_RULE = [
   "commercial_constraint_confidence_desc",
+  "primary_required_skill_exact_match_desc",
   "exact_required_skill_matches_desc",
   "availability_status_priority",
   "optional_skill_matches_desc",
@@ -36,6 +37,7 @@ export const ProfileEvaluationSchema = z
     matchReasons: z.array(z.string()),
     knownGaps: z.array(z.string()),
     optionalSkillMatches: z.array(z.string()),
+    primaryRequiredSkillExactMatch: z.boolean(),
     exactRequiredSkillMatches: z.array(z.string()),
     verifiedRequiredSkillMatches: z.array(z.string()),
     commercialConstraintConfidence: z.enum([
@@ -59,6 +61,7 @@ export const ShortlistMatchSchema = z
     orderingEvidence: z
       .object({
         optionalSkillMatchCount: z.number().int().nonnegative(),
+        primaryRequiredSkillExactMatch: z.boolean(),
         exactRequiredSkillMatchCount: z.number().int().nonnegative(),
         verifiedRequiredSkillMatchCount: z.number().int().nonnegative(),
         commercialConstraintConfidence: z
@@ -76,6 +79,7 @@ export const ShortlistSchema = z
     ruleVersion: z.literal(MATCHING_RULE_VERSION),
     orderingRule: z.tuple([
       z.literal("commercial_constraint_confidence_desc"),
+      z.literal("primary_required_skill_exact_match_desc"),
       z.literal("exact_required_skill_matches_desc"),
       z.literal("availability_status_priority"),
       z.literal("optional_skill_matches_desc"),
@@ -468,6 +472,9 @@ export function evaluateProfile(
   const exactRequiredSkillMatches = requiredSkills.filter((skill) =>
     includesFact(profile.skillTags, skill),
   );
+  const primaryRequiredSkillExactMatch = Boolean(
+    requiredSkills[0] && includesFact(profile.skillTags, requiredSkills[0]),
+  );
   const verifiedRequiredSkillMatches = requiredSkills.filter(
     (skill) => matchingFact(profile.skillTags, skill)?.source === "verified",
   );
@@ -478,6 +485,7 @@ export function evaluateProfile(
     matchReasons,
     knownGaps,
     optionalSkillMatches,
+    primaryRequiredSkillExactMatch,
     exactRequiredSkillMatches,
     verifiedRequiredSkillMatches,
     commercialConstraintConfidence: commercial.confidence,
@@ -523,6 +531,10 @@ export function buildShortlist(
       commercialConfidencePriority(right.evaluation.commercialConstraintConfidence) -
       commercialConfidencePriority(left.evaluation.commercialConstraintConfidence);
     if (commercialConfidenceDifference) return commercialConfidenceDifference;
+    const primarySkillDifference =
+      Number(right.evaluation.primaryRequiredSkillExactMatch) -
+      Number(left.evaluation.primaryRequiredSkillExactMatch);
+    if (primarySkillDifference) return primarySkillDifference;
     const exactRequiredDifference =
       right.evaluation.exactRequiredSkillMatches.length -
       left.evaluation.exactRequiredSkillMatches.length;
@@ -556,6 +568,8 @@ export function buildShortlist(
     profileDataVersion: profile.dataVersion,
     orderingEvidence: {
       optionalSkillMatchCount: evaluation.optionalSkillMatches.length,
+      primaryRequiredSkillExactMatch:
+        evaluation.primaryRequiredSkillExactMatch,
       exactRequiredSkillMatchCount: evaluation.exactRequiredSkillMatches.length,
       verifiedRequiredSkillMatchCount: evaluation.verifiedRequiredSkillMatches.length,
       commercialConstraintConfidence: evaluation.commercialConstraintConfidence,
