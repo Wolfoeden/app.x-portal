@@ -122,7 +122,18 @@ function catalogVersion(profiles: readonly { id: string; dataVersion: string }[]
     .digest("hex");
 }
 
-function assistantText(resultCount: number, analysisCompleted: boolean): string {
+function assistantText(
+  resultCount: number,
+  analysisCompleted: boolean,
+  needsClarification = false,
+): string {
+  if (needsClarification) {
+    // "No requirement was stated" and "nothing matched" are opposite statements
+    // to a user. Collapsing them into the empty-result text below would claim
+    // the catalogue was searched and found wanting, when in fact nothing was
+    // searched for.
+    return `${analysisCompleted ? "Ich habe" : "Die sichere Basisanalyse hat"} Ihre Nachricht gelesen, konnte daraus aber noch keine konkrete Anforderung ableiten. Nennen Sie mir bitte die gewünschte Rolle oder die benötigten Kompetenzen — gern auch Sprache, Einsatzort und Startzeitpunkt. Danach gleiche ich das kuratierte Verzeichnis regelbasiert ab.`;
+  }
   if (resultCount === 0) {
     return `${analysisCompleted ? "Ich habe" : "Die sichere Basisanalyse hat"} Ihre Angaben strukturiert. Aktuell erfüllt kein reales, direkt buchbares Profil die belegten Kernkriterien. Sie können die Anfrage im Chat ergänzen oder ausdrücklich eine getrennte KI-Websuche nach öffentlich belegten Profilen mit direktem Buchungslink starten.`;
   }
@@ -582,9 +593,11 @@ async function processChatRequest(
     const shortlist = buildShortlist(extraction.brief, profiles);
     reporter.progress(`${profiles.length} aktive Profile werden regelbasiert abgeglichen …`);
     reporter.progress(
-      shortlist.matches.length
-        ? `${shortlist.matches.length} passende Profile werden nachvollziehbar aufbereitet …`
-        : "Kein interner Treffer · alternative Suche wird vorbereitet …",
+      shortlist.status === "needs_clarification"
+        ? "Noch keine Anforderung erkennbar · Rückfrage wird vorbereitet …"
+        : shortlist.matches.length
+          ? `${shortlist.matches.length} passende Profile werden nachvollziehbar aufbereitet …`
+          : "Kein interner Treffer · alternative Suche wird vorbereitet …",
     );
     const shortlistId = randomUUID();
     const profileCatalogVersion = catalogVersion(profiles);
@@ -628,7 +641,11 @@ async function processChatRequest(
       if (error) throw error;
     }
 
-    const text = assistantText(shortlist.matches.length, analysisCompleted);
+    const text = assistantText(
+      shortlist.matches.length,
+      analysisCompleted,
+      shortlist.status === "needs_clarification",
+    );
     const assistantClientMessageId = `assistant-${requestKey}`;
     const { data: insertedAssistant, error: assistantError } = await admin
       .from("messages")
