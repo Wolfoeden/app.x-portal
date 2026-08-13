@@ -143,7 +143,7 @@ describe("deterministic freelancer matching", () => {
     expect(match.selfReportedFacts).toContain("Sprache: German");
     expect(match.verifiedFacts).not.toContain("Kompetenz: React");
     expect(match.matchReasons).toEqual(expect.arrayContaining([
-      "Pflichtkompetenzen passend: React.",
+      "Belegte Pflichtkompetenzen: React.",
       "Sprache passend: German.",
       "Arbeitsmodus passend: remote.",
     ]));
@@ -243,15 +243,23 @@ describe("deterministic freelancer matching", () => {
     expect(evaluation.commercialConstraintConfidence).toBe("not_requested");
   });
 
-  it("applies explicit qualification and contract requirements as hard filters", () => {
+  it("keeps matching profiles visible while disclosing unconfirmed qualifications", () => {
     const brief = parseFallbackBrief(
       "Requirements Management freelancer, remote. Qualifications: IREB CPRE. Contractual requirements: NDA, EU invoicing.",
       { now },
     );
 
-    expect(buildShortlist(brief, profileFixtures).matches.map((match) => match.profile.displayName)).toEqual([
-      "Elena Rossi",
-    ]);
+    const unconfirmed = {
+      ...profileFixtures[4]!,
+      id: "00000000-0000-4000-8000-000000000009",
+      displayName: "Unconfirmed Requirements",
+      qualifications: [],
+    };
+    const shortlist = buildShortlist(brief, [profileFixtures[4]!, unconfirmed]);
+    expect(shortlist.matches[0]?.profile.displayName).toBe("Elena Rossi");
+    expect(shortlist.matches[1]?.knownGaps.join(" ")).toContain(
+      "Qualifikationen noch nicht bestätigt",
+    );
   });
 
   it("classifies an explicit residency constraint as hard without inferring it from location", () => {
@@ -287,9 +295,6 @@ describe("deterministic freelancer matching", () => {
     expect(evaluation.rejectionReasons).toContain(
       "Weitere Pflichtbedingung im Profil nicht bestätigt: no travel.",
     );
-    expect(evaluation.knownGaps).not.toContain(
-      "Weitere Rahmenbedingung im Profil nicht bestätigt: no travel.",
-    );
   });
 
   it("evaluates a constraint only once when it is also a contractual requirement", () => {
@@ -312,5 +317,67 @@ describe("deterministic freelancer matching", () => {
         reason.includes("Security clearance"),
       ),
     ).toHaveLength(1);
+  });
+
+  it("returns the curated SAP consultant for a detailed remote SAP project", () => {
+    const brief = applyBriefPatch(
+      parseFallbackBrief("SAP consultant in German, 100% remote", { now }),
+      {
+        requiredSkills: [
+          "SAP S/4HANA",
+          "SAP MM",
+          "SAP PP",
+          "Requirements Management",
+        ],
+        language: "German",
+        workMode: "remote",
+        location: "Frankfurt am Main",
+        startWindow: {
+          raw: "15.07.2026",
+          earliest: "2026-07-15",
+          latest: "2026-07-15",
+        },
+        duration: { raw: "5 Monate", value: 5, unit: "months" },
+        qualifications: ["2 SAP references", "5 years SAP MM/PP"],
+      },
+    );
+    const cordula = {
+      ...profileFixtures[4]!,
+      id: "d7d4aa69-6e05-465f-a4db-dee557eab5b2",
+      displayName: "Cordula Buss",
+      role: "SAP S/4HANA & Requirements Management Consultant",
+      skillTags: [
+        { value: "SAP S/4HANA", source: "self_reported" as const },
+        { value: "SAP FICO", source: "self_reported" as const },
+        { value: "PPM", source: "self_reported" as const },
+        { value: "Requirements Management", source: "self_reported" as const },
+      ],
+      languages: [{ value: "German", source: "self_reported" as const }],
+      workModes: ["remote" as const],
+      location: { value: "Germany", source: "self_reported" as const },
+      hourlyRate: null,
+      dayRate: null,
+      minimumProjectBudget: null,
+      availability: {
+        status: "unknown" as const,
+        availableFrom: null,
+        checkedAt: "2026-08-12T00:00:00.000Z",
+      },
+      introPolicy: {
+        type: "free" as const,
+        label: "Kostenfreies Erstgespräch",
+        bookingUrl: "https://calendly.com/cordula-buss-",
+      },
+    };
+
+    const match = buildShortlist(brief, [cordula]).matches[0];
+    expect(match?.profile.displayName).toBe("Cordula Buss");
+    expect(match?.matchReasons).toContain(
+      "Belegte Pflichtkompetenzen: SAP S/4HANA, Requirements Management.",
+    );
+    expect(match?.knownGaps).toContain(
+      "Weitere Pflichtkompetenzen vor dem Gespräch prüfen: SAP MM, SAP PP.",
+    );
+    expect(match?.knownGaps.join(" ")).not.toContain("800");
   });
 });

@@ -93,23 +93,25 @@ the brief/UI may use canonical labels (`German`, `English`, `Spanish`). The
 server mapper owns this explicit label-to-code conversion before matching; SQL
 must never compare an unnormalized display label directly.
 
-## Deterministic matching rule (`freelancer-match-v4`)
+## Deterministic matching rule (`freelancer-match-v5`)
 
 Eligibility is a hard filter, evaluated before ordering:
 
 1. `profile_status = 'active'`, `demo_status = 'real'`, a valid HTTPS
    `booking_url` is present, and availability is not `unavailable`.
-2. Every required skill is present in normalized `skill_tags`, either exactly
-   or through one of the documented skill families in `lib/domain/matching.ts`.
+2. At least one requested core skill is present in normalized `skill_tags`,
+   either exactly or through a documented skill family. Additional required
+   skills without profile evidence remain visible as known gaps.
 3. A requested language is present in `languages`.
 4. The requested work mode is present in `work_modes`; an on-site location must
    pass the documented exact/normalized location rule in the server.
 5. A known availability date satisfies the supplied start window. `limited`
    and `unknown` project availability remain visible as a known gap because the
    freelancer's meeting calendar is directly bookable.
-6. Explicit qualifications, contractual requirements and other constraints are
-   required eligibility conditions. The same normalized constraint is checked
-   only once when it is also represented as a contractual requirement.
+6. Missing qualification evidence remains a visible gap. Explicit contractual
+   requirements and other hard constraints still require matching public
+   profile evidence. The same normalized constraint is checked only once when
+   it also appears contractually.
 7. A supplied rate/budget ceiling is respected; an absent commercial value is
    not invented and remains an explicitly disclosed gap.
 

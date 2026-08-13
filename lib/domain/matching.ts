@@ -7,7 +7,7 @@ import {
   type LabeledFact,
 } from "./profile";
 
-export const MATCHING_RULE_VERSION = "freelancer-match-v4" as const;
+export const MATCHING_RULE_VERSION = "freelancer-match-v5" as const;
 
 /**
  * Public and reviewable ordering rule. Eligibility is evaluated first. Eligible
@@ -352,13 +352,23 @@ export function evaluateProfile(
   }
 
   const requiredSkills = brief.requiredSkills ?? [];
+  const matchedRequiredSkills = requiredSkills.filter((skill) =>
+    matchingFact(profile.skillTags, skill),
+  );
   const missingRequiredSkills = requiredSkills.filter(
     (skill) => !matchingFact(profile.skillTags, skill),
   );
-  if (missingRequiredSkills.length) {
-    rejectionReasons.push(`Fehlende Pflichtkompetenzen: ${missingRequiredSkills.join(", ")}.`);
-  } else if (requiredSkills.length) {
-    matchReasons.push(`Pflichtkompetenzen passend: ${requiredSkills.join(", ")}.`);
+  if (requiredSkills.length && matchedRequiredSkills.length === 0) {
+    rejectionReasons.push(
+      `Keine der angefragten Kernkompetenzen ist im Profil belegt: ${requiredSkills.join(", ")}.`,
+    );
+  } else if (matchedRequiredSkills.length) {
+    matchReasons.push(`Belegte Pflichtkompetenzen: ${matchedRequiredSkills.join(", ")}.`);
+    if (missingRequiredSkills.length) {
+      knownGaps.push(
+        `Weitere Pflichtkompetenzen vor dem Gespräch prüfen: ${missingRequiredSkills.join(", ")}.`,
+      );
+    }
   }
 
   if (brief.language) {
@@ -377,7 +387,7 @@ export function evaluateProfile(
     }
   }
 
-  if (brief.location) {
+  if (brief.location && brief.workMode !== "remote") {
     if (!profile.location || !locationMatches(profile.location.value, brief.location)) {
       rejectionReasons.push(`Ort nicht bestätigt: ${brief.location}.`);
     } else {
@@ -397,7 +407,7 @@ export function evaluateProfile(
     (qualification) => !includesFact(profile.qualifications, qualification),
   );
   if (missingQualifications.length) {
-    rejectionReasons.push(`Qualifikationen nicht bestätigt: ${missingQualifications.join(", ")}.`);
+    knownGaps.push(`Qualifikationen noch nicht bestätigt: ${missingQualifications.join(", ")}.`);
   } else if (brief.qualifications?.length) {
     matchReasons.push(`Qualifikationen passend: ${brief.qualifications.join(", ")}.`);
   }
@@ -411,11 +421,8 @@ export function evaluateProfile(
     matchReasons.push(`Vertragsanforderungen passend: ${brief.contractualRequirements.join(", ")}.`);
   }
 
-  // An explicitly supplied constraint is a hard eligibility condition. We
-  // confirm only verbatim public profile evidence and never infer facts such
-  // as residency from a current location. Constraints already represented as
-  // contractual requirements were evaluated above and must not be counted a
-  // second time.
+  // Explicit constraints remain hard eligibility conditions. We confirm only
+  // public profile evidence and never infer residency from a current location.
   const publicConstraintFacts = [
     ...profile.skillTags,
     ...profile.languages,
