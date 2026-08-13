@@ -68,7 +68,14 @@ export interface ProjectListItem {
   id: string;
   title: string;
   updatedAt: string;
+  collectionId?: string | null;
   status?: "draft" | "matching" | "shortlisted" | "contact" | "closed";
+}
+
+export interface ProjectCollectionItem {
+  id: string;
+  name: string;
+  updatedAt: string;
 }
 
 export interface ConversationMessage {
@@ -234,6 +241,7 @@ export interface SessionResponse {
 export interface ChatApiPaths {
   chat: string;
   projects: string;
+  projectCollections: string;
   session: string;
   /** Omit or set to an empty string to keep the optional credit UI disabled. */
   credits?: string;
@@ -253,6 +261,7 @@ export interface ChatApiPaths {
 export const defaultChatApiPaths: ChatApiPaths = {
   chat: appPath("/api/chat"),
   projects: appPath("/api/projects"),
+  projectCollections: appPath("/api/project-collections"),
   session: appPath("/api/auth/session"),
   credits: appPath("/api/ai/credits"),
   adminUsage: appPath("/chat/admin/ai-usage"),

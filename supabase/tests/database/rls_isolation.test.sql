@@ -49,6 +49,10 @@ values
   ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'RLS User A'),
   ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'RLS User B');
 
+insert into public.project_collections (id, owner_user_id, name) values
+  ('a0000000-0000-4000-8000-000000000001', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'User A folder'),
+  ('b0000000-0000-4000-8000-000000000001', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'User B folder');
+
 insert into public.projects (
   id,
   owner_user_id,
@@ -246,7 +250,7 @@ select is(
     where n.nspname = 'public'
       and c.relkind = 'r'
       and c.relname in (
-        'user_profiles', 'projects', 'messages', 'freelancer_profiles',
+        'user_profiles', 'projects', 'project_collections', 'messages', 'freelancer_profiles',
         'shortlists', 'matches', 'intro_bookings', 'engagements',
         'engagement_status_events', 'audit_events', 'ai_usage_buckets',
         'ai_usage_reservations', 'user_ai_credit_accounts', 'guest_claims',
@@ -272,6 +276,14 @@ select ok(
   and not has_table_privilege('authenticated', 'public.messages', 'UPDATE')
   and not has_table_privilege('authenticated', 'public.messages', 'DELETE'),
   'authenticated clients can read messages but all message writes are server-only'
+);
+
+select ok(
+  has_table_privilege('authenticated', 'public.project_collections', 'SELECT')
+  and not has_table_privilege('authenticated', 'public.project_collections', 'INSERT')
+  and not has_table_privilege('authenticated', 'public.project_collections', 'UPDATE')
+  and not has_table_privilege('authenticated', 'public.project_collections', 'DELETE'),
+  'authenticated clients can read their project folders but all writes are server-only'
 );
 
 select ok(
@@ -324,6 +336,18 @@ select is(
   (select count(*)::integer from public.projects where id = 'b1000000-0000-4000-8000-000000000001'),
   0,
   'user A cannot read user B project by ID'
+);
+
+select is(
+  (select count(*)::integer from public.project_collections),
+  1,
+  'user A reads exactly their own project folder'
+);
+
+select is(
+  (select count(*)::integer from public.project_collections where id = 'b0000000-0000-4000-8000-000000000001'),
+  0,
+  'user A cannot read user B project folder by ID'
 );
 
 select is(

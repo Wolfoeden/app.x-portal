@@ -43,6 +43,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const PostgresUuidSchema = z
   .string()
@@ -123,35 +124,35 @@ function fallbackNotice(
   fallbackReason: string | undefined,
 ): string {
   if (reason === "provider_monthly_budget") {
-    return "Das monatliche KI-Budget ist erreicht. Ihre Anfrage wurde gespeichert; es wurde kein Freelancer-Matching ausgeführt.";
+    return "Das monatliche KI-Budget ist erreicht. Ihre Anfrage wurde gespeichert und mit der sicheren Basisanalyse gegen die interne Freelancer-Datenbank abgeglichen.";
   }
   if (reason === "insufficient_credits") {
     return isAnonymous
-      ? "Ihr kostenloses KI-Kontingent reicht für diese Analyse nicht mehr aus. Die Anfrage wurde gespeichert; nach der Anmeldung können Sie mit dem Account-Kontingent fortfahren."
-      : "Ihre AI Credits reichen für diese KI-Analyse nicht aus. Die Anfrage wurde gespeichert; es wurde kein Freelancer-Matching ausgeführt.";
+      ? "Ihr kostenloses KI-Kontingent reicht für diese Analyse nicht mehr aus. Die Anfrage wurde gespeichert und intern mit der sicheren Basisanalyse abgeglichen; nach der Anmeldung können Sie mit dem Account-Kontingent fortfahren."
+      : "Ihre AI Credits reichen für diese KI-Analyse nicht aus. Die Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
   }
   if (
     reason === "anonymous_user_daily_token_limit" ||
     reason === "anonymous_ip_daily_token_limit"
   ) {
-    return "Das tägliche KI-Limit für den Gastzugang ist erreicht. Ihre Anfrage wurde gespeichert; OpenAI und das Freelancer-Matching wurden nicht ausgeführt.";
+    return "Das tägliche KI-Limit für den Gastzugang ist erreicht. OpenAI wurde nicht aufgerufen; Ihre Anfrage wurde gespeichert und intern mit der sicheren Basisanalyse abgeglichen.";
   }
   if (reason === "user_daily_token_limit") {
-    return "Das tägliche interne XPORTAL-KI-Limit für dieses Konto ist erreicht. OpenAI wurde nicht aufgerufen; Ihre Anfrage wurde sicher gespeichert.";
+    return "Das tägliche interne XPORTAL-KI-Limit für dieses Konto ist erreicht. OpenAI wurde nicht aufgerufen; Ihre Anfrage wurde gespeichert und intern mit der sicheren Basisanalyse abgeglichen.";
   }
   if (fallbackReason === "provider_timeout") {
-    return "Die KI-Analyse hat das Zeitlimit erreicht. Ihre Anfrage wurde gespeichert; es wurde kein Freelancer-Matching ausgeführt.";
+    return "Die OpenAI-Analyse hat das Zeitlimit erreicht. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
   }
   if (fallbackReason === "invalid_output") {
-    return "Die KI-Antwort war nicht zuverlässig strukturiert. Ihre Anfrage wurde gespeichert; es wurde kein Freelancer-Matching ausgeführt.";
+    return "Die OpenAI-Antwort war nicht zuverlässig strukturiert. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
   }
   if (fallbackReason === "provider_error") {
-    return "Die KI-Analyse war vorübergehend nicht verfügbar. Ihre Anfrage wurde gespeichert; es wurde kein Freelancer-Matching ausgeführt.";
+    return "Die OpenAI-Analyse war vorübergehend nicht verfügbar. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
   }
   if (fallbackReason === "provider_unavailable") {
-    return "Der KI-Provider ist noch nicht konfiguriert. Ihre Anfrage wurde gespeichert; es wurde kein Freelancer-Matching ausgeführt.";
+    return "Der OpenAI-Provider ist nicht konfiguriert. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
   }
-  return "Ihre Anfrage wurde gespeichert. Ohne bestätigte OpenAI-Analyse wurde kein Freelancer-Matching ausgeführt.";
+  return "Ihre Anfrage wurde gespeichert. Ohne bestätigte OpenAI-Analyse wurde das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
 }
 
 function providerFailureCategory(
@@ -579,6 +580,13 @@ async function processChatRequest(
         resultCount: shortlist.matches.length,
         matchingRuleVersion: MATCHING_RULE_VERSION,
         extractionMode: extraction.mode,
+        providerConfigured: providerConnection.configured,
+        providerAttempted: extraction.providerAttempted,
+        providerSucceeded,
+        providerFailureCategory: providerFailureCategory(extraction),
+        requestedModel: extraction.provider?.requestedModel ?? estimate.model,
+        actualModel: extraction.provider?.model ?? null,
+        providerResponseId: extraction.provider?.responseId ?? null,
       },
     });
 

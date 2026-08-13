@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { CookieConsent } from "@/components/CookieConsent";
+import { CookieSettingsButton } from "@/components/CookieConsent";
 
 type HomeProps = {
   searchParams?: Promise<{ joined?: string; error?: string }>;
@@ -193,7 +193,7 @@ export default async function XPortalHome({ searchParams }: HomeProps) {
         <nav aria-label="Legal">
           <Link href="/privacy">Privacy</Link>
           <Link href="/imprint">Imprint</Link>
-          <CookieConsent />
+          <CookieSettingsButton />
         </nav>
       </footer>
     </main>

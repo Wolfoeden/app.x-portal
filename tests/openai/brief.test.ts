@@ -174,7 +174,8 @@ describe("extractProjectBrief", () => {
     expect(body.text?.format?.type).toBe("json_schema");
     expect(JSON.stringify(body.input)).toContain(originalRequest);
     expect(JSON.stringify(body)).not.toContain("freelancer_profiles");
-    expect(requestOptions).toMatchObject({ timeout: 12_000, maxRetries: 0 });
+    expect(requestOptions).toMatchObject({ timeout: 50_000, maxRetries: 0 });
+    expect(body.reasoning).toEqual({ effort: "medium" });
     expect(requestOptions?.signal).toBeInstanceOf(AbortSignal);
   });
 

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { fetchRealProfilesByIds } from "@/lib/data/freelancers";
@@ -11,9 +12,18 @@ import {
 import { presentBrief, presentMatch } from "@/lib/presentation/chat";
 import { ProjectBriefSchema } from "@/lib/domain";
 import { writeAuditEvent } from "@/lib/audit/write";
+import { assertSameOrigin, readJsonWithLimit } from "@/lib/security/request";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
+
+const UpdateChatSchema = z
+  .object({
+    collectionId: z.string().uuid().nullable().optional(),
+    title: z.string().trim().min(1).max(180).optional(),
+  })
+  .strict()
+  .refine((value) => value.collectionId !== undefined || value.title !== undefined);
 
 type StoredMatchRow = {
   id: string;
@@ -233,5 +243,92 @@ export async function GET(
       { error: "Projekt konnte nicht geladen werden." },
       { status: 503 },
     );
+  }
+}
+
+export async function PATCH(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  try {
+    assertSameOrigin(request);
+    const [{ id }, user, input] = await Promise.all([
+      context.params,
+      requireCurrentUser(),
+      readJsonWithLimit(request, 3_000).then((value) => UpdateChatSchema.parse(value)),
+    ]);
+    const admin = createAdminSupabaseClient();
+    if (input.collectionId) {
+      const { data: collection, error } = await admin
+        .from("project_collections")
+        .select("id")
+        .eq("id", input.collectionId)
+        .eq("owner_user_id", user.id)
+        .is("archived_at", null)
+        .maybeSingle();
+      if (error) throw error;
+      if (!collection) {
+        return NextResponse.json({ error: "Projekt nicht gefunden." }, { status: 404 });
+      }
+    }
+    const updates = {
+      ...(input.collectionId !== undefined ? { collection_id: input.collectionId } : {}),
+      ...(input.title !== undefined ? { title: input.title } : {}),
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await admin
+      .from("projects")
+      .update(updates)
+      .eq("id", id)
+      .eq("owner_user_id", user.id)
+      .select("*")
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return NextResponse.json({ error: "Chat nicht gefunden." }, { status: 404 });
+    await writeAuditEvent({
+      actorUserId: user.id,
+      action: input.collectionId === undefined ? "project_chat_renamed" : "project_chat_moved",
+      targetType: "project",
+      targetId: id,
+      outcome: "success",
+    });
+    return NextResponse.json({ project: presentProject(data as ProjectRow) });
+  } catch (error) {
+    if (error instanceof Response) return error;
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: "Die Chat-Änderung ist ungültig." }, { status: 400 });
+    }
+    return NextResponse.json({ error: "Chat konnte nicht aktualisiert werden." }, { status: 503 });
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  try {
+    assertSameOrigin(request);
+    const [{ id }, user] = await Promise.all([context.params, requireCurrentUser()]);
+    const admin = createAdminSupabaseClient();
+    const { data, error } = await admin
+      .from("projects")
+      .delete()
+      .eq("id", id)
+      .eq("owner_user_id", user.id)
+      .select("id")
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return NextResponse.json({ error: "Chat nicht gefunden." }, { status: 404 });
+    await writeAuditEvent({
+      actorUserId: user.id,
+      action: "project_chat_deleted",
+      targetType: "project",
+      targetId: id,
+      outcome: "success",
+    });
+    return NextResponse.json({ deleted: true });
+  } catch (error) {
+    if (error instanceof Response) return error;
+    return NextResponse.json({ error: "Chat konnte nicht gelöscht werden." }, { status: 503 });
   }
 }

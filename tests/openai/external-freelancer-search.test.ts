@@ -91,7 +91,8 @@ describe("external freelancer web search", () => {
     expect(body.include).toContain("web_search_call.action.sources");
     expect(body.text?.format?.type).toBe("json_schema");
     expect(body.safety_identifier).toBe(SAFETY_IDENTIFIER);
-    expect(requestOptions).toMatchObject({ maxRetries: 0, timeout: 20_000 });
+    expect(requestOptions).toMatchObject({ maxRetries: 0, timeout: 50_000 });
+    expect(body.reasoning).toEqual({ effort: "medium" });
   });
 
   it("rejects invented URLs that are not present in provider evidence", () => {

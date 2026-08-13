@@ -10,8 +10,15 @@ import {
 } from "@/lib/ai/model-pricing";
 
 describe("model pricing", () => {
-  it("stores exact nano-USD rates for Luna and Terra", () => {
+  it("stores exact nano-USD rates for GPT-5.5 Pro, Luna and Terra", () => {
     expect(MODEL_PRICING_REGISTRY).toMatchObject({
+      "gpt-5.5-pro": {
+        inputNanoUsdPerToken: "30000",
+        cachedInputNanoUsdPerToken: "30000",
+        cacheWriteNanoUsdPerToken: "30000",
+        outputNanoUsdPerToken: "180000",
+        sourceCheckedOn: "2026-08-13",
+      },
       "gpt-5.6-luna": {
         inputNanoUsdPerToken: "200",
         cachedInputNanoUsdPerToken: "20",
@@ -29,6 +36,20 @@ describe("model pricing", () => {
     });
   });
 
+  it("calculates GPT-5.5 Pro without a cached-input discount", () => {
+    const result = calculateEstimatedProviderCost({
+      requestedModel: "gpt-5.5-pro",
+      actualModel: "gpt-5.5-pro-2026-04-23",
+      inputTokens: 1_000_000,
+      cachedInputTokens: 250_000,
+      outputTokens: 1_000_000,
+    });
+
+    expect(result.estimatedCostUsd).toBe("210");
+    expect(result.pricingModel).toBe("gpt-5.5-pro");
+    expect(result.pricingVersion).toBe("openai-model-pricing-2026-08-13");
+  });
+
   it("calculates the verified GPT-5.6 Luna prices exactly", () => {
     const result = calculateEstimatedProviderCost({
       requestedModel: "gpt-5.6-luna",
@@ -40,7 +61,7 @@ describe("model pricing", () => {
     expect(result.estimatedCostNanoUsd).toBe("1400000000");
     expect(result.estimatedCostUsd).toBe("1.4");
     expect(result.pricingModel).toBe("gpt-5.6-luna");
-    expect(result.pricingVersion).toBe("openai-model-pricing-2026-08-12");
+    expect(result.pricingVersion).toBe("openai-model-pricing-2026-08-13");
   });
 
   it("prices cached tokens as a subset of input tokens", () => {

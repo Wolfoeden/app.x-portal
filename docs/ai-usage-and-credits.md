@@ -28,19 +28,19 @@ The policy in `lib/ai/credit-policy.ts` counts weighted token work:
 
 One XPORTAL AI credit covers 1,000 weighted units, rounded up per settled
 request. Purpose/model multipliers are explicit, centralized and versioned; the
-Luna multiplier is 1.0 and Terra is 10.0 to reflect its higher text-token price.
+Luna multiplier is 1.0, Terra is 10.0 and GPT-5.5 Pro is 19.0.
 For the MVP, `project_brief` and the explicitly requested `research` action use
 a 0.1 purpose multiplier. This prevents the 500-credit guest allocation from
-blocking an ordinary Terra request before OpenAI is called; the independent
+blocking one ordinary GPT-5.5 Pro brief before OpenAI is called; the independent
 20,000-token daily guest ceiling and request limits remain enforced.
 Never infer a historical balance using a newer
 policy version: every reservation stores its own `credit_policy_version`.
 
 The provider-price registry in `lib/ai/model-pricing.ts` is independent of this
 policy. It stores exact integer nano-USD rates and the source/check date. Cached
-reads and cache writes are subsets of input and use their separate official
-rates. The actual provider-returned model takes precedence over the requested
-model. Explicit dated Luna or Terra snapshots use the reviewed family price;
+reads and cache writes are subsets of input and use their reviewed rates. The
+actual provider-returned model takes precedence over the requested model.
+Explicit dated GPT-5.5 Pro, Luna or Terra snapshots use the reviewed family price;
 other unknown models still record token/credit
 usage but leave precise cost null rather than inventing a rate.
 
@@ -86,8 +86,10 @@ an explicit hard stop; invalid or missing values use the documented defaults.
    stranded credit reservations after a process timeout or deployment.
 
 The deterministic brief fallback always retains the original request. When
-quota, credits, provider budget or OpenAI fails, no internal shortlist or
-external-search offer is presented as an AI result for that project state.
+quota, credits, provider budget or OpenAI fails, the internal deterministic
+shortlist still runs against explicit facts and is labelled as basis analysis;
+it is never presented as an OpenAI result. External web search remains an
+explicit separate action available only after a zero-result internal shortlist.
 
 ## User and administrator views
 

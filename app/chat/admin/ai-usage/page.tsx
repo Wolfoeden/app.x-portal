@@ -87,7 +87,9 @@ export default async function AiUsageAdminPage({
 
   const params = await searchParams;
   const providerConnection = resolveOpenAiConnection();
-  const requestedModel = process.env.OPENAI_MODEL?.trim() || "gpt-5.6-terra";
+  const requestedModel =
+    process.env.OPENAI_BRIEF_MODEL?.trim() ||
+    "gpt-5.5-pro";
   const dashboard = await getAdminUsageDashboard({
     from: dateRange(params.from),
     to: dateRange(params.to, true),

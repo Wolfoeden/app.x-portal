@@ -7,12 +7,12 @@ import { z } from "zod";
 import { ProjectBriefSchema, type ProjectBrief } from "@/lib/domain";
 import { createOpenAiClient } from "@/lib/openai/provider";
 
-export const DEFAULT_OPENAI_WEB_SEARCH_MODEL = "gpt-5.6-terra";
+export const DEFAULT_OPENAI_WEB_SEARCH_MODEL = "gpt-5.5-pro";
 export const MAX_EXTERNAL_FREELANCER_RESULTS = 3;
 export const MAX_OPENAI_WEB_SEARCH_OUTPUT_TOKENS = 2_000;
-export const DEFAULT_OPENAI_WEB_SEARCH_TIMEOUT_MS = 20_000;
+export const DEFAULT_OPENAI_WEB_SEARCH_TIMEOUT_MS = 50_000;
 
-const MAX_TIMEOUT_MS = 30_000;
+const MAX_TIMEOUT_MS = 55_000;
 const MIN_TIMEOUT_MS = 100;
 
 const HttpsUrlSchema = z
@@ -386,7 +386,7 @@ function providerRequest(
     tools: [{ type: "web_search", search_context_size: "medium" }],
     tool_choice: "required",
     include: ["web_search_call.action.sources"],
-    reasoning: { effort: "low" },
+    reasoning: { effort: model.startsWith("gpt-5.5-pro") ? "medium" : "low" },
     text: {
       format: zodTextFormat(
         ExternalFreelancerSearchOutputSchema,
@@ -406,7 +406,6 @@ export function estimateExternalSearchTokenCeiling(input: {
   const brief = ProjectBriefSchema.parse(input.brief);
   const model =
     input.model?.trim() ||
-    process.env.OPENAI_MODEL?.trim() ||
     process.env.OPENAI_WEB_SEARCH_MODEL?.trim() ||
     DEFAULT_OPENAI_WEB_SEARCH_MODEL;
   const request = providerRequest(brief, model, "quota_preflight");
@@ -507,7 +506,6 @@ export async function searchExternalFreelancers(
 
   const model =
     options.model?.trim() ||
-    process.env.OPENAI_MODEL?.trim() ||
     process.env.OPENAI_WEB_SEARCH_MODEL?.trim() ||
     DEFAULT_OPENAI_WEB_SEARCH_MODEL;
   const timeoutMs = configuredTimeout(options.timeoutMs);

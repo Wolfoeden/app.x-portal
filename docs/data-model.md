@@ -46,6 +46,7 @@ logs.
 |---|---|---|---|
 | `user_profiles` | Display preference linked to `auth.users` | Own row | User may create/update display name and locale; server otherwise |
 | `projects` | Original request, structured brief and project lifecycle | Own rows, read-only | Validated server routes |
+| `project_collections` | User-created folders that group multiple chat/project rows | Own rows, read-only | Validated server routes |
 | `messages` | Minimal reconstructable conversation state | Own rows, read-only | Validated server routes |
 | `freelancer_profiles` | Curated public-safe provider catalogue | None; server releases only owned shortlist snapshots | Supabase Studio or service route |
 | `shortlists` | One deterministic search run, including zero results | Own rows, read-only | Matching service only |

@@ -25,7 +25,7 @@ export type AiCreditPolicy = {
 };
 
 export const XPORTAL_AI_CREDIT_POLICY_VERSION =
-  "xportal-ai-credits-mvp-2026-08-12-v2";
+  "xportal-ai-credits-mvp-2026-08-13-v3";
 
 /**
  * Simple MVP policy:
@@ -63,6 +63,7 @@ export const XPORTAL_AI_CREDIT_POLICY = {
   },
   defaultModelMultiplierBasisPoints: 10_000,
   modelMultiplierBasisPoints: {
+    "gpt-5.5-pro": 190_000,
     "gpt-5.6-luna": 10_000,
     "gpt-5.6-terra": 100_000,
   },

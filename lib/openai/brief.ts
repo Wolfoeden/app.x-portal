@@ -18,13 +18,13 @@ import {
 } from "@/lib/openai/diagnostics";
 import { createOpenAiClient } from "@/lib/openai/provider";
 
-export const DEFAULT_OPENAI_BRIEF_MODEL = "gpt-5.6-terra";
-export const DEFAULT_OPENAI_TIMEOUT_MS = 12_000;
+export const DEFAULT_OPENAI_BRIEF_MODEL = "gpt-5.5-pro";
+export const DEFAULT_OPENAI_TIMEOUT_MS = 50_000;
 export const MAX_OPENAI_BRIEF_OUTPUT_TOKENS = 1_800;
 
 const MAX_SOURCE_LENGTH = 20_000;
 const MIN_TIMEOUT_MS = 100;
-const MAX_TIMEOUT_MS = 30_000;
+const MAX_TIMEOUT_MS = 55_000;
 
 const NullableTextListSchema = z
   .array(z.string().trim().min(1).max(500))
@@ -939,7 +939,10 @@ function providerRequest(
     text: {
       format: zodTextFormat(AiBriefCandidateSchema, "freelancer_project_brief"),
     },
-    reasoning: { effort: "low" },
+    reasoning: {
+      // GPT-5.5 Pro supports medium/high/xhigh, but not low.
+      effort: model.startsWith("gpt-5.5-pro") ? "medium" : "low",
+    },
     max_output_tokens: MAX_OPENAI_BRIEF_OUTPUT_TOKENS,
     safety_identifier: safetyIdentifier,
     store: false,
@@ -960,7 +963,7 @@ export function estimateProjectBriefTokenCeiling(
   const deterministic = buildDeterministicBrief(parsedInput, options.now);
   const model =
     options.model?.trim() ||
-    process.env.OPENAI_MODEL?.trim() ||
+    process.env.OPENAI_BRIEF_MODEL?.trim() ||
     DEFAULT_OPENAI_BRIEF_MODEL;
   const request = providerRequest(
     deterministic.originalRequest,
@@ -1032,7 +1035,7 @@ export async function extractProjectBrief(
 
   const model =
     options.model?.trim() ||
-    process.env.OPENAI_MODEL?.trim() ||
+    process.env.OPENAI_BRIEF_MODEL?.trim() ||
     DEFAULT_OPENAI_BRIEF_MODEL;
   const timeoutMs = configuredTimeout(options.timeoutMs);
   let provider: ExtractProjectBriefResult["provider"];

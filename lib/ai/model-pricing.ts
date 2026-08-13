@@ -44,13 +44,25 @@ export type ModelPricingSnapshot = {
 export const OPENAI_PRICING_SOURCE_URL =
   "https://developers.openai.com/api/docs/models/compare";
 
-export const OPENAI_PRICING_VERSION = "openai-model-pricing-2026-08-12";
+export const OPENAI_PRICING_VERSION = "openai-model-pricing-2026-08-13";
 
 /**
  * Official OpenAI prices checked on 2026-08-12. Per-token nano-USD values are
  * exact conversions from the published per-1M-token prices.
  */
 export const MODEL_PRICING_REGISTRY = {
+  "gpt-5.5-pro": {
+    modelId: "gpt-5.5-pro",
+    currency: "USD",
+    inputNanoUsdPerToken: "30000",
+    cachedInputNanoUsdPerToken: "30000",
+    cacheWriteNanoUsdPerToken: "30000",
+    outputNanoUsdPerToken: "180000",
+    pricingVersion: OPENAI_PRICING_VERSION,
+    effectiveOn: "2026-08-13",
+    sourceUrl: "https://developers.openai.com/api/docs/models/gpt-5.5-pro",
+    sourceCheckedOn: "2026-08-13",
+  },
   "gpt-5.6-luna": {
     modelId: "gpt-5.6-luna",
     currency: "USD",
@@ -150,7 +162,7 @@ export function resolveModelPricing(
   // Responses may identify a dated snapshot. Only these explicit reviewed
   // family patterns inherit their base-model price; other identifiers remain
   // unknown rather than being priced by similarity.
-  const datedFamily = /^(gpt-5\.6-(?:luna|terra))-\d{4}-\d{2}-\d{2}$/u.exec(
+  const datedFamily = /^(gpt-5\.5-pro|gpt-5\.6-(?:luna|terra))-\d{4}-\d{2}-\d{2}$/u.exec(
     meteredModel,
   )?.[1];
   if (datedFamily) {

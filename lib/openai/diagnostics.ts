@@ -15,7 +15,7 @@ import {
   type OpenAiTransport,
 } from "./provider";
 
-export const DEFAULT_OPENAI_DIAGNOSTIC_MODEL = "gpt-5.6-terra";
+export const DEFAULT_OPENAI_DIAGNOSTIC_MODEL = "gpt-5.5-pro";
 
 export const OPENAI_DIAGNOSTIC_STATUSES = [
   "unconfigured",
@@ -44,6 +44,7 @@ type OpenAiDiagnosticEnvironment = {
   OPENAI_API_KEY?: string;
   OPENAI_BASE_URL?: string;
   OPENAI_MODEL?: string;
+  OPENAI_BRIEF_MODEL?: string;
 };
 
 type DiagnosticModelClient = {
@@ -199,10 +200,13 @@ export async function diagnoseOpenAiProvider(
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
     OPENAI_MODEL: process.env.OPENAI_MODEL,
+    OPENAI_BRIEF_MODEL: process.env.OPENAI_BRIEF_MODEL,
   };
   const connection = resolveOpenAiConnection(environment);
   const configuredModel =
-    environment.OPENAI_MODEL?.trim() || DEFAULT_OPENAI_DIAGNOSTIC_MODEL;
+    environment.OPENAI_BRIEF_MODEL?.trim() ||
+    (options.environment ? environment.OPENAI_MODEL?.trim() : undefined) ||
+    DEFAULT_OPENAI_DIAGNOSTIC_MODEL;
   const modelIsSafe = SAFE_MODEL_ID.test(configuredModel);
   const requestedModel = modelIsSafe ? configuredModel : "invalid";
   const baseResult = {

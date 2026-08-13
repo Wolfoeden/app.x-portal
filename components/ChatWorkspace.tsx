@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
+import { openCookieSettings } from "@/components/CookieConsent";
 import {
   claimPreparedGuestWorkspace,
   ensureGuestSession,
@@ -34,6 +35,7 @@ import {
   type ExternalFreelancerSearchResponse,
   type FreelancerProfileResult,
   type ProjectDetailResponse,
+  type ProjectCollectionItem,
   type ProjectListItem,
   type ProjectMode,
   type SessionResponse,
@@ -430,6 +432,7 @@ function normalizeProject(value: unknown, fallbackTitle: string): ProjectListIte
     id: stringValue(project.id, makeId("project")),
     title: stringValue(project.title, fallbackTitle || "Neues Projekt"),
     updatedAt: stringValue(project.updatedAt ?? project.updated_at, new Date().toISOString()),
+    collectionId: nullableString(project.collectionId ?? project.collection_id),
     status:
       project.status === "draft" ||
       project.status === "matching" ||
@@ -480,6 +483,18 @@ function normalizeChatResponse(value: unknown, fallbackTitle: string): ChatRespo
     notice: nullableString(response.notice) ?? undefined,
     ...(credits ? { credits } : {}),
     ...(analysis ? { analysis } : {}),
+  };
+}
+
+function normalizeProjectCollection(value: unknown): ProjectCollectionItem {
+  const collection = isRecord(value) ? value : {};
+  return {
+    id: stringValue(collection.id, makeId("collection")),
+    name: stringValue(collection.name, "Unbenanntes Projekt"),
+    updatedAt: stringValue(
+      collection.updatedAt ?? collection.updated_at,
+      new Date().toISOString(),
+    ),
   };
 }
 
@@ -691,6 +706,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
   const [authOpen, setAuthOpen] = useState(false);
   const [authInitialMode, setAuthInitialMode] = useState<AuthDialogMode>("login");
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
+  const [projectCollections, setProjectCollections] = useState<ProjectCollectionItem[]>([]);
   const [activeProject, setActiveProject] = useState<ProjectListItem | null>(null);
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [brief, setBrief] = useState<StructuredBrief | null>(null);
@@ -709,6 +725,9 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [credits, setCredits] = useState<AiCreditSnapshot | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [createProjectOpen, setCreateProjectOpen] = useState(false);
+  const [manageChat, setManageChat] = useState<ProjectListItem | null>(null);
+  const [agentsOpen, setAgentsOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(true);
   const [loadingProjectId, setLoadingProjectId] = useState<string | null>(null);
@@ -791,6 +810,24 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
       // A project list is helpful, but never blocks the chat shell.
     }
   }, [apiPaths.projects]);
+
+  const loadProjectCollections = useCallback(async () => {
+    try {
+      const response = await fetch(apiPaths.projectCollections, {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+      if (!response.ok) return;
+      const body: unknown = await response.json();
+      const source = isRecord(body) && Array.isArray(body.collections)
+        ? body.collections
+        : [];
+      setProjectCollections(source.map(normalizeProjectCollection));
+    } catch {
+      // Folder navigation is supplementary; chats remain directly accessible.
+    }
+  }, [apiPaths.projectCollections]);
 
   const loadProject = useCallback(
     async (project: ProjectListItem | string) => {
@@ -915,7 +952,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
             );
           }
         }
-        await loadProjects();
+        await Promise.all([loadProjects(), loadProjectCollections()]);
         const pendingProject = sessionStorage.getItem("pending_project_id");
         if (pendingProject && !view.anonymous) {
           const detail = await loadProject(pendingProject);
@@ -946,6 +983,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
   }, [
     apiPaths.adminUsage,
     loadProject,
+    loadProjectCollections,
     loadProjects,
     refreshAuth,
     refreshCredits,
@@ -1247,7 +1285,61 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
       sessionStorage.removeItem("pending_profile_selection");
       setContactOpen(true);
     }
-    await loadProjects();
+    await Promise.all([loadProjects(), loadProjectCollections()]);
+  };
+
+  const createProjectCollection = async (name: string) => {
+    const response = await fetch(apiPaths.projectCollections, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    const body: unknown = await response.json().catch(() => ({}));
+    if (!response.ok || !isRecord(body) || !isRecord(body.collection)) {
+      throw new Error(
+        isRecord(body) ? stringValue(body.error, "Projekt konnte nicht erstellt werden.") : "Projekt konnte nicht erstellt werden.",
+      );
+    }
+    const collection = normalizeProjectCollection(body.collection);
+    setProjectCollections((current) => [collection, ...current.filter((item) => item.id !== collection.id)]);
+    setCreateProjectOpen(false);
+    showToast("Projekt erstellt.");
+    return collection;
+  };
+
+  const moveChatToProject = async (chat: ProjectListItem, collectionId: string | null) => {
+    const response = await fetch(`${apiPaths.projects}/${encodeURIComponent(chat.id)}`, {
+      method: "PATCH",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ collectionId }),
+    });
+    const body: unknown = await response.json().catch(() => ({}));
+    if (!response.ok || !isRecord(body) || !isRecord(body.project)) {
+      throw new Error(isRecord(body) ? stringValue(body.error, "Chat konnte nicht verschoben werden.") : "Chat konnte nicht verschoben werden.");
+    }
+    const updated = normalizeProject(body.project, chat.title);
+    setProjects((current) => current.map((item) => item.id === updated.id ? updated : item));
+    setActiveProject((current) => current?.id === updated.id ? updated : current);
+    setManageChat(null);
+    showToast(collectionId ? "Chat im Projekt gespeichert." : "Chat aus dem Projekt gelöst.");
+  };
+
+  const deleteChat = async (chat: ProjectListItem) => {
+    const response = await fetch(`${apiPaths.projects}/${encodeURIComponent(chat.id)}`, {
+      method: "DELETE",
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) {
+      const body: unknown = await response.json().catch(() => ({}));
+      throw new Error(isRecord(body) ? stringValue(body.error, "Chat konnte nicht gelöscht werden.") : "Chat konnte nicht gelöscht werden.");
+    }
+    setProjects((current) => current.filter((item) => item.id !== chat.id));
+    if (activeProject?.id === chat.id) startNewProject();
+    setManageChat(null);
+    showToast("Chat gelöscht.");
   };
 
   const exportData = async () => {
@@ -1286,6 +1378,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
       setDeleteOpen(false);
       startNewProject();
       setProjects([]);
+      setProjectCollections([]);
       await refreshAuth();
       showToast("Ihre Anwendungsdaten wurden gelöscht.");
     } catch (error) {
@@ -1300,6 +1393,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
     await signOutAccount();
     startNewProject();
     setProjects([]);
+    setProjectCollections([]);
     await refreshAuth();
     showToast("Sie wurden abgemeldet. Ein neuer Gastzugang ist aktiv.");
   };
@@ -1319,37 +1413,64 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
 
         <button className="new-chat-button" type="button" onClick={startNewProject}>
           <span aria-hidden="true">＋</span>
-          Neues Projekt
+          Neuer Chat
           <span className="new-chat-key" aria-hidden="true">⌘ K</span>
         </button>
 
-        <nav className="project-nav" aria-label="Gespeicherte Projekte">
-          <p className="nav-label">Ihre Projekte</p>
+        <nav className="project-nav" aria-label="Chats, Projekte und Agenten">
+          <p className="nav-label">Chats</p>
           {projects.length === 0 ? (
             <div className="empty-projects">
               <span aria-hidden="true">○</span>
-              <p>Noch keine gespeicherten Projekte</p>
-              <small>Die erste Anfrage erscheint automatisch hier.</small>
+              <p>Noch keine gespeicherten Chats</p>
+              <small>Ihre erste Anfrage erscheint automatisch hier.</small>
             </div>
           ) : (
-            <ul className="project-list">
-              {projects.map((project) => (
-                <li key={project.id}>
-                  <button
-                    type="button"
-                    className={activeProject?.id === project.id ? "active" : ""}
-                    onClick={() => void loadProject(project)}
-                    aria-current={activeProject?.id === project.id ? "page" : undefined}
-                  >
-                    <span className="project-title">{project.title}</span>
-                    <span className="project-meta">
-                      {loadingProjectId === project.id ? "Wird geladen …" : formatRelativeDate(project.updatedAt)}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <SidebarChatList
+              chats={projects.filter((project) => !project.collectionId)}
+              activeProjectId={activeProject?.id ?? null}
+              loadingProjectId={loadingProjectId}
+              onOpen={(project) => void loadProject(project)}
+              onManage={setManageChat}
+            />
           )}
+
+          <div className="sidebar-section-heading">
+            <p className="nav-label">Projekte</p>
+            <button type="button" onClick={() => setCreateProjectOpen(true)}>＋ Neues Projekt</button>
+          </div>
+          {projectCollections.length === 0 ? (
+            <p className="sidebar-section-empty">Erstellen Sie ein Projekt und speichern Sie mehrere Chats darin.</p>
+          ) : (
+            <div className="collection-list">
+              {projectCollections.map((collection) => {
+                const chats = projects.filter((project) => project.collectionId === collection.id);
+                return (
+                  <section className="collection-group" key={collection.id} aria-label={`Projekt ${collection.name}`}>
+                    <div className="collection-title"><span aria-hidden="true">▿</span>{collection.name}<small>{chats.length}</small></div>
+                    {chats.length ? (
+                      <SidebarChatList
+                        chats={chats}
+                        activeProjectId={activeProject?.id ?? null}
+                        loadingProjectId={loadingProjectId}
+                        onOpen={(project) => void loadProject(project)}
+                        onManage={setManageChat}
+                      />
+                    ) : <p className="collection-empty">Noch keine Chats</p>}
+                  </section>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="sidebar-section-heading agents-heading">
+            <p className="nav-label">Agenten</p>
+          </div>
+          <button className="agents-nav-button" type="button" onClick={() => setAgentsOpen(true)}>
+            <span className="agent-glyph" aria-hidden="true">A</span>
+            <span><strong>Agenten</strong><small>Eigene Agenten folgen</small></span>
+            <span aria-hidden="true">›</span>
+          </button>
         </nav>
 
         <div className="sidebar-footer">
@@ -1372,12 +1493,16 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
                       </button>
                     ) : null}
                     <button type="button" onClick={() => void exportData()} disabled={dataAction === "export"}>Daten exportieren</button>
+                    <button type="button" onClick={() => { setAccountMenuOpen(false); openCookieSettings(); }}>Cookie-Einstellungen verwalten</button>
                     <button type="button" onClick={() => { setAccountMenuOpen(false); setDeleteOpen(true); }}>Daten & Konto löschen</button>
                     <div className="menu-divider" />
                     <button type="button" onClick={() => void signOut()}>Abmelden</button>
                   </>
                 ) : (
-                  <button type="button" onClick={() => { setAccountMenuOpen(false); setSidebarOpen(false); setAuthInitialMode("login"); setAuthOpen(true); }}>Anmelden oder Konto erstellen</button>
+                  <>
+                    <button type="button" onClick={() => { setAccountMenuOpen(false); setSidebarOpen(false); setAuthInitialMode("login"); setAuthOpen(true); }}>Anmelden oder Konto erstellen</button>
+                    <button type="button" onClick={() => { setAccountMenuOpen(false); openCookieSettings(); }}>Cookie-Einstellungen verwalten</button>
+                  </>
                 )}
                 <p className="account-privacy-note">Projekte werden nur Ihrem aktuellen Zugang zugeordnet.</p>
               </div>
@@ -1553,6 +1678,25 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
           onConfirm={() => void deleteData()}
         />
       ) : null}
+
+      {createProjectOpen ? (
+        <CreateProjectDialog
+          onClose={() => setCreateProjectOpen(false)}
+          onCreate={createProjectCollection}
+        />
+      ) : null}
+
+      {manageChat ? (
+        <ManageChatDialog
+          chat={manageChat}
+          collections={projectCollections}
+          onClose={() => setManageChat(null)}
+          onMove={(collectionId) => moveChatToProject(manageChat, collectionId)}
+          onDelete={() => deleteChat(manageChat)}
+        />
+      ) : null}
+
+      {agentsOpen ? <AgentsDialog onClose={() => setAgentsOpen(false)} /> : null}
 
       {toast ? <div className={`toast ${toast.tone}`} role="status" key={toast.id}>{toast.message}</div> : null}
     </div>
@@ -1877,9 +2021,9 @@ export function analysisDisclosure(trace: AiAnalysisTrace): string {
     return "Die Angaben wurden anhand der bestätigten Provider-Antwort strukturiert. Die interne Auswahl bleibt ein reproduzierbarer Regelabgleich; Sie treffen die Entscheidung.";
   }
   if (trace.provider.succeeded) {
-    return "Eine Provider-Antwort wurde empfangen, aber nicht für die Strukturierung verwendet. Für diesen Stand wurde deshalb kein Freelancer-Matching ausgeführt.";
+    return "Eine Provider-Antwort wurde empfangen, aber nicht für die Strukturierung verwendet. Das interne Freelancer-Matching wurde transparent mit der sicheren Basisanalyse ausgeführt.";
   }
-  return "Die Anfrage wurde ohne bestätigte Provider-Antwort gespeichert. Für diesen Stand wurde deshalb kein Freelancer-Matching ausgeführt.";
+  return "Die Anfrage wurde ohne bestätigte Provider-Antwort gespeichert. Das interne Freelancer-Matching wurde transparent mit der sicheren Basisanalyse ausgeführt.";
 }
 
 function AnalysisTrace({ trace }: { trace: AiAnalysisTrace }) {
@@ -2396,6 +2540,155 @@ function AuthDialog({
           </form>
         )}
         <p className="auth-privacy">Die Anmeldung dient dazu, Projekte geräteübergreifend zuzuordnen und eine Profilwahl sicher fortzusetzen.</p>
+      </div>
+    </Modal>
+  );
+}
+
+function SidebarChatList({
+  chats,
+  activeProjectId,
+  loadingProjectId,
+  onOpen,
+  onManage,
+}: {
+  chats: ProjectListItem[];
+  activeProjectId: string | null;
+  loadingProjectId: string | null;
+  onOpen: (chat: ProjectListItem) => void;
+  onManage: (chat: ProjectListItem) => void;
+}) {
+  if (!chats.length) return <p className="sidebar-section-empty">Keine unzugeordneten Chats</p>;
+  return (
+    <ul className="project-list">
+      {chats.map((chat) => (
+        <li key={chat.id} className="sidebar-chat-row">
+          <button
+            type="button"
+            className={`sidebar-chat-open${activeProjectId === chat.id ? " active" : ""}`}
+            onClick={() => onOpen(chat)}
+            aria-current={activeProjectId === chat.id ? "page" : undefined}
+          >
+            <span className="project-title">{chat.title}</span>
+            <span className="project-meta">
+              {loadingProjectId === chat.id ? "Wird geladen …" : formatRelativeDate(chat.updatedAt)}
+            </span>
+          </button>
+          <button
+            className="sidebar-chat-manage"
+            type="button"
+            onClick={() => onManage(chat)}
+            aria-label={`${chat.title} verwalten`}
+          >
+            •••
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function CreateProjectDialog({
+  onClose,
+  onCreate,
+}: {
+  onClose: () => void;
+  onCreate: (name: string) => Promise<ProjectCollectionItem>;
+}) {
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!name.trim() || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await onCreate(name.trim());
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Projekt konnte nicht erstellt werden.");
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal titleId="create-project-title" onClose={onClose}>
+      <form className="project-dialog" onSubmit={submit}>
+        <span className="dialog-eyebrow">Mehrere Chats organisieren</span>
+        <h2 id="create-project-title">Neues Projekt</h2>
+        <p>Ein Projekt ist ein Ordner, in dem Sie mehrere zusammengehörige Chats speichern können.</p>
+        <label htmlFor="project-name">Projektname</label>
+        <input id="project-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={120} autoFocus placeholder="z. B. SAP-Rollout 2026" />
+        {error ? <p className="form-error" role="alert">{error}</p> : null}
+        <div className="dialog-actions">
+          <button className="secondary-action" type="button" onClick={onClose} disabled={busy}>Abbrechen</button>
+          <button className="primary-action" type="submit" disabled={busy || !name.trim()}>{busy ? "Wird erstellt …" : "Projekt erstellen"}</button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function ManageChatDialog({
+  chat,
+  collections,
+  onClose,
+  onMove,
+  onDelete,
+}: {
+  chat: ProjectListItem;
+  collections: ProjectCollectionItem[];
+  onClose: () => void;
+  onMove: (collectionId: string | null) => Promise<void>;
+  onDelete: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const run = async (operation: () => Promise<void>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await operation();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Aktion fehlgeschlagen.");
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal titleId="manage-chat-title" onClose={onClose}>
+      <div className="project-dialog manage-chat-dialog">
+        <span className="dialog-eyebrow">Chat verwalten</span>
+        <h2 id="manage-chat-title">{chat.title}</h2>
+        <p>Speichern Sie den Chat in einem Projekt oder löschen Sie ihn dauerhaft.</p>
+        <div className="project-destination-list">
+          <button type="button" className={!chat.collectionId ? "active" : ""} disabled={busy} onClick={() => void run(() => onMove(null))}>Ohne Projekt</button>
+          {collections.map((collection) => (
+            <button key={collection.id} type="button" className={chat.collectionId === collection.id ? "active" : ""} disabled={busy} onClick={() => void run(() => onMove(collection.id))}>{collection.name}</button>
+          ))}
+        </div>
+        {error ? <p className="form-error" role="alert">{error}</p> : null}
+        <div className="dialog-actions split-actions">
+          {confirmDelete ? (
+            <button className="danger-action" type="button" disabled={busy} onClick={() => void run(onDelete)}>{busy ? "Wird gelöscht …" : "Löschen bestätigen"}</button>
+          ) : (
+            <button className="danger-text-action" type="button" disabled={busy} onClick={() => setConfirmDelete(true)}>Chat löschen</button>
+          )}
+          <button className="secondary-action" type="button" onClick={onClose} disabled={busy}>Schließen</button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function AgentsDialog({ onClose }: { onClose: () => void }) {
+  return (
+    <Modal titleId="agents-title" onClose={onClose}>
+      <div className="agents-dialog">
+        <span className="agent-glyph is-large" aria-hidden="true">A</span>
+        <span className="dialog-eyebrow">Vorbereitet für die nächste Ausbaustufe</span>
+        <h2 id="agents-title">Agenten</h2>
+        <p>Hier können zukünftig eigene spezialisierte Agenten angeschlossen werden. Im aktuellen Freelancer-MVP ist noch kein Agent aktiviert und es werden keine autonomen Aktionen ausgeführt.</p>
+        <button className="primary-action" type="button" onClick={onClose}>Verstanden</button>
       </div>
     </Modal>
   );

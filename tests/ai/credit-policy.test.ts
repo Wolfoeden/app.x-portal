@@ -64,7 +64,7 @@ describe("XPORTAL AI credit policy", () => {
     expect(result.creditsConsumed).toBe(1);
     expect(result.unitLabel).toBe("XPORTAL_AI_CREDIT");
     expect(result.policyVersion).toBe(
-      "xportal-ai-credits-mvp-2026-08-12-v2",
+      "xportal-ai-credits-mvp-2026-08-13-v3",
     );
   });
 
@@ -79,6 +79,18 @@ describe("XPORTAL AI credit policy", () => {
     expect(result.creditsConsumed).toBe(10);
     expect(result.modelMultiplierBasisPoints).toBe(100_000);
     expect(result.usedDefaultModelMultiplier).toBe(false);
+  });
+
+  it("allows one representative GPT-5.5 Pro brief within the guest allocation", () => {
+    const result = calculateCreditsConsumed({
+      requestedModel: "gpt-5.5-pro",
+      purpose: "project_brief",
+      inputTokens: 15_000,
+      outputTokens: 1_800,
+    });
+
+    expect(result.modelMultiplierBasisPoints).toBe(190_000);
+    expect(result.creditsConsumed).toBeLessThanOrEqual(500);
   });
 
   it("allows one representative Terra project brief within the guest allocation", () => {

@@ -18,6 +18,16 @@ export type ProjectRow = {
     | "archived";
   created_at: string;
   updated_at: string;
+  collection_id?: string | null;
+};
+
+export type ProjectCollectionRow = {
+  id: string;
+  owner_user_id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+  archived_at: string | null;
 };
 
 export function presentProject(row: ProjectRow): ProjectListItem {
@@ -40,8 +50,13 @@ export function presentProject(row: ProjectRow): ProjectListItem {
     id: row.id,
     title: row.title ?? "Freelancer-Anfrage",
     updatedAt: row.updated_at,
+    collectionId: row.collection_id ?? null,
     status,
   };
+}
+
+export function presentProjectCollection(row: ProjectCollectionRow) {
+  return { id: row.id, name: row.name, updatedAt: row.updated_at };
 }
 
 export function deriveProjectTitle(message: string): string {

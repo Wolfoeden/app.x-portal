@@ -21,6 +21,7 @@ export async function GET() {
 
     const [
       userProfile,
+      projectCollections,
       projects,
       messages,
       shortlists,
@@ -33,6 +34,7 @@ export async function GET() {
       auditEvents,
     ] = await Promise.all([
         admin.from("user_profiles").select("*").eq("id", user.id).maybeSingle(),
+        owned("project_collections"),
         owned("projects"),
         owned("messages"),
         owned("shortlists"),
@@ -63,6 +65,7 @@ export async function GET() {
       ]);
     const failed = [
       userProfile,
+      projectCollections,
       projects,
       messages,
       shortlists,
@@ -86,10 +89,11 @@ export async function GET() {
 
     return NextResponse.json(
       {
-        formatVersion: 2,
+        formatVersion: 3,
         generatedAt: new Date().toISOString(),
         user: { id: user.id, email: user.email },
         userProfile: userProfile.data ?? null,
+        projectCollections: projectCollections.data ?? [],
         projects: projects.data ?? [],
         messages: messages.data ?? [],
         shortlists: shortlists.data ?? [],

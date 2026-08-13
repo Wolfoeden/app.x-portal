@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { CookieConsent } from "@/components/CookieConsent";
+import { CookieSettingsButton } from "@/components/CookieConsent";
 
 export const metadata: Metadata = {
   title: "Privacy | XPORTAL",
@@ -70,7 +70,7 @@ export default function PrivacyPage() {
             consent choice. Optional cookies remain disabled unless you accept
             them. No third-party analytics are currently loaded on the landing page.
           </p>
-          <CookieConsent />
+          <CookieSettingsButton />
         </section>
 
         <section>
