@@ -6,8 +6,9 @@ import {
 } from "@/lib/ai/model-pricing";
 
 /**
- * XPORTAL AI credits are internal product-metering units. They are neither
- * OpenAI tokens nor currency and have no 1:1 relationship with either.
+ * Historical token-weighted provider-control units. Customer product credits
+ * and the monthly Nano allowance use separate ledgers and must never be
+ * derived from this policy.
  */
 export type AiCreditPolicy = {
   version: string;
@@ -49,10 +50,7 @@ export const XPORTAL_AI_CREDIT_POLICY = {
   defaultPurposeMultiplierBasisPoints: 10_000,
   purposeMultiplierBasisPoints: {
     chat: 10_000,
-    // The public product limits guests separately by daily provider tokens.
-    // These two multipliers keep one normal Terra brief plus an optional
-    // no-match research request inside the configurable guest allocation
-    // instead of blocking the provider before the first request is sent.
+    // Kept only to reconstruct historical provider-control records.
     project_brief: 1_000,
     insight: 10_000,
     router: 10_000,
@@ -63,6 +61,7 @@ export const XPORTAL_AI_CREDIT_POLICY = {
   },
   defaultModelMultiplierBasisPoints: 10_000,
   modelMultiplierBasisPoints: {
+    "gpt-5.4-nano": 10_000,
     "gpt-5.5-pro": 190_000,
     "gpt-5.6-luna": 10_000,
     "gpt-5.6-terra": 100_000,

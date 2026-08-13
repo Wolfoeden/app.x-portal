@@ -6,7 +6,6 @@ import { parseFallbackBrief } from "@/lib/domain";
 import { calculateCreditsConsumed } from "@/lib/ai/credit-policy";
 import {
   DEFAULT_OPENAI_BRIEF_MODEL,
-  FALLBACK_OPENAI_BRIEF_MODEL,
   MAX_OPENAI_BRIEF_OUTPUT_TOKENS,
   buildDeterministicBrief,
   estimateProjectBriefTokenCeiling,
@@ -102,7 +101,7 @@ function candidate(
 function mockClient(output: unknown) {
   const parse = vi.fn<BriefResponsesClient["parse"]>().mockResolvedValue({
     id: "resp_test_123",
-    model: "gpt-5.6-luna-2026-07-15",
+    model: "gpt-5.4-nano-2026-03-17",
     output_parsed: output,
     usage: {
       input_tokens: 101,
@@ -294,7 +293,7 @@ describe("extractProjectBrief", () => {
     expect(result.brief.requiredSkills).toEqual(["Kubernetes"]);
     expect(result.provider).toEqual({
       requestedModel: DEFAULT_OPENAI_BRIEF_MODEL,
-      model: "gpt-5.6-luna-2026-07-15",
+      model: "gpt-5.4-nano-2026-03-17",
       responseId: "resp_test_123",
       inputTokens: 101,
       cachedInputTokens: 40,
@@ -311,12 +310,12 @@ describe("extractProjectBrief", () => {
     expect(body.text?.format?.type).toBe("json_schema");
     expect(JSON.stringify(body.input)).toContain(originalRequest);
     expect(JSON.stringify(body)).not.toContain("freelancer_profiles");
-    expect(requestOptions).toMatchObject({ timeout: 50_000, maxRetries: 0 });
-    expect(body.reasoning).toEqual({ effort: "medium" });
+    expect(requestOptions).toMatchObject({ timeout: 20_000, maxRetries: 0 });
+    expect(body.reasoning).toEqual({ effort: "none" });
     expect(requestOptions?.signal).toBeInstanceOf(AbortSignal);
   });
 
-  it("falls back once from a Pro rate limit to Luna while preserving requested and actual models", async () => {
+  it("does not retry or switch models after a rate limit", async () => {
     const { client, parse } = mockClient(
       candidate({ requiredSkills: ["Kubernetes"] }),
     );
@@ -334,28 +333,19 @@ describe("extractProjectBrief", () => {
       { responsesClient: client, now: FIXED_NOW },
     );
 
-    expect(parse).toHaveBeenCalledTimes(2);
+    expect(parse).toHaveBeenCalledOnce();
     expect(parse.mock.calls[0]?.[0].model).toBe(DEFAULT_OPENAI_BRIEF_MODEL);
-    expect(parse.mock.calls[1]?.[0].model).toBe(FALLBACK_OPENAI_BRIEF_MODEL);
-    expect(result.mode).toBe("openai");
-    expect(result.provider).toMatchObject({
-      requestedModel: DEFAULT_OPENAI_BRIEF_MODEL,
-      model: "gpt-5.6-luna-2026-07-15",
-    });
+    expect(result.mode).toBe("fallback");
+    expect(result.providerFailure).toBe("rate_limit");
   });
 
-  it("reports Luna as the actual fallback model when the response omits its model id", async () => {
+  it("does not retry another model when Nano is unavailable", async () => {
     const parse = vi
       .fn<BriefResponsesClient["parse"]>()
       .mockRejectedValueOnce({
         name: "NotFoundError",
         status: 404,
         code: "model_not_found",
-      })
-      .mockResolvedValueOnce({
-        id: "resp_fallback",
-        output_parsed: candidate({ requiredSkills: ["Kubernetes"] }),
-        usage: null,
       });
 
     const result = await extractProjectBrief(
@@ -366,10 +356,9 @@ describe("extractProjectBrief", () => {
       { responsesClient: { parse }, now: FIXED_NOW },
     );
 
-    expect(result.provider).toMatchObject({
-      requestedModel: DEFAULT_OPENAI_BRIEF_MODEL,
-      model: FALLBACK_OPENAI_BRIEF_MODEL,
-    });
+    expect(parse).toHaveBeenCalledOnce();
+    expect(result.mode).toBe("fallback");
+    expect(result.providerFailure).toBe("model_unavailable");
   });
 
   it.each([
@@ -377,7 +366,7 @@ describe("extractProjectBrief", () => {
     ["billing_or_quota", { name: "RateLimitError", status: 429, code: "insufficient_quota" }],
     ["timeout", { name: "APIConnectionTimeoutError" }],
     ["provider_error", new Error("unknown provider failure")],
-  ] as const)("does not retry Pro after %s", async (expectedFailure, error) => {
+  ] as const)("does not retry Nano after %s", async (expectedFailure, error) => {
     const parse = vi.fn<BriefResponsesClient["parse"]>().mockRejectedValue(error);
 
     const result = await extractProjectBrief(

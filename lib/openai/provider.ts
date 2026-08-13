@@ -21,21 +21,10 @@ export type OpenAiConnection = {
   baseUrl: string | null;
 };
 
-function normalizedBaseUrl(value: string | undefined): string | null {
-  const candidate = value?.trim();
-  if (!candidate) return null;
-  try {
-    const url = new URL(candidate);
-    return url.toString().replace(/\/$/u, "");
-  } catch {
-    return candidate.replace(/\/$/u, "");
-  }
-}
-
 /**
- * Exposes only non-secret provider metadata. Netlify AI Gateway injects an
- * OPENAI_BASE_URL at runtime; a customer-owned key without that override uses
- * the official OpenAI API directly.
+ * Exposes only non-secret provider metadata. This product deliberately uses
+ * the customer-owned key against the official OpenAI endpoint. Platform or
+ * inherited OPENAI_BASE_URL values cannot reroute requests to a gateway.
  */
 export function resolveOpenAiConnection(
   environment: OpenAiEnvironment = {
@@ -48,25 +37,16 @@ export function resolveOpenAiConnection(
     return { configured: false, transport: "unconfigured", baseUrl: null };
   }
 
-  const baseUrl = normalizedBaseUrl(environment.OPENAI_BASE_URL);
-  if (!baseUrl || baseUrl === OPENAI_OFFICIAL_BASE_URL) {
-    return {
-      configured: true,
-      transport: "direct_openai",
-      baseUrl: OPENAI_OFFICIAL_BASE_URL,
-    };
-  }
-
-  const transport = /(?:netlify|ai-gateway)/iu.test(baseUrl)
-    ? "netlify_ai_gateway"
-    : "custom_gateway";
-  return { configured: true, transport, baseUrl };
+  return {
+    configured: true,
+    transport: "direct_openai",
+    baseUrl: OPENAI_OFFICIAL_BASE_URL,
+  };
 }
 
 export function createOpenAiClient(apiKey: string): OpenAI {
-  const baseUrl = normalizedBaseUrl(process.env.OPENAI_BASE_URL);
   return new OpenAI({
     apiKey,
-    ...(baseUrl ? { baseURL: baseUrl } : {}),
+    baseURL: OPENAI_OFFICIAL_BASE_URL,
   });
 }

@@ -24,7 +24,8 @@ import {
 } from "@/lib/auth/browser";
 import {
   type AiAnalysisTrace,
-  type AiCreditSnapshot,
+  type AiUsageSnapshot,
+  type AiUsageUpdate,
   type AvailabilityStatus,
   type ChatApiPaths,
   type ChatRequest,
@@ -34,6 +35,8 @@ import {
   type ExternalFreelancerCandidate,
   type ExternalFreelancerSearchResponse,
   type FreelancerProfileResult,
+  type FreeAnalysisUsageSnapshot,
+  type ProductCreditSnapshot,
   type ProjectDetailResponse,
   type ProjectCollectionItem,
   type ProjectListItem,
@@ -152,34 +155,98 @@ function nonNegativeNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
 }
 
-function normalizeCreditSnapshot(value: unknown): AiCreditSnapshot | null {
-  const wrapper = isRecord(value) && isRecord(value.data) ? value.data : value;
-  if (!isRecord(wrapper)) return null;
-  const source = isRecord(wrapper.credits)
-    ? wrapper.credits
-    : isRecord(wrapper.creditSnapshot)
-      ? wrapper.creditSnapshot
-      : isRecord(wrapper.credit_snapshot)
-        ? wrapper.credit_snapshot
-        : wrapper;
-  const total = nonNegativeNumber(source.total ?? source.creditsTotal ?? source.credits_total);
-  const used = nonNegativeNumber(source.used ?? source.creditsUsed ?? source.credits_used);
-  const remaining = nonNegativeNumber(
-    source.remaining ?? source.creditsRemaining ?? source.credits_remaining,
-  );
-  if (total === null || used === null || remaining === null) return null;
-  const reserved = nonNegativeNumber(
-    source.reserved ?? source.creditsReserved ?? source.credits_reserved,
-  );
+export function normalizeUsageUpdate(value: unknown): AiUsageUpdate | null {
+  const envelope = isRecord(value) && isRecord(value.data) ? value.data : value;
+  if (!isRecord(envelope)) return null;
+  const source = isRecord(envelope.usage) ? envelope.usage : envelope;
+  const hasFreeUsageField = Object.prototype.hasOwnProperty.call(source, "freeUsage") ||
+    Object.prototype.hasOwnProperty.call(source, "free_usage");
+  const freeUsageSource = isRecord(source.freeUsage)
+    ? source.freeUsage
+    : isRecord(source.free_usage)
+      ? source.free_usage
+      : null;
+  const hasProductCreditField = Object.prototype.hasOwnProperty.call(source, "productCredits") ||
+    Object.prototype.hasOwnProperty.call(source, "product_credits");
+  const productCreditsSource = isRecord(source.productCredits)
+    ? source.productCredits
+    : isRecord(source.product_credits)
+      ? source.product_credits
+      : null;
+  if (!hasFreeUsageField && !hasProductCreditField) return null;
 
+  const update: AiUsageUpdate = {};
+  if (hasFreeUsageField) {
+    if (!freeUsageSource) return null;
+    const limit = nonNegativeNumber(freeUsageSource.limit ?? freeUsageSource.usage_limit);
+    const used = nonNegativeNumber(freeUsageSource.used);
+    const reserved = nonNegativeNumber(freeUsageSource.reserved);
+    const remaining = nonNegativeNumber(freeUsageSource.remaining);
+    const periodStart = nullableString(
+      freeUsageSource.periodStart ?? freeUsageSource.period_start,
+    );
+    const periodEnd = nullableString(freeUsageSource.periodEnd ?? freeUsageSource.period_end);
+    if (
+      limit === null || used === null || reserved === null || remaining === null ||
+      !periodStart || !periodEnd
+    ) {
+      return null;
+    }
+    update.freeUsage = {
+      limit,
+      used,
+      reserved,
+      remaining,
+      periodStart,
+      periodEnd,
+      exhausted: freeUsageSource.exhausted === true || remaining <= 0,
+    };
+  }
+
+  if (hasProductCreditField) {
+    if (!productCreditsSource) {
+      update.productCredits = null;
+      return update;
+    }
+    const balance = nonNegativeNumber(productCreditsSource.balance);
+    const reserved = nonNegativeNumber(productCreditsSource.reserved);
+    const available = nonNegativeNumber(productCreditsSource.available);
+    const euroPerCredit = nullableString(
+      productCreditsSource.euroPerCredit ?? productCreditsSource.euro_per_credit,
+    );
+    if (balance === null || reserved === null || available === null || !euroPerCredit) {
+      return null;
+    }
+    update.productCredits = {
+      balance,
+      reserved,
+      available,
+      euroPerCredit,
+    };
+  }
+  return update;
+}
+
+export function normalizeUsageSnapshot(value: unknown): AiUsageSnapshot | null {
+  const update = normalizeUsageUpdate(value);
+  if (!update?.freeUsage || !("productCredits" in update)) return null;
   return {
-    total,
-    used,
-    remaining,
-    ...(reserved === null ? {} : { reserved }),
-    ...(typeof source.low === "boolean" ? { low: source.low } : {}),
-    ...(typeof source.exhausted === "boolean" ? { exhausted: source.exhausted } : {}),
+    freeUsage: update.freeUsage,
+    productCredits: update.productCredits ?? null,
   };
+}
+
+export function mergeUsageSnapshot(
+  current: AiUsageSnapshot | null,
+  update: AiUsageUpdate | null | undefined,
+): AiUsageSnapshot | null {
+  if (!update) return current;
+  const freeUsage = update.freeUsage ?? current?.freeUsage;
+  if (!freeUsage) return current;
+  const productCredits = Object.prototype.hasOwnProperty.call(update, "productCredits")
+    ? update.productCredits ?? null
+    : current?.productCredits ?? null;
+  return { freeUsage, productCredits };
 }
 
 function secureBookingUrl(value: unknown): string | null {
@@ -299,7 +366,7 @@ function normalizeExternalSearchResponse(value: unknown): ExternalFreelancerSear
         .filter((candidate): candidate is ExternalFreelancerCandidate => candidate !== null)
         .slice(0, 3)
     : [];
-  const credits = normalizeCreditSnapshot(response.credits);
+  const usage = normalizeUsageUpdate(response.usage ?? response);
   return {
     projectId: stringValue(response.projectId),
     candidates,
@@ -314,7 +381,7 @@ function normalizeExternalSearchResponse(value: unknown): ExternalFreelancerSear
       consultedSourceCount: nonNegativeNumber(trace.consultedSourceCount) ?? 0,
       returnedCandidateCount: nonNegativeNumber(trace.returnedCandidateCount) ?? candidates.length,
     },
-    ...(credits ? { credits } : {}),
+    ...(usage ? { usage } : {}),
   };
 }
 
@@ -486,9 +553,7 @@ function normalizeChatResponse(value: unknown, fallbackTitle: string): ChatRespo
             item !== null && item.bookingUrl !== null,
         )
     : [];
-  const credits = normalizeCreditSnapshot(
-    response.credits ?? response.creditSnapshot ?? response.credit_snapshot,
-  );
+  const usage = normalizeUsageUpdate(response.usage ?? response);
   const analysis = normalizeAnalysisTrace(response.analysis);
 
   return {
@@ -498,7 +563,7 @@ function normalizeChatResponse(value: unknown, fallbackTitle: string): ChatRespo
     matches: matches.slice(0, 3),
     mode: response.mode === "fallback" ? "fallback" : "ai",
     notice: nullableString(response.notice) ?? undefined,
-    ...(credits ? { credits } : {}),
+    ...(usage ? { usage } : {}),
     ...(analysis ? { analysis } : {}),
     ...(nullableString(response.buildVersion ?? envelope.buildVersion)
       ? { buildVersion: nullableString(response.buildVersion ?? envelope.buildVersion)! }
@@ -587,13 +652,77 @@ function formatCredits(value: number) {
   return new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 }).format(value);
 }
 
-function creditIsExhausted(credits: AiCreditSnapshot) {
-  return credits.exhausted ?? credits.remaining <= 0;
+function freeUsageIsLow(usage: FreeAnalysisUsageSnapshot) {
+  if (usage.exhausted || usage.remaining <= 0) return false;
+  return usage.limit > 0 && usage.remaining / usage.limit <= 0.2;
 }
 
-function creditIsLow(credits: AiCreditSnapshot) {
-  if (creditIsExhausted(credits)) return false;
-  return credits.low ?? (credits.total > 0 && credits.remaining / credits.total <= 0.2);
+export function usageSummary(
+  usage: AiUsageSnapshot,
+  authenticated: boolean,
+): string {
+  const free = `${formatCredits(usage.freeUsage.remaining)}/${formatCredits(usage.freeUsage.limit)} freie Analysen`;
+  return authenticated
+    ? usage.productCredits
+      ? `${free} · ${formatCredits(usage.productCredits.available)} Credits`
+      : `${free} · Produkt-Credits werden geladen`
+    : free;
+}
+
+export type ExternalSearchCtaState = {
+  kind: "login" | "loading" | "insufficient" | "ready";
+  label: string;
+  disabled: boolean;
+};
+
+export function externalSearchCtaState(
+  authenticated: boolean,
+  productCredits: ProductCreditSnapshot | null,
+): ExternalSearchCtaState {
+  if (!authenticated) {
+    return {
+      kind: "login",
+      label: "Anmelden, um die Internetsuche zu nutzen",
+      disabled: false,
+    };
+  }
+  if (!productCredits) {
+    return {
+      kind: "loading",
+      label: "Creditstand wird geladen …",
+      disabled: true,
+    };
+  }
+  if (productCredits.available < 30) {
+    return {
+      kind: "insufficient",
+      label: `30 Credits erforderlich · ${formatCredits(productCredits.available)} verfügbar`,
+      disabled: true,
+    };
+  }
+  return {
+    kind: "ready",
+    label: "Internetsuche starten – 30 Credits / 0,50 €",
+    disabled: false,
+  };
+}
+
+export function publicProgressLabel(label: string): string {
+  const normalized = label.toLocaleLowerCase("de-DE");
+  if (normalized.includes("speicher")) return "Anfrage wird sicher gespeichert …";
+  if (normalized.includes("kein") && normalized.includes("treffer")) {
+    return "Interner Profilabgleich abgeschlossen · kein passendes Profil gefunden …";
+  }
+  if (normalized.includes("profil") || normalized.includes("abgleich")) {
+    if (normalized.includes("aufbereit") || normalized.includes("vorbereit")) {
+      return "Bis zu drei Ergebnisse werden nachvollziehbar vorbereitet …";
+    }
+    return "Interne Profile werden regelbasiert abgeglichen …";
+  }
+  if (normalized.includes("struktur") || normalized.includes("analys")) {
+    return "GPT-5.4 Nano strukturiert Ihre Anforderungen …";
+  }
+  return "Anfrage wird verarbeitet …";
 }
 
 function formatDateTime(value: string | null) {
@@ -654,6 +783,16 @@ function presentUnknownFields(fields: string[]) {
   return fields.map((field) => unknownFieldLabels[field] ?? field);
 }
 
+function formatUsageReset(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Beginn des nächsten Abrechnungszeitraums";
+  return new Intl.DateTimeFormat("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+}
+
 class ProcessedRequestError extends Error {
   constructor(
     message: string,
@@ -711,7 +850,7 @@ export async function parseStreamResponse(
         textContent += event.delta;
         onDelta(textContent);
       } else if (event.type === "progress") {
-        onDelta(textContent, event.label);
+        onDelta(textContent, publicProgressLabel(event.label));
       } else if (event.type === "result") {
         streamState.result = normalizeChatResponse(event.data, fallbackTitle);
       } else if (event.type === "error") {
@@ -792,7 +931,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
   const [pendingProfileId, setPendingProfileId] = useState<string | null>(null);
   const [contactOpen, setContactOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [credits, setCredits] = useState<AiCreditSnapshot | null>(null);
+  const [usage, setUsage] = useState<AiUsageSnapshot | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [manageChat, setManageChat] = useState<ProjectListItem | null>(null);
@@ -805,11 +944,14 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const externalSearchRequestIdsRef = useRef(new Map<string, string>());
 
   const selectedProfile = profiles.find((profile) => profile.id === selectedProfileId) ?? null;
   const isAccountUser = auth.authenticated && !auth.anonymous;
-  const creditsExhausted = Boolean(credits && creditIsExhausted(credits));
-  const creditsLow = Boolean(credits && creditIsLow(credits));
+  const freeUsageExhausted = Boolean(
+    usage && (usage.freeUsage.exhausted || usage.freeUsage.remaining <= 0),
+  );
+  const freeUsageLow = Boolean(usage && freeUsageIsLow(usage.freeUsage));
 
   const showToast = useCallback((message: string, tone: ToastState["tone"] = "neutral") => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -835,9 +977,9 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
     return view;
   }, [apiPaths.session]);
 
-  const refreshCredits = useCallback(async () => {
+  const refreshUsage = useCallback(async () => {
     if (!apiPaths.credits) {
-      setCredits(null);
+      setUsage(null);
       return null;
     }
     try {
@@ -848,15 +990,15 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
       });
       if (!response.ok) {
         if (response.status === 404 || response.status === 501) {
-          setCredits(null);
+          setUsage(null);
         }
         return null;
       }
-      const snapshot = normalizeCreditSnapshot(await response.json());
-      if (snapshot) setCredits(snapshot);
+      const snapshot = normalizeUsageSnapshot(await response.json());
+      if (snapshot) setUsage(snapshot);
       return snapshot;
     } catch {
-      // Credits are supplementary product information and never block the chat shell.
+      // Usage information is supplementary and never blocks the chat shell.
       return null;
     }
   }, [apiPaths.credits]);
@@ -940,7 +1082,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
       try {
         const view = await refreshAuth();
         if (!alive) return;
-        await refreshCredits();
+        await refreshUsage();
         if (!alive) return;
         const searchParams = new URLSearchParams(window.location.search);
         const authError = searchParams.get("auth_error");
@@ -1060,9 +1202,9 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
     })();
 
     const { data: subscription } = supabase.auth.onAuthStateChange(() => {
-      setCredits(null);
+      setUsage(null);
       void refreshAuth()
-        .then(() => refreshCredits())
+        .then(() => refreshUsage())
         .catch(() => undefined);
     });
     return () => {
@@ -1076,7 +1218,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
     loadProjectCollections,
     loadProjects,
     refreshAuth,
-    refreshCredits,
+    refreshUsage,
     showToast,
   ]);
 
@@ -1159,11 +1301,11 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
         const withoutCurrent = current.filter((project) => project.id !== result.project.id);
         return [result.project, ...withoutCurrent];
       });
-      if (result.credits) setCredits(result.credits);
-      void refreshCredits();
+      if (result.usage) setUsage((current) => mergeUsageSnapshot(current, result.usage));
+      void refreshUsage();
       if (result.notice) showToast(result.notice);
     },
-    [refreshCredits, showToast],
+    [refreshUsage, showToast],
   );
 
   const sendMessage = useCallback(
@@ -1186,7 +1328,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
         id: makeId("assistant"),
         clientMessageId: optimistic.id,
         content: "",
-        progress: "Anfrage wird verstanden …",
+        progress: "GPT-5.4 Nano strukturiert Ihre Anforderungen …",
         retryText: null,
       });
       const recoveryProjectId = activeProject?.id ?? null;
@@ -1208,7 +1350,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
           const retryAfter = response.headers.get("Retry-After");
           if (response.status === 429) {
             setDraft(text);
-            void refreshCredits();
+            void refreshUsage();
             throw new Error(
               retryAfter
                 ? `Das Nutzungslimit ist erreicht. Erneut möglich in ${retryAfter} Sekunden.`
@@ -1327,7 +1469,8 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
       loadProject,
       pendingAssistant,
       refreshAuth,
-      refreshCredits,
+      refreshUsage,
+      showToast,
     ],
   );
 
@@ -1338,35 +1481,67 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
 
   const runExternalFreelancerSearch = async () => {
     if (!activeProject?.id || externalSearchState === "searching") return;
+    const projectId = activeProject.id;
+    if (!isAccountUser) {
+      setAuthInitialMode("login");
+      setAuthOpen(true);
+      return;
+    }
+    if (!usage?.productCredits || usage.productCredits.available < 30) {
+      showToast("Für die Internetsuche sind 30 verfügbare Produkt-Credits erforderlich.", "error");
+      void refreshUsage();
+      return;
+    }
     setExternalSearch(null);
     setExternalSearchState("searching");
+    const storageKey = `xportal.external-search-request.v1:${projectId}`;
+    const requestId =
+      externalSearchRequestIdsRef.current.get(projectId) ??
+      sessionStorage.getItem(storageKey) ??
+      makeId("external-search");
+    externalSearchRequestIdsRef.current.set(projectId, requestId);
+    sessionStorage.setItem(storageKey, requestId);
+    let resetRequestId = false;
     try {
       const response = await fetch(apiPaths.freelancerSearch, {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
-          projectId: activeProject.id,
-          requestId: makeId("external-search"),
+          projectId,
+          requestId,
         }),
       });
       if (!response.ok) {
         let message = "Die externe Suche konnte gerade nicht abgeschlossen werden.";
         try {
           const body: unknown = await response.json();
-          if (isRecord(body)) message = stringValue(body.error, message);
+          if (isRecord(body)) {
+            message = stringValue(body.error, message);
+            resetRequestId =
+              body.code === "search_technical_error_refunded" ||
+              body.code === "search_previous_attempt_released";
+          }
         } catch {
           // Keep the safe generic message.
         }
         throw new Error(message);
       }
       const result = normalizeExternalSearchResponse(await response.json());
+      externalSearchRequestIdsRef.current.delete(projectId);
+      sessionStorage.removeItem(storageKey);
       setExternalSearch(result);
-      if (result.credits) setCredits(result.credits);
+      if (result.usage) setUsage((current) => mergeUsageSnapshot(current, result.usage));
+      void refreshUsage();
       if (result.notice) showToast(result.notice);
       setExternalSearchState("idle");
     } catch (error) {
+      if (resetRequestId) {
+        externalSearchRequestIdsRef.current.delete(projectId);
+        sessionStorage.removeItem(storageKey);
+      }
       setExternalSearchState("error");
+      void refreshUsage();
       showToast(
         error instanceof Error
           ? error.message
@@ -1640,7 +1815,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
                   <strong>{isAccountUser ? auth.user?.displayName ?? "Ihr Konto" : "Ohne Konto"}</strong>
                   <span>{isAccountUser ? auth.user?.email ?? "Angemeldet" : "Aktuelle Anfrage bleibt in diesem Browser verfügbar"}</span>
                 </div>
-                {credits ? <CreditUsage credits={credits} guest={!isAccountUser} /> : null}
+                {usage ? <UsagePanel usage={usage} authenticated={isAccountUser} /> : null}
                 {isAccountUser ? (
                   <>
                     {auth.admin && apiPaths.adminUsage ? (
@@ -1673,7 +1848,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
               aria-haspopup="dialog"
               aria-expanded={accountMenuOpen}
               onClick={() => {
-                if (!accountMenuOpen) void refreshCredits();
+                if (!accountMenuOpen) void refreshUsage();
                 setAccountMenuOpen((current) => !current);
               }}
             >
@@ -1682,7 +1857,13 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
               </span>
               <span className="sidebar-account-copy">
                 <strong>{isAccountUser ? auth.user?.displayName ?? auth.user?.email ?? "Ihr Konto" : "Anmelden"}</strong>
-                <span>{isAccountUser ? auth.user?.email ?? "Konto verwalten" : "Projekte dauerhaft speichern"}</span>
+                <span>
+                  {usage
+                    ? usageSummary(usage, isAccountUser)
+                    : isAccountUser
+                      ? auth.user?.email ?? "Konto verwalten"
+                      : "Projekte dauerhaft speichern"}
+                </span>
               </span>
               <span className="sidebar-account-more" aria-hidden="true">•••</span>
             </button>
@@ -1748,6 +1929,12 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
                     externalSearch={externalSearch}
                     externalSearchState={externalSearchState}
                     onExternalSearch={() => void runExternalFreelancerSearch()}
+                    isAccountUser={isAccountUser}
+                    productCredits={usage?.productCredits ?? null}
+                    onRequireLogin={() => {
+                      setAuthInitialMode("login");
+                      setAuthOpen(true);
+                    }}
                     selectedProfileId={selectedProfileId}
                     onSelect={requestProfileSelection}
                     onContact={(profile) => {
@@ -1772,7 +1959,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
               <button type="button" onClick={() => setContactOpen(true)}>Termin oder Kontakt</button>
             </div>
           ) : null}
-          <form className={`composer ${creditsExhausted ? "is-credit-exhausted" : ""}`} onSubmit={handleSubmit}>
+          <form className={`composer ${freeUsageExhausted ? "is-quota-exhausted" : ""}`} onSubmit={handleSubmit}>
             <label className="sr-only" htmlFor="chat-composer">Projekt oder Ergänzung beschreiben</label>
             <textarea
               id="chat-composer"
@@ -1790,17 +1977,17 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
                 className="send-button"
                 type="submit"
                 disabled={!draft.trim() || Boolean(pendingAssistant)}
-                aria-label={creditsExhausted ? "Nachricht ohne KI-Analyse senden" : "Nachricht senden"}
+                aria-label="Nachricht senden"
               >
                 ↑
               </button>
             </div>
           </form>
-          {credits && (creditsExhausted || creditsLow) ? (
-            <p className={`composer-credit-status ${creditsExhausted ? "is-exhausted" : ""}`} role="status">
-              {creditsExhausted
-                ? `${isAccountUser ? "Ihr KI-Kontingent" : "Ihr kostenloses KI-Kontingent"} ist aufgebraucht. Sie können weiterarbeiten; neue Angaben werden ohne KI-Provider verarbeitet.`
-                : `${isAccountUser ? "Ihr KI-Kontingent" : "Ihr kostenloses KI-Kontingent"} wird knapp: ${formatCredits(credits.remaining)} verfügbar.`}
+          {usage && (freeUsageExhausted || freeUsageLow) ? (
+            <p className={`composer-credit-status ${freeUsageExhausted ? "is-exhausted" : ""}`} role="status">
+              {freeUsageExhausted
+                ? `Das monatliche Nano-Kontingent ist aufgebraucht. Sie können weiter schreiben; XPORTAL speichert und gleicht Ihre Angaben regelbasiert ab. Neue Nano-Analysen sind ab ${formatUsageReset(usage.freeUsage.periodEnd)} möglich.`
+                : `Noch ${formatCredits(usage.freeUsage.remaining)} von ${formatCredits(usage.freeUsage.limit)} kostenlosen Nano-Analysen in diesem Monat verfügbar.`}
             </p>
           ) : null}
           <p className="composer-disclosure">KI kann Fehler machen. Profile werden regelbasiert gefiltert; Sie wählen selbst. Keine Gesundheitsdaten oder vertraulichen Daten Dritter eingeben.</p>
@@ -1863,52 +2050,62 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
   );
 }
 
-function CreditUsage({
-  credits,
-  guest,
+function UsagePanel({
+  usage,
+  authenticated,
 }: {
-  credits: AiCreditSnapshot;
-  guest: boolean;
+  usage: AiUsageSnapshot;
+  authenticated: boolean;
 }) {
-  const exhausted = creditIsExhausted(credits);
-  const low = creditIsLow(credits);
-  const unavailable = credits.used + (credits.reserved ?? 0);
-  const progress = credits.total > 0
-    ? Math.min(100, Math.max(0, (unavailable / credits.total) * 100))
+  const exhausted = usage.freeUsage.exhausted || usage.freeUsage.remaining <= 0;
+  const low = freeUsageIsLow(usage.freeUsage);
+  const consumed = usage.freeUsage.used + usage.freeUsage.reserved;
+  const progress = usage.freeUsage.limit > 0
+    ? Math.min(100, Math.max(0, (consumed / usage.freeUsage.limit) * 100))
     : 0;
 
   return (
     <section className={`credit-usage ${exhausted ? "is-exhausted" : low ? "is-low" : ""}`} aria-label="KI-Nutzung">
       <div className="credit-usage-heading">
-        <span>KI-Nutzung</span>
-        <strong>{formatCredits(credits.remaining)} verfügbar</strong>
+        <span>Freie Nano-Analysen · monatlich</span>
+        <strong>{formatCredits(usage.freeUsage.remaining)}/{formatCredits(usage.freeUsage.limit)}</strong>
       </div>
       <div
         className="credit-progress"
         role="progressbar"
-        aria-label={`${formatCredits(unavailable)} von ${formatCredits(credits.total)} Credits verwendet oder reserviert`}
+        aria-label={`${formatCredits(usage.freeUsage.remaining)} von ${formatCredits(usage.freeUsage.limit)} kostenlosen Analysen verfügbar`}
         aria-valuemin={0}
-        aria-valuemax={Math.max(credits.total, 1)}
-        aria-valuenow={Math.min(unavailable, Math.max(credits.total, 1))}
+        aria-valuemax={Math.max(usage.freeUsage.limit, 1)}
+        aria-valuenow={Math.min(consumed, Math.max(usage.freeUsage.limit, 1))}
       >
         <span style={{ width: `${progress}%` }} />
       </div>
       <dl className="credit-stats">
-        <div><dt>Verwendet</dt><dd>{formatCredits(credits.used)}</dd></div>
-        {(credits.reserved ?? 0) > 0 ? (
-          <div><dt>Reserviert</dt><dd>{formatCredits(credits.reserved ?? 0)}</dd></div>
+        <div><dt>Verfügbar</dt><dd>{formatCredits(usage.freeUsage.remaining)}</dd></div>
+        <div><dt>Genutzt</dt><dd>{formatCredits(usage.freeUsage.used)}</dd></div>
+        {usage.freeUsage.reserved > 0 ? (
+          <div><dt>In Bearbeitung</dt><dd>{formatCredits(usage.freeUsage.reserved)}</dd></div>
         ) : null}
-        <div><dt>Gesamt</dt><dd>{formatCredits(credits.total)}</dd></div>
+        <div><dt>Monatslimit</dt><dd>{formatCredits(usage.freeUsage.limit)}</dd></div>
       </dl>
       <p className={`credit-status-copy ${exhausted ? "is-exhausted" : low ? "is-low" : ""}`}>
         {exhausted
-          ? "Das KI-Kontingent ist aufgebraucht. Die Basisanalyse bleibt verfügbar."
+          ? `Neue kostenlose Analysen sind ab ${formatUsageReset(usage.freeUsage.periodEnd)} wieder möglich.`
           : low
-            ? guest
-              ? "Das kostenlose Kontingent wird knapp. Nach der Anmeldung steht das Account-Kontingent bereit."
-              : "Ihr verfügbares KI-Kontingent wird knapp."
-            : "Kontingent für KI-gestützte Projektanalysen."}
+            ? "Ihr kostenloses Monatskontingent wird knapp."
+            : "Eine erfolgreiche Projektanalyse zählt als eine Nutzung."}
       </p>
+      {authenticated ? (
+        <div className="product-credit-balance" aria-label="Gekaufte Produkt-Credits">
+          <span>Produkt-Credits</span>
+          <strong>
+            {usage.productCredits
+              ? `${formatCredits(usage.productCredits.available)} verfügbar`
+              : "Wird geladen …"}
+          </strong>
+          <small>Getrennt vom kostenlosen Monatskontingent · Internetsuche: 30 Credits</small>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -2017,6 +2214,9 @@ function ResultSection({
   externalSearch,
   externalSearchState,
   onExternalSearch,
+  isAccountUser,
+  productCredits,
+  onRequireLogin,
   selectedProfileId,
   onSelect,
   onContact,
@@ -2028,14 +2228,18 @@ function ResultSection({
   externalSearch: ExternalFreelancerSearchResponse | null;
   externalSearchState: "idle" | "searching" | "error";
   onExternalSearch: () => void;
+  isAccountUser: boolean;
+  productCredits: ProductCreditSnapshot | null;
+  onRequireLogin: () => void;
   selectedProfileId: string | null;
   onSelect: (profile: FreelancerProfileResult) => void;
   onContact: (profile: FreelancerProfileResult) => void;
 }) {
+  const searchCta = externalSearchCtaState(isAccountUser, productCredits);
   return (
     <section className="result-section" aria-label="Suchergebnis">
       {brief ? <BriefCard brief={brief} /> : null}
-      {analysis ? <AnalysisTrace trace={analysis} /> : null}
+      {analysis ? <AnalysisTrace trace={analysis} profileCount={profiles.length} /> : null}
       <div className="shortlist-heading">
         <div>
           <p className="eyebrow">Regelbasierter Abgleich</p>
@@ -2078,19 +2282,33 @@ function ResultSection({
                   ? "Die internen Profile wurden regelbasiert abgeglichen. Sie können Angaben ergänzen oder die getrennte KI-Websuche nach öffentlich belegten Profilen starten."
                   : "Wir zeigen kein Ersatzprofil, wenn Pflichtkriterien nicht erfüllt sind. Ihre Angaben können Sie jederzeit im Chat ergänzen."}
               </p>
-              {analysisMode === "ai" &&
-              (analysis?.externalSearchAvailable ?? true) ? (
+              {(analysis?.externalSearchAvailable ?? true) && externalSearch?.mode !== "openai" ? (
                 <>
                   <button
                     className="external-search-button"
                     type="button"
-                    onClick={onExternalSearch}
-                    disabled={externalSearchState === "searching"}
+                    onClick={searchCta.kind === "login" ? onRequireLogin : onExternalSearch}
+                    disabled={externalSearchState === "searching" || searchCta.disabled}
                   >
                     {externalSearchState === "searching"
                       ? "KI sucht öffentlich zugängliche Profile …"
-                      : "Soll ein KI-Agent im Internet nach passenden Freelancern mit direktem Buchungslink suchen?"}
+                      : searchCta.label}
                   </button>
+                  {searchCta.kind === "ready" && externalSearchState !== "searching" ? (
+                    <p className="external-search-cost-note">
+                      Mit Ihrem Klick bestätigen Sie die einmalige Belastung von 30 Produkt-Credits (0,50 €).
+                    </p>
+                  ) : null}
+                  {searchCta.kind === "insufficient" ? (
+                    <p className="external-search-cost-note is-warning" role="status">
+                      Ihr Credit-Guthaben reicht nicht aus. Es wird keine Internetsuche gestartet und nichts belastet.
+                    </p>
+                  ) : null}
+                  {searchCta.kind === "login" ? (
+                    <p className="external-search-cost-note">
+                      Die kostenpflichtige Internetsuche ist nur mit einem angemeldeten Konto verfügbar.
+                    </p>
+                  ) : null}
                   {externalSearchState === "searching" ? (
                     <p className="external-search-progress" role="status">
                       <span className="thinking-dots" aria-hidden="true"><i /><i /><i /></span>
@@ -2201,8 +2419,49 @@ export function analysisDisclosure(trace: AiAnalysisTrace): string {
   return "Die Anfrage wurde ohne bestätigte Provider-Antwort gespeichert. Das interne Freelancer-Matching wurde transparent mit der sicheren Basisanalyse ausgeführt.";
 }
 
-function AnalysisTrace({ trace }: { trace: AiAnalysisTrace }) {
+export function visibleAnalysisSteps(
+  trace: AiAnalysisTrace,
+  profileCount: number,
+): AiAnalysisTrace["steps"] {
+  const providerConfirmed = trace.provider.succeeded && !trace.provider.fallback;
+  const nanoConfirmed = providerConfirmed &&
+    trace.provider.actualModel?.toLocaleLowerCase("en-US").startsWith("gpt-5.4-nano");
+  return [
+    {
+      label: providerConfirmed
+        ? nanoConfirmed
+          ? "Anforderungen mit GPT-5.4 Nano strukturiert"
+          : "Anforderungen mit bestätigter KI-Antwort strukturiert"
+        : "Anforderungen mit Basisanalyse strukturiert",
+      detail: providerConfirmed
+        ? "Die Angaben wurden in die vorgegebenen Projektfelder übertragen; fehlende Fakten bleiben unbekannt."
+        : "Es lag keine verwendbare Nano-Antwort vor. Die gespeicherten Angaben wurden konservativ in die Projektfelder übertragen.",
+      status: providerConfirmed ? "completed" : "warning",
+    },
+    {
+      label: "Interne Profile regelbasiert abgeglichen",
+      detail: "Aktive Profile wurden ohne KI-Auswahl anhand der dokumentierten Kriterien geprüft.",
+      status: "completed",
+    },
+    {
+      label: "Ergebnis vorbereitet",
+      detail: profileCount > 0
+        ? `${Math.min(profileCount, 3)} von maximal drei Profilen werden mit Gründen und bekannten Lücken angezeigt.`
+        : "Es wurde kein ausreichend relevantes internes Profil gefunden; es wird kein Kandidat erfunden.",
+      status: "completed",
+    },
+  ];
+}
+
+function AnalysisTrace({
+  trace,
+  profileCount,
+}: {
+  trace: AiAnalysisTrace;
+  profileCount: number;
+}) {
   const modelLabel = providerModelLabel(trace);
+  const steps = visibleAnalysisSteps(trace, profileCount);
   return (
     <details className="analysis-trace" open>
       <summary>
@@ -2214,7 +2473,7 @@ function AnalysisTrace({ trace }: { trace: AiAnalysisTrace }) {
         <span className="analysis-trace-toggle" aria-hidden="true">⌄</span>
       </summary>
       <ol>
-        {trace.steps.map((step, index) => (
+        {steps.map((step, index) => (
           <li className={step.status === "warning" ? "is-warning" : ""} key={`${step.label}-${index}`}>
             <span aria-hidden="true">{step.status === "warning" ? "!" : "✓"}</span>
             <div><strong>{step.label}</strong><p>{step.detail}</p></div>

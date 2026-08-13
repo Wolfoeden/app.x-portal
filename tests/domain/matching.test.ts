@@ -95,6 +95,124 @@ describe("deterministic freelancer matching", () => {
     expect(evaluateProfile(brief, requirementsEngineer).eligible).toBe(true);
   });
 
+  it("uses reviewed SAP and AI aliases without treating unrelated skills as equivalent", () => {
+    const sapBrief = applyBriefPatch(
+      parseFallbackBrief("SAP Materialwirtschaft consultant, remote", { now }),
+      { requiredSkills: ["SAP Materialwirtschaft"] },
+    );
+    const ragBrief = applyBriefPatch(
+      parseFallbackBrief("Retrieval Augmented Generation engineer, remote", { now }),
+      { requiredSkills: ["Retrieval Augmented Generation"] },
+    );
+    const sapProfile = {
+      ...profileFixtures[4]!,
+      skillTags: [{ value: "SAP MM", source: "verified" as const }],
+    };
+    const ragProfile = {
+      ...profileFixtures[0]!,
+      skillTags: [{ value: "RAG", source: "self_reported" as const }],
+    };
+
+    expect(evaluateProfile(sapBrief, sapProfile).coreSkillMatches).toEqual([
+      "SAP Materialwirtschaft",
+    ]);
+    expect(evaluateProfile(ragBrief, ragProfile).coreSkillMatches).toEqual([
+      "Retrieval Augmented Generation",
+    ]);
+    expect(evaluateProfile(sapBrief, ragProfile).eligible).toBe(false);
+  });
+
+  it("uses explicit hard markers only for known categorical conflicts", () => {
+    const hardLanguage = applyBriefPatch(
+      parseFallbackBrief("React freelancer. Muss-Anforderung: French.", { now }),
+      { requiredSkills: ["React"], language: "French" },
+    );
+    const softMode = applyBriefPatch(
+      parseFallbackBrief("React freelancer, on-site", { now }),
+      { requiredSkills: ["React"], workMode: "on_site" },
+    );
+    const hardMode = applyBriefPatch(
+      parseFallbackBrief("React freelancer. On-site ist zwingend.", { now }),
+      { requiredSkills: ["React"], workMode: "on_site" },
+    );
+
+    expect(evaluateProfile(hardLanguage, profileFixtures[0]!).eligible).toBe(false);
+    expect(evaluateProfile(hardLanguage, profileFixtures[0]!).rejectionReasons).toContain(
+      "Explizit zwingende Sprache wird nicht unterstützt: French.",
+    );
+    expect(evaluateProfile(softMode, profileFixtures[1]!).eligible).toBe(true);
+    expect(evaluateProfile(softMode, profileFixtures[1]!).knownGaps).toContain(
+      "Arbeitsmodus im Profil nicht bestätigt: on_site.",
+    );
+    expect(evaluateProfile(hardMode, profileFixtures[1]!).eligible).toBe(false);
+  });
+
+  it("keeps missing explicit must-have skills visible as unknown profile gaps", () => {
+    const brief = applyBriefPatch(
+      parseFallbackBrief(
+        "Muss-Anforderungen:\n- SAP S/4HANA\n- SAP MM\nSoll-Anforderungen:\n- SAP SCM",
+        { now },
+      ),
+      {
+        requiredSkills: ["SAP S/4HANA", "SAP MM", "SAP SCM"],
+      },
+    );
+    const profile = {
+      ...profileFixtures[4]!,
+      skillTags: [{ value: "S4HANA", source: "self_reported" as const }],
+    };
+
+    const evaluation = evaluateProfile(brief, profile);
+    expect(evaluation.eligible).toBe(true);
+    expect(evaluation.knownGaps).toContain(
+      "Explizite Muss-Kompetenzen sind im Profil nicht belegt: SAP MM; vor dem Gespräch verifizieren.",
+    );
+    expect(evaluation.knownGaps).toContain(
+      "Optionale Kompetenzen nicht aufgeführt: SAP SCM.",
+    );
+  });
+
+  it("reclassifies a preferred technology list as optional before ranking", () => {
+    const brief = applyBriefPatch(
+      parseFallbackBrief(
+        "Voraussetzungen:\n- RAG\n- Document Analysis\n\nBevorzugte Technologien:\n- Python\n- FastAPI\n- PostgreSQL",
+        { now },
+      ),
+      {
+        requiredSkills: [
+          "RAG",
+          "Document Analysis",
+          "Python",
+          "FastAPI",
+          "PostgreSQL",
+        ],
+        optionalSkills: null,
+      },
+    );
+    const relevant = {
+      ...profileFixtures[0]!,
+      id: "00000000-0000-4000-8000-000000000021",
+      skillTags: [{ value: "RAG", source: "verified" as const }],
+    };
+    const optionalOnly = {
+      ...profileFixtures[0]!,
+      id: "00000000-0000-4000-8000-000000000022",
+      skillTags: [
+        { value: "Python", source: "verified" as const },
+        { value: "FastAPI", source: "verified" as const },
+      ],
+    };
+
+    const shortlist = buildShortlist(brief, [optionalOnly, relevant]);
+    expect(shortlist.matches.map((match) => match.profile.id)).toEqual([
+      relevant.id,
+    ]);
+    expect(shortlist.matches[0]?.orderingEvidence.coreSkillMatchCount).toBe(1);
+    expect(shortlist.matches[0]?.knownGaps).toContain(
+      "Optionale Kompetenzen nicht aufgeführt: Python, FastAPI, PostgreSQL.",
+    );
+  });
+
   it("rejects demo profiles and profiles without a secure booking link", () => {
     const brief = parseFallbackBrief("React freelancer in German, remote", { now });
     const demo = { ...profileFixtures[0]!, demoStatus: "demo" as const };
@@ -143,7 +261,7 @@ describe("deterministic freelancer matching", () => {
     expect(match.selfReportedFacts).toContain("Sprache: German");
     expect(match.verifiedFacts).not.toContain("Kompetenz: React");
     expect(match.matchReasons).toEqual(expect.arrayContaining([
-      "Belegte Pflichtkompetenzen: React.",
+      "Belegte Kernkompetenzen: React.",
       "Sprache passend: German.",
       "Arbeitsmodus passend: remote.",
     ]));
@@ -243,6 +361,40 @@ describe("deterministic freelancer matching", () => {
     expect(evaluation.commercialConstraintConfidence).toBe("not_requested");
   });
 
+  it("ignores a structured EUR 800 ceiling when the user never supplied it", () => {
+    const brief = applyBriefPatch(
+      parseFallbackBrief("Requirements Management freelancer, remote", { now }),
+      {
+        rate: { min: null, max: 800, currency: "EUR", unit: "day" },
+      },
+    );
+    const profile = {
+      ...profileFixtures[4]!,
+      dayRate: { amount: 1_200, currency: "EUR" as const },
+    };
+
+    const evaluation = evaluateProfile(brief, profile);
+    expect(evaluation.eligible).toBe(true);
+    expect(evaluation.commercialConstraintConfidence).toBe("not_requested");
+    expect([...evaluation.matchReasons, ...evaluation.knownGaps].join(" ")).not.toContain(
+      "800",
+    );
+
+    const unrelatedNumberBrief = applyBriefPatch(
+      parseFallbackBrief(
+        "Requirements Management für eine Anwendung mit 800 Datensätzen, remote; Preis nicht angegeben.",
+        { now },
+      ),
+      {
+        requiredSkills: ["Requirements Management"],
+        rate: { min: null, max: 800, currency: "EUR", unit: "day" },
+      },
+    );
+    expect(
+      evaluateProfile(unrelatedNumberBrief, profile).commercialConstraintConfidence,
+    ).toBe("not_requested");
+  });
+
   it("keeps matching profiles visible while disclosing unconfirmed qualifications", () => {
     const brief = parseFallbackBrief(
       "Requirements Management freelancer, remote. Qualifications: IREB CPRE. Contractual requirements: NDA, EU invoicing.",
@@ -262,7 +414,7 @@ describe("deterministic freelancer matching", () => {
     );
   });
 
-  it("classifies an explicit residency constraint as hard without inferring it from location", () => {
+  it("keeps an unmarked residency requirement as a disclosed gap without inferring it from location", () => {
     const brief = parseFallbackBrief(
       "Requirements Management freelancer, remote. Constraints: EU residency.",
       { now },
@@ -274,16 +426,16 @@ describe("deterministic freelancer matching", () => {
 
     const evaluation = evaluateProfile(brief, profile);
 
-    expect(evaluation.eligible).toBe(false);
-    expect(evaluation.rejectionReasons).toContain(
-      "Vertragsanforderungen nicht bestätigt: EU residency.",
+    expect(evaluation.eligible).toBe(true);
+    expect(evaluation.knownGaps).toContain(
+      "Vertragsanforderungen im Profil nicht bestätigt: EU residency.",
     );
     expect(evaluation.matchReasons).not.toContain(
       "Weitere Rahmenbedingung bestätigt: EU residency.",
     );
   });
 
-  it("treats an unconfirmed generic explicit constraint as a hard eligibility filter", () => {
+  it("keeps an unmarked generic constraint as a visible gap", () => {
     const brief = parseFallbackBrief(
       "React freelancer in German, remote. Constraints: no travel.",
       { now },
@@ -291,9 +443,9 @@ describe("deterministic freelancer matching", () => {
 
     const evaluation = evaluateProfile(brief, profileFixtures[0]!);
 
-    expect(evaluation.eligible).toBe(false);
-    expect(evaluation.rejectionReasons).toContain(
-      "Weitere Pflichtbedingung im Profil nicht bestätigt: no travel.",
+    expect(evaluation.eligible).toBe(true);
+    expect(evaluation.knownGaps).toContain(
+      "Weitere Rahmenbedingung ist im Profil nicht bestätigt: no travel.",
     );
   });
 
@@ -394,12 +546,12 @@ describe("deterministic freelancer matching", () => {
 
     const evaluation = evaluateProfile(brief, profileFixtures[0]!);
 
-    expect(evaluation.eligible).toBe(false);
-    expect(evaluation.rejectionReasons).toContain(
-      "Vertragsanforderungen nicht bestätigt: Security clearance.",
+    expect(evaluation.eligible).toBe(true);
+    expect(evaluation.knownGaps).toContain(
+      "Vertragsanforderungen im Profil nicht bestätigt: Security clearance.",
     );
     expect(
-      evaluation.rejectionReasons.filter((reason) =>
+      evaluation.knownGaps.filter((reason) =>
         reason.includes("Security clearance"),
       ),
     ).toHaveLength(1);
@@ -407,7 +559,10 @@ describe("deterministic freelancer matching", () => {
 
   it("returns the curated SAP consultant for a detailed remote SAP project", () => {
     const brief = applyBriefPatch(
-      parseFallbackBrief("SAP consultant in German, 100% remote", { now }),
+      parseFallbackBrief(
+        "SAP consultant in German, 100% remote.\nMuss-Anforderungen:\n- SAP S/4HANA\n- SAP MM\n- SAP PP\n- Requirements Management\nSoll-Anforderungen:\n- SAP SCM",
+        { now },
+      ),
       {
         requiredSkills: [
           "SAP S/4HANA",
@@ -459,10 +614,10 @@ describe("deterministic freelancer matching", () => {
     const match = buildShortlist(brief, [cordula]).matches[0];
     expect(match?.profile.displayName).toBe("Cordula Buss");
     expect(match?.matchReasons).toContain(
-      "Belegte Pflichtkompetenzen: SAP S/4HANA, Requirements Management.",
+      "Belegte Kernkompetenzen: SAP S/4HANA, Requirements Management.",
     );
     expect(match?.knownGaps).toContain(
-      "Weitere Pflichtkompetenzen vor dem Gespräch prüfen: SAP MM, SAP PP.",
+      "Explizite Muss-Kompetenzen sind im Profil nicht belegt: SAP MM, SAP PP; vor dem Gespräch verifizieren.",
     );
     expect(match?.knownGaps.join(" ")).not.toContain("800");
   });

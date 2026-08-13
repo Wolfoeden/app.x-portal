@@ -834,6 +834,34 @@ a {
   grid-template-columns: repeat(auto-fit, minmax(68px, 1fr));
 }
 
+.product-credit-balance {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 8px;
+  border-top: 1px solid var(--border);
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+.product-credit-balance > span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 650;
+}
+
+.product-credit-balance > strong {
+  color: var(--ink);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.product-credit-balance > small {
+  grid-column: 1 / -1;
+  color: var(--muted-light);
+  font-size: 8.5px;
+  line-height: 1.4;
+}
+
 .account-menu-wrap {
   position: relative;
 }
@@ -1923,6 +1951,8 @@ dd.is-unknown,
 .external-search-button:hover { background: #2b2b29; }
 .external-search-button:disabled { cursor: wait; opacity: .65; }
 .external-search-progress { display: flex; align-items: center; gap: 7px; }
+.external-search-cost-note { margin: -3px 0 10px; color: var(--muted); font-size: 9px; line-height: 1.45; }
+.external-search-cost-note.is-warning { color: var(--danger); }
 
 .external-results {
   display: grid;
@@ -1957,10 +1987,16 @@ dd.is-unknown,
 .external-trace p { margin: 6px 0; }
 .external-trace ul { margin: 5px 0 0; padding-left: 17px; }
 
-.composer.is-credit-exhausted,
-.composer.is-credit-exhausted:focus-within {
+.composer.is-quota-exhausted,
+.composer.is-quota-exhausted:focus-within {
   border-color: #e2b9b4;
   box-shadow: none;
+}
+
+.composer.is-quota-exhausted textarea {
+  cursor: not-allowed;
+  color: var(--muted);
+  background: var(--surface-soft);
 }
 
 .composer-credit-status {

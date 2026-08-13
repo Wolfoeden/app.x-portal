@@ -91,17 +91,35 @@ export interface ChatRequest {
   clientMessageId?: string;
 }
 
-/**
- * Product-facing usage balance. These values are XPORTAL AI Credits and must
- * not be presented as provider tokens or provider cost in the customer UI.
- */
-export interface AiCreditSnapshot {
-  total: number;
+/** Monthly, non-purchasable allowance for the normal Nano brief analysis. */
+export interface FreeAnalysisUsageSnapshot {
+  limit: number;
   used: number;
+  reserved: number;
   remaining: number;
-  reserved?: number;
-  low?: boolean;
-  exhausted?: boolean;
+  periodStart: string;
+  periodEnd: string;
+  exhausted: boolean;
+}
+
+/** Purchased product credits. These never replace the monthly free allowance. */
+export interface ProductCreditSnapshot {
+  balance: number;
+  reserved: number;
+  available: number;
+  euroPerCredit: string;
+}
+
+export interface AiUsageSnapshot {
+  freeUsage: FreeAnalysisUsageSnapshot;
+  /** Null for guest sessions because paid searches require an account. */
+  productCredits: ProductCreditSnapshot | null;
+}
+
+/** Routes may return only the balance they changed; the client merges safely. */
+export interface AiUsageUpdate {
+  freeUsage?: FreeAnalysisUsageSnapshot;
+  productCredits?: ProductCreditSnapshot | null;
 }
 
 export type AiProviderTransport =
@@ -155,6 +173,7 @@ export interface AiAnalysisStep {
 
 export interface AiAnalysisTrace {
   provider: AiAnalysisProviderStatus;
+  /** Diagnostic input only; the UI renders fixed public milestones. */
   steps: AiAnalysisStep[];
   externalSearchAvailable: boolean;
 }
@@ -182,7 +201,7 @@ export interface ExternalFreelancerSearchResponse {
     consultedSourceCount: number;
     returnedCandidateCount: number;
   };
-  credits?: AiCreditSnapshot;
+  usage?: AiUsageUpdate;
 }
 
 export interface ChatResponse {
@@ -203,7 +222,7 @@ export interface ChatResponse {
     remainingRequests: number | null;
     retryAfterSeconds: number | null;
   };
-  credits?: AiCreditSnapshot;
+  usage?: AiUsageUpdate;
   analysis?: AiAnalysisTrace;
   /** Server build that produced this response, when supplied by the API. */
   buildVersion?: string;
@@ -248,7 +267,7 @@ export interface ChatApiPaths {
   projects: string;
   projectCollections: string;
   session: string;
-  /** Omit or set to an empty string to keep the optional credit UI disabled. */
+  /** Monthly free-usage and purchased-product-credit snapshot endpoint. */
   credits?: string;
   /** Protected operator-only usage dashboard. */
   adminUsage?: string;

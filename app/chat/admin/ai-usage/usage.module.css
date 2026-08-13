@@ -220,6 +220,11 @@
   padding: 18px;
 }
 
+.kpis .legacyKpi {
+  border-color: #e2d9c6;
+  background: #fdfbf6;
+}
+
 .kpis span,
 .kpis small {
   color: #82827b;
@@ -257,6 +262,40 @@
 .detail > div > span {
   color: #8b8b84;
   font-size: 10px;
+}
+
+.accountLegend {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  border-bottom: 1px solid #ecece8;
+  background: #fbfbf9;
+  padding: 12px 20px;
+}
+
+.accountLegend > div {
+  display: grid;
+  gap: 3px;
+  border-left: 3px solid #b9cbd3;
+  padding-left: 9px;
+}
+
+.accountLegend > div:nth-child(2) {
+  border-left-color: #afc7ae;
+}
+
+.accountLegend .legacyLegend {
+  border-left-color: #d9c8a7;
+}
+
+.accountLegend strong {
+  font-size: 10px;
+}
+
+.accountLegend span {
+  color: #85857e;
+  font-size: 9px;
+  line-height: 1.4;
 }
 
 .tableScroll {
@@ -309,6 +348,34 @@
   color: #9a9a93;
   font-size: 8px;
   text-overflow: ellipsis;
+}
+
+.accountBalance {
+  display: grid;
+  gap: 2px;
+}
+
+.accountBalance strong {
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.panel td .accountBalance small {
+  margin-top: 0;
+}
+
+.legacyBalance strong,
+.legacyInline {
+  color: #78694a;
+}
+
+.legacyInline {
+  border-radius: 5px;
+  background: #f7f2e8;
+  padding: 3px 6px;
+  font-size: 9px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
 }
 
 .panel code {
@@ -393,6 +460,23 @@
   font-variant-numeric: tabular-nums;
 }
 
+.detail dl small {
+  max-width: 230px;
+  color: #92928b;
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.detail .legacyDetail {
+  border-radius: 8px;
+  background: #f8f4eb;
+  padding: 8px;
+}
+
+.detail .legacyDetail dd {
+  color: #78694a;
+}
+
 @media (max-width: 980px) {
   .providerPanel {
     grid-template-columns: 1fr;
@@ -411,5 +495,9 @@
   .detail dl {
     width: 100%;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .accountLegend {
+    grid-template-columns: 1fr;
   }
 }

@@ -9,6 +9,12 @@ import type {
 } from "@/components/chat-contract";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { executeTrackedAiRequest } from "@/lib/ai/gateway";
+import {
+  reserveMonthlyAiUsage,
+  settleMonthlyAiUsage,
+  type MonthlyAiUsageSnapshot,
+  type MonthlyAiUsageSettlementOutcome,
+} from "@/lib/ai/product-entitlements";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { deriveProjectTitle, presentProject, type ProjectRow } from "@/lib/data/projects";
 import { fetchActiveBookableRealProfiles } from "@/lib/data/freelancers";
@@ -130,13 +136,16 @@ function fallbackNotice(
   isAnonymous: boolean,
   fallbackReason: string | undefined,
 ): string {
+  if (reason === "monthly_limit" || reason === "monthly_usage_exhausted") {
+    return isAnonymous
+      ? "Ihre 10 kostenlosen Nano-Analysen für diesen Monat sind verbraucht. Die Anfrage wurde gespeichert und weiterhin regelbasiert mit der internen Freelancer-Datenbank abgeglichen."
+      : "Ihre 100 kostenlosen Nano-Analysen für diesen Monat sind verbraucht. Die Anfrage wurde gespeichert und weiterhin regelbasiert mit der internen Freelancer-Datenbank abgeglichen.";
+  }
   if (reason === "provider_monthly_budget") {
     return "Das monatliche KI-Budget ist erreicht. Ihre Anfrage wurde gespeichert und mit der sicheren Basisanalyse gegen die interne Freelancer-Datenbank abgeglichen.";
   }
   if (reason === "insufficient_credits") {
-    return isAnonymous
-      ? "Ihr kostenloses KI-Kontingent reicht für diese Analyse nicht mehr aus. Die Anfrage wurde gespeichert und intern mit der sicheren Basisanalyse abgeglichen; nach der Anmeldung können Sie mit dem Account-Kontingent fortfahren."
-      : "Ihre AI Credits reichen für diese KI-Analyse nicht aus. Die Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
+    return "Die technische Provider-Sicherung hat die Nano-Analyse nicht freigegeben. Die Anfrage wurde gespeichert und intern mit der sicheren Basisanalyse abgeglichen.";
   }
   if (
     reason === "anonymous_user_daily_token_limit" ||
@@ -183,6 +192,16 @@ function providerFailureCategory(
     return "unconfigured";
   }
   if (extraction.fallbackReason === "provider_timeout") return "timeout";
+  return "provider_error";
+}
+
+function monthlySettlementOutcome(extraction: {
+  mode: "openai" | "fallback";
+  fallbackReason?: string;
+}): MonthlyAiUsageSettlementOutcome {
+  if (extraction.mode === "openai") return "succeeded";
+  if (extraction.fallbackReason === "provider_timeout") return "timeout";
+  if (extraction.fallbackReason === "invalid_output") return "invalid_response";
   return "provider_error";
 }
 
@@ -410,9 +429,29 @@ async function processChatRequest(
     };
     const estimate = estimateProjectBriefTokenCeiling(extractionInput);
     const providerConnection = resolveOpenAiConnection();
-    reporter.progress("KI analysiert und strukturiert die Anforderungen …");
-    const tracked =
-      userHash && ipHash
+    reporter.progress("Nano strukturiert die Anforderungen …");
+    let freeUsageReservation: Awaited<
+      ReturnType<typeof reserveMonthlyAiUsage>
+    > | null = null;
+    if (userHash && ipHash) {
+      try {
+        freeUsageReservation = await reserveMonthlyAiUsage({
+          userId: user.id,
+          isAnonymous: user.isAnonymous,
+          requestKey,
+        });
+      } catch {
+        logEvent("monthly_ai_usage_reservation_failed", {
+          interactionId,
+          requestKey,
+        });
+      }
+    }
+
+    let tracked;
+    try {
+      tracked =
+      userHash && ipHash && freeUsageReservation?.allowed
         ? await executeTrackedAiRequest({
             requestKey,
             interactionId,
@@ -472,15 +511,49 @@ async function processChatRequest(
             }),
             quota: {
               allowed: false,
-              reason: "pseudonym_configuration_missing",
+              reason:
+                freeUsageReservation?.reason ??
+                "pseudonym_configuration_missing",
               retryAfterSeconds: null,
               reservationId: null,
               credits: null,
             },
             credits: null,
           };
+    } catch (error) {
+      if (freeUsageReservation?.allowed) {
+        await settleMonthlyAiUsage({
+          userId: user.id,
+          requestKey,
+          outcome: "provider_error",
+        })
+          .catch(() => undefined);
+      }
+      throw error;
+    }
     const extraction = tracked.value;
     const quota = tracked.quota;
+    let freeUsage: MonthlyAiUsageSnapshot | null = freeUsageReservation;
+    if (freeUsageReservation?.allowed) {
+      try {
+        freeUsage = await settleMonthlyAiUsage({
+          userId: user.id,
+          requestKey,
+          outcome: monthlySettlementOutcome(extraction),
+        });
+      } catch {
+        logEvent("monthly_ai_usage_settlement_failed", {
+          interactionId,
+          requestKey,
+        });
+        if (extraction.mode === "openai") {
+          throw new Response(
+            "Die Nano-Analyse konnte nicht sicher dem Monatskontingent zugeordnet werden. Es wurde kein Ergebnis ausgeliefert; bitte versuchen Sie es erneut.",
+            { status: 503 },
+          );
+        }
+      }
+    }
     const providerSucceeded = Boolean(extraction.provider);
     const analysisCompleted = extraction.mode === "openai";
     const failureCategory = providerFailureCategory(extraction);
@@ -653,14 +726,17 @@ async function processChatRequest(
           remainingRequests: Math.min(userLimit.remaining, ipLimit.remaining),
           retryAfterSeconds: quota.retryAfterSeconds,
         },
-        credits: tracked.credits
+        usage: freeUsage
           ? {
-              ...tracked.credits,
-              exhausted: tracked.credits.remaining <= 0,
-              low:
-                tracked.credits.remaining > 0 &&
-                tracked.credits.remaining <=
-                  Math.max(1, Math.ceil(tracked.credits.total * 0.2)),
+              freeUsage: {
+                limit: freeUsage.limit,
+                used: freeUsage.used,
+                reserved: freeUsage.reserved,
+                remaining: freeUsage.remaining,
+                periodStart: freeUsage.periodStart,
+                periodEnd: freeUsage.periodEnd,
+                exhausted: freeUsage.remaining <= 0,
+              },
             }
           : undefined,
         analysis: {
@@ -684,20 +760,20 @@ async function processChatRequest(
           },
           steps: [
             {
-              label: "Anforderungen strukturiert",
+              label: "Anforderungen mit Nano strukturiert",
               detail:
                 extraction.mode === "openai"
-                  ? "Die Angaben wurden serverseitig mit GPT in das Projektschema eingeordnet."
+                  ? "GPT-5.4 nano hat ausschließlich die Nutzerangaben in das feste Projektschema eingeordnet."
                   : "Die Anfrage wurde mit der sicheren Basislogik strukturiert; fehlende Fakten bleiben offen.",
               status: extraction.mode === "openai" ? "completed" : "warning",
             },
             {
-              label: "Interne Datenbank geprüft",
+              label: "Interne Profile abgeglichen",
               detail: `${profiles.length} aktive, reale und direkt buchbare Supabase-Profile wurden berücksichtigt.${analysisCompleted ? "" : " Grundlage war die konservative Basisanalyse, nicht eine bestätigte OpenAI-Antwort."}`,
               status: "completed",
             },
             {
-              label: "Kriterien angewendet",
+              label: "Bis zu drei Profile vorbereitet",
               detail: `${shortlist.matches.length} Treffer werden nach Regel ${MATCHING_RULE_VERSION} angezeigt; offene Nachweise sind gekennzeichnet und die KI entscheidet nicht über die Auswahl.`,
               status: "completed",
             },
@@ -753,8 +829,8 @@ export async function POST(request: Request): Promise<Response> {
           streamOpen = false;
         }
       };
-      // gpt-5.5-pro does not support provider streaming. Keep the XPORTAL SSE
-      // connection alive while the single Responses request is in flight.
+      // Keep the XPORTAL SSE connection alive while the single Nano Responses
+      // request is in flight.
       const heartbeat = setInterval(() => {
         send({ type: "heartbeat", at: Date.now() });
       }, 7_000);

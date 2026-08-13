@@ -1,6 +1,11 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import type { AdminUsageSourceRow } from "@/lib/ai/admin-usage";
+import type {
+  AdminFreeUsageSourceRow,
+  AdminLegacyCreditSourceRow,
+  AdminProductCreditSourceRow,
+} from "@/lib/ai/admin-usage";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/admin", () => ({
@@ -10,11 +15,13 @@ vi.mock("@/lib/supabase/admin", () => ({
 type AdminUsageModule = typeof import("@/lib/ai/admin-usage");
 
 let aggregateAdminUsageRows: AdminUsageModule["aggregateAdminUsageRows"];
+let aggregateAdminAccountRows: AdminUsageModule["aggregateAdminAccountRows"];
 let classifyAdminUsageRow: AdminUsageModule["classifyAdminUsageRow"];
 
 beforeAll(async () => {
   const adminUsage = await import("@/lib/ai/admin-usage");
   aggregateAdminUsageRows = adminUsage.aggregateAdminUsageRows;
+  aggregateAdminAccountRows = adminUsage.aggregateAdminAccountRows;
   classifyAdminUsageRow = adminUsage.classifyAdminUsageRow;
 });
 
@@ -109,7 +116,7 @@ describe("admin AI usage truthfulness", () => {
       settlements: 4,
       reconciledEstimates: 1,
       failedAttempts: 2,
-      creditsUsed: 22,
+      legacyTechnicalCreditsConsumed: 22,
       confirmedProvider: {
         requests: 2,
         totalTokens: 37,
@@ -124,6 +131,102 @@ describe("admin AI usage truthfulness", () => {
         costUsd: "0.000005",
         unknownCostRequests: 1,
       },
+    });
+  });
+
+  it("keeps monthly allowance, purchased balance and legacy technical credits separate", () => {
+    const userId = "00000000-0000-4000-8000-000000000001";
+    const legacy: AdminLegacyCreditSourceRow[] = [{
+      user_id: userId,
+      is_anonymous: false,
+      credits_total: 500,
+      credits_used: 120,
+      credits_reserved: 10,
+    }];
+    const freeMonthly: AdminFreeUsageSourceRow[] = [{
+      user_id: userId,
+      is_anonymous: false,
+      period_start: "2026-08-01T00:00:00.000Z",
+      period_end: "2026-09-01T00:00:00.000Z",
+      usage_limit: 100,
+      used: 7,
+      reserved: 1,
+    }];
+    const product: AdminProductCreditSourceRow[] = [{
+      user_id: userId,
+      balance: 90,
+      reserved: 30,
+    }];
+
+    const result = aggregateAdminAccountRows({ legacy, freeMonthly, product });
+
+    expect(result.users).toEqual([{
+      userId,
+      anonymous: false,
+      legacyTechnicalCredits: {
+        total: 500,
+        used: 120,
+        reserved: 10,
+        remaining: 370,
+      },
+      freeMonthlyUsage: {
+        limit: 100,
+        used: 7,
+        reserved: 1,
+        remaining: 92,
+        periodStart: "2026-08-01T00:00:00.000Z",
+        periodEnd: "2026-09-01T00:00:00.000Z",
+      },
+      productCredits: {
+        balance: 90,
+        reserved: 30,
+        available: 60,
+      },
+    }]);
+    expect(result.totals).toMatchObject({
+      legacyTechnical: { accounts: 1, total: 500, remaining: 370 },
+      freeMonthly: { accounts: 1, limit: 100, used: 7, remaining: 92 },
+      product: { accounts: 1, balance: 90, reserved: 30, available: 60 },
+    });
+  });
+
+  it("uses only the latest monthly period when duplicate rows are supplied", () => {
+    const userId = "00000000-0000-4000-8000-000000000002";
+    const result = aggregateAdminAccountRows({
+      legacy: [],
+      product: [],
+      freeMonthly: [
+        {
+          user_id: userId,
+          is_anonymous: true,
+          period_start: "2026-07-01T00:00:00.000Z",
+          period_end: "2026-08-01T00:00:00.000Z",
+          usage_limit: 10,
+          used: 10,
+          reserved: 0,
+        },
+        {
+          user_id: userId,
+          is_anonymous: true,
+          period_start: "2026-08-01T00:00:00.000Z",
+          period_end: "2026-09-01T00:00:00.000Z",
+          usage_limit: 10,
+          used: 2,
+          reserved: 0,
+        },
+      ],
+    });
+
+    expect(result.users[0]?.freeMonthlyUsage).toMatchObject({
+      periodStart: "2026-08-01T00:00:00.000Z",
+      used: 2,
+      remaining: 8,
+    });
+    expect(result.totals.freeMonthly).toMatchObject({
+      accounts: 1,
+      limit: 10,
+      used: 2,
+      remaining: 8,
     });
   });
 });

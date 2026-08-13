@@ -10,6 +10,7 @@ import {
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { appPath } from "@/lib/app-path";
 import { resolveOpenAiConnection } from "@/lib/openai/provider";
+import { DEFAULT_OPENAI_DIAGNOSTIC_MODEL } from "@/lib/openai/diagnostics";
 import { ProviderDiagnosticPanel } from "./ProviderDiagnosticPanel";
 import styles from "./usage.module.css";
 
@@ -58,6 +59,13 @@ function when(value: string | null): string {
   }).format(new Date(value));
 }
 
+function period(value: string | null): string {
+  if (!value) return "–";
+  return new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" }).format(
+    new Date(value),
+  );
+}
+
 function outcomeClass(outcome: string): string {
   if (outcome === "succeeded") return styles.statusSuccess;
   if (outcome === "timeout" || outcome === "cancelled") {
@@ -87,9 +95,7 @@ export default async function AiUsageAdminPage({
 
   const params = await searchParams;
   const providerConnection = resolveOpenAiConnection();
-  const requestedModel =
-    process.env.OPENAI_BRIEF_MODEL?.trim() ||
-    "gpt-5.5-pro";
+  const requestedModel = DEFAULT_OPENAI_DIAGNOSTIC_MODEL;
   const dashboard = await getAdminUsageDashboard({
     from: dateRange(params.from),
     to: dateRange(params.to, true),
@@ -119,10 +125,11 @@ export default async function AiUsageAdminPage({
       <header className={styles.header}>
         <div>
           <p className={styles.eyebrow}>XPORTAL · ADMIN</p>
-          <h1>AI Usage & Credits</h1>
+          <h1>AI Usage, Kontingente & Credits</h1>
           <p>
-            Bestätigte Provider-Nutzung, konservative Schätzungen und interne
-            XPORTAL Credits werden getrennt ausgewiesen.
+            Provider-Nutzung, kostenlose Monatskontingente, gekaufte
+            Produkt-Credits und historische technische Credits werden getrennt
+            ausgewiesen.
           </p>
         </div>
         <Link className={styles.backLink} href="/chat">
@@ -150,7 +157,7 @@ export default async function AiUsageAdminPage({
 
       {dashboard.truncated ? (
         <p className={styles.notice}>
-          Die Ansicht ist auf jeweils 20.000 Usage- und Credit-Datensätze
+          Die Ansicht ist auf jeweils 20.000 Usage- und Kontodatensätze
           begrenzt. Engen Sie den Zeitraum ein oder nutzen Sie einen
           serverseitigen Export für eine vollständige Auswertung.
         </p>
@@ -163,9 +170,13 @@ export default async function AiUsageAdminPage({
         Request mit dem damals gespeicherten Preisregister errechnet;
         Tool-Gebühren sind darin nicht enthalten und die Werte sind keine
         Provider-Rechnung.
-        Unvollständige und abgeglichene Datensätze bleiben
-        ausdrücklich Schätzungen. XPORTAL Credits sind eine separate interne
-        Produkteinheit.
+        Unvollständige und abgeglichene Datensätze bleiben ausdrücklich
+        Schätzungen. <strong>Historische technische Provider-Credits</strong>
+        {" "}stammen aus dem alten tokengewichteten Kontrollsystem. Sie sind
+        weder gekauftes Guthaben noch das neue kostenlose Monatskontingent und
+        werden nicht in Produkt-Credits umgerechnet. Der Zeitraumfilter gilt
+        für Provider-Requests; Konto- und Kontingentwerte zeigen immer den
+        aktuellen Stand.
       </p>
 
       <section className={styles.kpis} aria-label="Gesamtnutzung">
@@ -201,14 +212,32 @@ export default async function AiUsageAdminPage({
           </small>
         </article>
         <article>
+          <span>Freie Nano-Analysen · aktueller Monat</span>
+          <strong>
+            {numberFormat.format(dashboard.accountTotals.freeMonthly.remaining)} /{" "}
+            {numberFormat.format(dashboard.accountTotals.freeMonthly.limit)}
+          </strong>
+          <small>
+            {numberFormat.format(dashboard.accountTotals.freeMonthly.used)} genutzt ·{" "}
+            {numberFormat.format(dashboard.accountTotals.freeMonthly.reserved)} reserviert
+          </small>
+        </article>
+        <article>
+          <span>Gekaufte Produkt-Credits</span>
+          <strong>{numberFormat.format(dashboard.accountTotals.product.available)}</strong>
+          <small>
+            verfügbar · {numberFormat.format(dashboard.accountTotals.product.reserved)} reserviert
+          </small>
+        </article>
+        <article>
           <span>Usage-Versuche</span>
           <strong>{numberFormat.format(dashboard.totals.settlements)}</strong>
           <small>{numberFormat.format(dashboard.totals.failedAttempts)} fehlgeschlagen</small>
         </article>
-        <article>
-          <span>XPORTAL Credits Used</span>
-          <strong>{numberFormat.format(dashboard.totals.creditsUsed)}</strong>
-          <small>Interne Produkteinheit</small>
+        <article className={styles.legacyKpi}>
+          <span>Historische technische Credits</span>
+          <strong>{numberFormat.format(dashboard.totals.legacyTechnicalCreditsConsumed)}</strong>
+          <small>Altwert aus Provider-/Tokenkontrolle · kein Guthaben</small>
         </article>
       </section>
 
@@ -260,7 +289,7 @@ export default async function AiUsageAdminPage({
         <div className={styles.panelHeading}>
           <div>
             <p>USAGE BY USER</p>
-            <h2>Nutzer und Credit-Konten</h2>
+            <h2>Nutzer, Monatskontingente und Guthaben</h2>
           </div>
           {selectedUser ? (
             <Link href={{ pathname: "/chat/admin/ai-usage", query: { from: params.from, to: params.to } }}>
@@ -268,18 +297,33 @@ export default async function AiUsageAdminPage({
             </Link>
           ) : null}
         </div>
+        <div className={styles.accountLegend} aria-label="Kontotypen">
+          <div>
+            <strong>Freie Nano-Analysen</strong>
+            <span>10 pro Monat für Gäste, 100 pro Monat für Konten</span>
+          </div>
+          <div>
+            <strong>Produkt-Credits</strong>
+            <span>Gekauftes Guthaben für kostenpflichtige Aktionen</span>
+          </div>
+          <div className={styles.legacyLegend}>
+            <strong>Historische technische Credits</strong>
+            <span>Alte Provider-/Tokenkontrolle, kein Geldwert</span>
+          </div>
+        </div>
         <div className={styles.tableScroll}>
           <table>
             <thead>
               <tr>
                 <th>User</th>
-                <th>Settlements</th>
+                <th>Freie Nano-Analysen</th>
+                <th>Produkt-Credits</th>
                 <th>Bestätigte Tokens</th>
                 <th>Text-Token-Kosten</th>
                 <th>Geschätzte Tokens</th>
                 <th>Geschätzte Text-Token-Kosten</th>
-                <th>XPORTAL Credits</th>
-                <th>Credits Remaining</th>
+                <th>Historische techn. Credits</th>
+                <th>Letzte Nutzung</th>
               </tr>
             </thead>
             <tbody>
@@ -291,13 +335,44 @@ export default async function AiUsageAdminPage({
                     </Link>
                     <small>{user.anonymous ? "Gast" : user.userId}</small>
                   </td>
-                  <td>{numberFormat.format(user.settlements)}</td>
+                  <td>
+                    {user.freeMonthlyUsage ? (
+                      <span className={styles.accountBalance}>
+                        <strong>
+                          {numberFormat.format(user.freeMonthlyUsage.remaining)} /{" "}
+                          {numberFormat.format(user.freeMonthlyUsage.limit)}
+                        </strong>
+                        <small>
+                          {numberFormat.format(user.freeMonthlyUsage.used)} genutzt ·{" "}
+                          {numberFormat.format(user.freeMonthlyUsage.reserved)} reserviert
+                        </small>
+                      </span>
+                    ) : "–"}
+                  </td>
+                  <td>
+                    {user.productCredits ? (
+                      <span className={styles.accountBalance}>
+                        <strong>{numberFormat.format(user.productCredits.available)} verfügbar</strong>
+                        <small>{numberFormat.format(user.productCredits.reserved)} reserviert</small>
+                      </span>
+                    ) : "–"}
+                  </td>
                   <td>{numberFormat.format(user.confirmedProvider.totalTokens)}</td>
                   <td>{formatUsageCost(user.confirmedProvider)}</td>
                   <td>{numberFormat.format(user.estimatedOrReconciled.totalTokens)}</td>
                   <td>{formatUsageCost(user.estimatedOrReconciled)}</td>
-                  <td>{numberFormat.format(user.creditsUsed)}</td>
-                  <td>{numberFormat.format(user.creditsRemaining)}</td>
+                  <td>
+                    {user.legacyTechnicalCredits ? (
+                      <span className={`${styles.accountBalance} ${styles.legacyBalance}`}>
+                        <strong>
+                          {numberFormat.format(user.legacyTechnicalCredits.remaining)} /{" "}
+                          {numberFormat.format(user.legacyTechnicalCredits.total)}
+                        </strong>
+                        <small>technischer Altwert · kein Guthaben</small>
+                      </span>
+                    ) : "–"}
+                  </td>
+                  <td>{when(user.lastUsedAt)}</td>
                 </tr>
               ))}
             </tbody>
@@ -313,8 +388,37 @@ export default async function AiUsageAdminPage({
             <span>Letzte Nutzung: {when(selectedUser.lastUsedAt)}</span>
           </div>
           <dl>
-            <div><dt>Credit Balance</dt><dd>{numberFormat.format(selectedUser.creditsRemaining)} / {numberFormat.format(selectedUser.creditsTotal)}</dd></div>
-            <div><dt>Reserviert</dt><dd>{numberFormat.format(selectedUser.creditsReserved)}</dd></div>
+            <div>
+              <dt>Freie Nano-Analysen</dt>
+              <dd>
+                {selectedUser.freeMonthlyUsage
+                  ? `${numberFormat.format(selectedUser.freeMonthlyUsage.remaining)} / ${numberFormat.format(selectedUser.freeMonthlyUsage.limit)}`
+                  : "–"}
+              </dd>
+              <small>
+                {selectedUser.freeMonthlyUsage
+                  ? `${numberFormat.format(selectedUser.freeMonthlyUsage.used)} genutzt · ${numberFormat.format(selectedUser.freeMonthlyUsage.reserved)} reserviert · bis ${period(selectedUser.freeMonthlyUsage.periodEnd)}`
+                  : "Kein aktuelles Monatskonto"}
+              </small>
+            </div>
+            <div>
+              <dt>Gekaufte Produkt-Credits</dt>
+              <dd>{selectedUser.productCredits ? numberFormat.format(selectedUser.productCredits.available) : "–"}</dd>
+              <small>
+                {selectedUser.productCredits
+                  ? `${numberFormat.format(selectedUser.productCredits.balance)} Bestand · ${numberFormat.format(selectedUser.productCredits.reserved)} reserviert`
+                  : "Kein Produkt-Credit-Konto"}
+              </small>
+            </div>
+            <div className={styles.legacyDetail}>
+              <dt>Historische technische Credits</dt>
+              <dd>
+                {selectedUser.legacyTechnicalCredits
+                  ? `${numberFormat.format(selectedUser.legacyTechnicalCredits.remaining)} / ${numberFormat.format(selectedUser.legacyTechnicalCredits.total)}`
+                  : "–"}
+              </dd>
+              <small>Tokengewichteter Altwert · weder Guthaben noch Monatslimit</small>
+            </div>
             <div><dt>Bestätigte Tokens</dt><dd>{numberFormat.format(selectedUser.confirmedProvider.totalTokens)}</dd></div>
             <div><dt>Text-Token-Kosten</dt><dd>{formatUsageCost(selectedUser.confirmedProvider)}</dd></div>
             <div><dt>Geschätzte Tokens</dt><dd>{numberFormat.format(selectedUser.estimatedOrReconciled.totalTokens)}</dd></div>
@@ -333,7 +437,7 @@ export default async function AiUsageAdminPage({
         <div className={styles.tableScroll}>
           <table>
             <thead>
-              <tr><th>Zeit</th><th>User</th><th>Modell</th><th>Zweck</th><th>Messbasis</th><th>Tokens</th><th>Kosten</th><th>XPORTAL Credits</th><th>Status</th></tr>
+              <tr><th>Zeit</th><th>User</th><th>Modell</th><th>Zweck</th><th>Messbasis</th><th>Tokens</th><th>Kosten</th><th>Historische techn. Credits</th><th>Status</th></tr>
             </thead>
             <tbody>
               {selectedInteractions.length ? selectedInteractions.map((item, index) => (
@@ -349,7 +453,11 @@ export default async function AiUsageAdminPage({
                   </td>
                   <td>{numberFormat.format(item.tokens)}</td>
                   <td>{item.costUsd === null ? "Unbekannt" : formatUsd(item.costUsd)}</td>
-                  <td>{numberFormat.format(item.credits)}</td>
+                  <td>
+                    <span className={styles.legacyInline}>
+                      {numberFormat.format(item.legacyTechnicalCredits)}
+                    </span>
+                  </td>
                   <td>
                     <span className={`${styles.status} ${outcomeClass(item.outcome)}`}>
                       {item.outcome}

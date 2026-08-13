@@ -1,9 +1,6 @@
 import "server-only";
 
-import {
-  calculateCreditsConsumed,
-  XPORTAL_AI_CREDIT_POLICY_VERSION,
-} from "@/lib/ai/credit-policy";
+import { XPORTAL_AI_CREDIT_POLICY_VERSION } from "@/lib/ai/credit-policy";
 import {
   calculateEstimatedProviderCost,
   type AiTokenUsage,
@@ -61,13 +58,6 @@ export async function executeTrackedAiRequest<T>(input: {
     cachedInputTokens: 0,
     outputTokens: input.estimatedOutputTokens,
   });
-  const estimatedCreditCalculation = calculateCreditsConsumed({
-    requestedModel: input.requestedModel,
-    inputTokens: input.estimatedInputTokens,
-    cachedInputTokens: 0,
-    outputTokens: input.estimatedOutputTokens,
-    purpose: input.purpose,
-  });
   const quota = await reserveAiQuota({
     requestKey: input.requestKey,
     userId: input.userId,
@@ -80,10 +70,13 @@ export async function executeTrackedAiRequest<T>(input: {
     purpose: input.purpose,
     estimatedInputTokens: input.estimatedInputTokens,
     estimatedOutputTokens: input.estimatedOutputTokens,
-    estimatedCredits: estimatedCreditCalculation.creditsConsumed,
+    // The legacy token-weighted balance remains an audit artifact only.
+    // Customer entitlements are now metered by monthly successful analyses or
+    // the separate product-credit ledger, never by estimated provider tokens.
+    estimatedCredits: 0,
     estimatedCostNanoUsd: estimatedCost.estimatedCostNanoUsd,
     pricingVersion: estimatedCost.pricingVersion,
-    creditPolicyVersion: estimatedCreditCalculation.policyVersion,
+    creditPolicyVersion: XPORTAL_AI_CREDIT_POLICY_VERSION,
   });
 
   let operationResult: AiOperationResult<T>;
@@ -130,7 +123,6 @@ export async function executeTrackedAiRequest<T>(input: {
   }
 
   let actualCost: ReturnType<typeof calculateEstimatedProviderCost>;
-  let actualCreditCalculation: ReturnType<typeof calculateCreditsConsumed>;
   try {
     actualCost = calculateEstimatedProviderCost({
       requestedModel: usage.requestedModel,
@@ -139,15 +131,6 @@ export async function executeTrackedAiRequest<T>(input: {
       cachedInputTokens: usage.cachedInputTokens ?? 0,
       cacheWriteTokens: usage.cacheWriteTokens ?? 0,
       outputTokens: usage.outputTokens,
-    });
-    actualCreditCalculation = calculateCreditsConsumed({
-      requestedModel: usage.requestedModel,
-      actualModel: usage.actualModel,
-      inputTokens: usage.inputTokens,
-      cachedInputTokens: usage.cachedInputTokens ?? 0,
-      cacheWriteTokens: usage.cacheWriteTokens ?? 0,
-      outputTokens: usage.outputTokens,
-      purpose: input.purpose,
     });
   } catch {
     logPendingReconciliation(input, "provider_usage_invalid");
@@ -179,13 +162,13 @@ export async function executeTrackedAiRequest<T>(input: {
       outputTokens: actualCost.usage.outputTokens,
       totalTokens: computedTotalTokens,
       actualCostNanoUsd: actualCost.estimatedCostNanoUsd,
-      actualCredits: actualCreditCalculation.creditsConsumed,
+      actualCredits: 0,
       actualCostCents:
         actualCost.estimatedCostNanoUsd === null
           ? null
           : nanoUsdToCeilingCents(actualCost.estimatedCostNanoUsd),
       pricingVersion: actualCost.pricingVersion,
-      creditPolicyVersion: actualCreditCalculation.policyVersion,
+      creditPolicyVersion: XPORTAL_AI_CREDIT_POLICY_VERSION,
       outcome: operationResult.outcome,
     });
   } catch {

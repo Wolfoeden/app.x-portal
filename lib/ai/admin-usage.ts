@@ -21,12 +21,66 @@ export type AdminUsageSourceRow = {
   settled_at: string;
 };
 
-type CreditRow = {
+export type AdminLegacyCreditSourceRow = {
   user_id: string;
   is_anonymous: boolean;
   credits_total: number | string;
   credits_used: number | string;
   credits_reserved: number | string;
+};
+
+export type AdminFreeUsageSourceRow = {
+  user_id: string;
+  is_anonymous: boolean;
+  period_start: string;
+  period_end: string;
+  usage_limit: number | string;
+  used: number | string;
+  reserved: number | string;
+};
+
+export type AdminProductCreditSourceRow = {
+  user_id: string;
+  balance: number | string;
+  reserved: number | string;
+};
+
+export type AdminLegacyTechnicalCreditBalance = {
+  total: number;
+  used: number;
+  reserved: number;
+  remaining: number;
+};
+
+export type AdminFreeUsageBalance = {
+  limit: number;
+  used: number;
+  reserved: number;
+  remaining: number;
+  periodStart: string;
+  periodEnd: string;
+};
+
+export type AdminProductCreditBalance = {
+  balance: number;
+  reserved: number;
+  available: number;
+};
+
+export type AdminAccountTotals = {
+  legacyTechnical: AdminLegacyTechnicalCreditBalance & { accounts: number };
+  freeMonthly: Omit<AdminFreeUsageBalance, "periodStart" | "periodEnd"> & {
+    accounts: number;
+  };
+  product: AdminProductCreditBalance & { accounts: number };
+};
+
+export type AdminAccountUserSnapshot = {
+  userId: string;
+  anonymous: boolean;
+  legacyTechnicalCredits: AdminLegacyTechnicalCreditBalance | null;
+  freeMonthlyUsage: AdminFreeUsageBalance | null;
+  productCredits: AdminProductCreditBalance | null;
 };
 
 export type AdminProviderUsageTotals = {
@@ -46,7 +100,7 @@ export type AdminUsageTotals = {
   estimatedOrReconciled: AdminProviderUsageTotals;
   reconciledEstimates: number;
   failedAttempts: number;
-  creditsUsed: number;
+  legacyTechnicalCreditsConsumed: number;
 };
 
 export type AdminUsageBreakdown = AdminUsageTotals & {
@@ -57,10 +111,9 @@ export type AdminUserUsage = AdminUsageTotals & {
   userId: string;
   email: string | null;
   anonymous: boolean;
-  creditsTotal: number;
-  creditsBalanceUsed: number;
-  creditsReserved: number;
-  creditsRemaining: number;
+  legacyTechnicalCredits: AdminLegacyTechnicalCreditBalance | null;
+  freeMonthlyUsage: AdminFreeUsageBalance | null;
+  productCredits: AdminProductCreditBalance | null;
   lastUsedAt: string | null;
 };
 
@@ -70,6 +123,7 @@ export type AdminUsageDashboard = {
   to: string | null;
   truncated: boolean;
   totals: AdminUsageTotals;
+  accountTotals: AdminAccountTotals;
   byModel: AdminUsageBreakdown[];
   users: AdminUserUsage[];
   recentInteractions: AdminUsageInteraction[];
@@ -82,7 +136,7 @@ export type AdminUsageInteraction = {
   model: string;
   purpose: string;
   tokens: number;
-  credits: number;
+  legacyTechnicalCredits: number;
   usageBasis: "confirmed_provider" | "estimated_or_reconciled";
   costNanoUsd: string | null;
   costUsd: string | null;
@@ -93,6 +147,122 @@ export type AdminUsageInteraction = {
 function count(value: number | string | null | undefined): number {
   const parsed = typeof value === "number" ? value : Number(value ?? 0);
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+function emptyAccountTotals(): AdminAccountTotals {
+  return {
+    legacyTechnical: {
+      accounts: 0,
+      total: 0,
+      used: 0,
+      reserved: 0,
+      remaining: 0,
+    },
+    freeMonthly: {
+      accounts: 0,
+      limit: 0,
+      used: 0,
+      reserved: 0,
+      remaining: 0,
+    },
+    product: {
+      accounts: 0,
+      balance: 0,
+      reserved: 0,
+      available: 0,
+    },
+  };
+}
+
+export function aggregateAdminAccountRows(input: {
+  legacy: readonly AdminLegacyCreditSourceRow[];
+  freeMonthly: readonly AdminFreeUsageSourceRow[];
+  product: readonly AdminProductCreditSourceRow[];
+}): { totals: AdminAccountTotals; users: AdminAccountUserSnapshot[] } {
+  const byUser = new Map<string, AdminAccountUserSnapshot>();
+  const account = (userId: string, anonymous = false) => {
+    const existing = byUser.get(userId);
+    if (existing) {
+      if (anonymous) existing.anonymous = true;
+      return existing;
+    }
+    const created: AdminAccountUserSnapshot = {
+      userId,
+      anonymous,
+      legacyTechnicalCredits: null,
+      freeMonthlyUsage: null,
+      productCredits: null,
+    };
+    byUser.set(userId, created);
+    return created;
+  };
+
+  for (const row of input.legacy) {
+    const total = count(row.credits_total);
+    const used = count(row.credits_used);
+    const reserved = count(row.credits_reserved);
+    account(row.user_id, row.is_anonymous).legacyTechnicalCredits = {
+      total,
+      used,
+      reserved,
+      remaining: Math.max(total - used - reserved, 0),
+    };
+  }
+  for (const row of input.freeMonthly) {
+    const user = account(row.user_id, row.is_anonymous);
+    if (
+      user.freeMonthlyUsage &&
+      user.freeMonthlyUsage.periodStart >= row.period_start
+    ) {
+      continue;
+    }
+    const limit = count(row.usage_limit);
+    const used = count(row.used);
+    const reserved = count(row.reserved);
+    user.freeMonthlyUsage = {
+      limit,
+      used,
+      reserved,
+      remaining: Math.max(limit - used - reserved, 0),
+      periodStart: row.period_start,
+      periodEnd: row.period_end,
+    };
+  }
+  for (const row of input.product) {
+    const balance = count(row.balance);
+    const reserved = count(row.reserved);
+    account(row.user_id).productCredits = {
+      balance,
+      reserved,
+      available: Math.max(balance - reserved, 0),
+    };
+  }
+
+  const users = [...byUser.values()];
+  const totals = emptyAccountTotals();
+  for (const user of users) {
+    if (user.legacyTechnicalCredits) {
+      totals.legacyTechnical.accounts += 1;
+      totals.legacyTechnical.total += user.legacyTechnicalCredits.total;
+      totals.legacyTechnical.used += user.legacyTechnicalCredits.used;
+      totals.legacyTechnical.reserved += user.legacyTechnicalCredits.reserved;
+      totals.legacyTechnical.remaining += user.legacyTechnicalCredits.remaining;
+    }
+    if (user.freeMonthlyUsage) {
+      totals.freeMonthly.accounts += 1;
+      totals.freeMonthly.limit += user.freeMonthlyUsage.limit;
+      totals.freeMonthly.used += user.freeMonthlyUsage.used;
+      totals.freeMonthly.reserved += user.freeMonthlyUsage.reserved;
+      totals.freeMonthly.remaining += user.freeMonthlyUsage.remaining;
+    }
+    if (user.productCredits) {
+      totals.product.accounts += 1;
+      totals.product.balance += user.productCredits.balance;
+      totals.product.reserved += user.productCredits.reserved;
+      totals.product.available += user.productCredits.available;
+    }
+  }
+  return { totals, users };
 }
 
 function validCount(
@@ -167,7 +337,7 @@ function emptyTotals(): AdminUsageTotals {
     estimatedOrReconciled: emptyProviderTotals(),
     reconciledEstimates: 0,
     failedAttempts: 0,
-    creditsUsed: 0,
+    legacyTechnicalCreditsConsumed: 0,
   };
 }
 
@@ -192,7 +362,7 @@ function addProviderRow(
 
 function addRow(total: AdminUsageTotals, row: AdminUsageSourceRow): void {
   total.settlements += 1;
-  total.creditsUsed += count(row.credits_consumed);
+  total.legacyTechnicalCreditsConsumed += count(row.credits_consumed);
   const usageBasis = classifyAdminUsageRow(row);
   addProviderRow(
     usageBasis === "confirmed_provider"
@@ -251,7 +421,7 @@ function presentInteraction(
     model: usageModel(row),
     purpose: row.purpose ?? "unknown",
     tokens: count(row.total_tokens),
-    credits: count(row.credits_consumed),
+    legacyTechnicalCredits: count(row.credits_consumed),
     usageBasis,
     costNanoUsd: cost,
     costUsd: cost === null ? null : formatNanoUsdAsUsd(cost),
@@ -286,11 +456,11 @@ async function readUsageRows(input: { from?: string; to?: string }) {
   return { rows, truncated: true };
 }
 
-async function readCreditRows() {
+async function readLegacyCreditRows() {
   const admin = createAdminSupabaseClient();
   const pageSize = 1_000;
   const maxRows = 20_000;
-  const rows: CreditRow[] = [];
+  const rows: AdminLegacyCreditSourceRow[] = [];
   while (rows.length < maxRows) {
     const { data, error } = await admin
       .from("user_ai_credit_accounts")
@@ -300,7 +470,51 @@ async function readCreditRows() {
       .order("user_id", { ascending: true })
       .range(rows.length, rows.length + pageSize - 1);
     if (error) throw error;
-    const page = (data ?? []) as CreditRow[];
+    const page = (data ?? []) as AdminLegacyCreditSourceRow[];
+    rows.push(...page);
+    if (page.length < pageSize) return { rows, truncated: false };
+  }
+  return { rows, truncated: true };
+}
+
+async function readCurrentFreeUsageRows() {
+  const admin = createAdminSupabaseClient();
+  const pageSize = 1_000;
+  const maxRows = 20_000;
+  const now = new Date().toISOString();
+  const rows: AdminFreeUsageSourceRow[] = [];
+  while (rows.length < maxRows) {
+    const { data, error } = await admin
+      .from("ai_free_usage_accounts")
+      .select(
+        "user_id,is_anonymous,period_start,period_end,usage_limit,used,reserved",
+      )
+      .lte("period_start", now)
+      .gt("period_end", now)
+      .order("period_start", { ascending: false })
+      .order("user_id", { ascending: true })
+      .range(rows.length, rows.length + pageSize - 1);
+    if (error) throw error;
+    const page = (data ?? []) as AdminFreeUsageSourceRow[];
+    rows.push(...page);
+    if (page.length < pageSize) return { rows, truncated: false };
+  }
+  return { rows, truncated: true };
+}
+
+async function readProductCreditRows() {
+  const admin = createAdminSupabaseClient();
+  const pageSize = 1_000;
+  const maxRows = 20_000;
+  const rows: AdminProductCreditSourceRow[] = [];
+  while (rows.length < maxRows) {
+    const { data, error } = await admin
+      .from("product_credit_accounts")
+      .select("user_id,balance,reserved")
+      .order("user_id", { ascending: true })
+      .range(rows.length, rows.length + pageSize - 1);
+    if (error) throw error;
+    const page = (data ?? []) as AdminProductCreditSourceRow[];
     rows.push(...page);
     if (page.length < pageSize) return { rows, truncated: false };
   }
@@ -329,30 +543,32 @@ export async function getAdminUsageDashboard(input: {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
     throw new Error("Admin usage service is not configured");
   }
-  const [usageResult, creditResult, emails] = await Promise.all([
+  const [usageResult, legacyResult, freeUsageResult, productResult, emails] = await Promise.all([
     readUsageRows(input),
-    readCreditRows(),
+    readLegacyCreditRows(),
+    readCurrentFreeUsageRows(),
+    readProductCreditRows(),
     readAuthEmails(),
   ]);
   const { rows, truncated: usageTruncated } = usageResult;
-  const { rows: creditRows, truncated: creditTruncated } = creditResult;
+  const accountData = aggregateAdminAccountRows({
+    legacy: legacyResult.rows,
+    freeMonthly: freeUsageResult.rows,
+    product: productResult.rows,
+  });
 
   const totals = emptyTotals();
   const byModel = new Map<string, AdminUsageBreakdown>();
   const byUser = new Map<string, AdminUserUsage>();
-  for (const account of creditRows) {
-    const total = count(account.credits_total);
-    const used = count(account.credits_used);
-    const reserved = count(account.credits_reserved);
-    byUser.set(account.user_id, {
+  for (const account of accountData.users) {
+    byUser.set(account.userId, {
       ...emptyTotals(),
-      userId: account.user_id,
-      email: emails.get(account.user_id) ?? null,
-      anonymous: account.is_anonymous,
-      creditsTotal: total,
-      creditsBalanceUsed: used,
-      creditsReserved: reserved,
-      creditsRemaining: Math.max(total - used - reserved, 0),
+      userId: account.userId,
+      email: emails.get(account.userId) ?? null,
+      anonymous: account.anonymous,
+      legacyTechnicalCredits: account.legacyTechnicalCredits,
+      freeMonthlyUsage: account.freeMonthlyUsage,
+      productCredits: account.productCredits,
       lastUsedAt: null,
     });
   }
@@ -370,10 +586,9 @@ export async function getAdminUsageDashboard(input: {
         userId: row.user_id,
         email: emails.get(row.user_id) ?? null,
         anonymous: false,
-        creditsTotal: 0,
-        creditsBalanceUsed: 0,
-        creditsReserved: 0,
-        creditsRemaining: 0,
+        legacyTechnicalCredits: null,
+        freeMonthlyUsage: null,
+        productCredits: null,
         lastUsedAt: null,
       };
       addRow(userTotal, row);
@@ -408,8 +623,11 @@ export async function getAdminUsageDashboard(input: {
     generatedAt: new Date().toISOString(),
     from: input.from ?? null,
     to: input.to ?? null,
-    truncated: usageTruncated || creditTruncated,
+    truncated:
+      usageTruncated || legacyResult.truncated || freeUsageResult.truncated ||
+      productResult.truncated,
     totals: finalize(totals),
+    accountTotals: accountData.totals,
     byModel: modelRows,
     users,
     recentInteractions: rows

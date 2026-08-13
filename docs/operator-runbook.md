@@ -234,21 +234,50 @@ Table Editor during normal operation. Settled usage is intentionally immutable.
   user with `app_metadata.role=admin`, or a user ID explicitly configured in the
   server-only `ADMIN_USER_IDS` variable. Never grant admin through user-editable
   metadata.
-- The dashboard is read-only and separates provider tokens/estimated USD cost
-  from internal XPORTAL credits. Unknown model prices stay visibly unknown.
+- The dashboard is read-only and separates confirmed/estimated provider usage,
+  the 10/100 monthly Nano allowance, purchased product credits and historical
+  token-weighted technical values. Historical values are not money and must
+  never be converted into the new product-credit balance.
 - A successful dashboard response requires its database audit event. An audit
   storage failure blocks the sensitive view instead of silently serving it.
-- Credit balances live in `user_ai_credit_accounts`. They are internal usage
-  allowances, not money, provider tokens or a transferable asset.
-- A manual balance correction requires a recorded approval, a staging rehearsal
-  and a before/after audit note. Change `credits_total` only; never reduce it
-  below `credits_used + credits_reserved`, and never edit `credits_used` or
-  `credits_reserved` to make a balance appear available.
-- Default guest/account allocations apply only when an account is first created.
-  Changing an environment default does not silently rewrite existing balances.
-- A guest receives both per-user and HMAC-IP daily enforcement. Clearing browser
-  storage therefore does not remove the shared IP abuse boundary; raw IPs are
-  never stored.
+- Free Nano usage lives in `ai_free_usage_accounts` and resets by UTC calendar
+  month: 10 successful analyses for a guest, 100 for an account. A guest also
+  receives the HMAC-IP provider safety boundary; raw IPs are never stored.
+- Purchased/search credits live only in `product_credit_accounts`. Never edit
+  this table, its reservations or the ledger directly. V1 grants are made only
+  through the audited `grant_product_credits` RPC.
+
+### Grant product credits in Supabase V1
+
+Obtain the authenticated user's Supabase UUID, the approved amount/reason and a
+unique non-secret support reference. In **SQL Editor**, run exactly one grant:
+
+```sql
+select *
+from public.grant_product_credits(
+  'USER_UUID'::uuid,
+  'support-grant-UNIQUE_REFERENCE',
+  30,
+  'Approved pilot external-search credit',
+  'operator:roman@dering.info'
+);
+```
+
+Use `operator:paul@dering.info` when Paul performs the grant. Expected first
+result: `recorded=true`, `reason=granted`. A safe replay returns
+`recorded=false`, `reason=already_recorded`; it must not increase the balance.
+Any `idempotency_conflict`, wrong user or unexpected amount is a stop condition.
+Verify the balance in `/chat/admin/ai-usage`, then reconcile the exact entries
+in Supabase Studio:
+
+- `product_credit_ledger`: immutable grant/debit and balance-after evidence;
+- `product_credit_reservations`: reserved/charged/released search attempts;
+- `external_freelancer_search_results`: the bounded paid result snapshot;
+- `audit_events`: redacted grant/search business event.
+
+Do not paste bank data, API keys, chat text or customer documents into reason,
+actor or idempotency fields. See `docs/product-entitlement-rpcs.md` for every
+RPC outcome and the retry rules.
 
 See `docs/ai-usage-and-credits.md` for the versioned policy, environment values,
 reporting fields and incident reconciliation checklist.
@@ -272,9 +301,15 @@ reporting fields and incident reconciliation checklist.
 
 ## Retention operation
 
-`retention_policies` controls the daily `xportal-retention-daily` Supabase Cron
-job. Changing an enabled hard-delete/anonymize period affects its next 02:25 UTC
-run. Before editing a production period, obtain controller/legal approval,
+`retention_policies` controls two daily Supabase Cron jobs:
+
+- `xportal-retention-daily` at 02:25 UTC for existing application records;
+- `xportal-credit-retention-daily` at 02:30 UTC for free-usage reservations,
+  product-credit reservations and paid-search result snapshots.
+
+Changing an enabled hard-delete/anonymize period affects the next applicable
+run. Product-credit ledger rows remain `operator_review`; they are not removed
+automatically. Before editing a production period, obtain controller/legal approval,
 test the exact value and `run_retention_cleanup()` result in staging, confirm a
 managed backup, and record the change. The job writes only row counts to audit.
 Rows marked `operator_review` are never deleted automatically.
@@ -283,9 +318,9 @@ Expired guest claims and abandoned anonymous Auth users require cleanup, but do
 not delete an anonymous user that still owns an active project or unconsumed
 claim. Stale AI reservations must be reconciled before their buckets are
 deleted. Each month verify the Cron job's last run in **Database → Cron Jobs**,
-its `retention_cleanup` audit event, the `xportal-ai-usage-reconcile` job and
-`ai_usage_stale_reconciled` events. Investigate any unresolved `reserved` row
-older than 20 minutes immediately.
+its `retention_cleanup` and `credit_retention_cleanup` audit events, the
+`xportal-ai-usage-reconcile` job and `ai_usage_stale_reconciled` events.
+Investigate any unresolved `reserved` row older than 20 minutes immediately.
 
 ## Incident and rollback
 

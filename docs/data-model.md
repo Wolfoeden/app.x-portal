@@ -94,47 +94,64 @@ the brief/UI may use canonical labels (`German`, `English`, `Spanish`). The
 server mapper owns this explicit label-to-code conversion before matching; SQL
 must never compare an unnormalized display label directly.
 
-## Deterministic matching rule (`freelancer-match-v7`)
+## Deterministic matching rule (`freelancer-match-v8`)
 
 Eligibility is a hard filter, evaluated before ordering:
 
 1. `profile_status = 'active'`, `demo_status = 'real'`, a valid HTTPS
    `booking_url` is present, and availability is not `unavailable`.
-2. At least one requested core skill is present in normalized `skill_tags`,
-   either exactly or through a documented skill family. Additional required
-   skills without profile evidence remain visible as known gaps.
-3. A requested language is present in `languages`.
-4. The requested work mode is present in `work_modes`; an on-site location must
-   pass the documented exact/normalized location rule in the server.
-5. A known availability date satisfies the supplied start window. `limited`
-   and `unknown` project availability remain visible as a known gap because the
-   freelancer's meeting calendar is directly bookable.
-6. Missing qualification evidence remains a visible gap. Explicit contractual
-   requirements and other hard constraints still require matching public
-   profile evidence. Requested delivery capacity (for example, `100%
-   Auslastung`) is an engagement detail rather than a public-profile
-   qualification, so missing evidence is disclosed as a known gap and does not
-   exclude a candidate. The same normalized constraint is checked only once
-   when it also appears contractually.
-7. A supplied rate/budget ceiling is respected; an absent commercial value is
-   not invented and remains an explicitly disclosed gap.
+2. At least one meaningful requested skill is present in normalized
+   `skill_tags`, either exactly or through the reviewed taxonomy below. This is
+   the relevance floor that prevents an unrelated profile from appearing.
+   Further requested skills without profile evidence remain visible as known
+   gaps, so a relevant near match is not silently discarded.
+3. A requirement becomes a categorical hard filter only when the user's
+   original text marks it with `MUSS`, `must`, `zwingend`,
+   `Ausschlusskriterium` or `knock-out`. Known conflicts in language, work mode,
+   on-site location or start availability then exclude the row. An absent or
+   unconfirmed profile fact is shown as a gap rather than treated as proof that
+   the freelancer lacks it.
+4. Technology entries under `Soll-Anforderungen`, `optional`, `bevorzugt`,
+   `preferred` or `nice-to-have` headings are reclassified as optional even if
+   an upstream extraction placed them in `required_skills`. Long preferred
+   technology lists therefore affect ordering, not eligibility.
+5. Missing qualification, contractual and generic constraint evidence remains
+   visible. Requested delivery capacity (for example, `100% Auslastung`) is an
+   engagement detail and is disclosed for the introductory call. Residency is
+   never inferred from a current location.
+6. A rate or budget constraint applies only when at least one amount from the
+   structured range is also present in a commercial context in
+   `original_request` (currency, budget/rate wording and the requested rate
+   unit where applicable). A confirmed profile value outside that explicitly
+   supplied range is excluded; an unknown value remains a gap. No default or
+   hidden EUR 800 threshold exists.
+
+Reviewed skill families cover spelling and terminology variants, not inferred
+competence. They include requirements/process/project/security families;
+SAP S/4HANA, MM, PP, integration and customizing; and the AI-property-copilot
+families software/AI architecture, Azure AI, Microsoft Copilot, AI projects,
+document analysis, RAG, Microsoft 365, enterprise applications, business
+process automation, Python, FastAPI and PostgreSQL. Adding a broader alias
+requires an operator review because it changes shortlist behavior.
 
 Eligible rows are ordered by this visible, stable rule:
 
-1. Confirmed commercial compatibility before unknown compatibility when the
-   user supplied a rate or budget constraint.
-2. Exact match of the first named required core skill before profiles matching
+1. Exact match of the first named core skill before profiles matching
    only secondary or generic skills.
-3. Count of exact required-skill matches, descending.
-4. Availability confidence: `available`, then `limited`, then `unknown`.
-5. Count of explicitly requested optional skills, descending.
-6. Count of verified required-skill matches, descending.
-7. Earliest known `availability_from`, unknown last.
-8. Normalized display name ascending.
-8. UUID ascending as the final stable tie-breaker.
+2. Count of all core-skill matches (exact or reviewed alias), descending.
+3. Count of exact core-skill matches, descending.
+4. Confirmed commercial compatibility before unknown compatibility when the
+   user explicitly supplied a rate or budget constraint.
+5. Availability confidence: `available`, then `limited`, then `unknown`.
+6. Count of explicitly requested optional skills, descending.
+7. Count of verified core-skill matches, descending.
+8. Earliest known `availability_from`, unknown last.
+9. Normalized display name ascending.
+10. UUID ascending as the final stable tie-breaker.
 
-The first three rows are returned. There is no hidden score and no automated
-hiring decision. Each result stores reasons, known gaps, verified facts,
+The first three relevant rows are returned, including disclosed near matches
+when fewer than three profiles cover every requested core skill. There is no
+hidden score and no automated hiring decision. Each result stores reasons, known gaps, verified facts,
 self-reported facts, the complete public-safe profile snapshot, profile version
 and matching-rule version. The customer chooses a profile.
 

@@ -18,10 +18,14 @@ import {
 } from "@/lib/openai/diagnostics";
 import { createOpenAiClient } from "@/lib/openai/provider";
 
-export const DEFAULT_OPENAI_BRIEF_MODEL = "gpt-5.5-pro";
-export const FALLBACK_OPENAI_BRIEF_MODEL = "gpt-5.6-luna";
-export const DEFAULT_OPENAI_TIMEOUT_MS = 50_000;
-export const MAX_OPENAI_BRIEF_OUTPUT_TOKENS = 1_800;
+/**
+ * Product allowlist: normal project analysis is deliberately pinned to Nano.
+ * Environment variables cannot silently switch this synchronous route back to
+ * a costly reasoning model.
+ */
+export const DEFAULT_OPENAI_BRIEF_MODEL = "gpt-5.4-nano-2026-03-17";
+export const DEFAULT_OPENAI_TIMEOUT_MS = 20_000;
+export const MAX_OPENAI_BRIEF_OUTPUT_TOKENS = 600;
 
 const MAX_SOURCE_LENGTH = 20_000;
 const MIN_TIMEOUT_MS = 100;
@@ -1283,10 +1287,7 @@ function providerRequest(
     text: {
       format: zodTextFormat(AiBriefCandidateSchema, "freelancer_project_brief"),
     },
-    reasoning: {
-      // GPT-5.5 Pro supports medium/high/xhigh, but not low.
-      effort: model.startsWith("gpt-5.5-pro") ? "medium" : "low",
-    },
+    reasoning: { effort: "none" },
     max_output_tokens: MAX_OPENAI_BRIEF_OUTPUT_TOKENS,
     safety_identifier: safetyIdentifier,
     store: false,
@@ -1301,15 +1302,11 @@ function providerRequest(
  */
 export function estimateProjectBriefTokenCeiling(
   rawInput: ExtractProjectBriefInput,
-  options: Pick<ExtractProjectBriefOptions, "model" | "now"> = {},
+  options: Pick<ExtractProjectBriefOptions, "now"> = {},
 ): { inputTokens: number; outputTokens: number; totalTokens: number; model: string } {
   const parsedInput = ExtractProjectBriefInputSchema.parse(rawInput);
   const deterministic = buildDeterministicBrief(parsedInput, options.now);
-  const model =
-    options.model?.trim() ||
-    process.env.OPENAI_BRIEF_MODEL?.trim() ||
-    process.env.OPENAI_MODEL?.trim() ||
-    DEFAULT_OPENAI_BRIEF_MODEL;
+  const model = DEFAULT_OPENAI_BRIEF_MODEL;
   const request = providerRequest(
     deterministic.originalRequest,
     parsedInput.latestMessage,
@@ -1350,12 +1347,6 @@ async function withHardTimeout<T>(
   }
 }
 
-const FALLBACK_ELIGIBLE_FAILURES = new Set<OpenAiDiagnosticStatus>([
-  "rate_limit",
-  "model_unavailable",
-  "permission",
-]);
-
 function normalizedProviderFailure(error: unknown): Exclude<
   OpenAiDiagnosticStatus,
   "reachable" | "unconfigured"
@@ -1395,16 +1386,15 @@ export async function extractProjectBrief(
     return fallbackResult(deterministic, "provider_unavailable");
   }
 
-  const model =
-    options.model?.trim() ||
-    process.env.OPENAI_BRIEF_MODEL?.trim() ||
-    process.env.OPENAI_MODEL?.trim() ||
-    DEFAULT_OPENAI_BRIEF_MODEL;
+  // `options.model` remains a test seam only. Production is pinned to the
+  // allowlisted Nano snapshot regardless of Netlify environment drift.
+  const model = options.responsesClient && options.model?.trim()
+    ? options.model.trim()
+    : DEFAULT_OPENAI_BRIEF_MODEL;
   const timeoutMs = configuredTimeout(options.timeoutMs);
   let provider: ExtractProjectBriefResult["provider"];
   let providerAttempted = false;
   try {
-    let attemptedModel = model;
     const requestProvider = (requestModel: string) =>
       withHardTimeout(
         (signal) => {
@@ -1426,21 +1416,12 @@ export async function extractProjectBrief(
         timeoutMs,
       );
 
-    let response: BriefProviderResponse;
-    try {
-      response = await requestProvider(model);
-    } catch (primaryError) {
-      const primaryFailure = normalizedProviderFailure(primaryError);
-      const mayFallback =
-        model.startsWith(DEFAULT_OPENAI_BRIEF_MODEL) &&
-        FALLBACK_ELIGIBLE_FAILURES.has(primaryFailure);
-      if (!mayFallback) throw primaryError;
-      attemptedModel = FALLBACK_OPENAI_BRIEF_MODEL;
-      response = await requestProvider(FALLBACK_OPENAI_BRIEF_MODEL);
-    }
+    // Exactly one provider attempt. Retrying with another model would make
+    // cost and failure behaviour unpredictable for the customer.
+    const response = await requestProvider(model);
     provider = {
       requestedModel: model,
-      model: response.model?.trim() || attemptedModel,
+      model: response.model?.trim() || model,
       responseId: response.id,
       inputTokens: response.usage?.input_tokens,
       cachedInputTokens: response.usage?.input_tokens_details?.cached_tokens,

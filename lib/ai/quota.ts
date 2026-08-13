@@ -81,13 +81,16 @@ export function configuredDailyTokenLimit(
   isAnonymous: boolean,
   isAdmin = false,
 ): number {
+  // This is a provider-safety ceiling, not a customer entitlement. The public
+  // product limit is 10/100 successful Nano analyses per calendar month. Use
+  // new names so stale pre-Nano Netlify values cannot block a valid request.
   return nonNegativeInteger(
     isAdmin && !isAnonymous
-      ? "AI_DAILY_TOKEN_LIMIT_ADMIN"
+      ? "AI_PROVIDER_DAILY_TOKEN_SAFETY_LIMIT_ADMIN"
       : isAnonymous
-      ? "AI_DAILY_TOKEN_LIMIT_GUEST"
-      : "AI_DAILY_TOKEN_LIMIT_USER",
-    isAdmin && !isAnonymous ? 1_000_000 : isAnonymous ? 20_000 : 100_000,
+      ? "AI_PROVIDER_DAILY_TOKEN_SAFETY_LIMIT_GUEST"
+      : "AI_PROVIDER_DAILY_TOKEN_SAFETY_LIMIT_USER",
+    isAdmin && !isAnonymous ? 10_000_000 : isAnonymous ? 500_000 : 5_000_000,
   );
 }
 

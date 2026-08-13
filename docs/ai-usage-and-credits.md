@@ -1,153 +1,130 @@
-# AI usage and XPORTAL credits
+# AI usage, free analyses and product credits
 
-## Boundary
+## Product boundary
 
-`ai_usage_reservations` is the canonical provider-request ledger. A request is
-reserved before OpenAI is called and settled exactly once. Provider-returned
-model and token details are stored when available; otherwise the row retains a
-clearly identified conservative estimate. Provider cost is calculated locally
-from token metadata and the versioned price register, not copied from an OpenAI
-invoice. Displayed estimates cover registered text-token prices only; separate
-tool-call fees or other provider adjustments are not included.
-`ai_usage_events` is only a service-role, settled-row view over that table; it
-does not duplicate usage records.
+XPORTAL has three deliberately separate meters:
 
-XPORTAL AI credits are versioned internal product units. They are not OpenAI
-tokens, currency, stored value or a payment instrument. This release has no
-purchase, transfer, refund or cash-redemption path.
+1. `ai_usage_reservations` records provider usage, model metadata and locally
+   calculated provider-cost estimates. It is an operational ledger, not a
+   customer balance.
+2. `ai_free_usage_accounts` grants normal GPT-5.4 Nano project analyses per
+   calendar month: 10 successful analyses for a guest and 100 for an account.
+3. `product_credit_accounts` stores purchased or operator-granted product
+   credits. In V1, an external freelancer web search costs 30 credits.
 
-## Current policy
+The historical `user_ai_credit_accounts` token-weighted values are retained
+only to reconstruct older provider-control records. They are never displayed
+as a customer balance and are never converted into product credits.
 
-The policy in `lib/ai/credit-policy.ts` counts weighted token work:
+## Models and matching
 
-| Usage | Weighted units per token |
-|---|---:|
-| Cached input | 1 |
-| Uncached input | 10 |
-| Output | 60 |
+Normal project extraction and explicit external research are pinned in server
+code to `gpt-5.4-nano-2026-03-17`. Environment variables cannot switch either
+route to Pro, Luna, Terra or a gateway. Requests use the official OpenAI API,
+`store=false`, reasoning effort `none`, no provider retry and bounded output:
 
-One XPORTAL AI credit covers 1,000 weighted units, rounded up per settled
-request. Purpose/model multipliers are explicit, centralized and versioned; the
-Luna multiplier is 1.0, Terra is 10.0 and GPT-5.5 Pro is 19.0.
-For the MVP, `project_brief` and the explicitly requested `research` action use
-a 0.1 purpose multiplier. This prevents the 500-credit guest allocation from
-blocking one ordinary GPT-5.5 Pro brief before OpenAI is called; the independent
-20,000-token daily guest ceiling and request limits remain enforced.
-Never infer a historical balance using a newer
-policy version: every reservation stores its own `credit_policy_version`.
+- brief extraction: at most 600 output tokens;
+- external research: at most 1,200 output tokens and three web-search calls.
 
-The provider-price registry in `lib/ai/model-pricing.ts` is independent of this
-policy. It stores exact integer nano-USD rates and the source/check date. Cached
-reads and cache writes are subsets of input and use their reviewed rates. The
-actual provider-returned model takes precedence over the requested model.
-Explicit dated GPT-5.5 Pro, Luna or Terra snapshots use the reviewed family price;
-other unknown models still record token/credit
-usage but leave precise cost null rather than inventing a rate.
+OpenAI structures the customer's own text only. Curated freelancer profiles
+are not sent to OpenAI. The internal shortlist is produced by the deterministic
+and versioned TypeScript matcher. Only explicitly marked mandatory or exclusion
+requirements are hard filters; absent profile facts remain visible gaps.
 
-## Default controls
+## Free monthly analysis lifecycle
+
+1. The original user message and project are saved before provider work.
+2. `reserve_monthly_ai_usage` atomically reserves one use for the current UTC
+   calendar month and user identity.
+3. A successful, schema-valid Nano analysis consumes one use.
+4. Provider errors, timeout, invalid output and cancellation release the use.
+5. Reload, idempotent replay and deterministic project reconstruction consume
+   no additional use.
+6. Reservations older than 15 minutes are released during the next snapshot,
+   reserve or settle operation.
+
+The lower-left account area displays this as `remaining / limit`. Guests never
+see a label such as "Guest credits". Account users see this allowance and their
+separate product-credit balance.
+
+## Product credits and external research
+
+The commercial definition is fixed for this release:
+
+- 1 credit = EUR 25 / 1,500 = EUR 0.0166666667;
+- one external freelancer search = 30 credits = EUR 0.50.
+
+External research is account-only and starts only after an explicit button
+confirmation. The server rechecks that the current curated shortlist is empty,
+reserves 30 credits atomically and performs at most one provider request. A
+completed search is charged even when no sufficiently evidenced candidate is
+found. Technical failure, timeout or invalid response releases the 30 credits.
+The request key is idempotent, and the paid result snapshot is stored so a lost
+HTTP response can be recovered without a second charge.
+
+Every external candidate must be supported by public source evidence, a public
+profile URL and a direct HTTPS booking URL tied to the same identity. At most
+three candidates are returned, separately labelled `external_unverified`.
+
+V1 has no Stripe, bank-transfer or self-service credit purchase. A named
+operator may grant credits only through the service-only
+`grant_product_credits` RPC with an idempotency key, amount, reason and actor
+reference. The append-only product-credit ledger records every grant and debit.
+
+## Provider usage and cost reporting
+
+Provider usage is reserved before the OpenAI call and settled with the actual
+response ID, returned model and token counts when available. Exact integer
+nano-USD calculations use the versioned model-price registry. A provider
+estimate is not an OpenAI invoice and must be displayed separately from
+confirmed usage. If usage is genuinely unknown after a timeout or process
+failure, the conservative reservation remains for reconciliation; it is never
+presented as confirmed spend.
+
+The customer-facing 10/100 allowance and product credits do not depend on token
+counts. Provider controls remain independent:
 
 | Environment value | Default | Purpose |
 |---|---:|---|
-| `AI_CREDITS_GUEST_TOTAL` | 500 | Initial internal guest allocation |
-| `AI_CREDITS_USER_TOTAL` | 50,000 | Initial internal account allocation |
-| `AI_DAILY_TOKEN_LIMIT_GUEST` | 20,000 | Daily provider-token ceiling per anonymous user and HMAC IP |
-| `AI_DAILY_TOKEN_LIMIT_USER` | 100,000 | Daily provider-token ceiling per account |
-| `AI_REQUESTS_PER_MINUTE` | 6 | Per-user and per-IP burst limit |
-| `AI_WEB_SEARCH_REQUESTS_PER_MINUTE` | 2 | Separate per-user and per-IP limit for explicitly started public web research |
-| `AI_MONTHLY_PROVIDER_BUDGET_CENTS` | 5,000 | Conservative provider-wide monthly hard stop |
-| `AI_UNKNOWN_MODEL_ESTIMATED_COST_CENTS` | 100 | Conservative preflight reservation when requested-model pricing is unknown |
+| `AI_REQUESTS_PER_MINUTE` | 6 | Per-user and per-IP burst protection |
+| `AI_WEB_SEARCH_REQUESTS_PER_MINUTE` | 2 | Additional paid-search burst protection |
+| `AI_PROVIDER_DAILY_TOKEN_SAFETY_LIMIT_GUEST` | 500,000 | Provider-only guest/IP safety ceiling |
+| `AI_PROVIDER_DAILY_TOKEN_SAFETY_LIMIT_USER` | 5,000,000 | Provider-only account safety ceiling |
+| `AI_PROVIDER_DAILY_TOKEN_SAFETY_LIMIT_ADMIN` | 10,000,000 | Provider-only operator safety ceiling |
+| `AI_MONTHLY_PROVIDER_BUDGET_CENTS` | 5,000 | Provider-wide conservative hard stop |
+| `AI_UNKNOWN_MODEL_ESTIMATED_COST_CENTS` | 100 | Unknown-model preflight fallback |
 
-Defaults initialize new credit accounts; they do not overwrite existing
-balances. Guest identities are Supabase anonymous users. Their raw IP address is
-never stored: the server derives a rotating HMAC value, which also prevents a
-fresh browser session from trivially bypassing the anonymous daily-IP limit.
-Setting a credit total, daily-token limit or monthly provider budget to `0` is
-an explicit hard stop; invalid or missing values use the documented defaults.
+The daily provider ceilings are intentionally above the maximum normal monthly
+Nano allowance and are not advertised as customer entitlements. Setting a
+provider safety value or monthly budget to `0` is an operational hard stop.
 
-## Request lifecycle
+## Privacy, access and operations
 
-1. The server validates and persists the original project request.
-2. It estimates the request-specific input/output ceiling.
-3. `consume_ai_quota` atomically checks minute/day/provider caps and reserves
-   the estimated XPORTAL credits.
-4. Only an allowed reservation may reach OpenAI; the request uses `store=false`.
-5. `record_ai_usage` settles actual input, cached input, output, total tokens,
-   actual model, response ID, the locally calculated cost estimate and actual
-   internal credits.
-6. Provider failure/timeout is settled with reported usage when it is available.
-   Zero is recorded only when the server can prove that no provider request was
-   attempted. Missing or invalid usage remains reserved and fail-closed.
-7. Replaying an identical request key never triggers a second provider call;
-   conflicting ownership or metadata returns `request_key_conflict` without a
-   credit snapshot.
-8. Every five minutes, `reconcile_stale_ai_usage` closes reservations older than
-   15 minutes with their conservative estimate and outcome
-   `reconciled_estimate`. This prevents both free unmetered calls and permanently
-   stranded credit reservations after a process timeout or deployment.
+All quota and credit tables use RLS, have no browser mutation grants and are
+changed only by service-role RPCs. User-bound settlement prevents one server
+operation from settling another user's reservation. Account deletion cascades
+active accounts and reservations; retained ledger rows lose the direct user
+link and remain only as the approved financial/audit trace.
 
-The deterministic brief fallback always retains the original request. When
-quota, credits, provider budget or OpenAI fails, the internal deterministic
-shortlist still runs against explicit facts and is labelled as basis analysis;
-it is never presented as an OpenAI result. External web search remains an
-explicit separate action available only after a zero-result internal shortlist.
+The account export includes the user's current monthly allowance, product
+balance, product ledger and paid-search snapshots. No prompt body, raw IP,
+identity token, API key or provider payload is written to usage logs.
 
-## User and administrator views
+`/chat/admin/ai-usage` separates:
 
-The account control at the lower left of `/chat` shows only internal credit total/used/reserved/remaining. It
-does not expose provider cost or call credits “tokens”. The snapshot endpoint
-derives the current Supabase identity server-side and accepts no user ID.
+- confirmed provider calls and locally calculated token cost;
+- estimated or reconciled provider usage;
+- successful monthly Nano uses;
+- product-credit balance, reservations and ledger effects;
+- historical token-weighted control data, clearly labelled as historical.
 
-`/chat/admin/ai-usage` is a protected, read-only report for named,
-non-anonymous administrators. It shows totals, model breakdown, user balances
-and recent settled interactions without chat bodies, raw IPs, secrets, identity
-tokens or provider payloads. Access requires `app_metadata.role=admin` (or the
-server-only `ADMIN_USER_IDS` allow-list) and must be paired with MFA. The
-sensitive view fails closed when its required database audit entry cannot be
-stored. Confirmed provider usage requires a provider response ID, actual model
-and internally consistent provider token metadata. Reconciliations and
-incomplete rows are shown separately as estimates. A manual diagnostic checks
-only `GET /models/{model}`; it sends no prompt, consumes no model tokens and does
-not claim to prove paid inference.
+## Release verification
 
-Profile maintenance remains in Supabase Studio; the usage page is not a general
-admin system.
-
-The health response exposes only the derived provider transport
-(`direct_openai`, `netlify_ai_gateway`, `custom_gateway` or `unconfigured`),
-never a key or base URL. For customer-owned direct OpenAI billing, configure
-`OPENAI_API_KEY` and leave `OPENAI_BASE_URL` unset. The optional external
-freelancer search starts only after an explicit click and only when the current
-curated shortlist is empty. Its results remain separate and visibly
-unverified; they are never inserted into `freelancer_profiles`.
-
-## Operations and reconciliation
-
-- Do not edit reservations, counters or settled usage rows manually.
-- Alert on provider hard-stop proximity, insufficient-credit spikes, failed
-  reconciliation jobs and any reservation still unsettled after 20 minutes.
-- The service-only `reconcile_stale_ai_usage(interval, integer)` function is the
-  approved stale-request procedure. It must retain the preflight estimate when
-  actual provider usage is unavailable; never replace possible usage with zero.
-- For an approved allowance correction, update only
-  `user_ai_credit_accounts.credits_total` in staging first, never below
-  `credits_used + credits_reserved`; record approver, reason and before/after
-  values outside customer-visible data.
-- The approved application deletion path conservatively settles in-flight
-  reservations as `reconciled_estimate`, then removes direct/HMAC associations
-  before deleting the Auth user. The database trigger applies the same safe
-  closure if an Auth user is deleted directly. Aggregate settled facts may
-  remain only under the approved retention schedule.
-
-## Verification
-
-- Unit: `tests/ai/model-pricing.test.ts`, `tests/ai/credit-policy.test.ts`,
-  `tests/ai/gateway.test.ts`.
-- Database: `supabase/tests/database/ai_credits.test.sql` in isolated local or
-  staging Supabase. It covers service-only access, atomic reserve/settle,
-  idempotency, cross-user conflicts, guest/IP limits and deletion unlinking.
-- Release: run lint, typecheck, unit tests, production build and the database
-  suite before applying the migration to production.
-
-Usage history starts when migration
-`20260810120000_ai_usage_credits.sql` is applied. There is no fabricated
-backfill for earlier provider calls.
+- Unit and route tests: `npm test` or the repository's documented desktop
+  Vitest configuration.
+- Database tests: `supabase test db` against an isolated local/staging project.
+- Before production: Supabase migration dry-run, lint, typecheck, tests,
+  production build, secret scan and one controlled live Nano request.
+- After production: verify the GitHub `main` commit matches Netlify, `/chat`
+  and `/api/health` return 200, the response reports the Nano snapshot and the
+  OpenAI project shows exactly the controlled request.

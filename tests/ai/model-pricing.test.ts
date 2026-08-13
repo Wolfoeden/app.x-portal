@@ -10,8 +10,15 @@ import {
 } from "@/lib/ai/model-pricing";
 
 describe("model pricing", () => {
-  it("stores exact nano-USD rates for GPT-5.5 Pro, Luna and Terra", () => {
+  it("stores exact nano-USD rates for Nano and the historical models", () => {
     expect(MODEL_PRICING_REGISTRY).toMatchObject({
+      "gpt-5.4-nano": {
+        inputNanoUsdPerToken: "200",
+        cachedInputNanoUsdPerToken: "20",
+        cacheWriteNanoUsdPerToken: "200",
+        outputNanoUsdPerToken: "1250",
+        sourceCheckedOn: "2026-08-13",
+      },
       "gpt-5.5-pro": {
         inputNanoUsdPerToken: "30000",
         cachedInputNanoUsdPerToken: "30000",
@@ -34,6 +41,21 @@ describe("model pricing", () => {
         sourceCheckedOn: "2026-08-12",
       },
     });
+  });
+
+  it("calculates the pinned GPT-5.4 Nano snapshot exactly", () => {
+    const result = calculateEstimatedProviderCost({
+      requestedModel: "gpt-5.4-nano-2026-03-17",
+      actualModel: "gpt-5.4-nano-2026-03-17",
+      inputTokens: 1_000_000,
+      cachedInputTokens: 0,
+      outputTokens: 1_000_000,
+    });
+
+    expect(result.estimatedCostNanoUsd).toBe("1450000000");
+    expect(result.estimatedCostUsd).toBe("1.45");
+    expect(result.pricingModel).toBe("gpt-5.4-nano");
+    expect(result.pricingVersion).toBe("openai-model-pricing-2026-08-13");
   });
 
   it("calculates GPT-5.5 Pro without a cached-input discount", () => {

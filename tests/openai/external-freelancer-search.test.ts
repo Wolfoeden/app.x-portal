@@ -59,7 +59,7 @@ describe("external freelancer web search", () => {
   it("uses web_search, store=false, source inclusion and structured output", async () => {
     const parse = vi.fn<ExternalSearchResponsesClient["parse"]>().mockResolvedValue({
       id: "resp_web_1",
-      model: "gpt-5.6-luna-2026-07-15",
+      model: "gpt-5.4-nano-2026-03-17",
       output_parsed: { candidates: [candidate()] },
       output: webOutput([
         "https://portfolio.example/anna-beispiel",
@@ -91,8 +91,9 @@ describe("external freelancer web search", () => {
     expect(body.include).toContain("web_search_call.action.sources");
     expect(body.text?.format?.type).toBe("json_schema");
     expect(body.safety_identifier).toBe(SAFETY_IDENTIFIER);
-    expect(requestOptions).toMatchObject({ maxRetries: 0, timeout: 50_000 });
-    expect(body.reasoning).toEqual({ effort: "medium" });
+    expect(requestOptions).toMatchObject({ maxRetries: 0, timeout: 30_000 });
+    expect(body.reasoning).toEqual({ effort: "none" });
+    expect((body as typeof body & { max_tool_calls?: number }).max_tool_calls).toBe(3);
   });
 
   it("rejects invented URLs that are not present in provider evidence", () => {

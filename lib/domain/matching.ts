@@ -7,21 +7,23 @@ import {
   type LabeledFact,
 } from "./profile";
 
-export const MATCHING_RULE_VERSION = "freelancer-match-v7" as const;
+export const MATCHING_RULE_VERSION = "freelancer-match-v8" as const;
 
 /**
  * Public and reviewable ordering rule. Eligibility is evaluated first. Eligible
- * profiles are then ordered by: confirmed commercial compatibility when a
- * commercial constraint was supplied, exact required-skill matches
- * (descending), availability confidence, optional skill matches (descending),
- * verified required-skill matches (descending), available-from date
- * (ascending, unknown last), normalized display name (ascending), and profile
- * id (ascending).
+ * profiles are then ordered by: an exact match of the primary core skill,
+ * matched core skills (descending), exact core-skill matches (descending),
+ * confirmed commercial compatibility when an explicit commercial constraint
+ * was supplied, availability confidence, optional skill matches (descending),
+ * verified core-skill matches (descending), available-from date (ascending,
+ * unknown last), normalized display name (ascending), and profile id
+ * (ascending).
  */
 export const MATCHING_ORDER_RULE = [
-  "commercial_constraint_confidence_desc",
   "primary_required_skill_exact_match_desc",
+  "core_skill_matches_desc",
   "exact_required_skill_matches_desc",
+  "commercial_constraint_confidence_desc",
   "availability_status_priority",
   "optional_skill_matches_desc",
   "verified_required_skill_matches_desc",
@@ -37,6 +39,7 @@ export const ProfileEvaluationSchema = z
     matchReasons: z.array(z.string()),
     knownGaps: z.array(z.string()),
     optionalSkillMatches: z.array(z.string()),
+    coreSkillMatches: z.array(z.string()),
     primaryRequiredSkillExactMatch: z.boolean(),
     exactRequiredSkillMatches: z.array(z.string()),
     verifiedRequiredSkillMatches: z.array(z.string()),
@@ -61,6 +64,7 @@ export const ShortlistMatchSchema = z
     orderingEvidence: z
       .object({
         optionalSkillMatchCount: z.number().int().nonnegative(),
+        coreSkillMatchCount: z.number().int().nonnegative().optional(),
         primaryRequiredSkillExactMatch: z.boolean(),
         exactRequiredSkillMatchCount: z.number().int().nonnegative(),
         verifiedRequiredSkillMatchCount: z.number().int().nonnegative(),
@@ -78,9 +82,10 @@ export const ShortlistSchema = z
   .object({
     ruleVersion: z.literal(MATCHING_RULE_VERSION),
     orderingRule: z.tuple([
-      z.literal("commercial_constraint_confidence_desc"),
       z.literal("primary_required_skill_exact_match_desc"),
+      z.literal("core_skill_matches_desc"),
       z.literal("exact_required_skill_matches_desc"),
+      z.literal("commercial_constraint_confidence_desc"),
       z.literal("availability_status_priority"),
       z.literal("optional_skill_matches_desc"),
       z.literal("verified_required_skill_matches_desc"),
@@ -149,7 +154,228 @@ const SKILL_FAMILIES: ReadonlyArray<{
       "isms",
     ],
   },
+  {
+    canonical: "sap s/4hana",
+    aliases: ["sap s/4hana", "s/4hana", "sap s4hana", "s4hana", "sap s/4 hana"],
+  },
+  {
+    canonical: "sap mm",
+    aliases: [
+      "sap mm",
+      "sap material management",
+      "sap materials management",
+      "sap materialwirtschaft",
+    ],
+  },
+  {
+    canonical: "sap pp",
+    aliases: [
+      "sap pp",
+      "sap production planning",
+      "sap produktionsplanung",
+    ],
+  },
+  {
+    canonical: "sap integration",
+    aliases: [
+      "sap integration",
+      "sap integrations",
+      "sap-integrationen",
+      "sap interfaces",
+      "sap schnittstellen",
+    ],
+  },
+  {
+    canonical: "sap customizing",
+    aliases: [
+      "sap customizing",
+      "sap customising",
+      "sap configuration",
+      "sap konfiguration",
+    ],
+  },
+  {
+    canonical: "software architecture",
+    aliases: [
+      "software architecture",
+      "software architect",
+      "software-architektur",
+      "softwarearchitektur",
+    ],
+  },
+  {
+    canonical: "ai solution architecture",
+    aliases: [
+      "ai solution architecture",
+      "ai solution architect",
+      "ai architecture",
+      "ai architect",
+      "ki-architektur",
+      "ki architektur",
+    ],
+  },
+  {
+    canonical: "azure ai",
+    aliases: [
+      "azure ai",
+      "azure ai engineer",
+      "azure openai",
+      "microsoft azure ai",
+    ],
+  },
+  {
+    canonical: "microsoft copilot",
+    aliases: [
+      "microsoft copilot",
+      "microsoft copilot developer",
+      "copilot studio",
+    ],
+  },
+  {
+    canonical: "ai projects",
+    aliases: ["ai projects", "ai project delivery", "ki-projekte", "ki projekte"],
+  },
+  {
+    canonical: "document analysis",
+    aliases: [
+      "document analysis",
+      "document intelligence",
+      "document processing",
+      "dokumentenanalyse",
+      "dokumentenverarbeitung",
+    ],
+  },
+  {
+    canonical: "rag",
+    aliases: [
+      "rag",
+      "rag system",
+      "rag systems",
+      "rag-system",
+      "rag-systeme",
+      "retrieval augmented generation",
+    ],
+  },
+  {
+    canonical: "microsoft 365",
+    aliases: ["microsoft 365", "m365", "office 365", "microsoft-365"],
+  },
+  {
+    canonical: "enterprise applications",
+    aliases: [
+      "enterprise applications",
+      "enterprise software",
+      "unternehmensanwendungen",
+    ],
+  },
+  {
+    canonical: "business process automation",
+    aliases: [
+      "business process automation",
+      "process automation",
+      "workflow automation",
+      "geschäftsprozessautomatisierung",
+      "automatisierung von geschäftsprozessen",
+      "power automate",
+    ],
+  },
+  {
+    canonical: "python",
+    aliases: ["python", "python developer", "python entwickler"],
+  },
+  {
+    canonical: "fastapi",
+    aliases: ["fastapi", "fastapi developer", "fastapi entwickler"],
+  },
+  {
+    canonical: "postgresql",
+    aliases: ["postgresql", "postgres", "postgres sql"],
+  },
 ] as const;
+
+type RequirementStrength = "hard" | "soft" | "neutral";
+
+const HARD_REQUIREMENT_MARKER =
+  /(?:\bmuss(?:[-\s]?anforderungen?)?\b|\bmust(?:[-\s]?haves?)?\b|\bzwingend(?:e[rsn]?)?\b|\bausschlusskriteri(?:um|en)\b|\bknock[-\s]?out\b)/iu;
+const SOFT_REQUIREMENT_MARKER =
+  /(?:\bsoll(?:[-\s]?anforderungen?)?\b|\boptional(?:e[rsn]?)?\b|\bbevorzugt(?:e[rsn]?)?\b|\bnice[-\s]?to[-\s]?have\b|\bpreferred\b)/iu;
+const REQUIREMENT_HEADING_MARKER =
+  /(?:anforderungen|requirements|voraussetzungen|qualifikationen|technologien|technologies|skills|constraints|bedingungen)/iu;
+
+function searchText(value: string): string {
+  return value
+    .normalize("NFKD")
+    .replace(/\p{M}+/gu, "")
+    .toLocaleLowerCase("en-US")
+    .replace(/[^\p{L}\p{N}%+#€$£]+/gu, " ")
+    .trim()
+    .replace(/\s+/gu, " ");
+}
+
+function requirementTerms(value: string): readonly string[] {
+  const family = skillFamily(value);
+  const skillTerms = family
+    ? SKILL_FAMILIES.find((candidate) => candidate.canonical === family)?.aliases ?? []
+    : [];
+  const specialTerms: Readonly<Record<string, readonly string[]>> = {
+    german: ["german", "deutsch", "deutschsprachig", "deutsche sprache"],
+    english: ["english", "englisch", "englischsprachig", "englische sprache"],
+    remote: ["remote", "remote-arbeit", "remote work"],
+    on_site: ["on-site", "onsite", "vor ort", "prasenz"],
+    hybrid: ["hybrid", "teilweise remote", "remote anteil"],
+  };
+  return [...new Set([value, ...skillTerms, ...(specialTerms[normalize(value)] ?? [])])];
+}
+
+function lineContainsRequirement(line: string, value: string): boolean {
+  const source = ` ${searchText(line)} `;
+  return requirementTerms(value).some((term) => {
+    const sought = searchText(term);
+    return sought.length > 0 && source.includes(` ${sought} `);
+  });
+}
+
+function headingStrength(line: string): RequirementStrength | null {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+  const withoutMarkup = trimmed.replace(/^[#*\s_-]+|[*\s_:.-]+$/gu, "");
+  const looksLikeHeading =
+    /^#{1,6}\s/u.test(trimmed) ||
+    /:\s*$/u.test(trimmed) ||
+    (withoutMarkup.length <= 80 && REQUIREMENT_HEADING_MARKER.test(withoutMarkup));
+  if (!looksLikeHeading) return null;
+  if (SOFT_REQUIREMENT_MARKER.test(withoutMarkup)) return "soft";
+  if (HARD_REQUIREMENT_MARKER.test(withoutMarkup)) return "hard";
+  return "neutral";
+}
+
+function requirementStrength(originalRequest: string, value: string): RequirementStrength {
+  let section: RequirementStrength = "neutral";
+  let observedSoft = false;
+  for (const line of originalRequest.split(/\r?\n/u)) {
+    const containsRequirement = lineContainsRequirement(line, value);
+    if (containsRequirement) {
+      if (HARD_REQUIREMENT_MARKER.test(line)) return "hard";
+      if (SOFT_REQUIREMENT_MARKER.test(line) || section === "soft") {
+        observedSoft = true;
+      } else if (section === "hard") {
+        return "hard";
+      }
+    }
+    section = headingStrength(line) ?? section;
+  }
+  return observedSoft ? "soft" : "neutral";
+}
+
+function distinctSkills(values: readonly string[]): string[] {
+  const seen = new Set<string>();
+  return values.filter((value) => {
+    const key = skillFamily(value) ?? normalize(value);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 
 function skillFamily(value: string): string | null {
   const key = normalize(value);
@@ -177,6 +403,14 @@ function includesFact(
 ): LabeledFact | undefined {
   const key = normalize(requested);
   return facts.find((fact) => normalize(fact.value) === key);
+}
+
+function matchingNamedFact(
+  facts: readonly LabeledFact[],
+  requested: string,
+): LabeledFact | undefined {
+  const keys = new Set(requirementTerms(requested).map(searchText));
+  return facts.find((fact) => keys.has(searchText(fact.value)));
 }
 
 /**
@@ -265,6 +499,80 @@ function formatCommercialAmount(amount: number, currency: string): string {
   }).format(amount)} ${currency}`;
 }
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+}
+
+/**
+ * The structured brief is not authoritative for money. A commercial filter is
+ * applied only when at least one amount from that structured range is present
+ * in the user's original request. This prevents an invented default (including
+ * the former EUR 800 example) from silently excluding a real profile.
+ */
+function commercialRangeAppearsInRequest(
+  originalRequest: string,
+  range: {
+    min: number | null;
+    max: number | null;
+    currency: string;
+    unit?: "hour" | "day";
+  },
+  kind: "rate" | "budget",
+): boolean {
+  const amounts = [range.min, range.max].filter(
+    (value): value is number => value !== null,
+  );
+  return amounts.some((amount) => {
+    const variants = new Set([
+      String(amount),
+      amount.toLocaleString("de-DE", { maximumFractionDigits: 2 }),
+      amount.toLocaleString("en-US", { maximumFractionDigits: 2 }),
+    ]);
+    return [...variants].some((variant) => {
+      const pattern = new RegExp(
+        `(?:^|\\D)${escapeRegex(variant)}(?:$|\\D)`,
+        "gu",
+      );
+      for (const match of originalRequest.matchAll(pattern)) {
+        if (match.index === undefined) continue;
+        const context = searchText(
+          originalRequest.slice(
+            Math.max(0, match.index - 80),
+            Math.min(originalRequest.length, match.index + match[0].length + 80),
+          ),
+        );
+        const currencyTerms: Readonly<Record<string, readonly string[]>> = {
+          EUR: ["eur", "euro"],
+          USD: ["usd", "dollar"],
+          GBP: ["gbp", "pound", "pfund"],
+        };
+        const hasCurrency =
+          (range.currency === "EUR" && context.includes("€")) ||
+          (currencyTerms[range.currency] ?? []).some((term) =>
+            context.split(" ").includes(term),
+          );
+        const hasCommercialLabel =
+          kind === "budget"
+            ? /(?:^| )(?:budget|projektbudget|project budget|kostenrahmen)(?: |$)/u.test(
+                context,
+              )
+            : /(?:^| )(?:tagessatz|stundensatz|day rate|hourly rate|rate|satz|pro tag|per day|pro stunde|per hour)(?: |$)/u.test(
+                context,
+              );
+        const hasRequestedUnit =
+          range.unit === undefined ||
+          (range.unit === "day"
+            ? /(?:^| )(?:tagessatz|day rate|pro tag|per day|tag|day)(?: |$)/u.test(context)
+            : /(?:^| )(?:stundensatz|hourly rate|pro stunde|per hour|stunde|hour)(?: |$)/u.test(
+                context,
+              ));
+        if ((hasCurrency || hasCommercialLabel) && hasRequestedUnit) return true;
+      }
+      return false;
+    });
+  });
+}
+
 function commercialEligibility(
   profile: FreelancerProfile,
   brief: ProjectBrief,
@@ -272,59 +580,68 @@ function commercialEligibility(
   const rejectionReasons: string[] = [];
   const reasons: string[] = [];
   const gaps: string[] = [];
-  const hasCommercialConstraint = brief.rate !== null || brief.budget !== null;
+  const rate =
+    brief.rate && commercialRangeAppearsInRequest(brief.originalRequest, brief.rate, "rate")
+      ? brief.rate
+      : null;
+  const budget =
+    brief.budget &&
+    commercialRangeAppearsInRequest(brief.originalRequest, brief.budget, "budget")
+      ? brief.budget
+      : null;
+  const hasCommercialConstraint = rate !== null || budget !== null;
   let hasUnconfirmedConstraint = false;
 
-  if (brief.rate) {
-    const profileRate = brief.rate.unit === "hour" ? profile.hourlyRate : profile.dayRate;
-    const rateLabel = brief.rate.unit === "hour" ? "Stundensatz" : "Tagessatz";
+  if (rate) {
+    const profileRate = rate.unit === "hour" ? profile.hourlyRate : profile.dayRate;
+    const rateLabel = rate.unit === "hour" ? "Stundensatz" : "Tagessatz";
 
     if (!profileRate) {
       hasUnconfirmedConstraint = true;
       gaps.push(`${rateLabel} noch nicht bestätigt; Preisgrenze vor der Buchung abstimmen.`);
-    } else if (profileRate.currency !== brief.rate.currency) {
+    } else if (profileRate.currency !== rate.currency) {
       hasUnconfirmedConstraint = true;
       gaps.push(
-        `${rateLabel} ist nur in ${profileRate.currency} angegeben; ein verlässlicher Vergleich mit ${brief.rate.currency} ist nicht möglich.`,
+        `${rateLabel} ist nur in ${profileRate.currency} angegeben; ein verlässlicher Vergleich mit ${rate.currency} ist nicht möglich.`,
       );
-    } else if (brief.rate.max !== null && profileRate.amount > brief.rate.max) {
+    } else if (rate.max !== null && profileRate.amount > rate.max) {
       rejectionReasons.push(
-        `Bestätigter ${rateLabel} von ${formatCommercialAmount(profileRate.amount, profileRate.currency)} überschreitet die angegebene Obergrenze von ${formatCommercialAmount(brief.rate.max, brief.rate.currency)}.`,
+        `Bestätigter ${rateLabel} von ${formatCommercialAmount(profileRate.amount, profileRate.currency)} überschreitet die angegebene Obergrenze von ${formatCommercialAmount(rate.max, rate.currency)}.`,
       );
     } else if (
-      brief.rate.min !== null &&
-      brief.rate.max === null &&
-      profileRate.amount < brief.rate.min
+      rate.min !== null &&
+      rate.max === null &&
+      profileRate.amount < rate.min
     ) {
       rejectionReasons.push(
-        `Bestätigter ${rateLabel} von ${formatCommercialAmount(profileRate.amount, profileRate.currency)} liegt unter der ausdrücklich angegebenen Untergrenze von ${formatCommercialAmount(brief.rate.min, brief.rate.currency)}.`,
+        `Bestätigter ${rateLabel} von ${formatCommercialAmount(profileRate.amount, profileRate.currency)} liegt unter der ausdrücklich angegebenen Untergrenze von ${formatCommercialAmount(rate.min, rate.currency)}.`,
       );
     } else {
       reasons.push(
-        `Bestätigter ${rateLabel} liegt innerhalb der angegebenen ${brief.rate.currency}-Grenze.`,
+        `Bestätigter ${rateLabel} liegt innerhalb der angegebenen ${rate.currency}-Grenze.`,
       );
     }
   } else if (profile.hourlyRate === null && profile.dayRate === null) {
     gaps.push("Im Profil ist kein Stunden- oder Tagessatz angegeben.");
   }
 
-  if (brief.budget) {
+  if (budget) {
     const minimum = profile.minimumProjectBudget;
     if (!minimum) {
       hasUnconfirmedConstraint = true;
       gaps.push("Mindestprojektbudget noch nicht bestätigt; Budgetpassung vor der Buchung abstimmen.");
-    } else if (minimum.currency !== brief.budget.currency) {
+    } else if (minimum.currency !== budget.currency) {
       hasUnconfirmedConstraint = true;
       gaps.push(
-        `Mindestprojektbudget ist nur in ${minimum.currency} angegeben; ein verlässlicher Vergleich mit ${brief.budget.currency} ist nicht möglich.`,
+        `Mindestprojektbudget ist nur in ${minimum.currency} angegeben; ein verlässlicher Vergleich mit ${budget.currency} ist nicht möglich.`,
       );
-    } else if (brief.budget.max !== null && minimum.amount > brief.budget.max) {
+    } else if (budget.max !== null && minimum.amount > budget.max) {
       rejectionReasons.push(
-        `Bestätigtes Mindestprojektbudget von ${formatCommercialAmount(minimum.amount, minimum.currency)} überschreitet das angegebene Maximalbudget von ${formatCommercialAmount(brief.budget.max, brief.budget.currency)}.`,
+        `Bestätigtes Mindestprojektbudget von ${formatCommercialAmount(minimum.amount, minimum.currency)} überschreitet das angegebene Maximalbudget von ${formatCommercialAmount(budget.max, budget.currency)}.`,
       );
     } else {
       reasons.push(
-        `Bestätigter Mindestprojektwert liegt innerhalb des angegebenen ${brief.budget.currency}-Budgets.`,
+        `Bestätigter Mindestprojektwert liegt innerhalb des angegebenen ${budget.currency}-Budgets.`,
       );
     }
   }
@@ -372,52 +689,116 @@ export function evaluateProfile(
     knownGaps.push("Projektverfügbarkeit ist nicht bestätigt; der Booking-Kalender ist verfügbar.");
   }
 
-  const requiredSkills = brief.requiredSkills ?? [];
-  const matchedRequiredSkills = requiredSkills.filter((skill) =>
+  const requestedRequiredSkills = brief.requiredSkills ?? [];
+  const reclassifiedOptionalSkills = requestedRequiredSkills.filter(
+    (skill) => requirementStrength(brief.originalRequest, skill) === "soft",
+  );
+  const coreSkills = distinctSkills(
+    requestedRequiredSkills.filter(
+      (skill) => requirementStrength(brief.originalRequest, skill) !== "soft",
+    ),
+  );
+  const optionalSkills = distinctSkills([
+    ...(brief.optionalSkills ?? []),
+    ...reclassifiedOptionalSkills,
+  ]);
+  const relevanceSkills = coreSkills.length > 0 ? coreSkills : optionalSkills;
+  const matchedRelevanceSkills = relevanceSkills.filter((skill) =>
     matchingFact(profile.skillTags, skill),
   );
-  const missingRequiredSkills = requiredSkills.filter(
+  const coreSkillMatches = coreSkills.filter((skill) =>
+    matchingFact(profile.skillTags, skill),
+  );
+  const missingCoreSkills = coreSkills.filter(
     (skill) => !matchingFact(profile.skillTags, skill),
   );
-  if (requiredSkills.length && matchedRequiredSkills.length === 0) {
+  if (relevanceSkills.length && matchedRelevanceSkills.length === 0) {
     rejectionReasons.push(
-      `Keine der angefragten Kernkompetenzen ist im Profil belegt: ${requiredSkills.join(", ")}.`,
+      `Keine sinnvolle Kernüberschneidung mit dem Projekt ist im Profil belegt: ${relevanceSkills.join(", ")}.`,
     );
-  } else if (matchedRequiredSkills.length) {
-    matchReasons.push(`Belegte Pflichtkompetenzen: ${matchedRequiredSkills.join(", ")}.`);
-    if (missingRequiredSkills.length) {
+  } else if (coreSkillMatches.length) {
+    matchReasons.push(`Belegte Kernkompetenzen: ${coreSkillMatches.join(", ")}.`);
+    if (missingCoreSkills.length) {
+      const explicitHardMissing = missingCoreSkills.filter(
+        (skill) => requirementStrength(brief.originalRequest, skill) === "hard",
+      );
+      const otherMissing = missingCoreSkills.filter(
+        (skill) => !explicitHardMissing.includes(skill),
+      );
+      if (explicitHardMissing.length) {
+        knownGaps.push(
+          `Explizite Muss-Kompetenzen sind im Profil nicht belegt: ${explicitHardMissing.join(", ")}; vor dem Gespräch verifizieren.`,
+        );
+      }
+      if (otherMissing.length) {
+        knownGaps.push(
+          `Weitere Kernkompetenzen sind im Profil nicht belegt: ${otherMissing.join(", ")}.`,
+        );
+      }
+    }
+  } else if (matchedRelevanceSkills.length) {
+    matchReasons.push(
+      `Belegte ergänzende Kompetenzen: ${matchedRelevanceSkills.join(", ")}.`,
+    );
+  }
+
+  if (brief.language) {
+    if (matchingNamedFact(profile.languages, brief.language)) {
+      matchReasons.push(`Sprache passend: ${brief.language}.`);
+    } else if (
+      profile.languages.length > 0 &&
+      requirementStrength(brief.originalRequest, brief.language) === "hard"
+    ) {
+      rejectionReasons.push(`Explizit zwingende Sprache wird nicht unterstützt: ${brief.language}.`);
+    } else {
       knownGaps.push(
-        `Weitere Pflichtkompetenzen vor dem Gespräch prüfen: ${missingRequiredSkills.join(", ")}.`,
+        `Sprache im Profil nicht bestätigt: ${brief.language}.`,
       );
     }
   }
 
-  if (brief.language) {
-    if (!includesFact(profile.languages, brief.language)) {
-      rejectionReasons.push(`Geforderte Sprache nicht bestätigt: ${brief.language}.`);
-    } else {
-      matchReasons.push(`Sprache passend: ${brief.language}.`);
-    }
-  }
-
   if (brief.workMode !== "unknown") {
-    if (!profile.workModes.includes(brief.workMode)) {
-      rejectionReasons.push(`Arbeitsmodus wird nicht unterstützt: ${brief.workMode}.`);
-    } else {
+    if (profile.workModes.includes(brief.workMode)) {
       matchReasons.push(`Arbeitsmodus passend: ${brief.workMode}.`);
+    } else if (
+      requirementStrength(brief.originalRequest, brief.workMode) === "hard"
+    ) {
+      rejectionReasons.push(
+        `Explizit zwingender Arbeitsmodus wird nicht unterstützt: ${brief.workMode}.`,
+      );
+    } else {
+      knownGaps.push(`Arbeitsmodus im Profil nicht bestätigt: ${brief.workMode}.`);
     }
   }
 
   if (brief.location && brief.workMode !== "remote") {
-    if (!profile.location || !locationMatches(profile.location.value, brief.location)) {
-      rejectionReasons.push(`Ort nicht bestätigt: ${brief.location}.`);
-    } else {
+    if (profile.location && locationMatches(profile.location.value, brief.location)) {
       matchReasons.push(`Ort passend: ${brief.location}.`);
+    } else if (
+      profile.location &&
+      requirementStrength(brief.originalRequest, brief.location) === "hard"
+    ) {
+      rejectionReasons.push(`Explizit zwingender Einsatzort passt nicht: ${brief.location}.`);
+    } else {
+      knownGaps.push(`Einsatzort im Profil nicht bestätigt: ${brief.location}.`);
     }
   }
 
   if (!availableBy(profile, brief)) {
-    rejectionReasons.push("Verfügbarkeit ist im angegebenen Startfenster nicht bestätigt.");
+    const startRequirement =
+      brief.availabilityRequirement ?? brief.startWindow?.raw ?? "";
+    if (
+      startRequirement &&
+      requirementStrength(brief.originalRequest, startRequirement) === "hard"
+    ) {
+      rejectionReasons.push(
+        "Explizit zwingendes Startfenster liegt vor der bestätigten Verfügbarkeit.",
+      );
+    } else {
+      knownGaps.push(
+        "Bestätigte Verfügbarkeit beginnt nach dem gewünschten Startfenster; im Erstgespräch abstimmen.",
+      );
+    }
   } else if (brief.startWindow && profile.availability.availableFrom) {
     matchReasons.push("Verfügbarkeit ist im angegebenen Startfenster bestätigt.");
   } else if (brief.startWindow) {
@@ -433,17 +814,41 @@ export function evaluateProfile(
     matchReasons.push(`Qualifikationen passend: ${brief.qualifications.join(", ")}.`);
   }
 
-  const missingContractTerms = (brief.contractualRequirements ?? []).filter(
-    (term) => !includesFact(profile.contractualCapabilities, term),
+  const matchedContractTerms = (brief.contractualRequirements ?? []).filter(
+    (term) => matchingNamedFact(profile.contractualCapabilities, term),
   );
+  const missingContractTerms = (brief.contractualRequirements ?? []).filter(
+    (term) => !matchingNamedFact(profile.contractualCapabilities, term),
+  );
+  if (matchedContractTerms.length) {
+    matchReasons.push(`Vertragsanforderungen passend: ${matchedContractTerms.join(", ")}.`);
+  }
   if (missingContractTerms.length) {
-    rejectionReasons.push(`Vertragsanforderungen nicht bestätigt: ${missingContractTerms.join(", ")}.`);
-  } else if (brief.contractualRequirements?.length) {
-    matchReasons.push(`Vertragsanforderungen passend: ${brief.contractualRequirements.join(", ")}.`);
+    const explicitHardMissing = missingContractTerms.filter(
+      (term) => requirementStrength(brief.originalRequest, term) === "hard",
+    );
+    const unknownMissing = missingContractTerms.filter(
+      (term) => !explicitHardMissing.includes(term),
+    );
+    if (explicitHardMissing.length && profile.contractualCapabilities.length > 0) {
+      rejectionReasons.push(
+        `Explizit zwingende Vertragsanforderungen werden nicht unterstützt: ${explicitHardMissing.join(", ")}.`,
+      );
+    } else if (explicitHardMissing.length) {
+      knownGaps.push(
+        `Explizit zwingende Vertragsanforderungen sind im Profil unbekannt: ${explicitHardMissing.join(", ")}.`,
+      );
+    }
+    if (unknownMissing.length) {
+      knownGaps.push(
+        `Vertragsanforderungen im Profil nicht bestätigt: ${unknownMissing.join(", ")}.`,
+      );
+    }
   }
 
-  // Explicit constraints remain hard eligibility conditions. We confirm only
-  // public profile evidence and never infer residency from a current location.
+  // Constraints are confirmed only from curated public profile evidence. A
+  // missing fact is unknown, not proof of incompatibility, and therefore stays
+  // visible as a gap. We never infer residency from a current location.
   const publicConstraintFacts = [
     ...profile.skillTags,
     ...profile.languages,
@@ -459,15 +864,19 @@ export function evaluateProfile(
     if (contractualRequirementKeys.has(normalize(constraint))) {
       continue;
     }
-    if (includesFact(publicConstraintFacts, constraint)) {
+    if (matchingNamedFact(publicConstraintFacts, constraint)) {
       matchReasons.push(`Weitere Rahmenbedingung bestätigt: ${constraint}.`);
     } else if (isDeliveryCapacityConstraint(constraint)) {
       knownGaps.push(
         `Gewünschte Projektauslastung im Profil nicht bestätigt: ${constraint}; im Erstgespräch abstimmen.`,
       );
     } else {
-      rejectionReasons.push(
-        `Weitere Pflichtbedingung im Profil nicht bestätigt: ${constraint}.`,
+      const label =
+        requirementStrength(brief.originalRequest, constraint) === "hard"
+          ? "Explizite Muss-Bedingung"
+          : "Weitere Rahmenbedingung";
+      knownGaps.push(
+        `${label} ist im Profil nicht bestätigt: ${constraint}.`,
       );
     }
   }
@@ -477,10 +886,10 @@ export function evaluateProfile(
   matchReasons.push(...commercial.reasons);
   knownGaps.push(...commercial.gaps);
 
-  const optionalSkillMatches = (brief.optionalSkills ?? []).filter((skill) =>
+  const optionalSkillMatches = optionalSkills.filter((skill) =>
     matchingFact(profile.skillTags, skill),
   );
-  const missingOptionalSkills = (brief.optionalSkills ?? []).filter(
+  const missingOptionalSkills = optionalSkills.filter(
     (skill) => !matchingFact(profile.skillTags, skill),
   );
   if (optionalSkillMatches.length) {
@@ -490,13 +899,13 @@ export function evaluateProfile(
     knownGaps.push(`Optionale Kompetenzen nicht aufgeführt: ${missingOptionalSkills.join(", ")}.`);
   }
 
-  const exactRequiredSkillMatches = requiredSkills.filter((skill) =>
+  const exactRequiredSkillMatches = coreSkills.filter((skill) =>
     includesFact(profile.skillTags, skill),
   );
   const primaryRequiredSkillExactMatch = Boolean(
-    requiredSkills[0] && includesFact(profile.skillTags, requiredSkills[0]),
+    coreSkills[0] && includesFact(profile.skillTags, coreSkills[0]),
   );
-  const verifiedRequiredSkillMatches = requiredSkills.filter(
+  const verifiedRequiredSkillMatches = coreSkills.filter(
     (skill) => matchingFact(profile.skillTags, skill)?.source === "verified",
   );
 
@@ -506,6 +915,7 @@ export function evaluateProfile(
     matchReasons,
     knownGaps,
     optionalSkillMatches,
+    coreSkillMatches,
     primaryRequiredSkillExactMatch,
     exactRequiredSkillMatches,
     verifiedRequiredSkillMatches,
@@ -548,18 +958,22 @@ export function buildShortlist(
 
   const eligible = evaluated.filter((item) => item.evaluation.eligible);
   eligible.sort((left, right) => {
-    const commercialConfidenceDifference =
-      commercialConfidencePriority(right.evaluation.commercialConstraintConfidence) -
-      commercialConfidencePriority(left.evaluation.commercialConstraintConfidence);
-    if (commercialConfidenceDifference) return commercialConfidenceDifference;
     const primarySkillDifference =
       Number(right.evaluation.primaryRequiredSkillExactMatch) -
       Number(left.evaluation.primaryRequiredSkillExactMatch);
     if (primarySkillDifference) return primarySkillDifference;
+    const coreSkillDifference =
+      right.evaluation.coreSkillMatches.length -
+      left.evaluation.coreSkillMatches.length;
+    if (coreSkillDifference) return coreSkillDifference;
     const exactRequiredDifference =
       right.evaluation.exactRequiredSkillMatches.length -
       left.evaluation.exactRequiredSkillMatches.length;
     if (exactRequiredDifference) return exactRequiredDifference;
+    const commercialConfidenceDifference =
+      commercialConfidencePriority(right.evaluation.commercialConstraintConfidence) -
+      commercialConfidencePriority(left.evaluation.commercialConstraintConfidence);
+    if (commercialConfidenceDifference) return commercialConfidenceDifference;
     const availabilityDifference =
       availabilityPriority(left.profile.availability.status) -
       availabilityPriority(right.profile.availability.status);
@@ -589,6 +1003,7 @@ export function buildShortlist(
     profileDataVersion: profile.dataVersion,
     orderingEvidence: {
       optionalSkillMatchCount: evaluation.optionalSkillMatches.length,
+      coreSkillMatchCount: evaluation.coreSkillMatches.length,
       primaryRequiredSkillExactMatch:
         evaluation.primaryRequiredSkillExactMatch,
       exactRequiredSkillMatchCount: evaluation.exactRequiredSkillMatches.length,

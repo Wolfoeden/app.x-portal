@@ -29,7 +29,13 @@ export async function GET() {
       introductions,
       engagements,
       engagementStatusEvents,
-      creditAccount,
+      legacyCreditAccount,
+      freeUsageAccounts,
+      productCreditAccount,
+      freeUsageReservations,
+      productCreditReservations,
+      productCreditLedger,
+      externalSearchResults,
       aiUsage,
       auditEvents,
     ] = await Promise.all([
@@ -49,6 +55,46 @@ export async function GET() {
           )
           .eq("user_id", user.id)
           .maybeSingle(),
+        admin
+          .from("ai_free_usage_accounts")
+          .select(
+            "period_start,period_end,is_anonymous,usage_limit,used,reserved,created_at,updated_at",
+          )
+          .eq("user_id", user.id)
+          .order("period_start", { ascending: true }),
+        admin
+          .from("product_credit_accounts")
+          .select("balance,reserved,created_at,updated_at")
+          .eq("user_id", user.id)
+          .maybeSingle(),
+        admin
+          .from("ai_free_usage_reservations")
+          .select(
+            "period_start,request_key,status,result_outcome,expires_at,created_at,settled_at",
+          )
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: true }),
+        admin
+          .from("product_credit_reservations")
+          .select(
+            "request_key,purpose,amount,status,result_outcome,expires_at,created_at,settled_at",
+          )
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: true }),
+        admin
+          .from("product_credit_ledger")
+          .select(
+            "idempotency_key,entry_type,amount_delta,balance_after,reason,actor_reference,created_at",
+          )
+          .eq("owner_user_id", user.id)
+          .order("created_at", { ascending: true }),
+        admin
+          .from("external_freelancer_search_results")
+          .select(
+            "project_id,result_count,result_snapshot,provider_response_id,actual_model,created_at",
+          )
+          .eq("owner_user_id", user.id)
+          .order("created_at", { ascending: true }),
         admin
           .from("ai_usage_events")
           .select(
@@ -73,7 +119,13 @@ export async function GET() {
       introductions,
       engagements,
       engagementStatusEvents,
-      creditAccount,
+      legacyCreditAccount,
+      freeUsageAccounts,
+      freeUsageReservations,
+      productCreditAccount,
+      productCreditReservations,
+      productCreditLedger,
+      externalSearchResults,
       aiUsage,
       auditEvents,
     ].find((result) => result.error);
@@ -89,7 +141,7 @@ export async function GET() {
 
     return NextResponse.json(
       {
-        formatVersion: 3,
+        formatVersion: 4,
         generatedAt: new Date().toISOString(),
         user: { id: user.id, email: user.email },
         userProfile: userProfile.data ?? null,
@@ -101,7 +153,13 @@ export async function GET() {
         introductions: introductions.data ?? [],
         engagements: engagements.data ?? [],
         engagementStatusEvents: engagementStatusEvents.data ?? [],
-        aiCredits: creditAccount.data ?? null,
+        historicalProviderControlCredits: legacyCreditAccount.data ?? null,
+        freeAnalysisUsage: freeUsageAccounts.data ?? [],
+        freeAnalysisReservations: freeUsageReservations.data ?? [],
+        productCredits: productCreditAccount.data ?? null,
+        productCreditReservations: productCreditReservations.data ?? [],
+        productCreditLedger: productCreditLedger.data ?? [],
+        externalFreelancerSearchResults: externalSearchResults.data ?? [],
         aiUsage: aiUsage.data ?? [],
         auditEvents: auditEvents.data ?? [],
       },

@@ -15,7 +15,7 @@ import {
   type OpenAiTransport,
 } from "./provider";
 
-export const DEFAULT_OPENAI_DIAGNOSTIC_MODEL = "gpt-5.5-pro";
+export const DEFAULT_OPENAI_DIAGNOSTIC_MODEL = "gpt-5.4-nano-2026-03-17";
 
 export const OPENAI_DIAGNOSTIC_STATUSES = [
   "unconfigured",
@@ -211,10 +211,11 @@ export async function diagnoseOpenAiProvider(
     OPENAI_BRIEF_MODEL: process.env.OPENAI_BRIEF_MODEL,
   };
   const connection = resolveOpenAiConnection(environment);
-  const configuredModel =
-    environment.OPENAI_BRIEF_MODEL?.trim() ||
-    (options.environment ? environment.OPENAI_MODEL?.trim() : undefined) ||
-    DEFAULT_OPENAI_DIAGNOSTIC_MODEL;
+  const configuredModel = options.environment
+    ? environment.OPENAI_BRIEF_MODEL?.trim() ||
+      environment.OPENAI_MODEL?.trim() ||
+      DEFAULT_OPENAI_DIAGNOSTIC_MODEL
+    : DEFAULT_OPENAI_DIAGNOSTIC_MODEL;
   const modelIsSafe = SAFE_MODEL_ID.test(configuredModel);
   const requestedModel = modelIsSafe ? configuredModel : "invalid";
   const baseResult = {

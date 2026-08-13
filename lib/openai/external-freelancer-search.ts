@@ -7,10 +7,11 @@ import { z } from "zod";
 import { ProjectBriefSchema, type ProjectBrief } from "@/lib/domain";
 import { createOpenAiClient } from "@/lib/openai/provider";
 
-export const DEFAULT_OPENAI_WEB_SEARCH_MODEL = "gpt-5.5-pro";
+export const DEFAULT_OPENAI_WEB_SEARCH_MODEL = "gpt-5.4-nano-2026-03-17";
 export const MAX_EXTERNAL_FREELANCER_RESULTS = 3;
-export const MAX_OPENAI_WEB_SEARCH_OUTPUT_TOKENS = 2_000;
-export const DEFAULT_OPENAI_WEB_SEARCH_TIMEOUT_MS = 50_000;
+export const MAX_OPENAI_WEB_SEARCH_OUTPUT_TOKENS = 1_200;
+export const MAX_OPENAI_WEB_SEARCH_TOOL_CALLS = 3;
+export const DEFAULT_OPENAI_WEB_SEARCH_TIMEOUT_MS = 30_000;
 
 const MAX_TIMEOUT_MS = 55_000;
 const MIN_TIMEOUT_MS = 100;
@@ -385,8 +386,9 @@ function providerRequest(
     ],
     tools: [{ type: "web_search", search_context_size: "medium" }],
     tool_choice: "required",
+    max_tool_calls: MAX_OPENAI_WEB_SEARCH_TOOL_CALLS,
     include: ["web_search_call.action.sources"],
-    reasoning: { effort: model.startsWith("gpt-5.5-pro") ? "medium" : "low" },
+    reasoning: { effort: "none" },
     text: {
       format: zodTextFormat(
         ExternalFreelancerSearchOutputSchema,
@@ -396,7 +398,7 @@ function providerRequest(
     max_output_tokens: MAX_OPENAI_WEB_SEARCH_OUTPUT_TOKENS,
     safety_identifier: safetyIdentifier,
     store: false,
-  };
+  } as ResponseCreateParamsNonStreaming;
 }
 
 export function estimateExternalSearchTokenCeiling(input: {
@@ -404,10 +406,7 @@ export function estimateExternalSearchTokenCeiling(input: {
   model?: string;
 }): { inputTokens: number; outputTokens: number; totalTokens: number; model: string } {
   const brief = ProjectBriefSchema.parse(input.brief);
-  const model =
-    input.model?.trim() ||
-    process.env.OPENAI_WEB_SEARCH_MODEL?.trim() ||
-    DEFAULT_OPENAI_WEB_SEARCH_MODEL;
+  const model = DEFAULT_OPENAI_WEB_SEARCH_MODEL;
   const request = providerRequest(brief, model, "quota_preflight");
   const inputTokens = Buffer.byteLength(JSON.stringify(request), "utf8");
   return {
@@ -504,10 +503,11 @@ export async function searchExternalFreelancers(
     options.responsesClient ?? (apiKey ? createDefaultResponsesClient(apiKey) : null);
   if (!responsesClient) return unavailable("provider_unavailable");
 
-  const model =
-    options.model?.trim() ||
-    process.env.OPENAI_WEB_SEARCH_MODEL?.trim() ||
-    DEFAULT_OPENAI_WEB_SEARCH_MODEL;
+  // `options.model` remains available only to injected test clients. The live
+  // route is pinned to Nano and cannot be changed by an environment value.
+  const model = options.responsesClient && options.model?.trim()
+    ? options.model.trim()
+    : DEFAULT_OPENAI_WEB_SEARCH_MODEL;
   const timeoutMs = configuredTimeout(options.timeoutMs);
   let providerAttempted = false;
   let provider: ExternalFreelancerSearchResult["provider"];

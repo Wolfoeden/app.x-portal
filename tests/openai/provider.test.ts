@@ -24,7 +24,7 @@ describe("resolveOpenAiConnection", () => {
     });
   });
 
-  it("makes a Netlify gateway override visible", () => {
+  it("ignores a platform gateway override and stays on the official API", () => {
     expect(
       resolveOpenAiConnection({
         OPENAI_API_KEY: "gateway-test-value",
@@ -32,8 +32,8 @@ describe("resolveOpenAiConnection", () => {
       }),
     ).toEqual({
       configured: true,
-      transport: "netlify_ai_gateway",
-      baseUrl: "https://ai-gateway.netlify.example/v1",
+      transport: "direct_openai",
+      baseUrl: OPENAI_OFFICIAL_BASE_URL,
     });
   });
 });
