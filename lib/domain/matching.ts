@@ -7,25 +7,40 @@ import {
   type LabeledFact,
 } from "./profile";
 
-export const MATCHING_RULE_VERSION = "freelancer-match-v8" as const;
+export const MATCHING_RULE_VERSION = "freelancer-match-v9" as const;
 
 /**
  * Public and reviewable ordering rule. Eligibility is evaluated first. Eligible
- * profiles are then ordered by: an exact match of the primary core skill,
- * matched core skills (descending), exact core-skill matches (descending),
- * confirmed commercial compatibility when an explicit commercial constraint
- * was supplied, availability confidence, optional skill matches (descending),
- * verified core-skill matches (descending), available-from date (ascending,
- * unknown last), normalized display name (ascending), and profile id
- * (ascending).
+ * profiles are then ordered by: a match of the primary core skill, matched core
+ * skills (descending), confirmed commercial compatibility when an explicit
+ * commercial constraint was supplied, availability confidence, optional skill
+ * matches (descending), supporting context evidence (descending), verified
+ * core-skill matches (descending), available-from date (ascending, unknown
+ * last), normalized display name (ascending), and profile id (ascending).
+ *
+ * Changes from v8:
+ *
+ * - The primary-skill criterion compares SKILLS, not strings. It used to
+ *   require character equality between the extracted term and the profile tag,
+ *   so it rewarded whoever happened to write the skill the way the extraction
+ *   did. A German brief scored zero on it however well it matched, which made
+ *   the top of the shortlist depend on the language the brief was written in.
+ * - `exact_required_skill_matches_desc` is removed rather than demoted. Once
+ *   the comparison is skill-based it says exactly what `core_skill_matches_desc`
+ *   already says, and keeping it would reintroduce the same surface-form bias
+ *   one rank lower.
+ * - `context_evidence_matches_desc` is new: industry, certification and prior
+ *   experience facts that support the request without being skill claims. It
+ *   sits below every declared-skill criterion because it is weaker evidence,
+ *   and it can never make a profile eligible.
  */
 export const MATCHING_ORDER_RULE = [
-  "primary_required_skill_exact_match_desc",
+  "primary_required_skill_match_desc",
   "core_skill_matches_desc",
-  "exact_required_skill_matches_desc",
   "commercial_constraint_confidence_desc",
   "availability_status_priority",
   "optional_skill_matches_desc",
+  "context_evidence_matches_desc",
   "verified_required_skill_matches_desc",
   "available_from_asc_unknown_last",
   "display_name_asc",
@@ -40,8 +55,9 @@ export const ProfileEvaluationSchema = z
     knownGaps: z.array(z.string()),
     optionalSkillMatches: z.array(z.string()),
     coreSkillMatches: z.array(z.string()),
-    primaryRequiredSkillExactMatch: z.boolean(),
+    primaryRequiredSkillMatch: z.boolean(),
     exactRequiredSkillMatches: z.array(z.string()),
+    contextEvidenceMatches: z.array(z.string()),
     verifiedRequiredSkillMatches: z.array(z.string()),
     commercialConstraintConfidence: z.enum([
       "not_requested",
@@ -65,8 +81,8 @@ export const ShortlistMatchSchema = z
       .object({
         optionalSkillMatchCount: z.number().int().nonnegative(),
         coreSkillMatchCount: z.number().int().nonnegative().optional(),
-        primaryRequiredSkillExactMatch: z.boolean(),
-        exactRequiredSkillMatchCount: z.number().int().nonnegative(),
+        primaryRequiredSkillMatch: z.boolean(),
+        contextEvidenceMatchCount: z.number().int().nonnegative(),
         verifiedRequiredSkillMatchCount: z.number().int().nonnegative(),
         commercialConstraintConfidence: z
           .enum(["not_requested", "unconfirmed", "confirmed"])
@@ -82,12 +98,12 @@ export const ShortlistSchema = z
   .object({
     ruleVersion: z.literal(MATCHING_RULE_VERSION),
     orderingRule: z.tuple([
-      z.literal("primary_required_skill_exact_match_desc"),
+      z.literal("primary_required_skill_match_desc"),
       z.literal("core_skill_matches_desc"),
-      z.literal("exact_required_skill_matches_desc"),
       z.literal("commercial_constraint_confidence_desc"),
       z.literal("availability_status_priority"),
       z.literal("optional_skill_matches_desc"),
+      z.literal("context_evidence_matches_desc"),
       z.literal("verified_required_skill_matches_desc"),
       z.literal("available_from_asc_unknown_last"),
       z.literal("display_name_asc"),
@@ -1034,9 +1050,24 @@ export function evaluateProfile(
   const exactRequiredSkillMatches = coreSkills.filter((skill) =>
     includesFact(profile.skillTags, skill),
   );
-  const primaryRequiredSkillExactMatch = Boolean(
-    coreSkills[0] && includesFact(profile.skillTags, coreSkills[0]),
+  // Skill-based, not string-based: an alias of the same skill is the same
+  // skill. Comparing characters here made the top of the shortlist depend on
+  // whether the extraction happened to phrase the skill the way the profile did.
+  const primaryRequiredSkillMatch = Boolean(
+    coreSkills[0] && matchingFact(profile.skillTags, coreSkills[0]),
   );
+
+  // Context evidence supports a requirement without claiming the skill. It can
+  // only ever break a tie between profiles that already match on skills — it is
+  // never consulted for eligibility.
+  const contextEvidenceMatches = [...coreSkills, ...optionalSkills].filter(
+    (skill) => !matchingFact(profile.skillTags, skill) && matchingFact(profile.contextEvidence, skill),
+  );
+  if (contextEvidenceMatches.length) {
+    matchReasons.push(
+      `Ergänzend belegt über Branche, Zertifikat oder Projekterfahrung: ${contextEvidenceMatches.join(", ")}.`,
+    );
+  }
   const verifiedRequiredSkillMatches = coreSkills.filter(
     (skill) => matchingFact(profile.skillTags, skill)?.source === "verified",
   );
@@ -1048,8 +1079,9 @@ export function evaluateProfile(
     knownGaps,
     optionalSkillMatches,
     coreSkillMatches,
-    primaryRequiredSkillExactMatch,
+    primaryRequiredSkillMatch,
     exactRequiredSkillMatches,
+    contextEvidenceMatches,
     verifiedRequiredSkillMatches,
     commercialConstraintConfidence: commercial.confidence,
   });
@@ -1114,17 +1146,13 @@ export function buildShortlist(
   const eligible = evaluated.filter((item) => item.evaluation.eligible);
   eligible.sort((left, right) => {
     const primarySkillDifference =
-      Number(right.evaluation.primaryRequiredSkillExactMatch) -
-      Number(left.evaluation.primaryRequiredSkillExactMatch);
+      Number(right.evaluation.primaryRequiredSkillMatch) -
+      Number(left.evaluation.primaryRequiredSkillMatch);
     if (primarySkillDifference) return primarySkillDifference;
     const coreSkillDifference =
       right.evaluation.coreSkillMatches.length -
       left.evaluation.coreSkillMatches.length;
     if (coreSkillDifference) return coreSkillDifference;
-    const exactRequiredDifference =
-      right.evaluation.exactRequiredSkillMatches.length -
-      left.evaluation.exactRequiredSkillMatches.length;
-    if (exactRequiredDifference) return exactRequiredDifference;
     const commercialConfidenceDifference =
       commercialConfidencePriority(right.evaluation.commercialConstraintConfidence) -
       commercialConfidencePriority(left.evaluation.commercialConstraintConfidence);
@@ -1136,6 +1164,10 @@ export function buildShortlist(
     const optionalDifference =
       right.evaluation.optionalSkillMatches.length - left.evaluation.optionalSkillMatches.length;
     if (optionalDifference) return optionalDifference;
+    const contextEvidenceDifference =
+      right.evaluation.contextEvidenceMatches.length -
+      left.evaluation.contextEvidenceMatches.length;
+    if (contextEvidenceDifference) return contextEvidenceDifference;
     const verifiedDifference =
       right.evaluation.verifiedRequiredSkillMatches.length -
       left.evaluation.verifiedRequiredSkillMatches.length;
@@ -1159,9 +1191,8 @@ export function buildShortlist(
     orderingEvidence: {
       optionalSkillMatchCount: evaluation.optionalSkillMatches.length,
       coreSkillMatchCount: evaluation.coreSkillMatches.length,
-      primaryRequiredSkillExactMatch:
-        evaluation.primaryRequiredSkillExactMatch,
-      exactRequiredSkillMatchCount: evaluation.exactRequiredSkillMatches.length,
+      primaryRequiredSkillMatch: evaluation.primaryRequiredSkillMatch,
+      contextEvidenceMatchCount: evaluation.contextEvidenceMatches.length,
       verifiedRequiredSkillMatchCount: evaluation.verifiedRequiredSkillMatches.length,
       commercialConstraintConfidence: evaluation.commercialConstraintConfidence,
       availabilityPriority: availabilityPriority(profile.availability.status),

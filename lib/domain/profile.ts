@@ -43,6 +43,19 @@ export const FreelancerProfileSchema = z
     displayName: z.string().trim().min(1).max(120),
     role: z.string().trim().min(1).max(160),
     skillTags: z.array(LabeledFactSchema).max(100),
+    /**
+     * Category-prefixed facts — industry, certification, prior experience,
+     * focus — that are NOT skill claims and must never satisfy a skill
+     * requirement, but are still evidence about fit.
+     *
+     * Kept apart from `skillTags` on purpose: letting "Industry: finance"
+     * satisfy a request for a finance skill is exactly the false positive
+     * `searchableSkillTags` exists to prevent. Splitting the channel keeps that
+     * guarantee while stopping the information from being discarded — on the
+     * production export this is 20 of 44 facts for the most experienced
+     * profiles, and it was the material a human reviewer ranked on.
+     */
+    contextEvidence: z.array(LabeledFactSchema).max(100).default([]),
     languages: z.array(LabeledFactSchema).max(30),
     location: LabeledFactSchema.nullable(),
     workModes: z.array(WorkModeSchema.exclude(["unknown"])).min(1).max(3),

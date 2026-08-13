@@ -248,3 +248,61 @@ describe("regression: German skill terms reach the same families as English ones
     });
   }
 });
+
+describe("regression: context evidence informs ranking but never eligibility", () => {
+  // `searchableSkillTags` drops category-prefixed facts so they cannot satisfy
+  // a skill requirement — on the production export that is 20 of 44 facts for
+  // the most experienced profile. They are now carried in `contextEvidence`
+  // instead of discarded, on a channel that can only break ties.
+
+  const briefFor = (skill: string) =>
+    applyBriefPatch(parseFallbackBrief(`${skill} gesucht, remote.`, { now }), {
+      requiredSkills: [skill],
+      workMode: "remote",
+    });
+
+  it("does not let context evidence satisfy a skill requirement", () => {
+    const onlyContext = variant("00000000-0000-4000-8000-0000000000e1", "Nur Kontext", {
+      skillTags: [{ value: "Gartenbau", source: "self_reported" as const }],
+      contextEvidence: [{ value: "Industry: requirements management", source: "self_reported" as const }],
+    });
+
+    const result = evaluateProfile(briefFor("requirements management"), onlyContext);
+
+    expect(result.eligible).toBe(false);
+    expect(result.contextEvidenceMatches).toEqual([]);
+  });
+
+  it("breaks a tie between profiles that already match on skills", () => {
+    const withContext = variant("00000000-0000-4000-8000-0000000000e2", "Mit Kontext", {
+      skillTags: [{ value: "requirements management", source: "self_reported" as const }],
+      contextEvidence: [{ value: "python", source: "self_reported" as const }],
+    });
+    const withoutContext = variant("00000000-0000-4000-8000-0000000000e3", "Ohne Kontext", {
+      skillTags: [{ value: "requirements management", source: "self_reported" as const }],
+      contextEvidence: [],
+    });
+    const brief = applyBriefPatch(
+      parseFallbackBrief("requirements management gesucht, remote.", { now }),
+      { requiredSkills: ["requirements management"], optionalSkills: ["python"], workMode: "remote" },
+    );
+
+    const shortlist = buildShortlist(brief, [withoutContext, withContext]);
+
+    expect(shortlist.matches.map((match) => match.profile.displayName)).toEqual([
+      "Mit Kontext",
+      "Ohne Kontext",
+    ]);
+  });
+
+  it("does not double-count a skill that is already a declared skill tag", () => {
+    const both = variant("00000000-0000-4000-8000-0000000000e4", "Beides", {
+      skillTags: [{ value: "requirements management", source: "self_reported" as const }],
+      contextEvidence: [{ value: "requirements management", source: "self_reported" as const }],
+    });
+
+    expect(evaluateProfile(briefFor("requirements management"), both).contextEvidenceMatches).toEqual(
+      [],
+    );
+  });
+});
