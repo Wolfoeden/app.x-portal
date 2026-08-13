@@ -137,6 +137,7 @@ export interface AiAnalysisProviderStatus {
     | "application_limit"
     | "auth_error"
     | "billing_or_quota"
+    | "rate_limit"
     | "permission"
     | "model_unavailable"
     | "timeout"
@@ -204,9 +205,13 @@ export interface ChatResponse {
   };
   credits?: AiCreditSnapshot;
   analysis?: AiAnalysisTrace;
+  /** Server build that produced this response, when supplied by the API. */
+  buildVersion?: string;
 }
 
 export type ChatStreamEvent =
+  | { type: "accepted"; projectId: string; buildVersion?: string }
+  | { type: "heartbeat"; at: number }
   | { type: "progress"; label: string }
   | { type: "text_delta"; delta: string }
   | { type: "result"; data: ChatResponse }

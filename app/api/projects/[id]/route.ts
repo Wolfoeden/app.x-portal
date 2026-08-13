@@ -2,15 +2,19 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireCurrentUser } from "@/lib/auth/current-user";
-import { fetchRealProfilesByIds } from "@/lib/data/freelancers";
+import {
+  fetchActiveBookableRealProfiles,
+  fetchRealProfilesByIds,
+} from "@/lib/data/freelancers";
 import { presentProject, type ProjectRow } from "@/lib/data/projects";
 import {
+  buildShortlist,
   FreelancerProfileSchema,
+  ProjectBriefSchema,
   type FreelancerProfile,
   type ShortlistMatch,
 } from "@/lib/domain";
 import { presentBrief, presentMatch } from "@/lib/presentation/chat";
-import { ProjectBriefSchema } from "@/lib/domain";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { assertSameOrigin, readJsonWithLimit } from "@/lib/security/request";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -50,7 +54,7 @@ function availabilityPriority(
 function withoutStatusAvailabilityCopy(values: readonly string[]): string[] {
   return values.filter(
     (value) =>
-      !/^(?:Availability is currently confirmed\.|Project availability is (?:limited|not confirmed);|Projektverfügbarkeit ist (?:aktuell bestätigt\.|begrenzt;|nicht bestätigt;)|Verfügbarkeit ist im angegebenen Startfenster (?:bestätigt|nicht bestätigt)\.|Das gewünschte Startfenster ist im Profil nicht separat bestätigt\.)/u.test(
+      !/^(?:Availability is currently confirmed\.|Project availability is (?:limited|not confirmed);|Projektverf?gbarkeit ist (?:aktuell best?tigt\.|begrenzt;|nicht best?tigt;)|Verf?gbarkeit ist im angegebenen Startfenster (?:best?tigt|nicht best?tigt)\.|Das gew?nschte Startfenster ist im Profil nicht separat best?tigt\.)/u.test(
         value,
       ),
   );
@@ -107,16 +111,16 @@ function restoreMatch(
   );
   const knownGaps = withoutStatusAvailabilityCopy(row.known_gaps);
   if (profile.availability.status === "available") {
-    matchReasons.splice(1, 0, "Projektverfügbarkeit ist aktuell bestätigt.");
+    matchReasons.splice(1, 0, "Projektverf?gbarkeit ist aktuell best?tigt.");
   } else if (profile.availability.status === "limited") {
-    knownGaps.unshift("Projektverfügbarkeit ist begrenzt; den genauen Zeitraum beim Termin abstimmen.");
+    knownGaps.unshift("Projektverf?gbarkeit ist begrenzt; den genauen Zeitraum beim Termin abstimmen.");
   } else if (profile.availability.status === "unknown") {
-    knownGaps.unshift("Projektverfügbarkeit ist nicht bestätigt; der Booking-Kalender ist verfügbar.");
+    knownGaps.unshift("Projektverf?gbarkeit ist nicht best?tigt; der Booking-Kalender ist verf?gbar.");
   } else {
-    knownGaps.unshift("Profil ist aktuell nicht verfügbar.");
+    knownGaps.unshift("Profil ist aktuell nicht verf?gbar.");
   }
   if (!profile.introPolicy.bookingUrl) {
-    knownGaps.unshift("Direkter Booking-Link ist aktuell nicht verfügbar.");
+    knownGaps.unshift("Direkter Booking-Link ist aktuell nicht verf?gbar.");
   }
   return {
     profile,
@@ -146,7 +150,7 @@ export async function GET(
     const { id } = await context.params;
     const user = await requireCurrentUser();
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
-      throw new Response("Serverkonfiguration unvollständig.", { status: 503 });
+      throw new Response("Serverkonfiguration unvollst?ndig.", { status: 503 });
     }
     const admin = createAdminSupabaseClient();
     const { data: projectData, error: projectError } = await admin
@@ -178,8 +182,20 @@ export async function GET(
       .maybeSingle();
     if (shortlistError) throw shortlistError;
 
+    const brief = ProjectBriefSchema.safeParse(project.structured_brief);
     let profiles: ReturnType<typeof presentMatch>[] = [];
-    if (shortlist) {
+    let usedDeterministicRecovery = false;
+    // `status = matching` is also the completed zero-result business state.
+    // Only brief_status=pending proves that the current analysis turn is live.
+    const projectStillProcessing = project.brief_status === "pending";
+    if (brief.success && projectStillProcessing) {
+      // A previous shortlist can belong to an earlier turn. While this exact
+      // brief is still processing, reconstruct from the current brief instead
+      // of pairing a new user message with historical matches.
+      const activeProfiles = await fetchActiveBookableRealProfiles(admin);
+      profiles = buildShortlist(brief.data, activeProfiles).matches.map(presentMatch);
+      usedDeterministicRecovery = true;
+    } else if (shortlist) {
       const { data: rows, error } = await admin
         .from("matches")
         .select(
@@ -203,7 +219,6 @@ export async function GET(
         .map(presentMatch);
     }
 
-    const brief = ProjectBriefSchema.safeParse(project.structured_brief);
     await writeAuditEvent({
       actorUserId: user.id,
       action: "project_accessed",
@@ -224,15 +239,19 @@ export async function GET(
         brief: brief.success ? presentBrief(brief.data) : null,
         profiles,
         analysisMode:
-          project.brief_status === "ready"
+          usedDeterministicRecovery
+            ? "fallback"
+            : project.brief_status === "ready"
             ? "ai"
             : project.brief_status === "manual" ||
                 project.brief_status === "failed"
               ? "fallback"
               : undefined,
         analysisNotice:
-          project.brief_status === "manual" || project.brief_status === "failed"
-            ? "Diese gespeicherte Projektanalyse wurde mit der sicheren Basislogik erstellt; es liegt keine bestätigte KI-Auswertung für diesen Stand vor."
+          usedDeterministicRecovery
+            ? "F?r diesen noch laufenden Projektstand wurden bis zu drei aktuelle Profile deterministisch aus dem kuratierten Verzeichnis ermittelt. Eine ?ltere Shortlist wird nicht mit den neuen Angaben vermischt."
+            : project.brief_status === "manual" || project.brief_status === "failed"
+            ? "Diese gespeicherte Projektanalyse wurde mit der sicheren Basislogik erstellt; es liegt keine best?tigte KI-Auswertung f?r diesen Stand vor."
             : undefined,
       },
       { headers: { "Cache-Control": "no-store" } },
@@ -296,7 +315,7 @@ export async function PATCH(
   } catch (error) {
     if (error instanceof Response) return error;
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: "Die Chat-Änderung ist ungültig." }, { status: 400 });
+      return NextResponse.json({ error: "Die Chat-?nderung ist ung?ltig." }, { status: 400 });
     }
     return NextResponse.json({ error: "Chat konnte nicht aktualisiert werden." }, { status: 503 });
   }
@@ -329,6 +348,6 @@ export async function DELETE(
     return NextResponse.json({ deleted: true });
   } catch (error) {
     if (error instanceof Response) return error;
-    return NextResponse.json({ error: "Chat konnte nicht gelöscht werden." }, { status: 503 });
+    return NextResponse.json({ error: "Chat konnte nicht gel?scht werden." }, { status: 503 });
   }
 }

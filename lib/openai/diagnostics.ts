@@ -21,6 +21,7 @@ export const OPENAI_DIAGNOSTIC_STATUSES = [
   "unconfigured",
   "auth_error",
   "billing_or_quota",
+  "rate_limit",
   "permission",
   "model_unavailable",
   "reachable",
@@ -153,14 +154,21 @@ export function classifyOpenAiProviderError(
     return "auth_error";
   }
   if (
-    error instanceof RateLimitError ||
-    isNamedError(error, "RateLimitError") ||
     status === 402 ||
-    status === 429 ||
     (code !== undefined &&
-      /(?:billing|credit|quota|rate_limit|usage_limit)/u.test(code))
+      /(?:billing|credit|insufficient_quota|quota_exceeded|usage_limit)/u.test(
+        code,
+      ))
   ) {
     return "billing_or_quota";
+  }
+  if (
+    error instanceof RateLimitError ||
+    isNamedError(error, "RateLimitError") ||
+    status === 429 ||
+    (code !== undefined && /(?:rate_limit|requests_per_minute)/u.test(code))
+  ) {
+    return "rate_limit";
   }
   if (
     error instanceof PermissionDeniedError ||

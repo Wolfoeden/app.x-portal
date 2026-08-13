@@ -37,6 +37,7 @@ import {
   pseudonymizeIp,
   pseudonymizeSubject,
   readJsonWithLimit,
+  logEvent,
 } from "@/lib/security/request";
 import { takeRateLimit } from "@/lib/security/rate-limit";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -44,6 +45,12 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
+
+const SERVER_BUILD_VERSION =
+  process.env.NEXT_PUBLIC_BUILD_VERSION?.trim() ||
+  process.env.COMMIT_REF?.trim().slice(0, 12) ||
+  process.env.DEPLOY_ID?.trim().slice(0, 24) ||
+  "development";
 
 const PostgresUuidSchema = z
   .string()
@@ -79,14 +86,14 @@ function errorResponse(error: unknown, traceId: string = randomUUID()): Response
   if (error instanceof Response) return error;
   if (error instanceof z.ZodError) {
     return NextResponse.json(
-      { error: "Die Anfrage hat ein ungültiges Format.", traceId },
+      { error: "Die Anfrage hat ein ung?ltiges Format.", traceId },
       { status: 400 },
     );
   }
   return NextResponse.json(
     {
       error:
-        "Die Anfrage wurde gespeichert, konnte aber gerade nicht vollständig verarbeitet werden.",
+        "Die Anfrage wurde gespeichert, konnte aber gerade nicht vollst?ndig verarbeitet werden.",
       traceId,
     },
     { status: 503 },
@@ -111,11 +118,11 @@ function catalogVersion(profiles: readonly { id: string; dataVersion: string }[]
 
 function assistantText(resultCount: number, analysisCompleted: boolean): string {
   if (resultCount === 0) {
-    return `${analysisCompleted ? "Ich habe" : "Die sichere Basisanalyse hat"} Ihre Angaben strukturiert. Aktuell erfüllt kein reales, direkt buchbares Profil die belegten Kernkriterien. Sie können die Anfrage im Chat ergänzen oder ausdrücklich eine getrennte KI-Websuche nach öffentlich belegten Profilen mit direktem Buchungslink starten.`;
+    return `${analysisCompleted ? "Ich habe" : "Die sichere Basisanalyse hat"} Ihre Angaben strukturiert. Aktuell erf?llt kein reales, direkt buchbares Profil die belegten Kernkriterien. Sie k?nnen die Anfrage im Chat erg?nzen oder ausdr?cklich eine getrennte KI-Websuche nach ?ffentlich belegten Profilen mit direktem Buchungslink starten.`;
   }
   return `${analysisCompleted ? "Ich habe" : "Die sichere Basisanalyse hat"} Ihre Angaben strukturiert und ${resultCount} ${
     resultCount === 1 ? "aktuell passendes Profil" : "aktuell passende Profile"
-  } nach den dokumentierten Regeln gefunden. Sie können das gewünschte Erstgespräch direkt über den jeweiligen Booking-Link buchen.`;
+  } nach den dokumentierten Regeln gefunden. Sie k?nnen das gew?nschte Erstgespr?ch direkt ?ber den jeweiligen Booking-Link buchen.`;
 }
 
 function fallbackNotice(
@@ -128,31 +135,31 @@ function fallbackNotice(
   }
   if (reason === "insufficient_credits") {
     return isAnonymous
-      ? "Ihr kostenloses KI-Kontingent reicht für diese Analyse nicht mehr aus. Die Anfrage wurde gespeichert und intern mit der sicheren Basisanalyse abgeglichen; nach der Anmeldung können Sie mit dem Account-Kontingent fortfahren."
-      : "Ihre AI Credits reichen für diese KI-Analyse nicht aus. Die Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
+      ? "Ihr kostenloses KI-Kontingent reicht f?r diese Analyse nicht mehr aus. Die Anfrage wurde gespeichert und intern mit der sicheren Basisanalyse abgeglichen; nach der Anmeldung k?nnen Sie mit dem Account-Kontingent fortfahren."
+      : "Ihre AI Credits reichen f?r diese KI-Analyse nicht aus. Die Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgef?hrt.";
   }
   if (
     reason === "anonymous_user_daily_token_limit" ||
     reason === "anonymous_ip_daily_token_limit"
   ) {
-    return "Das tägliche KI-Limit für den Gastzugang ist erreicht. OpenAI wurde nicht aufgerufen; Ihre Anfrage wurde gespeichert und intern mit der sicheren Basisanalyse abgeglichen.";
+    return "Das t?gliche KI-Limit f?r den Gastzugang ist erreicht. OpenAI wurde nicht aufgerufen; Ihre Anfrage wurde gespeichert und intern mit der sicheren Basisanalyse abgeglichen.";
   }
   if (reason === "user_daily_token_limit") {
-    return "Das tägliche interne XPORTAL-KI-Limit für dieses Konto ist erreicht. OpenAI wurde nicht aufgerufen; Ihre Anfrage wurde gespeichert und intern mit der sicheren Basisanalyse abgeglichen.";
+    return "Das t?gliche interne XPORTAL-KI-Limit f?r dieses Konto ist erreicht. OpenAI wurde nicht aufgerufen; Ihre Anfrage wurde gespeichert und intern mit der sicheren Basisanalyse abgeglichen.";
   }
   if (fallbackReason === "provider_timeout") {
-    return "Die OpenAI-Analyse hat das Zeitlimit erreicht. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
+    return "Die OpenAI-Analyse hat das Zeitlimit erreicht. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgef?hrt.";
   }
   if (fallbackReason === "invalid_output") {
-    return "Die OpenAI-Antwort war nicht zuverlässig strukturiert. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
+    return "Die OpenAI-Antwort war nicht zuverl?ssig strukturiert. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgef?hrt.";
   }
   if (fallbackReason === "provider_error") {
-    return "Die OpenAI-Analyse war vorübergehend nicht verfügbar. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
+    return "Die OpenAI-Analyse war vor?bergehend nicht verf?gbar. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgef?hrt.";
   }
   if (fallbackReason === "provider_unavailable") {
-    return "Der OpenAI-Provider ist nicht konfiguriert. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
+    return "Der OpenAI-Provider ist nicht konfiguriert. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgef?hrt.";
   }
-  return "Ihre Anfrage wurde gespeichert. Ohne bestätigte OpenAI-Analyse wurde das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
+  return "Ihre Anfrage wurde gespeichert. Ohne best?tigte OpenAI-Analyse wurde das interne Freelancer-Matching mit der sicheren Basisanalyse ausgef?hrt.";
 }
 
 function providerFailureCategory(
@@ -226,12 +233,15 @@ function duplicateMessageResponse(
   );
 }
 
-type ProgressReporter = (label: string) => void;
+type ChatLifecycleReporter = {
+  accepted(projectId: string): void;
+  progress(label: string): void;
+};
 
 async function processChatRequest(
   request: Request,
   traceId: string,
-  progress: ProgressReporter,
+  reporter: ChatLifecycleReporter,
 ): Promise<Response> {
   try {
     assertSameOrigin(request);
@@ -286,12 +296,12 @@ async function processChatRequest(
 
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
       throw new Response(
-        "Die serverseitige Supabase-Konfiguration ist noch nicht vollständig.",
+        "Die serverseitige Supabase-Konfiguration ist noch nicht vollst?ndig.",
         { status: 503 },
       );
     }
 
-    progress("Projekt wird sicher gespeichert …");
+    reporter.progress("Projekt wird sicher gespeichert ?");
     const admin = createAdminSupabaseClient();
     const targetProjectId =
       input.projectId ?? projectIdForChatRequest(requestKey);
@@ -387,6 +397,11 @@ async function processChatRequest(
     }
     if (messageError) throw messageError;
 
+    // At this point the project and the original message are durable. If the
+    // following provider work or the transport is interrupted, the browser can
+    // safely reload this exact project instead of losing the result context.
+    reporter.accepted(project.id);
+
     const extractionInput = {
       originalRequest: existing?.original_request ?? input.message,
       latestMessage: existing ? input.message : undefined,
@@ -395,7 +410,7 @@ async function processChatRequest(
     };
     const estimate = estimateProjectBriefTokenCeiling(extractionInput);
     const providerConnection = resolveOpenAiConnection();
-    progress("KI analysiert und strukturiert die Anforderungen …");
+    reporter.progress("KI analysiert und strukturiert die Anforderungen ?");
     const tracked =
       userHash && ipHash
         ? await executeTrackedAiRequest({
@@ -418,6 +433,12 @@ async function processChatRequest(
               return {
                 value: extraction,
                 providerAttempted: extraction.providerAttempted,
+                providerUsageDefinitelyZero:
+                  extraction.providerFailure === "auth_error" ||
+                  extraction.providerFailure === "billing_or_quota" ||
+                  extraction.providerFailure === "rate_limit" ||
+                  extraction.providerFailure === "permission" ||
+                  extraction.providerFailure === "model_unavailable",
                 outcome:
                   extraction.mode === "openai"
                     ? ("succeeded" as const)
@@ -462,10 +483,22 @@ async function processChatRequest(
     const quota = tracked.quota;
     const providerSucceeded = Boolean(extraction.provider);
     const analysisCompleted = extraction.mode === "openai";
-    progress(
+    const failureCategory = providerFailureCategory(extraction);
+    logEvent("openai_brief_completed", {
+      traceId,
+      interactionId,
+      configured: providerConnection.configured,
+      attempted: extraction.providerAttempted,
+      succeeded: providerSucceeded,
+      requestedModel: extraction.provider?.requestedModel ?? estimate.model,
+      actualModel: extraction.provider?.model ?? null,
+      failureCategory,
+      responseId: extraction.provider?.responseId ?? null,
+    });
+    reporter.progress(
       analysisCompleted
-        ? "Anforderungen sind strukturiert · interne Profile werden geladen …"
-        : "OpenAI-Analyse nicht bestätigt · sichere Basisanalyse wird intern abgeglichen …",
+        ? "Anforderungen sind strukturiert ? interne Profile werden geladen ?"
+        : "OpenAI-Analyse nicht best?tigt ? sichere Basisanalyse wird intern abgeglichen ?",
     );
 
     // The model never receives this data. Filtering and ordering are wholly
@@ -474,11 +507,11 @@ async function processChatRequest(
     // evidence remains disclosed on the candidate card.
     const profiles = await fetchActiveBookableRealProfiles(admin);
     const shortlist = buildShortlist(extraction.brief, profiles);
-    progress(`${profiles.length} aktive Profile werden regelbasiert abgeglichen …`);
-    progress(
+    reporter.progress(`${profiles.length} aktive Profile werden regelbasiert abgeglichen ?`);
+    reporter.progress(
       shortlist.matches.length
-        ? `${shortlist.matches.length} passende Profile werden nachvollziehbar aufbereitet …`
-        : "Kein interner Treffer · alternative Suche wird vorbereitet …",
+        ? `${shortlist.matches.length} passende Profile werden nachvollziehbar aufbereitet ?`
+        : "Kein interner Treffer ? alternative Suche wird vorbereitet ?",
     );
     const shortlistId = randomUUID();
     const profileCatalogVersion = catalogVersion(profiles);
@@ -583,7 +616,7 @@ async function processChatRequest(
         providerConfigured: providerConnection.configured,
         providerAttempted: extraction.providerAttempted,
         providerSucceeded,
-        providerFailureCategory: providerFailureCategory(extraction),
+        providerFailureCategory: failureCategory,
         requestedModel: extraction.provider?.requestedModel ?? estimate.model,
         actualModel: extraction.provider?.model ?? null,
         providerResponseId: extraction.provider?.responseId ?? null,
@@ -647,7 +680,7 @@ async function processChatRequest(
             actualModel: providerSucceeded
               ? extraction.provider?.model ?? null
               : null,
-            failureCategory: providerFailureCategory(extraction),
+            failureCategory,
           },
           steps: [
             {
@@ -659,19 +692,20 @@ async function processChatRequest(
               status: extraction.mode === "openai" ? "completed" : "warning",
             },
             {
-              label: "Interne Datenbank geprüft",
-              detail: `${profiles.length} aktive, reale und direkt buchbare Supabase-Profile wurden berücksichtigt.${analysisCompleted ? "" : " Grundlage war die konservative Basisanalyse, nicht eine bestätigte OpenAI-Antwort."}`,
+              label: "Interne Datenbank gepr?ft",
+              detail: `${profiles.length} aktive, reale und direkt buchbare Supabase-Profile wurden ber?cksichtigt.${analysisCompleted ? "" : " Grundlage war die konservative Basisanalyse, nicht eine best?tigte OpenAI-Antwort."}`,
               status: "completed",
             },
             {
               label: "Kriterien angewendet",
-              detail: `${shortlist.matches.length} Treffer werden nach Regel ${MATCHING_RULE_VERSION} angezeigt; offene Nachweise sind gekennzeichnet und die KI entscheidet nicht über die Auswahl.`,
+              detail: `${shortlist.matches.length} Treffer werden nach Regel ${MATCHING_RULE_VERSION} angezeigt; offene Nachweise sind gekennzeichnet und die KI entscheidet nicht ?ber die Auswahl.`,
               status: "completed",
             },
           ],
           externalSearchAvailable:
             shortlist.matches.length === 0,
         } satisfies AiAnalysisTrace,
+        buildVersion: SERVER_BUILD_VERSION,
       },
       { headers: { "Cache-Control": "no-store" } },
     );
@@ -702,15 +736,41 @@ export async function POST(request: Request): Promise<Response> {
   );
   const traceId = randomUUID();
   if (!acceptsStream) {
-    return processChatRequest(request, traceId, () => undefined);
+    return processChatRequest(request, traceId, {
+      accepted: () => undefined,
+      progress: () => undefined,
+    });
   }
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      const progress: ProgressReporter = (label) => {
-        streamEvent(controller, { type: "progress", label });
+      let streamOpen = true;
+      const send = (event: unknown) => {
+        if (!streamOpen) return;
+        try {
+          streamEvent(controller, event);
+        } catch {
+          streamOpen = false;
+        }
       };
-      void processChatRequest(request, traceId, progress)
+      // gpt-5.5-pro does not support provider streaming. Keep the XPORTAL SSE
+      // connection alive while the single Responses request is in flight.
+      const heartbeat = setInterval(() => {
+        send({ type: "heartbeat", at: Date.now() });
+      }, 7_000);
+      const reporter: ChatLifecycleReporter = {
+        accepted: (projectId) => {
+          send({
+            type: "accepted",
+            projectId,
+            buildVersion: SERVER_BUILD_VERSION,
+          });
+        },
+        progress: (label) => {
+          send({ type: "progress", label });
+        },
+      };
+      void processChatRequest(request, traceId, reporter)
         .then(async (response) => {
           let body: unknown;
           try {
@@ -719,7 +779,7 @@ export async function POST(request: Request): Promise<Response> {
             body = { error: await response.text() };
           }
           if (response.ok) {
-            streamEvent(controller, { type: "result", data: body });
+            send({ type: "result", data: body });
           } else {
             const message =
               typeof body === "object" &&
@@ -742,7 +802,7 @@ export async function POST(request: Request): Promise<Response> {
               typeof body.projectId === "string"
                 ? body.projectId
                 : undefined;
-            streamEvent(controller, {
+            send({
               type: "error",
               message,
               retryable: response.status >= 500 || response.status === 429,
@@ -752,13 +812,22 @@ export async function POST(request: Request): Promise<Response> {
           }
         })
         .catch(() => {
-          streamEvent(controller, {
+          send({
             type: "error",
             message: "Die Anfrage konnte gerade nicht verarbeitet werden.",
             retryable: true,
           });
         })
-        .finally(() => controller.close());
+        .finally(() => {
+          clearInterval(heartbeat);
+          if (!streamOpen) return;
+          streamOpen = false;
+          try {
+            controller.close();
+          } catch {
+            // The browser may have closed the stream while the server finished.
+          }
+        });
     },
   });
 

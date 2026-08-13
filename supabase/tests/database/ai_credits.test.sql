@@ -39,6 +39,12 @@ insert into auth.users (
     'c5555555-5555-4555-8555-555555555555',
     'authenticated', 'authenticated', null, '', true,
     now(), now(), now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000000',
+    'c6666666-6666-4666-8666-666666666666',
+    'authenticated', 'authenticated', null, '', true,
+    now(), now(), now()
   );
 
 set local role service_role;
@@ -80,6 +86,28 @@ select is(
   ),
   '100:100',
   'server-supplied initial account credits are persisted without a SQL default'
+);
+
+select is(
+  (
+    select s.credits_total::text || ':' || s.credits_remaining
+    from public.get_ai_credit_snapshot(
+      'c6666666-6666-4666-8666-666666666666', true, 500
+    ) s
+  ),
+  '500:500',
+  'guest credit fixture starts at the supplied allocation'
+);
+
+select is(
+  (
+    select s.credits_total::text || ':' || s.credits_remaining
+    from public.get_ai_credit_snapshot(
+      'c6666666-6666-4666-8666-666666666666', true, 2500
+    ) s
+  ),
+  '2500:2500',
+  'raising the configured guest allocation raises an existing guest total once'
 );
 
 select ok(

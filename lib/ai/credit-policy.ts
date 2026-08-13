@@ -51,8 +51,8 @@ export const XPORTAL_AI_CREDIT_POLICY = {
     chat: 10_000,
     // The public product limits guests separately by daily provider tokens.
     // These two multipliers keep one normal Terra brief plus an optional
-    // no-match research request inside the 500-credit guest allocation instead
-    // of blocking the provider before the first request is sent.
+    // no-match research request inside the configurable guest allocation
+    // instead of blocking the provider before the first request is sent.
     project_brief: 1_000,
     insight: 10_000,
     router: 10_000,

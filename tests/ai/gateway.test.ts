@@ -160,6 +160,32 @@ describe("executeTrackedAiRequest", () => {
     );
   });
 
+  it("releases an attempted request when the provider rejection definitely used zero tokens", async () => {
+    const result = await executeTrackedAiRequest({
+      ...baseInput(),
+      operation: async () => ({
+        value: "fallback",
+        outcome: "provider_error",
+        providerAttempted: true,
+        providerUsageDefinitelyZero: true,
+      }),
+    });
+
+    expect(mocks.recordAiUsage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inputTokens: 0,
+        outputTokens: 0,
+        actualCredits: 0,
+        outcome: "provider_error",
+      }),
+    );
+    expect(mocks.logEvent).not.toHaveBeenCalledWith(
+      "ai_usage_pending_reconciliation",
+      expect.anything(),
+    );
+    expect(result.credits).toEqual(settledCredits);
+  });
+
   it("keeps the reservation when the operation throws after preflight", async () => {
     await expect(
       executeTrackedAiRequest({

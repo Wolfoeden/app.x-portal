@@ -73,7 +73,7 @@ function firstRow(data: unknown): Record<string, unknown> | null {
 export function configuredInitialCredits(isAnonymous: boolean): number {
   return nonNegativeInteger(
     isAnonymous ? "AI_CREDITS_GUEST_TOTAL" : "AI_CREDITS_USER_TOTAL",
-    isAnonymous ? 500 : 50_000,
+    isAnonymous ? 2_500 : 50_000,
   );
 }
 

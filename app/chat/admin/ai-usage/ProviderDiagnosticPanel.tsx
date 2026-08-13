@@ -14,6 +14,7 @@ type DiagnosticStatus =
   | "unconfigured"
   | "auth_error"
   | "billing_or_quota"
+  | "rate_limit"
   | "permission"
   | "model_unavailable"
   | "reachable"
@@ -42,33 +43,37 @@ const statuses: Record<DiagnosticStatus, { label: string; detail: string }> = {
     detail: "Auf dem Server ist kein nutzbarer OPENAI_API_KEY vorhanden.",
   },
   auth_error: {
-    label: "Schlüssel abgelehnt",
-    detail: "OpenAI hat die Authentifizierung des API-Schlüssels abgelehnt.",
+    label: "Schl?ssel abgelehnt",
+    detail: "OpenAI hat die Authentifizierung des API-Schl?ssels abgelehnt.",
   },
   billing_or_quota: {
     label: "Billing oder Quota blockiert",
     detail: "OpenAI blockiert die Anfrage wegen API-Guthaben, Billing oder Quota.",
   },
+  rate_limit: {
+    label: "Anfragelimit erreicht",
+    detail: "OpenAI hat die Anfrage wegen des aktuellen RPM- oder TPM-Limits abgelehnt.",
+  },
   permission: {
     label: "Keine Berechtigung",
-    detail: "Der Schlüssel hat für dieses Modell nicht die nötige Berechtigung.",
+    detail: "Der Schl?ssel hat f?r dieses Modell nicht die n?tige Berechtigung.",
   },
   model_unavailable: {
-    label: "Modell nicht verfügbar",
-    detail: "Das konfigurierte Modell ist für dieses OpenAI-Projekt nicht verfügbar.",
+    label: "Modell nicht verf?gbar",
+    detail: "Das konfigurierte Modell ist f?r dieses OpenAI-Projekt nicht verf?gbar.",
   },
   reachable: {
-    label: "Schlüssel und Modell erreichbar",
+    label: "Schl?ssel und Modell erreichbar",
     detail:
       "Der Metadaten-Endpunkt antwortet. Das beweist die Verbindung, aber noch keine bezahlte Textgenerierung.",
   },
   timeout: {
-    label: "Zeitüberschreitung",
+    label: "Zeit?berschreitung",
     detail: "Der OpenAI-Metadaten-Endpunkt hat nicht rechtzeitig geantwortet.",
   },
   provider_error: {
     label: "Providerfehler",
-    detail: "Die Verbindung konnte nicht eindeutig bestätigt werden.",
+    detail: "Die Verbindung konnte nicht eindeutig best?tigt werden.",
   },
 };
 
@@ -153,7 +158,7 @@ export function ProviderDiagnosticPanel({
         <h2 id="provider-status-title">Verbindung und Modell</h2>
         <p>
           {statusCopy?.detail ??
-            "Die Prüfung liest nur Modell-Metadaten. Sie sendet keinen Prompt und verbraucht keine Modell-Tokens."}
+            "Die Pr?fung liest nur Modell-Metadaten. Sie sendet keinen Prompt und verbraucht keine Modell-Tokens."}
         </p>
         {localError ? <p className={styles.providerError}>{localError}</p> : null}
       </div>
@@ -168,7 +173,7 @@ export function ProviderDiagnosticPanel({
         </div>
         <div>
           <dt>Status</dt>
-          <dd>{statusCopy?.label ?? "Noch nicht geprüft"}</dd>
+          <dd>{statusCopy?.label ?? "Noch nicht gepr?ft"}</dd>
         </div>
         {diagnostic?.requestId ? (
           <div>
@@ -178,7 +183,7 @@ export function ProviderDiagnosticPanel({
         ) : null}
       </dl>
       <button type="button" onClick={runDiagnostic} disabled={pending}>
-        {pending ? "Prüfung läuft …" : "Verbindung ohne Tokenverbrauch prüfen"}
+        {pending ? "Pr?fung l?uft ?" : "Verbindung ohne Tokenverbrauch pr?fen"}
       </button>
     </section>
   );

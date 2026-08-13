@@ -19,6 +19,7 @@ import {
 import { createOpenAiClient } from "@/lib/openai/provider";
 
 export const DEFAULT_OPENAI_BRIEF_MODEL = "gpt-5.5-pro";
+export const FALLBACK_OPENAI_BRIEF_MODEL = "gpt-5.6-luna";
 export const DEFAULT_OPENAI_TIMEOUT_MS = 50_000;
 export const MAX_OPENAI_BRIEF_OUTPUT_TOKENS = 1_800;
 
@@ -296,7 +297,138 @@ const SKILL_EVIDENCE_GROUPS: readonly SkillEvidenceGroup[] = [
     canonical: "React",
     aliases: ["React", "React Development", "React-Entwicklung"],
   },
+  {
+    canonical: "Software Architecture",
+    aliases: ["Software Architecture", "Software Architect"],
+  },
+  {
+    canonical: "AI Solution Architecture",
+    aliases: ["AI Solution Architecture", "AI Solution Architect"],
+  },
+  {
+    canonical: "Azure AI",
+    aliases: ["Azure AI", "Azure AI Engineer"],
+  },
+  {
+    canonical: "Microsoft Copilot",
+    aliases: ["Microsoft Copilot", "Microsoft Copilot Developer"],
+  },
+  {
+    canonical: "AI Projects",
+    aliases: ["AI Projects", "KI-Projekte", "KI-Projekten"],
+  },
+  {
+    canonical: "Document Analysis",
+    aliases: ["Document Analysis", "Dokumentenanalyse"],
+  },
+  {
+    canonical: "RAG",
+    aliases: ["RAG", "RAG-System", "RAG-Systeme", "RAG-Systemen"],
+  },
+  {
+    canonical: "Microsoft 365",
+    aliases: ["Microsoft 365", "Microsoft-365-Umfeld", "Microsoft-365-Umgebung"],
+  },
+  {
+    canonical: "Enterprise Applications",
+    aliases: ["Enterprise Applications", "Unternehmensanwendungen"],
+  },
+  {
+    canonical: "Business Process Automation",
+    aliases: [
+      "Business Process Automation",
+      "Automatisierung von Gesch?ftsprozessen",
+    ],
+  },
+  {
+    canonical: "Python",
+    aliases: ["Python", "Python Developer", "Python Entwickler"],
+  },
+  {
+    canonical: "FastAPI",
+    aliases: ["FastAPI", "FastAPI Developer", "FastAPI Entwickler"],
+  },
+  {
+    canonical: "PostgreSQL",
+    aliases: ["PostgreSQL"],
+  },
+  {
+    canonical: "Microsoft Azure",
+    aliases: ["Microsoft Azure", "Azure"],
+  },
+  {
+    canonical: "Azure OpenAI",
+    aliases: ["Azure OpenAI"],
+  },
+  {
+    canonical: "Microsoft Graph",
+    aliases: ["Microsoft Graph"],
+  },
+  {
+    canonical: "Copilot Studio",
+    aliases: ["Copilot Studio"],
+  },
+  {
+    canonical: "Power Automate",
+    aliases: ["Power Automate"],
+  },
+  {
+    canonical: "SharePoint",
+    aliases: ["SharePoint"],
+  },
+  {
+    canonical: "Docker",
+    aliases: ["Docker"],
+  },
 ] as const;
+
+const SECTION_HEADINGS = [
+  "Projektziel",
+  "Vorhandene Systemlandschaft",
+  "Hauptaufgaben",
+  "Voraussetzungen",
+  "Bevorzugte Technologien",
+  "Zeitrahmen / Projektlaufzeit",
+  "Zeitrahmen",
+  "Projektlaufzeit",
+  "Erwartetes Ergebnis",
+] as const;
+
+function namedSection(source: string, heading: string): string | null {
+  const headingPattern = new RegExp(
+    `(?:^|\\n)\\s*(?:#{1,6}\\s*)?${escapeRegex(heading)}\\s*:\\s*`,
+    "iu",
+  );
+  const match = headingPattern.exec(source);
+  if (!match || match.index === undefined) return null;
+
+  const start = match.index + match[0].length;
+  const tail = source.slice(start);
+  const nextHeadingPattern = new RegExp(
+    `(?:^|\\n)\\s*(?:#{1,6}\\s*)?(?:${SECTION_HEADINGS.map(escapeRegex).join("|")})\\s*:\\s*`,
+    "iu",
+  );
+  const next = nextHeadingPattern.exec(tail);
+  return (next ? tail.slice(0, next.index) : tail).trim() || null;
+}
+
+function termsOccur(source: string | null, terms: readonly string[]): boolean {
+  return Boolean(source && terms.some((term) => sourceContains(source, term)));
+}
+
+function alternativeRoleClause(source: string | null): string | null {
+  if (!source) return null;
+  const match = /\bErfahrung\s+als\s+([^\n.]+)/iu.exec(source);
+  return match?.[1] && /\boder\b/iu.test(match[1]) ? match[1].trim() : null;
+}
+
+function mandatoryExperienceClause(source: string | null): string | null {
+  if (!source) return null;
+  return (
+    /\bPraktische\s+Erfahrung\s+in\s+([^\n.]+)/iu.exec(source)?.[1]?.trim() ??
+    null
+  );
+}
 
 function flexibleTermPattern(value: string): string {
   return escapeRegex(normalizeText(value)).replace(/ +/gu, "\\s+");
@@ -313,10 +445,16 @@ function skillEvidenceGroup(value: string): SkillEvidenceGroup | null {
 
 function skillHasOptionalContext(source: string, terms: readonly string[]): boolean {
   const normalizedSource = normalizeText(source);
+  if (termsOccur(namedSection(source, "Bevorzugte Technologien"), terms)) {
+    return true;
+  }
+  if (termsOccur(alternativeRoleClause(namedSection(source, "Voraussetzungen")), terms)) {
+    return true;
+  }
   return terms.some((term) => {
     const pattern = flexibleTermPattern(term);
     return new RegExp(
-      `(?:optional|nice\\s+to\\s+have|ideally|wuenschenswert|wünschenswert|von\\s+vorteil)[^.;\\n]{0,60}${pattern}|${pattern}[^.;\\n]{0,40}(?:optional|nice\\s+to\\s+have|wuenschenswert|wünschenswert|von\\s+vorteil)`,
+      `(?:optional|nice\\s+to\\s+have|ideally|wuenschenswert|w?nschenswert|von\\s+vorteil)[^.;\\n]{0,60}${pattern}|${pattern}[^.;\\n]{0,40}(?:optional|nice\\s+to\\s+have|wuenschenswert|w?nschenswert|von\\s+vorteil)`,
       "iu",
     ).test(normalizedSource);
   });
@@ -349,14 +487,14 @@ const DURATION_NUMBER_WORDS: Readonly<Record<number, readonly string[]>> = {
   2: ["two", "zwei"],
   3: ["three", "drei"],
   4: ["four", "vier"],
-  5: ["five", "fünf", "fuenf"],
+  5: ["five", "f?nf", "fuenf"],
   6: ["six", "sechs"],
   7: ["seven", "sieben"],
   8: ["eight", "acht"],
   9: ["nine", "neun"],
   10: ["ten", "zehn"],
   11: ["eleven", "elf"],
-  12: ["twelve", "zwölf", "zwoelf"],
+  12: ["twelve", "zw?lf", "zwoelf"],
 };
 
 const DURATION_UNIT_PATTERNS: Readonly<
@@ -381,7 +519,7 @@ function groundedDuration(
     .join("|");
   const unit = DURATION_UNIT_PATTERNS[proposed.unit];
   const match = new RegExp(
-    `(?:\\b(?:for|für|dauer(?:t)?(?:\\s+von)?|laufzeit(?:\\s+von)?)\\s*)?(?:${numbers})[ -]*(?:${unit})\\b`,
+    `(?:\\b(?:for|f?r|dauer(?:t)?(?:\\s+von)?|laufzeit(?:\\s+von)?)\\s*)?(?:${numbers})[ -]*(?:${unit})\\b`,
     "iu",
   ).exec(source);
   if (!match?.[0]) return null;
@@ -429,18 +567,18 @@ function hasCurrencyEvidence(
   currency: "EUR" | "USD" | "GBP",
 ): boolean {
   const patterns = {
-    EUR: /(?:€|\beur\b|\beuros?\b)/iu,
+    EUR: /(?:?|\beur\b|\beuros?\b)/iu,
     USD: /(?:\$|\busd\b|\bdollars?\b)/iu,
-    GBP: /(?:£|\bgbp\b|\bpounds?\b)/iu,
+    GBP: /(?:?|\bgbp\b|\bpounds?\b)/iu,
   } as const;
   return patterns[currency].test(source);
 }
 
 const MAXIMUM_QUALIFIER =
-  /(?:\bmax(?:imal(?:e[rmns]?)?)?\b|\bup\s+to\b|\bat\s+most\b|\bcap(?:ped)?\b|\bceiling\b|\blimit\b|\bbis\s+zu\b|\bhöchstens\b|\bgedeckelt\b|\bobergrenze\b)/iu;
+  /(?:\bmax(?:imal(?:e[rmns]?)?)?\b|\bup\s+to\b|\bat\s+most\b|\bcap(?:ped)?\b|\bceiling\b|\blimit\b|\bbis\s+zu\b|\bh?chstens\b|\bgedeckelt\b|\bobergrenze\b)/iu;
 const MINIMUM_QUALIFIER =
   /(?:\bmin(?:imum|destens)?\b|\bat\s+least\b|\buntergrenze\b)/iu;
-const RANGE_QUALIFIER = /(?:\bbetween\b|\bzwischen\b|\bvon\b.+\bbis\b|\bto\b|[-–—])/iu;
+const RANGE_QUALIFIER = /(?:\bbetween\b|\bzwischen\b|\bvon\b.+\bbis\b|\bto\b|[-??])/iu;
 
 function rangeSemanticsAreGrounded(
   segment: string,
@@ -479,11 +617,11 @@ function groundedRate(
 ): ProjectBrief["rate"] {
   if (!proposed) return null;
   const rateEvidence =
-    /(?:\brate\b|\bdaily\s+(?:fee|rate)\b|\bhourly\s+(?:fee|rate)\b|\btagessatz\b|\bstundensatz\b|\btäglich(?:e[rmns]?)?\s+vergütung\b|\bstündlich(?:e[rmns]?)?\s+vergütung\b|\bhonorar\b)/iu;
+    /(?:\brate\b|\bdaily\s+(?:fee|rate)\b|\bhourly\s+(?:fee|rate)\b|\btagessatz\b|\bstundensatz\b|\bt?glich(?:e[rmns]?)?\s+verg?tung\b|\bst?ndlich(?:e[rmns]?)?\s+verg?tung\b|\bhonorar\b)/iu;
   const unitEvidence =
     proposed.unit === "day"
-      ? /(?:\bper\s+day\b|\bpro\s+tag\b|\bday\b|\bdaily\b|\btagessatz\b|\btäglich)/iu
-      : /(?:\bper\s+hour\b|\bpro\s+stunde\b|\bhour(?:ly)?\b|\bstundensatz\b|\bstündlich)/iu;
+      ? /(?:\bper\s+day\b|\bpro\s+tag\b|\bday\b|\bdaily\b|\btagessatz\b|\bt?glich)/iu
+      : /(?:\bper\s+hour\b|\bpro\s+stunde\b|\bhour(?:ly)?\b|\bstundensatz\b|\bst?ndlich)/iu;
   const segment = evidenceSegments(source).find(
     (part) =>
       rateEvidence.test(part) &&
@@ -504,11 +642,11 @@ function groundedWorkMode(
     " ",
   );
   const remote =
-    /\b(?:remote|remotely|homeoffice|home\s+office|ortsunabhängig|location\s+independent|work\s+from\s+home)\b/iu.test(
+    /\b(?:remote|remotely|homeoffice|home\s+office|ortsunabh?ngig|location\s+independent|work\s+from\s+home)\b/iu.test(
       withoutNegatedModes,
     );
   const onSite =
-    /\b(?:on\s+site|onsite|vor\s+ort|in\s+präsenz|beim\s+kunden|am\s+standort)\b/iu.test(
+    /\b(?:on\s+site|onsite|vor\s+ort|in\s+pr?senz|beim\s+kunden|am\s+standort)\b/iu.test(
       withoutNegatedModes,
     );
   const hybrid =
@@ -568,11 +706,11 @@ const FIELD_REMOVAL_PATTERNS: Readonly<
   rate:
     /(?:kein(?:e|en)?\s+(?:angegebenen?\s+)?(?:satz|stundensatz|tagessatz|rate)|(?:stundensatz|tagessatz|rate)\s*(?:offen|unbekannt|nicht angegeben|entfernen)|no (?:hourly |day )?rate|rate\s*(?:unknown|not specified|remove))/iu,
   constraints:
-    /(?:keine?\s+(?:einschränkungen|constraints)|einschränkungen\s*(?:offen|unbekannt|nicht angegeben|entfernen)|no constraints|constraints\s*(?:unknown|not specified|remove))/iu,
+    /(?:keine?\s+(?:einschr?nkungen|constraints)|einschr?nkungen\s*(?:offen|unbekannt|nicht angegeben|entfernen)|no constraints|constraints\s*(?:unknown|not specified|remove))/iu,
   qualifications:
     /(?:keine?\s+(?:qualifikation(?:en)?|zertifizierung(?:en)?)|qualifikationen?\s*(?:offen|unbekannt|nicht angegeben|entfernen)|no qualifications?|qualifications?\s*(?:unknown|not specified|remove))/iu,
   availabilityRequirement:
-    /(?:keine?\s+(?:verfügbarkeitsanforderung|vorgabe\s+zur\s+verfügbarkeit)|verfügbarkeit\s*(?:offen|unbekannt|nicht angegeben|entfernen)|no availability requirement|availability\s*(?:unknown|not specified|remove))/iu,
+    /(?:keine?\s+(?:verf?gbarkeitsanforderung|vorgabe\s+zur\s+verf?gbarkeit)|verf?gbarkeit\s*(?:offen|unbekannt|nicht angegeben|entfernen)|no availability requirement|availability\s*(?:unknown|not specified|remove))/iu,
   contractualRequirements:
     /(?:keine?\s+(?:vertragsanforderungen?|vertraglichen?\s+vorgaben)|vertragsanforderungen?\s*(?:offen|unbekannt|nicht angegeben|entfernen)|no contractual requirements?|contractual requirements?\s*(?:unknown|not specified|remove))/iu,
 };
@@ -597,6 +735,211 @@ function normalizedSummary(source: string): string {
   return source.replace(/\s+/gu, " ").trim().slice(0, 4_000);
 }
 
+const ALTERNATIVE_ROLE_SKILLS = [
+  "Software Architecture",
+  "Azure AI",
+  "Microsoft Copilot",
+  "AI Solution Architecture",
+  "Python",
+  "FastAPI",
+] as const;
+
+const REQUIRED_EXPERIENCE_SKILLS = [
+  "AI Projects",
+  "Document Analysis",
+  "RAG",
+  "Microsoft 365",
+  "Enterprise Applications",
+  "Business Process Automation",
+] as const;
+
+const PREFERRED_TECHNOLOGY_SKILLS = [
+  "Python",
+  "FastAPI",
+  "PostgreSQL",
+  "Microsoft Azure",
+  "Azure AI",
+  "Azure OpenAI",
+  "Microsoft Graph",
+  "Copilot Studio",
+  "Power Automate",
+  "SharePoint",
+  "Docker",
+] as const;
+
+function skillGroup(canonical: string): SkillEvidenceGroup {
+  return (
+    SKILL_EVIDENCE_GROUPS.find((group) => group.canonical === canonical) ?? {
+      canonical,
+      aliases: [canonical],
+    }
+  );
+}
+
+function skillsGroundedIn(
+  source: string | null,
+  canonicals: readonly string[],
+): string[] | null {
+  if (!source) return null;
+  return deduplicate(
+    canonicals.filter((canonical) => {
+      const group = skillGroup(canonical);
+      return termsOccur(source, group.aliases);
+    }),
+  );
+}
+
+function stripInlineMarkdown(value: string): string {
+  return value
+    .replace(/^\s*(?:#{1,6}\s*)?/u, "")
+    .replace(/^\*\*|\*\*$/gu, "")
+    .replace(/\[([^\]]+)\]\([^\)]+\)/gu, "$1")
+    .trim();
+}
+
+function explicitProjectTitle(source: string): string | null {
+  const firstLine = source
+    .split(/\r?\n/gu)
+    .map(stripInlineMarkdown)
+    .find(Boolean);
+  if (!firstLine) return null;
+  const title = /^(.*?\b(?:gesucht|wanted|required))\b/iu.exec(firstLine)?.[1];
+  if (!title) return null;
+  const normalized = title.trim();
+  return normalized.length <= 160 ? normalized : null;
+}
+
+function explicitLocation(source: string): string | null {
+  const earlySource = source.slice(0, 1_500);
+  const labeled =
+    /(?:\blocation|\bstandort|\bort)\s*[:=]\s*([\p{L}][\p{L} .'-]{1,80})(?=,|;|\.|\n|$)/iu.exec(
+      earlySource,
+    )?.[1];
+  if (labeled) return stripInlineMarkdown(labeled);
+
+  const countryPair =
+    /(?:^|\n)\s*(?:\*\*)?([\p{Lu}][\p{L} .'-]{1,60}?)(?:\*\*)?\s*(?:\r?\n\s*)?,\s*(?:\r?\n\s*)?(?:\[)?(?:Deutschland|Germany)\b/imu.exec(
+      earlySource,
+    )?.[1];
+  return countryPair ? stripInlineMarkdown(countryPair) : null;
+}
+
+function explicitStartWindow(source: string): ProjectBrief["startWindow"] {
+  const match = /\bStart\s*:?[ \t]*((?:0?[1-9]|1[0-2])\/(?:19|20)\d{2})\b/iu.exec(
+    source,
+  );
+  return match?.[1]
+    ? { raw: match[1], earliest: null, latest: null }
+    : null;
+}
+
+function currencyFromEvidence(value: string): "EUR" | "USD" | "GBP" | null {
+  if (/^(?:?|EUR)$/iu.test(value)) return "EUR";
+  if (/^(?:\$|USD)$/iu.test(value)) return "USD";
+  if (/^(?:?|GBP)$/iu.test(value)) return "GBP";
+  return null;
+}
+
+function explicitTotalBudget(source: string): ProjectBrief["budget"] {
+  const number = "([0-9][0-9., ]{0,24})";
+  const currency = "(?|EUR|\\$|USD|?|GBP)";
+  const leading = new RegExp(
+    `\\b(?:Gesamt|Projekt)?budget\\s*:?\\s*(?:${currency}\\s*)?${number}(?:\\s*${currency})?`,
+    "iu",
+  ).exec(source);
+  const trailing = new RegExp(
+    `${number}\\s*${currency}\\s+(?:Gesamt|Projekt)?budget\\b`,
+    "iu",
+  ).exec(source);
+
+  const rawAmount = leading?.[2] ?? trailing?.[1];
+  const rawCurrency = leading?.[1] ?? leading?.[3] ?? trailing?.[2];
+  if (!rawAmount || !rawCurrency) return null;
+  const amount = parseEvidenceNumber(rawAmount);
+  const parsedCurrency = currencyFromEvidence(rawCurrency);
+  if (amount === null || !parsedCurrency) return null;
+
+  const evidence = leading?.[0] ?? trailing?.[0] ?? "";
+  const isMaximum = MAXIMUM_QUALIFIER.test(evidence);
+  return {
+    min: isMaximum ? null : amount,
+    max: amount,
+    currency: parsedCurrency,
+  };
+}
+
+function percentageWorkMode(source: string): ProjectBrief["workMode"] | null {
+  const raw = /\b(100|[1-9]?\d)\s*%\s*(?:\[\s*)?(?:remote|homeoffice)\b/iu.exec(
+    source,
+  )?.[1];
+  if (!raw) return null;
+  const percentage = Number(raw);
+  if (percentage === 100) return "remote";
+  if (percentage === 0) return "on_site";
+  return "hybrid";
+}
+
+function explicitAllocationConstraints(source: string): string[] | null {
+  const allocation = /\b(100|[1-9]?\d)\s*%\s*Auslastung\b/iu.exec(source)?.[0];
+  return allocation ? [allocation.replace(/\s*%\s*/u, "% ").trim()] : null;
+}
+
+function enhanceDeterministicBrief(
+  parsed: ProjectBrief,
+  source: string,
+): ProjectBrief {
+  const prerequisites = namedSection(source, "Voraussetzungen");
+  const preferredTechnologies = namedSection(source, "Bevorzugte Technologien");
+  const alternativeRoles = alternativeRoleClause(prerequisites);
+  const requiredExperience = mandatoryExperienceClause(prerequisites);
+
+  const explicitRequired = skillsGroundedIn(
+    requiredExperience,
+    REQUIRED_EXPERIENCE_SKILLS,
+  );
+  const explicitOptional = deduplicate([
+    ...(skillsGroundedIn(alternativeRoles, ALTERNATIVE_ROLE_SKILLS) ?? []),
+    ...(skillsGroundedIn(
+      preferredTechnologies,
+      PREFERRED_TECHNOLOGY_SKILLS,
+    ) ?? []),
+  ]);
+  const explicitlyOptionalKeys = new Set(
+    (explicitOptional ?? []).map(normalizeText),
+  );
+  const explicitlyRequiredKeys = new Set(
+    (explicitRequired ?? []).map(normalizeText),
+  );
+  const retainedRequired = (parsed.requiredSkills ?? []).filter(
+    (skill) =>
+      !explicitlyOptionalKeys.has(normalizeText(skill)) ||
+      explicitlyRequiredKeys.has(normalizeText(skill)),
+  );
+
+  const enhanced = {
+    ...parsed,
+    projectTitle: explicitProjectTitle(source) ?? parsed.projectTitle,
+    requiredSkills: mergeLists(retainedRequired, explicitRequired),
+    optionalSkills: mergeLists(parsed.optionalSkills, explicitOptional),
+    workMode: percentageWorkMode(source) ?? parsed.workMode,
+    location: explicitLocation(source) ?? parsed.location,
+    startWindow: explicitStartWindow(source) ?? parsed.startWindow,
+    budget: explicitTotalBudget(source) ?? parsed.budget,
+    constraints: mergeLists(
+      parsed.constraints,
+      explicitAllocationConstraints(source),
+    ),
+  };
+  if (enhanced.startWindow && !enhanced.availabilityRequirement) {
+    enhanced.availabilityRequirement = enhanced.startWindow.raw;
+  }
+
+  return ProjectBriefSchema.parse({
+    ...enhanced,
+    unknownFields: deriveUnknownFields(enhanced),
+  });
+}
+
 function parseDeterministicSource(source: string, now: Date): ProjectBrief {
   // The domain summary is intentionally shorter than the retained source. Keep
   // the complete request, while giving the conservative parser a schema-safe
@@ -608,10 +951,11 @@ function parseDeterministicSource(source: string, now: Date): ProjectBrief {
     originalRequest: source,
     summary: normalizedSummary(source),
   };
-  return ProjectBriefSchema.parse({
+  const validated = ProjectBriefSchema.parse({
     ...reconstructed,
     unknownFields: deriveUnknownFields(reconstructed),
   });
+  return enhanceDeterministicBrief(validated, source);
 }
 
 /**
@@ -716,7 +1060,7 @@ function hasLanguageEvidence(source: string, language: string): boolean {
   const aliases: Readonly<Record<string, readonly string[]>> = {
     German: ["deutsch", "deutsche", "deutscher", "deutschsprachig"],
     English: ["englisch", "englische", "englischer", "englischsprachig"],
-    French: ["französisch", "französische", "französischsprachig"],
+    French: ["franz?sisch", "franz?sische", "franz?sischsprachig"],
     Spanish: ["spanisch", "spanische", "spanischsprachig"],
   };
   return (aliases[language] ?? []).some((alias) => sourceContains(source, alias));
@@ -964,6 +1308,7 @@ export function estimateProjectBriefTokenCeiling(
   const model =
     options.model?.trim() ||
     process.env.OPENAI_BRIEF_MODEL?.trim() ||
+    process.env.OPENAI_MODEL?.trim() ||
     DEFAULT_OPENAI_BRIEF_MODEL;
   const request = providerRequest(
     deterministic.originalRequest,
@@ -1005,6 +1350,23 @@ async function withHardTimeout<T>(
   }
 }
 
+const FALLBACK_ELIGIBLE_FAILURES = new Set<OpenAiDiagnosticStatus>([
+  "rate_limit",
+  "model_unavailable",
+  "permission",
+]);
+
+function normalizedProviderFailure(error: unknown): Exclude<
+  OpenAiDiagnosticStatus,
+  "reachable" | "unconfigured"
+> {
+  if (isTimeoutError(error)) return "timeout";
+  const classified = classifyOpenAiProviderError(error);
+  return classified === "reachable" || classified === "unconfigured"
+    ? "provider_error"
+    : classified;
+}
+
 /**
  * Extracts a schema-validated brief without relying on provider-side state.
  * The deterministic state is built first, so every failure path preserves the
@@ -1036,31 +1398,49 @@ export async function extractProjectBrief(
   const model =
     options.model?.trim() ||
     process.env.OPENAI_BRIEF_MODEL?.trim() ||
+    process.env.OPENAI_MODEL?.trim() ||
     DEFAULT_OPENAI_BRIEF_MODEL;
   const timeoutMs = configuredTimeout(options.timeoutMs);
   let provider: ExtractProjectBriefResult["provider"];
   let providerAttempted = false;
   try {
-    const request = providerRequest(
-      deterministic.originalRequest,
-      parsedInput.latestMessage,
-      model,
-      parsedInput.safetyIdentifier,
-    );
-    const response = await withHardTimeout(
-      (signal) => {
-        providerAttempted = true;
-        return responsesClient.parse(request, {
-          timeout: timeoutMs,
-          maxRetries: 0,
-          signal,
-        });
-      },
-      timeoutMs,
-    );
+    let attemptedModel = model;
+    const requestProvider = (requestModel: string) =>
+      withHardTimeout(
+        (signal) => {
+          providerAttempted = true;
+          return responsesClient.parse(
+            providerRequest(
+              deterministic.originalRequest,
+              parsedInput.latestMessage,
+              requestModel,
+              parsedInput.safetyIdentifier!,
+            ),
+            {
+              timeout: timeoutMs,
+              maxRetries: 0,
+              signal,
+            },
+          );
+        },
+        timeoutMs,
+      );
+
+    let response: BriefProviderResponse;
+    try {
+      response = await requestProvider(model);
+    } catch (primaryError) {
+      const primaryFailure = normalizedProviderFailure(primaryError);
+      const mayFallback =
+        model.startsWith(DEFAULT_OPENAI_BRIEF_MODEL) &&
+        FALLBACK_ELIGIBLE_FAILURES.has(primaryFailure);
+      if (!mayFallback) throw primaryError;
+      attemptedModel = FALLBACK_OPENAI_BRIEF_MODEL;
+      response = await requestProvider(FALLBACK_OPENAI_BRIEF_MODEL);
+    }
     provider = {
       requestedModel: model,
-      model: response.model?.trim() || model,
+      model: response.model?.trim() || attemptedModel,
       responseId: response.id,
       inputTokens: response.usage?.input_tokens,
       cachedInputTokens: response.usage?.input_tokens_details?.cached_tokens,
@@ -1086,18 +1466,13 @@ export async function extractProjectBrief(
       provider,
     };
   } catch (error) {
-    const timedOut = isTimeoutError(error);
-    const classified = timedOut
-      ? "timeout"
-      : classifyOpenAiProviderError(error);
+    const classified = normalizedProviderFailure(error);
     return fallbackResult(
       deterministic,
-      timedOut ? "provider_timeout" : "provider_error",
+      classified === "timeout" ? "provider_timeout" : "provider_error",
       provider,
       providerAttempted,
-      classified === "reachable" || classified === "unconfigured"
-        ? "provider_error"
-        : classified,
+      classified,
     );
   }
 }

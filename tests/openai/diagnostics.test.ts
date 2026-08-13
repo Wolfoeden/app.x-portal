@@ -103,6 +103,18 @@ describe("diagnoseOpenAiProvider", () => {
       requestId: "req_quota",
     },
     {
+      label: "rate limit",
+      error: new RateLimitError(
+        429,
+        { code: "rate_limit_exceeded", message: "sensitive rate body" },
+        "sensitive rate message",
+        new Headers({ "x-request-id": "req_rate" }),
+      ),
+      status: "rate_limit",
+      httpStatus: 429,
+      requestId: "req_rate",
+    },
+    {
       label: "permission",
       error: new PermissionDeniedError(
         403,

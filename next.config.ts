@@ -20,8 +20,16 @@ const contentSecurityPolicy = [
   ...(isProduction ? ["upgrade-insecure-requests"] : []),
 ].join("; ");
 
+const buildVersion =
+  process.env.COMMIT_REF?.trim().slice(0, 12) ||
+  process.env.DEPLOY_ID?.trim().slice(0, 24) ||
+  "development";
+
 const nextConfig: NextConfig = {
   basePath,
+  env: {
+    NEXT_PUBLIC_BUILD_VERSION: buildVersion,
+  },
   poweredByHeader: false,
   typedRoutes: false,
   async headers() {

@@ -94,7 +94,7 @@ the brief/UI may use canonical labels (`German`, `English`, `Spanish`). The
 server mapper owns this explicit label-to-code conversion before matching; SQL
 must never compare an unnormalized display label directly.
 
-## Deterministic matching rule (`freelancer-match-v6`)
+## Deterministic matching rule (`freelancer-match-v7`)
 
 Eligibility is a hard filter, evaluated before ordering:
 
@@ -111,8 +111,11 @@ Eligibility is a hard filter, evaluated before ordering:
    freelancer's meeting calendar is directly bookable.
 6. Missing qualification evidence remains a visible gap. Explicit contractual
    requirements and other hard constraints still require matching public
-   profile evidence. The same normalized constraint is checked only once when
-   it also appears contractually.
+   profile evidence. Requested delivery capacity (for example, `100%
+   Auslastung`) is an engagement detail rather than a public-profile
+   qualification, so missing evidence is disclosed as a known gap and does not
+   exclude a candidate. The same normalized constraint is checked only once
+   when it also appears contractually.
 7. A supplied rate/budget ceiling is respected; an absent commercial value is
    not invented and remains an explicitly disclosed gap.
 
@@ -302,7 +305,7 @@ and evidence procedure.
 V1 intentionally uses Studio instead of a custom profile/customer admin. The
 application admin page is limited to read-only AI usage and credit reporting.
 A Supabase project Developer/Administrator can have broader project visibility
-than the business task “edit freelancer profiles”. Therefore Studio access is
+than the business task ?edit freelancer profiles?. Therefore Studio access is
 limited to named, trusted internal operators with MFA, separate accounts and a
 written runbook. Do not invite external freelancers or customers into the
 Supabase project.

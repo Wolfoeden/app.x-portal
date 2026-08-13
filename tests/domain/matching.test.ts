@@ -57,7 +57,7 @@ describe("deterministic freelancer matching", () => {
     expect(paused.eligible).toBe(false);
     expect(paused.rejectionReasons).toContain("Profil ist nicht aktiv.");
     expect(unavailable.eligible).toBe(false);
-    expect(unavailable.rejectionReasons).toContain("Profil ist als nicht verfügbar markiert.");
+    expect(unavailable.rejectionReasons).toContain("Profil ist als nicht verf?gbar markiert.");
   });
 
   it("allows bookable profiles with unknown project availability and ranks confirmed availability first", () => {
@@ -81,7 +81,7 @@ describe("deterministic freelancer matching", () => {
     ]);
     expect(shortlist.matches[1]?.availabilityStatus).toBe("unknown");
     expect(shortlist.matches[1]?.knownGaps).toContain(
-      "Projektverfügbarkeit ist nicht bestätigt; der Booking-Kalender ist verfügbar.",
+      "Projektverf?gbarkeit ist nicht best?tigt; der Booking-Kalender ist verf?gbar.",
     );
   });
 
@@ -158,7 +158,7 @@ describe("deterministic freelancer matching", () => {
     );
     const match = buildShortlist(brief, [profileFixtures[0]!]).matches[0]!;
 
-    expect(match.knownGaps).toContain("Optionale Kompetenzen nicht aufgeführt: Information Security.");
+    expect(match.knownGaps).toContain("Optionale Kompetenzen nicht aufgef?hrt: Information Security.");
     expect(match.knownGaps.join(" ")).not.toMatch(/probably|likely|suitable|best/iu);
   });
 
@@ -180,14 +180,14 @@ describe("deterministic freelancer matching", () => {
     expect(hourlyEvaluation.eligible).toBe(true);
     expect(hourlyEvaluation.commercialConstraintConfidence).toBe("unconfirmed");
     expect(hourlyEvaluation.knownGaps).toContain(
-      "Stundensatz noch nicht bestätigt; Preisgrenze vor der Buchung abstimmen.",
+      "Stundensatz noch nicht best?tigt; Preisgrenze vor der Buchung abstimmen.",
     );
 
     const budgetMatch = buildShortlist(budgetBrief, [unknownBudgetProfile]).matches[0]!;
     expect(budgetMatch.profile.displayName).toBe("Anna Keller");
     expect(budgetMatch.orderingEvidence.commercialConstraintConfidence).toBe("unconfirmed");
     expect(budgetMatch.knownGaps).toContain(
-      "Mindestprojektbudget noch nicht bestätigt; Budgetpassung vor der Buchung abstimmen.",
+      "Mindestprojektbudget noch nicht best?tigt; Budgetpassung vor der Buchung abstimmen.",
     );
   });
 
@@ -222,10 +222,10 @@ describe("deterministic freelancer matching", () => {
       "unconfirmed",
     );
     expect(shortlist.matches[1]?.knownGaps).toContain(
-      "Tagessatz noch nicht bestätigt; Preisgrenze vor der Buchung abstimmen.",
+      "Tagessatz noch nicht best?tigt; Preisgrenze vor der Buchung abstimmen.",
     );
     expect(evaluateProfile(brief, overMaximum).rejectionReasons).toContain(
-      "Bestätigter Tagessatz von 900 EUR überschreitet die angegebene Obergrenze von 800 EUR.",
+      "Best?tigter Tagessatz von 900 EUR ?berschreitet die angegebene Obergrenze von 800 EUR.",
     );
   });
 
@@ -258,7 +258,7 @@ describe("deterministic freelancer matching", () => {
     const shortlist = buildShortlist(brief, [profileFixtures[4]!, unconfirmed]);
     expect(shortlist.matches[0]?.profile.displayName).toBe("Elena Rossi");
     expect(shortlist.matches[1]?.knownGaps.join(" ")).toContain(
-      "Qualifikationen noch nicht bestätigt",
+      "Qualifikationen noch nicht best?tigt",
     );
   });
 
@@ -276,10 +276,10 @@ describe("deterministic freelancer matching", () => {
 
     expect(evaluation.eligible).toBe(false);
     expect(evaluation.rejectionReasons).toContain(
-      "Vertragsanforderungen nicht bestätigt: EU residency.",
+      "Vertragsanforderungen nicht best?tigt: EU residency.",
     );
     expect(evaluation.matchReasons).not.toContain(
-      "Weitere Rahmenbedingung bestätigt: EU residency.",
+      "Weitere Rahmenbedingung best?tigt: EU residency.",
     );
   });
 
@@ -293,8 +293,94 @@ describe("deterministic freelancer matching", () => {
 
     expect(evaluation.eligible).toBe(false);
     expect(evaluation.rejectionReasons).toContain(
-      "Weitere Pflichtbedingung im Profil nicht bestätigt: no travel.",
+      "Weitere Pflichtbedingung im Profil nicht best?tigt: no travel.",
     );
+  });
+
+  it("keeps sensible house-management AI candidates when 100% allocation is an open engagement detail", () => {
+    const brief = applyBriefPatch(
+      parseFallbackBrief(
+        "Senior developer for an AI-supported house-management copilot in D?sseldorf, 40% remote, start 9/2026, EUR 30,000 project budget.",
+        { now },
+      ),
+      {
+        requiredSkills: [
+          "RAG",
+          "Microsoft 365",
+          "Document Analysis",
+          "Business Process Automation",
+        ],
+        optionalSkills: ["Python", "FastAPI", "Microsoft Azure"],
+        workMode: "hybrid",
+        location: "D?sseldorf",
+        startWindow: { raw: "9/2026", earliest: null, latest: null },
+        budget: { min: 30_000, max: 30_000, currency: "EUR" },
+        constraints: ["100% Auslastung"],
+      },
+    );
+    const candidates = [
+      {
+        ...profileFixtures[2]!,
+        id: "00000000-0000-4000-8000-000000000012",
+        displayName: "AI Copilot Architect",
+        role: "AI Solution Architect",
+        skillTags: [
+          { value: "RAG", source: "verified" as const },
+          { value: "Microsoft 365", source: "verified" as const },
+          { value: "Document Analysis", source: "self_reported" as const },
+        ],
+        location: { value: "D?sseldorf", source: "verified" as const },
+        minimumProjectBudget: { amount: 15_000, currency: "EUR" as const },
+      },
+      {
+        ...profileFixtures[2]!,
+        id: "00000000-0000-4000-8000-000000000013",
+        displayName: "M365 Automation Engineer",
+        role: "Microsoft Copilot Developer",
+        skillTags: [
+          { value: "Microsoft 365", source: "verified" as const },
+          { value: "Business Process Automation", source: "verified" as const },
+        ],
+        location: { value: "D?sseldorf", source: "verified" as const },
+        minimumProjectBudget: { amount: 10_000, currency: "EUR" as const },
+      },
+      {
+        ...profileFixtures[2]!,
+        id: "00000000-0000-4000-8000-000000000014",
+        displayName: "RAG Backend Engineer",
+        role: "Senior Python/FastAPI Engineer",
+        skillTags: [
+          { value: "RAG", source: "self_reported" as const },
+          { value: "Python", source: "verified" as const },
+          { value: "FastAPI", source: "verified" as const },
+        ],
+        location: { value: "D?sseldorf", source: "verified" as const },
+        minimumProjectBudget: { amount: 8_000, currency: "EUR" as const },
+      },
+      {
+        ...profileFixtures[2]!,
+        id: "00000000-0000-4000-8000-000000000015",
+        displayName: "Unrelated Frontend Engineer",
+        location: { value: "D?sseldorf", source: "verified" as const },
+      },
+    ];
+
+    const shortlist = buildShortlist(brief, candidates);
+
+    expect(shortlist.matches).toHaveLength(3);
+    expect(shortlist.matches.map((match) => match.profile.displayName)).toEqual([
+      "AI Copilot Architect",
+      "RAG Backend Engineer",
+      "M365 Automation Engineer",
+    ]);
+    expect(
+      shortlist.matches.every((match) =>
+        match.knownGaps.some((gap) => gap.includes("100% Auslastung")),
+      ),
+    ).toBe(true);
+    expect(
+      evaluateProfile(brief, candidates[0]!).rejectionReasons.join(" "),
+    ).not.toContain("100% Auslastung");
   });
 
   it("evaluates a constraint only once when it is also a contractual requirement", () => {
@@ -310,7 +396,7 @@ describe("deterministic freelancer matching", () => {
 
     expect(evaluation.eligible).toBe(false);
     expect(evaluation.rejectionReasons).toContain(
-      "Vertragsanforderungen nicht bestätigt: Security clearance.",
+      "Vertragsanforderungen nicht best?tigt: Security clearance.",
     );
     expect(
       evaluation.rejectionReasons.filter((reason) =>
@@ -365,7 +451,7 @@ describe("deterministic freelancer matching", () => {
       },
       introPolicy: {
         type: "free" as const,
-        label: "Kostenfreies Erstgespräch",
+        label: "Kostenfreies Erstgespr?ch",
         bookingUrl: "https://calendly.com/cordula-buss-",
       },
     };
@@ -376,7 +462,7 @@ describe("deterministic freelancer matching", () => {
       "Belegte Pflichtkompetenzen: SAP S/4HANA, Requirements Management.",
     );
     expect(match?.knownGaps).toContain(
-      "Weitere Pflichtkompetenzen vor dem Gespräch prüfen: SAP MM, SAP PP.",
+      "Weitere Pflichtkompetenzen vor dem Gespr?ch pr?fen: SAP MM, SAP PP.",
     );
     expect(match?.knownGaps.join(" ")).not.toContain("800");
   });

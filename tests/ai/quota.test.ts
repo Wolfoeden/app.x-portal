@@ -42,6 +42,10 @@ describe("provider cost reconciliation", () => {
     expect(calculateProviderCostCents(1_000_000, 1_000_000)).toBe(1540);
   });
 
+  it("allows a new guest enough internal credits for a full project analysis", () => {
+    expect(configuredInitialCredits(true)).toBe(2_500);
+  });
+
   it("honors zero as an explicit hard-stop configuration", () => {
     process.env.AI_CREDITS_GUEST_TOTAL = "0";
     process.env.AI_DAILY_TOKEN_LIMIT_GUEST = "0";

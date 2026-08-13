@@ -30,6 +30,8 @@ export type AiOperationResult<T> = {
   outcome: AiUsageOutcome;
   /** Explicitly false only when the provider was definitely never called. */
   providerAttempted?: boolean;
+  /** True only for a provider rejection known to have consumed zero tokens. */
+  providerUsageDefinitelyZero?: boolean;
   usage?: AiProviderUsage;
 };
 
@@ -104,7 +106,10 @@ export async function executeTrackedAiRequest<T>(input: {
 
   const usage = operationResult.usage;
   if (!usage) {
-    if (operationResult.providerAttempted === false) {
+    if (
+      operationResult.providerAttempted === false ||
+      operationResult.providerUsageDefinitelyZero === true
+    ) {
       const releasedCredits = await settleWithoutUsage(
         input.requestKey,
         operationResult.outcome,
