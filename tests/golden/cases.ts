@@ -87,7 +87,12 @@ const businessEngineerCommon = {
 export const goldenCases: readonly GoldenCase[] = [
   {
     id: "business-engineer-de",
-    knownDefect: "A2 — German skill aliases. Today this ranks a QA test manager first.",
+    knownDefect:
+      "Partially fixed. German aliases now put the same profiles in the running as the English " +
+      "variant, but the ORDER still differs: the primary- and exact-skill criteria compare raw " +
+      "strings, so a brief extracted in German scores 0 on both no matter how well it matches. " +
+      "Closing this needs those two criteria to become family-aware, which changes the public " +
+      "ordering rule and therefore lands with the A3 version bump.",
     note:
       "Reference posting with the skill terms in German, the way a German brief is written. " +
       "Measured on the real 65-row export this returned 2 eligible profiles and ranked a QA " +

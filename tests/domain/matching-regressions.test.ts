@@ -217,3 +217,34 @@ describe("regression: a hard requirement must be recognised in either language",
     expect(result.knownGaps.some((gap) => gap.includes("French"))).toBe(false);
   });
 });
+
+describe("regression: German skill terms reach the same families as English ones", () => {
+  // The skill families carried no German aliases, so a brief extracted in
+  // German matched almost nothing: measured on the 65-row production export,
+  // the reference posting went from 18 eligible profiles in English to 2 in
+  // German, and ranked a QA test manager first.
+  const pairs: ReadonlyArray<readonly [string, string]> = [
+    ["Anforderungsmanagement", "requirements management"],
+    ["Anforderungsanalyse", "requirements analysis"],
+    ["Geschäftsprozessanalyse", "process analysis"],
+    ["Prozessoptimierung", "process optimization"],
+    ["Projektmanagement", "project management"],
+    ["Informationssicherheit", "information security"],
+  ];
+
+  for (const [german, english] of pairs) {
+    it(`treats "${german}" as "${english}"`, () => {
+      const profile = variant("00000000-0000-4000-8000-0000000000d1", "Kandidat", {
+        skillTags: [{ value: english, source: "self_reported" as const }],
+      });
+      const briefFor = (skill: string) =>
+        applyBriefPatch(parseFallbackBrief(`${skill} gesucht, remote.`, { now }), {
+          requiredSkills: [skill],
+          workMode: "remote",
+        });
+
+      expect(evaluateProfile(briefFor(german), profile).coreSkillMatches).toEqual([german]);
+      expect(evaluateProfile(briefFor(english), profile).coreSkillMatches).toEqual([english]);
+    });
+  }
+});
