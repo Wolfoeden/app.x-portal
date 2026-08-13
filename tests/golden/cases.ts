@@ -113,7 +113,6 @@ export const goldenCases: readonly GoldenCase[] = [
   },
   {
     id: "empty-brief",
-    knownDefect: "A1 fix A — today this returns three arbitrary profiles instead of none.",
     note:
       "A greeting with no extractable requirement. Must return zero matches. Returning anything " +
       "here means the shortlist fell through to alphabetical order over every active profile.",
@@ -165,10 +164,11 @@ export const goldenCases: readonly GoldenCase[] = [
   },
   {
     id: "hard-language-unmet",
-    knownDefect: "A1 fix F — a hard French requirement is not detected and silently becomes a gap.",
     note:
       "A hard French requirement against a pool that speaks German and English. Profiles with " +
-      "documented languages and profiles with none must be treated identically.",
+      "documented languages and profiles with none must be treated identically. Written with the " +
+      "umlaut-free 'Franzoesisch' on purpose: searchText folds 'ö' to 'o' but cannot fold 'oe', " +
+      "so this also guards the transliterated spelling German keyboards produce.",
     brief: brief({
       originalRequest:
         "Business Analyst gesucht.\nMuss zwingend: Franzoesisch in Wort und Schrift.",

@@ -49,6 +49,16 @@ export const explainMismatch = (
     `actual:   [${actual.map(goldenProfileName).join(", ") || "—"}]`,
   ];
 
+  // A shortlist that short-circuited on clarification never ranked anything, so
+  // per-profile eligibility below would be misleading on its own.
+  const shortlist = buildShortlist(goldenCase.brief, goldenProfiles);
+  if (shortlist.status !== "ranked") {
+    lines.push(
+      `  the shortlist did not rank at all: status=${shortlist.status} code=${shortlist.clarificationCode}`,
+    );
+    return lines.join("\n");
+  }
+
   const missing = expected.filter((id) => !actual.includes(id));
   for (const id of missing) {
     const profile = goldenProfiles.find((candidate) => candidate.id === id);

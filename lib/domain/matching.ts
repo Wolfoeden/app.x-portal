@@ -93,9 +93,27 @@ export const ShortlistSchema = z
       z.literal("display_name_asc"),
       z.literal("profile_id_asc"),
     ]),
+    /**
+     * `needs_clarification` means the brief carried no requirement to rank
+     * against — not that nothing matched. The two are opposite statements to a
+     * user and must not collapse into an empty `matches` array: ranking a brief
+     * with no stated requirement falls through every skill criterion down to
+     * the display name, which returns the alphabetically first profiles while
+     * still presenting them as matches.
+     */
+    status: z.enum(["ranked", "needs_clarification"]),
+    clarificationCode: z.enum(["no_extractable_requirement"]).nullable(),
     matches: z.array(ShortlistMatchSchema).max(3),
   })
-  .strict();
+  .strict()
+  .refine(
+    (value) => value.status === "ranked" || value.matches.length === 0,
+    "A shortlist that needs clarification cannot carry matches.",
+  )
+  .refine(
+    (value) => (value.status === "needs_clarification") === (value.clarificationCode !== null),
+    "clarificationCode must be set exactly when the shortlist needs clarification.",
+  );
 
 export type ProfileEvaluation = z.infer<typeof ProfileEvaluationSchema>;
 export type ShortlistMatch = z.infer<typeof ShortlistMatchSchema>;
@@ -312,19 +330,78 @@ function searchText(value: string): string {
     .replace(/\s+/gu, " ");
 }
 
+/**
+ * Terms that let `requirementStrength` recognise a requirement in free prose
+ * even when the extracted value and the request are written in different
+ * languages.
+ *
+ * The language keys mirror `canonicalLanguage` in lib/data/freelancers.ts —
+ * that mapping decides which canonical values a profile can ever carry, so a
+ * language missing here is a language whose "muss zwingend" marker is silently
+ * lost. Keep the two lists in step.
+ *
+ * This is the same shape of hard-coded lookup as SKILL_FAMILIES and carries the
+ * same weakness: anything not listed falls back to literal string containment.
+ */
+/**
+ * What an unmet must-have requirement does, per field.
+ *
+ * The decision is keyed on the FIELD, never on how complete an individual
+ * profile happens to be. Keying it on per-profile completeness is what made a
+ * profile that documented a non-matching value get rejected while a profile
+ * that left the field empty passed as a gap — punishing exactly the
+ * best-documented freelancers.
+ *
+ * A field may only reject when the platform actually collects evidence for it.
+ * That is a property of the schema, not of a row, so it belongs here:
+ *
+ * - language / workMode / location are collected and populated on every
+ *   production row, so an explicit must-have mismatch is a real knockout.
+ * - contractualCapabilities has no source column. It is derived from
+ *   prefixed fact strings and is empty on every production row today, so
+ *   treating an unmet contractual must-have as a knockout would empty every
+ *   shortlist that states one. It stays a visible gap until the column exists —
+ *   at which point this entry flips to "reject" in the same change.
+ */
+type UnmetRequirementOutcome = "reject" | "gap";
+type PolicyField = "language" | "workMode" | "location" | "contractual";
+
+// Deliberately typed rather than `as const`: with literal types TypeScript
+// narrows each lookup to a single outcome and reports the other branch as
+// unreachable, which would mean flipping an entry here is no longer a one-line
+// change. The `satisfies`-style key safety comes from the Record type instead.
+const UNMET_HARD_REQUIREMENT: Readonly<Record<PolicyField, UnmetRequirementOutcome>> = {
+  language: "reject",
+  workMode: "reject",
+  location: "reject",
+  contractual: "gap",
+};
+
+const REQUIREMENT_SPECIAL_TERMS: Readonly<Record<string, readonly string[]>> = {
+  german: ["german", "deutsch", "deutschsprachig", "deutsche sprache", "muttersprache deutsch"],
+  english: ["english", "englisch", "englischsprachig", "englische sprache"],
+  spanish: ["spanish", "spanisch", "espanol", "spanische sprache"],
+  // `searchText` folds "ö" to "o" but cannot fold the "oe" transliteration,
+  // which German writers use routinely on keyboards without umlauts. Both
+  // spellings are listed rather than changing the normalizer, which would
+  // affect every comparison in this module.
+  french: ["french", "französisch", "franzoesisch", "francais", "französische sprache"],
+  italian: ["italian", "italienisch", "italiano", "italienische sprache"],
+  dutch: ["dutch", "niederländisch", "niederlaendisch", "nederlands", "holländisch"],
+  polish: ["polish", "polnisch", "polski", "polnische sprache"],
+  remote: ["remote", "remote-arbeit", "remote work"],
+  on_site: ["on-site", "onsite", "vor ort", "präsenz", "praesenz"],
+  hybrid: ["hybrid", "teilweise remote", "remote anteil"],
+};
+
 function requirementTerms(value: string): readonly string[] {
   const family = skillFamily(value);
   const skillTerms = family
     ? SKILL_FAMILIES.find((candidate) => candidate.canonical === family)?.aliases ?? []
     : [];
-  const specialTerms: Readonly<Record<string, readonly string[]>> = {
-    german: ["german", "deutsch", "deutschsprachig", "deutsche sprache"],
-    english: ["english", "englisch", "englischsprachig", "englische sprache"],
-    remote: ["remote", "remote-arbeit", "remote work"],
-    on_site: ["on-site", "onsite", "vor ort", "prasenz"],
-    hybrid: ["hybrid", "teilweise remote", "remote anteil"],
-  };
-  return [...new Set([value, ...skillTerms, ...(specialTerms[normalize(value)] ?? [])])];
+  return [
+    ...new Set([value, ...skillTerms, ...(REQUIREMENT_SPECIAL_TERMS[normalize(value)] ?? [])]),
+  ];
 }
 
 function lineContainsRequirement(line: string, value: string): boolean {
@@ -668,6 +745,19 @@ export function evaluateProfile(
   const matchReasons: string[] = [];
   const knownGaps: string[] = [];
 
+  /**
+   * Whether the request states a value as a must-have.
+   *
+   * Every unmet-requirement branch below decides on this and on nothing else.
+   * In particular it must never also depend on whether the profile happens to
+   * carry data in that field: making rejection conditional on data presence
+   * means a profile that documents a non-matching value is rejected while one
+   * that leaves the field empty passes as a gap — which systematically punishes
+   * the best-documented profiles.
+   */
+  const isHard = (value: string): boolean =>
+    requirementStrength(brief.originalRequest, value) === "hard";
+
   if (profile.profileStatus !== "active") {
     rejectionReasons.push("Profil ist nicht aktiv.");
   } else {
@@ -720,7 +810,7 @@ export function evaluateProfile(
     matchReasons.push(`Belegte Kernkompetenzen: ${coreSkillMatches.join(", ")}.`);
     if (missingCoreSkills.length) {
       const explicitHardMissing = missingCoreSkills.filter(
-        (skill) => requirementStrength(brief.originalRequest, skill) === "hard",
+        isHard,
       );
       const otherMissing = missingCoreSkills.filter(
         (skill) => !explicitHardMissing.includes(skill),
@@ -742,45 +832,53 @@ export function evaluateProfile(
     );
   }
 
+  // Language, work mode and location share one shape: match, or resolve the
+  // unmet requirement through UNMET_HARD_REQUIREMENT. The branch never consults
+  // how much data the profile carries.
+  const resolveUnmet = (
+    field: keyof typeof UNMET_HARD_REQUIREMENT,
+    value: string,
+    text: { hard: string; soft: string },
+  ): void => {
+    if (isHard(value) && UNMET_HARD_REQUIREMENT[field] === "reject") {
+      rejectionReasons.push(text.hard);
+    } else if (isHard(value)) {
+      knownGaps.push(text.hard);
+    } else {
+      knownGaps.push(text.soft);
+    }
+  };
+
   if (brief.language) {
     if (matchingNamedFact(profile.languages, brief.language)) {
       matchReasons.push(`Sprache passend: ${brief.language}.`);
-    } else if (
-      profile.languages.length > 0 &&
-      requirementStrength(brief.originalRequest, brief.language) === "hard"
-    ) {
-      rejectionReasons.push(`Explizit zwingende Sprache wird nicht unterstützt: ${brief.language}.`);
     } else {
-      knownGaps.push(
-        `Sprache im Profil nicht bestätigt: ${brief.language}.`,
-      );
+      resolveUnmet("language", brief.language, {
+        hard: `Explizit zwingende Sprache wird nicht unterstützt: ${brief.language}.`,
+        soft: `Sprache im Profil nicht bestätigt: ${brief.language}.`,
+      });
     }
   }
 
   if (brief.workMode !== "unknown") {
     if (profile.workModes.includes(brief.workMode)) {
       matchReasons.push(`Arbeitsmodus passend: ${brief.workMode}.`);
-    } else if (
-      requirementStrength(brief.originalRequest, brief.workMode) === "hard"
-    ) {
-      rejectionReasons.push(
-        `Explizit zwingender Arbeitsmodus wird nicht unterstützt: ${brief.workMode}.`,
-      );
     } else {
-      knownGaps.push(`Arbeitsmodus im Profil nicht bestätigt: ${brief.workMode}.`);
+      resolveUnmet("workMode", brief.workMode, {
+        hard: `Explizit zwingender Arbeitsmodus wird nicht unterstützt: ${brief.workMode}.`,
+        soft: `Arbeitsmodus im Profil nicht bestätigt: ${brief.workMode}.`,
+      });
     }
   }
 
   if (brief.location && brief.workMode !== "remote") {
     if (profile.location && locationMatches(profile.location.value, brief.location)) {
       matchReasons.push(`Ort passend: ${brief.location}.`);
-    } else if (
-      profile.location &&
-      requirementStrength(brief.originalRequest, brief.location) === "hard"
-    ) {
-      rejectionReasons.push(`Explizit zwingender Einsatzort passt nicht: ${brief.location}.`);
     } else {
-      knownGaps.push(`Einsatzort im Profil nicht bestätigt: ${brief.location}.`);
+      resolveUnmet("location", brief.location, {
+        hard: `Explizit zwingender Einsatzort passt nicht: ${brief.location}.`,
+        soft: `Einsatzort im Profil nicht bestätigt: ${brief.location}.`,
+      });
     }
   }
 
@@ -789,7 +887,7 @@ export function evaluateProfile(
       brief.availabilityRequirement ?? brief.startWindow?.raw ?? "";
     if (
       startRequirement &&
-      requirementStrength(brief.originalRequest, startRequirement) === "hard"
+      isHard(startRequirement)
     ) {
       rejectionReasons.push(
         "Explizit zwingendes Startfenster liegt vor der bestätigten Verfügbarkeit.",
@@ -824,20 +922,21 @@ export function evaluateProfile(
     matchReasons.push(`Vertragsanforderungen passend: ${matchedContractTerms.join(", ")}.`);
   }
   if (missingContractTerms.length) {
-    const explicitHardMissing = missingContractTerms.filter(
-      (term) => requirementStrength(brief.originalRequest, term) === "hard",
-    );
+    const explicitHardMissing = missingContractTerms.filter(isHard);
     const unknownMissing = missingContractTerms.filter(
       (term) => !explicitHardMissing.includes(term),
     );
-    if (explicitHardMissing.length && profile.contractualCapabilities.length > 0) {
-      rejectionReasons.push(
-        `Explizit zwingende Vertragsanforderungen werden nicht unterstützt: ${explicitHardMissing.join(", ")}.`,
-      );
-    } else if (explicitHardMissing.length) {
-      knownGaps.push(
-        `Explizit zwingende Vertragsanforderungen sind im Profil unbekannt: ${explicitHardMissing.join(", ")}.`,
-      );
+    // Resolved through the same per-field policy as language, work mode and
+    // location — never through how many capabilities this particular profile
+    // documents. See UNMET_HARD_REQUIREMENT for why contractual terms stay a
+    // gap while the source column is missing.
+    if (explicitHardMissing.length) {
+      const text = `Explizit zwingende Vertragsanforderungen sind im Profil nicht belegt: ${explicitHardMissing.join(", ")}.`;
+      if (UNMET_HARD_REQUIREMENT.contractual === "reject") {
+        rejectionReasons.push(text);
+      } else {
+        knownGaps.push(text);
+      }
     }
     if (unknownMissing.length) {
       knownGaps.push(
@@ -872,7 +971,7 @@ export function evaluateProfile(
       );
     } else {
       const label =
-        requirementStrength(brief.originalRequest, constraint) === "hard"
+        isHard(constraint)
           ? "Explizite Muss-Bedingung"
           : "Weitere Rahmenbedingung";
       knownGaps.push(
@@ -946,11 +1045,34 @@ function sourceDisclosures(profile: FreelancerProfile): {
   return { verifiedFacts, selfReportedFacts };
 }
 
+/**
+ * Whether the brief states anything a profile can be ranked against.
+ *
+ * Mirrors the `relevanceSkills` fallback inside `evaluateProfile`: required
+ * skills are used when present, otherwise optional ones. When both are absent
+ * there is no relevance signal at all, the skill-overlap rejection never fires,
+ * and every active profile stays eligible.
+ */
+function hasRankableRequirement(brief: ProjectBrief): boolean {
+  return Boolean((brief.requiredSkills ?? []).length || (brief.optionalSkills ?? []).length);
+}
+
 export function buildShortlist(
   rawBrief: ProjectBrief,
   rawProfiles: readonly FreelancerProfile[],
 ): Shortlist {
   const brief = ProjectBriefSchema.parse(rawBrief);
+
+  if (!hasRankableRequirement(brief)) {
+    return ShortlistSchema.parse({
+      ruleVersion: MATCHING_RULE_VERSION,
+      orderingRule: MATCHING_ORDER_RULE,
+      status: "needs_clarification",
+      clarificationCode: "no_extractable_requirement",
+      matches: [],
+    });
+  }
+
   const evaluated = rawProfiles.map((rawProfile) => {
     const profile = FreelancerProfileSchema.parse(rawProfile);
     return { profile, evaluation: evaluateProfile(brief, profile) };
@@ -1017,6 +1139,8 @@ export function buildShortlist(
   return ShortlistSchema.parse({
     ruleVersion: MATCHING_RULE_VERSION,
     orderingRule: MATCHING_ORDER_RULE,
+    status: "ranked",
+    clarificationCode: null,
     matches,
   });
 }
