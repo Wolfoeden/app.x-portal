@@ -657,7 +657,7 @@ describe("deterministic freelancer matching", () => {
     const shortlist = buildShortlist(brief, [genericSecondary, primarySap]);
     expect(shortlist.matches[0]?.profile.displayName).toBe("Primary SAP");
     expect(
-      shortlist.matches[0]?.orderingEvidence.primaryRequiredSkillExactMatch,
+      shortlist.matches[0]?.orderingEvidence.primaryRequiredSkillMatch,
     ).toBe(true);
   });
 });

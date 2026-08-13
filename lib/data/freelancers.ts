@@ -92,6 +92,22 @@ function factsWithPrefix(facts: readonly string[], prefix: string): string[] {
   });
 }
 
+/**
+ * Categories carried inside `skill_tags` that describe context rather than a
+ * skill claim. `searchableSkillTags` drops them so they cannot satisfy a skill
+ * requirement; this list is what recovers them as separate evidence.
+ *
+ * "Qualification" and "Contract capability" are absent on purpose — they are
+ * already mapped to their own profile fields from the fact columns.
+ */
+const CONTEXT_EVIDENCE_CATEGORIES = ["Industry", "Certification", "Experience", "Focus"] as const;
+
+function contextEvidenceTags(values: readonly string[]): string[] {
+  return CONTEXT_EVIDENCE_CATEGORIES.flatMap((category) =>
+    factsWithPrefix(values, category).map((value) => `${category}: ${value}`),
+  );
+}
+
 function searchableSkillTags(values: readonly string[]): string[] {
   const prefixedSkills = factsWithPrefix(values, "Skill");
   if (prefixedSkills.length) return prefixedSkills;
@@ -151,6 +167,7 @@ export function mapFreelancerProfileRow(
     displayName: row.display_name,
     role: row.role_title,
     skillTags: labeledFacts(searchableSkillTags(row.skill_tags), "Skill", row),
+    contextEvidence: labeledFacts(contextEvidenceTags(row.skill_tags), "Skill", row),
     languages: labeledFacts(
       row.languages.map(canonicalLanguage),
       "Language",

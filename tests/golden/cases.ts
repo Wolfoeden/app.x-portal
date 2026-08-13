@@ -87,7 +87,6 @@ const businessEngineerCommon = {
 export const goldenCases: readonly GoldenCase[] = [
   {
     id: "business-engineer-de",
-    knownDefect: "A2 — German skill aliases. Today this ranks a QA test manager first.",
     note:
       "Reference posting with the skill terms in German, the way a German brief is written. " +
       "Measured on the real 65-row export this returned 2 eligible profiles and ranked a QA " +
@@ -138,11 +137,15 @@ export const goldenCases: readonly GoldenCase[] = [
   {
     id: "verified-beats-exact",
     knownDefect:
-      "Fix C, deliberately deferred — verified facts exist on only 6 of 65 real rows, so the " +
-      "criterion currently sorts on an empty field.",
+      "Verification still does not decide this case. Since v9 removed the literal-string " +
+      "criterion the three candidates tie on skills, and availability breaks the tie before " +
+      "verification is ever consulted — the verified profile ranks third. Raising verification " +
+      "above availability is deliberately deferred: verified facts exist on only 6 of 65 " +
+      "production rows, so the criterion would sort on an almost empty field.",
     note:
       "One profile carries the requested term verbatim but self-reported; another carries a " +
-      "family alias that is operator-verified. Verification must outrank literal string equality.",
+      "family alias that is operator-verified. Kept as the guard for where verification sits in " +
+      "the ordering, and as the case that will move when verification data actually exists.",
     brief: brief({
       originalRequest: "Wir suchen Unterstuetzung im requirements management, remote.",
       projectTitle: "Requirements Management Support",

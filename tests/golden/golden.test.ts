@@ -49,14 +49,11 @@ describe("golden set", () => {
   }
 
   /**
-   * Known open defect, tracked as work item A2 (German skill aliases).
-   *
-   * `it.fails` keeps the suite green while the defect is open AND turns red the
-   * moment it is fixed — at which point this must become a plain `it(...)`.
-   * That is deliberate: a fixed bug should not be able to regress back into a
-   * silently tolerated one.
+   * Was a known defect until the ordering rule stopped comparing raw strings.
+   * Promoted from `it.fails` to a normal assertion the moment it started
+   * passing, which is what the `it.fails` marker existed to force.
    */
-  it.fails("the German and the English variant of the reference posting agree", () => {
+  it("the German and the English variant of the reference posting agree", () => {
     const de = actualShortlist(goldenCases.find((c) => c.id === "business-engineer-de")!);
     const en = actualShortlist(goldenCases.find((c) => c.id === "business-engineer-en")!);
     expect(
