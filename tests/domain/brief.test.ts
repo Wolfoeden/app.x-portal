@@ -9,6 +9,27 @@ import {
 const fixedNow = new Date("2026-08-06T12:00:00.000Z");
 
 describe("deterministic fallback brief parser", () => {
+  it("recognizes explicit SAP requirements without a provider", () => {
+    const brief = parseFallbackBrief(
+      "IT Consultant SAP S/4HANA, SAP MM und SAP PP, deutsch, 100% remote. Customizing, SAP SCM und Schnittstellen.",
+      { now: fixedNow },
+    );
+
+    expect(brief.requiredSkills).toEqual(
+      expect.arrayContaining([
+        "SAP S/4HANA",
+        "SAP MM",
+        "SAP PP",
+        "SAP SCM",
+        "SAP Customizing",
+        "SAP Integration",
+      ]),
+    );
+    expect(brief.language).toBe("German");
+    expect(brief.workMode).toBe("remote");
+    expect(brief.rate).toBeNull();
+    expect(brief.budget).toBeNull();
+  });
   it("maps German service wording to canonical matching skills", () => {
     const brief = parseFallbackBrief(
       "Wir benötigen Hilfe bei Anforderungsmanagement und Prozessoptimierung.",

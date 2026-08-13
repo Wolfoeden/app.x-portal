@@ -16,6 +16,12 @@ const DEFAULT_SKILL_CATALOG = [
   "Node.js",
   "Next.js",
   "Python",
+  "SAP S/4HANA",
+  "SAP MM",
+  "SAP PP",
+  "SAP SCM",
+  "SAP Customizing",
+  "SAP Integration",
   "Project Management",
   "Requirements Management",
   "Process Management",
@@ -26,6 +32,9 @@ const DEFAULT_SKILL_CATALOG = [
 ] as const;
 
 const DEFAULT_SKILL_ALIASES: Readonly<Record<string, readonly string[]>> = {
+  "SAP S/4HANA": ["s/4hana", "sap s4hana"],
+  "SAP Customizing": ["customizing", "sap customizing"],
+  "SAP Integration": ["sap integration", "sap-integrationen", "schnittstellen"],
   "Project Management": ["projektmanagement", "projektleitung"],
   "Requirements Management": [
     "anforderungsmanagement",
@@ -164,6 +173,7 @@ function parseLanguage(
       `\\b(?:language|sprache|sprachlich)\\s*(?::|=)?\\s*${escaped}\\b`,
       `\\b${escaped}(?:[- ]speaking|sprachig(?:e[rmns]?)?)\\b`,
       `\\b${escaped}\\s+(?:speaker|sprachkenntnisse)\\b`,
+      `\\b${escaped}\\b(?=\\s*[,;.]|\\s*$)`,
     ];
     if (new RegExp(explicitPatterns.join("|"), "iu").test(text)) return canonical;
   }
