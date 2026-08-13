@@ -43,8 +43,8 @@ const statuses: Record<DiagnosticStatus, { label: string; detail: string }> = {
     detail: "Auf dem Server ist kein nutzbarer OPENAI_API_KEY vorhanden.",
   },
   auth_error: {
-    label: "Schl?ssel abgelehnt",
-    detail: "OpenAI hat die Authentifizierung des API-Schl?ssels abgelehnt.",
+    label: "Schlüssel abgelehnt",
+    detail: "OpenAI hat die Authentifizierung des API-Schlüssels abgelehnt.",
   },
   billing_or_quota: {
     label: "Billing oder Quota blockiert",
@@ -56,24 +56,24 @@ const statuses: Record<DiagnosticStatus, { label: string; detail: string }> = {
   },
   permission: {
     label: "Keine Berechtigung",
-    detail: "Der Schl?ssel hat f?r dieses Modell nicht die n?tige Berechtigung.",
+    detail: "Der Schlüssel hat für dieses Modell nicht die nötige Berechtigung.",
   },
   model_unavailable: {
-    label: "Modell nicht verf?gbar",
-    detail: "Das konfigurierte Modell ist f?r dieses OpenAI-Projekt nicht verf?gbar.",
+    label: "Modell nicht verfügbar",
+    detail: "Das konfigurierte Modell ist für dieses OpenAI-Projekt nicht verfügbar.",
   },
   reachable: {
-    label: "Schl?ssel und Modell erreichbar",
+    label: "Schlüssel und Modell erreichbar",
     detail:
       "Der Metadaten-Endpunkt antwortet. Das beweist die Verbindung, aber noch keine bezahlte Textgenerierung.",
   },
   timeout: {
-    label: "Zeit?berschreitung",
+    label: "Zeitüberschreitung",
     detail: "Der OpenAI-Metadaten-Endpunkt hat nicht rechtzeitig geantwortet.",
   },
   provider_error: {
     label: "Providerfehler",
-    detail: "Die Verbindung konnte nicht eindeutig best?tigt werden.",
+    detail: "Die Verbindung konnte nicht eindeutig bestätigt werden.",
   },
 };
 
@@ -158,7 +158,7 @@ export function ProviderDiagnosticPanel({
         <h2 id="provider-status-title">Verbindung und Modell</h2>
         <p>
           {statusCopy?.detail ??
-            "Die Pr?fung liest nur Modell-Metadaten. Sie sendet keinen Prompt und verbraucht keine Modell-Tokens."}
+            "Die Prüfung liest nur Modell-Metadaten. Sie sendet keinen Prompt und verbraucht keine Modell-Tokens."}
         </p>
         {localError ? <p className={styles.providerError}>{localError}</p> : null}
       </div>
@@ -173,7 +173,7 @@ export function ProviderDiagnosticPanel({
         </div>
         <div>
           <dt>Status</dt>
-          <dd>{statusCopy?.label ?? "Noch nicht gepr?ft"}</dd>
+          <dd>{statusCopy?.label ?? "Noch nicht geprüft"}</dd>
         </div>
         {diagnostic?.requestId ? (
           <div>
@@ -183,7 +183,7 @@ export function ProviderDiagnosticPanel({
         ) : null}
       </dl>
       <button type="button" onClick={runDiagnostic} disabled={pending}>
-        {pending ? "Pr?fung l?uft ?" : "Verbindung ohne Tokenverbrauch pr?fen"}
+        {pending ? "Prüfung läuft …" : "Verbindung ohne Tokenverbrauch prüfen"}
       </button>
     </section>
   );

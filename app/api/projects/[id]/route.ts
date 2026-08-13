@@ -54,7 +54,7 @@ function availabilityPriority(
 function withoutStatusAvailabilityCopy(values: readonly string[]): string[] {
   return values.filter(
     (value) =>
-      !/^(?:Availability is currently confirmed\.|Project availability is (?:limited|not confirmed);|Projektverf?gbarkeit ist (?:aktuell best?tigt\.|begrenzt;|nicht best?tigt;)|Verf?gbarkeit ist im angegebenen Startfenster (?:best?tigt|nicht best?tigt)\.|Das gew?nschte Startfenster ist im Profil nicht separat best?tigt\.)/u.test(
+      !/^(?:Availability is currently confirmed\.|Project availability is (?:limited|not confirmed);|Projektverfügbarkeit ist (?:aktuell bestätigt\.|begrenzt;|nicht bestätigt;)|Verfügbarkeit ist im angegebenen Startfenster (?:bestätigt|nicht bestätigt)\.|Das gewünschte Startfenster ist im Profil nicht separat bestätigt\.)/u.test(
         value,
       ),
   );
@@ -111,16 +111,16 @@ function restoreMatch(
   );
   const knownGaps = withoutStatusAvailabilityCopy(row.known_gaps);
   if (profile.availability.status === "available") {
-    matchReasons.splice(1, 0, "Projektverf?gbarkeit ist aktuell best?tigt.");
+    matchReasons.splice(1, 0, "Projektverfügbarkeit ist aktuell bestätigt.");
   } else if (profile.availability.status === "limited") {
-    knownGaps.unshift("Projektverf?gbarkeit ist begrenzt; den genauen Zeitraum beim Termin abstimmen.");
+    knownGaps.unshift("Projektverfügbarkeit ist begrenzt; den genauen Zeitraum beim Termin abstimmen.");
   } else if (profile.availability.status === "unknown") {
-    knownGaps.unshift("Projektverf?gbarkeit ist nicht best?tigt; der Booking-Kalender ist verf?gbar.");
+    knownGaps.unshift("Projektverfügbarkeit ist nicht bestätigt; der Booking-Kalender ist verfügbar.");
   } else {
-    knownGaps.unshift("Profil ist aktuell nicht verf?gbar.");
+    knownGaps.unshift("Profil ist aktuell nicht verfügbar.");
   }
   if (!profile.introPolicy.bookingUrl) {
-    knownGaps.unshift("Direkter Booking-Link ist aktuell nicht verf?gbar.");
+    knownGaps.unshift("Direkter Booking-Link ist aktuell nicht verfügbar.");
   }
   return {
     profile,
@@ -150,7 +150,7 @@ export async function GET(
     const { id } = await context.params;
     const user = await requireCurrentUser();
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
-      throw new Response("Serverkonfiguration unvollst?ndig.", { status: 503 });
+      throw new Response("Serverkonfiguration unvollständig.", { status: 503 });
     }
     const admin = createAdminSupabaseClient();
     const { data: projectData, error: projectError } = await admin
@@ -249,9 +249,9 @@ export async function GET(
               : undefined,
         analysisNotice:
           usedDeterministicRecovery
-            ? "F?r diesen noch laufenden Projektstand wurden bis zu drei aktuelle Profile deterministisch aus dem kuratierten Verzeichnis ermittelt. Eine ?ltere Shortlist wird nicht mit den neuen Angaben vermischt."
+            ? "Für diesen noch laufenden Projektstand wurden bis zu drei aktuelle Profile deterministisch aus dem kuratierten Verzeichnis ermittelt. Eine ältere Shortlist wird nicht mit den neuen Angaben vermischt."
             : project.brief_status === "manual" || project.brief_status === "failed"
-            ? "Diese gespeicherte Projektanalyse wurde mit der sicheren Basislogik erstellt; es liegt keine best?tigte KI-Auswertung f?r diesen Stand vor."
+            ? "Diese gespeicherte Projektanalyse wurde mit der sicheren Basislogik erstellt; es liegt keine bestätigte KI-Auswertung für diesen Stand vor."
             : undefined,
       },
       { headers: { "Cache-Control": "no-store" } },
@@ -315,7 +315,7 @@ export async function PATCH(
   } catch (error) {
     if (error instanceof Response) return error;
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: "Die Chat-?nderung ist ung?ltig." }, { status: 400 });
+      return NextResponse.json({ error: "Die Chat-Änderung ist ungültig." }, { status: 400 });
     }
     return NextResponse.json({ error: "Chat konnte nicht aktualisiert werden." }, { status: 503 });
   }
@@ -348,6 +348,6 @@ export async function DELETE(
     return NextResponse.json({ deleted: true });
   } catch (error) {
     if (error instanceof Response) return error;
-    return NextResponse.json({ error: "Chat konnte nicht gel?scht werden." }, { status: 503 });
+    return NextResponse.json({ error: "Chat konnte nicht gelöscht werden." }, { status: 503 });
   }
 }

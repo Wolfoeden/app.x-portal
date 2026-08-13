@@ -86,14 +86,14 @@ function errorResponse(error: unknown, traceId: string = randomUUID()): Response
   if (error instanceof Response) return error;
   if (error instanceof z.ZodError) {
     return NextResponse.json(
-      { error: "Die Anfrage hat ein ung?ltiges Format.", traceId },
+      { error: "Die Anfrage hat ein ungültiges Format.", traceId },
       { status: 400 },
     );
   }
   return NextResponse.json(
     {
       error:
-        "Die Anfrage wurde gespeichert, konnte aber gerade nicht vollst?ndig verarbeitet werden.",
+        "Die Anfrage wurde gespeichert, konnte aber gerade nicht vollständig verarbeitet werden.",
       traceId,
     },
     { status: 503 },
@@ -118,11 +118,11 @@ function catalogVersion(profiles: readonly { id: string; dataVersion: string }[]
 
 function assistantText(resultCount: number, analysisCompleted: boolean): string {
   if (resultCount === 0) {
-    return `${analysisCompleted ? "Ich habe" : "Die sichere Basisanalyse hat"} Ihre Angaben strukturiert. Aktuell erf?llt kein reales, direkt buchbares Profil die belegten Kernkriterien. Sie k?nnen die Anfrage im Chat erg?nzen oder ausdr?cklich eine getrennte KI-Websuche nach ?ffentlich belegten Profilen mit direktem Buchungslink starten.`;
+    return `${analysisCompleted ? "Ich habe" : "Die sichere Basisanalyse hat"} Ihre Angaben strukturiert. Aktuell erfüllt kein reales, direkt buchbares Profil die belegten Kernkriterien. Sie können die Anfrage im Chat ergänzen oder ausdrücklich eine getrennte KI-Websuche nach öffentlich belegten Profilen mit direktem Buchungslink starten.`;
   }
   return `${analysisCompleted ? "Ich habe" : "Die sichere Basisanalyse hat"} Ihre Angaben strukturiert und ${resultCount} ${
     resultCount === 1 ? "aktuell passendes Profil" : "aktuell passende Profile"
-  } nach den dokumentierten Regeln gefunden. Sie k?nnen das gew?nschte Erstgespr?ch direkt ?ber den jeweiligen Booking-Link buchen.`;
+  } nach den dokumentierten Regeln gefunden. Sie können das gewünschte Erstgespräch direkt über den jeweiligen Booking-Link buchen.`;
 }
 
 function fallbackNotice(
@@ -135,31 +135,31 @@ function fallbackNotice(
   }
   if (reason === "insufficient_credits") {
     return isAnonymous
-      ? "Ihr kostenloses KI-Kontingent reicht f?r diese Analyse nicht mehr aus. Die Anfrage wurde gespeichert und intern mit der sicheren Basisanalyse abgeglichen; nach der Anmeldung k?nnen Sie mit dem Account-Kontingent fortfahren."
-      : "Ihre AI Credits reichen f?r diese KI-Analyse nicht aus. Die Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgef?hrt.";
+      ? "Ihr kostenloses KI-Kontingent reicht für diese Analyse nicht mehr aus. Die Anfrage wurde gespeichert und intern mit der sicheren Basisanalyse abgeglichen; nach der Anmeldung können Sie mit dem Account-Kontingent fortfahren."
+      : "Ihre AI Credits reichen für diese KI-Analyse nicht aus. Die Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
   }
   if (
     reason === "anonymous_user_daily_token_limit" ||
     reason === "anonymous_ip_daily_token_limit"
   ) {
-    return "Das t?gliche KI-Limit f?r den Gastzugang ist erreicht. OpenAI wurde nicht aufgerufen; Ihre Anfrage wurde gespeichert und intern mit der sicheren Basisanalyse abgeglichen.";
+    return "Das tägliche KI-Limit für den Gastzugang ist erreicht. OpenAI wurde nicht aufgerufen; Ihre Anfrage wurde gespeichert und intern mit der sicheren Basisanalyse abgeglichen.";
   }
   if (reason === "user_daily_token_limit") {
-    return "Das t?gliche interne XPORTAL-KI-Limit f?r dieses Konto ist erreicht. OpenAI wurde nicht aufgerufen; Ihre Anfrage wurde gespeichert und intern mit der sicheren Basisanalyse abgeglichen.";
+    return "Das tägliche interne XPORTAL-KI-Limit für dieses Konto ist erreicht. OpenAI wurde nicht aufgerufen; Ihre Anfrage wurde gespeichert und intern mit der sicheren Basisanalyse abgeglichen.";
   }
   if (fallbackReason === "provider_timeout") {
-    return "Die OpenAI-Analyse hat das Zeitlimit erreicht. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgef?hrt.";
+    return "Die OpenAI-Analyse hat das Zeitlimit erreicht. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
   }
   if (fallbackReason === "invalid_output") {
-    return "Die OpenAI-Antwort war nicht zuverl?ssig strukturiert. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgef?hrt.";
+    return "Die OpenAI-Antwort war nicht zuverlässig strukturiert. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
   }
   if (fallbackReason === "provider_error") {
-    return "Die OpenAI-Analyse war vor?bergehend nicht verf?gbar. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgef?hrt.";
+    return "Die OpenAI-Analyse war vorübergehend nicht verfügbar. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
   }
   if (fallbackReason === "provider_unavailable") {
-    return "Der OpenAI-Provider ist nicht konfiguriert. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgef?hrt.";
+    return "Der OpenAI-Provider ist nicht konfiguriert. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
   }
-  return "Ihre Anfrage wurde gespeichert. Ohne best?tigte OpenAI-Analyse wurde das interne Freelancer-Matching mit der sicheren Basisanalyse ausgef?hrt.";
+  return "Ihre Anfrage wurde gespeichert. Ohne bestätigte OpenAI-Analyse wurde das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
 }
 
 function providerFailureCategory(
@@ -296,12 +296,12 @@ async function processChatRequest(
 
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
       throw new Response(
-        "Die serverseitige Supabase-Konfiguration ist noch nicht vollst?ndig.",
+        "Die serverseitige Supabase-Konfiguration ist noch nicht vollständig.",
         { status: 503 },
       );
     }
 
-    reporter.progress("Projekt wird sicher gespeichert ?");
+    reporter.progress("Projekt wird sicher gespeichert …");
     const admin = createAdminSupabaseClient();
     const targetProjectId =
       input.projectId ?? projectIdForChatRequest(requestKey);
@@ -410,7 +410,7 @@ async function processChatRequest(
     };
     const estimate = estimateProjectBriefTokenCeiling(extractionInput);
     const providerConnection = resolveOpenAiConnection();
-    reporter.progress("KI analysiert und strukturiert die Anforderungen ?");
+    reporter.progress("KI analysiert und strukturiert die Anforderungen …");
     const tracked =
       userHash && ipHash
         ? await executeTrackedAiRequest({
@@ -497,8 +497,8 @@ async function processChatRequest(
     });
     reporter.progress(
       analysisCompleted
-        ? "Anforderungen sind strukturiert ? interne Profile werden geladen ?"
-        : "OpenAI-Analyse nicht best?tigt ? sichere Basisanalyse wird intern abgeglichen ?",
+        ? "Anforderungen sind strukturiert · interne Profile werden geladen …"
+        : "OpenAI-Analyse nicht bestätigt · sichere Basisanalyse wird intern abgeglichen …",
     );
 
     // The model never receives this data. Filtering and ordering are wholly
@@ -507,11 +507,11 @@ async function processChatRequest(
     // evidence remains disclosed on the candidate card.
     const profiles = await fetchActiveBookableRealProfiles(admin);
     const shortlist = buildShortlist(extraction.brief, profiles);
-    reporter.progress(`${profiles.length} aktive Profile werden regelbasiert abgeglichen ?`);
+    reporter.progress(`${profiles.length} aktive Profile werden regelbasiert abgeglichen …`);
     reporter.progress(
       shortlist.matches.length
-        ? `${shortlist.matches.length} passende Profile werden nachvollziehbar aufbereitet ?`
-        : "Kein interner Treffer ? alternative Suche wird vorbereitet ?",
+        ? `${shortlist.matches.length} passende Profile werden nachvollziehbar aufbereitet …`
+        : "Kein interner Treffer · alternative Suche wird vorbereitet …",
     );
     const shortlistId = randomUUID();
     const profileCatalogVersion = catalogVersion(profiles);
@@ -692,13 +692,13 @@ async function processChatRequest(
               status: extraction.mode === "openai" ? "completed" : "warning",
             },
             {
-              label: "Interne Datenbank gepr?ft",
-              detail: `${profiles.length} aktive, reale und direkt buchbare Supabase-Profile wurden ber?cksichtigt.${analysisCompleted ? "" : " Grundlage war die konservative Basisanalyse, nicht eine best?tigte OpenAI-Antwort."}`,
+              label: "Interne Datenbank geprüft",
+              detail: `${profiles.length} aktive, reale und direkt buchbare Supabase-Profile wurden berücksichtigt.${analysisCompleted ? "" : " Grundlage war die konservative Basisanalyse, nicht eine bestätigte OpenAI-Antwort."}`,
               status: "completed",
             },
             {
               label: "Kriterien angewendet",
-              detail: `${shortlist.matches.length} Treffer werden nach Regel ${MATCHING_RULE_VERSION} angezeigt; offene Nachweise sind gekennzeichnet und die KI entscheidet nicht ?ber die Auswahl.`,
+              detail: `${shortlist.matches.length} Treffer werden nach Regel ${MATCHING_RULE_VERSION} angezeigt; offene Nachweise sind gekennzeichnet und die KI entscheidet nicht über die Auswahl.`,
               status: "completed",
             },
           ],

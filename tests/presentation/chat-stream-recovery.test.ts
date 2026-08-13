@@ -28,7 +28,7 @@ describe("chat stream recovery", () => {
     const response = eventStream(
       { type: "accepted", projectId, buildVersion: "build-123" },
       { type: "heartbeat", at: 1_786_574_400_000 },
-      { type: "progress", label: "Anforderungen werden strukturiert ?" },
+      { type: "progress", label: "Anforderungen werden strukturiert …" },
     );
 
     const error = await parseStreamResponse(response, () => undefined, "Projekt")
@@ -47,7 +47,7 @@ describe("chat stream recovery", () => {
     expect(error).toBeInstanceOf(IncompleteChatStreamError);
     expect(error).toMatchObject({ projectId: null });
     expect((error as Error).message).toBe(
-      "Die ?bertragung wurde unterbrochen. Bitte versuchen Sie die Anfrage erneut.",
+      "Die Übertragung wurde unterbrochen. Bitte versuchen Sie die Anfrage erneut.",
     );
     expect((error as Error).message).not.toContain("Eingabe bleibt");
   });

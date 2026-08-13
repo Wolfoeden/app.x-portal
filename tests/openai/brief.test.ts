@@ -18,18 +18,18 @@ import {
 const SAFETY_IDENTIFIER = "usr_4e8a57f0b51c";
 const FIXED_NOW = new Date("2026-08-06T10:00:00.000Z");
 
-const HOUSE_MANAGEMENT_COPILOT_REQUEST = `Senior Entwickler f?r KI-gest?tzten Hausverwaltungs-Copilot gesucht
-D?sseldorf
+const HOUSE_MANAGEMENT_COPILOT_REQUEST = `Senior Entwickler für KI-gestützten Hausverwaltungs-Copilot gesucht
+Düsseldorf
 ,
 [Deutschland](https://www.freelancermap.de/projekte/Deutschland?countryId=1)
 40% [Remote](https://www.freelancermap.de/projekte/remote)
 Freiberuflich
 Start 9/2026
 100% Auslastung
-30.000,00 ? Budget
+30.000,00 € Budget
 
 Projektziel:
-Eine inhabergef?hrte Immobiliengesellschaft und Hausverwaltung aus D?sseldorf mit eigenem Immobilienbestand, eigener Verwaltung sowie eigenem Bauteam m?chte einen KI-gest?tzten Hausverwaltungs-Copiloten entwickeln. Ziel ist der Aufbau eines zentralen digitalen Objektged?chtnisses f?r den gesamten Immobilienbestand, in dem alle Informationen zu Objekten, Mietern, M?ngeln, Sanierungen, Dokumenten, Maschinen, Materialien, Aufma?en, Handwerkern und Vorg?ngen objektbezogen gespeichert und durch KI auswertbar gemacht werden. Langfristig soll das System als interner 'CAST Property Copilot' dienen.
+Eine inhabergeführte Immobiliengesellschaft und Hausverwaltung aus Düsseldorf mit eigenem Immobilienbestand, eigener Verwaltung sowie eigenem Bauteam möchte einen KI-gestützten Hausverwaltungs-Copiloten entwickeln. Ziel ist der Aufbau eines zentralen digitalen Objektgedächtnisses für den gesamten Immobilienbestand, in dem alle Informationen zu Objekten, Mietern, Mängeln, Sanierungen, Dokumenten, Maschinen, Materialien, Aufmaßen, Handwerkern und Vorgängen objektbezogen gespeichert und durch KI auswertbar gemacht werden. Langfristig soll das System als interner 'CAST Property Copilot' dienen.
 
 Vorhandene Systemlandschaft:
 - Microsoft 365, Microsoft Copilot, Outlook, Teams, SharePoint / OneDrive
@@ -40,40 +40,40 @@ Vorhandene Systemlandschaft:
 Hauptaufgaben:
 Konzeption, Architektur und MVP-Umsetzung der folgenden Module:
 
-1. Objektged?chtnis: Stammdaten, Historie, Dokumente, Fotos, Mieter, Sanierungen, M?ngel, Kosten, Handwerker, Ansprechpartner und offene Vorg?nge je Immobilie.
+1. Objektgedächtnis: Stammdaten, Historie, Dokumente, Fotos, Mieter, Sanierungen, Mängel, Kosten, Handwerker, Ansprechpartner und offene Vorgänge je Immobilie.
 
-2. Ticketsystem / Mieterm?ngel: Analyse eingehender E-Mails (z. B. Heizungsausfall, Wasserschaden, Schimmel, Elektrik, Schlossdefekt), automatische Ticket-Erstellung, Kategorisierung, Priorit?tsvergabe, Handlungsempfehlungen und Fristen?berwachung.
+2. Ticketsystem / Mietermängel: Analyse eingehender E-Mails (z. B. Heizungsausfall, Wasserschaden, Schimmel, Elektrik, Schlossdefekt), automatische Ticket-Erstellung, Kategorisierung, Prioritätsvergabe, Handlungsempfehlungen und Fristenüberwachung.
 
-3. KI-Assistenz f?r Sachbearbeiter: Empfehlungen auf Basis definierter Regeln und bisheriger Bearbeitungen, inklusive Problemerkennung, empfohlener Ma?nahmen, passender Handwerker, Vorschl?gen f?r Antwortschreiben, Wiedervorlagen und Eskalationen.
+3. KI-Assistenz für Sachbearbeiter: Empfehlungen auf Basis definierter Regeln und bisheriger Bearbeitungen, inklusive Problemerkennung, empfohlener Maßnahmen, passender Handwerker, Vorschlägen für Antwortschreiben, Wiedervorlagen und Eskalationen.
 
-4. Dokumentenmanagement: Verarbeitung von Mietvertr?gen, Nachtr?gen, Mieterh?hungen, Rechnungen, Schriftverkehr, Versicherungsunterlagen und PDF-Dokumenten mit Volltextsuche, Dokumentenanalyse, objektbezogener Zuordnung und Historisierung.
+4. Dokumentenmanagement: Verarbeitung von Mietverträgen, Nachträgen, Mieterhöhungen, Rechnungen, Schriftverkehr, Versicherungsunterlagen und PDF-Dokumenten mit Volltextsuche, Dokumentenanalyse, objektbezogener Zuordnung und Historisierung.
 
-5. Bauteam- und Sanierungsmanagement: Verwaltung von Wohnungssanierungen, Treppenh?usern, Kellern, Tiefgaragen und Fassaden mit Projekten, Gewerken, Aufgaben, Fortschritt, Aufma?, Fotodokumentation und Kosten.
+5. Bauteam- und Sanierungsmanagement: Verwaltung von Wohnungssanierungen, Treppenhäusern, Kellern, Tiefgaragen und Fassaden mit Projekten, Gewerken, Aufgaben, Fortschritt, Aufmaß, Fotodokumentation und Kosten.
 
-6. Maschinen- und Werkzeugverwaltung: Maschinenbestand, Standorte, Ausgabe an Mitarbeiter, Zuordnung zu Baustellen, Wartung und R?ckgabe.
+6. Maschinen- und Werkzeugverwaltung: Maschinenbestand, Standorte, Ausgabe an Mitarbeiter, Zuordnung zu Baustellen, Wartung und Rückgabe.
 
-7. Materialwirtschaft: Materiallisten, Aufma?, Bedarfsermittlung, Bestelllisten, Lieferstatus und Verbrauch.
+7. Materialwirtschaft: Materiallisten, Aufmaß, Bedarfsermittlung, Bestelllisten, Lieferstatus und Verbrauch.
 
-8. Schriftverkehr / Automatisierung: Automatische Erstellung von Mahnungen, Zahlungserinnerungen, Handwerkerauftr?gen, Mieterh?hungen und Standardantworten auf Basis vorhandener Word-Vorlagen mit Briefkopf.
+8. Schriftverkehr / Automatisierung: Automatische Erstellung von Mahnungen, Zahlungserinnerungen, Handwerkeraufträgen, Mieterhöhungen und Standardantworten auf Basis vorhandener Word-Vorlagen mit Briefkopf.
 
 Voraussetzungen:
 - Erfahrung als Senior Software Architect, Azure AI Engineer, Microsoft Copilot Developer, AI Solution Architect oder Python/FastAPI Entwickler
-- Praktische Erfahrung in KI-Projekten, Dokumentenanalyse, RAG-Systemen, Microsoft-365-Umfeld, Unternehmensanwendungen und Automatisierung von Gesch?ftsprozessen
+- Praktische Erfahrung in KI-Projekten, Dokumentenanalyse, RAG-Systemen, Microsoft-365-Umfeld, Unternehmensanwendungen und Automatisierung von Geschäftsprozessen
 
 Bevorzugte Technologien:
 - Python, FastAPI, PostgreSQL, Microsoft Azure, Azure AI / Azure OpenAI, Microsoft Graph, Copilot Studio, Power Automate, SharePoint, Docker
-- Alternativ sind technisch sinnvolle Vorschl?ge willkommen.
+- Alternativ sind technisch sinnvolle Vorschläge willkommen.
 
 Zeitrahmen / Projektlaufzeit:
-Projektstart kurzfristig. Zun?chst Konzeption, Architektur und MVP-Umsetzung. Langfristige Zusammenarbeit ausdr?cklich erw?nscht.
+Projektstart kurzfristig. Zunächst Konzeption, Architektur und MVP-Umsetzung. Langfristige Zusammenarbeit ausdrücklich erwünscht.
 
 Erwartetes Ergebnis:
-Eine skalierbare KI-gest?tzte L?sung, die als zentrales digitales Objektged?chtnis fungiert und administrative sowie operative Prozesse der Immobilienverwaltung und des Bauteams langfristig unterst?tzt und automatisiert.`;
+Eine skalierbare KI-gestützte Lösung, die als zentrales digitales Objektgedächtnis fungiert und administrative sowie operative Prozesse der Immobilienverwaltung und des Bauteams langfristig unterstützt und automatisiert.`;
 
 const LONG_HOUSE_MANAGEMENT_COPILOT_REQUEST =
   HOUSE_MANAGEMENT_COPILOT_REQUEST.replace(
     "Projektziel:",
-    `${"Zentrales digitales Objektged?chtnis f?r Objekte, Mieter, M?ngel, Sanierungen, Dokumente, Maschinen, Materialien, Aufma?e, Handwerker und Vorg?nge. ".repeat(5)}\n\nProjektziel:`,
+    `${"Zentrales digitales Objektgedächtnis für Objekte, Mieter, Mängel, Sanierungen, Dokumente, Maschinen, Materialien, Aufmaße, Handwerker und Vorgänge. ".repeat(5)}\n\nProjektziel:`,
   );
 
 function candidate(
@@ -180,9 +180,9 @@ describe("extractProjectBrief", () => {
 
     expect(result.mode).toBe("fallback");
     expect(result.brief.projectTitle).toBe(
-      "Senior Entwickler f?r KI-gest?tzten Hausverwaltungs-Copilot gesucht",
+      "Senior Entwickler für KI-gestützten Hausverwaltungs-Copilot gesucht",
     );
-    expect(result.brief.location).toBe("D?sseldorf");
+    expect(result.brief.location).toBe("Düsseldorf");
     expect(result.brief.workMode).toBe("hybrid");
     expect(result.brief.startWindow).toEqual({
       raw: "9/2026",
@@ -479,9 +479,9 @@ describe("extractProjectBrief", () => {
   it("accepts field-specific AI paraphrases only when the source proves them", async () => {
     const originalRequest =
       "Anforderungsanalyse wird vorausgesetzt. Nice to have: React-Entwicklung. " +
-      "Die Zusammenarbeit erfolgt ortsunabh?ngig. Geplant ist ein Einsatz ?ber sechs Wochen. " +
+      "Die Zusammenarbeit erfolgt ortsunabhängig. Geplant ist ein Einsatz über sechs Wochen. " +
       "Der finanzielle Rahmen ist auf 12.000 EUR gedeckelt. " +
-      "Die t?gliche Verg?tung ist auf 750 EUR gedeckelt.";
+      "Die tägliche Vergütung ist auf 750 EUR gedeckelt.";
     const { client } = mockClient(
       candidate({
         requiredSkills: ["Requirements Engineering"],
@@ -522,10 +522,10 @@ describe("extractProjectBrief", () => {
 
   it("rejects invented or cross-assigned interpreted values", async () => {
     const originalRequest =
-      "React support. Die Zusammenarbeit erfolgt ortsunabh?ngig. " +
-      "Geplant ist ein Einsatz ?ber sechs Wochen. " +
+      "React support. Die Zusammenarbeit erfolgt ortsunabhängig. " +
+      "Geplant ist ein Einsatz über sechs Wochen. " +
       "Der finanzielle Rahmen ist auf 12.000 EUR gedeckelt. " +
-      "Die t?gliche Verg?tung ist auf 750 EUR gedeckelt.";
+      "Die tägliche Vergütung ist auf 750 EUR gedeckelt.";
     const { client } = mockClient(
       candidate({
         requiredSkills: ["Process Management"],
@@ -661,7 +661,7 @@ describe("follow-up state", () => {
         originalRequest: previous.originalRequest,
         previousBrief: previous,
         latestMessage:
-          "Zus?tzlich TypeScript. Kein Budget angegeben. Keine Qualifikationen angegeben.",
+          "Zusätzlich TypeScript. Kein Budget angegeben. Keine Qualifikationen angegeben.",
       },
       FIXED_NOW,
     );
@@ -670,7 +670,7 @@ describe("follow-up state", () => {
     expect(updated.workMode).toBe("remote");
     expect(updated.budget).toBeNull();
     expect(updated.qualifications).toBeNull();
-    expect(updated.originalRequest).toContain("Zus?tzlich TypeScript");
+    expect(updated.originalRequest).toContain("Zusätzlich TypeScript");
     expect(updated.unknownFields).toContain("budget");
     expect(updated.unknownFields).toContain("qualifications");
   });

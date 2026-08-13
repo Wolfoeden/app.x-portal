@@ -337,7 +337,7 @@ const SKILL_EVIDENCE_GROUPS: readonly SkillEvidenceGroup[] = [
     canonical: "Business Process Automation",
     aliases: [
       "Business Process Automation",
-      "Automatisierung von Gesch?ftsprozessen",
+      "Automatisierung von Geschäftsprozessen",
     ],
   },
   {
@@ -454,7 +454,7 @@ function skillHasOptionalContext(source: string, terms: readonly string[]): bool
   return terms.some((term) => {
     const pattern = flexibleTermPattern(term);
     return new RegExp(
-      `(?:optional|nice\\s+to\\s+have|ideally|wuenschenswert|w?nschenswert|von\\s+vorteil)[^.;\\n]{0,60}${pattern}|${pattern}[^.;\\n]{0,40}(?:optional|nice\\s+to\\s+have|wuenschenswert|w?nschenswert|von\\s+vorteil)`,
+      `(?:optional|nice\\s+to\\s+have|ideally|wuenschenswert|wünschenswert|von\\s+vorteil)[^.;\\n]{0,60}${pattern}|${pattern}[^.;\\n]{0,40}(?:optional|nice\\s+to\\s+have|wuenschenswert|wünschenswert|von\\s+vorteil)`,
       "iu",
     ).test(normalizedSource);
   });
@@ -487,14 +487,14 @@ const DURATION_NUMBER_WORDS: Readonly<Record<number, readonly string[]>> = {
   2: ["two", "zwei"],
   3: ["three", "drei"],
   4: ["four", "vier"],
-  5: ["five", "f?nf", "fuenf"],
+  5: ["five", "fünf", "fuenf"],
   6: ["six", "sechs"],
   7: ["seven", "sieben"],
   8: ["eight", "acht"],
   9: ["nine", "neun"],
   10: ["ten", "zehn"],
   11: ["eleven", "elf"],
-  12: ["twelve", "zw?lf", "zwoelf"],
+  12: ["twelve", "zwölf", "zwoelf"],
 };
 
 const DURATION_UNIT_PATTERNS: Readonly<
@@ -519,7 +519,7 @@ function groundedDuration(
     .join("|");
   const unit = DURATION_UNIT_PATTERNS[proposed.unit];
   const match = new RegExp(
-    `(?:\\b(?:for|f?r|dauer(?:t)?(?:\\s+von)?|laufzeit(?:\\s+von)?)\\s*)?(?:${numbers})[ -]*(?:${unit})\\b`,
+    `(?:\\b(?:for|für|dauer(?:t)?(?:\\s+von)?|laufzeit(?:\\s+von)?)\\s*)?(?:${numbers})[ -]*(?:${unit})\\b`,
     "iu",
   ).exec(source);
   if (!match?.[0]) return null;
@@ -567,18 +567,18 @@ function hasCurrencyEvidence(
   currency: "EUR" | "USD" | "GBP",
 ): boolean {
   const patterns = {
-    EUR: /(?:?|\beur\b|\beuros?\b)/iu,
+    EUR: /(?:€|\beur\b|\beuros?\b)/iu,
     USD: /(?:\$|\busd\b|\bdollars?\b)/iu,
-    GBP: /(?:?|\bgbp\b|\bpounds?\b)/iu,
+    GBP: /(?:£|\bgbp\b|\bpounds?\b)/iu,
   } as const;
   return patterns[currency].test(source);
 }
 
 const MAXIMUM_QUALIFIER =
-  /(?:\bmax(?:imal(?:e[rmns]?)?)?\b|\bup\s+to\b|\bat\s+most\b|\bcap(?:ped)?\b|\bceiling\b|\blimit\b|\bbis\s+zu\b|\bh?chstens\b|\bgedeckelt\b|\bobergrenze\b)/iu;
+  /(?:\bmax(?:imal(?:e[rmns]?)?)?\b|\bup\s+to\b|\bat\s+most\b|\bcap(?:ped)?\b|\bceiling\b|\blimit\b|\bbis\s+zu\b|\bhöchstens\b|\bgedeckelt\b|\bobergrenze\b)/iu;
 const MINIMUM_QUALIFIER =
   /(?:\bmin(?:imum|destens)?\b|\bat\s+least\b|\buntergrenze\b)/iu;
-const RANGE_QUALIFIER = /(?:\bbetween\b|\bzwischen\b|\bvon\b.+\bbis\b|\bto\b|[-??])/iu;
+const RANGE_QUALIFIER = /(?:\bbetween\b|\bzwischen\b|\bvon\b.+\bbis\b|\bto\b|[-–—])/iu;
 
 function rangeSemanticsAreGrounded(
   segment: string,
@@ -617,11 +617,11 @@ function groundedRate(
 ): ProjectBrief["rate"] {
   if (!proposed) return null;
   const rateEvidence =
-    /(?:\brate\b|\bdaily\s+(?:fee|rate)\b|\bhourly\s+(?:fee|rate)\b|\btagessatz\b|\bstundensatz\b|\bt?glich(?:e[rmns]?)?\s+verg?tung\b|\bst?ndlich(?:e[rmns]?)?\s+verg?tung\b|\bhonorar\b)/iu;
+    /(?:\brate\b|\bdaily\s+(?:fee|rate)\b|\bhourly\s+(?:fee|rate)\b|\btagessatz\b|\bstundensatz\b|\btäglich(?:e[rmns]?)?\s+vergütung\b|\bstündlich(?:e[rmns]?)?\s+vergütung\b|\bhonorar\b)/iu;
   const unitEvidence =
     proposed.unit === "day"
-      ? /(?:\bper\s+day\b|\bpro\s+tag\b|\bday\b|\bdaily\b|\btagessatz\b|\bt?glich)/iu
-      : /(?:\bper\s+hour\b|\bpro\s+stunde\b|\bhour(?:ly)?\b|\bstundensatz\b|\bst?ndlich)/iu;
+      ? /(?:\bper\s+day\b|\bpro\s+tag\b|\bday\b|\bdaily\b|\btagessatz\b|\btäglich)/iu
+      : /(?:\bper\s+hour\b|\bpro\s+stunde\b|\bhour(?:ly)?\b|\bstundensatz\b|\bstündlich)/iu;
   const segment = evidenceSegments(source).find(
     (part) =>
       rateEvidence.test(part) &&
@@ -642,11 +642,11 @@ function groundedWorkMode(
     " ",
   );
   const remote =
-    /\b(?:remote|remotely|homeoffice|home\s+office|ortsunabh?ngig|location\s+independent|work\s+from\s+home)\b/iu.test(
+    /\b(?:remote|remotely|homeoffice|home\s+office|ortsunabhängig|location\s+independent|work\s+from\s+home)\b/iu.test(
       withoutNegatedModes,
     );
   const onSite =
-    /\b(?:on\s+site|onsite|vor\s+ort|in\s+pr?senz|beim\s+kunden|am\s+standort)\b/iu.test(
+    /\b(?:on\s+site|onsite|vor\s+ort|in\s+präsenz|beim\s+kunden|am\s+standort)\b/iu.test(
       withoutNegatedModes,
     );
   const hybrid =
@@ -706,11 +706,11 @@ const FIELD_REMOVAL_PATTERNS: Readonly<
   rate:
     /(?:kein(?:e|en)?\s+(?:angegebenen?\s+)?(?:satz|stundensatz|tagessatz|rate)|(?:stundensatz|tagessatz|rate)\s*(?:offen|unbekannt|nicht angegeben|entfernen)|no (?:hourly |day )?rate|rate\s*(?:unknown|not specified|remove))/iu,
   constraints:
-    /(?:keine?\s+(?:einschr?nkungen|constraints)|einschr?nkungen\s*(?:offen|unbekannt|nicht angegeben|entfernen)|no constraints|constraints\s*(?:unknown|not specified|remove))/iu,
+    /(?:keine?\s+(?:einschränkungen|constraints)|einschränkungen\s*(?:offen|unbekannt|nicht angegeben|entfernen)|no constraints|constraints\s*(?:unknown|not specified|remove))/iu,
   qualifications:
     /(?:keine?\s+(?:qualifikation(?:en)?|zertifizierung(?:en)?)|qualifikationen?\s*(?:offen|unbekannt|nicht angegeben|entfernen)|no qualifications?|qualifications?\s*(?:unknown|not specified|remove))/iu,
   availabilityRequirement:
-    /(?:keine?\s+(?:verf?gbarkeitsanforderung|vorgabe\s+zur\s+verf?gbarkeit)|verf?gbarkeit\s*(?:offen|unbekannt|nicht angegeben|entfernen)|no availability requirement|availability\s*(?:unknown|not specified|remove))/iu,
+    /(?:keine?\s+(?:verfügbarkeitsanforderung|vorgabe\s+zur\s+verfügbarkeit)|verfügbarkeit\s*(?:offen|unbekannt|nicht angegeben|entfernen)|no availability requirement|availability\s*(?:unknown|not specified|remove))/iu,
   contractualRequirements:
     /(?:keine?\s+(?:vertragsanforderungen?|vertraglichen?\s+vorgaben)|vertragsanforderungen?\s*(?:offen|unbekannt|nicht angegeben|entfernen)|no contractual requirements?|contractual requirements?\s*(?:unknown|not specified|remove))/iu,
 };
@@ -834,15 +834,15 @@ function explicitStartWindow(source: string): ProjectBrief["startWindow"] {
 }
 
 function currencyFromEvidence(value: string): "EUR" | "USD" | "GBP" | null {
-  if (/^(?:?|EUR)$/iu.test(value)) return "EUR";
+  if (/^(?:€|EUR)$/iu.test(value)) return "EUR";
   if (/^(?:\$|USD)$/iu.test(value)) return "USD";
-  if (/^(?:?|GBP)$/iu.test(value)) return "GBP";
+  if (/^(?:£|GBP)$/iu.test(value)) return "GBP";
   return null;
 }
 
 function explicitTotalBudget(source: string): ProjectBrief["budget"] {
   const number = "([0-9][0-9., ]{0,24})";
-  const currency = "(?|EUR|\\$|USD|?|GBP)";
+  const currency = "(€|EUR|\\$|USD|£|GBP)";
   const leading = new RegExp(
     `\\b(?:Gesamt|Projekt)?budget\\s*:?\\s*(?:${currency}\\s*)?${number}(?:\\s*${currency})?`,
     "iu",
@@ -1060,7 +1060,7 @@ function hasLanguageEvidence(source: string, language: string): boolean {
   const aliases: Readonly<Record<string, readonly string[]>> = {
     German: ["deutsch", "deutsche", "deutscher", "deutschsprachig"],
     English: ["englisch", "englische", "englischer", "englischsprachig"],
-    French: ["franz?sisch", "franz?sische", "franz?sischsprachig"],
+    French: ["französisch", "französische", "französischsprachig"],
     Spanish: ["spanisch", "spanische", "spanischsprachig"],
   };
   return (aliases[language] ?? []).some((alias) => sourceContains(source, alias));

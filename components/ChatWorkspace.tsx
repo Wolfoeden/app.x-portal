@@ -56,31 +56,31 @@ export function sidebarAccountButtonClassName(isAccountUser: boolean): string {
 const suggestions = [
   {
     label: "React-Entwicklung",
-    description: "Freelancer f?r ein Webprojekt finden",
+    description: "Freelancer für ein Webprojekt finden",
     draftPrefix: "React-Entwicklung\n\nProjektbeschreibung:\n",
     intro:
-      "React-Entwicklung ist ausgew?hlt. F?gen Sie jetzt einfach Ihre vorhandene Projektbeschreibung ein ? auch als langen Copy-and-paste-Text. Ich strukturiere Aufgaben, ben?tigte Kompetenzen, Rahmenbedingungen und offene Angaben und gleiche sie anschlie?end mit verf?gbaren Profilen ab.",
+      "React-Entwicklung ist ausgewählt. Fügen Sie jetzt einfach Ihre vorhandene Projektbeschreibung ein – auch als langen Copy-and-paste-Text. Ich strukturiere Aufgaben, benötigte Kompetenzen, Rahmenbedingungen und offene Angaben und gleiche sie anschließend mit verfügbaren Profilen ab.",
   },
   {
     label: "Anforderungsmanagement",
     description: "Anforderungen strukturieren und begleiten",
     draftPrefix: "Anforderungsmanagement\n\nProjektbeschreibung:\n",
     intro:
-      "Anforderungsmanagement ist ausgew?hlt. F?gen Sie jetzt Ihre Projektbeschreibung, Ihr Lastenheft oder vorhandene Notizen ein. Ich fasse Ziel, Aufgaben, Pflichtkompetenzen, Rahmenbedingungen und offene Punkte zusammen und suche danach passende verf?gbare Profile.",
+      "Anforderungsmanagement ist ausgewählt. Fügen Sie jetzt Ihre Projektbeschreibung, Ihr Lastenheft oder vorhandene Notizen ein. Ich fasse Ziel, Aufgaben, Pflichtkompetenzen, Rahmenbedingungen und offene Punkte zusammen und suche danach passende verfügbare Profile.",
   },
   {
     label: "Prozessmanagement",
-    description: "Abl?ufe analysieren und verbessern",
+    description: "Abläufe analysieren und verbessern",
     draftPrefix: "Prozessmanagement\n\nProjektbeschreibung:\n",
     intro:
-      "Prozessmanagement ist ausgew?hlt. Kopieren Sie Ihre Ausgangslage oder Projektbeschreibung in das Eingabefeld. Ich strukturiere Prozessziel, Aufgaben, ben?tigte Erfahrung, zeitliche Vorgaben und weitere Einschr?nkungen und starte dann den Profilabgleich.",
+      "Prozessmanagement ist ausgewählt. Kopieren Sie Ihre Ausgangslage oder Projektbeschreibung in das Eingabefeld. Ich strukturiere Prozessziel, Aufgaben, benötigte Erfahrung, zeitliche Vorgaben und weitere Einschränkungen und starte dann den Profilabgleich.",
   },
   {
     label: "Informationssicherheit",
-    description: "Expertise f?r sichere Organisationen",
+    description: "Expertise für sichere Organisationen",
     draftPrefix: "Informationssicherheit\n\nProjektbeschreibung:\n",
     intro:
-      "Informationssicherheit ist ausgew?hlt. F?gen Sie Ihre Projektbeschreibung oder Anforderungsliste direkt ein. Ich erfasse Thema, ben?tigte Qualifikationen, Standards, Einsatzrahmen und offene Angaben, ohne fehlende Fakten zu erfinden, und gleiche das Ergebnis anschlie?end mit verf?gbaren Profilen ab.",
+      "Informationssicherheit ist ausgewählt. Fügen Sie Ihre Projektbeschreibung oder Anforderungsliste direkt ein. Ich erfasse Thema, benötigte Qualifikationen, Standards, Einsatzrahmen und offene Angaben, ohne fehlende Fakten zu erfinden, und gleiche das Ergebnis anschließend mit verfügbaren Profilen ab.",
   },
 ] as const;
 
@@ -291,7 +291,7 @@ function normalizeExternalCandidate(value: unknown): ExternalFreelancerCandidate
 
 function normalizeExternalSearchResponse(value: unknown): ExternalFreelancerSearchResponse {
   const response = isRecord(value) && isRecord(value.data) ? value.data : value;
-  if (!isRecord(response)) throw new Error("Die Websuche hatte kein g?ltiges Format.");
+  if (!isRecord(response)) throw new Error("Die Websuche hatte kein gültiges Format.");
   const trace = isRecord(response.searchTrace) ? response.searchTrace : {};
   const candidates = Array.isArray(response.candidates)
     ? response.candidates
@@ -305,7 +305,7 @@ function normalizeExternalSearchResponse(value: unknown): ExternalFreelancerSear
     candidates,
     disclosure: stringValue(
       response.disclosure,
-      "Externe Treffer stammen aus ?ffentlich zug?nglichen Quellen und sind nicht durch XPORTAL verifiziert.",
+      "Externe Treffer stammen aus öffentlich zugänglichen Quellen und sind nicht durch XPORTAL verifiziert.",
     ),
     mode: response.mode === "openai" ? "openai" : "unavailable",
     notice: nullableString(response.notice) ?? undefined,
@@ -424,7 +424,7 @@ function normalizeProfile(value: unknown): FreelancerProfileResult | null {
       type: introType,
       label: stringValue(
         introSource.label,
-        introType === "premium" ? "Pers?nliche Freigabe" : "Kostenfreie Einf?hrung",
+        introType === "premium" ? "Persönliche Freigabe" : "Kostenfreie Einführung",
       ),
       manualApprovalRequired:
         typeof introSource.manualApprovalRequired === "boolean"
@@ -476,7 +476,7 @@ function normalizeMessage(value: unknown): ConversationMessage {
 function normalizeChatResponse(value: unknown, fallbackTitle: string): ChatResponse {
   const envelope = isRecord(value) ? value : {};
   const response = isRecord(envelope.data) ? envelope.data : value;
-  if (!isRecord(response)) throw new Error("Die Serverantwort hatte kein g?ltiges Format.");
+  if (!isRecord(response)) throw new Error("Die Serverantwort hatte kein gültiges Format.");
   const matchSource = response.matches ?? response.profiles ?? response.shortlist;
   const matches = Array.isArray(matchSource)
     ? matchSource
@@ -573,7 +573,7 @@ function authViewFromClaims(data: unknown): AuthView {
 
 function formatRelativeDate(value: string) {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "K?rzlich";
+  if (Number.isNaN(date.getTime())) return "Kürzlich";
   const diff = Date.now() - date.getTime();
   const minutes = Math.floor(diff / 60_000);
   if (minutes < 1) return "Gerade eben";
@@ -627,10 +627,10 @@ function modeLabel(mode: ProjectMode) {
 }
 
 function availabilityLabel(status: AvailabilityStatus) {
-  if (status === "available") return "Projektverf?gbarkeit best?tigt";
-  if (status === "limited") return "Projektverf?gbarkeit begrenzt";
-  if (status === "unavailable") return "Nicht verf?gbar";
-  return "Projektverf?gbarkeit nicht best?tigt";
+  if (status === "available") return "Projektverfügbarkeit bestätigt";
+  if (status === "limited") return "Projektverfügbarkeit begrenzt";
+  if (status === "unavailable") return "Nicht verfügbar";
+  return "Projektverfügbarkeit nicht bestätigt";
 }
 
 const unknownFieldLabels: Readonly<Record<string, string>> = {
@@ -646,7 +646,7 @@ const unknownFieldLabels: Readonly<Record<string, string>> = {
   rate: "Honorar",
   constraints: "Rahmenbedingungen",
   qualifications: "Qualifikationen",
-  availabilityRequirement: "Verf?gbarkeit",
+  availabilityRequirement: "Verfügbarkeit",
   contractualRequirements: "Vertragsanforderungen",
 };
 
@@ -680,7 +680,7 @@ export class ChatBuildVersionMismatchError extends Error {
     readonly projectId: string | null,
     readonly serverBuildVersion: string,
   ) {
-    super("Eine neue Version ist verf?gbar. Bitte aktualisieren Sie die Seite.");
+    super("Eine neue Version ist verfügbar. Bitte aktualisieren Sie die Seite.");
     this.name = "ChatBuildVersionMismatchError";
   }
 }
@@ -759,8 +759,8 @@ export async function parseStreamResponse(
   }
   throw new IncompleteChatStreamError(
     acceptedProjectId
-      ? "Die ?bertragung wurde unterbrochen. Der gespeicherte Chat wird wiederhergestellt."
-      : "Die ?bertragung wurde unterbrochen. Bitte versuchen Sie die Anfrage erneut.",
+      ? "Die Übertragung wurde unterbrochen. Der gespeicherte Chat wird wiederhergestellt."
+      : "Die Übertragung wurde unterbrochen. Bitte versuchen Sie die Anfrage erneut.",
     acceptedProjectId,
     acceptedBuildVersion,
   );
@@ -947,7 +947,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
         if (authError) {
           showToast(
             authError === "exchange_failed" || authError === "confirmation_failed"
-              ? "Der Anmeldelink ist ung?ltig oder abgelaufen. Bitte starten Sie die Anmeldung erneut."
+              ? "Der Anmeldelink ist ungültig oder abgelaufen. Bitte starten Sie die Anmeldung erneut."
               : "Die Anmeldung konnte nicht abgeschlossen werden. Bitte versuchen Sie es erneut.",
             "error",
           );
@@ -969,7 +969,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
         if (!authError && searchParams.get("set-password") === "1") {
           if (view.anonymous) {
             showToast(
-              "Der Link zum Zur?cksetzen ist ung?ltig oder abgelaufen. Bitte fordern Sie einen neuen Link an.",
+              "Der Link zum Zurücksetzen ist ungültig oder abgelaufen. Bitte fordern Sie einen neuen Link an.",
               "error",
             );
             searchParams.delete("set-password");
@@ -1016,7 +1016,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
             showToast(
               error instanceof Error
                 ? error.message
-                : "Die Gastanfrage konnte nicht ?bertragen werden.",
+                : "Die Gastanfrage konnte nicht übertragen werden.",
               "error",
             );
           }
@@ -1055,7 +1055,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
           }
         }
       } catch {
-        if (alive) showToast("Der tempor?re Zugang konnte nicht gestartet werden. Bitte neu laden.", "error");
+        if (alive) showToast("Der temporäre Zugang konnte nicht gestartet werden. Bitte neu laden.", "error");
       }
     })();
 
@@ -1186,7 +1186,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
         id: makeId("assistant"),
         clientMessageId: optimistic.id,
         content: "",
-        progress: "Anfrage wird verstanden ?",
+        progress: "Anfrage wird verstanden …",
         retryText: null,
       });
       const recoveryProjectId = activeProject?.id ?? null;
@@ -1211,8 +1211,8 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
             void refreshCredits();
             throw new Error(
               retryAfter
-                ? `Das Nutzungslimit ist erreicht. Erneut m?glich in ${retryAfter} Sekunden.`
-                : "Das Nutzungslimit ist erreicht. Bitte versuchen Sie es sp?ter erneut.",
+                ? `Das Nutzungslimit ist erreicht. Erneut möglich in ${retryAfter} Sekunden.`
+                : "Das Nutzungslimit ist erreicht. Bitte versuchen Sie es später erneut.",
             );
           }
           let message = "Die Anfrage konnte gerade nicht verarbeitet werden.";
@@ -1304,7 +1304,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
           setPendingAssistant({
             id: makeId("assistant-error"),
             clientMessageId: optimistic.id,
-            content: "Die ?bertragung wurde unterbrochen. Bitte versuchen Sie die Anfrage erneut.",
+            content: "Die Übertragung wurde unterbrochen. Bitte versuchen Sie die Anfrage erneut.",
             progress: "",
             retryText: text,
           });
@@ -1462,7 +1462,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
     setProjects((current) => current.map((item) => item.id === updated.id ? updated : item));
     setActiveProject((current) => current?.id === updated.id ? updated : current);
     setManageChat(null);
-    showToast(collectionId ? "Chat im Projekt gespeichert." : "Chat aus dem Projekt gel?st.");
+    showToast(collectionId ? "Chat im Projekt gespeichert." : "Chat aus dem Projekt gelöst.");
   };
 
   const deleteChat = async (chat: ProjectListItem) => {
@@ -1473,12 +1473,12 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
     });
     if (!response.ok) {
       const body: unknown = await response.json().catch(() => ({}));
-      throw new Error(isRecord(body) ? stringValue(body.error, "Chat konnte nicht gel?scht werden.") : "Chat konnte nicht gel?scht werden.");
+      throw new Error(isRecord(body) ? stringValue(body.error, "Chat konnte nicht gelöscht werden.") : "Chat konnte nicht gelöscht werden.");
     }
     setProjects((current) => current.filter((item) => item.id !== chat.id));
     if (activeProject?.id === chat.id) startNewProject();
     setManageChat(null);
-    showToast("Chat gel?scht.");
+    showToast("Chat gelöscht.");
   };
 
   const exportData = async () => {
@@ -1512,16 +1512,16 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
       });
-      if (!response.ok) throw new Error("Die Daten konnten nicht gel?scht werden.");
+      if (!response.ok) throw new Error("Die Daten konnten nicht gelöscht werden.");
       await signOutAccount();
       setDeleteOpen(false);
       startNewProject();
       setProjects([]);
       setProjectCollections([]);
       await refreshAuth();
-      showToast("Ihre Anwendungsdaten wurden gel?scht.");
+      showToast("Ihre Anwendungsdaten wurden gelöscht.");
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "L?schen fehlgeschlagen.", "error");
+      showToast(error instanceof Error ? error.message : "Löschen fehlgeschlagen.", "error");
     } finally {
       setDataAction(null);
     }
@@ -1549,7 +1549,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
             <span className="mark-glyph" aria-hidden="true">F</span>
             <span>Freelancer Beta</span>
           </div>
-          <button className="icon-button sidebar-close" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schlie?en">?</button>
+          <button className="icon-button sidebar-close" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schließen">×</button>
         </div>
 
         <nav className="sidebar-primary-nav" aria-label="Hauptnavigation">
@@ -1559,9 +1559,9 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
             onClick={startNewProject}
             data-sidebar-primary="new-chat"
           >
-            <span className="sidebar-primary-icon" aria-hidden="true">?</span>
+            <span className="sidebar-primary-icon" aria-hidden="true">＋</span>
             <span>Neuer Chat</span>
-            <span className="new-chat-key" aria-hidden="true">? K</span>
+            <span className="new-chat-key" aria-hidden="true">⌘ K</span>
           </button>
           <button
             className="sidebar-primary-button"
@@ -1569,9 +1569,9 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
             onClick={() => setCreateProjectOpen(true)}
             data-sidebar-primary="projects"
           >
-            <span className="sidebar-primary-icon" aria-hidden="true">?</span>
+            <span className="sidebar-primary-icon" aria-hidden="true">□</span>
             <span>Projekte</span>
-            <span className="sidebar-primary-chevron" aria-hidden="true">?</span>
+            <span className="sidebar-primary-chevron" aria-hidden="true">＋</span>
           </button>
           <button
             className="sidebar-primary-button"
@@ -1581,7 +1581,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
           >
             <span className="agent-glyph" aria-hidden="true">A</span>
             <span>Agenten</span>
-            <span className="sidebar-primary-chevron" aria-hidden="true">?</span>
+            <span className="sidebar-primary-chevron" aria-hidden="true">›</span>
           </button>
         </nav>
 
@@ -1589,7 +1589,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
           <p className="nav-label">Chats</p>
           {unassignedChats.length === 0 ? (
             <div className="empty-projects">
-              <span aria-hidden="true">?</span>
+              <span aria-hidden="true">○</span>
               <p>Noch keine freien Chats</p>
               <small>Neue Unterhaltungen erscheinen automatisch hier.</small>
             </div>
@@ -1605,7 +1605,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
 
           <div className="sidebar-section-heading">
             <p className="nav-label">In Projekten</p>
-            <button type="button" onClick={() => setCreateProjectOpen(true)}>? Projekt</button>
+            <button type="button" onClick={() => setCreateProjectOpen(true)}>＋ Projekt</button>
           </div>
           {projectCollections.length === 0 ? (
             <p className="sidebar-section-empty">Erstellen Sie ein Projekt und speichern Sie mehrere Chats darin.</p>
@@ -1615,7 +1615,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
                 const chats = projects.filter((project) => project.collectionId === collection.id);
                 return (
                   <section className="collection-group" key={collection.id} aria-label={`Projekt ${collection.name}`}>
-                    <div className="collection-title"><span aria-hidden="true">?</span>{collection.name}<small>{chats.length}</small></div>
+                    <div className="collection-title"><span aria-hidden="true">▿</span>{collection.name}<small>{chats.length}</small></div>
                     {chats.length ? (
                       <SidebarChatList
                         chats={chats}
@@ -1638,7 +1638,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
               <div className="account-popover sidebar-account-popover" role="dialog" aria-label="Konto und Einstellungen">
                 <div className="account-identity">
                   <strong>{isAccountUser ? auth.user?.displayName ?? "Ihr Konto" : "Ohne Konto"}</strong>
-                  <span>{isAccountUser ? auth.user?.email ?? "Angemeldet" : "Aktuelle Anfrage bleibt in diesem Browser verf?gbar"}</span>
+                  <span>{isAccountUser ? auth.user?.email ?? "Angemeldet" : "Aktuelle Anfrage bleibt in diesem Browser verfügbar"}</span>
                 </div>
                 {credits ? <CreditUsage credits={credits} guest={!isAccountUser} /> : null}
                 {isAccountUser ? (
@@ -1648,12 +1648,12 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
                         type="button"
                         onClick={() => window.location.assign(apiPaths.adminUsage!)}
                       >
-                        Gesch?tztes AI-Usage-Dashboard
+                        Geschütztes AI-Usage-Dashboard
                       </button>
                     ) : null}
                     <button type="button" onClick={() => void exportData()} disabled={dataAction === "export"}>Daten exportieren</button>
                     <button type="button" onClick={() => { setAccountMenuOpen(false); openCookieSettings(); }}>Cookie-Einstellungen verwalten</button>
-                    <button type="button" onClick={() => { setAccountMenuOpen(false); setDeleteOpen(true); }}>Daten & Konto l?schen</button>
+                    <button type="button" onClick={() => { setAccountMenuOpen(false); setDeleteOpen(true); }}>Daten & Konto löschen</button>
                     <div className="menu-divider" />
                     <button type="button" onClick={() => void signOut()}>Abmelden</button>
                   </>
@@ -1669,7 +1669,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
             <button
               className={sidebarAccountButtonClassName(isAccountUser)}
               type="button"
-              aria-label={isAccountUser ? "Konto und Einstellungen ?ffnen" : "Anmelden oder Konto erstellen"}
+              aria-label={isAccountUser ? "Konto und Einstellungen öffnen" : "Anmelden oder Konto erstellen"}
               aria-haspopup="dialog"
               aria-expanded={accountMenuOpen}
               onClick={() => {
@@ -1684,25 +1684,25 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
                 <strong>{isAccountUser ? auth.user?.displayName ?? auth.user?.email ?? "Ihr Konto" : "Anmelden"}</strong>
                 <span>{isAccountUser ? auth.user?.email ?? "Konto verwalten" : "Projekte dauerhaft speichern"}</span>
               </span>
-              <span className="sidebar-account-more" aria-hidden="true">???</span>
+              <span className="sidebar-account-more" aria-hidden="true">•••</span>
             </button>
           </div>
         </div>
       </aside>
 
-      {sidebarOpen ? <button className="sidebar-scrim" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schlie?en" /> : null}
+      {sidebarOpen ? <button className="sidebar-scrim" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schließen" /> : null}
 
       <main className="chat-panel">
         <header className="topbar">
           <div className="topbar-left">
-            <button className="icon-button mobile-menu" type="button" onClick={() => setSidebarOpen(true)} aria-label="Projekte ?ffnen">?</button>
+            <button className="icon-button mobile-menu" type="button" onClick={() => setSidebarOpen(true)} aria-label="Projekte öffnen">☰</button>
             <div>
               <p className="topbar-title">{activeProject?.title ?? "Freelancer finden"}</p>
-              <p className="topbar-subtitle">KI-gest?tzte Anfrage ? Sie treffen jede Entscheidung</p>
+              <p className="topbar-subtitle">KI-gestützte Anfrage · Sie treffen jede Entscheidung</p>
             </div>
           </div>
           <div className="topbar-actions">
-            <button className="icon-button details-toggle" type="button" onClick={() => setDetailsOpen((current) => !current)} aria-label={detailsOpen ? "Projekt?bersicht ausblenden" : "Projekt?bersicht einblenden"} aria-pressed={detailsOpen}>?</button>
+            <button className="icon-button details-toggle" type="button" onClick={() => setDetailsOpen((current) => !current)} aria-label={detailsOpen ? "Projektübersicht ausblenden" : "Projektübersicht einblenden"} aria-pressed={detailsOpen}>▥</button>
           </div>
         </header>
 
@@ -1736,7 +1736,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
                       .
                     </strong>{" "}
                     {analysisNotice ??
-                      "Diese Projekt?bersicht wurde ohne best?tigte KI-Auswertung aus Ihren gespeicherten Angaben erstellt."}
+                      "Diese Projektübersicht wurde ohne bestätigte KI-Auswertung aus Ihren gespeicherten Angaben erstellt."}
                   </p>
                 ) : null}
                 {hasResult && !pendingAssistant ? (
@@ -1766,48 +1766,48 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
           {selectedProfile ? (
             <div className="selection-strip">
               <div>
-                <span className="selection-check" aria-hidden="true">?</span>
-                <span><strong>{selectedProfile.displayName}</strong> ausgew?hlt</span>
+                <span className="selection-check" aria-hidden="true">✓</span>
+                <span><strong>{selectedProfile.displayName}</strong> ausgewählt</span>
               </div>
               <button type="button" onClick={() => setContactOpen(true)}>Termin oder Kontakt</button>
             </div>
           ) : null}
           <form className={`composer ${creditsExhausted ? "is-credit-exhausted" : ""}`} onSubmit={handleSubmit}>
-            <label className="sr-only" htmlFor="chat-composer">Projekt oder Erg?nzung beschreiben</label>
+            <label className="sr-only" htmlFor="chat-composer">Projekt oder Ergänzung beschreiben</label>
             <textarea
               id="chat-composer"
               ref={composerRef}
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={handleComposerKeyDown}
-              placeholder={messages.length ? "Projektbeschreibung einf?gen oder weitere Informationen erg?nzen ?" : "Welchen Freelancer suchen Sie?"}
+              placeholder={messages.length ? "Projektbeschreibung einfügen oder weitere Informationen ergänzen …" : "Welchen Freelancer suchen Sie?"}
               rows={1}
               maxLength={12_000}
             />
             <div className="composer-bottom">
-              <div className="composer-hint"><span aria-hidden="true">?</span> Details jederzeit frei erg?nzen</div>
+              <div className="composer-hint"><span aria-hidden="true">＋</span> Details jederzeit frei ergänzen</div>
               <button
                 className="send-button"
                 type="submit"
                 disabled={!draft.trim() || Boolean(pendingAssistant)}
                 aria-label={creditsExhausted ? "Nachricht ohne KI-Analyse senden" : "Nachricht senden"}
               >
-                ?
+                ↑
               </button>
             </div>
           </form>
           {credits && (creditsExhausted || creditsLow) ? (
             <p className={`composer-credit-status ${creditsExhausted ? "is-exhausted" : ""}`} role="status">
               {creditsExhausted
-                ? `${isAccountUser ? "Ihr KI-Kontingent" : "Ihr kostenloses KI-Kontingent"} ist aufgebraucht. Sie k?nnen weiterarbeiten; neue Angaben werden ohne KI-Provider verarbeitet.`
-                : `${isAccountUser ? "Ihr KI-Kontingent" : "Ihr kostenloses KI-Kontingent"} wird knapp: ${formatCredits(credits.remaining)} verf?gbar.`}
+                ? `${isAccountUser ? "Ihr KI-Kontingent" : "Ihr kostenloses KI-Kontingent"} ist aufgebraucht. Sie können weiterarbeiten; neue Angaben werden ohne KI-Provider verarbeitet.`
+                : `${isAccountUser ? "Ihr KI-Kontingent" : "Ihr kostenloses KI-Kontingent"} wird knapp: ${formatCredits(credits.remaining)} verfügbar.`}
             </p>
           ) : null}
-          <p className="composer-disclosure">KI kann Fehler machen. Profile werden regelbasiert gefiltert; Sie w?hlen selbst. Keine Gesundheitsdaten oder vertraulichen Daten Dritter eingeben.</p>
+          <p className="composer-disclosure">KI kann Fehler machen. Profile werden regelbasiert gefiltert; Sie wählen selbst. Keine Gesundheitsdaten oder vertraulichen Daten Dritter eingeben.</p>
         </div>
       </main>
 
-      <aside className={`details-panel ${detailsOpen ? "is-open" : ""}`} aria-label="Projekt?bersicht">
+      <aside className={`details-panel ${detailsOpen ? "is-open" : ""}`} aria-label="Projektübersicht">
         <ProjectDetails
           brief={brief}
           selectedProfile={selectedProfile}
@@ -1881,7 +1881,7 @@ function CreditUsage({
     <section className={`credit-usage ${exhausted ? "is-exhausted" : low ? "is-low" : ""}`} aria-label="KI-Nutzung">
       <div className="credit-usage-heading">
         <span>KI-Nutzung</span>
-        <strong>{formatCredits(credits.remaining)} verf?gbar</strong>
+        <strong>{formatCredits(credits.remaining)} verfügbar</strong>
       </div>
       <div
         className="credit-progress"
@@ -1902,12 +1902,12 @@ function CreditUsage({
       </dl>
       <p className={`credit-status-copy ${exhausted ? "is-exhausted" : low ? "is-low" : ""}`}>
         {exhausted
-          ? "Das KI-Kontingent ist aufgebraucht. Die Basisanalyse bleibt verf?gbar."
+          ? "Das KI-Kontingent ist aufgebraucht. Die Basisanalyse bleibt verfügbar."
           : low
             ? guest
               ? "Das kostenlose Kontingent wird knapp. Nach der Anmeldung steht das Account-Kontingent bereit."
-              : "Ihr verf?gbares KI-Kontingent wird knapp."
-            : "Kontingent f?r KI-gest?tzte Projektanalysen."}
+              : "Ihr verfügbares KI-Kontingent wird knapp."
+            : "Kontingent für KI-gestützte Projektanalysen."}
       </p>
     </section>
   );
@@ -1916,11 +1916,11 @@ function CreditUsage({
 function WelcomeState({ onSuggestion }: { onSuggestion: (suggestion: Suggestion) => void }) {
   return (
     <section className="welcome-state" aria-labelledby="welcome-title">
-      <div className="assistant-emblem" aria-hidden="true"><span>?</span></div>
+      <div className="assistant-emblem" aria-hidden="true"><span>✦</span></div>
       <p className="eyebrow">Freelancer-Suche</p>
-      <h1 id="welcome-title">Wobei k?nnen wir Sie unterst?tzen?</h1>
+      <h1 id="welcome-title">Wobei können wir Sie unterstützen?</h1>
       <p className="welcome-copy">
-        Beschreiben Sie das Projekt so, wie Sie es einem Kollegen erkl?ren w?rden. Die KI strukturiert Ihre Angaben und zeigt bis zu drei nachvollziehbar passende Profile.
+        Beschreiben Sie das Projekt so, wie Sie es einem Kollegen erklären würden. Die KI strukturiert Ihre Angaben und zeigt bis zu drei nachvollziehbar passende Profile.
       </p>
       <div className="trust-row" aria-label="So funktioniert die Suche">
         <span><b>1</b> Frei beschreiben</span>
@@ -1934,11 +1934,11 @@ function WelcomeState({ onSuggestion }: { onSuggestion: (suggestion: Suggestion)
           <button key={suggestion.label} type="button" onClick={() => onSuggestion(suggestion)}>
             <span className="suggestion-label">{suggestion.label}</span>
             <span className="suggestion-description">{suggestion.description}</span>
-            <span className="suggestion-arrow" aria-hidden="true">?</span>
+            <span className="suggestion-arrow" aria-hidden="true">→</span>
           </button>
         ))}
       </div>
-      <p className="no-form-note"><span aria-hidden="true">?</span> Kein Fragebogen ? fehlende Angaben bleiben sichtbar als ?nicht angegeben?.</p>
+      <p className="no-form-note"><span aria-hidden="true">⌁</span> Kein Fragebogen – fehlende Angaben bleiben sichtbar als „nicht angegeben“.</p>
     </section>
   );
 }
@@ -1965,7 +1965,7 @@ function MessageBubble({ message }: { message: ConversationMessage }) {
   const attribution = assistantAttribution();
   return (
     <article className="message-row assistant-message" aria-label={attribution.ariaLabel}>
-      <div className="message-avatar" aria-hidden="true">?</div>
+      <div className="message-avatar" aria-hidden="true">✦</div>
       <div className="message-content">
         <div className="message-author">
           {attribution.author}
@@ -1989,7 +1989,7 @@ function PendingMessage({
   const failed = Boolean(pending.retryText || pending.action === "refresh");
   return (
     <article className={`message-row assistant-message ${failed ? "has-error" : ""}`} aria-label={failed ? "Fehler" : "Antwort wird erstellt"}>
-      <div className="message-avatar" aria-hidden="true">{failed ? "!" : "?"}</div>
+      <div className="message-avatar" aria-hidden="true">{failed ? "!" : "✦"}</div>
       <div className="message-content">
         <div className="message-author">XPORTAL</div>
         {pending.content ? <p>{pending.content}</p> : null}
@@ -2049,7 +2049,7 @@ function ResultSection({
       </div>
       {profiles.length ? (
         <>
-          <p className="matching-disclosure">Die Reihenfolge folgt dokumentierten Kriterien wie Pflichtkompetenzen, Sprache, Arbeitsmodus und Verf?gbarkeit. Die KI trifft keine Einstellungsentscheidung.</p>
+          <p className="matching-disclosure">Die Reihenfolge folgt dokumentierten Kriterien wie Pflichtkompetenzen, Sprache, Arbeitsmodus und Verfügbarkeit. Die KI trifft keine Einstellungsentscheidung.</p>
           <div className="profile-list">
             {profiles.slice(0, 3).map((profile, index) => (
               <ProfileCard
@@ -2066,7 +2066,7 @@ function ResultSection({
       ) : (
         <>
           <div className="no-match-card">
-            <div className="no-match-icon" aria-hidden="true">?</div>
+            <div className="no-match-icon" aria-hidden="true">⌕</div>
             <div>
               <strong>
                 {analysisMode === "fallback"
@@ -2075,8 +2075,8 @@ function ResultSection({
               </strong>
               <p>
                 {analysisMode === "fallback"
-                  ? "Die internen Profile wurden regelbasiert abgeglichen. Sie k?nnen Angaben erg?nzen oder die getrennte KI-Websuche nach ?ffentlich belegten Profilen starten."
-                  : "Wir zeigen kein Ersatzprofil, wenn Pflichtkriterien nicht erf?llt sind. Ihre Angaben k?nnen Sie jederzeit im Chat erg?nzen."}
+                  ? "Die internen Profile wurden regelbasiert abgeglichen. Sie können Angaben ergänzen oder die getrennte KI-Websuche nach öffentlich belegten Profilen starten."
+                  : "Wir zeigen kein Ersatzprofil, wenn Pflichtkriterien nicht erfüllt sind. Ihre Angaben können Sie jederzeit im Chat ergänzen."}
               </p>
               {analysisMode === "ai" &&
               (analysis?.externalSearchAvailable ?? true) ? (
@@ -2088,13 +2088,13 @@ function ResultSection({
                     disabled={externalSearchState === "searching"}
                   >
                     {externalSearchState === "searching"
-                      ? "KI sucht ?ffentlich zug?ngliche Profile ?"
+                      ? "KI sucht öffentlich zugängliche Profile …"
                       : "Soll ein KI-Agent im Internet nach passenden Freelancern mit direktem Buchungslink suchen?"}
                   </button>
                   {externalSearchState === "searching" ? (
                     <p className="external-search-progress" role="status">
                       <span className="thinking-dots" aria-hidden="true"><i /><i /><i /></span>
-                      KI sucht ? Quellen und Buchungslinks werden gepr?ft
+                      KI sucht · Quellen und Buchungslinks werden geprüft
                     </p>
                   ) : null}
                   {externalSearchState === "error" ? (
@@ -2102,7 +2102,7 @@ function ResultSection({
                   ) : null}
                 </>
               ) : null}
-              <a href={`tel:${CONTACT_PHONE}`}>Roman Dering direkt kontaktieren ? {CONTACT_PHONE_LABEL}</a>
+              <a href={`tel:${CONTACT_PHONE}`}>Roman Dering direkt kontaktieren · {CONTACT_PHONE_LABEL}</a>
             </div>
           </div>
           {externalSearch ? <ExternalSearchResults result={externalSearch} /> : null}
@@ -2121,19 +2121,19 @@ function actualProviderLabel(trace: AiAnalysisTrace): string {
 
 function failedProviderCallLabel(trace: AiAnalysisTrace): string {
   if (trace.provider.failureCategory === "auth_error") {
-    return "OpenAI hat den API-Schl?ssel abgelehnt";
+    return "OpenAI hat den API-Schlüssel abgelehnt";
   }
   if (trace.provider.failureCategory === "billing_or_quota") {
     return "OpenAI-Abrechnung oder Provider-Limit blockiert";
   }
   if (trace.provider.failureCategory === "rate_limit") {
-    return "OpenAI-Anfragelimit vor?bergehend erreicht";
+    return "OpenAI-Anfragelimit vorübergehend erreicht";
   }
   if (trace.provider.failureCategory === "permission") {
     return "OpenAI-Projektberechtigung fehlt";
   }
   if (trace.provider.failureCategory === "model_unavailable") {
-    return "Angefordertes OpenAI-Modell nicht verf?gbar";
+    return "Angefordertes OpenAI-Modell nicht verfügbar";
   }
   if (trace.provider.failureCategory === "timeout") {
     return "OpenAI-Aufruf hat das Zeitlimit erreicht";
@@ -2145,7 +2145,7 @@ function failedProviderCallLabel(trace: AiAnalysisTrace): string {
     return "XPORTAL-Nutzungslimit vor OpenAI erreicht";
   }
   if (trace.provider.failureCategory === "unconfigured") {
-    return "Kein OpenAI-Schl?ssel konfiguriert";
+    return "Kein OpenAI-Schlüssel konfiguriert";
   }
   if (trace.provider.requestedTransport === "direct_openai") {
     return "OpenAI-Aufruf fehlgeschlagen";
@@ -2163,20 +2163,20 @@ export function providerStatusLabel(trace: AiAnalysisTrace): string {
   if (trace.provider.succeeded) {
     if (!trace.provider.fallback) return actualProviderLabel(trace);
     if (trace.provider.actualTransport === "direct_openai") {
-      return "Basisanalyse ? OpenAI-Antwort nicht verwendet";
+      return "Basisanalyse · OpenAI-Antwort nicht verwendet";
     }
-    return `Basisanalyse ? Antwort ?ber ${actualProviderLabel(trace)} nicht verwendet`;
+    return `Basisanalyse · Antwort über ${actualProviderLabel(trace)} nicht verwendet`;
   }
   if (trace.provider.failureCategory) {
-    return `Basisanalyse ? ${failedProviderCallLabel(trace)}`;
+    return `Basisanalyse · ${failedProviderCallLabel(trace)}`;
   }
   if (trace.provider.attempted) {
-    return `Basisanalyse ? ${failedProviderCallLabel(trace)}`;
+    return `Basisanalyse · ${failedProviderCallLabel(trace)}`;
   }
   if (trace.provider.configured) {
-    return "Basisanalyse ? KI-Aufruf nicht gestartet";
+    return "Basisanalyse · KI-Aufruf nicht gestartet";
   }
-  return "Basisanalyse ? Kein KI-Provider konfiguriert";
+  return "Basisanalyse · Kein KI-Provider konfiguriert";
 }
 
 export function providerModelLabel(trace: AiAnalysisTrace): string | null {
@@ -2193,12 +2193,12 @@ export function providerModelLabel(trace: AiAnalysisTrace): string | null {
 
 export function analysisDisclosure(trace: AiAnalysisTrace): string {
   if (trace.provider.succeeded && !trace.provider.fallback) {
-    return "Die Angaben wurden anhand der best?tigten Provider-Antwort strukturiert. Die interne Auswahl bleibt ein reproduzierbarer Regelabgleich; Sie treffen die Entscheidung.";
+    return "Die Angaben wurden anhand der bestätigten Provider-Antwort strukturiert. Die interne Auswahl bleibt ein reproduzierbarer Regelabgleich; Sie treffen die Entscheidung.";
   }
   if (trace.provider.succeeded) {
-    return "Eine Provider-Antwort wurde empfangen, aber nicht f?r die Strukturierung verwendet. Das interne Freelancer-Matching wurde transparent mit der sicheren Basisanalyse ausgef?hrt.";
+    return "Eine Provider-Antwort wurde empfangen, aber nicht für die Strukturierung verwendet. Das interne Freelancer-Matching wurde transparent mit der sicheren Basisanalyse ausgeführt.";
   }
-  return "Die Anfrage wurde ohne best?tigte Provider-Antwort gespeichert. Das interne Freelancer-Matching wurde transparent mit der sicheren Basisanalyse ausgef?hrt.";
+  return "Die Anfrage wurde ohne bestätigte Provider-Antwort gespeichert. Das interne Freelancer-Matching wurde transparent mit der sicheren Basisanalyse ausgeführt.";
 }
 
 function AnalysisTrace({ trace }: { trace: AiAnalysisTrace }) {
@@ -2206,17 +2206,17 @@ function AnalysisTrace({ trace }: { trace: AiAnalysisTrace }) {
   return (
     <details className="analysis-trace" open>
       <summary>
-        <span className="analysis-trace-icon" aria-hidden="true">?</span>
+        <span className="analysis-trace-icon" aria-hidden="true">✦</span>
         <span>
           <strong>So wurde Ihre Anfrage bearbeitet</strong>
-          <small>{providerStatusLabel(trace)}{modelLabel ? ` ? ${modelLabel}` : ""}</small>
+          <small>{providerStatusLabel(trace)}{modelLabel ? ` · ${modelLabel}` : ""}</small>
         </span>
-        <span className="analysis-trace-toggle" aria-hidden="true">?</span>
+        <span className="analysis-trace-toggle" aria-hidden="true">⌄</span>
       </summary>
       <ol>
         {trace.steps.map((step, index) => (
           <li className={step.status === "warning" ? "is-warning" : ""} key={`${step.label}-${index}`}>
-            <span aria-hidden="true">{step.status === "warning" ? "!" : "?"}</span>
+            <span aria-hidden="true">{step.status === "warning" ? "!" : "✓"}</span>
             <div><strong>{step.label}</strong><p>{step.detail}</p></div>
           </li>
         ))}
@@ -2230,7 +2230,7 @@ function ExternalSearchResults({ result }: { result: ExternalFreelancerSearchRes
   return (
     <section className="external-results" aria-label="Externe, nicht verifizierte Suchergebnisse">
       <div className="external-results-heading">
-        <div><p className="eyebrow">Optionale Websuche</p><h3>?ffentlich gefundene Profile</h3></div>
+        <div><p className="eyebrow">Optionale Websuche</p><h3>Öffentlich gefundene Profile</h3></div>
         <span>Nicht durch XPORTAL verifiziert</span>
       </div>
       <p className="external-disclosure">{result.disclosure}</p>
@@ -2238,34 +2238,34 @@ function ExternalSearchResults({ result }: { result: ExternalFreelancerSearchRes
         <div className="external-profile-list">
           {result.candidates.map((candidate) => (
             <article className="external-profile-card" key={`${candidate.profileUrl}:${candidate.bookingUrl}`}>
-              <div className="external-profile-topline"><span>Extern</span><span>Angaben vor Buchung pr?fen</span></div>
+              <div className="external-profile-topline"><span>Extern</span><span>Angaben vor Buchung prüfen</span></div>
               <h3>{candidate.displayName}</h3>
               <p className="external-role">{candidate.role}</p>
               <p>{candidate.summary}</p>
               {candidate.matchedRequirements.length ? (
-                <div className="external-fact"><strong>Gefundene ?bereinstimmungen</strong><p>{candidate.matchedRequirements.join(" ? ")}</p></div>
+                <div className="external-fact"><strong>Gefundene Übereinstimmungen</strong><p>{candidate.matchedRequirements.join(" · ")}</p></div>
               ) : null}
               {candidate.knownGaps.length ? (
-                <div className="external-fact is-gap"><strong>Offen / ungepr?ft</strong><p>{candidate.knownGaps.join(" ? ")}</p></div>
+                <div className="external-fact is-gap"><strong>Offen / ungeprüft</strong><p>{candidate.knownGaps.join(" · ")}</p></div>
               ) : null}
               <div className="external-links">
-                <a href={candidate.profileUrl} target="_blank" rel="noopener noreferrer">?ffentliches Profil pr?fen</a>
-                <a className="external-booking-link" href={candidate.bookingUrl} target="_blank" rel="noopener noreferrer">Buchungslink ?ffnen ?</a>
+                <a href={candidate.profileUrl} target="_blank" rel="noopener noreferrer">Öffentliches Profil prüfen</a>
+                <a className="external-booking-link" href={candidate.bookingUrl} target="_blank" rel="noopener noreferrer">Buchungslink öffnen ↗</a>
               </div>
               {candidate.sourceUrls.length ? (
                 <p className="external-sources">Quellen: {candidate.sourceUrls.map((url, index) => (
-                  <span key={url}>{index ? " ? " : ""}<a href={url} target="_blank" rel="noopener noreferrer">{new URL(url).hostname}</a></span>
+                  <span key={url}>{index ? " · " : ""}<a href={url} target="_blank" rel="noopener noreferrer">{new URL(url).hostname}</a></span>
                 ))}</p>
               ) : null}
             </article>
           ))}
         </div>
       ) : (
-        <p className="external-empty">Auch in der Websuche wurde kein Profil mit belegbarem ?ffentlichen Profil und direktem HTTPS-Buchungslink gefunden.</p>
+        <p className="external-empty">Auch in der Websuche wurde kein Profil mit belegbarem öffentlichen Profil und direktem HTTPS-Buchungslink gefunden.</p>
       )}
       <details className="external-trace">
         <summary>Suchschritte ansehen</summary>
-        <p>{result.searchTrace.consultedSourceCount} ?ffentlich zug?ngliche Quellen wurden ber?cksichtigt; {result.searchTrace.returnedCandidateCount} Ergebnis(se) erf?llten die Ausgaberegeln.</p>
+        <p>{result.searchTrace.consultedSourceCount} öffentlich zugängliche Quellen wurden berücksichtigt; {result.searchTrace.returnedCandidateCount} Ergebnis(se) erfüllten die Ausgaberegeln.</p>
         {result.searchTrace.queries.length ? <ul>{result.searchTrace.queries.map((query) => <li key={query}>{query}</li>)}</ul> : null}
       </details>
     </section>
@@ -2281,23 +2281,23 @@ function BriefCard({ brief }: { brief: StructuredBrief }) {
           <p className="eyebrow">Strukturierte Projektanalyse</p>
           <h2>{brief.projectTitle}</h2>
         </div>
-        <span className="brief-status"><span aria-hidden="true">?</span> Strukturiert</span>
+        <span className="brief-status"><span aria-hidden="true">✓</span> Strukturiert</span>
       </div>
       {brief.summary ? <p className="brief-summary">{brief.summary}</p> : null}
       <dl className="brief-grid brief-grid-detailed">
         <DetailTerm label="Pflichtkompetenzen" value={brief.requiredSkills.length ? brief.requiredSkills.join(", ") : null} />
         <DetailTerm label="Optionale Kompetenzen" value={brief.optionalSkills.length ? brief.optionalSkills.join(", ") : null} />
         <DetailTerm label="Sprache" value={brief.languages.length ? brief.languages.join(", ") : null} />
-        <DetailTerm label="Arbeitsmodus / Ort" value={[brief.mode === "unknown" ? null : modeLabel(brief.mode), brief.location].filter(Boolean).join(" ? ") || null} />
-        <DetailTerm label="Start & Dauer" value={[brief.startWindow, brief.duration].filter(Boolean).join(" ? ") || null} />
+        <DetailTerm label="Arbeitsmodus / Ort" value={[brief.mode === "unknown" ? null : modeLabel(brief.mode), brief.location].filter(Boolean).join(" · ") || null} />
+        <DetailTerm label="Start & Dauer" value={[brief.startWindow, brief.duration].filter(Boolean).join(" · ") || null} />
         <DetailTerm label="Budget / Satz" value={brief.budgetOrRate} />
         <DetailTerm label="Qualifikationen" value={brief.qualifications.length ? brief.qualifications.join(", ") : null} />
-        <DetailTerm label="Verf?gbarkeit" value={brief.availabilityRequirement} />
+        <DetailTerm label="Verfügbarkeit" value={brief.availabilityRequirement} />
         <DetailTerm label="Vertragsanforderungen" value={brief.contractualRequirements.length ? brief.contractualRequirements.join(", ") : null} />
         <DetailTerm label="Weitere Rahmenbedingungen" value={brief.constraints.length ? brief.constraints.join(", ") : null} />
       </dl>
       {openFields.length ? (
-        <div className="unknown-row"><span>Noch offen</span>{openFields.join(" ? ")}</div>
+        <div className="unknown-row"><span>Noch offen</span>{openFields.join(" · ")}</div>
       ) : null}
     </article>
   );
@@ -2352,16 +2352,16 @@ function ProfileCard({
 
         <div className="match-columns">
           <div className="match-column reasons">
-            <h4><span aria-hidden="true">?</span> Warum passend</h4>
+            <h4><span aria-hidden="true">✓</span> Warum passend</h4>
             {profile.matchReasons.length ? (
               <ul>{profile.matchReasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
-            ) : <p className="unknown-text">Keine Begr?ndung ?bermittelt</p>}
+            ) : <p className="unknown-text">Keine Begründung übermittelt</p>}
           </div>
           <div className="match-column gaps">
-            <h4><span aria-hidden="true">?</span> Bekannte L?cken</h4>
+            <h4><span aria-hidden="true">○</span> Bekannte Lücken</h4>
             {profile.knownGaps.length ? (
               <ul>{profile.knownGaps.map((gap) => <li key={gap}>{gap}</li>)}</ul>
-            ) : <p>Keine bekannten L?cken im Abgleich</p>}
+            ) : <p>Keine bekannten Lücken im Abgleich</p>}
           </div>
         </div>
 
@@ -2376,23 +2376,23 @@ function ProfileCard({
           <DetailTerm label="Arbeitsmodus" value={profile.remoteMode === "unknown" ? null : modeLabel(profile.remoteMode)} />
           <DetailTerm label="Ort" value={profile.location} />
           <DetailTerm label="Honorar" value={profile.rate} />
-          <DetailTerm label="Verf?gbarkeit gepr?ft" value={profile.availabilityUpdatedAt ? formatDateTime(profile.availabilityUpdatedAt) : null} />
+          <DetailTerm label="Verfügbarkeit geprüft" value={profile.availabilityUpdatedAt ? formatDateTime(profile.availabilityUpdatedAt) : null} />
         </dl>
 
         {profile.referenceStatus ? (
           <p className={`reference-note ${profile.referenceStatus === "Verifiziert" ? "is-verified" : "is-unverified"}`}>
-            <span aria-hidden="true">{profile.referenceStatus === "Verifiziert" ? "?" : "i"}</span> Referenzstatus: {profile.referenceStatus}
+            <span aria-hidden="true">{profile.referenceStatus === "Verifiziert" ? "✓" : "i"}</span> Referenzstatus: {profile.referenceStatus}
           </p>
         ) : null}
 
         <footer className="profile-footer">
           <div>
-            <strong>{profile.bookingUrl ? "Direktes Erstgespr?ch" : "Historisches Match"}</strong>
-            <span>{profile.bookingUrl ? "Der Booking-Link des Freelancers ?ffnet sich in einem neuen Tab." : "Dieses Profil ist aktuell nicht direkt buchbar."}</span>
+            <strong>{profile.bookingUrl ? "Direktes Erstgespräch" : "Historisches Match"}</strong>
+            <span>{profile.bookingUrl ? "Der Booking-Link des Freelancers öffnet sich in einem neuen Tab." : "Dieses Profil ist aktuell nicht direkt buchbar."}</span>
           </div>
           <div className="profile-actions">
             {selected ? (
-              <button className="secondary-action" type="button" onClick={onContact}><span aria-hidden="true">?</span> Kontaktoptionen</button>
+              <button className="secondary-action" type="button" onClick={onContact}><span aria-hidden="true">✓</span> Kontaktoptionen</button>
             ) : (
               <button className="secondary-action" type="button" onClick={onSelect}>Profil merken</button>
             )}
@@ -2404,7 +2404,7 @@ function ProfileCard({
                 rel="noopener noreferrer"
                 aria-label={`Meeting mit ${profile.displayName} buchen`}
               >
-                Meeting buchen <span aria-hidden="true">?</span>
+                Meeting buchen <span aria-hidden="true">→</span>
               </a>
             ) : (
               <button className="primary-action" type="button" disabled>Nicht mehr buchbar</button>
@@ -2421,10 +2421,10 @@ function FactGroup({ label, facts, verified = false }: { label: string; facts: s
   const remaining = facts.length - visibleFacts.length;
   return (
     <div className="fact-group">
-      <span className={verified ? "verified-label" : "reported-label"}>{verified ? "?" : "i"} {label}</span>
+      <span className={verified ? "verified-label" : "reported-label"}>{verified ? "✓" : "i"} {label}</span>
       <p>
-        {visibleFacts.length ? visibleFacts.join(" ? ") : "Keine Angaben"}
-        {remaining > 0 ? ` ? +${remaining} weitere Angaben` : ""}
+        {visibleFacts.length ? visibleFacts.join(" · ") : "Keine Angaben"}
+        {remaining > 0 ? ` · +${remaining} weitere Angaben` : ""}
       </p>
     </div>
   );
@@ -2443,49 +2443,49 @@ function ProjectDetails({
     <div className="details-inner">
       <div className="details-heading">
         <p className="eyebrow">Projekt</p>
-        <h2>?bersicht</h2>
+        <h2>Übersicht</h2>
       </div>
       {brief ? (
         <>
-          <div className="project-status-line"><span aria-hidden="true">?</span><div><strong>Anfrage strukturiert</strong><small>Angaben k?nnen jederzeit erg?nzt werden</small></div></div>
+          <div className="project-status-line"><span aria-hidden="true">✓</span><div><strong>Anfrage strukturiert</strong><small>Angaben können jederzeit ergänzt werden</small></div></div>
           <dl className="side-details">
             <DetailTerm label="Projekt" value={brief.projectTitle || null} />
             <DetailTerm label="Pflichtkompetenzen" value={brief.requiredSkills.length ? brief.requiredSkills.join(", ") : null} />
             <DetailTerm label="Optionale Kompetenzen" value={brief.optionalSkills.length ? brief.optionalSkills.join(", ") : null} />
             <DetailTerm label="Sprache" value={brief.languages.length ? brief.languages.join(", ") : null} />
-            <DetailTerm label="Modus / Ort" value={[brief.mode === "unknown" ? null : modeLabel(brief.mode), brief.location].filter(Boolean).join(" ? ") || null} />
+            <DetailTerm label="Modus / Ort" value={[brief.mode === "unknown" ? null : modeLabel(brief.mode), brief.location].filter(Boolean).join(" · ") || null} />
             <DetailTerm label="Budget / Satz" value={brief.budgetOrRate} />
             <DetailTerm label="Qualifikationen" value={brief.qualifications.length ? brief.qualifications.join(", ") : null} />
-            <DetailTerm label="Verf?gbarkeit" value={brief.availabilityRequirement} />
+            <DetailTerm label="Verfügbarkeit" value={brief.availabilityRequirement} />
             <DetailTerm label="Vertragsanforderungen" value={brief.contractualRequirements.length ? brief.contractualRequirements.join(", ") : null} />
             <DetailTerm label="Rahmenbedingungen" value={brief.constraints.length ? brief.constraints.join(", ") : null} />
           </dl>
         </>
       ) : (
         <div className="details-empty">
-          <span aria-hidden="true">?</span>
+          <span aria-hidden="true">⌁</span>
           <strong>Noch keine Projektdaten</strong>
-          <p>Schreiben Sie frei in den Chat. Die ?bersicht entsteht aus Ihren Angaben.</p>
+          <p>Schreiben Sie frei in den Chat. Die Übersicht entsteht aus Ihren Angaben.</p>
         </div>
       )}
 
       {selectedProfile ? (
         <div className="selected-side-card">
-          <span className="side-card-label">Ausgew?hlt</span>
+          <span className="side-card-label">Ausgewählt</span>
           <div className="selected-person"><span>{initials(selectedProfile.displayName)}</span><div><strong>{selectedProfile.displayName}</strong><small>{selectedProfile.role}</small></div></div>
-          <button type="button" onClick={onContact}>Termin oder Kontakt <span aria-hidden="true">?</span></button>
-          <small>Sie k?nnen vorher weiter im Chat erg?nzen.</small>
+          <button type="button" onClick={onContact}>Termin oder Kontakt <span aria-hidden="true">→</span></button>
+          <small>Sie können vorher weiter im Chat ergänzen.</small>
         </div>
       ) : null}
 
       <div className="human-contact-card">
         <div className="live-row"><span className="live-dot" aria-hidden="true" /> Live erreichbar</div>
         <h3>Roman Dering</h3>
-        <p>Pers?nlicher Ansprechpartner f?r Profilfragen und die Einf?hrung.</p>
+        <p>Persönlicher Ansprechpartner für Profilfragen und die Einführung.</p>
         <a href={`tel:${CONTACT_PHONE}`}>{CONTACT_PHONE_LABEL}</a>
       </div>
 
-      <div className="ai-note"><span aria-hidden="true">i</span><p><strong>Transparente Unterst?tzung</strong>Die KI strukturiert Ihre Anfrage. Profile werden nach festen, ?berpr?fbaren Regeln gefiltert.</p></div>
+      <div className="ai-note"><span aria-hidden="true">i</span><p><strong>Transparente Unterstützung</strong>Die KI strukturiert Ihre Anfrage. Profile werden nach festen, überprüfbaren Regeln gefiltert.</p></div>
     </div>
   );
 }
@@ -2525,7 +2525,7 @@ function Modal({ titleId, onClose, children, size = "default" }: { titleId: stri
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <section ref={cardRef} className={`modal-card ${size === "large" ? "is-large" : ""}`} role="dialog" aria-modal="true" aria-labelledby={titleId}>
-        <button ref={closeRef} className="modal-close" type="button" onClick={onClose} aria-label="Dialog schlie?en">?</button>
+        <button ref={closeRef} className="modal-close" type="button" onClick={onClose} aria-label="Dialog schließen">×</button>
         {children}
       </section>
     </div>
@@ -2567,7 +2567,7 @@ function AuthDialog({
     setBusy("email");
     setError(null);
     if ((mode === "register" || mode === "set-password") && password !== passwordRepeat) {
-      setError("Die beiden Passw?rter stimmen nicht ?berein.");
+      setError("Die beiden Passwörter stimmen nicht überein.");
       setBusy(null);
       return;
     }
@@ -2598,16 +2598,16 @@ function AuthDialog({
       }
     } catch (emailError) {
       const fallback = mode === "login"
-        ? "E-Mail oder Passwort ist nicht korrekt. Nutzen Sie bei Bedarf ?Passwort vergessen??."
+        ? "E-Mail oder Passwort ist nicht korrekt. Nutzen Sie bei Bedarf ‚Passwort vergessen?‘."
         : mode === "recover"
           ? "Der Wiederherstellungslink konnte gerade nicht versendet werden."
           : mode === "register"
-            ? "Das Konto konnte gerade nicht erstellt werden. Pr?fen Sie E-Mail und Passwort."
+            ? "Das Konto konnte gerade nicht erstellt werden. Prüfen Sie E-Mail und Passwort."
             : "Das neue Passwort konnte gerade nicht gespeichert werden.";
       const message = emailError instanceof Error ? emailError.message.toLowerCase() : "";
       setError(
         mode === "login" && (message.includes("invalid login") || message.includes("invalid credentials"))
-          ? "E-Mail oder Passwort ist nicht korrekt. Nutzen Sie bei Bedarf ?Passwort vergessen??."
+          ? "E-Mail oder Passwort ist nicht korrekt. Nutzen Sie bei Bedarf ‚Passwort vergessen?‘."
           : fallback,
       );
       setBusy(null);
@@ -2629,10 +2629,10 @@ function AuthDialog({
         </h2>
         <p>
           {mode === "set-password"
-            ? "Legen Sie jetzt ein neues Passwort f?r Ihr best?tigtes Konto fest."
+            ? "Legen Sie jetzt ein neues Passwort für Ihr bestätigtes Konto fest."
             : mode === "recover"
               ? "Wir senden einen sicheren Link an Ihre E-Mail-Adresse. Ihre aktuelle Anfrage bleibt dabei erhalten."
-              : "Ihre Anfrage bleibt erhalten. Nach der Anmeldung kehren Sie genau zu Ihrem ausgew?hlten Profil zur?ck."}
+              : "Ihre Anfrage bleibt erhalten. Nach der Anmeldung kehren Sie genau zu Ihrem ausgewählten Profil zurück."}
         </p>
 
         {mode !== "set-password" && mode !== "recover" ? (
@@ -2641,10 +2641,10 @@ function AuthDialog({
               <>
                 <div className="provider-buttons">
                   {GOOGLE_AUTH_ENABLED ? (
-                    <button type="button" onClick={() => void connectProvider("google")} disabled={Boolean(busy)}><span className="provider-letter" aria-hidden="true">G</span>{busy === "google" ? "Google wird ge?ffnet ?" : "Mit Google fortfahren"}</button>
+                    <button type="button" onClick={() => void connectProvider("google")} disabled={Boolean(busy)}><span className="provider-letter" aria-hidden="true">G</span>{busy === "google" ? "Google wird geöffnet …" : "Mit Google fortfahren"}</button>
                   ) : null}
                   {MICROSOFT_AUTH_ENABLED ? (
-                    <button type="button" onClick={() => void connectProvider("microsoft")} disabled={Boolean(busy)}><span className="provider-letter microsoft" aria-hidden="true">M</span>{busy === "microsoft" ? "Microsoft wird ge?ffnet ?" : "Mit Microsoft fortfahren"}</button>
+                    <button type="button" onClick={() => void connectProvider("microsoft")} disabled={Boolean(busy)}><span className="provider-letter microsoft" aria-hidden="true">M</span>{busy === "microsoft" ? "Microsoft wird geöffnet …" : "Mit Microsoft fortfahren"}</button>
                   ) : null}
                 </div>
                 <div className="or-divider"><span>oder</span></div>
@@ -2659,13 +2659,13 @@ function AuthDialog({
 
         {confirmationSent ? (
           <div className="confirmation-state" role="status">
-            <span aria-hidden="true">?</span>
-            <h3>{mode === "recover" ? "Wiederherstellungslink versendet" : "Best?tigungslink versendet"}</h3>
+            <span aria-hidden="true">✓</span>
+            <h3>{mode === "recover" ? "Wiederherstellungslink versendet" : "Bestätigungslink versendet"}</h3>
             <p>
               {mode === "recover" ? (
-                <>?ffnen Sie den Link in der E-Mail an <strong>{email}</strong> und legen Sie anschlie?end ein neues Passwort fest.</>
+                <>Öffnen Sie den Link in der E-Mail an <strong>{email}</strong> und legen Sie anschließend ein neues Passwort fest.</>
               ) : (
-                <>?ffnen Sie den Link in der E-Mail an <strong>{email}</strong>, um Ihr Konto mit dem gew?hlten Passwort zu aktivieren.</>
+                <>Öffnen Sie den Link in der E-Mail an <strong>{email}</strong>, um Ihr Konto mit dem gewählten Passwort zu aktivieren.</>
               )}
             </p>
             <button type="button" onClick={onClose}>Verstanden</button>
@@ -2697,13 +2697,13 @@ function AuthDialog({
             ) : null}
             {mode === "recover" ? (
               <button className="back-to-login" type="button" onClick={() => { setMode("login"); setError(null); }}>
-                Zur?ck zur Anmeldung
+                Zurück zur Anmeldung
               </button>
             ) : null}
             {error ? <p className="form-error" role="alert">{error}</p> : null}
             <button className="auth-submit" type="submit" disabled={Boolean(busy)}>
               {busy === "email"
-                ? "Bitte warten ?"
+                ? "Bitte warten …"
                 : mode === "login"
                   ? "Mit E-Mail anmelden"
                   : mode === "register"
@@ -2714,7 +2714,7 @@ function AuthDialog({
             </button>
           </form>
         )}
-        <p className="auth-privacy">Die Anmeldung dient dazu, Projekte ger?te?bergreifend zuzuordnen und eine Profilwahl sicher fortzusetzen.</p>
+        <p className="auth-privacy">Die Anmeldung dient dazu, Projekte geräteübergreifend zuzuordnen und eine Profilwahl sicher fortzusetzen.</p>
       </div>
     </Modal>
   );
@@ -2746,7 +2746,7 @@ function SidebarChatList({
           >
             <span className="project-title">{chat.title}</span>
             <span className="project-meta">
-              {loadingProjectId === chat.id ? "Wird geladen ?" : formatRelativeDate(chat.updatedAt)}
+              {loadingProjectId === chat.id ? "Wird geladen …" : formatRelativeDate(chat.updatedAt)}
             </span>
           </button>
           <button
@@ -2755,7 +2755,7 @@ function SidebarChatList({
             onClick={() => onManage(chat)}
             aria-label={`${chat.title} verwalten`}
           >
-            ???
+            •••
           </button>
         </li>
       ))}
@@ -2790,13 +2790,13 @@ function CreateProjectDialog({
       <form className="project-dialog" onSubmit={submit}>
         <span className="dialog-eyebrow">Mehrere Chats organisieren</span>
         <h2 id="create-project-title">Neues Projekt</h2>
-        <p>Ein Projekt ist ein Ordner, in dem Sie mehrere zusammengeh?rige Chats speichern k?nnen.</p>
+        <p>Ein Projekt ist ein Ordner, in dem Sie mehrere zusammengehörige Chats speichern können.</p>
         <label htmlFor="project-name">Projektname</label>
         <input id="project-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={120} autoFocus placeholder="z. B. SAP-Rollout 2026" />
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         <div className="dialog-actions">
           <button className="secondary-action" type="button" onClick={onClose} disabled={busy}>Abbrechen</button>
-          <button className="primary-action" type="submit" disabled={busy || !name.trim()}>{busy ? "Wird erstellt ?" : "Projekt erstellen"}</button>
+          <button className="primary-action" type="submit" disabled={busy || !name.trim()}>{busy ? "Wird erstellt …" : "Projekt erstellen"}</button>
         </div>
       </form>
     </Modal>
@@ -2834,7 +2834,7 @@ function ManageChatDialog({
       <div className="project-dialog manage-chat-dialog">
         <span className="dialog-eyebrow">Chat verwalten</span>
         <h2 id="manage-chat-title">{chat.title}</h2>
-        <p>Speichern Sie den Chat in einem Projekt oder l?schen Sie ihn dauerhaft.</p>
+        <p>Speichern Sie den Chat in einem Projekt oder löschen Sie ihn dauerhaft.</p>
         <div className="project-destination-list">
           <button type="button" className={!chat.collectionId ? "active" : ""} disabled={busy} onClick={() => void run(() => onMove(null))}>Ohne Projekt</button>
           {collections.map((collection) => (
@@ -2844,11 +2844,11 @@ function ManageChatDialog({
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         <div className="dialog-actions split-actions">
           {confirmDelete ? (
-            <button className="danger-action" type="button" disabled={busy} onClick={() => void run(onDelete)}>{busy ? "Wird gel?scht ?" : "L?schen best?tigen"}</button>
+            <button className="danger-action" type="button" disabled={busy} onClick={() => void run(onDelete)}>{busy ? "Wird gelöscht …" : "Löschen bestätigen"}</button>
           ) : (
-            <button className="danger-text-action" type="button" disabled={busy} onClick={() => setConfirmDelete(true)}>Chat l?schen</button>
+            <button className="danger-text-action" type="button" disabled={busy} onClick={() => setConfirmDelete(true)}>Chat löschen</button>
           )}
-          <button className="secondary-action" type="button" onClick={onClose} disabled={busy}>Schlie?en</button>
+          <button className="secondary-action" type="button" onClick={onClose} disabled={busy}>Schließen</button>
         </div>
       </div>
     </Modal>
@@ -2860,9 +2860,9 @@ function AgentsDialog({ onClose }: { onClose: () => void }) {
     <Modal titleId="agents-title" onClose={onClose}>
       <div className="agents-dialog">
         <span className="agent-glyph is-large" aria-hidden="true">A</span>
-        <span className="dialog-eyebrow">Vorbereitet f?r die n?chste Ausbaustufe</span>
+        <span className="dialog-eyebrow">Vorbereitet für die nächste Ausbaustufe</span>
         <h2 id="agents-title">Agenten</h2>
-        <p>Hier k?nnen zuk?nftig eigene spezialisierte Agenten angeschlossen werden. Im aktuellen Freelancer-MVP ist noch kein Agent aktiviert und es werden keine autonomen Aktionen ausgef?hrt.</p>
+        <p>Hier können zukünftig eigene spezialisierte Agenten angeschlossen werden. Im aktuellen Freelancer-MVP ist noch kein Agent aktiviert und es werden keine autonomen Aktionen ausgeführt.</p>
         <button className="primary-action" type="button" onClick={onClose}>Verstanden</button>
       </div>
     </Modal>
@@ -2875,23 +2875,23 @@ function ContactDialog({ profile, onClose }: { profile: FreelancerProfileResult;
       <div className="contact-dialog">
         <div className="contact-dialog-header">
           <div className="contact-profile-avatar" aria-hidden="true">{initials(profile.displayName)}</div>
-          <div><span className="dialog-eyebrow">Reales Profil ausgew?hlt</span><h2 id="contact-title">Termin mit {profile.displayName}</h2><p>{profile.role}</p></div>
+          <div><span className="dialog-eyebrow">Reales Profil ausgewählt</span><h2 id="contact-title">Termin mit {profile.displayName}</h2><p>{profile.role}</p></div>
         </div>
         <div className="contact-layout">
           <div className="contact-copy">
             <div className="roman-card">
               <div className="live-row"><span className="live-dot" aria-hidden="true" /> Live erreichbar</div>
               <h3>Roman Dering begleitet den Kontakt</h3>
-              <p>{profile.bookingUrl ? "Buchen Sie direkt einen freien Termin beim Freelancer. Bei R?ckfragen ist Roman Dering zus?tzlich erreichbar." : "Dieses historische Match ist derzeit nicht direkt buchbar. Roman Dering hilft bei R?ckfragen oder Alternativen."}</p>
-              <a className="phone-action" href={`tel:${CONTACT_PHONE}`}><span aria-hidden="true">?</span><span><small>Direkt anrufen</small>{CONTACT_PHONE_LABEL}</span></a>
+              <p>{profile.bookingUrl ? "Buchen Sie direkt einen freien Termin beim Freelancer. Bei Rückfragen ist Roman Dering zusätzlich erreichbar." : "Dieses historische Match ist derzeit nicht direkt buchbar. Roman Dering hilft bei Rückfragen oder Alternativen."}</p>
+              <a className="phone-action" href={`tel:${CONTACT_PHONE}`}><span aria-hidden="true">☎</span><span><small>Direkt anrufen</small>{CONTACT_PHONE_LABEL}</span></a>
             </div>
-            <div className="continue-note"><span aria-hidden="true">?</span><p><strong>Noch etwas erg?nzen?</strong>Schlie?en Sie dieses Fenster und schreiben Sie frei im Chat weiter. Die Terminoption bleibt sichtbar.</p></div>
+            <div className="continue-note"><span aria-hidden="true">＋</span><p><strong>Noch etwas ergänzen?</strong>Schließen Sie dieses Fenster und schreiben Sie frei im Chat weiter. Die Terminoption bleibt sichtbar.</p></div>
           </div>
           <div className="calendar-area">
             <div className="calendar-consent">
-              <div className="calendar-symbol" aria-hidden="true"><span>?</span><small>BOOKING</small></div>
-              <h3>{profile.bookingUrl ? "Direkt Termin w?hlen" : "Aktuell nicht buchbar"}</h3>
-              <p>{profile.bookingUrl ? `Die Buchungsseite von ${profile.displayName} wird erst nach Ihrem Klick in einem neuen Tab ge?ffnet.` : "Der fr?here Treffer bleibt zur Nachvollziehbarkeit sichtbar, aber es ist kein aktueller Booking-Link freigegeben."}</p>
+              <div className="calendar-symbol" aria-hidden="true"><span>↗</span><small>BOOKING</small></div>
+              <h3>{profile.bookingUrl ? "Direkt Termin wählen" : "Aktuell nicht buchbar"}</h3>
+              <p>{profile.bookingUrl ? `Die Buchungsseite von ${profile.displayName} wird erst nach Ihrem Klick in einem neuen Tab geöffnet.` : "Der frühere Treffer bleibt zur Nachvollziehbarkeit sichtbar, aber es ist kein aktueller Booking-Link freigegeben."}</p>
               {profile.bookingUrl ? (
                 <a
                   className="booking-link-action"
@@ -2899,7 +2899,7 @@ function ContactDialog({ profile, onClose }: { profile: FreelancerProfileResult;
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Meeting buchen <span aria-hidden="true">?</span>
+                  Meeting buchen <span aria-hidden="true">→</span>
                 </a>
               ) : (
                 <span className="booking-unavailable">Aktuell kein direkter Booking-Link</span>
@@ -2917,11 +2917,11 @@ function ConfirmDeleteDialog({ busy, onClose, onConfirm }: { busy: boolean; onCl
     <Modal titleId="delete-title" onClose={onClose}>
       <div className="delete-dialog">
         <span className="danger-symbol" aria-hidden="true">!</span>
-        <h2 id="delete-title">Anwendungsdaten l?schen?</h2>
-        <p>Ihre Projekte, Nachrichten und gespeicherten Ergebnisse werden entsprechend der geltenden Aufbewahrungsregeln gel?scht oder anonymisiert. Dieser Schritt kann nicht r?ckg?ngig gemacht werden.</p>
+        <h2 id="delete-title">Anwendungsdaten löschen?</h2>
+        <p>Ihre Projekte, Nachrichten und gespeicherten Ergebnisse werden entsprechend der geltenden Aufbewahrungsregeln gelöscht oder anonymisiert. Dieser Schritt kann nicht rückgängig gemacht werden.</p>
         <div className="dialog-actions">
           <button className="secondary-action" type="button" onClick={onClose} disabled={busy}>Abbrechen</button>
-          <button className="danger-action" type="button" onClick={onConfirm} disabled={busy}>{busy ? "Wird gel?scht ?" : "Daten endg?ltig l?schen"}</button>
+          <button className="danger-action" type="button" onClick={onConfirm} disabled={busy}>{busy ? "Wird gelöscht …" : "Daten endgültig löschen"}</button>
         </div>
       </div>
     </Modal>

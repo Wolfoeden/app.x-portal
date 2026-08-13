@@ -305,7 +305,7 @@ and evidence procedure.
 V1 intentionally uses Studio instead of a custom profile/customer admin. The
 application admin page is limited to read-only AI usage and credit reporting.
 A Supabase project Developer/Administrator can have broader project visibility
-than the business task ?edit freelancer profiles?. Therefore Studio access is
+than the business task “edit freelancer profiles”. Therefore Studio access is
 limited to named, trusted internal operators with MFA, separate accounts and a
 written runbook. Do not invite external freelancers or customers into the
 Supabase project.

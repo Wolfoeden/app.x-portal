@@ -36,7 +36,7 @@ function configureProjectQueries(
   const project = {
     id: projectId,
     owner_user_id: userId,
-    title: "React-Unterst?tzung",
+    title: "React-Unterstützung",
     original_request: "React freelancer in German, remote",
     structured_brief: parseFallbackBrief(
       "React freelancer in German, remote",
@@ -132,7 +132,7 @@ describe("project detail deterministic recovery", () => {
 
     expect(response.status).toBe(200);
     expect(body.profiles).toHaveLength(3);
-    expect(body.analysisNotice).toContain("?ltere Shortlist");
+    expect(body.analysisNotice).toContain("ältere Shortlist");
     expect(mocks.fetchActiveProfiles).toHaveBeenCalledTimes(1);
     expect(mocks.fetchProfilesByIds).not.toHaveBeenCalled();
   });

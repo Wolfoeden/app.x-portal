@@ -281,15 +281,15 @@ function commercialEligibility(
 
     if (!profileRate) {
       hasUnconfirmedConstraint = true;
-      gaps.push(`${rateLabel} noch nicht best?tigt; Preisgrenze vor der Buchung abstimmen.`);
+      gaps.push(`${rateLabel} noch nicht bestätigt; Preisgrenze vor der Buchung abstimmen.`);
     } else if (profileRate.currency !== brief.rate.currency) {
       hasUnconfirmedConstraint = true;
       gaps.push(
-        `${rateLabel} ist nur in ${profileRate.currency} angegeben; ein verl?sslicher Vergleich mit ${brief.rate.currency} ist nicht m?glich.`,
+        `${rateLabel} ist nur in ${profileRate.currency} angegeben; ein verlässlicher Vergleich mit ${brief.rate.currency} ist nicht möglich.`,
       );
     } else if (brief.rate.max !== null && profileRate.amount > brief.rate.max) {
       rejectionReasons.push(
-        `Best?tigter ${rateLabel} von ${formatCommercialAmount(profileRate.amount, profileRate.currency)} ?berschreitet die angegebene Obergrenze von ${formatCommercialAmount(brief.rate.max, brief.rate.currency)}.`,
+        `Bestätigter ${rateLabel} von ${formatCommercialAmount(profileRate.amount, profileRate.currency)} überschreitet die angegebene Obergrenze von ${formatCommercialAmount(brief.rate.max, brief.rate.currency)}.`,
       );
     } else if (
       brief.rate.min !== null &&
@@ -297,11 +297,11 @@ function commercialEligibility(
       profileRate.amount < brief.rate.min
     ) {
       rejectionReasons.push(
-        `Best?tigter ${rateLabel} von ${formatCommercialAmount(profileRate.amount, profileRate.currency)} liegt unter der ausdr?cklich angegebenen Untergrenze von ${formatCommercialAmount(brief.rate.min, brief.rate.currency)}.`,
+        `Bestätigter ${rateLabel} von ${formatCommercialAmount(profileRate.amount, profileRate.currency)} liegt unter der ausdrücklich angegebenen Untergrenze von ${formatCommercialAmount(brief.rate.min, brief.rate.currency)}.`,
       );
     } else {
       reasons.push(
-        `Best?tigter ${rateLabel} liegt innerhalb der angegebenen ${brief.rate.currency}-Grenze.`,
+        `Bestätigter ${rateLabel} liegt innerhalb der angegebenen ${brief.rate.currency}-Grenze.`,
       );
     }
   } else if (profile.hourlyRate === null && profile.dayRate === null) {
@@ -312,19 +312,19 @@ function commercialEligibility(
     const minimum = profile.minimumProjectBudget;
     if (!minimum) {
       hasUnconfirmedConstraint = true;
-      gaps.push("Mindestprojektbudget noch nicht best?tigt; Budgetpassung vor der Buchung abstimmen.");
+      gaps.push("Mindestprojektbudget noch nicht bestätigt; Budgetpassung vor der Buchung abstimmen.");
     } else if (minimum.currency !== brief.budget.currency) {
       hasUnconfirmedConstraint = true;
       gaps.push(
-        `Mindestprojektbudget ist nur in ${minimum.currency} angegeben; ein verl?sslicher Vergleich mit ${brief.budget.currency} ist nicht m?glich.`,
+        `Mindestprojektbudget ist nur in ${minimum.currency} angegeben; ein verlässlicher Vergleich mit ${brief.budget.currency} ist nicht möglich.`,
       );
     } else if (brief.budget.max !== null && minimum.amount > brief.budget.max) {
       rejectionReasons.push(
-        `Best?tigtes Mindestprojektbudget von ${formatCommercialAmount(minimum.amount, minimum.currency)} ?berschreitet das angegebene Maximalbudget von ${formatCommercialAmount(brief.budget.max, brief.budget.currency)}.`,
+        `Bestätigtes Mindestprojektbudget von ${formatCommercialAmount(minimum.amount, minimum.currency)} überschreitet das angegebene Maximalbudget von ${formatCommercialAmount(brief.budget.max, brief.budget.currency)}.`,
       );
     } else {
       reasons.push(
-        `Best?tigter Mindestprojektwert liegt innerhalb des angegebenen ${brief.budget.currency}-Budgets.`,
+        `Bestätigter Mindestprojektwert liegt innerhalb des angegebenen ${brief.budget.currency}-Budgets.`,
       );
     }
   }
@@ -363,13 +363,13 @@ export function evaluateProfile(
     rejectionReasons.push("Profil hat keinen sicheren direkten Booking-Link.");
   }
   if (profile.availability.status === "unavailable") {
-    rejectionReasons.push("Profil ist als nicht verf?gbar markiert.");
+    rejectionReasons.push("Profil ist als nicht verfügbar markiert.");
   } else if (profile.availability.status === "available") {
-    matchReasons.push("Projektverf?gbarkeit ist aktuell best?tigt.");
+    matchReasons.push("Projektverfügbarkeit ist aktuell bestätigt.");
   } else if (profile.availability.status === "limited") {
-    knownGaps.push("Projektverf?gbarkeit ist begrenzt; den genauen Zeitraum beim Termin abstimmen.");
+    knownGaps.push("Projektverfügbarkeit ist begrenzt; den genauen Zeitraum beim Termin abstimmen.");
   } else {
-    knownGaps.push("Projektverf?gbarkeit ist nicht best?tigt; der Booking-Kalender ist verf?gbar.");
+    knownGaps.push("Projektverfügbarkeit ist nicht bestätigt; der Booking-Kalender ist verfügbar.");
   }
 
   const requiredSkills = brief.requiredSkills ?? [];
@@ -387,14 +387,14 @@ export function evaluateProfile(
     matchReasons.push(`Belegte Pflichtkompetenzen: ${matchedRequiredSkills.join(", ")}.`);
     if (missingRequiredSkills.length) {
       knownGaps.push(
-        `Weitere Pflichtkompetenzen vor dem Gespr?ch pr?fen: ${missingRequiredSkills.join(", ")}.`,
+        `Weitere Pflichtkompetenzen vor dem Gespräch prüfen: ${missingRequiredSkills.join(", ")}.`,
       );
     }
   }
 
   if (brief.language) {
     if (!includesFact(profile.languages, brief.language)) {
-      rejectionReasons.push(`Geforderte Sprache nicht best?tigt: ${brief.language}.`);
+      rejectionReasons.push(`Geforderte Sprache nicht bestätigt: ${brief.language}.`);
     } else {
       matchReasons.push(`Sprache passend: ${brief.language}.`);
     }
@@ -402,7 +402,7 @@ export function evaluateProfile(
 
   if (brief.workMode !== "unknown") {
     if (!profile.workModes.includes(brief.workMode)) {
-      rejectionReasons.push(`Arbeitsmodus wird nicht unterst?tzt: ${brief.workMode}.`);
+      rejectionReasons.push(`Arbeitsmodus wird nicht unterstützt: ${brief.workMode}.`);
     } else {
       matchReasons.push(`Arbeitsmodus passend: ${brief.workMode}.`);
     }
@@ -410,25 +410,25 @@ export function evaluateProfile(
 
   if (brief.location && brief.workMode !== "remote") {
     if (!profile.location || !locationMatches(profile.location.value, brief.location)) {
-      rejectionReasons.push(`Ort nicht best?tigt: ${brief.location}.`);
+      rejectionReasons.push(`Ort nicht bestätigt: ${brief.location}.`);
     } else {
       matchReasons.push(`Ort passend: ${brief.location}.`);
     }
   }
 
   if (!availableBy(profile, brief)) {
-    rejectionReasons.push("Verf?gbarkeit ist im angegebenen Startfenster nicht best?tigt.");
+    rejectionReasons.push("Verfügbarkeit ist im angegebenen Startfenster nicht bestätigt.");
   } else if (brief.startWindow && profile.availability.availableFrom) {
-    matchReasons.push("Verf?gbarkeit ist im angegebenen Startfenster best?tigt.");
+    matchReasons.push("Verfügbarkeit ist im angegebenen Startfenster bestätigt.");
   } else if (brief.startWindow) {
-    knownGaps.push("Das gew?nschte Startfenster ist im Profil nicht separat best?tigt.");
+    knownGaps.push("Das gewünschte Startfenster ist im Profil nicht separat bestätigt.");
   }
 
   const missingQualifications = (brief.qualifications ?? []).filter(
     (qualification) => !includesFact(profile.qualifications, qualification),
   );
   if (missingQualifications.length) {
-    knownGaps.push(`Qualifikationen noch nicht best?tigt: ${missingQualifications.join(", ")}.`);
+    knownGaps.push(`Qualifikationen noch nicht bestätigt: ${missingQualifications.join(", ")}.`);
   } else if (brief.qualifications?.length) {
     matchReasons.push(`Qualifikationen passend: ${brief.qualifications.join(", ")}.`);
   }
@@ -437,7 +437,7 @@ export function evaluateProfile(
     (term) => !includesFact(profile.contractualCapabilities, term),
   );
   if (missingContractTerms.length) {
-    rejectionReasons.push(`Vertragsanforderungen nicht best?tigt: ${missingContractTerms.join(", ")}.`);
+    rejectionReasons.push(`Vertragsanforderungen nicht bestätigt: ${missingContractTerms.join(", ")}.`);
   } else if (brief.contractualRequirements?.length) {
     matchReasons.push(`Vertragsanforderungen passend: ${brief.contractualRequirements.join(", ")}.`);
   }
@@ -460,14 +460,14 @@ export function evaluateProfile(
       continue;
     }
     if (includesFact(publicConstraintFacts, constraint)) {
-      matchReasons.push(`Weitere Rahmenbedingung best?tigt: ${constraint}.`);
+      matchReasons.push(`Weitere Rahmenbedingung bestätigt: ${constraint}.`);
     } else if (isDeliveryCapacityConstraint(constraint)) {
       knownGaps.push(
-        `Gew?nschte Projektauslastung im Profil nicht best?tigt: ${constraint}; im Erstgespr?ch abstimmen.`,
+        `Gewünschte Projektauslastung im Profil nicht bestätigt: ${constraint}; im Erstgespräch abstimmen.`,
       );
     } else {
       rejectionReasons.push(
-        `Weitere Pflichtbedingung im Profil nicht best?tigt: ${constraint}.`,
+        `Weitere Pflichtbedingung im Profil nicht bestätigt: ${constraint}.`,
       );
     }
   }
@@ -487,7 +487,7 @@ export function evaluateProfile(
     matchReasons.push(`Optionale Kompetenzen passend: ${optionalSkillMatches.join(", ")}.`);
   }
   if (missingOptionalSkills.length) {
-    knownGaps.push(`Optionale Kompetenzen nicht aufgef?hrt: ${missingOptionalSkills.join(", ")}.`);
+    knownGaps.push(`Optionale Kompetenzen nicht aufgeführt: ${missingOptionalSkills.join(", ")}.`);
   }
 
   const exactRequiredSkillMatches = requiredSkills.filter((skill) =>
@@ -528,7 +528,7 @@ function sourceDisclosures(profile: FreelancerProfile): {
   profile.languages.forEach((fact) => add("Sprache", fact));
   if (profile.location) add("Ort", profile.location);
   profile.qualifications.forEach((fact) => add("Qualifikation", fact));
-  profile.contractualCapabilities.forEach((fact) => add("Vertragsf?higkeit", fact));
+  profile.contractualCapabilities.forEach((fact) => add("Vertragsfähigkeit", fact));
   const experienceTarget =
     profile.experienceSummary.source === "verified" ? verifiedFacts : selfReportedFacts;
   experienceTarget.push(`Erfahrung: ${profile.experienceSummary.value}`);
