@@ -7,24 +7,33 @@ import {
   type LabeledFact,
 } from "./profile";
 
-export const MATCHING_RULE_VERSION = "freelancer-match-v9" as const;
+export const MATCHING_RULE_VERSION = "freelancer-match-v10" as const;
 
 /**
  * Public and reviewable ordering rule. Eligibility is evaluated first. Eligible
- * profiles are then ordered by: a match of the primary core skill, matched core
- * skills (descending), confirmed commercial compatibility when an explicit
- * commercial constraint was supplied, availability confidence, optional skill
- * matches (descending), supporting context evidence (descending), verified
- * core-skill matches (descending), available-from date (ascending, unknown
- * last), normalized display name (ascending), and profile id (ascending).
+ * profiles are then ordered by: matched core skills (descending), confirmed
+ * commercial compatibility when an explicit commercial constraint was supplied,
+ * availability confidence, optional skill matches (descending), supporting
+ * context evidence (descending), verified core-skill matches (descending),
+ * available-from date (ascending, unknown last), normalized display name
+ * (ascending), and profile id (ascending).
+ *
+ * Changes from v9:
+ *
+ * - `primary_required_skill_match_desc` is removed. It asked whether a profile
+ *   matched `requiredSkills[0]`, which treated the position of a term in the
+ *   extracted array as a statement of importance. That position is a by-product
+ *   of extraction, not a weighting: a single leading word in the request text
+ *   promoted every profile carrying it above every profile that did not,
+ *   regardless of how well the rest matched. Ranking now starts at the number of
+ *   matched core skills, which counts evidence instead of order.
  *
  * Changes from v8:
  *
- * - The primary-skill criterion compares SKILLS, not strings. It used to
- *   require character equality between the extracted term and the profile tag,
- *   so it rewarded whoever happened to write the skill the way the extraction
- *   did. A German brief scored zero on it however well it matched, which made
- *   the top of the shortlist depend on the language the brief was written in.
+ * - The primary-skill criterion compared SKILLS rather than strings before it
+ *   was dropped. It used to require character equality between the extracted
+ *   term and the profile tag, so it rewarded whoever happened to write the skill
+ *   the way the extraction did.
  * - `exact_required_skill_matches_desc` is removed rather than demoted. Once
  *   the comparison is skill-based it says exactly what `core_skill_matches_desc`
  *   already says, and keeping it would reintroduce the same surface-form bias
@@ -35,7 +44,6 @@ export const MATCHING_RULE_VERSION = "freelancer-match-v9" as const;
  *   and it can never make a profile eligible.
  */
 export const MATCHING_ORDER_RULE = [
-  "primary_required_skill_match_desc",
   "core_skill_matches_desc",
   "commercial_constraint_confidence_desc",
   "availability_status_priority",
@@ -55,7 +63,6 @@ export const ProfileEvaluationSchema = z
     knownGaps: z.array(z.string()),
     optionalSkillMatches: z.array(z.string()),
     coreSkillMatches: z.array(z.string()),
-    primaryRequiredSkillMatch: z.boolean(),
     exactRequiredSkillMatches: z.array(z.string()),
     contextEvidenceMatches: z.array(z.string()),
     verifiedRequiredSkillMatches: z.array(z.string()),
@@ -81,7 +88,6 @@ export const ShortlistMatchSchema = z
       .object({
         optionalSkillMatchCount: z.number().int().nonnegative(),
         coreSkillMatchCount: z.number().int().nonnegative().optional(),
-        primaryRequiredSkillMatch: z.boolean(),
         contextEvidenceMatchCount: z.number().int().nonnegative(),
         verifiedRequiredSkillMatchCount: z.number().int().nonnegative(),
         commercialConstraintConfidence: z
@@ -98,7 +104,6 @@ export const ShortlistSchema = z
   .object({
     ruleVersion: z.literal(MATCHING_RULE_VERSION),
     orderingRule: z.tuple([
-      z.literal("primary_required_skill_match_desc"),
       z.literal("core_skill_matches_desc"),
       z.literal("commercial_constraint_confidence_desc"),
       z.literal("availability_status_priority"),
@@ -478,6 +483,7 @@ function headingStrength(line: string): RequirementStrength | null {
 function requirementStrength(originalRequest: string, value: string): RequirementStrength {
   let section: RequirementStrength = "neutral";
   let observedSoft = false;
+  let observedNonSoft = false;
   for (const line of originalRequest.split(/\r?\n/u)) {
     const containsRequirement = lineContainsRequirement(line, value);
     if (containsRequirement) {
@@ -486,10 +492,27 @@ function requirementStrength(originalRequest: string, value: string): Requiremen
         observedSoft = true;
       } else if (section === "hard") {
         return "hard";
+      } else {
+        observedNonSoft = true;
       }
     }
     section = headingStrength(line) ?? section;
   }
+  // A mention outside a "nice to have" section keeps the requirement required.
+  //
+  // Without this, a posting that lists a skill under "Voraussetzungen" and a
+  // sibling of the same skill family under "Bevorzugte Technologien" ends up
+  // soft: German mandatory headings carry no must-marker, so they classify as
+  // neutral, and neutral used to lose to any later soft mention. Because the
+  // match runs against the whole skill family, "Power Automate" in a preferred
+  // list silently demoted "Automatisierung von Geschäftsprozessen" from a
+  // stated prerequisite to an optional extra.
+  //
+  // The result is "neutral", not "hard": the skill stays a required skill, but
+  // an unmet one is a gap rather than a knockout. Treating mandatory sections
+  // as hard would reject every profile missing any single listed skill, which
+  // for a typical posting rejects nearly everyone.
+  if (observedNonSoft) return "neutral";
   return observedSoft ? "soft" : "neutral";
 }
 
@@ -1051,12 +1074,6 @@ export function evaluateProfile(
   const exactRequiredSkillMatches = coreSkills.filter((skill) =>
     includesFact(profile.skillTags, skill),
   );
-  // Skill-based, not string-based: an alias of the same skill is the same
-  // skill. Comparing characters here made the top of the shortlist depend on
-  // whether the extraction happened to phrase the skill the way the profile did.
-  const primaryRequiredSkillMatch = Boolean(
-    coreSkills[0] && matchingFact(profile.skillTags, coreSkills[0]),
-  );
 
   // Context evidence supports a requirement without claiming the skill. It can
   // only ever break a tie between profiles that already match on skills — it is
@@ -1080,7 +1097,6 @@ export function evaluateProfile(
     knownGaps,
     optionalSkillMatches,
     coreSkillMatches,
-    primaryRequiredSkillMatch,
     exactRequiredSkillMatches,
     contextEvidenceMatches,
     verifiedRequiredSkillMatches,
@@ -1114,10 +1130,10 @@ function sourceDisclosures(profile: FreelancerProfile): {
 /**
  * Whether the brief states anything a profile can be ranked against.
  *
- * Mirrors the `relevanceSkills` fallback inside `evaluateProfile`: required
- * skills are used when present, otherwise optional ones. When both are absent
- * there is no relevance signal at all, the skill-overlap rejection never fires,
- * and every active profile stays eligible.
+ * Mirrors `relevanceSkills` inside `evaluateProfile`, which spans required and
+ * optional skills together. When both are absent there is no relevance signal
+ * at all, the skill-overlap rejection never fires, and every active profile
+ * stays eligible.
  */
 function hasRankableRequirement(brief: ProjectBrief): boolean {
   return Boolean((brief.requiredSkills ?? []).length || (brief.optionalSkills ?? []).length);
@@ -1146,10 +1162,6 @@ export function buildShortlist(
 
   const eligible = evaluated.filter((item) => item.evaluation.eligible);
   eligible.sort((left, right) => {
-    const primarySkillDifference =
-      Number(right.evaluation.primaryRequiredSkillMatch) -
-      Number(left.evaluation.primaryRequiredSkillMatch);
-    if (primarySkillDifference) return primarySkillDifference;
     const coreSkillDifference =
       right.evaluation.coreSkillMatches.length -
       left.evaluation.coreSkillMatches.length;
@@ -1192,7 +1204,6 @@ export function buildShortlist(
     orderingEvidence: {
       optionalSkillMatchCount: evaluation.optionalSkillMatches.length,
       coreSkillMatchCount: evaluation.coreSkillMatches.length,
-      primaryRequiredSkillMatch: evaluation.primaryRequiredSkillMatch,
       contextEvidenceMatchCount: evaluation.contextEvidenceMatches.length,
       verifiedRequiredSkillMatchCount: evaluation.verifiedRequiredSkillMatches.length,
       commercialConstraintConfidence: evaluation.commercialConstraintConfidence,
