@@ -602,16 +602,14 @@ a {
   font-weight: 600;
 }
 
-.status-dot,
-.live-dot {
+.status-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: #bcbcb6;
 }
 
-.status-dot.is-ready,
-.live-dot {
+.status-dot.is-ready {
   background: var(--green);
   box-shadow: 0 0 0 3px var(--green-soft);
 }
@@ -1150,22 +1148,6 @@ a {
   padding: 7px 0 10px;
 }
 
-.analysis-mode-note {
-  width: min(100%, 750px);
-  margin: -8px auto 0;
-  border: 1px solid #e7dcc1;
-  border-radius: 10px;
-  background: #fbf8ef;
-  padding: 10px 12px;
-  color: #685a38;
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-.analysis-mode-note strong {
-  color: #453b24;
-}
-
 .message-row {
   display: flex;
   align-items: flex-start;
@@ -1386,6 +1368,17 @@ dd.is-unknown,
   color: var(--muted-light) !important;
   font-style: italic;
   font-weight: 450 !important;
+}
+
+/* Marks a value that was inferred rather than stated, so it cannot be read as
+   a requirement the client actually made. */
+.detail-hint {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted-light);
+  font-size: 8.5px;
+  font-style: italic;
+  font-weight: 450;
 }
 
 .unknown-row {
@@ -2173,8 +2166,7 @@ dd.is-unknown,
   line-height: 1.5;
 }
 
-.selected-side-card,
-.human-contact-card {
+.selected-side-card {
   margin-top: 18px;
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -2234,48 +2226,6 @@ dd.is-unknown,
   color: var(--muted-light);
   font-size: 8px;
   text-align: center;
-}
-
-.human-contact-card {
-  background: var(--surface-dark);
-  color: #fff;
-}
-
-.live-row {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: #64bf8c;
-  font-size: 8.5px;
-  font-weight: 720;
-  letter-spacing: 0.045em;
-  text-transform: uppercase;
-}
-
-.human-contact-card .live-dot,
-.roman-card .live-dot {
-  box-shadow: 0 0 0 3px rgba(23,128,77,.2);
-}
-
-.human-contact-card h3 {
-  margin: 11px 0 4px;
-  font-family: Georgia, serif;
-  font-size: 17px;
-  font-weight: 400;
-}
-
-.human-contact-card p {
-  margin: 0 0 10px;
-  color: #b8b8b2;
-  font-size: 9px;
-  line-height: 1.5;
-}
-
-.human-contact-card a {
-  font-size: 10px;
-  font-weight: 650;
-  text-decoration-color: #6b6b67;
-  text-underline-offset: 3px;
 }
 
 .ai-note {
@@ -2625,68 +2575,6 @@ dd.is-unknown,
   display: grid;
   align-content: start;
   gap: 10px;
-}
-
-.roman-card {
-  border-radius: 13px;
-  background: var(--surface-dark);
-  color: #fff;
-  padding: 18px;
-}
-
-.roman-card h3 {
-  margin: 17px 0 7px;
-  font-family: Georgia, serif;
-  font-size: 20px;
-  font-weight: 400;
-  line-height: 1.15;
-}
-
-.roman-card > p {
-  margin: 0 0 17px;
-  color: #b8b8b2;
-  font-size: 9.5px;
-  line-height: 1.55;
-}
-
-.phone-action {
-  display: flex;
-  min-height: 48px;
-  align-items: center;
-  gap: 10px;
-  border: 1px solid #444440;
-  border-radius: 10px;
-  background: #2b2b29;
-  padding: 8px 11px;
-  color: #fff;
-  text-decoration: none;
-}
-
-.phone-action:hover {
-  border-color: #66665f;
-  background: #333330;
-}
-
-.phone-action > span:first-child {
-  display: grid;
-  width: 27px;
-  height: 27px;
-  place-items: center;
-  border-radius: 8px;
-  background: #3b3b38;
-  font-size: 12px;
-}
-
-.phone-action > span:last-child {
-  display: grid;
-  font-size: 10.5px;
-  font-weight: 650;
-}
-
-.phone-action small {
-  color: #9e9e98;
-  font-size: 8px;
-  font-weight: 520;
 }
 
 .continue-note {

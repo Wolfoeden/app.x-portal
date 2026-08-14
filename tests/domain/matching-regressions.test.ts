@@ -306,3 +306,54 @@ describe("regression: context evidence informs ranking but never eligibility", (
     );
   });
 });
+
+describe("regression: being listed is not a reason to be recommended", () => {
+  const briefFor = (skill: string) =>
+    applyBriefPatch(parseFallbackBrief(`${skill} gesucht, remote.`, { now }), {
+      requiredSkills: [skill],
+      workMode: "remote",
+    });
+
+  it("never states that the profile is active in the curated directory", () => {
+    // Every profile in a shortlist is active by definition — it is a
+    // precondition for appearing, so it explains nothing about the fit. Stating
+    // it padded thin results with a sentence that looked like evidence.
+    const match = variant("00000000-0000-4000-8000-0000000000f1", "Passend", {
+      skillTags: [{ value: "requirements management", source: "self_reported" as const }],
+    });
+
+    const evaluation = evaluateProfile(briefFor("requirements management"), match);
+
+    expect(evaluation.eligible).toBe(true);
+    expect(evaluation.matchReasons).not.toContain("Profil ist im kuratierten Verzeichnis aktiv.");
+  });
+
+  it("still rejects a profile that is not active", () => {
+    // Removing the positive statement must not weaken the filter behind it.
+    const archived = variant("00000000-0000-4000-8000-0000000000f2", "Archiviert", {
+      skillTags: [{ value: "requirements management", source: "self_reported" as const }],
+      profileStatus: "archived" as const,
+    });
+
+    const evaluation = evaluateProfile(briefFor("requirements management"), archived);
+
+    expect(evaluation.eligible).toBe(false);
+    expect(evaluation.rejectionReasons).toContain("Profil ist nicht aktiv.");
+  });
+
+  it("leaves no match reason behind when nothing else applies", () => {
+    // The removed sentence used to guarantee a non-empty list. It no longer
+    // does, so the UI has to tolerate an empty matchReasons array.
+    const bare = variant("00000000-0000-4000-8000-0000000000f3", "Nur Skill", {
+      skillTags: [{ value: "requirements management", source: "self_reported" as const }],
+      availability: { ...base.availability, status: "unknown" as const },
+      languages: [],
+      contextEvidence: [],
+    });
+
+    const evaluation = evaluateProfile(briefFor("requirements management"), bare);
+
+    expect(evaluation.eligible).toBe(true);
+    expect(Array.isArray(evaluation.matchReasons)).toBe(true);
+  });
+});

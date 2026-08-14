@@ -8,6 +8,7 @@ import type {
   ProjectBrief,
   ShortlistMatch,
 } from "@/lib/domain";
+import { detectRequestLanguage } from "./request-language";
 
 function presentMode(mode: ProjectBrief["workMode"]): ProjectMode {
   return mode === "on_site" ? "on-site" : mode;
@@ -65,6 +66,14 @@ function briefSummary(brief: ProjectBrief): string {
 }
 
 export function presentBrief(brief: ProjectBrief): StructuredBrief {
+  // An explicitly requested language wins, because only that one filters
+  // profiles. Otherwise fall back to the language the request was written in —
+  // display only, never fed back into `brief.language`.
+  const detectedLanguage = brief.language
+    ? null
+    : detectRequestLanguage(brief.originalRequest);
+  const language = brief.language ?? detectedLanguage;
+
   return {
     projectTitle: brief.projectTitle ?? "Freelancer-Anfrage",
     // Never repeat the accumulated raw prompt as an apparent AI summary.
@@ -72,7 +81,8 @@ export function presentBrief(brief: ProjectBrief): StructuredBrief {
     summary: briefSummary(brief),
     requiredSkills: brief.requiredSkills ?? [],
     optionalSkills: brief.optionalSkills ?? [],
-    languages: brief.language ? [brief.language] : [],
+    languages: language ? [language] : [],
+    languageSource: brief.language ? "required" : detectedLanguage ? "detected" : null,
     mode: presentMode(brief.workMode),
     location: brief.location,
     startWindow: brief.startWindow?.raw ?? null,

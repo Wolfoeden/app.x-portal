@@ -807,10 +807,11 @@ export function evaluateProfile(
   const isHard = (value: string): boolean =>
     requirementStrength(brief.originalRequest, value) === "hard";
 
+  // Being listed and active is a precondition for appearing at all, so it is
+  // not a reason why this profile fits this project. It stays a rejection when
+  // absent and produces no match reason when present.
   if (profile.profileStatus !== "active") {
     rejectionReasons.push("Profil ist nicht aktiv.");
-  } else {
-    matchReasons.push("Profil ist im kuratierten Verzeichnis aktiv.");
   }
   if (profile.demoStatus !== "real") {
     rejectionReasons.push("Profil ist kein reales Produktionsprofil.");

@@ -15,6 +15,13 @@ export interface StructuredBrief {
   requiredSkills: string[];
   optionalSkills: string[];
   languages: string[];
+  /**
+   * Where `languages` came from. "required" means the client asked for it and
+   * it filters profiles; "detected" means it is only the language the request
+   * was written in and has no effect on matching. The UI must keep the two
+   * apart, otherwise a detected language reads as a requirement.
+   */
+  languageSource: "required" | "detected" | null;
   mode: ProjectMode;
   location: string | null;
   startWindow: string | null;
