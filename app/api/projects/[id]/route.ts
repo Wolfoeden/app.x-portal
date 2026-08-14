@@ -104,14 +104,17 @@ function restoreMatch(
       bookingUrl: currentBookingUrl(currentState),
     },
   });
+  // Shortlists stored before the reason was dropped still carry it, so this
+  // filter is the migration path for historic rows, not dead code. It is
+  // unconditional now: being active never explains why a profile fits.
   const matchReasons = withoutStatusAvailabilityCopy(row.match_reasons).filter(
-    (value) =>
-      profile.profileStatus === "active" ||
-      value !== "Profil ist im kuratierten Verzeichnis aktiv.",
+    (value) => value !== "Profil ist im kuratierten Verzeichnis aktiv.",
   );
   const knownGaps = withoutStatusAvailabilityCopy(row.known_gaps);
   if (profile.availability.status === "available") {
-    matchReasons.splice(1, 0, "Projektverfügbarkeit ist aktuell bestätigt.");
+    // Previously spliced behind the active-directory reason. With that reason
+    // gone there is no fixed first element to sit behind, so availability leads.
+    matchReasons.unshift("Projektverfügbarkeit ist aktuell bestätigt.");
   } else if (profile.availability.status === "limited") {
     knownGaps.unshift("Projektverfügbarkeit ist begrenzt; den genauen Zeitraum beim Termin abstimmen.");
   } else if (profile.availability.status === "unknown") {

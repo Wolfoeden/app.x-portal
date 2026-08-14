@@ -47,8 +47,6 @@ import {
   defaultChatApiPaths,
 } from "./chat-contract";
 
-const CONTACT_PHONE = process.env.NEXT_PUBLIC_CONTACT_PHONE ?? "+491758934338";
-const CONTACT_PHONE_LABEL = "+49 175 8934338";
 const GOOGLE_AUTH_ENABLED = process.env.NEXT_PUBLIC_AUTH_GOOGLE_ENABLED === "true";
 const MICROSOFT_AUTH_ENABLED = process.env.NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED === "true";
 
@@ -409,6 +407,10 @@ function normalizeBrief(value: unknown): StructuredBrief {
     requiredSkills: stringList(brief.requiredSkills ?? brief.required_skills),
     optionalSkills: stringList(brief.optionalSkills ?? brief.optional_skills),
     languages,
+    languageSource:
+      brief.languageSource === "required" || brief.languageSource === "detected"
+        ? brief.languageSource
+        : null,
     mode: normalizeMode(brief.mode ?? brief.remoteOnSitePreference ?? brief.remote_on_site_preference),
     location: nullableString(brief.location),
     startWindow: nullableString(brief.startWindow ?? brief.start_window),
@@ -921,7 +923,6 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
   const [profiles, setProfiles] = useState<FreelancerProfileResult[]>([]);
   const [hasResult, setHasResult] = useState(false);
   const [analysisMode, setAnalysisMode] = useState<"ai" | "fallback" | null>(null);
-  const [analysisNotice, setAnalysisNotice] = useState<string | null>(null);
   const [analysisTrace, setAnalysisTrace] = useState<AiAnalysisTrace | null>(null);
   const [externalSearch, setExternalSearch] = useState<ExternalFreelancerSearchResponse | null>(null);
   const [externalSearchState, setExternalSearchState] = useState<"idle" | "searching" | "error">("idle");
@@ -1058,7 +1059,6 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
         setProfiles(detail.profiles.slice(0, 3));
         setHasResult(Boolean(detail.brief));
         setAnalysisMode(detail.analysisMode ?? null);
-        setAnalysisNotice(detail.analysisNotice ?? null);
         setAnalysisTrace(null);
         setExternalSearch(null);
         setExternalSearchState("idle");
@@ -1240,7 +1240,6 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
     setProfiles([]);
     setHasResult(false);
     setAnalysisMode(null);
-    setAnalysisNotice(null);
     setAnalysisTrace(null);
     setExternalSearch(null);
     setExternalSearchState("idle");
@@ -1258,7 +1257,6 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
     setProfiles([]);
     setHasResult(false);
     setAnalysisMode(null);
-    setAnalysisNotice(null);
     setAnalysisTrace(null);
     setExternalSearch(null);
     setExternalSearchState("idle");
@@ -1289,7 +1287,6 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
       setProfiles(result.matches.slice(0, 3));
       setHasResult(true);
       setAnalysisMode(result.mode ?? "ai");
-      setAnalysisNotice(result.mode === "fallback" ? result.notice ?? null : null);
       setAnalysisTrace(result.analysis ?? null);
       setExternalSearch(null);
       setExternalSearchState("idle");
@@ -1908,18 +1905,6 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
                     onRefresh={() => window.location.reload()}
                   />
                 ) : null}
-                {hasResult && analysisMode === "fallback" && !pendingAssistant ? (
-                  <p className="analysis-mode-note" role="status">
-                    <strong>
-                      {analysisTrace
-                        ? providerStatusLabel(analysisTrace)
-                        : "Basisanalyse aktiv"}
-                      .
-                    </strong>{" "}
-                    {analysisNotice ??
-                      "Diese Projektübersicht wurde ohne bestätigte KI-Auswertung aus Ihren gespeicherten Angaben erstellt."}
-                  </p>
-                ) : null}
                 {hasResult && !pendingAssistant ? (
                   <ResultSection
                     brief={brief}
@@ -2320,7 +2305,6 @@ function ResultSection({
                   ) : null}
                 </>
               ) : null}
-              <a href={`tel:${CONTACT_PHONE}`}>Roman Dering direkt kontaktieren · {CONTACT_PHONE_LABEL}</a>
             </div>
           </div>
           {externalSearch ? <ExternalSearchResults result={externalSearch} /> : null}
@@ -2546,7 +2530,7 @@ function BriefCard({ brief }: { brief: StructuredBrief }) {
       <dl className="brief-grid brief-grid-detailed">
         <DetailTerm label="Pflichtkompetenzen" value={brief.requiredSkills.length ? brief.requiredSkills.join(", ") : null} />
         <DetailTerm label="Optionale Kompetenzen" value={brief.optionalSkills.length ? brief.optionalSkills.join(", ") : null} />
-        <DetailTerm label="Sprache" value={brief.languages.length ? brief.languages.join(", ") : null} />
+        <DetailTerm label="Sprache" value={brief.languages.length ? brief.languages.join(", ") : null} hint={languageHint(brief)} />
         <DetailTerm label="Arbeitsmodus / Ort" value={[brief.mode === "unknown" ? null : modeLabel(brief.mode), brief.location].filter(Boolean).join(" · ") || null} />
         <DetailTerm label="Start & Dauer" value={[brief.startWindow, brief.duration].filter(Boolean).join(" · ") || null} />
         <DetailTerm label="Budget / Satz" value={brief.budgetOrRate} />
@@ -2562,13 +2546,24 @@ function BriefCard({ brief }: { brief: StructuredBrief }) {
   );
 }
 
-function DetailTerm({ label, value }: { label: string; value: string | null }) {
+function DetailTerm({ label, value, hint }: { label: string; value: string | null; hint?: string }) {
   return (
     <div>
       <dt>{label}</dt>
-      <dd className={!value ? "is-unknown" : ""}>{value ?? "Nicht angegeben"}</dd>
+      <dd className={!value ? "is-unknown" : ""}>
+        {value ?? "Nicht angegeben"}
+        {value && hint ? <small className="detail-hint">{hint}</small> : null}
+      </dd>
     </div>
   );
+}
+
+/**
+ * A required language filters profiles; a detected one only reflects how the
+ * request was written. Without this hint the second reads as the first.
+ */
+function languageHint(brief: StructuredBrief): string | undefined {
+  return brief.languageSource === "detected" ? "aus der Anfrage abgeleitet" : undefined;
 }
 
 function ProfileCard({
@@ -2711,7 +2706,7 @@ function ProjectDetails({
             <DetailTerm label="Projekt" value={brief.projectTitle || null} />
             <DetailTerm label="Pflichtkompetenzen" value={brief.requiredSkills.length ? brief.requiredSkills.join(", ") : null} />
             <DetailTerm label="Optionale Kompetenzen" value={brief.optionalSkills.length ? brief.optionalSkills.join(", ") : null} />
-            <DetailTerm label="Sprache" value={brief.languages.length ? brief.languages.join(", ") : null} />
+            <DetailTerm label="Sprache" value={brief.languages.length ? brief.languages.join(", ") : null} hint={languageHint(brief)} />
             <DetailTerm label="Modus / Ort" value={[brief.mode === "unknown" ? null : modeLabel(brief.mode), brief.location].filter(Boolean).join(" · ") || null} />
             <DetailTerm label="Budget / Satz" value={brief.budgetOrRate} />
             <DetailTerm label="Qualifikationen" value={brief.qualifications.length ? brief.qualifications.join(", ") : null} />
@@ -2736,13 +2731,6 @@ function ProjectDetails({
           <small>Sie können vorher weiter im Chat ergänzen.</small>
         </div>
       ) : null}
-
-      <div className="human-contact-card">
-        <div className="live-row"><span className="live-dot" aria-hidden="true" /> Live erreichbar</div>
-        <h3>Roman Dering</h3>
-        <p>Persönlicher Ansprechpartner für Profilfragen und die Einführung.</p>
-        <a href={`tel:${CONTACT_PHONE}`}>{CONTACT_PHONE_LABEL}</a>
-      </div>
 
       <div className="ai-note"><span aria-hidden="true">i</span><p><strong>Transparente Unterstützung</strong>Die KI strukturiert Ihre Anfrage. Profile werden nach festen, überprüfbaren Regeln gefiltert.</p></div>
     </div>
@@ -3138,12 +3126,6 @@ function ContactDialog({ profile, onClose }: { profile: FreelancerProfileResult;
         </div>
         <div className="contact-layout">
           <div className="contact-copy">
-            <div className="roman-card">
-              <div className="live-row"><span className="live-dot" aria-hidden="true" /> Live erreichbar</div>
-              <h3>Roman Dering begleitet den Kontakt</h3>
-              <p>{profile.bookingUrl ? "Buchen Sie direkt einen freien Termin beim Freelancer. Bei Rückfragen ist Roman Dering zusätzlich erreichbar." : "Dieses historische Match ist derzeit nicht direkt buchbar. Roman Dering hilft bei Rückfragen oder Alternativen."}</p>
-              <a className="phone-action" href={`tel:${CONTACT_PHONE}`}><span aria-hidden="true">☎</span><span><small>Direkt anrufen</small>{CONTACT_PHONE_LABEL}</span></a>
-            </div>
             <div className="continue-note"><span aria-hidden="true">＋</span><p><strong>Noch etwas ergänzen?</strong>Schließen Sie dieses Fenster und schreiben Sie frei im Chat weiter. Die Terminoption bleibt sichtbar.</p></div>
           </div>
           <div className="calendar-area">
