@@ -357,3 +357,89 @@ describe("regression: being listed is not a reason to be recommended", () => {
     expect(Array.isArray(evaluation.matchReasons)).toBe(true);
   });
 });
+
+describe("regression: the order of extracted skills is not a weighting", () => {
+  const build = (request: string, required: string[], optional: string[] | null) =>
+    applyBriefPatch(parseFallbackBrief(request, { now }), {
+      requiredSkills: required,
+      optionalSkills: optional,
+      workMode: "remote",
+    });
+
+  it("does not let a leading generic term outrank better-matching profiles", () => {
+    // A request pasted with a stray heading word put that word at
+    // requiredSkills[0]. While ranking asked "does this profile carry the first
+    // required skill" before anything else, every profile carrying that one word
+    // outranked every profile that matched the actual subject of the project.
+    // Measured against production data this promoted fourteen requirements
+    // consultants above the Azure and RAG specialists the request was about.
+    const brief = build(
+      "Anforderungsmanagement\n\nGesucht: KI-Copilot mit RAG und Dokumentenanalyse auf Azure.",
+      ["Requirements Management", "RAG", "Document Analysis"],
+      null,
+    );
+    const oneGenericSkill = variant("00000000-0000-4000-8000-0000000000c8", "Nur Anforderungen", {
+      skillTags: [{ value: "requirements management", source: "self_reported" as const }],
+    });
+    const twoRelevantSkills = variant("00000000-0000-4000-8000-0000000000c9", "Fachlich passend", {
+      skillTags: [
+        { value: "RAG", source: "self_reported" as const },
+        { value: "Document Analysis", source: "self_reported" as const },
+      ],
+    });
+
+    const shortlist = buildShortlist(brief, [oneGenericSkill, twoRelevantSkills]);
+
+    expect(shortlist.matches[0]?.profile.displayName).toBe("Fachlich passend");
+  });
+});
+
+describe("regression: a preferred mention must not demote a stated prerequisite", () => {
+  it("keeps a skill required when it also appears under a preferred heading", () => {
+    // Requirement strength is resolved across a whole skill family, so a sibling
+    // term under "Bevorzugte Technologien" used to mark the entire family soft —
+    // even when the skill itself stood under "Voraussetzungen". German mandatory
+    // headings carry no must-marker, so they classify as neutral, and neutral
+    // lost to any later soft mention. "Power Automate" in a preferred list
+    // silently demoted "Automatisierung von Geschäftsprozessen" from a stated
+    // prerequisite to an optional extra.
+    const request = [
+      "Voraussetzungen:",
+      "- Automatisierung von Geschäftsprozessen",
+      "",
+      "Bevorzugte Technologien:",
+      "- Power Automate",
+    ].join("\n");
+    const brief = applyBriefPatch(parseFallbackBrief(request, { now }), {
+      requiredSkills: ["Business Process Automation"],
+      optionalSkills: ["Power Automate"],
+      workMode: "remote",
+    });
+    const profile = variant("00000000-0000-4000-8000-0000000000ca", "Automatisierer", {
+      skillTags: [{ value: "Prozessautomatisierung", source: "self_reported" as const }],
+    });
+
+    const evaluation = evaluateProfile(brief, profile);
+
+    expect(evaluation.coreSkillMatches).toEqual(["Business Process Automation"]);
+  });
+
+  it("still treats a purely preferred mention as optional", () => {
+    // The counterpart: without a mention outside the preferred section the skill
+    // must stay optional, otherwise every nice-to-have becomes a requirement.
+    const request = "Bevorzugte Technologien:\n- Power Automate";
+    const brief = applyBriefPatch(parseFallbackBrief(request, { now }), {
+      requiredSkills: ["Business Process Automation"],
+      optionalSkills: null,
+      workMode: "remote",
+    });
+    const profile = variant("00000000-0000-4000-8000-0000000000cb", "Automatisierer", {
+      skillTags: [{ value: "Prozessautomatisierung", source: "self_reported" as const }],
+    });
+
+    const evaluation = evaluateProfile(brief, profile);
+
+    expect(evaluation.coreSkillMatches).toEqual([]);
+    expect(evaluation.optionalSkillMatches).toEqual(["Business Process Automation"]);
+  });
+});

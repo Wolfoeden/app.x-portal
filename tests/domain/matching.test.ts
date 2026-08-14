@@ -520,10 +520,15 @@ describe("deterministic freelancer matching", () => {
     const shortlist = buildShortlist(brief, candidates);
 
     expect(shortlist.matches).toHaveLength(3);
+    // Order changed in v10. All three sensible candidates are still kept, which
+    // is what this test is named for; places two and three swap because ranking
+    // now counts matched core skills rather than asking who carries the
+    // first-listed one. M365 Automation Engineer matches two core skills, RAG
+    // Backend Engineer one core plus two optional.
     expect(shortlist.matches.map((match) => match.profile.displayName)).toEqual([
       "AI Copilot Architect",
-      "RAG Backend Engineer",
       "M365 Automation Engineer",
+      "RAG Backend Engineer",
     ]);
     expect(
       shortlist.matches.every((match) =>
@@ -654,10 +659,27 @@ describe("deterministic freelancer matching", () => {
       ],
     };
 
+    // CHANGED IN v10, AND THIS IS THE ONE PLACE WHERE v10 IS WORSE.
+    //
+    // v9 ranked "Primary SAP" first because it matched requiredSkills[0].
+    // v10 counts matched core skills instead, so "Secondary Skills" wins with
+    // three matches against two.
+    //
+    // The intuition this test captured is real: for an S/4HANA request, someone
+    // holding S/4HANA beats someone holding three adjacent SAP-ish skills. What
+    // the old criterion actually encoded, though, was array position, and
+    // position is a by-product of extraction. Against production data a single
+    // stray word at the start of a request promoted fourteen profiles carrying
+    // that word above every better-matching profile, which is the failure this
+    // version removes.
+    //
+    // Neither criterion expresses the real signal, which is specificity: a rare
+    // skill says more than a common one. Weighting matched skills by how rare
+    // they are in the pool would satisfy both this test and the production case;
+    // until that exists, v10 trades this case for the larger one.
     const shortlist = buildShortlist(brief, [genericSecondary, primarySap]);
-    expect(shortlist.matches[0]?.profile.displayName).toBe("Primary SAP");
-    expect(
-      shortlist.matches[0]?.orderingEvidence.primaryRequiredSkillMatch,
-    ).toBe(true);
+    expect(shortlist.matches[0]?.profile.displayName).toBe("Secondary Skills");
+    expect(shortlist.matches[0]?.orderingEvidence.coreSkillMatchCount).toBe(3);
+    expect(shortlist.matches[1]?.orderingEvidence.coreSkillMatchCount).toBe(2);
   });
 });
