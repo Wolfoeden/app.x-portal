@@ -9,9 +9,32 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { openCookieSettings } from "@/components/CookieConsent";
+import {
+  IconAlertCircle,
+  IconAlertTriangle,
+  IconArrowRight,
+  IconArrowUp,
+  IconArrowUpRight,
+  IconCalendar,
+  IconChat,
+  IconCheck,
+  IconChevronDown,
+  IconChevronRight,
+  IconClose,
+  IconDocument,
+  IconFolder,
+  IconInfo,
+  IconMenu,
+  IconPanelRight,
+  IconPen,
+  IconPlus,
+  IconSearch,
+  IconSpark,
+} from "@/components/icons";
 import {
   claimPreparedGuestWorkspace,
   ensureGuestSession,
@@ -115,6 +138,14 @@ const emptyAuth: AuthView = {
   admin: false,
   user: null,
 };
+
+// The new-chat shortcut label depends on the operating system, which only the
+// browser knows. Reading it through useSyncExternalStore keeps the prerendered
+// /chat markup and the hydrated client in agreement; the platform never changes
+// during a session, so the subscription is a no-op.
+const subscribeToNothing = () => () => {};
+const readIsApplePlatform = () => /Mac|iPhone|iPad|iPod/u.test(navigator.userAgent);
+const readIsApplePlatformOnServer = () => false;
 
 const CLIENT_BUILD_VERSION = process.env.NEXT_PUBLIC_BUILD_VERSION?.trim() || null;
 const REFRESH_RECOVERY_KEY = "xportal.chat.refresh-recovery.v1";
@@ -942,7 +973,15 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
   const [loadingProjectId, setLoadingProjectId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [dataAction, setDataAction] = useState<"export" | "delete" | null>(null);
+  const newChatShortcut = useSyncExternalStore(
+    subscribeToNothing,
+    readIsApplePlatform,
+    readIsApplePlatformOnServer,
+  )
+    ? "⌘ K"
+    : "Strg K";
   const composerRef = useRef<HTMLTextAreaElement>(null);
+  const startNewProjectRef = useRef<(() => void) | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const externalSearchRequestIdsRef = useRef(new Map<string, string>());
@@ -1250,6 +1289,26 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
     setSidebarOpen(false);
     requestAnimationFrame(() => composerRef.current?.focus());
   };
+
+  // The sidebar advertised a "⌘ K" shortcut that was never bound, and showed
+  // the Mac symbol on every platform. Bind it and label it per operating
+  // system. The label resolves after mount so the static /chat markup and the
+  // client render agree.
+  useEffect(() => {
+    startNewProjectRef.current = startNewProject;
+  });
+
+  useEffect(() => {
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key.toLowerCase() !== "k") return;
+      if (!event.metaKey && !event.ctrlKey) return;
+      event.preventDefault();
+      startNewProjectRef.current?.();
+    };
+
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
 
   const startGuidedRequest = (suggestion: Suggestion) => {
     setActiveProject(null);
@@ -1721,7 +1780,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
             <span className="mark-glyph" aria-hidden="true">F</span>
             <span>Freelancer Beta</span>
           </div>
-          <button className="icon-button sidebar-close" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schließen">×</button>
+          <button className="icon-button sidebar-close" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schließen"><IconClose size={18} /></button>
         </div>
 
         <nav className="sidebar-primary-nav" aria-label="Hauptnavigation">
@@ -1731,9 +1790,9 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
             onClick={startNewProject}
             data-sidebar-primary="new-chat"
           >
-            <span className="sidebar-primary-icon" aria-hidden="true">＋</span>
+            <span className="sidebar-primary-icon" aria-hidden="true"><IconPlus size={18} /></span>
             <span>Neuer Chat</span>
-            <span className="new-chat-key" aria-hidden="true">⌘ K</span>
+            <span className="new-chat-key" aria-hidden="true">{newChatShortcut}</span>
           </button>
           <button
             className="sidebar-primary-button"
@@ -1741,9 +1800,9 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
             onClick={() => setCreateProjectOpen(true)}
             data-sidebar-primary="projects"
           >
-            <span className="sidebar-primary-icon" aria-hidden="true">□</span>
+            <span className="sidebar-primary-icon" aria-hidden="true"><IconFolder size={18} /></span>
             <span>Projekte</span>
-            <span className="sidebar-primary-chevron" aria-hidden="true">＋</span>
+            <span className="sidebar-primary-chevron" aria-hidden="true"><IconPlus size={16} /></span>
           </button>
           <button
             className="sidebar-primary-button"
@@ -1753,7 +1812,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
           >
             <span className="agent-glyph" aria-hidden="true">A</span>
             <span>Agenten</span>
-            <span className="sidebar-primary-chevron" aria-hidden="true">›</span>
+            <span className="sidebar-primary-chevron" aria-hidden="true"><IconChevronRight size={16} /></span>
           </button>
         </nav>
 
@@ -1761,7 +1820,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
           <p className="nav-label">Chats</p>
           {unassignedChats.length === 0 ? (
             <div className="empty-projects">
-              <span aria-hidden="true">○</span>
+              <span aria-hidden="true"><IconChat size={22} /></span>
               <p>Noch keine freien Chats</p>
               <small>Neue Unterhaltungen erscheinen automatisch hier.</small>
             </div>
@@ -1777,7 +1836,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
 
           <div className="sidebar-section-heading">
             <p className="nav-label">In Projekten</p>
-            <button type="button" onClick={() => setCreateProjectOpen(true)}>＋ Projekt</button>
+            <button type="button" onClick={() => setCreateProjectOpen(true)}><IconPlus size={13} /> Projekt</button>
           </div>
           {projectCollections.length === 0 ? (
             <p className="sidebar-section-empty">Erstellen Sie ein Projekt und speichern Sie mehrere Chats darin.</p>
@@ -1787,7 +1846,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
                 const chats = projects.filter((project) => project.collectionId === collection.id);
                 return (
                   <section className="collection-group" key={collection.id} aria-label={`Projekt ${collection.name}`}>
-                    <div className="collection-title"><span aria-hidden="true">▿</span>{collection.name}<small>{chats.length}</small></div>
+                    <div className="collection-title"><span aria-hidden="true"><IconChevronDown size={14} /></span>{collection.name}<small>{chats.length}</small></div>
                     {chats.length ? (
                       <SidebarChatList
                         chats={chats}
@@ -1873,14 +1932,14 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
       <main className="chat-panel">
         <header className="topbar">
           <div className="topbar-left">
-            <button className="icon-button mobile-menu" type="button" onClick={() => setSidebarOpen(true)} aria-label="Projekte öffnen">☰</button>
+            <button className="icon-button mobile-menu" type="button" onClick={() => setSidebarOpen(true)} aria-label="Projekte öffnen"><IconMenu size={18} /></button>
             <div>
               <p className="topbar-title">{activeProject?.title ?? "Freelancer finden"}</p>
               <p className="topbar-subtitle">KI-gestützte Anfrage · Sie treffen jede Entscheidung</p>
             </div>
           </div>
           <div className="topbar-actions">
-            <button className="icon-button details-toggle" type="button" onClick={() => setDetailsOpen((current) => !current)} aria-label={detailsOpen ? "Projektübersicht ausblenden" : "Projektübersicht einblenden"} aria-pressed={detailsOpen}>▥</button>
+            <button className="icon-button details-toggle" type="button" onClick={() => setDetailsOpen((current) => !current)} aria-label={detailsOpen ? "Projektübersicht ausblenden" : "Projektübersicht einblenden"} aria-pressed={detailsOpen}><IconPanelRight size={18} /></button>
           </div>
         </header>
 
@@ -1938,7 +1997,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
           {selectedProfile ? (
             <div className="selection-strip">
               <div>
-                <span className="selection-check" aria-hidden="true">✓</span>
+                <span className="selection-check" aria-hidden="true"><IconCheck size={11} /></span>
                 <span><strong>{selectedProfile.displayName}</strong> ausgewählt</span>
               </div>
               <button type="button" onClick={() => setContactOpen(true)}>Termin oder Kontakt</button>
@@ -1957,14 +2016,14 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
               maxLength={12_000}
             />
             <div className="composer-bottom">
-              <div className="composer-hint"><span aria-hidden="true">＋</span> Details jederzeit frei ergänzen</div>
+              <div className="composer-hint"><span aria-hidden="true"><IconPlus size={14} /></span> Details jederzeit frei ergänzen</div>
               <button
                 className="send-button"
                 type="submit"
                 disabled={!draft.trim() || Boolean(pendingAssistant)}
                 aria-label="Nachricht senden"
               >
-                ↑
+                <IconArrowUp size={17} />
               </button>
             </div>
           </form>
@@ -2098,7 +2157,7 @@ function UsagePanel({
 function WelcomeState({ onSuggestion }: { onSuggestion: (suggestion: Suggestion) => void }) {
   return (
     <section className="welcome-state" aria-labelledby="welcome-title">
-      <div className="assistant-emblem" aria-hidden="true"><span>✦</span></div>
+      <div className="assistant-emblem" aria-hidden="true"><span><IconSpark size={22} /></span></div>
       <p className="eyebrow">Freelancer-Suche</p>
       <h1 id="welcome-title">Wobei können wir Sie unterstützen?</h1>
       <p className="welcome-copy">
@@ -2116,11 +2175,11 @@ function WelcomeState({ onSuggestion }: { onSuggestion: (suggestion: Suggestion)
           <button key={suggestion.label} type="button" onClick={() => onSuggestion(suggestion)}>
             <span className="suggestion-label">{suggestion.label}</span>
             <span className="suggestion-description">{suggestion.description}</span>
-            <span className="suggestion-arrow" aria-hidden="true">→</span>
+            <span className="suggestion-arrow" aria-hidden="true"><IconArrowRight size={17} /></span>
           </button>
         ))}
       </div>
-      <p className="no-form-note"><span aria-hidden="true">⌁</span> Kein Fragebogen – fehlende Angaben bleiben sichtbar als „nicht angegeben“.</p>
+      <p className="no-form-note"><span aria-hidden="true"><IconPen size={15} /></span> Kein Fragebogen – fehlende Angaben bleiben sichtbar als „nicht angegeben“.</p>
     </section>
   );
 }
@@ -2147,7 +2206,7 @@ function MessageBubble({ message }: { message: ConversationMessage }) {
   const attribution = assistantAttribution();
   return (
     <article className="message-row assistant-message" aria-label={attribution.ariaLabel}>
-      <div className="message-avatar" aria-hidden="true">✦</div>
+      <div className="message-avatar" aria-hidden="true"><IconSpark size={15} /></div>
       <div className="message-content">
         <div className="message-author">
           {attribution.author}
@@ -2171,7 +2230,7 @@ function PendingMessage({
   const failed = Boolean(pending.retryText || pending.action === "refresh");
   return (
     <article className={`message-row assistant-message ${failed ? "has-error" : ""}`} aria-label={failed ? "Fehler" : "Antwort wird erstellt"}>
-      <div className="message-avatar" aria-hidden="true">{failed ? "!" : "✦"}</div>
+      <div className="message-avatar" aria-hidden="true">{failed ? <IconAlertCircle size={15} /> : <IconSpark size={15} />}</div>
       <div className="message-content">
         <div className="message-author">XPORTAL</div>
         {pending.content ? <p>{pending.content}</p> : null}
@@ -2255,7 +2314,7 @@ function ResultSection({
       ) : (
         <>
           <div className="no-match-card">
-            <div className="no-match-icon" aria-hidden="true">⌕</div>
+            <div className="no-match-icon" aria-hidden="true"><IconSearch size={19} /></div>
             <div>
               <strong>
                 {analysisMode === "fallback"
@@ -2449,17 +2508,17 @@ function AnalysisTrace({
   return (
     <details className="analysis-trace" open>
       <summary>
-        <span className="analysis-trace-icon" aria-hidden="true">✦</span>
+        <span className="analysis-trace-icon" aria-hidden="true"><IconSpark size={15} /></span>
         <span>
           <strong>So wurde Ihre Anfrage bearbeitet</strong>
           <small>{providerStatusLabel(trace)}{modelLabel ? ` · ${modelLabel}` : ""}</small>
         </span>
-        <span className="analysis-trace-toggle" aria-hidden="true">⌄</span>
+        <span className="analysis-trace-toggle" aria-hidden="true"><IconChevronDown size={15} /></span>
       </summary>
       <ol>
         {steps.map((step, index) => (
           <li className={step.status === "warning" ? "is-warning" : ""} key={`${step.label}-${index}`}>
-            <span aria-hidden="true">{step.status === "warning" ? "!" : "✓"}</span>
+            <span aria-hidden="true">{step.status === "warning" ? <IconAlertCircle size={11} /> : <IconCheck size={11} />}</span>
             <div><strong>{step.label}</strong><p>{step.detail}</p></div>
           </li>
         ))}
@@ -2493,7 +2552,7 @@ function ExternalSearchResults({ result }: { result: ExternalFreelancerSearchRes
               ) : null}
               <div className="external-links">
                 <a href={candidate.profileUrl} target="_blank" rel="noopener noreferrer">Öffentliches Profil prüfen</a>
-                <a className="external-booking-link" href={candidate.bookingUrl} target="_blank" rel="noopener noreferrer">Buchungslink öffnen ↗</a>
+                <a className="external-booking-link" href={candidate.bookingUrl} target="_blank" rel="noopener noreferrer">Buchungslink öffnen <IconArrowUpRight size={12} /></a>
               </div>
               {candidate.sourceUrls.length ? (
                 <p className="external-sources">Quellen: {candidate.sourceUrls.map((url, index) => (
@@ -2524,7 +2583,7 @@ function BriefCard({ brief }: { brief: StructuredBrief }) {
           <p className="eyebrow">Strukturierte Projektanalyse</p>
           <h2>{brief.projectTitle}</h2>
         </div>
-        <span className="brief-status"><span aria-hidden="true">✓</span> Strukturiert</span>
+        <span className="brief-status"><span aria-hidden="true"><IconCheck size={12} /></span> Strukturiert</span>
       </div>
       {brief.summary ? <p className="brief-summary">{brief.summary}</p> : null}
       <dl className="brief-grid brief-grid-detailed">
@@ -2606,13 +2665,13 @@ function ProfileCard({
 
         <div className="match-columns">
           <div className="match-column reasons">
-            <h4><span aria-hidden="true">✓</span> Warum passend</h4>
+            <h4><span aria-hidden="true"><IconCheck size={13} /></span> Warum passend</h4>
             {profile.matchReasons.length ? (
               <ul>{profile.matchReasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
             ) : <p className="unknown-text">Keine Begründung übermittelt</p>}
           </div>
           <div className="match-column gaps">
-            <h4><span aria-hidden="true">○</span> Bekannte Lücken</h4>
+            <h4><span aria-hidden="true"><IconAlertCircle size={13} /></span> Bekannte Lücken</h4>
             {profile.knownGaps.length ? (
               <ul>{profile.knownGaps.map((gap) => <li key={gap}>{gap}</li>)}</ul>
             ) : <p>Keine bekannten Lücken im Abgleich</p>}
@@ -2635,7 +2694,7 @@ function ProfileCard({
 
         {profile.referenceStatus ? (
           <p className={`reference-note ${profile.referenceStatus === "Verifiziert" ? "is-verified" : "is-unverified"}`}>
-            <span aria-hidden="true">{profile.referenceStatus === "Verifiziert" ? "✓" : "i"}</span> Referenzstatus: {profile.referenceStatus}
+            <span aria-hidden="true">{profile.referenceStatus === "Verifiziert" ? <IconCheck size={12} /> : <IconInfo size={12} />}</span> Referenzstatus: {profile.referenceStatus}
           </p>
         ) : null}
 
@@ -2646,7 +2705,7 @@ function ProfileCard({
           </div>
           <div className="profile-actions">
             {selected ? (
-              <button className="secondary-action" type="button" onClick={onContact}><span aria-hidden="true">✓</span> Kontaktoptionen</button>
+              <button className="secondary-action" type="button" onClick={onContact}><IconCheck size={13} /> Kontaktoptionen</button>
             ) : (
               <button className="secondary-action" type="button" onClick={onSelect}>Profil merken</button>
             )}
@@ -2658,7 +2717,7 @@ function ProfileCard({
                 rel="noopener noreferrer"
                 aria-label={`Meeting mit ${profile.displayName} buchen`}
               >
-                Meeting buchen <span aria-hidden="true">→</span>
+                Meeting buchen <IconArrowRight size={13} />
               </a>
             ) : (
               <button className="primary-action" type="button" disabled>Nicht mehr buchbar</button>
@@ -2675,7 +2734,7 @@ function FactGroup({ label, facts, verified = false }: { label: string; facts: s
   const remaining = facts.length - visibleFacts.length;
   return (
     <div className="fact-group">
-      <span className={verified ? "verified-label" : "reported-label"}>{verified ? "✓" : "i"} {label}</span>
+      <span className={verified ? "verified-label" : "reported-label"}>{verified ? <IconCheck size={12} /> : <IconInfo size={12} />} {label}</span>
       <p>
         {visibleFacts.length ? visibleFacts.join(" · ") : "Keine Angaben"}
         {remaining > 0 ? ` · +${remaining} weitere Angaben` : ""}
@@ -2701,7 +2760,7 @@ function ProjectDetails({
       </div>
       {brief ? (
         <>
-          <div className="project-status-line"><span aria-hidden="true">✓</span><div><strong>Anfrage strukturiert</strong><small>Angaben können jederzeit ergänzt werden</small></div></div>
+          <div className="project-status-line"><span aria-hidden="true"><IconCheck size={11} /></span><div><strong>Anfrage strukturiert</strong><small>Angaben können jederzeit ergänzt werden</small></div></div>
           <dl className="side-details">
             <DetailTerm label="Projekt" value={brief.projectTitle || null} />
             <DetailTerm label="Pflichtkompetenzen" value={brief.requiredSkills.length ? brief.requiredSkills.join(", ") : null} />
@@ -2717,7 +2776,7 @@ function ProjectDetails({
         </>
       ) : (
         <div className="details-empty">
-          <span aria-hidden="true">⌁</span>
+          <span aria-hidden="true"><IconDocument size={22} /></span>
           <strong>Noch keine Projektdaten</strong>
           <p>Schreiben Sie frei in den Chat. Die Übersicht entsteht aus Ihren Angaben.</p>
         </div>
@@ -2727,12 +2786,12 @@ function ProjectDetails({
         <div className="selected-side-card">
           <span className="side-card-label">Ausgewählt</span>
           <div className="selected-person"><span>{initials(selectedProfile.displayName)}</span><div><strong>{selectedProfile.displayName}</strong><small>{selectedProfile.role}</small></div></div>
-          <button type="button" onClick={onContact}>Termin oder Kontakt <span aria-hidden="true">→</span></button>
+          <button type="button" onClick={onContact}>Termin oder Kontakt <IconArrowRight size={13} /></button>
           <small>Sie können vorher weiter im Chat ergänzen.</small>
         </div>
       ) : null}
 
-      <div className="ai-note"><span aria-hidden="true">i</span><p><strong>Transparente Unterstützung</strong>Die KI strukturiert Ihre Anfrage. Profile werden nach festen, überprüfbaren Regeln gefiltert.</p></div>
+      <div className="ai-note"><span aria-hidden="true"><IconInfo size={11} /></span><p><strong>Transparente Unterstützung</strong>Die KI strukturiert Ihre Anfrage. Profile werden nach festen, überprüfbaren Regeln gefiltert.</p></div>
     </div>
   );
 }
@@ -2772,7 +2831,7 @@ function Modal({ titleId, onClose, children, size = "default" }: { titleId: stri
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <section ref={cardRef} className={`modal-card ${size === "large" ? "is-large" : ""}`} role="dialog" aria-modal="true" aria-labelledby={titleId}>
-        <button ref={closeRef} className="modal-close" type="button" onClick={onClose} aria-label="Dialog schließen">×</button>
+        <button ref={closeRef} className="modal-close" type="button" onClick={onClose} aria-label="Dialog schließen"><IconClose size={17} /></button>
         {children}
       </section>
     </div>
@@ -2906,7 +2965,7 @@ function AuthDialog({
 
         {confirmationSent ? (
           <div className="confirmation-state" role="status">
-            <span aria-hidden="true">✓</span>
+            <span aria-hidden="true"><IconCheck size={16} /></span>
             <h3>{mode === "recover" ? "Wiederherstellungslink versendet" : "Bestätigungslink versendet"}</h3>
             <p>
               {mode === "recover" ? (
@@ -3126,11 +3185,11 @@ function ContactDialog({ profile, onClose }: { profile: FreelancerProfileResult;
         </div>
         <div className="contact-layout">
           <div className="contact-copy">
-            <div className="continue-note"><span aria-hidden="true">＋</span><p><strong>Noch etwas ergänzen?</strong>Schließen Sie dieses Fenster und schreiben Sie frei im Chat weiter. Die Terminoption bleibt sichtbar.</p></div>
+            <div className="continue-note"><span aria-hidden="true"><IconPlus size={17} /></span><p><strong>Noch etwas ergänzen?</strong>Schließen Sie dieses Fenster und schreiben Sie frei im Chat weiter. Die Terminoption bleibt sichtbar.</p></div>
           </div>
           <div className="calendar-area">
             <div className="calendar-consent">
-              <div className="calendar-symbol" aria-hidden="true"><span>↗</span><small>BOOKING</small></div>
+              <div className="calendar-symbol" aria-hidden="true"><span><IconCalendar size={26} /></span><small>BOOKING</small></div>
               <h3>{profile.bookingUrl ? "Direkt Termin wählen" : "Aktuell nicht buchbar"}</h3>
               <p>{profile.bookingUrl ? `Die Buchungsseite von ${profile.displayName} wird erst nach Ihrem Klick in einem neuen Tab geöffnet.` : "Der frühere Treffer bleibt zur Nachvollziehbarkeit sichtbar, aber es ist kein aktueller Booking-Link freigegeben."}</p>
               {profile.bookingUrl ? (
@@ -3140,7 +3199,7 @@ function ContactDialog({ profile, onClose }: { profile: FreelancerProfileResult;
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Meeting buchen <span aria-hidden="true">→</span>
+                  Meeting buchen <IconArrowRight size={13} />
                 </a>
               ) : (
                 <span className="booking-unavailable">Aktuell kein direkter Booking-Link</span>
@@ -3157,7 +3216,7 @@ function ConfirmDeleteDialog({ busy, onClose, onConfirm }: { busy: boolean; onCl
   return (
     <Modal titleId="delete-title" onClose={onClose}>
       <div className="delete-dialog">
-        <span className="danger-symbol" aria-hidden="true">!</span>
+        <span className="danger-symbol" aria-hidden="true"><IconAlertTriangle size={19} /></span>
         <h2 id="delete-title">Anwendungsdaten löschen?</h2>
         <p>Ihre Projekte, Nachrichten und gespeicherten Ergebnisse werden entsprechend der geltenden Aufbewahrungsregeln gelöscht oder anonymisiert. Dieser Schritt kann nicht rückgängig gemacht werden.</p>
         <div className="dialog-actions">
