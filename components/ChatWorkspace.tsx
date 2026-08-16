@@ -1526,7 +1526,6 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
       pendingAssistant,
       refreshAuth,
       refreshUsage,
-      showToast,
     ],
   );
 

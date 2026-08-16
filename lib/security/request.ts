@@ -3,6 +3,8 @@ import { createHmac } from "node:crypto";
 import { getContext } from "@netlify/functions";
 import type { NextRequest } from "next/server";
 
+import { applicationOrigin } from "@/lib/auth/redirect";
+
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 export function assertSameOrigin(request: Request) {
@@ -10,9 +12,7 @@ export function assertSameOrigin(request: Request) {
 
   const origin = request.headers.get("origin");
   const requestOrigin = new URL(request.url).origin;
-  const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL
-    ? new URL(process.env.NEXT_PUBLIC_SITE_URL).origin
-    : requestOrigin;
+  const configuredOrigin = applicationOrigin(request);
   const host = request.headers.get("host")?.trim();
   let hostOrigin: string | null = null;
   if (host) {

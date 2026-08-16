@@ -6,6 +6,11 @@ publish = ".next"
 NODE_VERSION = "22.14.0"
 PNPM_VERSION = "11.16.0"
 
+# Public, non-secret production routing invariant. Deploy previews that inherit
+# a stale localhost value are additionally protected in lib/auth/redirect.ts.
+[context.production.environment]
+NEXT_PUBLIC_SITE_URL = "https://x-portal.eu"
+
 [[plugins]]
 package = "@netlify/plugin-nextjs"
 

@@ -1,5 +1,10 @@
 # V1 acceptance checklist
 
+Production release is allowed only from a successful GitHub-connected Netlify
+`main` deploy whose `commit_ref` matches the approved commit. Never publish a
+deploy preview to `x-portal.eu`; preview environment values and OAuth redirect
+allowlists are separate from production.
+
 ## Product journey
 
 - [ ] Guest can submit free text without a visible registration gate.
