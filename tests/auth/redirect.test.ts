@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   applicationDestination,
@@ -9,6 +9,7 @@ import {
 const originalSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   process.env.NEXT_PUBLIC_SITE_URL = originalSiteUrl;
 });
 
@@ -38,6 +39,50 @@ describe("applicationOrigin", () => {
     expect(
       applicationOrigin(new Request("http://localhost:3001/auth/callback")),
     ).toBe("http://localhost:3001");
+  });
+
+  it.each(["http://localhost:3001", "http://127.0.0.1:3001"])(
+    "rejects a local site URL in production: %s",
+    (siteUrl) => {
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("NEXT_PUBLIC_SITE_URL", siteUrl);
+
+      expect(
+        applicationOrigin(new Request("https://x-portal.eu/auth/callback")),
+      ).toBe("https://x-portal.eu");
+    },
+  );
+
+  it("rejects a non-HTTPS site URL in production", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "http://x-portal.eu");
+
+    expect(
+      applicationOrigin(new Request("https://x-portal.eu/auth/callback")),
+    ).toBe("https://x-portal.eu");
+  });
+
+  it("keeps a Netlify deploy preview on its own HTTPS origin", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("CONTEXT", "deploy-preview");
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://x-portal.eu");
+
+    expect(
+      applicationOrigin(
+        new Request(
+          "https://deploy-preview-12--app-x-portal-chat.netlify.app/auth/callback",
+        ),
+      ),
+    ).toBe("https://deploy-preview-12--app-x-portal-chat.netlify.app");
+  });
+
+  it("falls back safely when the configured site URL is malformed", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "not a URL");
+
+    expect(
+      applicationOrigin(new Request("https://x-portal.eu/auth/callback")),
+    ).toBe("https://x-portal.eu");
   });
 });
 

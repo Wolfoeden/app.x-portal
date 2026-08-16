@@ -1,5 +1,7 @@
 allowBuilds:
   unrs-resolver: false
+overrides:
+  nanoid@<3.3.18: 3.3.18
 minimumReleaseAgeExclude:
   - '@supabase/auth-js@2.112.1'
   - '@supabase/functions-js@2.112.1'

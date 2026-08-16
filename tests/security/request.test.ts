@@ -40,6 +40,17 @@ describe("request security", () => {
     expect(() => assertSameOrigin(request)).not.toThrow();
   });
 
+  it("does not trust a localhost site URL for a production write", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "http://localhost:3001");
+    const request = new Request("https://x-portal.eu/api/chat", {
+      method: "POST",
+      headers: { origin: "http://localhost:3001" },
+    });
+
+    expect(() => assertSameOrigin(request)).toThrow(Response);
+  });
+
   it("rejects oversized bodies before JSON parsing", async () => {
     const request = new Request("https://app.example/api/chat", {
       method: "POST",

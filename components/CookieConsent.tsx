@@ -81,9 +81,11 @@ export function CookieConsent() {
             {view === "settings" ? "Cookie-Einstellungen" : "Ihre Datenschutz-Auswahl"}
           </h2>
           <p>
-            Notwendige Cookies sichern Anmeldung, Sicherheit und Ihre Auswahl.
-            Optionale Dienste bleiben deaktiviert, bis Sie ausdrücklich zustimmen.
-            XPORTAL lädt derzeit keine Drittanbieter-Analyse ohne Ihre Zustimmung.
+            XPORTAL verwendet derzeit nur technisch notwendige Cookies und
+            Sitzungsspeicher für Anmeldung, Sicherheit und Ihre Auswahl. Es
+            werden keine Analyse- oder Marketingdienste automatisch geladen.
+            „Alle akzeptieren“ speichert ausschließlich Ihre aktuelle Auswahl;
+            neue optionale Dienste würden eine neue Zustimmung erfordern.
             {" "}<a href="/privacy">Datenschutzhinweise ansehen</a>.
           </p>
         </div>
@@ -97,8 +99,8 @@ export function CookieConsent() {
             </div>
             <div>
               <span>Optional</span>
-              <strong>{choice === "all" ? "Akzeptiert" : "Abgelehnt"}</strong>
-              <p>Für optionale Mess- oder externe Mediendienste, falls diese später eingesetzt werden.</p>
+              <strong>{choice === "all" ? "Auswahl: akzeptiert" : "Auswahl: abgelehnt"}</strong>
+              <p>Derzeit nicht eingesetzt. Diese Auswahl aktiviert keinen Drittanbieter-Dienst und gilt nicht für künftige Dienste.</p>
             </div>
           </div>
         ) : null}

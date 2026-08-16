@@ -6,6 +6,15 @@ publish = ".next"
 NODE_VERSION = "22.14.0"
 PNPM_VERSION = "11.16.0"
 
+# Public, non-secret production routing invariant. Deploy previews that inherit
+# a stale localhost value are additionally protected in lib/auth/redirect.ts.
+[context.production.environment]
+NEXT_PUBLIC_SITE_URL = "https://x-portal.eu"
+# The Supabase Google provider and production callback allowlist are configured.
+# Keep this production-only so deploy previews never advertise an OAuth route
+# whose temporary hostname is not explicitly allowlisted.
+NEXT_PUBLIC_AUTH_GOOGLE_ENABLED = "true"
+
 [[plugins]]
 package = "@netlify/plugin-nextjs"
 

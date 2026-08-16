@@ -1,11 +1,33 @@
 export function applicationOrigin(request: Request) {
+  const requestOrigin = new URL(request.url).origin;
   const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
 
-  if (configuredSiteUrl) {
-    return new URL(configuredSiteUrl).origin;
-  }
+  if (!configuredSiteUrl) return requestOrigin;
 
-  return new URL(request.url).origin;
+  try {
+    const configuredOrigin = new URL(configuredSiteUrl);
+    if (process.env.NODE_ENV === "production") {
+      if (process.env.CONTEXT === "deploy-preview") return requestOrigin;
+
+      const hostname = configuredOrigin.hostname.toLowerCase();
+      const localHostname =
+        hostname === "localhost" ||
+        hostname === "0.0.0.0" ||
+        hostname === "::1" ||
+        hostname.startsWith("127.");
+
+      // Never allow a production callback to leave HTTPS or return to a local
+      // development host. Deploy previews intentionally fall back to their
+      // own request origin when a shared environment value is mis-scoped.
+      if (configuredOrigin.protocol !== "https:" || localHostname) {
+        return requestOrigin;
+      }
+    }
+
+    return configuredOrigin.origin;
+  } catch {
+    return requestOrigin;
+  }
 }
 
 const UNSAFE_PATH_CHARACTERS = /[\\\u0000-\u001f\u007f]/u;

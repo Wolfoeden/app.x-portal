@@ -1526,7 +1526,6 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
       pendingAssistant,
       refreshAuth,
       refreshUsage,
-      showToast,
     ],
   );
 
@@ -3020,7 +3019,12 @@ function AuthDialog({
             </button>
           </form>
         )}
-        <p className="auth-privacy">Die Anmeldung dient dazu, Projekte geräteübergreifend zuzuordnen und eine Profilwahl sicher fortzusetzen.</p>
+        <p className="auth-privacy">
+          Die Anmeldung dient dazu, Projekte geräteübergreifend zuzuordnen und
+          eine Profilwahl sicher fortzusetzen.
+          {GOOGLE_AUTH_ENABLED ? " Google wird erst nach Ihrem Klick geöffnet; alternativ steht die E-Mail-Anmeldung zur Verfügung." : ""}
+          {" "}<a href="/privacy">Datenschutzhinweise</a>
+        </p>
       </div>
     </Modal>
   );
