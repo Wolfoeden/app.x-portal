@@ -10,6 +10,10 @@ PNPM_VERSION = "11.16.0"
 # a stale localhost value are additionally protected in lib/auth/redirect.ts.
 [context.production.environment]
 NEXT_PUBLIC_SITE_URL = "https://x-portal.eu"
+# The Supabase Google provider and production callback allowlist are configured.
+# Keep this production-only so deploy previews never advertise an OAuth route
+# whose temporary hostname is not explicitly allowlisted.
+NEXT_PUBLIC_AUTH_GOOGLE_ENABLED = "true"
 
 [[plugins]]
 package = "@netlify/plugin-nextjs"

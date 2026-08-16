@@ -24,7 +24,9 @@ allowlists are separate from production.
 ## Identity and isolation
 
 - [ ] Anonymous Auth and manual identity linking are enabled.
-- [ ] Google and Azure redirect URLs are configured for staging/production.
+- [x] Google production redirect URL is in the Supabase allowlist (controller
+      confirmation on 16 August 2026); live return is re-tested after release.
+- [ ] Azure redirect URLs are configured for staging/production before Azure is enabled.
 - [ ] New account linking preserves the same owner ID.
 - [ ] Existing-account sign-in consumes an expiring one-time guest claim.
 - [ ] Automated cross-user URL/API/database reads and writes fail closed.

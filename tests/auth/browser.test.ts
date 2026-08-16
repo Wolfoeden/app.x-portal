@@ -83,6 +83,22 @@ describe("browser authentication journeys", () => {
     expect(auth.signInWithOAuth).not.toHaveBeenCalled();
   });
 
+  it("falls back to Google OAuth when anonymous identity linking is unavailable", async () => {
+    auth.linkIdentity.mockResolvedValueOnce({
+      data: {},
+      error: new Error("manual linking unavailable"),
+    });
+
+    await startOauthUpgrade("google");
+
+    expect(auth.signInWithOAuth).toHaveBeenCalledWith({
+      provider: "google",
+      options: {
+        redirectTo: "https://x-portal.eu/auth/callback?next=%2Fchat",
+      },
+    });
+  });
+
   it("uses the active browser origin instead of a stale build-time site URL", async () => {
     vi.stubGlobal("window", { location: { origin: "https://portal.example" } });
 

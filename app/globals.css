@@ -2578,6 +2578,7 @@ dd.is-unknown,
   line-height: 1.45;
   text-align: center;
 }
+.auth-privacy a { color: inherit; text-underline-offset: 3px; }
 
 .confirmation-state {
   display: grid;
@@ -3549,7 +3550,12 @@ dd.is-unknown,
 .cookie-copy a { color: white; text-underline-offset: 3px; }
 .cookie-actions { display: flex; align-items: flex-end; gap: 9px; }
 .cookie-actions button { min-height: 48px; padding: 0 16px; border: 1px solid #777; background: transparent; color: white; cursor: pointer; font-size: 11px; white-space: nowrap; }
-.cookie-actions button.is-primary { border-color: white; background: white; color: var(--home-ink); }
+.cookie-actions button.is-primary {
+  border-color: white;
+  background: white;
+  color: #090909;
+  -webkit-text-fill-color: #090909;
+}
 .cookie-options { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: #444; }
 .cookie-options > div { padding: 20px; background: #1c1c1b; }
 .cookie-options span { color: #888; font: 9px ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; }
@@ -3660,6 +3666,9 @@ dd.is-unknown,
 .xlegal-document section { display: grid; grid-template-columns: 240px 1fr; gap: 44px; padding: 32px 0; border-top: 1px solid rgba(9, 9, 9, .24); }
 .xlegal-document section h2 { margin: 0; font-size: 17px; }
 .xlegal-document section p { margin: 0; color: #51514d; line-height: 1.7; }
+.xlegal-document section p + p { margin-top: 16px; }
+.xlegal-document section ul { margin: 0; padding-left: 20px; color: #51514d; line-height: 1.7; }
+.xlegal-document section li + li { margin-top: 8px; }
 .xlegal-document section .xhome-footer-button { width: fit-content; margin-top: 18px; border-bottom: 1px solid #090909; color: #090909; }
 .xlegal-warning { margin: 0 0 54px; padding: 22px; border: 1px solid #090909; background: white; }
 .xlegal-warning strong { font: 10px ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; }

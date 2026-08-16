@@ -35,6 +35,7 @@ Required production values:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `NEXT_PUBLIC_SITE_URL=https://x-portal.eu` (also enforced in `netlify.toml`)
+- `NEXT_PUBLIC_AUTH_GOOGLE_ENABLED=true` (production-only in `netlify.toml`)
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `OPENAI_API_KEY`
 - `IP_HASH_SECRET` with at least 32 random characters
