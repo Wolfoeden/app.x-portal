@@ -16,7 +16,7 @@ import {
   hasAmbiguousSkillConnectors,
 } from "./requirements";
 
-export const MATCHING_RULE_VERSION = "freelancer-match-v11" as const;
+export const MATCHING_RULE_VERSION = "freelancer-match-v12" as const;
 export const MATCHING_SCORE_VERSION = "freelancer-score-v1" as const;
 export const MINIMUM_CORE_COVERAGE_BASIS_POINTS = 7_000 as const;
 
@@ -168,7 +168,7 @@ export const ShortlistMatchSchema = z
     availabilityStatus: z.enum(["available", "limited", "unavailable", "unknown"]),
     availabilityCheckedAt: z.iso.datetime({ offset: true }),
     profileDataVersion: z.string(),
-    // Optional only for honest restoration of historical v10 rows. Every v11
+    // Optional only for honest restoration of historical v10 rows. Every v11+
     // result created by buildShortlist writes all five fields.
     recommendationRole: z.enum(["primary", "alternative"]).optional(),
     fitScore: z.number().int().min(0).max(100).optional(),
