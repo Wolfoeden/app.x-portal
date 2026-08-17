@@ -10,6 +10,8 @@ import { presentProject, type ProjectRow } from "@/lib/data/projects";
 import {
   buildShortlist,
   FreelancerProfileSchema,
+  MatchingDecisionSnapshotSchema,
+  MatchingEvaluationSnapshotSchema,
   ProjectBriefSchema,
   type FreelancerProfile,
   type ShortlistMatch,
@@ -40,6 +42,19 @@ type StoredMatchRow = {
   profile_snapshot: unknown;
   matching_rule_version: string;
   profile_data_version: number;
+  evaluation_snapshot: unknown | null;
+};
+
+type StoredShortlistRow = {
+  id: string;
+  result_count: number;
+  result_status:
+    | "ranked"
+    | "needs_clarification"
+    | "no_reliable_match"
+    | null;
+  decision_snapshot: unknown | null;
+  matching_rule_version: string;
 };
 
 function availabilityPriority(
@@ -125,6 +140,9 @@ function restoreMatch(
   if (!profile.introPolicy.bookingUrl) {
     knownGaps.unshift("Direkter Booking-Link ist aktuell nicht verfügbar.");
   }
+  const evaluation = MatchingEvaluationSnapshotSchema.safeParse(
+    row.evaluation_snapshot,
+  );
   return {
     profile,
     matchReasons,
@@ -134,10 +152,40 @@ function restoreMatch(
     availabilityStatus: profile.availability.status,
     availabilityCheckedAt: profile.availability.checkedAt,
     profileDataVersion: `profile-v${row.profile_data_version}`,
+    ...(evaluation.success
+      ? {
+          recommendationRole: evaluation.data.recommendationRole,
+          fitScore: evaluation.data.fitScore,
+          coreCoverage: evaluation.data.coreCoverage,
+          requirementAssessments: evaluation.data.requirementAssessments,
+          scoreBreakdown: evaluation.data.scoreBreakdown,
+        }
+      : {}),
     orderingEvidence: {
-      optionalSkillMatchCount: 0,
-      contextEvidenceMatchCount: 0,
-      verifiedRequiredSkillMatchCount: 0,
+      ...(evaluation.success
+        ? {
+            optionalSkillMatchCount:
+              evaluation.data.requirementAssessments.filter(
+                (assessment) =>
+                  assessment.category === "skill" &&
+                  assessment.priority === "optional" &&
+                  assessment.status === "satisfied",
+              ).length,
+            coreSkillMatchCount:
+              evaluation.data.requirementAssessments.filter(
+                (assessment) =>
+                  assessment.category === "skill" &&
+                  assessment.priority !== "optional" &&
+                  assessment.status === "satisfied",
+              ).length,
+            fitScoreBasisPoints:
+              evaluation.data.scoreBreakdown.fitScoreBasisPoints,
+            coreCoverageBasisPoints:
+              evaluation.data.scoreBreakdown.coreCoverageBasisPoints,
+            evidenceConfidenceBasisPoints:
+              evaluation.data.scoreBreakdown.evidenceConfidenceBasisPoints,
+          }
+        : {}),
       availabilityPriority: availabilityPriority(profile.availability.status),
       availableFrom: profile.availability.availableFrom,
     },
@@ -176,7 +224,9 @@ export async function GET(
 
     const { data: shortlist, error: shortlistError } = await admin
       .from("shortlists")
-      .select("id")
+      .select(
+        "id,result_count,result_status,decision_snapshot,matching_rule_version",
+      )
       .eq("project_id", project.id)
       .eq("owner_user_id", user.id)
       .order("created_at", { ascending: false })
@@ -185,8 +235,13 @@ export async function GET(
     if (shortlistError) throw shortlistError;
 
     const brief = ProjectBriefSchema.safeParse(project.structured_brief);
+    const storedShortlist = shortlist as StoredShortlistRow | null;
     let profiles: ReturnType<typeof presentMatch>[] = [];
     let usedDeterministicRecovery = false;
+    let matchingStatus: StoredShortlistRow["result_status"] | undefined =
+      storedShortlist?.result_status ??
+      (storedShortlist && storedShortlist.result_count > 0 ? "ranked" : undefined);
+    let matchingIntegrityNotice: string | undefined;
     // `status = matching` is also the completed zero-result business state.
     // Only brief_status=pending proves that the current analysis turn is live.
     const projectStillProcessing = project.brief_status === "pending";
@@ -195,19 +250,35 @@ export async function GET(
       // brief is still processing, reconstruct from the current brief instead
       // of pairing a new user message with historical matches.
       const activeProfiles = await fetchActiveBookableRealProfiles(admin);
-      profiles = buildShortlist(brief.data, activeProfiles).matches.map(presentMatch);
+      const recoveredShortlist = buildShortlist(brief.data, activeProfiles);
+      profiles = recoveredShortlist.matches.map(presentMatch);
+      matchingStatus = recoveredShortlist.status;
       usedDeterministicRecovery = true;
-    } else if (shortlist) {
+    } else if (storedShortlist) {
+      const decision = MatchingDecisionSnapshotSchema.safeParse(
+        storedShortlist.decision_snapshot,
+      );
+      if (
+        storedShortlist.matching_rule_version === "freelancer-match-v11" &&
+        !decision.success
+      ) {
+        matchingIntegrityNotice =
+          "Die gespeicherte v11-Entscheidung ist unvollständig; historische Scores werden nicht rekonstruiert.";
+      }
       const { data: rows, error } = await admin
         .from("matches")
         .select(
-          "id,freelancer_profile_id,position,match_reasons,known_gaps,verified_facts_snapshot,self_reported_facts_snapshot,profile_snapshot,matching_rule_version,profile_data_version",
+          "id,freelancer_profile_id,position,match_reasons,known_gaps,verified_facts_snapshot,self_reported_facts_snapshot,profile_snapshot,matching_rule_version,profile_data_version,evaluation_snapshot",
         )
-        .eq("shortlist_id", shortlist.id)
+        .eq("shortlist_id", storedShortlist.id)
         .eq("owner_user_id", user.id)
         .order("position", { ascending: true });
       if (error) throw error;
       const storedRows = rows as StoredMatchRow[];
+      if (storedRows.length !== storedShortlist.result_count) {
+        matchingIntegrityNotice =
+          "Die gespeicherte Trefferzahl und die vorhandenen Profilzeilen weichen voneinander ab; das Ergebnis wird nur eingeschränkt dargestellt.";
+      }
       const currentProfiles = await fetchRealProfilesByIds(
         admin,
         storedRows.map((row) => row.freelancer_profile_id),
@@ -240,6 +311,7 @@ export async function GET(
         })),
         brief: brief.success ? presentBrief(brief.data) : null,
         profiles,
+        matchingStatus,
         analysisMode:
           usedDeterministicRecovery
             ? "fallback"
@@ -250,11 +322,14 @@ export async function GET(
               ? "fallback"
               : undefined,
         analysisNotice:
-          usedDeterministicRecovery
+          matchingIntegrityNotice ??
+          (usedDeterministicRecovery
             ? "Für diesen noch laufenden Projektstand wurden bis zu drei aktuelle Profile deterministisch aus dem kuratierten Verzeichnis ermittelt. Eine ältere Shortlist wird nicht mit den neuen Angaben vermischt."
             : project.brief_status === "manual" || project.brief_status === "failed"
             ? "Diese gespeicherte Projektanalyse wurde mit der sicheren Basislogik erstellt; es liegt keine bestätigte KI-Auswertung für diesen Stand vor."
-            : undefined,
+            : matchingStatus === undefined && storedShortlist?.result_count === 0
+              ? "Für dieses historische Nullergebnis wurde noch keine Qualitätsklassifikation gespeichert."
+              : undefined),
       },
       { headers: { "Cache-Control": "no-store" } },
     );

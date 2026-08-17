@@ -22,8 +22,11 @@ import {
   buildShortlist,
   FreelancerProfileSchema,
   MATCHING_RULE_VERSION,
+  MINIMUM_CORE_COVERAGE_BASIS_POINTS,
+  matchingEvaluationSnapshot,
   ProjectBriefSchema,
   type ProjectBrief,
+  type Shortlist,
 } from "@/lib/domain";
 import {
   createChatRequestKey,
@@ -86,6 +89,7 @@ type MatchInsert = {
   profile_snapshot: unknown;
   matching_rule_version: string;
   profile_data_version: number;
+  evaluation_snapshot: unknown;
 };
 
 function errorResponse(error: unknown, traceId: string = randomUUID()): Response {
@@ -123,19 +127,26 @@ function catalogVersion(profiles: readonly { id: string; dataVersion: string }[]
 }
 
 function assistantText(
+  status: Shortlist["status"],
   resultCount: number,
   analysisCompleted: boolean,
-  needsClarification = false,
+  clarificationCode: Shortlist["clarificationCode"],
+  openCoreRequirements: readonly string[],
 ): string {
-  if (needsClarification) {
+  if (status === "needs_clarification") {
     // "No requirement was stated" and "nothing matched" are opposite statements
     // to a user. Collapsing them into the empty-result text below would claim
     // the catalogue was searched and found wanting, when in fact nothing was
     // searched for.
-    return `${analysisCompleted ? "Ich habe" : "Die sichere Basisanalyse hat"} Ihre Nachricht gelesen, konnte daraus aber noch keine konkrete Anforderung ableiten. Nennen Sie mir bitte die gewünschte Rolle oder die benötigten Kompetenzen — gern auch Sprache, Einsatzort und Startzeitpunkt. Danach gleiche ich das kuratierte Verzeichnis regelbasiert ab.`;
+    return clarificationCode === "ambiguous_requirement_logic"
+      ? `${analysisCompleted ? "Ich habe" : "Die sichere Basisanalyse hat"} die Anforderungen gelesen, aber die gemischte UND-/ODER-Verknüpfung ist nicht eindeutig. Schreiben Sie bitte ausdrücklich, welche Kompetenzen gemeinsam erforderlich sind und welche echte Alternativen darstellen. Danach starte ich den internen Abgleich.`
+      : `${analysisCompleted ? "Ich habe" : "Die sichere Basisanalyse hat"} Ihre Nachricht gelesen, konnte daraus aber noch keine konkrete Anforderung ableiten. Nennen Sie mir bitte die gewünschte Rolle oder die benötigten Kompetenzen — gern auch Sprache, Einsatzort und Startzeitpunkt. Danach gleiche ich das kuratierte Verzeichnis regelbasiert ab.`;
   }
-  if (resultCount === 0) {
-    return `${analysisCompleted ? "Ich habe" : "Die sichere Basisanalyse hat"} Ihre Angaben strukturiert. Aktuell erfüllt kein reales, direkt buchbares Profil die belegten Kernkriterien. Sie können die Anfrage im Chat ergänzen oder ausdrücklich eine getrennte KI-Websuche nach öffentlich belegten Profilen mit direktem Buchungslink starten.`;
+  if (status === "no_reliable_match") {
+    const openCriteria = openCoreRequirements.length
+      ? ` Besonders häufig offen: ${openCoreRequirements.join(", ")}.`
+      : "";
+    return `${analysisCompleted ? "Ich habe" : "Die sichere Basisanalyse hat"} Ihre Angaben strukturiert. Aktuell erfüllt kein reales, direkt buchbares Profil alle Muss-Kriterien und mindestens 70 % der Kernkompetenzgruppen.${openCriteria} Welches Kriterium möchten Sie präzisieren oder lockern? Alternativ können Sie ausdrücklich die getrennte KI-Websuche starten.`;
   }
   return `${analysisCompleted ? "Ich habe" : "Die sichere Basisanalyse hat"} Ihre Angaben strukturiert und ${resultCount} ${
     resultCount === 1 ? "aktuell passendes Profil" : "aktuell passende Profile"
@@ -369,6 +380,7 @@ async function processChatRequest(
         .update({
           original_request: deterministic.originalRequest,
           structured_brief: deterministic,
+          brief_schema_version: "freelancer-brief-v2",
           brief_status: "pending",
           status: "matching",
         })
@@ -387,6 +399,7 @@ async function processChatRequest(
           title: deriveProjectTitle(input.message),
           original_request: deterministic.originalRequest,
           structured_brief: deterministic,
+          brief_schema_version: "freelancer-brief-v2",
           brief_status: "pending",
           status: "matching",
         })
@@ -597,7 +610,7 @@ async function processChatRequest(
         ? "Noch keine Anforderung erkennbar · Rückfrage wird vorbereitet …"
         : shortlist.matches.length
           ? `${shortlist.matches.length} passende Profile werden nachvollziehbar aufbereitet …`
-          : "Kein interner Treffer · alternative Suche wird vorbereitet …",
+          : "Keine Empfehlung über der 70-%-Schwelle · Rückfrage wird vorbereitet …",
     );
     const shortlistId = randomUUID();
     const profileCatalogVersion = catalogVersion(profiles);
@@ -610,6 +623,8 @@ async function processChatRequest(
       brief_snapshot: extraction.brief,
       result_count: shortlist.matches.length,
       profile_catalog_version: profileCatalogVersion,
+      result_status: shortlist.status,
+      decision_snapshot: shortlist.decisionSnapshot,
     });
     if (shortlistError) throw shortlistError;
 
@@ -636,15 +651,18 @@ async function processChatRequest(
         }),
         matching_rule_version: MATCHING_RULE_VERSION,
         profile_data_version: profileVersionNumber(match.profileDataVersion),
+        evaluation_snapshot: matchingEvaluationSnapshot(match),
       }));
       const { error } = await admin.from("matches").insert(rows);
       if (error) throw error;
     }
 
     const text = assistantText(
+      shortlist.status,
       shortlist.matches.length,
       analysisCompleted,
-      shortlist.status === "needs_clarification",
+      shortlist.clarificationCode,
+      shortlist.decisionSnapshot.openCoreRequirements,
     );
     const assistantClientMessageId = `assistant-${requestKey}`;
     const { data: insertedAssistant, error: assistantError } = await admin
@@ -658,6 +676,7 @@ async function processChatRequest(
         structured_payload: {
           shortlistId,
           matchingRuleVersion: MATCHING_RULE_VERSION,
+          resultStatus: shortlist.status,
           requestKey,
         },
       })
@@ -682,6 +701,7 @@ async function processChatRequest(
         title: extraction.brief.projectTitle ?? project.title,
         original_request: extraction.brief.originalRequest,
         structured_brief: extraction.brief,
+        brief_schema_version: "freelancer-brief-v2",
         brief_status: extraction.mode === "openai" ? "ready" : "manual",
         status:
           shortlist.matches.length ? "shortlisted" : "matching",
@@ -702,6 +722,7 @@ async function processChatRequest(
       metadata: {
         resultCount: shortlist.matches.length,
         matchingRuleVersion: MATCHING_RULE_VERSION,
+        matchingResultStatus: shortlist.status,
         extractionMode: extraction.mode,
         providerConfigured: providerConnection.configured,
         providerAttempted: extraction.providerAttempted,
@@ -724,6 +745,7 @@ async function processChatRequest(
         },
         brief: presentBrief(extraction.brief),
         matches: shortlist.matches.map(presentMatch),
+        matchingStatus: shortlist.status,
         mode: extraction.mode === "openai" ? "ai" : "fallback",
         notice:
           extraction.mode === "fallback"
@@ -738,6 +760,7 @@ async function processChatRequest(
           ruleVersion: MATCHING_RULE_VERSION,
           profileDataVersion: profileCatalogVersion,
           createdAt: new Date().toISOString(),
+          resultStatus: shortlist.status,
         },
         quota: {
           remainingRequests: Math.min(userLimit.remaining, ipLimit.remaining),
@@ -790,13 +813,23 @@ async function processChatRequest(
               status: "completed",
             },
             {
-              label: "Bis zu drei Profile vorbereitet",
-              detail: `${shortlist.matches.length} Treffer werden nach Regel ${MATCHING_RULE_VERSION} angezeigt; offene Nachweise sind gekennzeichnet und die KI entscheidet nicht über die Auswahl.`,
+              label:
+                shortlist.status === "ranked"
+                  ? "Verlässliche Matches vorbereitet"
+                  : shortlist.status === "needs_clarification"
+                    ? "Rückfrage erforderlich"
+                    : "Mindestpassung nicht erreicht",
+              detail:
+                shortlist.status === "ranked"
+                  ? `${shortlist.matches.length} Treffer werden nach Regel ${MATCHING_RULE_VERSION} angezeigt; offene Nachweise sind gekennzeichnet und die KI entscheidet nicht über die Auswahl.`
+                  : shortlist.status === "needs_clarification"
+                    ? "Die Anforderung wird vor einer Empfehlung präzisiert; es wird kein Profil geraten."
+                    : `Kein Profil erfüllt alle Muss-Kriterien und mindestens ${MINIMUM_CORE_COVERAGE_BASIS_POINTS / 100} % der Kernkompetenzgruppen.`,
               status: "completed",
             },
           ],
           externalSearchAvailable:
-            shortlist.matches.length === 0,
+            shortlist.status === "no_reliable_match",
         } satisfies AiAnalysisTrace,
         buildVersion: SERVER_BUILD_VERSION,
       },

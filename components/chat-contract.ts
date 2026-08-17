@@ -8,6 +8,24 @@
 import { appPath } from "@/lib/app-path";
 
 export type ProjectMode = "remote" | "on-site" | "hybrid" | "unknown";
+export type MatchingStatus =
+  | "ranked"
+  | "needs_clarification"
+  | "no_reliable_match";
+
+export interface StructuredRequirementGroup {
+  id: string;
+  category:
+    | "skill"
+    | "language"
+    | "work_mode"
+    | "location"
+    | "qualification"
+    | "contractual";
+  priority: "hard" | "core" | "optional";
+  operator: "all_of" | "any_of";
+  values: string[];
+}
 
 export interface StructuredBrief {
   projectTitle: string;
@@ -32,6 +50,8 @@ export interface StructuredBrief {
   availabilityRequirement: string | null;
   contractualRequirements: string[];
   unknownFields: string[];
+  /** Authoritative V2 semantics; empty only for historical V1 briefs. */
+  requirementGroups: StructuredRequirementGroup[];
 }
 
 export type VerificationLevel = "verified" | "self-reported" | "unknown";
@@ -62,6 +82,11 @@ export interface FreelancerProfileResult {
   availabilityUpdatedAt: string | null;
   matchReasons: string[];
   knownGaps: string[];
+  /** Null on historical matches whose v11 evaluation was never stored. */
+  recommendationRole: "primary" | "alternative" | null;
+  /** Deterministic criterion score, not a probability of project success. */
+  fitScore: number | null;
+  coreCoverage: number | null;
   introPolicy: {
     type: IntroType;
     label: string;
@@ -217,6 +242,7 @@ export interface ChatResponse {
   brief: StructuredBrief;
   /** Already filtered and deterministically ordered by the server. */
   matches: FreelancerProfileResult[];
+  matchingStatus?: MatchingStatus;
   mode?: "ai" | "fallback";
   notice?: string;
   match?: {
@@ -224,6 +250,7 @@ export interface ChatResponse {
     ruleVersion: string;
     profileDataVersion: string;
     createdAt: string;
+    resultStatus?: MatchingStatus;
   };
   quota?: {
     remainingRequests: number | null;
@@ -256,6 +283,7 @@ export interface ProjectDetailResponse {
   profiles: FreelancerProfileResult[];
   analysisMode?: "ai" | "fallback";
   analysisNotice?: string | null;
+  matchingStatus?: MatchingStatus;
 }
 
 export interface SessionResponse {

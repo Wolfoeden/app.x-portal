@@ -11,7 +11,7 @@ const fixedNow = new Date("2026-08-06T12:00:00.000Z");
 describe("deterministic fallback brief parser", () => {
   it("recognizes explicit SAP requirements without a provider", () => {
     const brief = parseFallbackBrief(
-      "IT Consultant SAP S/4HANA, SAP MM und SAP PP, deutsch, 100% remote. Customizing, SAP SCM und Schnittstellen.",
+      "IT Consultant SAP S/4HANA, SAP MM und SAP PP, deutsch, 100% remote. Customizing, SAP SCM und SAP-Schnittstellen.",
       { now: fixedNow },
     );
 
@@ -40,6 +40,76 @@ describe("deterministic fallback brief parser", () => {
       "Requirements Management",
       "Process Management",
     ]);
+  });
+
+  it("keeps generic interfaces out of SAP and extracts C++ plus Deutschkenntnisse", () => {
+    const brief = parseFallbackBrief(
+      "Business Engineer mit Anforderungsmanagement. Verständnis von Python oder C++ zur Analyse bestehender Systeme und Schnittstellen. Sehr gute Deutschkenntnisse in Wort und Schrift.",
+      { now: fixedNow },
+    );
+
+    expect(brief.requiredSkills).toEqual(
+      expect.arrayContaining(["Requirements Management", "Python", "C++"]),
+    );
+    expect(brief.requiredSkills).not.toContain("SAP Integration");
+    expect(brief.language).toBe("German");
+    expect(brief.schemaVersion).toBe(2);
+    expect(
+      brief.schemaVersion === 2
+        ? brief.requirementGroups.find(
+            (group) =>
+              group.category === "skill" &&
+              group.values.includes("Python") &&
+              group.values.includes("C++"),
+          )
+        : null,
+    ).toMatchObject({
+      priority: "core",
+      operator: "any_of",
+      values: ["Python", "C++"],
+      sourceText: null,
+    });
+    expect(
+      brief.schemaVersion === 2
+        ? brief.requirementGroups.find((group) => group.category === "language")
+        : null,
+    ).toMatchObject({ priority: "core", values: ["German"] });
+  });
+
+  it("keeps AND, hard and optional requirement semantics in V2 groups", () => {
+    const hard = parseFallbackBrief("Muss zwingend: Python oder C++.", {
+      now: fixedNow,
+    });
+    const all = parseFallbackBrief("Python und C++ sind erforderlich.", {
+      now: fixedNow,
+    });
+    const optional = parseFallbackBrief("Bevorzugt: Python oder C++.", {
+      now: fixedNow,
+    });
+
+    expect(hard.schemaVersion).toBe(2);
+    expect(
+      hard.schemaVersion === 2 ? hard.requirementGroups[0] : null,
+    ).toMatchObject({ priority: "hard", operator: "any_of" });
+    expect(
+      all.schemaVersion === 2 ? all.requirementGroups[0] : null,
+    ).toMatchObject({ priority: "core", operator: "all_of" });
+    expect(
+      optional.schemaVersion === 2 ? optional.requirementGroups[0] : null,
+    ).toMatchObject({ priority: "optional", operator: "any_of" });
+  });
+
+  it("keeps historical V1 briefs readable", () => {
+    const current = parseFallbackBrief("React freelancer", { now: fixedNow });
+    const legacy = {
+      ...current,
+      schemaVersion: 1 as const,
+    } as Record<string, unknown>;
+    delete legacy.requirementGroups;
+
+    const parsed = ProjectBriefSchema.parse(legacy);
+    expect(parsed.schemaVersion).toBe(1);
+    expect(parsed.requiredSkills).toEqual(["React"]);
   });
 
   it("extracts common German copy-and-paste wording without an AI provider", () => {

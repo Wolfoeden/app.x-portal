@@ -34,7 +34,7 @@ describe("chat presentation", () => {
 
     const result = presentBrief(brief);
 
-    expect(result.summary).toContain("Pflichtkompetenzen: React");
+    expect(result.summary).toContain("Kernkompetenzen: React");
     expect(result.summary).toContain("Dauer: sechs Wochen");
     expect(result.summary).toContain("800");
     expect(result.summary).toContain("EU residency");
@@ -69,6 +69,23 @@ describe("chat presentation", () => {
     });
   });
 
+  it("presents V2 alternatives as one OR group without exposing source excerpts", () => {
+    const brief = parseFallbackBrief(
+      "Anforderungsmanagement mit Verständnis von Python oder C++.",
+    );
+
+    const result = presentBrief(brief);
+    const alternatives = result.requirementGroups.find(
+      (group) => group.operator === "any_of",
+    );
+
+    expect(alternatives).toEqual(
+      expect.objectContaining({ values: ["Python", "C++"] }),
+    );
+    expect(alternatives).not.toHaveProperty("sourceText");
+    expect(result.summary).toContain("Python oder C++");
+  });
+
   it("shows provenance and the direct booking link", () => {
     const brief = makeBrief({
       requiredSkills: ["React"],
@@ -91,6 +108,9 @@ describe("chat presentation", () => {
     expect(result.bookingUrl).toBe("https://calendly.com/example/anna");
     expect(result.introPolicy.manualApprovalRequired).toBe(false);
     expect(result.introPolicy.readyToBook).toBe(true);
+    expect(result.recommendationRole).toBe("primary");
+    expect(result.fitScore).not.toBeNull();
+    expect(result.coreCoverage).toBe(100);
   });
 
   it("keeps a historical match visible without exposing a stale booking link", () => {
@@ -117,5 +137,24 @@ describe("chat presentation", () => {
     expect(result.bookingUrl).toBeNull();
     expect(result.availabilityStatus).toBe("unavailable");
     expect(result.introPolicy.readyToBook).toBe(false);
+  });
+
+  it("does not invent v11 scores for a historical match", () => {
+    const brief = makeBrief({ requiredSkills: ["React"], workMode: "remote" });
+    const liveMatch = buildShortlist(brief, [profileFixtures[0]!]).matches[0]!;
+    const historicalMatch = {
+      ...liveMatch,
+      recommendationRole: undefined,
+      fitScore: undefined,
+      coreCoverage: undefined,
+      requirementAssessments: undefined,
+      scoreBreakdown: undefined,
+    };
+
+    expect(presentMatch(historicalMatch)).toMatchObject({
+      recommendationRole: null,
+      fitScore: null,
+      coreCoverage: null,
+    });
   });
 });

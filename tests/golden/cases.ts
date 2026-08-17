@@ -88,10 +88,8 @@ export const goldenCases: readonly GoldenCase[] = [
   {
     id: "business-engineer-de",
     note:
-      "Reference posting with the skill terms in German, the way a German brief is written. " +
-      "Measured on the real 65-row export this returned 2 eligible profiles and ranked a QA " +
-      "test manager first, because the skill families carry no German aliases. The German and " +
-      "the English variant of this case must produce the same shortlist.",
+      "Reference posting with German skill terms. v11 returns only profiles at or above " +
+      "70 percent core coverage; the German and English variants must stay identical.",
     brief: brief({
       ...businessEngineerCommon,
       requiredSkills: ["Anforderungsmanagement", "Geschäftsprozessanalyse", "SAFe"],
@@ -101,9 +99,8 @@ export const goldenCases: readonly GoldenCase[] = [
   {
     id: "business-engineer-en",
     note:
-      "Same posting, same profiles, skill terms in the canonical English form the skill families " +
-      "already know. Paired with business-engineer-de: a divergence between the two is the " +
-      "language-dependency regression.",
+      "Same posting and pool with canonical English skill terms. Paired with business-engineer-de " +
+      "to guard language-independent taxonomy and the same 70 percent reliability gate.",
     brief: brief({
       ...businessEngineerCommon,
       requiredSkills: ["requirements management", "process analysis", "SAFe"],

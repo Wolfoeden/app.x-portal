@@ -59,6 +59,7 @@ import {
   type ExternalFreelancerSearchResponse,
   type FreelancerProfileResult,
   type FreeAnalysisUsageSnapshot,
+  type MatchingStatus,
   type ProductCreditSnapshot,
   type ProjectDetailResponse,
   type ProjectCollectionItem,
@@ -66,6 +67,7 @@ import {
   type ProjectMode,
   type SessionResponse,
   type StructuredBrief,
+  type StructuredRequirementGroup,
   type VerificationLevel,
   defaultChatApiPaths,
 } from "./chat-contract";
@@ -182,6 +184,56 @@ function nullableString(value: unknown): string | null {
 
 function nonNegativeNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+function percentValue(value: unknown): number | null {
+  return typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 0 &&
+    value <= 100
+    ? value
+    : null;
+}
+
+function normalizeMatchingStatus(value: unknown): MatchingStatus | null {
+  return value === "ranked" ||
+    value === "needs_clarification" ||
+    value === "no_reliable_match"
+    ? value
+    : null;
+}
+
+function normalizeRequirementGroup(
+  value: unknown,
+): StructuredRequirementGroup | null {
+  if (!isRecord(value)) return null;
+  const category = value.category;
+  const priority = value.priority;
+  const operator = value.operator;
+  const values = stringList(value.values);
+  if (
+    ![
+      "skill",
+      "language",
+      "work_mode",
+      "location",
+      "qualification",
+      "contractual",
+    ].includes(String(category)) ||
+    !["hard", "core", "optional"].includes(String(priority)) ||
+    !["all_of", "any_of"].includes(String(operator)) ||
+    values.length === 0 ||
+    (operator === "any_of" && values.length < 2)
+  ) {
+    return null;
+  }
+  return {
+    id: stringValue(value.id, `${String(category)}:${values.join("|")}`),
+    category: category as StructuredRequirementGroup["category"],
+    priority: priority as StructuredRequirementGroup["priority"],
+    operator: operator as StructuredRequirementGroup["operator"],
+    values,
+  };
 }
 
 export function normalizeUsageUpdate(value: unknown): AiUsageUpdate | null {
@@ -431,6 +483,16 @@ function normalizeBrief(value: unknown): StructuredBrief {
     : nullableString(brief.language)
       ? [stringValue(brief.language)]
       : [];
+  const rawRequirementGroups =
+    brief.requirementGroups ?? brief.requirement_groups;
+  const requirementGroups = Array.isArray(rawRequirementGroups)
+    ? rawRequirementGroups
+        .slice(0, 50)
+        .map(normalizeRequirementGroup)
+        .filter(
+          (group): group is StructuredRequirementGroup => group !== null,
+        )
+    : [];
 
   return {
     projectTitle: stringValue(brief.projectTitle ?? brief.project_title, "Neues Projekt"),
@@ -456,6 +518,7 @@ function normalizeBrief(value: unknown): StructuredBrief {
       brief.contractualRequirements ?? brief.contractual_requirements,
     ),
     unknownFields: stringList(brief.unknownFields ?? brief.unknown_fields),
+    requirementGroups,
   };
 }
 
@@ -520,6 +583,16 @@ function normalizeProfile(value: unknown): FreelancerProfileResult | null {
     ),
     matchReasons: stringList(value.matchReasons ?? value.match_reasons),
     knownGaps: stringList(value.knownGaps ?? value.known_gaps),
+    recommendationRole:
+      value.recommendationRole === "primary" ||
+      value.recommendation_role === "primary"
+        ? "primary"
+        : value.recommendationRole === "alternative" ||
+            value.recommendation_role === "alternative"
+          ? "alternative"
+          : null,
+    fitScore: percentValue(value.fitScore ?? value.fit_score),
+    coreCoverage: percentValue(value.coreCoverage ?? value.core_coverage),
     introPolicy: {
       type: introType,
       label: stringValue(
@@ -588,12 +661,20 @@ function normalizeChatResponse(value: unknown, fallbackTitle: string): ChatRespo
     : [];
   const usage = normalizeUsageUpdate(response.usage ?? response);
   const analysis = normalizeAnalysisTrace(response.analysis);
+  const matchMetadata = isRecord(response.match) ? response.match : {};
+  const matchingStatus = normalizeMatchingStatus(
+    response.matchingStatus ??
+      response.matching_status ??
+      matchMetadata.resultStatus ??
+      matchMetadata.result_status,
+  );
 
   return {
     project: normalizeProject(response.project, fallbackTitle),
     message: normalizeMessage(response.message ?? response.assistantMessage ?? response.assistant),
     brief: normalizeBrief(response.brief),
     matches: matches.slice(0, 3),
+    ...(matchingStatus ? { matchingStatus } : {}),
     mode: response.mode === "fallback" ? "fallback" : "ai",
     notice: nullableString(response.notice) ?? undefined,
     ...(usage ? { usage } : {}),
@@ -624,11 +705,15 @@ function normalizeProjectDetail(value: unknown): ProjectDetailResponse {
   const profiles = Array.isArray(matchSource)
     ? matchSource.map(normalizeProfile).filter((item): item is FreelancerProfileResult => item !== null)
     : [];
+  const matchingStatus = normalizeMatchingStatus(
+    response.matchingStatus ?? response.matching_status,
+  );
   return {
     project: normalizeProject(response.project, "Gespeichertes Projekt"),
     messages,
     brief: response.brief ? normalizeBrief(response.brief) : null,
     profiles: profiles.slice(0, 3),
+    ...(matchingStatus ? { matchingStatus } : {}),
     ...(response.analysisMode === "ai" || response.analysisMode === "fallback"
       ? { analysisMode: response.analysisMode }
       : {}),
@@ -952,6 +1037,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [brief, setBrief] = useState<StructuredBrief | null>(null);
   const [profiles, setProfiles] = useState<FreelancerProfileResult[]>([]);
+  const [matchingStatus, setMatchingStatus] = useState<MatchingStatus | null>(null);
   const [hasResult, setHasResult] = useState(false);
   const [analysisMode, setAnalysisMode] = useState<"ai" | "fallback" | null>(null);
   const [analysisTrace, setAnalysisTrace] = useState<AiAnalysisTrace | null>(null);
@@ -1096,6 +1182,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
         setMessages(detail.messages);
         setBrief(detail.brief);
         setProfiles(detail.profiles.slice(0, 3));
+        setMatchingStatus(detail.matchingStatus ?? null);
         setHasResult(Boolean(detail.brief));
         setAnalysisMode(detail.analysisMode ?? null);
         setAnalysisTrace(null);
@@ -1277,6 +1364,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
     setMessages([]);
     setBrief(null);
     setProfiles([]);
+    setMatchingStatus(null);
     setHasResult(false);
     setAnalysisMode(null);
     setAnalysisTrace(null);
@@ -1314,6 +1402,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
     setActiveProject(null);
     setBrief(null);
     setProfiles([]);
+    setMatchingStatus(null);
     setHasResult(false);
     setAnalysisMode(null);
     setAnalysisTrace(null);
@@ -1344,6 +1433,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
       setMessages((current) => [...current, assistantMessage]);
       setBrief(result.brief);
       setProfiles(result.matches.slice(0, 3));
+      setMatchingStatus(result.matchingStatus ?? null);
       setHasResult(true);
       setAnalysisMode(result.mode ?? "ai");
       setAnalysisTrace(result.analysis ?? null);
@@ -1967,6 +2057,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
                   <ResultSection
                     brief={brief}
                     profiles={profiles}
+                    matchingStatus={matchingStatus}
                     analysis={analysisTrace}
                     analysisMode={analysisMode}
                     externalSearch={externalSearch}
@@ -2252,6 +2343,7 @@ function PendingMessage({
 function ResultSection({
   brief,
   profiles,
+  matchingStatus,
   analysis,
   analysisMode,
   externalSearch,
@@ -2266,6 +2358,7 @@ function ResultSection({
 }: {
   brief: StructuredBrief | null;
   profiles: FreelancerProfileResult[];
+  matchingStatus: MatchingStatus | null;
   analysis: AiAnalysisTrace | null;
   analysisMode: "ai" | "fallback" | null;
   externalSearch: ExternalFreelancerSearchResponse | null;
@@ -2279,6 +2372,14 @@ function ResultSection({
   onContact: (profile: FreelancerProfileResult) => void;
 }) {
   const searchCta = externalSearchCtaState(isAccountUser, productCredits);
+  const resultHeading =
+    matchingStatus === "needs_clarification"
+      ? "Anforderung noch nicht ausreichend konkret"
+      : matchingStatus === "no_reliable_match"
+        ? "Kein zuverlässiger interner Match"
+        : profiles.length
+          ? `${profiles.length} ${profiles.length === 1 ? "verlässlicher interner Match" : "verlässliche interne Matches"}`
+          : "Kein gespeicherter interner Match";
   return (
     <section className="result-section" aria-label="Suchergebnis">
       {brief ? <BriefCard brief={brief} /> : null}
@@ -2286,11 +2387,7 @@ function ResultSection({
       <div className="shortlist-heading">
         <div>
           <p className="eyebrow">Regelbasierter Abgleich</p>
-          <h2>
-            {profiles.length
-              ? `${profiles.length} passende ${profiles.length === 1 ? "Person" : "Profile"}`
-              : "Keine passende Person gefunden"}
-          </h2>
+          <h2>{resultHeading}</h2>
         </div>
         {profiles.length ? <span className="result-count">Maximal 3 Ergebnisse</span> : null}
       </div>
@@ -2316,16 +2413,22 @@ function ResultSection({
             <div className="no-match-icon" aria-hidden="true"><IconSearch size={19} /></div>
             <div>
               <strong>
-                {analysisMode === "fallback"
-                  ? "Die sichere Basisanalyse hat keinen ausreichend passenden internen Treffer gefunden."
-                  : "Aktuell gibt es keinen ausreichend passenden internen Treffer."}
+                {matchingStatus === "needs_clarification"
+                  ? "Nennen Sie bitte mindestens die gewünschte Rolle oder eine benötigte Kernkompetenz."
+                  : analysisMode === "fallback"
+                    ? "Die sichere Basisanalyse hat keinen zuverlässigen internen Match gefunden."
+                    : "Kein aktives, reales und direkt buchbares Profil erreicht derzeit die Empfehlungsschwelle."}
               </strong>
               <p>
-                {analysisMode === "fallback"
-                  ? "Die internen Profile wurden regelbasiert abgeglichen. Sie können Angaben ergänzen oder die getrennte KI-Websuche nach öffentlich belegten Profilen starten."
-                  : "Wir zeigen kein Ersatzprofil, wenn Pflichtkriterien nicht erfüllt sind. Ihre Angaben können Sie jederzeit im Chat ergänzen."}
+                {matchingStatus === "needs_clarification"
+                  ? "Ohne prüfbare Kompetenzanforderung wird kein Profil geraten und keine kostenpflichtige Websuche angeboten."
+                  : matchingStatus === "no_reliable_match"
+                    ? "Wir zeigen nur Profile, die alle Muss-Kriterien und mindestens 70 % der Kernkompetenzgruppen erfüllen. Sie können ein Kriterium im Chat präzisieren oder lockern."
+                    : "Für dieses historische Ergebnis ist keine v11-Qualitätsklassifikation gespeichert."}
               </p>
-              {(analysis?.externalSearchAvailable ?? true) && externalSearch?.mode !== "openai" ? (
+              {matchingStatus === "no_reliable_match" &&
+              (analysis?.externalSearchAvailable ?? true) &&
+              externalSearch?.mode !== "openai" ? (
                 <>
                   <button
                     className="external-search-button"
@@ -2575,6 +2678,18 @@ function ExternalSearchResults({ result }: { result: ExternalFreelancerSearchRes
 
 function BriefCard({ brief }: { brief: StructuredBrief }) {
   const openFields = presentUnknownFields(brief.unknownFields);
+  const skillGroups = brief.requirementGroups.filter(
+    (group) => group.category === "skill",
+  );
+  const formattedGroups = (priority: StructuredRequirementGroup["priority"]) => {
+    const values = skillGroups
+      .filter((group) => group.priority === priority)
+      .map((group) =>
+        group.values.join(group.operator === "any_of" ? " oder " : " und "),
+      );
+    return values.length ? values.join(" · ") : null;
+  };
+  const hasV2SkillGroups = skillGroups.length > 0;
   return (
     <article className="brief-card">
       <div className="brief-header">
@@ -2586,8 +2701,18 @@ function BriefCard({ brief }: { brief: StructuredBrief }) {
       </div>
       {brief.summary ? <p className="brief-summary">{brief.summary}</p> : null}
       <dl className="brief-grid brief-grid-detailed">
-        <DetailTerm label="Pflichtkompetenzen" value={brief.requiredSkills.length ? brief.requiredSkills.join(", ") : null} />
-        <DetailTerm label="Optionale Kompetenzen" value={brief.optionalSkills.length ? brief.optionalSkills.join(", ") : null} />
+        {hasV2SkillGroups ? (
+          <>
+            <DetailTerm label="Muss-Kriterien" value={formattedGroups("hard")} />
+            <DetailTerm label="Kernkriterien" value={formattedGroups("core")} />
+            <DetailTerm label="Optional" value={formattedGroups("optional")} />
+          </>
+        ) : (
+          <>
+            <DetailTerm label="Pflichtkompetenzen" value={brief.requiredSkills.length ? brief.requiredSkills.join(", ") : null} />
+            <DetailTerm label="Optionale Kompetenzen" value={brief.optionalSkills.length ? brief.optionalSkills.join(", ") : null} />
+          </>
+        )}
         <DetailTerm label="Sprache" value={brief.languages.length ? brief.languages.join(", ") : null} hint={languageHint(brief)} />
         <DetailTerm label="Arbeitsmodus / Ort" value={[brief.mode === "unknown" ? null : modeLabel(brief.mode), brief.location].filter(Boolean).join(" · ") || null} />
         <DetailTerm label="Start & Dauer" value={[brief.startWindow, brief.duration].filter(Boolean).join(" · ") || null} />
@@ -2652,11 +2777,25 @@ function ProfileCard({
             </div>
           </div>
           <div className="profile-badges">
+            {profile.recommendationRole ? (
+              <span className="match-role">
+                {profile.recommendationRole === "primary" ? "Hauptvorschlag" : "Alternative"}
+              </span>
+            ) : null}
+            {profile.fitScore !== null ? (
+              <span className="match-score">Passung {profile.fitScore} %</span>
+            ) : null}
             <span className={`availability ${profile.availabilityStatus}`}>{availabilityLabel(profile.availabilityStatus)}</span>
           </div>
         </header>
 
         {profile.experienceSummary ? <p className="experience-summary">{profile.experienceSummary}</p> : null}
+
+        {profile.coreCoverage !== null ? (
+          <p className="matching-score-note">
+            Kernabdeckung: {profile.coreCoverage} % · regelbasierter Kriterienwert, keine Erfolgswahrscheinlichkeit
+          </p>
+        ) : null}
 
         <div className="profile-tags">
           {profile.skillTags.slice(0, 7).map((skill) => <span key={skill}>{skill}</span>)}
