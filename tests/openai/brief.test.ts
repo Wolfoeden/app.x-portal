@@ -13,6 +13,7 @@ import {
   type AiBriefCandidate,
   type BriefResponsesClient,
 } from "@/lib/openai/brief";
+import { AI_TRAINER_REQUEST } from "../fixtures/project-2973429";
 
 const SAFETY_IDENTIFIER = "usr_4e8a57f0b51c";
 const FIXED_NOW = new Date("2026-08-06T10:00:00.000Z");
@@ -122,6 +123,70 @@ afterEach(() => {
 });
 
 describe("extractProjectBrief", () => {
+  it("keeps behavioural and delivery requirements out of AI core skills", async () => {
+    const { client } = mockClient(
+      candidate({
+        requiredSkills: [
+          "AI Training",
+          "AI Tooling",
+          "Business Process Automation",
+          "Change Management",
+          "Freude an der Arbeit mit Gruppen und sicherer Auftritt als Expert:in",
+          "Sehr eigenverantwortliche Arbeitsweise",
+          "Hohe Verbindlichkeit über die komplette 6-monatige Laufzeit",
+          "Fähigkeit zur eigenständigen Vorbereitung und individuellen Anpassung an Gruppen",
+          "Ausgeprägte Selbstlernkompetenz (Autodidakt:in im KI-Bereich)",
+        ],
+        qualifications: ["AEVO"],
+        constraints: ["100% Auslastung"],
+        workMode: "remote",
+      }),
+    );
+
+    const result = await extractProjectBrief(
+      {
+        originalRequest: AI_TRAINER_REQUEST,
+        safetyIdentifier: SAFETY_IDENTIFIER,
+      },
+      { responsesClient: client, now: FIXED_NOW },
+    );
+
+    expect(result.mode).toBe("openai");
+    expect(result.brief.requiredSkills).toEqual(
+      expect.arrayContaining([
+        "AI Training",
+        "AI Tooling",
+        "Didactics",
+        "Business Process Automation",
+      ]),
+    );
+    expect(result.brief.requiredSkills).not.toEqual(
+      expect.arrayContaining([
+        "Freude an der Arbeit mit Gruppen und sicherer Auftritt als Expert:in",
+        "Sehr eigenverantwortliche Arbeitsweise",
+        "Hohe Verbindlichkeit über die komplette 6-monatige Laufzeit",
+        "Fähigkeit zur eigenständigen Vorbereitung und individuellen Anpassung an Gruppen",
+        "Ausgeprägte Selbstlernkompetenz (Autodidakt:in im KI-Bereich)",
+        "Change Management",
+      ]),
+    );
+    expect(result.brief.constraints).toEqual(
+      expect.arrayContaining([
+        "Sehr eigenverantwortliche Arbeitsweise",
+        "Hohe Verbindlichkeit über die komplette 6-monatige Laufzeit",
+      ]),
+    );
+    expect(result.brief.qualifications).toContain("AEVO");
+    expect(
+      result.brief.schemaVersion === 2
+        ? result.brief.requirementGroups.find(
+            (group) =>
+              group.category === "qualification" && group.values.includes("AEVO"),
+          )
+        : null,
+    ).toMatchObject({ priority: "optional" });
+  });
+
   it("builds a request-specific conservative reservation ceiling", () => {
     const shortRequest = estimateProjectBriefTokenCeiling({
       originalRequest: "React freelancer",

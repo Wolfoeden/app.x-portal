@@ -77,6 +77,41 @@ function canonicalList(values: readonly string[]): string[] | null {
   return result.length ? result : null;
 }
 
+const BEHAVIOURAL_OR_DELIVERY_REQUIREMENT =
+  /(?:freude\s+an\s+der\s+arbeit|sicherer\s+auftritt|eigenverantwortlich|verbindlichkeit|selbstlernkompetenz|autodidakt|fest(?:e|er|en|em|es)?\s+(?:theorie|schulungs|wochen)?tag|einarbeitung\s+in\s+neue|komplette\s+\d+[ -]monatige\s+laufzeit)/iu;
+
+function parseBehaviouralConstraints(text: string): string[] | null {
+  return canonicalList(
+    text
+      .split(/\r?\n/gu)
+      .map((line) =>
+        line
+          .replace(/^\s*(?:[-•*]|#{1,6})\s*/u, "")
+          .replace(/^\*\*|\*\*$/gu, "")
+          .trim(),
+      )
+      .filter(
+        (line) =>
+          line.length > 0 &&
+          line.length <= 300 &&
+          BEHAVIOURAL_OR_DELIVERY_REQUIREMENT.test(line),
+      ),
+  );
+}
+
+function parseExplicitQualifications(text: string): string[] | null {
+  return /\bAEVO(?:[-\s]?(?:Ausbilderschein|Ausbildereignung(?:sprüfung)?))?/iu.test(
+    text,
+  )
+    ? ["AEVO"]
+    : null;
+}
+
+function parseAllocationConstraint(text: string): string[] | null {
+  const allocation = /\b(100|[1-9]?\d)\s*%\s*Auslastung\b/iu.exec(text)?.[0];
+  return allocation ? [allocation.replace(/\s*%\s*/u, "% ").trim()] : null;
+}
+
 function parseSkills(
   text: string,
   catalog: readonly string[],
@@ -320,7 +355,11 @@ export function parseFallbackBrief(
   const skills = parseSkills(originalRequest, options.skillCatalog ?? DEFAULT_SKILL_CATALOG);
   const startWindow = parseStartWindow(originalRequest, now);
   const availabilityRequirement = startWindow?.raw ?? null;
-  const constraints = parseLabeledList(originalRequest, ["constraints", "einschränkungen"]);
+  const constraints = canonicalList([
+    ...(parseLabeledList(originalRequest, ["constraints", "einschränkungen"]) ?? []),
+    ...(parseAllocationConstraint(originalRequest) ?? []),
+    ...(parseBehaviouralConstraints(originalRequest) ?? []),
+  ]);
   const explicitContractualRequirements = parseLabeledList(originalRequest, ["contract terms", "contractual requirements", "vertragsanforderungen"]);
   const candidate = {
     originalRequest,
@@ -336,7 +375,10 @@ export function parseFallbackBrief(
     budget: parseBudget(originalRequest),
     rate: parseRate(originalRequest),
     constraints,
-    qualifications: parseLabeledList(originalRequest, ["qualifications", "qualifikationen"]),
+    qualifications: canonicalList([
+      ...(parseLabeledList(originalRequest, ["qualifications", "qualifikationen"]) ?? []),
+      ...(parseExplicitQualifications(originalRequest) ?? []),
+    ]),
     availabilityRequirement,
     contractualRequirements: canonicalList([
       ...(explicitContractualRequirements ?? []),

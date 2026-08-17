@@ -361,6 +361,32 @@ export const goldenPool: readonly GoldenProfile[] = [
     workModes: ["on_site"],
     experience: "Business analyst working on site in the Munich area only.",
   }),
+
+  // --- 21. Synthetic version of the production AI-trainer archetype. Raw
+  // snake_case tags deliberately mirror the catalogue format without storing
+  // a real freelancer's name or contact data in repository history.
+  build({
+    id: uuid(21),
+    name: "KI-Trainingsberater",
+    role: "KI Training & Schulungsmaterialien",
+    skills: [
+      "ai_training",
+      "ki_training_center",
+      "ai_consulting",
+      "aevo",
+      "prozessautomatisierung",
+      "didaktik",
+      "information_design",
+      "präsentationen",
+      "schulungsmaterialien",
+      "tool_exploration",
+      "bild_ki",
+    ],
+    experience:
+      "KI-Trainer mit Erfahrung in Prozessautomatisierung, Tool-Erprobung, Informationsdesign und Schulungsmaterialien.",
+    availability: "available",
+    workModes: ["remote"],
+  }),
 ];
 
 export const goldenProfiles: readonly FreelancerProfile[] = goldenPool.map((entry) => entry.profile);

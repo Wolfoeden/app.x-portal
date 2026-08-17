@@ -82,7 +82,7 @@ export interface FreelancerProfileResult {
   availabilityUpdatedAt: string | null;
   matchReasons: string[];
   knownGaps: string[];
-  /** Null on historical matches whose v11 evaluation was never stored. */
+  /** Null on historical matches whose evaluation was never stored. */
   recommendationRole: "primary" | "alternative" | null;
   /** Deterministic criterion score, not a probability of project success. */
   fitScore: number | null;

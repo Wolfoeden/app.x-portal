@@ -38,7 +38,7 @@ type RequirementBriefFields = {
 const HARD_REQUIREMENT_MARKER =
   /(?:\bmuss(?:[-\s]?anforderungen?)?\b|\bmust(?:[-\s]?haves?)?\b|\bzwingend(?:e[rsn]?)?\b|\bausschlusskriteri(?:um|en)\b|\bknock[-\s]?out\b)/iu;
 const OPTIONAL_REQUIREMENT_MARKER =
-  /(?:\bsoll(?:[-\s]?anforderungen?)?\b|\boptional(?:e[rsn]?)?\b|\bbevorzugt(?:e[rsn]?)?\b|\bnice[-\s]?to[-\s]?have\b|\bpreferred\b|\bwünschenswert\b|\bwuenschenswert\b)/iu;
+  /(?:\bsoll(?:[-\s]?anforderungen?)?\b|\boptional(?:e[rsn]?)?\b|\bbevorzugt(?:e[rsn]?)?\b|\bnice[-\s]?to[-\s]?have\b|\bpreferred\b|\bwünschenswert\b|\bwuenschenswert\b|\bvon\s+vorteil\b)/iu;
 const REQUIREMENT_HEADING_MARKER =
   /(?:anforderungen|requirements|voraussetzungen|qualifikationen|technologien|technologies|skills|constraints|bedingungen|profil)/iu;
 

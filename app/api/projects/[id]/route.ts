@@ -259,11 +259,12 @@ export async function GET(
         storedShortlist.decision_snapshot,
       );
       if (
-        storedShortlist.matching_rule_version === "freelancer-match-v11" &&
-        !decision.success
+        ["freelancer-match-v11", "freelancer-match-v12"].includes(
+          storedShortlist.matching_rule_version,
+        ) && !decision.success
       ) {
         matchingIntegrityNotice =
-          "Die gespeicherte v11-Entscheidung ist unvollständig; historische Scores werden nicht rekonstruiert.";
+          "Die gespeicherte Matching-Entscheidung ist unvollständig; historische Scores werden nicht rekonstruiert.";
       }
       const { data: rows, error } = await admin
         .from("matches")
