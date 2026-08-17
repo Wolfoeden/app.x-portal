@@ -12,7 +12,9 @@ import {
   type ProjectBrief,
   ProjectBriefSchema,
   deriveUnknownFields,
+  parseFallbackBrief,
 } from "../../lib/domain";
+import { AI_TRAINER_REQUEST } from "../fixtures/project-2973429";
 
 type BriefInput = Omit<ProjectBrief, "schemaVersion" | "unknownFields">;
 
@@ -86,9 +88,18 @@ const businessEngineerCommon = {
 
 export const goldenCases: readonly GoldenCase[] = [
   {
+    id: "ai-trainer-2973429",
+    note:
+      "A strong AI-training profile must survive snake_case taxonomy normalization. " +
+      "Behavioural traits and delivery commitments stay visible gaps instead of diluting core skill coverage.",
+    brief: parseFallbackBrief(AI_TRAINER_REQUEST, {
+      now: new Date("2026-08-17T10:00:00.000Z"),
+    }),
+  },
+  {
     id: "business-engineer-de",
     note:
-      "Reference posting with German skill terms. v11 returns only profiles at or above " +
+      "Reference posting with German skill terms. v12 returns only profiles at or above " +
       "70 percent core coverage; the German and English variants must stay identical.",
     brief: brief({
       ...businessEngineerCommon,

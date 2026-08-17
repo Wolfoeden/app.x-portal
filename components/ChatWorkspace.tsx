@@ -2424,7 +2424,7 @@ function ResultSection({
                   ? "Ohne prüfbare Kompetenzanforderung wird kein Profil geraten und keine kostenpflichtige Websuche angeboten."
                   : matchingStatus === "no_reliable_match"
                     ? "Wir zeigen nur Profile, die alle Muss-Kriterien und mindestens 70 % der Kernkompetenzgruppen erfüllen. Sie können ein Kriterium im Chat präzisieren oder lockern."
-                    : "Für dieses historische Ergebnis ist keine v11-Qualitätsklassifikation gespeichert."}
+                    : "Für dieses historische Ergebnis ist keine Qualitätsklassifikation gespeichert."}
               </p>
               {matchingStatus === "no_reliable_match" &&
               (analysis?.externalSearchAvailable ?? true) &&

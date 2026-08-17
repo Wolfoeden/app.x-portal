@@ -8,6 +8,7 @@ import {
   parseFallbackBrief,
 } from "../../lib/domain";
 import { profileFixtures } from "./fixtures";
+import { AI_TRAINER_REQUEST } from "../fixtures/project-2973429";
 
 const now = new Date("2026-08-17T10:00:00.000Z");
 
@@ -23,7 +24,79 @@ function profileWithSkills(id: string, displayName: string, skills: string[]) {
   };
 }
 
-describe("freelancer matching v11 reliability", () => {
+describe("freelancer matching v12 reliability", () => {
+  it("ranks the AI-trainer archetype while keeping AEVO and delivery evidence honest", () => {
+    const brief = parseFallbackBrief(AI_TRAINER_REQUEST, { now });
+    const profile = profileWithSkills(
+      "00000000-0000-4000-8000-000000000121",
+      "AI trainer",
+      [
+        "ai_training",
+        "ki_training_center",
+        "ai_consulting",
+        "aevo",
+        "prozessautomatisierung",
+        "didaktik",
+        "schulungsmaterialien",
+        "tool_exploration",
+        "bild_ki",
+      ],
+    );
+
+    const coreSkillGroups =
+      brief.schemaVersion === 2
+        ? brief.requirementGroups.filter(
+            (group) => group.category === "skill" && group.priority !== "optional",
+          )
+        : [];
+    const aevo =
+      brief.schemaVersion === 2
+        ? brief.requirementGroups.find(
+            (group) =>
+              group.category === "qualification" && group.values.includes("AEVO"),
+          )
+        : null;
+    const evaluation = evaluateProfile(brief, profile);
+
+    expect(coreSkillGroups.map((group) => group.values[0])).toEqual(
+      expect.arrayContaining([
+        "Process Management",
+        "AI Training",
+        "AI Tooling",
+        "Large Language Models",
+        "Image AI",
+        "Didactics",
+        "Business Process Automation",
+      ]),
+    );
+    expect(brief.requiredSkills).not.toEqual(
+      expect.arrayContaining([
+        "Sehr eigenverantwortliche Arbeitsweise",
+        "Hohe Verbindlichkeit über die komplette 6-monatige Laufzeit",
+        "Ausgeprägte Selbstlernkompetenz (Autodidakt:in im KI-Bereich)",
+      ]),
+    );
+    expect(brief.constraints).toEqual(
+      expect.arrayContaining([
+        "Sehr eigenverantwortliche Arbeitsweise",
+        "Hohe Verbindlichkeit über die komplette 6-monatige Laufzeit",
+      ]),
+    );
+    expect(aevo).toMatchObject({ priority: "optional" });
+    expect(evaluation.scoreBreakdown.coreCoverageBasisPoints).toBe(7_143);
+    expect(evaluation.reliable).toBe(true);
+    expect(evaluation.knownGaps.join(" ")).toContain("AEVO");
+    expect(buildShortlist(brief, [profile])).toMatchObject({
+      status: "ranked",
+      matches: [
+        expect.objectContaining({
+          profile: expect.objectContaining({ id: profile.id }),
+          coreCoverage: 71,
+        }),
+      ],
+    });
+  });
+
   it.each(["Python", "C++"])(
     "lets %s satisfy the Python-or-C++ group without reporting the sibling as a gap",
     (skill) => {

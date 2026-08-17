@@ -7,8 +7,11 @@ import { z } from "zod";
 import {
   BRIEF_FACT_FIELDS,
   ProjectBriefSchema,
+  canonicalSkill,
   createProjectBriefV2,
   parseFallbackBrief,
+  skillFamilyKey,
+  skillTerms,
   type BriefFactField,
   type ProjectBrief,
 } from "@/lib/domain";
@@ -197,9 +200,11 @@ Rules:
 - Never infer a budget, rate, location, qualification, availability, date, or contractual fact.
 - Preserve corrections in the latest message over older statements.
 - Treat a follow-up as an addition unless it explicitly corrects or removes an earlier fact.
-- Put skills explicitly described as mandatory in requiredSkills and clearly optional skills in optionalSkills.
+- Put professional capabilities explicitly required from the freelancer in requiredSkills and clearly optional professional capabilities in optionalSkills.
+- Do not put personality traits, working style, commitment, workload, schedule, availability, preparation obligations or other delivery conditions in skill fields; preserve them in constraints.
+- Consolidate examples and subtopics under the named professional capability instead of turning every task bullet into an independent skill.
 - When the source names alternatives with "or" or "oder", include every named alternative; never choose only one.
-- Put explicit certifications in qualifications. Put explicit supplier eligibility, residency, NDA, invoicing, compliance or other contract conditions in contractualRequirements. Keep other explicit boundaries in constraints. If the wording is unclear, retain it only as a constraint instead of guessing its legal effect.
+- Put explicit certifications in qualifications even when they are described as optional or "von Vorteil"; source wording determines their priority later. Put explicit supplier eligibility, residency, NDA, invoicing, compliance or other contract conditions in contractualRequirements. Keep other explicit boundaries in constraints. If the wording is unclear, retain it only as a constraint instead of guessing its legal effect.
 - A concise project title may summarize the request, but every other factual field must be grounded in the supplied text.
 - Do not select, score, rank, or discuss freelancer profiles.`;
 
@@ -401,7 +406,7 @@ const SECTION_HEADINGS = [
 
 function namedSection(source: string, heading: string): string | null {
   const headingPattern = new RegExp(
-    `(?:^|\\n)\\s*(?:#{1,6}\\s*)?${escapeRegex(heading)}\\s*:\\s*`,
+    `(?:^|\\n)\\s*(?:#{1,6}\\s*)?(?:\\*\\*)?${escapeRegex(heading)}\\s*:\\s*(?:\\*\\*)?`,
     "iu",
   );
   const match = headingPattern.exec(source);
@@ -410,7 +415,7 @@ function namedSection(source: string, heading: string): string | null {
   const start = match.index + match[0].length;
   const tail = source.slice(start);
   const nextHeadingPattern = new RegExp(
-    `(?:^|\\n)\\s*(?:#{1,6}\\s*)?(?:${SECTION_HEADINGS.map(escapeRegex).join("|")})\\s*:\\s*`,
+    `(?:^|\\n)\\s*(?:#{1,6}\\s*)?(?:\\*\\*)?(?:${SECTION_HEADINGS.map(escapeRegex).join("|")})\\s*:\\s*(?:\\*\\*)?`,
     "iu",
   );
   const next = nextHeadingPattern.exec(tail);
@@ -440,12 +445,25 @@ function flexibleTermPattern(value: string): string {
 }
 
 function skillEvidenceGroup(value: string): SkillEvidenceGroup | null {
+  if (skillFamilyKey(value)) {
+    return {
+      canonical: canonicalSkill(value),
+      aliases: skillTerms(value),
+    };
+  }
   const normalized = normalizeText(value);
   return (
     SKILL_EVIDENCE_GROUPS.find((group) =>
       group.aliases.some((alias) => normalizeText(alias) === normalized),
     ) ?? null
   );
+}
+
+const BEHAVIOURAL_OR_DELIVERY_REQUIREMENT =
+  /(?:freude\s+an\s+der\s+arbeit|sicherer\s+auftritt|eigenverantwortlich|verbindlichkeit|selbstlernkompetenz|autodidakt|fest(?:e|er|en|em|es)?\s+(?:theorie|schulungs|wochen)?tag|einarbeitung\s+in\s+neue|komplette\s+\d+[ -]monatige\s+laufzeit|\d+\s*%\s+auslastung)/iu;
+
+function isBehaviouralOrDeliveryRequirement(value: string): boolean {
+  return BEHAVIOURAL_OR_DELIVERY_REQUIREMENT.test(normalizeText(value));
 }
 
 function skillHasOptionalContext(source: string, terms: readonly string[]): boolean {
@@ -465,6 +483,26 @@ function skillHasOptionalContext(source: string, terms: readonly string[]): bool
   });
 }
 
+function unreviewedSkillHasRequirementContext(
+  source: string,
+  terms: readonly string[],
+): boolean {
+  const structuredPosting = SECTION_HEADINGS.some((heading) =>
+    new RegExp(
+      `(?:^|\\n)\\s*(?:#{1,6}\\s*)?(?:\\*\\*)?${escapeRegex(heading)}\\s*:\\s*(?:\\*\\*)?`,
+      "iu",
+    ).test(source),
+  );
+  if (!structuredPosting) return true;
+
+  // In a structured posting, an arbitrary model term from a task/topic list
+  // must not silently become another equally weighted core gate. Reviewed
+  // taxonomy families are handled above; unknown terms need direct evidence
+  // in the candidate-requirements section until an eval justifies adding them
+  // to the shared vocabulary.
+  return termsOccur(namedSection(source, "Voraussetzungen"), terms);
+}
+
 function groundedSkillList(
   proposed: string[] | null,
   source: string,
@@ -475,8 +513,10 @@ function groundedSkillList(
 
   for (const value of proposed) {
     const group = skillEvidenceGroup(value);
+    if (!group && isBehaviouralOrDeliveryRequirement(value)) continue;
     const terms = group?.aliases ?? [value];
     if (!terms.some((term) => sourceContains(source, term))) continue;
+    if (!group && !unreviewedSkillHasRequirementContext(source, terms)) continue;
 
     const optional = skillHasOptionalContext(source, terms);
     if (kind === "optional" ? optional : !optional) {
@@ -485,6 +525,20 @@ function groundedSkillList(
   }
 
   return deduplicate(accepted);
+}
+
+function groundedBehaviouralConstraints(
+  proposed: readonly string[],
+  source: string,
+): string[] | null {
+  return deduplicate(
+    proposed.filter(
+      (value) =>
+        !skillEvidenceGroup(value) &&
+        isBehaviouralOrDeliveryRequirement(value) &&
+        sourceContains(source, value),
+    ),
+  );
 }
 
 const DURATION_NUMBER_WORDS: Readonly<Record<number, readonly string[]>> = {
@@ -773,6 +827,12 @@ const PREFERRED_TECHNOLOGY_SKILLS = [
 ] as const;
 
 function skillGroup(canonical: string): SkillEvidenceGroup {
+  if (skillFamilyKey(canonical)) {
+    return {
+      canonical: canonicalSkill(canonical),
+      aliases: skillTerms(canonical),
+    };
+  }
   return (
     SKILL_EVIDENCE_GROUPS.find((group) => group.canonical === canonical) ?? {
       canonical,
@@ -889,6 +949,29 @@ function explicitAllocationConstraints(source: string): string[] | null {
   return allocation ? [allocation.replace(/\s*%\s*/u, "% ").trim()] : null;
 }
 
+function explicitBehaviouralConstraints(source: string): string[] | null {
+  return deduplicate(
+    source
+      .split(/\r?\n/gu)
+      .map((line) => stripInlineMarkdown(line).replace(/^[-•*]\s*/u, "").trim())
+      .filter(
+        (line) =>
+          line.length > 0 &&
+          line.length <= 300 &&
+          !skillEvidenceGroup(line) &&
+          isBehaviouralOrDeliveryRequirement(line),
+      ),
+  );
+}
+
+function explicitQualifications(source: string): string[] | null {
+  return /\bAEVO(?:[-\s]?(?:Ausbilderschein|Ausbildereignung(?:sprüfung)?))?/iu.test(
+    source,
+  )
+    ? ["AEVO"]
+    : null;
+}
+
 function enhanceDeterministicBrief(
   parsed: ProjectBrief,
   source: string,
@@ -931,8 +1014,12 @@ function enhanceDeterministicBrief(
     startWindow: explicitStartWindow(source) ?? parsed.startWindow,
     budget: explicitTotalBudget(source) ?? parsed.budget,
     constraints: mergeLists(
-      parsed.constraints,
-      explicitAllocationConstraints(source),
+      mergeLists(parsed.constraints, explicitAllocationConstraints(source)),
+      explicitBehaviouralConstraints(source),
+    ),
+    qualifications: mergeLists(
+      parsed.qualifications,
+      explicitQualifications(source),
     ),
   };
   if (enhanced.startWindow && !enhanced.availabilityRequirement) {
@@ -1104,6 +1191,13 @@ export function reconcileAiBrief(
     source,
     "optional",
   );
+  const proposedBehaviouralConstraints = groundedBehaviouralConstraints(
+    [
+      ...(proposed.requiredSkills ?? []),
+      ...(proposed.optionalSkills ?? []),
+    ],
+    source,
+  );
   const proposedLocation =
     proposed.location &&
     sourceContains(latest, proposed.location) &&
@@ -1148,7 +1242,10 @@ export function reconcileAiBrief(
     constraints: removeExplicitItems(
       mergeLists(
         deterministic.constraints,
-        groundedList(proposed.constraints, source),
+        mergeLists(
+          groundedList(proposed.constraints, source),
+          proposedBehaviouralConstraints,
+        ),
       ),
       latest,
     ),
