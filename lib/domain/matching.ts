@@ -1,13 +1,24 @@
 import { z } from "zod";
 
-import { type ProjectBrief, ProjectBriefSchema } from "./brief";
+import {
+  type ProjectBrief,
+  ProjectBriefSchema,
+  type RequirementGroup,
+} from "./brief";
 import {
   type FreelancerProfile,
   FreelancerProfileSchema,
   type LabeledFact,
 } from "./profile";
+import { skillFamilyKey, skillTerms } from "./skill-taxonomy";
+import {
+  deriveRequirementGroups,
+  hasAmbiguousSkillConnectors,
+} from "./requirements";
 
-export const MATCHING_RULE_VERSION = "freelancer-match-v10" as const;
+export const MATCHING_RULE_VERSION = "freelancer-match-v11" as const;
+export const MATCHING_SCORE_VERSION = "freelancer-score-v1" as const;
+export const MINIMUM_CORE_COVERAGE_BASIS_POINTS = 7_000 as const;
 
 /**
  * Public and reviewable ordering rule. Eligibility is evaluated first. Eligible
@@ -44,20 +55,91 @@ export const MATCHING_RULE_VERSION = "freelancer-match-v10" as const;
  *   and it can never make a profile eligible.
  */
 export const MATCHING_ORDER_RULE = [
-  "core_skill_matches_desc",
+  "fit_score_desc",
+  "core_coverage_desc",
+  "evidence_confidence_desc",
+  "verified_required_skill_matches_desc",
   "commercial_constraint_confidence_desc",
   "availability_status_priority",
   "optional_skill_matches_desc",
   "context_evidence_matches_desc",
-  "verified_required_skill_matches_desc",
   "available_from_asc_unknown_last",
   "display_name_asc",
   "profile_id_asc",
 ] as const;
 
+export const RequirementAssessmentSchema = z
+  .object({
+    groupId: z.string().min(1).max(500),
+    category: z.enum([
+      "skill",
+      "language",
+      "work_mode",
+      "location",
+      "qualification",
+      "contractual",
+    ]),
+    priority: z.enum(["hard", "core", "optional"]),
+    operator: z.enum(["all_of", "any_of"]),
+    values: z.array(z.string().min(1)).min(1).max(50),
+    status: z.enum(["satisfied", "contradicted", "unknown"]),
+    matchedValues: z.array(z.string().min(1)).max(50),
+    evidence: z.enum(["verified", "self_reported", "structured", "unknown"]),
+  })
+  .strict();
+
+export const ScoreBreakdownSchema = z
+  .object({
+    scoreVersion: z.literal(MATCHING_SCORE_VERSION),
+    fitScoreBasisPoints: z.number().int().min(0).max(10_000),
+    coreCoverageBasisPoints: z.number().int().min(0).max(10_000),
+    optionalCoverageBasisPoints: z.number().int().min(0).max(10_000).nullable(),
+    categoricalFitBasisPoints: z.number().int().min(0).max(10_000).nullable(),
+    availabilityFitBasisPoints: z.number().int().min(0).max(10_000),
+    commercialFitBasisPoints: z.number().int().min(0).max(10_000).nullable(),
+    evidenceConfidenceBasisPoints: z.number().int().min(0).max(10_000),
+    minimumCoreCoverageBasisPoints: z.literal(MINIMUM_CORE_COVERAGE_BASIS_POINTS),
+  })
+  .strict();
+
+export const MatchingDecisionSnapshotSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    scoreVersion: z.literal(MATCHING_SCORE_VERSION),
+    status: z.enum(["ranked", "needs_clarification", "no_reliable_match"]),
+    minimumCoreCoverageBasisPoints: z.literal(
+      MINIMUM_CORE_COVERAGE_BASIS_POINTS,
+    ),
+    evaluatedProfileCount: z.number().int().nonnegative(),
+    catalogEligibleProfileCount: z.number().int().nonnegative(),
+    reliableProfileCount: z.number().int().nonnegative(),
+    failureCounts: z
+      .object({
+        hardConflict: z.number().int().nonnegative(),
+        hardUnknown: z.number().int().nonnegative(),
+        belowCoreCoverage: z.number().int().nonnegative(),
+      })
+      .strict(),
+    primaryProfileId: z.string().uuid().nullable(),
+    openCoreRequirements: z.array(z.string().min(1).max(500)).max(5),
+  })
+  .strict();
+
+export const MatchingEvaluationSnapshotSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    recommendationRole: z.enum(["primary", "alternative"]),
+    fitScore: z.number().int().min(0).max(100),
+    coreCoverage: z.number().int().min(0).max(100),
+    requirementAssessments: z.array(RequirementAssessmentSchema),
+    scoreBreakdown: ScoreBreakdownSchema,
+  })
+  .strict();
+
 export const ProfileEvaluationSchema = z
   .object({
     eligible: z.boolean(),
+    reliable: z.boolean(),
     rejectionReasons: z.array(z.string()),
     matchReasons: z.array(z.string()),
     knownGaps: z.array(z.string()),
@@ -71,6 +153,8 @@ export const ProfileEvaluationSchema = z
       "unconfirmed",
       "confirmed",
     ]),
+    requirementAssessments: z.array(RequirementAssessmentSchema),
+    scoreBreakdown: ScoreBreakdownSchema,
   })
   .strict();
 
@@ -84,12 +168,22 @@ export const ShortlistMatchSchema = z
     availabilityStatus: z.enum(["available", "limited", "unavailable", "unknown"]),
     availabilityCheckedAt: z.iso.datetime({ offset: true }),
     profileDataVersion: z.string(),
+    // Optional only for honest restoration of historical v10 rows. Every v11
+    // result created by buildShortlist writes all five fields.
+    recommendationRole: z.enum(["primary", "alternative"]).optional(),
+    fitScore: z.number().int().min(0).max(100).optional(),
+    coreCoverage: z.number().int().min(0).max(100).optional(),
+    requirementAssessments: z.array(RequirementAssessmentSchema).optional(),
+    scoreBreakdown: ScoreBreakdownSchema.optional(),
     orderingEvidence: z
       .object({
-        optionalSkillMatchCount: z.number().int().nonnegative(),
+        optionalSkillMatchCount: z.number().int().nonnegative().optional(),
         coreSkillMatchCount: z.number().int().nonnegative().optional(),
-        contextEvidenceMatchCount: z.number().int().nonnegative(),
-        verifiedRequiredSkillMatchCount: z.number().int().nonnegative(),
+        fitScoreBasisPoints: z.number().int().min(0).max(10_000).optional(),
+        coreCoverageBasisPoints: z.number().int().min(0).max(10_000).optional(),
+        evidenceConfidenceBasisPoints: z.number().int().min(0).max(10_000).optional(),
+        contextEvidenceMatchCount: z.number().int().nonnegative().optional(),
+        verifiedRequiredSkillMatchCount: z.number().int().nonnegative().optional(),
         commercialConstraintConfidence: z
           .enum(["not_requested", "unconfirmed", "confirmed"])
           .optional(),
@@ -104,12 +198,14 @@ export const ShortlistSchema = z
   .object({
     ruleVersion: z.literal(MATCHING_RULE_VERSION),
     orderingRule: z.tuple([
-      z.literal("core_skill_matches_desc"),
+      z.literal("fit_score_desc"),
+      z.literal("core_coverage_desc"),
+      z.literal("evidence_confidence_desc"),
+      z.literal("verified_required_skill_matches_desc"),
       z.literal("commercial_constraint_confidence_desc"),
       z.literal("availability_status_priority"),
       z.literal("optional_skill_matches_desc"),
       z.literal("context_evidence_matches_desc"),
-      z.literal("verified_required_skill_matches_desc"),
       z.literal("available_from_asc_unknown_last"),
       z.literal("display_name_asc"),
       z.literal("profile_id_asc"),
@@ -122,14 +218,21 @@ export const ShortlistSchema = z
      * the display name, which returns the alphabetically first profiles while
      * still presenting them as matches.
      */
-    status: z.enum(["ranked", "needs_clarification"]),
-    clarificationCode: z.enum(["no_extractable_requirement"]).nullable(),
+    status: z.enum(["ranked", "needs_clarification", "no_reliable_match"]),
+    clarificationCode: z
+      .enum(["no_extractable_requirement", "ambiguous_requirement_logic"])
+      .nullable(),
+    decisionSnapshot: MatchingDecisionSnapshotSchema,
     matches: z.array(ShortlistMatchSchema).max(3),
   })
   .strict()
   .refine(
     (value) => value.status === "ranked" || value.matches.length === 0,
-    "A shortlist that needs clarification cannot carry matches.",
+    "Only a ranked shortlist can carry matches.",
+  )
+  .refine(
+    (value) => value.status !== "ranked" || value.matches.length > 0,
+    "A ranked shortlist must contain at least one reliable match.",
   )
   .refine(
     (value) => (value.status === "needs_clarification") === (value.clarificationCode !== null),
@@ -139,6 +242,33 @@ export const ShortlistSchema = z
 export type ProfileEvaluation = z.infer<typeof ProfileEvaluationSchema>;
 export type ShortlistMatch = z.infer<typeof ShortlistMatchSchema>;
 export type Shortlist = z.infer<typeof ShortlistSchema>;
+export type MatchingDecisionSnapshot = z.infer<
+  typeof MatchingDecisionSnapshotSchema
+>;
+export type MatchingEvaluationSnapshot = z.infer<
+  typeof MatchingEvaluationSnapshotSchema
+>;
+
+export function matchingEvaluationSnapshot(
+  match: Pick<
+    ShortlistMatch,
+    | "recommendationRole"
+    | "fitScore"
+    | "coreCoverage"
+    | "requirementAssessments"
+    | "scoreBreakdown"
+  >,
+): MatchingEvaluationSnapshot {
+  return MatchingEvaluationSnapshotSchema.parse({
+    schemaVersion: 1,
+    recommendationRole: match.recommendationRole,
+    fitScore: match.fitScore,
+    coreCoverage: match.coreCoverage,
+    requirementAssessments: match.requirementAssessments,
+    scoreBreakdown: match.scoreBreakdown,
+  });
+}
+type RequirementAssessment = z.infer<typeof RequirementAssessmentSchema>;
 
 function normalize(value: string): string {
   return value
@@ -147,223 +277,6 @@ function normalize(value: string): string {
     .toLocaleLowerCase("en-US")
     .replace(/\s+/gu, " ");
 }
-
-const SKILL_FAMILIES: ReadonlyArray<{
-  canonical: string;
-  aliases: readonly string[];
-}> = [
-  {
-    canonical: "requirements management",
-    aliases: [
-      "requirements management",
-      "requirements engineering",
-      "requirements analysis",
-      "anforderungsmanagement",
-      "anforderungsanalyse",
-      "anforderungserhebung",
-      "anforderungsklärung",
-      "anforderungsklaerung",
-      "fachliche anforderungen",
-    ],
-  },
-  {
-    canonical: "process management",
-    aliases: [
-      "process management",
-      "process analysis",
-      "process optimization",
-      "process improvement",
-      "process modelling",
-      "continuous improvement",
-      "process development",
-      "prozessmanagement",
-      "prozessanalyse",
-      "geschäftsprozessanalyse",
-      "geschaeftsprozessanalyse",
-      "geschäftsprozessoptimierung",
-      "geschaeftsprozessoptimierung",
-      "prozessoptimierung",
-      "prozessmodellierung",
-      "prozessverbesserung",
-      "kontinuierliche verbesserung",
-    ],
-  },
-  {
-    canonical: "project management",
-    aliases: [
-      "project management",
-      "technical project management",
-      "salesforce project management",
-      "agile project management",
-      "project coordination",
-      "program management",
-      "projektmanagement",
-      "projektleitung",
-      "technisches projektmanagement",
-      "agiles projektmanagement",
-      "programmmanagement",
-      "projektkoordination",
-    ],
-  },
-  {
-    canonical: "information security",
-    aliases: [
-      "information security",
-      "it security",
-      "cybersecurity",
-      "cyber security",
-      "isms",
-      "informationssicherheit",
-      "it-sicherheit",
-      "it sicherheit",
-      "cybersicherheit",
-      "informationssicherheitsmanagement",
-    ],
-  },
-  {
-    canonical: "sap s/4hana",
-    aliases: ["sap s/4hana", "s/4hana", "sap s4hana", "s4hana", "sap s/4 hana"],
-  },
-  {
-    canonical: "sap mm",
-    aliases: [
-      "sap mm",
-      "sap material management",
-      "sap materials management",
-      "sap materialwirtschaft",
-    ],
-  },
-  {
-    canonical: "sap pp",
-    aliases: [
-      "sap pp",
-      "sap production planning",
-      "sap produktionsplanung",
-    ],
-  },
-  {
-    canonical: "sap integration",
-    aliases: [
-      "sap integration",
-      "sap integrations",
-      "sap-integrationen",
-      "sap interfaces",
-      "sap schnittstellen",
-    ],
-  },
-  {
-    canonical: "sap customizing",
-    aliases: [
-      "sap customizing",
-      "sap customising",
-      "sap configuration",
-      "sap konfiguration",
-    ],
-  },
-  {
-    canonical: "software architecture",
-    aliases: [
-      "software architecture",
-      "software architect",
-      "software-architektur",
-      "softwarearchitektur",
-      "softwarearchitekt",
-      "software-architekt",
-    ],
-  },
-  {
-    canonical: "ai solution architecture",
-    aliases: [
-      "ai solution architecture",
-      "ai solution architect",
-      "ai architecture",
-      "ai architect",
-      "ki-architektur",
-      "ki architektur",
-    ],
-  },
-  {
-    canonical: "azure ai",
-    aliases: [
-      "azure ai",
-      "azure ai engineer",
-      "azure openai",
-      "microsoft azure ai",
-    ],
-  },
-  {
-    canonical: "microsoft copilot",
-    aliases: [
-      "microsoft copilot",
-      "microsoft copilot developer",
-      "copilot studio",
-    ],
-  },
-  {
-    canonical: "ai projects",
-    aliases: ["ai projects", "ai project delivery", "ki-projekte", "ki projekte"],
-  },
-  {
-    canonical: "document analysis",
-    aliases: [
-      "document analysis",
-      "document intelligence",
-      "document processing",
-      "dokumentenanalyse",
-      "dokumentenverarbeitung",
-      "dokumentenanalyse-verfahren",
-    ],
-  },
-  {
-    canonical: "rag",
-    aliases: [
-      "rag",
-      "rag system",
-      "rag systems",
-      "rag-system",
-      "rag-systeme",
-      "retrieval augmented generation",
-    ],
-  },
-  {
-    canonical: "microsoft 365",
-    aliases: ["microsoft 365", "m365", "office 365", "microsoft-365"],
-  },
-  {
-    canonical: "enterprise applications",
-    aliases: [
-      "enterprise applications",
-      "enterprise software",
-      "unternehmensanwendungen",
-    ],
-  },
-  {
-    canonical: "business process automation",
-    aliases: [
-      "business process automation",
-      "process automation",
-      "workflow automation",
-      "geschäftsprozessautomatisierung",
-      "automatisierung von geschäftsprozessen",
-      "power automate",
-      "geschäftsprozessautomatisierung",
-      "geschaeftsprozessautomatisierung",
-      "prozessautomatisierung",
-    ],
-  },
-  {
-    canonical: "python",
-    aliases: ["python", "python developer", "python entwickler"],
-  },
-  {
-    canonical: "fastapi",
-    aliases: ["fastapi", "fastapi developer", "fastapi entwickler"],
-  },
-  {
-    canonical: "postgresql",
-    aliases: ["postgresql", "postgres", "postgres sql"],
-  },
-] as const;
 
 type RequirementStrength = "hard" | "soft" | "neutral";
 
@@ -394,8 +307,8 @@ function searchText(value: string): string {
  * language missing here is a language whose "muss zwingend" marker is silently
  * lost. Keep the two lists in step.
  *
- * This is the same shape of hard-coded lookup as SKILL_FAMILIES and carries the
- * same weakness: anything not listed falls back to literal string containment.
+ * Skill aliases come from the reviewed shared taxonomy; anything not listed
+ * falls back to literal string containment.
  */
 /**
  * What an unmet must-have requirement does, per field.
@@ -449,12 +362,12 @@ const REQUIREMENT_SPECIAL_TERMS: Readonly<Record<string, readonly string[]>> = {
 };
 
 function requirementTerms(value: string): readonly string[] {
-  const family = skillFamily(value);
-  const skillTerms = family
-    ? SKILL_FAMILIES.find((candidate) => candidate.canonical === family)?.aliases ?? []
-    : [];
   return [
-    ...new Set([value, ...skillTerms, ...(REQUIREMENT_SPECIAL_TERMS[normalize(value)] ?? [])]),
+    ...new Set([
+      value,
+      ...skillTerms(value),
+      ...(REQUIREMENT_SPECIAL_TERMS[normalize(value)] ?? []),
+    ]),
   ];
 }
 
@@ -527,10 +440,7 @@ function distinctSkills(values: readonly string[]): string[] {
 }
 
 function skillFamily(value: string): string | null {
-  const key = normalize(value);
-  return SKILL_FAMILIES.find((family) =>
-    family.aliases.some((alias) => normalize(alias) === key),
-  )?.canonical ?? null;
+  return skillFamilyKey(value);
 }
 
 function matchingFact(
@@ -807,6 +717,181 @@ function commercialEligibility(
   };
 }
 
+function requirementGroupsForBrief(brief: ProjectBrief): RequirementGroup[] {
+  return brief.schemaVersion === 2
+    ? brief.requirementGroups
+    : deriveRequirementGroups(brief);
+}
+
+function requirementLabel(group: RequirementGroup): string {
+  return group.values.join(group.operator === "any_of" ? " oder " : " und ");
+}
+
+type AssessedValue = {
+  status: "satisfied" | "contradicted" | "unknown";
+  fact: LabeledFact | null;
+  structured: boolean;
+};
+
+function assessRequirementValue(
+  group: RequirementGroup,
+  value: string,
+  profile: FreelancerProfile,
+): AssessedValue {
+  if (group.category === "skill") {
+    const fact = matchingFact(profile.skillTags, value) ?? null;
+    return {
+      status: fact ? "satisfied" : "unknown",
+      fact,
+      structured: false,
+    };
+  }
+  if (group.category === "language") {
+    const fact = matchingNamedFact(profile.languages, value) ?? null;
+    return {
+      status: fact
+        ? "satisfied"
+        : profile.languages.length > 0
+          ? "contradicted"
+          : "unknown",
+      fact,
+      structured: false,
+    };
+  }
+  if (group.category === "work_mode") {
+    const satisfied = profile.workModes.includes(
+      value as FreelancerProfile["workModes"][number],
+    );
+    return {
+      status: satisfied ? "satisfied" : "contradicted",
+      fact: null,
+      structured: satisfied,
+    };
+  }
+  if (group.category === "location") {
+    const satisfied = Boolean(
+      profile.location && locationMatches(profile.location.value, value),
+    );
+    return {
+      status: satisfied
+        ? "satisfied"
+        : profile.location
+          ? "contradicted"
+          : "unknown",
+      fact: satisfied ? profile.location : null,
+      structured: false,
+    };
+  }
+  const facts =
+    group.category === "qualification"
+      ? profile.qualifications
+      : profile.contractualCapabilities;
+  const fact = matchingNamedFact(facts, value) ?? null;
+  return {
+    // These profile lists are not declared exhaustive. An absent value is
+    // therefore unknown, never evidence that the freelancer lacks it.
+    status: fact ? "satisfied" : "unknown",
+    fact,
+    structured: false,
+  };
+}
+
+function assessRequirementGroup(
+  group: RequirementGroup,
+  profile: FreelancerProfile,
+): RequirementAssessment {
+  const values = group.values.map((value) => ({
+    value,
+    assessment: assessRequirementValue(group, value, profile),
+  }));
+  const matched = values.filter(
+    ({ assessment }) => assessment.status === "satisfied",
+  );
+  const status =
+    group.operator === "any_of"
+      ? matched.length > 0
+        ? "satisfied"
+        : values.every(({ assessment }) => assessment.status === "contradicted")
+          ? "contradicted"
+          : "unknown"
+      : matched.length === values.length
+        ? "satisfied"
+        : values.some(({ assessment }) => assessment.status === "contradicted")
+          ? "contradicted"
+          : "unknown";
+  const satisfyingEvidence =
+    status !== "satisfied"
+      ? "unknown"
+      : group.operator === "any_of"
+        ? matched.some(({ assessment }) => assessment.fact?.source === "verified")
+          ? "verified"
+          : matched.some(({ assessment }) => assessment.structured)
+            ? "structured"
+            : "self_reported"
+        : matched.every(({ assessment }) => assessment.fact?.source === "verified")
+          ? "verified"
+          : matched.every(({ assessment }) => assessment.structured)
+            ? "structured"
+            : "self_reported";
+  return RequirementAssessmentSchema.parse({
+    groupId: group.id,
+    category: group.category,
+    priority: group.priority,
+    operator: group.operator,
+    values: group.values,
+    status,
+    matchedValues: matched.map(({ value }) => value),
+    evidence: satisfyingEvidence,
+  });
+}
+
+function ratioBasisPoints(satisfied: number, total: number): number {
+  return total === 0 ? 0 : Math.round((satisfied * 10_000) / total);
+}
+
+function evidenceBasisPoints(
+  evidence: RequirementAssessment["evidence"],
+): number {
+  if (evidence === "verified") return 10_000;
+  if (evidence === "structured") return 7_500;
+  if (evidence === "self_reported") return 5_000;
+  return 0;
+}
+
+function averageBasisPoints(values: readonly number[]): number | null {
+  return values.length === 0
+    ? null
+    : Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+}
+
+function weightedBasisPoints(
+  components: readonly { value: number | null; weight: number }[],
+): number {
+  const supplied = components.filter(
+    (component): component is { value: number; weight: number } =>
+      component.value !== null,
+  );
+  const totalWeight = supplied.reduce((sum, component) => sum + component.weight, 0);
+  if (totalWeight === 0) return 0;
+  return Math.round(
+    supplied.reduce(
+      (sum, component) => sum + component.value * component.weight,
+      0,
+    ) / totalWeight,
+  );
+}
+
+function availabilityFitBasisPoints(
+  profile: FreelancerProfile,
+  brief: ProjectBrief,
+): number {
+  if (!availableBy(profile, brief)) return 0;
+  if (profile.availability.status === "available") return 10_000;
+  if (profile.availability.status === "limited") return 6_000;
+  if (profile.availability.status === "unknown") return 3_000;
+  return 0;
+}
+
 export function evaluateProfile(
   rawBrief: ProjectBrief,
   rawProfile: FreelancerProfile,
@@ -816,6 +901,10 @@ export function evaluateProfile(
   const rejectionReasons: string[] = [];
   const matchReasons: string[] = [];
   const knownGaps: string[] = [];
+  const requirementGroups = requirementGroupsForBrief(brief);
+  const requirementAssessments = requirementGroups.map((group) =>
+    assessRequirementGroup(group, profile),
+  );
 
   /**
    * Whether the request states a value as a must-have.
@@ -827,8 +916,22 @@ export function evaluateProfile(
    * that leaves the field empty passes as a gap — which systematically punishes
    * the best-documented profiles.
    */
-  const isHard = (value: string): boolean =>
-    requirementStrength(brief.originalRequest, value) === "hard";
+  const isHard = (value: string): boolean => {
+    const normalizedValue = normalize(value);
+    const family = skillFamily(value);
+    const group = requirementGroups.find((candidate) =>
+      candidate.values.some((candidateValue) => {
+        const candidateFamily = skillFamily(candidateValue);
+        return (
+          normalize(candidateValue) === normalizedValue ||
+          (family !== null && candidateFamily === family)
+        );
+      }),
+    );
+    return group
+      ? group.priority === "hard"
+      : requirementStrength(brief.originalRequest, value) === "hard";
+  };
 
   // Being listed and active is a precondition for appearing at all, so it is
   // not a reason why this profile fits this project. It stays a rejection when
@@ -852,56 +955,87 @@ export function evaluateProfile(
     knownGaps.push("Projektverfügbarkeit ist nicht bestätigt; der Booking-Kalender ist verfügbar.");
   }
 
-  const requestedRequiredSkills = brief.requiredSkills ?? [];
-  const reclassifiedOptionalSkills = requestedRequiredSkills.filter(
-    (skill) => requirementStrength(brief.originalRequest, skill) === "soft",
+  const skillGroups = requirementGroups.filter(
+    (group) => group.category === "skill",
   );
-  const coreSkills = distinctSkills(
-    requestedRequiredSkills.filter(
-      (skill) => requirementStrength(brief.originalRequest, skill) !== "soft",
+  const coreSkillGroups = skillGroups.filter(
+    (group) => group.priority !== "optional",
+  );
+  const optionalSkillGroups = skillGroups.filter(
+    (group) => group.priority === "optional",
+  );
+  const coreSkillAssessments = requirementAssessments.filter(
+    (assessment) =>
+      assessment.category === "skill" && assessment.priority !== "optional",
+  );
+  const optionalSkillAssessments = requirementAssessments.filter(
+    (assessment) =>
+      assessment.category === "skill" && assessment.priority === "optional",
+  );
+  const relevanceAssessments =
+    coreSkillAssessments.length > 0
+      ? coreSkillAssessments
+      : optionalSkillAssessments;
+  const relevanceSkills = distinctSkills(
+    (coreSkillGroups.length > 0 ? coreSkillGroups : optionalSkillGroups).flatMap(
+      (group) => group.values,
     ),
   );
-  const optionalSkills = distinctSkills([
+  const coreSkills = distinctSkills(coreSkillGroups.flatMap((group) => group.values));
+  const optionalSkills = distinctSkills(
+    optionalSkillGroups.flatMap((group) => group.values),
+  );
+  const requestedSkillLabels = [
+    ...(brief.requiredSkills ?? []),
     ...(brief.optionalSkills ?? []),
-    ...reclassifiedOptionalSkills,
-  ]);
-  const relevanceSkills = coreSkills.length > 0 ? coreSkills : optionalSkills;
-  const matchedRelevanceSkills = relevanceSkills.filter((skill) =>
-    matchingFact(profile.skillTags, skill),
+  ];
+  const requestedSkillLabel = (value: string): string => {
+    const family = skillFamily(value);
+    return (
+      requestedSkillLabels.find((candidate) => {
+        const candidateFamily = skillFamily(candidate);
+        return (
+          normalize(candidate) === normalize(value) ||
+          (family !== null && candidateFamily === family)
+        );
+      }) ?? value
+    );
+  };
+  const coreSkillMatches = distinctSkills(
+    coreSkillAssessments
+      .flatMap((assessment) => assessment.matchedValues)
+      .map(requestedSkillLabel),
   );
-  const coreSkillMatches = coreSkills.filter((skill) =>
-    matchingFact(profile.skillTags, skill),
+  const optionalSkillMatches = distinctSkills(
+    optionalSkillAssessments
+      .flatMap((assessment) => assessment.matchedValues)
+      .map(requestedSkillLabel),
   );
-  const missingCoreSkills = coreSkills.filter(
-    (skill) => !matchingFact(profile.skillTags, skill),
-  );
-  if (relevanceSkills.length && matchedRelevanceSkills.length === 0) {
+  if (
+    relevanceAssessments.length > 0 &&
+    !relevanceAssessments.some((assessment) => assessment.matchedValues.length > 0)
+  ) {
     rejectionReasons.push(
       `Keine sinnvolle Kernüberschneidung mit dem Projekt ist im Profil belegt: ${relevanceSkills.join(", ")}.`,
     );
   } else if (coreSkillMatches.length) {
     matchReasons.push(`Belegte Kernkompetenzen: ${coreSkillMatches.join(", ")}.`);
-    if (missingCoreSkills.length) {
-      const explicitHardMissing = missingCoreSkills.filter(
-        isHard,
+    for (const assessment of coreSkillAssessments.filter(
+      (candidate) => candidate.status !== "satisfied",
+    )) {
+      const group = coreSkillGroups.find(
+        (candidate) => candidate.id === assessment.groupId,
       );
-      const otherMissing = missingCoreSkills.filter(
-        (skill) => !explicitHardMissing.includes(skill),
+      if (!group) continue;
+      knownGaps.push(
+        group.priority === "hard"
+          ? `Explizite Muss-Kompetenz ist im Profil nicht belegt: ${requirementLabel(group)}; vor dem Gespräch verifizieren.`
+          : `Weitere Kernkompetenz ist im Profil nicht belegt: ${requirementLabel(group)}.`,
       );
-      if (explicitHardMissing.length) {
-        knownGaps.push(
-          `Explizite Muss-Kompetenzen sind im Profil nicht belegt: ${explicitHardMissing.join(", ")}; vor dem Gespräch verifizieren.`,
-        );
-      }
-      if (otherMissing.length) {
-        knownGaps.push(
-          `Weitere Kernkompetenzen sind im Profil nicht belegt: ${otherMissing.join(", ")}.`,
-        );
-      }
     }
-  } else if (matchedRelevanceSkills.length) {
+  } else if (optionalSkillMatches.length) {
     matchReasons.push(
-      `Belegte ergänzende Kompetenzen: ${matchedRelevanceSkills.join(", ")}.`,
+      `Belegte ergänzende Kompetenzen: ${optionalSkillMatches.join(", ")}.`,
     );
   }
 
@@ -1058,17 +1192,23 @@ export function evaluateProfile(
   matchReasons.push(...commercial.reasons);
   knownGaps.push(...commercial.gaps);
 
-  const optionalSkillMatches = optionalSkills.filter((skill) =>
-    matchingFact(profile.skillTags, skill),
-  );
-  const missingOptionalSkills = optionalSkills.filter(
-    (skill) => !matchingFact(profile.skillTags, skill),
-  );
   if (optionalSkillMatches.length) {
     matchReasons.push(`Optionale Kompetenzen passend: ${optionalSkillMatches.join(", ")}.`);
   }
-  if (missingOptionalSkills.length) {
-    knownGaps.push(`Optionale Kompetenzen nicht aufgeführt: ${missingOptionalSkills.join(", ")}.`);
+  const missingOptionalGroups = optionalSkillAssessments.filter(
+    (assessment) => assessment.status !== "satisfied",
+  );
+  if (missingOptionalGroups.length) {
+    knownGaps.push(
+      `Optionale Kompetenzen nicht aufgeführt: ${missingOptionalGroups
+        .map((assessment) => {
+          const group = optionalSkillGroups.find(
+            (candidate) => candidate.id === assessment.groupId,
+          );
+          return group ? requirementLabel(group) : assessment.values.join(", ");
+        })
+        .join(", ")}.`,
+    );
   }
 
   const exactRequiredSkillMatches = coreSkills.filter((skill) =>
@@ -1090,8 +1230,97 @@ export function evaluateProfile(
     (skill) => matchingFact(profile.skillTags, skill)?.source === "verified",
   );
 
+  // The 70% reliability threshold is deliberately computed over skill groups.
+  // Language, mode and location have their own score component and every hard
+  // group still has to be satisfied, so categorical facts are neither ignored
+  // nor counted twice in the coverage gate.
+  const coreRequirementAssessments = coreSkillAssessments;
+  const optionalRequirementAssessments = optionalSkillAssessments;
+  const coverageAssessments =
+    coreRequirementAssessments.length > 0
+      ? coreRequirementAssessments
+      : optionalRequirementAssessments;
+  const coreCoverageBasisPoints = ratioBasisPoints(
+    coverageAssessments.filter((assessment) => assessment.status === "satisfied").length,
+    coverageAssessments.length,
+  );
+  const optionalCoverageBasisPoints =
+    optionalRequirementAssessments.length > 0
+      ? ratioBasisPoints(
+          optionalRequirementAssessments.filter(
+            (assessment) => assessment.status === "satisfied",
+          ).length,
+          optionalRequirementAssessments.length,
+        )
+      : null;
+  const categoricalAssessments = requirementAssessments.filter(
+    (assessment) => assessment.category !== "skill",
+  );
+  const categoricalFitBasisPoints =
+    categoricalAssessments.length > 0
+      ? ratioBasisPoints(
+          categoricalAssessments.filter(
+            (assessment) => assessment.status === "satisfied",
+          ).length,
+          categoricalAssessments.length,
+        )
+      : null;
+  const availabilityScore = availabilityFitBasisPoints(profile, brief);
+  const commercialFitBasisPoints =
+    commercial.confidence === "not_requested"
+      ? null
+      : commercial.confidence === "confirmed"
+        ? 10_000
+        : 4_000;
+  const evidenceConfidenceBasisPoints =
+    averageBasisPoints(
+      coreRequirementAssessments
+        .filter((assessment) => assessment.status === "satisfied")
+        .map((assessment) => evidenceBasisPoints(assessment.evidence)),
+    ) ?? 0;
+  const fitScoreBasisPoints = weightedBasisPoints([
+    {
+      value: coverageAssessments.length > 0 ? coreCoverageBasisPoints : null,
+      weight: 55,
+    },
+    { value: optionalCoverageBasisPoints, weight: 15 },
+    { value: categoricalFitBasisPoints, weight: 10 },
+    { value: availabilityScore, weight: 10 },
+    { value: commercialFitBasisPoints, weight: 5 },
+    {
+      value:
+        coreRequirementAssessments.some(
+          (assessment) => assessment.status === "satisfied",
+        )
+          ? evidenceConfidenceBasisPoints
+          : null,
+      weight: 5,
+    },
+  ]);
+  const scoreBreakdown = ScoreBreakdownSchema.parse({
+    scoreVersion: MATCHING_SCORE_VERSION,
+    fitScoreBasisPoints,
+    coreCoverageBasisPoints,
+    optionalCoverageBasisPoints,
+    categoricalFitBasisPoints,
+    availabilityFitBasisPoints: availabilityScore,
+    commercialFitBasisPoints,
+    evidenceConfidenceBasisPoints,
+    minimumCoreCoverageBasisPoints: MINIMUM_CORE_COVERAGE_BASIS_POINTS,
+  });
+  const eligible = rejectionReasons.length === 0;
+  const allHardRequirementsSatisfied = requirementAssessments
+    .filter((assessment) => assessment.priority === "hard")
+    .every((assessment) => assessment.status === "satisfied");
+  const reliable =
+    eligible &&
+    coverageAssessments.length > 0 &&
+    allHardRequirementsSatisfied &&
+    coreCoverageBasisPoints >= MINIMUM_CORE_COVERAGE_BASIS_POINTS;
+
   return ProfileEvaluationSchema.parse({
-    eligible: rejectionReasons.length === 0,
+    eligible,
+    reliable,
     rejectionReasons,
     matchReasons,
     knownGaps,
@@ -1101,6 +1330,8 @@ export function evaluateProfile(
     contextEvidenceMatches,
     verifiedRequiredSkillMatches,
     commercialConstraintConfidence: commercial.confidence,
+    requirementAssessments,
+    scoreBreakdown,
   });
 }
 
@@ -1136,7 +1367,79 @@ function sourceDisclosures(profile: FreelancerProfile): {
  * stays eligible.
  */
 function hasRankableRequirement(brief: ProjectBrief): boolean {
-  return Boolean((brief.requiredSkills ?? []).length || (brief.optionalSkills ?? []).length);
+  return requirementGroupsForBrief(brief).some(
+    (group) => group.category === "skill",
+  );
+}
+
+function matchingDecisionSnapshot(
+  status: Shortlist["status"],
+  evaluated: readonly {
+    profile: FreelancerProfile;
+    evaluation: ProfileEvaluation;
+  }[],
+  primaryProfileId: string | null,
+): MatchingDecisionSnapshot {
+  const openRequirementCounts = new Map<string, number>();
+  for (const { evaluation } of evaluated) {
+    for (const assessment of evaluation.requirementAssessments) {
+      if (
+        assessment.priority === "optional" ||
+        assessment.status === "satisfied"
+      ) {
+        continue;
+      }
+      const label = assessment.values.join(
+        assessment.operator === "any_of" ? " oder " : " und ",
+      );
+      openRequirementCounts.set(
+        label,
+        (openRequirementCounts.get(label) ?? 0) + 1,
+      );
+    }
+  }
+  return MatchingDecisionSnapshotSchema.parse({
+    schemaVersion: 1,
+    scoreVersion: MATCHING_SCORE_VERSION,
+    status,
+    minimumCoreCoverageBasisPoints: MINIMUM_CORE_COVERAGE_BASIS_POINTS,
+    evaluatedProfileCount: evaluated.length,
+    catalogEligibleProfileCount: evaluated.filter(
+      ({ evaluation }) => evaluation.eligible,
+    ).length,
+    reliableProfileCount: evaluated.filter(
+      ({ evaluation }) => evaluation.reliable,
+    ).length,
+    failureCounts: {
+      hardConflict: evaluated.filter(({ evaluation }) =>
+        evaluation.requirementAssessments.some(
+          (assessment) =>
+            assessment.priority === "hard" &&
+            assessment.status === "contradicted",
+        ),
+      ).length,
+      hardUnknown: evaluated.filter(({ evaluation }) =>
+        evaluation.requirementAssessments.some(
+          (assessment) =>
+            assessment.priority === "hard" && assessment.status === "unknown",
+        ),
+      ).length,
+      belowCoreCoverage: evaluated.filter(
+        ({ evaluation }) =>
+          evaluation.eligible &&
+          evaluation.scoreBreakdown.coreCoverageBasisPoints <
+            MINIMUM_CORE_COVERAGE_BASIS_POINTS,
+      ).length,
+    },
+    primaryProfileId,
+    openCoreRequirements: [...openRequirementCounts.entries()]
+      .sort(
+        ([leftLabel, leftCount], [rightLabel, rightCount]) =>
+          rightCount - leftCount || compareText(leftLabel, rightLabel),
+      )
+      .slice(0, 5)
+      .map(([label]) => label),
+  });
 }
 
 export function buildShortlist(
@@ -1145,12 +1448,22 @@ export function buildShortlist(
 ): Shortlist {
   const brief = ProjectBriefSchema.parse(rawBrief);
 
-  if (!hasRankableRequirement(brief)) {
+  const clarificationCode = hasAmbiguousSkillConnectors(brief)
+    ? "ambiguous_requirement_logic"
+    : !hasRankableRequirement(brief)
+      ? "no_extractable_requirement"
+      : null;
+  if (clarificationCode) {
     return ShortlistSchema.parse({
       ruleVersion: MATCHING_RULE_VERSION,
       orderingRule: MATCHING_ORDER_RULE,
       status: "needs_clarification",
-      clarificationCode: "no_extractable_requirement",
+      clarificationCode,
+      decisionSnapshot: matchingDecisionSnapshot(
+        "needs_clarification",
+        [],
+        null,
+      ),
       matches: [],
     });
   }
@@ -1160,12 +1473,51 @@ export function buildShortlist(
     return { profile, evaluation: evaluateProfile(brief, profile) };
   });
 
-  const eligible = evaluated.filter((item) => item.evaluation.eligible);
-  eligible.sort((left, right) => {
-    const coreSkillDifference =
-      right.evaluation.coreSkillMatches.length -
-      left.evaluation.coreSkillMatches.length;
-    if (coreSkillDifference) return coreSkillDifference;
+  const reliable = evaluated.filter((item) => item.evaluation.reliable);
+  if (reliable.length === 0) {
+    return ShortlistSchema.parse({
+      ruleVersion: MATCHING_RULE_VERSION,
+      orderingRule: MATCHING_ORDER_RULE,
+      status: "no_reliable_match",
+      clarificationCode: null,
+      decisionSnapshot: matchingDecisionSnapshot(
+        "no_reliable_match",
+        evaluated,
+        null,
+      ),
+      matches: [],
+    });
+  }
+
+  reliable.sort((left, right) => {
+    const fitScoreDifference =
+      right.evaluation.scoreBreakdown.fitScoreBasisPoints -
+      left.evaluation.scoreBreakdown.fitScoreBasisPoints;
+    if (fitScoreDifference) return fitScoreDifference;
+    const coreCoverageDifference =
+      right.evaluation.scoreBreakdown.coreCoverageBasisPoints -
+      left.evaluation.scoreBreakdown.coreCoverageBasisPoints;
+    if (coreCoverageDifference) return coreCoverageDifference;
+    const evidenceConfidenceDifference =
+      right.evaluation.scoreBreakdown.evidenceConfidenceBasisPoints -
+      left.evaluation.scoreBreakdown.evidenceConfidenceBasisPoints;
+    if (evidenceConfidenceDifference) return evidenceConfidenceDifference;
+    const verifiedDifference =
+      right.evaluation.requirementAssessments.filter(
+        (assessment) =>
+          assessment.category === "skill" &&
+          assessment.priority !== "optional" &&
+          assessment.status === "satisfied" &&
+          assessment.evidence === "verified",
+      ).length -
+      left.evaluation.requirementAssessments.filter(
+        (assessment) =>
+          assessment.category === "skill" &&
+          assessment.priority !== "optional" &&
+          assessment.status === "satisfied" &&
+          assessment.evidence === "verified",
+      ).length;
+    if (verifiedDifference) return verifiedDifference;
     const commercialConfidenceDifference =
       commercialConfidencePriority(right.evaluation.commercialConstraintConfidence) -
       commercialConfidencePriority(left.evaluation.commercialConstraintConfidence);
@@ -1175,16 +1527,23 @@ export function buildShortlist(
       availabilityPriority(right.profile.availability.status);
     if (availabilityDifference) return availabilityDifference;
     const optionalDifference =
-      right.evaluation.optionalSkillMatches.length - left.evaluation.optionalSkillMatches.length;
+      right.evaluation.requirementAssessments.filter(
+        (assessment) =>
+          assessment.category === "skill" &&
+          assessment.priority === "optional" &&
+          assessment.status === "satisfied",
+      ).length -
+      left.evaluation.requirementAssessments.filter(
+        (assessment) =>
+          assessment.category === "skill" &&
+          assessment.priority === "optional" &&
+          assessment.status === "satisfied",
+      ).length;
     if (optionalDifference) return optionalDifference;
     const contextEvidenceDifference =
       right.evaluation.contextEvidenceMatches.length -
       left.evaluation.contextEvidenceMatches.length;
     if (contextEvidenceDifference) return contextEvidenceDifference;
-    const verifiedDifference =
-      right.evaluation.verifiedRequiredSkillMatches.length -
-      left.evaluation.verifiedRequiredSkillMatches.length;
-    if (verifiedDifference) return verifiedDifference;
     const leftDate = left.profile.availability.availableFrom ?? "9999-12-31";
     const rightDate = right.profile.availability.availableFrom ?? "9999-12-31";
     if (leftDate !== rightDate) return leftDate < rightDate ? -1 : 1;
@@ -1193,7 +1552,7 @@ export function buildShortlist(
     return compareText(left.profile.id, right.profile.id);
   });
 
-  const matches = eligible.slice(0, 3).map(({ profile, evaluation }) => ({
+  const matches = reliable.slice(0, 3).map(({ profile, evaluation }, index) => ({
     profile,
     matchReasons: evaluation.matchReasons,
     knownGaps: evaluation.knownGaps,
@@ -1201,9 +1560,21 @@ export function buildShortlist(
     availabilityStatus: profile.availability.status,
     availabilityCheckedAt: profile.availability.checkedAt,
     profileDataVersion: profile.dataVersion,
+    recommendationRole: index === 0 ? "primary" as const : "alternative" as const,
+    fitScore: Math.round(evaluation.scoreBreakdown.fitScoreBasisPoints / 100),
+    coreCoverage: Math.round(
+      evaluation.scoreBreakdown.coreCoverageBasisPoints / 100,
+    ),
+    requirementAssessments: evaluation.requirementAssessments,
+    scoreBreakdown: evaluation.scoreBreakdown,
     orderingEvidence: {
       optionalSkillMatchCount: evaluation.optionalSkillMatches.length,
       coreSkillMatchCount: evaluation.coreSkillMatches.length,
+      fitScoreBasisPoints: evaluation.scoreBreakdown.fitScoreBasisPoints,
+      coreCoverageBasisPoints:
+        evaluation.scoreBreakdown.coreCoverageBasisPoints,
+      evidenceConfidenceBasisPoints:
+        evaluation.scoreBreakdown.evidenceConfidenceBasisPoints,
       contextEvidenceMatchCount: evaluation.contextEvidenceMatches.length,
       verifiedRequiredSkillMatchCount: evaluation.verifiedRequiredSkillMatches.length,
       commercialConstraintConfidence: evaluation.commercialConstraintConfidence,
@@ -1217,6 +1588,11 @@ export function buildShortlist(
     orderingRule: MATCHING_ORDER_RULE,
     status: "ranked",
     clarificationCode: null,
+    decisionSnapshot: matchingDecisionSnapshot(
+      "ranked",
+      evaluated,
+      matches[0]?.profile.id ?? null,
+    ),
     matches,
   });
 }

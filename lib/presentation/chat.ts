@@ -38,8 +38,24 @@ function formatMoney(
 
 function briefSummary(brief: ProjectBrief): string {
   const details: string[] = [];
+  const requiredSkillGroups =
+    brief.schemaVersion === 2
+      ? brief.requirementGroups
+          .filter(
+            (group) => group.category === "skill" && group.priority !== "optional",
+          )
+          .slice(0, 4)
+      : [];
   const requiredSkills = (brief.requiredSkills ?? []).slice(0, 4);
-  if (requiredSkills.length) {
+  if (requiredSkillGroups.length) {
+    details.push(
+      `Kernkompetenzen: ${requiredSkillGroups
+        .map((group) =>
+          group.values.join(group.operator === "any_of" ? " oder " : " und "),
+        )
+        .join(" · ")}`,
+    );
+  } else if (requiredSkills.length) {
     details.push(`Pflichtkompetenzen: ${requiredSkills.join(", ")}`);
   }
   if (brief.language) details.push(`Sprache: ${brief.language}`);
@@ -93,6 +109,18 @@ export function presentBrief(brief: ProjectBrief): StructuredBrief {
     availabilityRequirement: brief.availabilityRequirement,
     contractualRequirements: brief.contractualRequirements ?? [],
     unknownFields: brief.unknownFields,
+    requirementGroups:
+      brief.schemaVersion === 2
+        ? brief.requirementGroups.map(
+            ({ id, category, priority, operator, values }) => ({
+              id,
+              category,
+              priority,
+              operator,
+              values,
+            }),
+          )
+        : [],
   };
 }
 
@@ -158,6 +186,9 @@ export function presentMatch(match: ShortlistMatch): FreelancerProfileResult {
     availabilityUpdatedAt: match.availabilityCheckedAt,
     matchReasons: match.matchReasons,
     knownGaps: match.knownGaps,
+    recommendationRole: match.recommendationRole ?? null,
+    fitScore: match.fitScore ?? null,
+    coreCoverage: match.coreCoverage ?? null,
     introPolicy: {
       type: bookingUrl ? "free" : "premium",
       label: bookingUrl ? "Direkt buchbares Erstgespräch" : "Aktuell nicht direkt buchbar",

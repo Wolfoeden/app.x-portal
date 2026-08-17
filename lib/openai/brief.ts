@@ -7,7 +7,7 @@ import { z } from "zod";
 import {
   BRIEF_FACT_FIELDS,
   ProjectBriefSchema,
-  deriveUnknownFields,
+  createProjectBriefV2,
   parseFallbackBrief,
   type BriefFactField,
   type ProjectBrief,
@@ -198,6 +198,7 @@ Rules:
 - Preserve corrections in the latest message over older statements.
 - Treat a follow-up as an addition unless it explicitly corrects or removes an earlier fact.
 - Put skills explicitly described as mandatory in requiredSkills and clearly optional skills in optionalSkills.
+- When the source names alternatives with "or" or "oder", include every named alternative; never choose only one.
 - Put explicit certifications in qualifications. Put explicit supplier eligibility, residency, NDA, invoicing, compliance or other contract conditions in contractualRequirements. Keep other explicit boundaries in constraints. If the wording is unclear, retain it only as a constraint instead of guessing its legal effect.
 - A concise project title may summarize the request, but every other factual field must be grounded in the supplied text.
 - Do not select, score, rank, or discuss freelancer profiles.`;
@@ -938,10 +939,7 @@ function enhanceDeterministicBrief(
     enhanced.availabilityRequirement = enhanced.startWindow.raw;
   }
 
-  return ProjectBriefSchema.parse({
-    ...enhanced,
-    unknownFields: deriveUnknownFields(enhanced),
-  });
+  return createProjectBriefV2(enhanced);
 }
 
 function parseDeterministicSource(source: string, now: Date): ProjectBrief {
@@ -955,10 +953,7 @@ function parseDeterministicSource(source: string, now: Date): ProjectBrief {
     originalRequest: source,
     summary: normalizedSummary(source),
   };
-  const validated = ProjectBriefSchema.parse({
-    ...reconstructed,
-    unknownFields: deriveUnknownFields(reconstructed),
-  });
+  const validated = createProjectBriefV2(reconstructed);
   return enhanceDeterministicBrief(validated, source);
 }
 
@@ -988,7 +983,7 @@ export function buildDeterministicBrief(
 
   const latest = input.latestMessage?.trim();
   if (!latest) {
-    return ProjectBriefSchema.parse({
+    return createProjectBriefV2({
       ...previous,
       originalRequest: source,
       summary: normalizedSummary(source),
@@ -1053,10 +1048,7 @@ export function buildDeterministicBrief(
       : removeExplicitItems(candidate.contractualRequirements, latest),
   };
 
-  return ProjectBriefSchema.parse({
-    ...corrected,
-    unknownFields: deriveUnknownFields(corrected),
-  });
+  return createProjectBriefV2(corrected);
 }
 
 function hasLanguageEvidence(source: string, language: string): boolean {
@@ -1195,10 +1187,7 @@ export function reconcileAiBrief(
     else if (field !== "projectTitle") candidate[field] = null as never;
   }
 
-  return ProjectBriefSchema.parse({
-    ...candidate,
-    unknownFields: deriveUnknownFields(candidate),
-  });
+  return createProjectBriefV2(candidate);
 }
 
 function fallbackResult(

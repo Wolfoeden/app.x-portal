@@ -1595,13 +1595,27 @@ dd.is-unknown,
 }
 
 .availability,
-.intro-badge {
+.intro-badge,
+.match-role,
+.match-score {
   border-radius: var(--radius-pill);
   padding: 4px 7px;
   font-size: var(--fs-2xs);
   font-weight: 710;
   letter-spacing: 0.025em;
   white-space: nowrap;
+}
+
+.match-role {
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: #fff;
+}
+
+.match-score {
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  color: var(--ink-soft);
 }
 
 .availability.available {
@@ -1643,6 +1657,13 @@ dd.is-unknown,
   color: var(--muted);
   font-size: var(--fs-xs);
   line-height: 1.55;
+}
+
+.matching-score-note {
+  margin: -5px 0 12px;
+  color: var(--muted-light);
+  font-size: var(--fs-2xs);
+  line-height: 1.45;
 }
 
 .profile-tags {

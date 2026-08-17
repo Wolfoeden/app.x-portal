@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { deriveRequirementGroups } from "./requirements";
+
 export const WORK_MODES = ["remote", "on_site", "hybrid", "unknown"] as const;
 export const WorkModeSchema = z.enum(WORK_MODES);
 
@@ -81,6 +83,50 @@ export const DurationSchema = z
 
 const NormalizedTextSchema = z.string().trim().min(1).max(500);
 const NormalizedTextListSchema = z.array(NormalizedTextSchema).max(50).nullable();
+const ProjectTitleSchema = z.string().trim().min(1).max(160).nullable();
+const SummarySchema = z.string().trim().min(1).max(4_000);
+const LanguageSchema = z.string().trim().min(1).max(80).nullable();
+const LocationSchema = z.string().trim().min(1).max(200).nullable();
+const AvailabilityRequirementSchema = z.string().trim().min(1).max(300).nullable();
+
+export const RequirementPrioritySchema = z.enum(["hard", "core", "optional"]);
+export const RequirementOperatorSchema = z.enum(["all_of", "any_of"]);
+export const RequirementCategorySchema = z.enum([
+  "skill",
+  "language",
+  "work_mode",
+  "location",
+  "qualification",
+  "contractual",
+]);
+
+export const RequirementGroupSchema = z
+  .object({
+    id: z.string().trim().min(1).max(500),
+    category: RequirementCategorySchema,
+    priority: RequirementPrioritySchema,
+    operator: RequirementOperatorSchema,
+    values: z.array(NormalizedTextSchema).min(1).max(50),
+    sourceText: z.string().trim().min(1).max(240).nullable(),
+  })
+  .strict()
+  .superRefine((group, context) => {
+    const normalized = group.values.map((value) => value.toLocaleLowerCase("en-US"));
+    if (new Set(normalized).size !== normalized.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["values"],
+        message: "Requirement-group values must be distinct.",
+      });
+    }
+    if (group.operator === "any_of" && group.values.length < 2) {
+      context.addIssue({
+        code: "custom",
+        path: ["values"],
+        message: "An any_of requirement group needs at least two alternatives.",
+      });
+    }
+  });
 
 export const BRIEF_FACT_FIELDS = [
   "projectTitle",
@@ -102,29 +148,32 @@ export const BRIEF_FACT_FIELDS = [
 export const BriefFactFieldSchema = z.enum(BRIEF_FACT_FIELDS);
 export type BriefFactField = z.infer<typeof BriefFactFieldSchema>;
 
-export const ProjectBriefSchema = z
+const ProjectBriefCommonSchema = z
   .object({
-    schemaVersion: z.literal(1),
     originalRequest: z.string().min(1).max(20_000),
-    projectTitle: z.string().trim().min(1).max(160).nullable(),
-    summary: z.string().trim().min(1).max(4_000),
+    projectTitle: ProjectTitleSchema,
+    summary: SummarySchema,
     requiredSkills: NormalizedTextListSchema,
     optionalSkills: NormalizedTextListSchema,
-    language: z.string().trim().min(1).max(80).nullable(),
+    language: LanguageSchema,
     workMode: WorkModeSchema,
-    location: z.string().trim().min(1).max(200).nullable(),
+    location: LocationSchema,
     startWindow: StartWindowSchema.nullable(),
     duration: DurationSchema.nullable(),
     budget: MoneyRangeSchema.nullable(),
     rate: RateRangeSchema.nullable(),
     constraints: NormalizedTextListSchema,
     qualifications: NormalizedTextListSchema,
-    availabilityRequirement: z.string().trim().min(1).max(300).nullable(),
+    availabilityRequirement: AvailabilityRequirementSchema,
     contractualRequirements: NormalizedTextListSchema,
     unknownFields: z.array(BriefFactFieldSchema),
   })
-  .strict()
-  .superRefine((brief, context) => {
+  .strict();
+
+function refineBriefUnknownFields(
+  brief: z.infer<typeof ProjectBriefCommonSchema>,
+  context: z.RefinementCtx,
+): void {
     const expected = deriveUnknownFields(brief);
     const supplied = new Set(brief.unknownFields);
 
@@ -146,9 +195,37 @@ export const ProjectBriefSchema = z
         });
       }
     }
+}
+
+export const ProjectBriefV1Schema = ProjectBriefCommonSchema.extend({
+  schemaVersion: z.literal(1),
+}).superRefine(refineBriefUnknownFields);
+
+export const ProjectBriefV2Schema = ProjectBriefCommonSchema.extend({
+  schemaVersion: z.literal(2),
+  requirementGroups: z.array(RequirementGroupSchema).max(100),
+})
+  .superRefine(refineBriefUnknownFields)
+  .superRefine((brief, context) => {
+    const ids = brief.requirementGroups.map((group) => group.id);
+    if (new Set(ids).size !== ids.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["requirementGroups"],
+        message: "Requirement-group ids must be distinct.",
+      });
+    }
   });
 
+export const ProjectBriefSchema = z.union([
+  ProjectBriefV2Schema,
+  ProjectBriefV1Schema,
+]);
+
 export type ProjectBrief = z.infer<typeof ProjectBriefSchema>;
+export type ProjectBriefV1 = z.infer<typeof ProjectBriefV1Schema>;
+export type ProjectBriefV2 = z.infer<typeof ProjectBriefV2Schema>;
+export type RequirementGroup = z.infer<typeof RequirementGroupSchema>;
 export type MoneyRange = z.infer<typeof MoneyRangeSchema>;
 export type RateRange = z.infer<typeof RateRangeSchema>;
 export type StartWindow = z.infer<typeof StartWindowSchema>;
@@ -167,27 +244,49 @@ export function deriveUnknownFields(brief: BriefFactValues): BriefFactField[] {
 
 export const ProjectBriefPatchSchema = z
   .object({
-    projectTitle: ProjectBriefSchema.shape.projectTitle.optional(),
-    summary: ProjectBriefSchema.shape.summary.optional(),
-    requiredSkills: ProjectBriefSchema.shape.requiredSkills.optional(),
-    optionalSkills: ProjectBriefSchema.shape.optionalSkills.optional(),
-    language: ProjectBriefSchema.shape.language.optional(),
+    projectTitle: ProjectTitleSchema.optional(),
+    summary: SummarySchema.optional(),
+    requiredSkills: NormalizedTextListSchema.optional(),
+    optionalSkills: NormalizedTextListSchema.optional(),
+    language: LanguageSchema.optional(),
     workMode: WorkModeSchema.optional(),
-    location: ProjectBriefSchema.shape.location.optional(),
+    location: LocationSchema.optional(),
     startWindow: StartWindowSchema.nullable().optional(),
     duration: DurationSchema.nullable().optional(),
     budget: MoneyRangeSchema.nullable().optional(),
     rate: RateRangeSchema.nullable().optional(),
-    constraints: ProjectBriefSchema.shape.constraints.optional(),
-    qualifications: ProjectBriefSchema.shape.qualifications.optional(),
-    availabilityRequirement:
-      ProjectBriefSchema.shape.availabilityRequirement.optional(),
-    contractualRequirements:
-      ProjectBriefSchema.shape.contractualRequirements.optional(),
+    constraints: NormalizedTextListSchema.optional(),
+    qualifications: NormalizedTextListSchema.optional(),
+    availabilityRequirement: AvailabilityRequirementSchema.optional(),
+    contractualRequirements: NormalizedTextListSchema.optional(),
   })
   .strict();
 
 export type ProjectBriefPatch = z.infer<typeof ProjectBriefPatchSchema>;
+
+type ProjectBriefFacts = Omit<
+  z.infer<typeof ProjectBriefCommonSchema>,
+  "unknownFields"
+> & { unknownFields?: BriefFactField[] };
+
+/** Creates the only brief version emitted by new analyses. */
+export function createProjectBriefV2(
+  candidate: ProjectBriefFacts,
+): ProjectBriefV2 {
+  const requirementGroups = deriveRequirementGroups(candidate).map((group) => ({
+    ...group,
+    // The excerpt is useful while deriving the group but duplicates text that
+    // already lives in originalRequest. Final briefs stay below the database's
+    // 32 KiB JSON limit by persisting only the reviewed semantics.
+    sourceText: null,
+  }));
+  return ProjectBriefV2Schema.parse({
+    ...candidate,
+    schemaVersion: 2,
+    requirementGroups,
+    unknownFields: deriveUnknownFields(candidate),
+  });
+}
 
 /**
  * Applies an explicit correction from the user. Passing null removes a fact and
@@ -199,8 +298,5 @@ export function applyBriefPatch(
 ): ProjectBrief {
   const patch = ProjectBriefPatchSchema.parse(input);
   const candidate = { ...current, ...patch };
-  return ProjectBriefSchema.parse({
-    ...candidate,
-    unknownFields: deriveUnknownFields(candidate),
-  });
+  return createProjectBriefV2(candidate);
 }

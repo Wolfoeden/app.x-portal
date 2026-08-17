@@ -141,7 +141,7 @@ export async function GET() {
 
     return NextResponse.json(
       {
-        formatVersion: 4,
+        formatVersion: 5,
         generatedAt: new Date().toISOString(),
         user: { id: user.id, email: user.email },
         userProfile: userProfile.data ?? null,

@@ -287,13 +287,32 @@ select ok(
 );
 
 select ok(
-  not has_table_privilege('anon', 'public.freelancer_profiles', 'SELECT'),
-  'unauthenticated anon role cannot read profiles; product guests must sign in anonymously'
+  not has_table_privilege('anon', 'public.freelancer_profiles', 'SELECT')
+  and not has_table_privilege('anon', 'public.freelancer_profiles', 'INSERT')
+  and not has_table_privilege('anon', 'public.freelancer_profiles', 'UPDATE')
+  and not has_table_privilege('anon', 'public.freelancer_profiles', 'DELETE'),
+  'unauthenticated anon role cannot enumerate or mutate the curated profile catalogue'
 );
 
 select ok(
-  not has_table_privilege('authenticated', 'public.freelancer_profiles', 'SELECT'),
-  'authenticated browsers cannot enumerate the curated profile catalogue'
+  not has_table_privilege('authenticated', 'public.freelancer_profiles', 'SELECT')
+  and not has_table_privilege('authenticated', 'public.freelancer_profiles', 'INSERT')
+  and not has_table_privilege('authenticated', 'public.freelancer_profiles', 'UPDATE')
+  and not has_table_privilege('authenticated', 'public.freelancer_profiles', 'DELETE'),
+  'authenticated browsers cannot enumerate or mutate the curated profile catalogue'
+);
+
+select is(
+  (
+    select count(*)::bigint
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'freelancer_profiles'
+      and cmd in ('INSERT', 'UPDATE', 'DELETE', 'ALL')
+      and 'authenticated' = any (roles)
+  ),
+  0::bigint,
+  'no authenticated write policy exists for the curated profile catalogue'
 );
 
 select ok(

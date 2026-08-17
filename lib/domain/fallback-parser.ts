@@ -5,55 +5,16 @@ import {
   type ProjectDuration,
   type RateRange,
   type StartWindow,
-  ProjectBriefSchema,
-  deriveUnknownFields,
+  createProjectBriefV2,
 } from "./brief";
-
-const DEFAULT_SKILL_CATALOG = [
-  "React",
-  "TypeScript",
-  "JavaScript",
-  "Node.js",
-  "Next.js",
-  "Python",
-  "SAP S/4HANA",
-  "SAP MM",
-  "SAP PP",
-  "SAP SCM",
-  "SAP Customizing",
-  "SAP Integration",
-  "Project Management",
-  "Requirements Management",
-  "Process Management",
-  "Information Security",
-  "Cybersecurity",
-  "UX Design",
-  "UI Design",
-] as const;
-
-const DEFAULT_SKILL_ALIASES: Readonly<Record<string, readonly string[]>> = {
-  "SAP S/4HANA": ["s/4hana", "sap s4hana"],
-  "SAP Customizing": ["customizing", "sap customizing"],
-  "SAP Integration": ["sap integration", "sap-integrationen", "schnittstellen"],
-  "Project Management": ["projektmanagement", "projektleitung"],
-  "Requirements Management": [
-    "anforderungsmanagement",
-    "anforderungsanalyse",
-    "requirements engineering",
-  ],
-  "Process Management": ["prozessmanagement", "prozessoptimierung"],
-  "Information Security": [
-    "informationssicherheit",
-    "it-sicherheit",
-    "isms",
-  ],
-  Cybersecurity: ["cybersicherheit", "cyber security"],
-  "UX Design": ["ux-design", "user experience design"],
-  "UI Design": ["ui-design", "interface design"],
-};
+import {
+  DEFAULT_SKILL_ALIASES,
+  DEFAULT_SKILL_CATALOG,
+} from "./skill-taxonomy";
 
 const DEFAULT_LANGUAGE_ALIASES: Readonly<Record<string, string>> = {
   deutsch: "German",
+  deutschkenntnisse: "German",
   german: "German",
   englisch: "English",
   english: "English",
@@ -175,6 +136,9 @@ function parseLanguage(
       `\\b${escaped}\\s+(?:speaker|sprachkenntnisse)\\b`,
       `\\b${escaped}\\b(?=\\s*[,;.]|\\s*$)`,
     ];
+    if (/kenntnisse$/iu.test(alias)) {
+      explicitPatterns.push(`\\b${escaped}\\b`);
+    }
     if (new RegExp(explicitPatterns.join("|"), "iu").test(text)) return canonical;
   }
   return null;
@@ -359,7 +323,6 @@ export function parseFallbackBrief(
   const constraints = parseLabeledList(originalRequest, ["constraints", "einschränkungen"]);
   const explicitContractualRequirements = parseLabeledList(originalRequest, ["contract terms", "contractual requirements", "vertragsanforderungen"]);
   const candidate = {
-    schemaVersion: 1 as const,
     originalRequest,
     projectTitle: null,
     summary: originalRequest.replace(/\s+/gu, " ").trim(),
@@ -381,8 +344,5 @@ export function parseFallbackBrief(
     ]),
   };
 
-  return ProjectBriefSchema.parse({
-    ...candidate,
-    unknownFields: deriveUnknownFields(candidate),
-  });
+  return createProjectBriefV2(candidate);
 }

@@ -2,7 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   audit: vi.fn().mockResolvedValue("trace"),
-  buildShortlist: vi.fn((): { matches: unknown[] } => ({ matches: [] })),
+  buildShortlist: vi.fn(
+    (): {
+      status: "no_reliable_match" | "ranked" | "needs_clarification";
+      matches: unknown[];
+    } => ({
+      status: "no_reliable_match",
+      matches: [],
+    }),
+  ),
   execute: vi.fn(),
   completeExternalSearch: vi.fn(),
   fetchProfiles: vi.fn().mockResolvedValue([]),
@@ -119,7 +127,10 @@ beforeEach(() => {
   mocks.audit.mockClear();
   mocks.fetchProfiles.mockClear();
   mocks.buildShortlist.mockReset();
-  mocks.buildShortlist.mockReturnValue({ matches: [] });
+  mocks.buildShortlist.mockReturnValue({
+    status: "no_reliable_match",
+    matches: [],
+  });
   mocks.search.mockReset();
   mocks.execute.mockReset();
   mocks.completeExternalSearch.mockReset();
@@ -233,7 +244,7 @@ describe("POST /api/freelancer-search", () => {
   });
 
   it("does not spend on web search when an internal match now exists", async () => {
-    mocks.buildShortlist.mockReturnValue({ matches: [{}] });
+    mocks.buildShortlist.mockReturnValue({ status: "ranked", matches: [{}] });
     const response = await POST(request());
 
     expect(response.status).toBe(409);
@@ -244,6 +255,21 @@ describe("POST /api/freelancer-search", () => {
         outcome: "denied",
       }),
     );
+  });
+
+  it("does not spend when the internal brief still needs clarification", async () => {
+    mocks.buildShortlist.mockReturnValue({
+      status: "needs_clarification",
+      matches: [],
+    });
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(body.error).toContain("keine Credits belastet");
+    expect(mocks.reserveProductCredits).not.toHaveBeenCalled();
+    expect(mocks.execute).not.toHaveBeenCalled();
   });
 
   it("returns external results separately with an explicit disclosure", async () => {

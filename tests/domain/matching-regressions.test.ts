@@ -374,8 +374,14 @@ describe("regression: the order of extracted skills is not a weighting", () => {
     // Measured against production data this promoted fourteen requirements
     // consultants above the Azure and RAG specialists the request was about.
     const brief = build(
-      "Anforderungsmanagement\n\nGesucht: KI-Copilot mit RAG und Dokumentenanalyse auf Azure.",
-      ["Requirements Management", "RAG", "Document Analysis"],
+      "Anforderungsmanagement\nPython\n\nGesucht: KI-Copilot mit RAG und Dokumentenanalyse auf Azure.",
+      [
+        "Requirements Management",
+        "Python",
+        "RAG",
+        "Document Analysis",
+        "Microsoft Azure",
+      ],
       null,
     );
     const oneGenericSkill = variant("00000000-0000-4000-8000-0000000000c8", "Nur Anforderungen", {
@@ -385,6 +391,8 @@ describe("regression: the order of extracted skills is not a weighting", () => {
       skillTags: [
         { value: "RAG", source: "self_reported" as const },
         { value: "Document Analysis", source: "self_reported" as const },
+        { value: "Microsoft Azure", source: "self_reported" as const },
+        { value: "Python", source: "self_reported" as const },
       ],
     });
 

@@ -164,8 +164,9 @@ describe("deterministic freelancer matching", () => {
 
     const evaluation = evaluateProfile(brief, profile);
     expect(evaluation.eligible).toBe(true);
+    expect(evaluation.reliable).toBe(false);
     expect(evaluation.knownGaps).toContain(
-      "Explizite Muss-Kompetenzen sind im Profil nicht belegt: SAP MM; vor dem Gespräch verifizieren.",
+      "Explizite Muss-Kompetenz ist im Profil nicht belegt: SAP MM; vor dem Gespräch verifizieren.",
     );
     expect(evaluation.knownGaps).toContain(
       "Optionale Kompetenzen nicht aufgeführt: SAP SCM.",
@@ -192,7 +193,10 @@ describe("deterministic freelancer matching", () => {
     const relevant = {
       ...profileFixtures[0]!,
       id: "00000000-0000-4000-8000-000000000021",
-      skillTags: [{ value: "RAG", source: "verified" as const }],
+      skillTags: [
+        { value: "RAG", source: "verified" as const },
+        { value: "Document Analysis", source: "verified" as const },
+      ],
     };
     const optionalOnly = {
       ...profileFixtures[0]!,
@@ -207,7 +211,7 @@ describe("deterministic freelancer matching", () => {
     expect(shortlist.matches.map((match) => match.profile.id)).toEqual([
       relevant.id,
     ]);
-    expect(shortlist.matches[0]?.orderingEvidence.coreSkillMatchCount).toBe(1);
+    expect(shortlist.matches[0]?.orderingEvidence.coreSkillMatchCount).toBe(2);
     expect(shortlist.matches[0]?.knownGaps).toContain(
       "Optionale Kompetenzen nicht aufgeführt: Python, FastAPI, PostgreSQL.",
     );
@@ -519,16 +523,12 @@ describe("deterministic freelancer matching", () => {
 
     const shortlist = buildShortlist(brief, candidates);
 
-    expect(shortlist.matches).toHaveLength(3);
-    // Order changed in v10. All three sensible candidates are still kept, which
-    // is what this test is named for; places two and three swap because ranking
-    // now counts matched core skills rather than asking who carries the
-    // first-listed one. M365 Automation Engineer matches two core skills, RAG
-    // Backend Engineer one core plus two optional.
+    // v11 recommends only profiles that cover at least 70% of the four core
+    // groups. The architect covers three; the former places two and three cover
+    // only two and one and therefore remain honest non-results.
+    expect(shortlist.matches).toHaveLength(1);
     expect(shortlist.matches.map((match) => match.profile.displayName)).toEqual([
       "AI Copilot Architect",
-      "M365 Automation Engineer",
-      "RAG Backend Engineer",
     ]);
     expect(
       shortlist.matches.every((match) =>
@@ -616,15 +616,20 @@ describe("deterministic freelancer matching", () => {
       },
     };
 
-    const match = buildShortlist(brief, [cordula]).matches[0];
-    expect(match?.profile.displayName).toBe("Cordula Buss");
-    expect(match?.matchReasons).toContain(
+    const evaluation = evaluateProfile(brief, cordula);
+    const shortlist = buildShortlist(brief, [cordula]);
+    expect(shortlist.status).toBe("no_reliable_match");
+    expect(shortlist.matches).toEqual([]);
+    expect(evaluation.reliable).toBe(false);
+    expect(evaluation.scoreBreakdown.coreCoverageBasisPoints).toBe(5_000);
+    expect(evaluation.matchReasons).toContain(
       "Belegte Kernkompetenzen: SAP S/4HANA, Requirements Management.",
     );
-    expect(match?.knownGaps).toContain(
-      "Explizite Muss-Kompetenzen sind im Profil nicht belegt: SAP MM, SAP PP; vor dem Gespräch verifizieren.",
-    );
-    expect(match?.knownGaps.join(" ")).not.toContain("800");
+    expect(evaluation.knownGaps).toEqual(expect.arrayContaining([
+      "Explizite Muss-Kompetenz ist im Profil nicht belegt: SAP MM; vor dem Gespräch verifizieren.",
+      "Explizite Muss-Kompetenz ist im Profil nicht belegt: SAP PP; vor dem Gespräch verifizieren.",
+    ]));
+    expect(evaluation.knownGaps.join(" ")).not.toContain("800");
   });
 
   it("ranks an exact primary SAP skill ahead of generic secondary matches", () => {
@@ -680,6 +685,7 @@ describe("deterministic freelancer matching", () => {
     const shortlist = buildShortlist(brief, [genericSecondary, primarySap]);
     expect(shortlist.matches[0]?.profile.displayName).toBe("Secondary Skills");
     expect(shortlist.matches[0]?.orderingEvidence.coreSkillMatchCount).toBe(3);
-    expect(shortlist.matches[1]?.orderingEvidence.coreSkillMatchCount).toBe(2);
+    expect(shortlist.matches).toHaveLength(1);
+    expect(shortlist.matches[0]?.coreCoverage).toBe(75);
   });
 });

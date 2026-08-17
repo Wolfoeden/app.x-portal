@@ -241,7 +241,8 @@ export async function POST(request: Request) {
     // Search is only the explicit fallback after the current curated catalog
     // produced no eligible profile. This check prevents paid duplicate work.
     const internalProfiles = await fetchActiveBookableRealProfiles(admin);
-    if (buildShortlist(brief, internalProfiles).matches.length > 0) {
+    const internalShortlist = buildShortlist(brief, internalProfiles);
+    if (internalShortlist.status !== "no_reliable_match") {
       await writeAuditEvent({
         actorUserId: user.id,
         action: "external_freelancer_search_denied_internal_match",
@@ -253,7 +254,9 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "Für dieses Projekt existiert inzwischen mindestens ein interner Treffer.",
+            internalShortlist.status === "needs_clarification"
+              ? "Die Anforderungen müssen vor einer kostenpflichtigen Websuche präzisiert werden. Es wurden keine Credits belastet."
+              : "Für dieses Projekt existiert inzwischen mindestens ein zuverlässiger interner Treffer.",
           traceId,
         },
         { status: 409 },
