@@ -1504,6 +1504,19 @@ dd.is-unknown,
   line-height: 1.5;
 }
 
+.matching-disclosure.is-warning {
+  margin-bottom: 0;
+  border-left: 3px solid var(--amber);
+  background: var(--amber-soft);
+  color: var(--ink-soft);
+  padding: 10px 12px;
+}
+
+.result-count.is-warning {
+  color: var(--amber);
+  font-weight: 700;
+}
+
 .profile-list {
   display: grid;
   gap: 12px;
@@ -1525,6 +1538,16 @@ dd.is-unknown,
 .profile-card.is-selected {
   border-color: #8c8c85;
   box-shadow: 0 0 0 1px #8c8c85;
+}
+
+.profile-card.is-partial {
+  border-color: #dfd2b5;
+  box-shadow: none;
+}
+
+.profile-card.is-partial:hover {
+  border-color: #cfbd95;
+  box-shadow: none;
 }
 
 .profile-rank {
@@ -1610,6 +1633,12 @@ dd.is-unknown,
   border: 1px solid var(--ink);
   background: var(--ink);
   color: #fff;
+}
+
+.match-role.is-warning {
+  border-color: var(--amber);
+  background: var(--amber-soft);
+  color: var(--amber);
 }
 
 .match-score {

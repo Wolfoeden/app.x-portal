@@ -13,6 +13,7 @@ import {
   MatchingDecisionSnapshotSchema,
   MatchingEvaluationSnapshotSchema,
   ProjectBriefSchema,
+  ShortlistMatchSchema,
   type FreelancerProfile,
   type ShortlistMatch,
 } from "@/lib/domain";
@@ -54,8 +55,32 @@ type StoredShortlistRow = {
     | "no_reliable_match"
     | null;
   decision_snapshot: unknown | null;
+  partial_matches_snapshot: unknown | null;
   matching_rule_version: string;
 };
+
+const StoredPartialMatchesSchema = z.array(ShortlistMatchSchema).max(2);
+
+function restorePartialMatch(value: unknown): ShortlistMatch | null {
+  const parsed = ShortlistMatchSchema.safeParse(value);
+  if (
+    !parsed.success ||
+    parsed.data.recommendationRole !== "partial" ||
+    parsed.data.profile.demoStatus !== "real"
+  ) {
+    return null;
+  }
+  return ShortlistMatchSchema.parse({
+    ...parsed.data,
+    profile: {
+      ...parsed.data.profile,
+      introPolicy: {
+        ...parsed.data.profile.introPolicy,
+        bookingUrl: null,
+      },
+    },
+  });
+}
 
 function availabilityPriority(
   status: FreelancerProfile["availability"]["status"],
@@ -225,7 +250,7 @@ export async function GET(
     const { data: shortlist, error: shortlistError } = await admin
       .from("shortlists")
       .select(
-        "id,result_count,result_status,decision_snapshot,matching_rule_version",
+        "id,result_count,result_status,decision_snapshot,partial_matches_snapshot,matching_rule_version",
       )
       .eq("project_id", project.id)
       .eq("owner_user_id", user.id)
@@ -237,6 +262,7 @@ export async function GET(
     const brief = ProjectBriefSchema.safeParse(project.structured_brief);
     const storedShortlist = shortlist as StoredShortlistRow | null;
     let profiles: ReturnType<typeof presentMatch>[] = [];
+    let partialProfiles: ReturnType<typeof presentMatch>[] = [];
     let usedDeterministicRecovery = false;
     let matchingStatus: StoredShortlistRow["result_status"] | undefined =
       storedShortlist?.result_status ??
@@ -252,6 +278,7 @@ export async function GET(
       const activeProfiles = await fetchActiveBookableRealProfiles(admin);
       const recoveredShortlist = buildShortlist(brief.data, activeProfiles);
       profiles = recoveredShortlist.matches.map(presentMatch);
+      partialProfiles = recoveredShortlist.partialMatches.map(presentMatch);
       matchingStatus = recoveredShortlist.status;
       usedDeterministicRecovery = true;
     } else if (storedShortlist) {
@@ -259,12 +286,34 @@ export async function GET(
         storedShortlist.decision_snapshot,
       );
       if (
-        ["freelancer-match-v11", "freelancer-match-v12"].includes(
+        ["freelancer-match-v11", "freelancer-match-v12", "freelancer-match-v13"].includes(
           storedShortlist.matching_rule_version,
         ) && !decision.success
       ) {
         matchingIntegrityNotice =
           "Die gespeicherte Matching-Entscheidung ist unvollständig; historische Scores werden nicht rekonstruiert.";
+      }
+      const storedPartials = StoredPartialMatchesSchema.safeParse(
+        storedShortlist.partial_matches_snapshot ?? [],
+      );
+      if (!storedPartials.success) {
+        matchingIntegrityNotice =
+          "Die gespeicherten Teiltreffer sind unvollständig und werden deshalb nicht dargestellt.";
+      } else {
+        partialProfiles = storedPartials.data
+          .map(restorePartialMatch)
+          .filter((match): match is ShortlistMatch => match !== null)
+          .map(presentMatch);
+        if (
+          decision.success &&
+          decision.data.schemaVersion === 2 &&
+          JSON.stringify(decision.data.partialProfileIds ?? []) !==
+            JSON.stringify(partialProfiles.map((profile) => profile.id))
+        ) {
+          matchingIntegrityNotice =
+            "Die gespeicherten Teiltreffer stimmen nicht mit der Matching-Entscheidung überein und werden nicht dargestellt.";
+          partialProfiles = [];
+        }
       }
       const { data: rows, error } = await admin
         .from("matches")
@@ -312,6 +361,7 @@ export async function GET(
         })),
         brief: brief.success ? presentBrief(brief.data) : null,
         profiles,
+        partialProfiles,
         matchingStatus,
         analysisMode:
           usedDeterministicRecovery

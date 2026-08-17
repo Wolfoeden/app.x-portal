@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
     (): {
       status: "no_reliable_match" | "ranked" | "needs_clarification";
       matches: unknown[];
+      partialMatches?: unknown[];
     } => ({
       status: "no_reliable_match",
       matches: [],
@@ -273,6 +274,11 @@ describe("POST /api/freelancer-search", () => {
   });
 
   it("returns external results separately with an explicit disclosure", async () => {
+    mocks.buildShortlist.mockReturnValue({
+      status: "no_reliable_match",
+      matches: [],
+      partialMatches: [{ recommendationRole: "partial" }],
+    });
     mocks.search.mockResolvedValue({
       candidates: [
         {

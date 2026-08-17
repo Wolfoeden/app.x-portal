@@ -587,6 +587,9 @@ function normalizeProfile(value: unknown): FreelancerProfileResult | null {
       value.recommendationRole === "primary" ||
       value.recommendation_role === "primary"
         ? "primary"
+        : value.recommendationRole === "partial" ||
+            value.recommendation_role === "partial"
+          ? "partial"
         : value.recommendationRole === "alternative" ||
             value.recommendation_role === "alternative"
           ? "alternative"
@@ -659,6 +662,17 @@ function normalizeChatResponse(value: unknown, fallbackTitle: string): ChatRespo
             item !== null && item.bookingUrl !== null,
         )
     : [];
+  const partialSource = response.partialMatches ?? response.partial_matches;
+  const partialMatches = Array.isArray(partialSource)
+    ? partialSource
+        .map(normalizeProfile)
+        .filter(
+          (item): item is FreelancerProfileResult =>
+            item !== null &&
+            item.recommendationRole === "partial" &&
+            item.bookingUrl === null,
+        )
+    : [];
   const usage = normalizeUsageUpdate(response.usage ?? response);
   const analysis = normalizeAnalysisTrace(response.analysis);
   const matchMetadata = isRecord(response.match) ? response.match : {};
@@ -674,6 +688,7 @@ function normalizeChatResponse(value: unknown, fallbackTitle: string): ChatRespo
     message: normalizeMessage(response.message ?? response.assistantMessage ?? response.assistant),
     brief: normalizeBrief(response.brief),
     matches: matches.slice(0, 3),
+    partialMatches: partialMatches.slice(0, 2),
     ...(matchingStatus ? { matchingStatus } : {}),
     mode: response.mode === "fallback" ? "fallback" : "ai",
     notice: nullableString(response.notice) ?? undefined,
@@ -705,6 +720,17 @@ function normalizeProjectDetail(value: unknown): ProjectDetailResponse {
   const profiles = Array.isArray(matchSource)
     ? matchSource.map(normalizeProfile).filter((item): item is FreelancerProfileResult => item !== null)
     : [];
+  const partialSource = response.partialProfiles ?? response.partial_profiles;
+  const partialProfiles = Array.isArray(partialSource)
+    ? partialSource
+        .map(normalizeProfile)
+        .filter(
+          (item): item is FreelancerProfileResult =>
+            item !== null &&
+            item.recommendationRole === "partial" &&
+            item.bookingUrl === null,
+        )
+    : [];
   const matchingStatus = normalizeMatchingStatus(
     response.matchingStatus ?? response.matching_status,
   );
@@ -713,6 +739,7 @@ function normalizeProjectDetail(value: unknown): ProjectDetailResponse {
     messages,
     brief: response.brief ? normalizeBrief(response.brief) : null,
     profiles: profiles.slice(0, 3),
+    partialProfiles: partialProfiles.slice(0, 2),
     ...(matchingStatus ? { matchingStatus } : {}),
     ...(response.analysisMode === "ai" || response.analysisMode === "fallback"
       ? { analysisMode: response.analysisMode }
@@ -828,6 +855,9 @@ export function externalSearchCtaState(
 export function publicProgressLabel(label: string): string {
   const normalized = label.toLocaleLowerCase("de-DE");
   if (normalized.includes("speicher")) return "Anfrage wird sicher gespeichert …";
+  if (normalized.includes("teiltreffer")) {
+    return "Nicht empfohlene Teiltreffer werden transparent vorbereitet …";
+  }
   if (normalized.includes("kein") && normalized.includes("treffer")) {
     return "Interner Profilabgleich abgeschlossen · kein passendes Profil gefunden …";
   }
@@ -1037,6 +1067,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [brief, setBrief] = useState<StructuredBrief | null>(null);
   const [profiles, setProfiles] = useState<FreelancerProfileResult[]>([]);
+  const [partialProfiles, setPartialProfiles] = useState<FreelancerProfileResult[]>([]);
   const [matchingStatus, setMatchingStatus] = useState<MatchingStatus | null>(null);
   const [hasResult, setHasResult] = useState(false);
   const [analysisMode, setAnalysisMode] = useState<"ai" | "fallback" | null>(null);
@@ -1182,6 +1213,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
         setMessages(detail.messages);
         setBrief(detail.brief);
         setProfiles(detail.profiles.slice(0, 3));
+        setPartialProfiles(detail.partialProfiles.slice(0, 2));
         setMatchingStatus(detail.matchingStatus ?? null);
         setHasResult(Boolean(detail.brief));
         setAnalysisMode(detail.analysisMode ?? null);
@@ -1357,13 +1389,14 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, pendingAssistant, profiles]);
+  }, [messages, pendingAssistant, profiles, partialProfiles]);
 
   const startNewProject = () => {
     setActiveProject(null);
     setMessages([]);
     setBrief(null);
     setProfiles([]);
+    setPartialProfiles([]);
     setMatchingStatus(null);
     setHasResult(false);
     setAnalysisMode(null);
@@ -1402,6 +1435,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
     setActiveProject(null);
     setBrief(null);
     setProfiles([]);
+    setPartialProfiles([]);
     setMatchingStatus(null);
     setHasResult(false);
     setAnalysisMode(null);
@@ -1433,6 +1467,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
       setMessages((current) => [...current, assistantMessage]);
       setBrief(result.brief);
       setProfiles(result.matches.slice(0, 3));
+      setPartialProfiles(result.partialMatches.slice(0, 2));
       setMatchingStatus(result.matchingStatus ?? null);
       setHasResult(true);
       setAnalysisMode(result.mode ?? "ai");
@@ -2057,6 +2092,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
                   <ResultSection
                     brief={brief}
                     profiles={profiles}
+                    partialProfiles={partialProfiles}
                     matchingStatus={matchingStatus}
                     analysis={analysisTrace}
                     analysisMode={analysisMode}
@@ -2343,6 +2379,7 @@ function PendingMessage({
 function ResultSection({
   brief,
   profiles,
+  partialProfiles,
   matchingStatus,
   analysis,
   analysisMode,
@@ -2358,6 +2395,7 @@ function ResultSection({
 }: {
   brief: StructuredBrief | null;
   profiles: FreelancerProfileResult[];
+  partialProfiles: FreelancerProfileResult[];
   matchingStatus: MatchingStatus | null;
   analysis: AiAnalysisTrace | null;
   analysisMode: "ai" | "fallback" | null;
@@ -2376,20 +2414,32 @@ function ResultSection({
     matchingStatus === "needs_clarification"
       ? "Anforderung noch nicht ausreichend konkret"
       : matchingStatus === "no_reliable_match"
-        ? "Kein zuverlässiger interner Match"
+        ? partialProfiles.length
+          ? `${partialProfiles.length} ${partialProfiles.length === 1 ? "nicht empfohlener Teiltreffer" : "nicht empfohlene Teiltreffer"}`
+          : "Kein zuverlässiger interner Match"
         : profiles.length
           ? `${profiles.length} ${profiles.length === 1 ? "verlässlicher interner Match" : "verlässliche interne Matches"}`
           : "Kein gespeicherter interner Match";
   return (
     <section className="result-section" aria-label="Suchergebnis">
       {brief ? <BriefCard brief={brief} /> : null}
-      {analysis ? <AnalysisTrace trace={analysis} profileCount={profiles.length} /> : null}
+      {analysis ? (
+        <AnalysisTrace
+          trace={analysis}
+          profileCount={profiles.length}
+          partialProfileCount={partialProfiles.length}
+        />
+      ) : null}
       <div className="shortlist-heading">
         <div>
           <p className="eyebrow">Regelbasierter Abgleich</p>
           <h2>{resultHeading}</h2>
         </div>
-        {profiles.length ? <span className="result-count">Maximal 3 Ergebnisse</span> : null}
+        {profiles.length ? (
+          <span className="result-count">Maximal 3 Ergebnisse</span>
+        ) : partialProfiles.length ? (
+          <span className="result-count is-warning">Keine Empfehlung</span>
+        ) : null}
       </div>
       {profiles.length ? (
         <>
@@ -2409,12 +2459,33 @@ function ResultSection({
         </>
       ) : (
         <>
+          {partialProfiles.length ? (
+            <>
+              <p className="matching-disclosure is-warning">
+                Diese Profile haben belegte Überschneidungen, erfüllen aber nicht alle Muss-Kriterien oder bleiben unter 70 % Kernabdeckung. Sie sind ausdrücklich keine Empfehlung und können aus diesem Ergebnis nicht direkt gebucht werden.
+              </p>
+              <div className="profile-list partial-profile-list">
+                {partialProfiles.slice(0, 2).map((profile, index) => (
+                  <ProfileCard
+                    key={profile.id}
+                    profile={profile}
+                    position={index + 1}
+                    selected={false}
+                    onSelect={() => undefined}
+                    onContact={() => undefined}
+                  />
+                ))}
+              </div>
+            </>
+          ) : null}
           <div className="no-match-card">
             <div className="no-match-icon" aria-hidden="true"><IconSearch size={19} /></div>
             <div>
               <strong>
                 {matchingStatus === "needs_clarification"
                   ? "Nennen Sie bitte mindestens die gewünschte Rolle oder eine benötigte Kernkompetenz."
+                  : partialProfiles.length
+                    ? "Keiner der internen Teiltreffer erreicht die Empfehlungsschwelle."
                   : analysisMode === "fallback"
                     ? "Die sichere Basisanalyse hat keinen zuverlässigen internen Match gefunden."
                     : "Kein aktives, reales und direkt buchbares Profil erreicht derzeit die Empfehlungsschwelle."}
@@ -2423,7 +2494,9 @@ function ResultSection({
                 {matchingStatus === "needs_clarification"
                   ? "Ohne prüfbare Kompetenzanforderung wird kein Profil geraten und keine kostenpflichtige Websuche angeboten."
                   : matchingStatus === "no_reliable_match"
-                    ? "Wir zeigen nur Profile, die alle Muss-Kriterien und mindestens 70 % der Kernkompetenzgruppen erfüllen. Sie können ein Kriterium im Chat präzisieren oder lockern."
+                    ? partialProfiles.length
+                      ? "Prüfen Sie zuerst die offengelegten Lücken oder präzisieren Sie ein Kriterium im Chat. Reicht das interne Ergebnis nicht aus, steht darunter als letzte Option die getrennte Internetsuche bereit."
+                      : "Wir empfehlen nur Profile, die alle Muss-Kriterien und mindestens 70 % der Kernkompetenzgruppen erfüllen. Sie können ein Kriterium im Chat präzisieren oder lockern."
                     : "Für dieses historische Ergebnis ist keine Qualitätsklassifikation gespeichert."}
               </p>
               {matchingStatus === "no_reliable_match" &&
@@ -2567,6 +2640,7 @@ export function analysisDisclosure(trace: AiAnalysisTrace): string {
 export function visibleAnalysisSteps(
   trace: AiAnalysisTrace,
   profileCount: number,
+  partialProfileCount = 0,
 ): AiAnalysisTrace["steps"] {
   const providerConfirmed = trace.provider.succeeded && !trace.provider.fallback;
   const nanoConfirmed = providerConfirmed &&
@@ -2592,6 +2666,8 @@ export function visibleAnalysisSteps(
       label: "Ergebnis vorbereitet",
       detail: profileCount > 0
         ? `${Math.min(profileCount, 3)} von maximal drei Profilen werden mit Gründen und bekannten Lücken angezeigt.`
+        : partialProfileCount > 0
+          ? `${Math.min(partialProfileCount, 2)} nicht empfohlene Teiltreffer werden mit ihren belegten Überschneidungen und ausschlaggebenden Lücken angezeigt.`
         : "Es wurde kein ausreichend relevantes internes Profil gefunden; es wird kein Kandidat erfunden.",
       status: "completed",
     },
@@ -2601,12 +2677,14 @@ export function visibleAnalysisSteps(
 function AnalysisTrace({
   trace,
   profileCount,
+  partialProfileCount,
 }: {
   trace: AiAnalysisTrace;
   profileCount: number;
+  partialProfileCount: number;
 }) {
   const modelLabel = providerModelLabel(trace);
-  const steps = visibleAnalysisSteps(trace, profileCount);
+  const steps = visibleAnalysisSteps(trace, profileCount, partialProfileCount);
   return (
     <details className="analysis-trace" open>
       <summary>
@@ -2764,9 +2842,10 @@ function ProfileCard({
 }) {
   const verifiedFacts = profile.facts.filter((fact) => fact.verification === "verified");
   const selfReportedFacts = profile.facts.filter((fact) => fact.verification === "self-reported");
+  const isPartial = profile.recommendationRole === "partial";
   return (
-    <article className={`profile-card ${selected ? "is-selected" : ""}`}>
-      <div className="profile-rank" aria-label={`Ergebnis ${position}`}>{position.toString().padStart(2, "0")}</div>
+    <article className={`profile-card ${isPartial ? "is-partial" : ""} ${selected ? "is-selected" : ""}`}>
+      <div className="profile-rank" aria-label={`${isPartial ? "Teiltreffer" : "Ergebnis"} ${position}`}>{position.toString().padStart(2, "0")}</div>
       <div className="profile-main">
         <header className="profile-header">
           <div className="profile-identity">
@@ -2778,12 +2857,16 @@ function ProfileCard({
           </div>
           <div className="profile-badges">
             {profile.recommendationRole ? (
-              <span className="match-role">
-                {profile.recommendationRole === "primary" ? "Hauptvorschlag" : "Alternative"}
+              <span className={`match-role ${isPartial ? "is-warning" : ""}`}>
+                {profile.recommendationRole === "primary"
+                  ? "Hauptvorschlag"
+                  : profile.recommendationRole === "partial"
+                    ? "Nicht empfohlen"
+                    : "Alternative"}
               </span>
             ) : null}
             {profile.fitScore !== null ? (
-              <span className="match-score">Passung {profile.fitScore} %</span>
+              <span className="match-score">{isPartial ? "Kriterienpassung" : "Passung"} {profile.fitScore} %</span>
             ) : null}
             <span className={`availability ${profile.availabilityStatus}`}>{availabilityLabel(profile.availabilityStatus)}</span>
           </div>
@@ -2838,29 +2921,31 @@ function ProfileCard({
 
         <footer className="profile-footer">
           <div>
-            <strong>{profile.bookingUrl ? "Direktes Erstgespräch" : "Historisches Match"}</strong>
-            <span>{profile.bookingUrl ? "Der Booking-Link des Freelancers öffnet sich in einem neuen Tab." : "Dieses Profil ist aktuell nicht direkt buchbar."}</span>
+            <strong>{isPartial ? "Nicht zur Kontaktaufnahme freigegeben" : profile.bookingUrl ? "Direktes Erstgespräch" : "Historisches Match"}</strong>
+            <span>{isPartial ? "Die offenen Muss-Kriterien müssen zuerst belegt oder bewusst geändert werden." : profile.bookingUrl ? "Der Booking-Link des Freelancers öffnet sich in einem neuen Tab." : "Dieses Profil ist aktuell nicht direkt buchbar."}</span>
           </div>
-          <div className="profile-actions">
-            {selected ? (
-              <button className="secondary-action" type="button" onClick={onContact}><IconCheck size={13} /> Kontaktoptionen</button>
-            ) : (
-              <button className="secondary-action" type="button" onClick={onSelect}>Profil merken</button>
-            )}
-            {profile.bookingUrl ? (
-              <a
-                className="primary-action"
-                href={profile.bookingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`Meeting mit ${profile.displayName} buchen`}
-              >
-                Meeting buchen <IconArrowRight size={13} />
-              </a>
-            ) : (
-              <button className="primary-action" type="button" disabled>Nicht mehr buchbar</button>
-            )}
-          </div>
+          {!isPartial ? (
+            <div className="profile-actions">
+              {selected ? (
+                <button className="secondary-action" type="button" onClick={onContact}><IconCheck size={13} /> Kontaktoptionen</button>
+              ) : (
+                <button className="secondary-action" type="button" onClick={onSelect}>Profil merken</button>
+              )}
+              {profile.bookingUrl ? (
+                <a
+                  className="primary-action"
+                  href={profile.bookingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Meeting mit ${profile.displayName} buchen`}
+                >
+                  Meeting buchen <IconArrowRight size={13} />
+                </a>
+              ) : (
+                <button className="primary-action" type="button" disabled>Nicht mehr buchbar</button>
+              )}
+            </div>
+          ) : null}
         </footer>
       </div>
     </article>

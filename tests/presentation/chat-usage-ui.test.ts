@@ -102,6 +102,9 @@ describe("chat usage presentation contract", () => {
     expect(publicProgressLabel("12 aktive Profile werden regelbasiert abgeglichen …")).toBe(
       "Interne Profile werden regelbasiert abgeglichen …",
     );
+    expect(publicProgressLabel("2 nicht empfohlene Teiltreffer werden transparent aufbereitet …")).toBe(
+      "Nicht empfohlene Teiltreffer werden transparent vorbereitet …",
+    );
   });
 
   it("renders only the fixed three-step analysis explanation", () => {
@@ -114,5 +117,8 @@ describe("chat usage presentation contract", () => {
     ]);
     expect(JSON.stringify(steps)).not.toContain("internal reasoning");
     expect(steps[2]?.detail).toContain("3 von maximal drei Profilen");
+
+    const partialSteps = visibleAnalysisSteps(nanoTrace, 0, 2);
+    expect(partialSteps[2]?.detail).toContain("2 nicht empfohlene Teiltreffer");
   });
 });

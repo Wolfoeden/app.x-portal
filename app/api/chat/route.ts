@@ -25,8 +25,10 @@ import {
   MINIMUM_CORE_COVERAGE_BASIS_POINTS,
   matchingEvaluationSnapshot,
   ProjectBriefSchema,
+  ShortlistMatchSchema,
   type ProjectBrief,
   type Shortlist,
+  type ShortlistMatch,
 } from "@/lib/domain";
 import {
   createChatRequestKey,
@@ -115,6 +117,22 @@ function profileVersionNumber(dataVersion: string): number {
   return match ? Math.max(1, Number.parseInt(match[1], 10)) : 1;
 }
 
+function storedShortlistMatch(match: ShortlistMatch): ShortlistMatch {
+  return ShortlistMatchSchema.parse({
+    ...match,
+    profile: {
+      ...match.profile,
+      introPolicy: {
+        ...match.profile.introPolicy,
+        // Stored result snapshots never retain a direct booking URL. Current
+        // recommended matches restore it from the live profile; partials stay
+        // non-bookable by definition.
+        bookingUrl: null,
+      },
+    },
+  });
+}
+
 function catalogVersion(profiles: readonly { id: string; dataVersion: string }[]): string {
   return createHash("sha256")
     .update(
@@ -129,6 +147,7 @@ function catalogVersion(profiles: readonly { id: string; dataVersion: string }[]
 function assistantText(
   status: Shortlist["status"],
   resultCount: number,
+  partialResultCount: number,
   analysisCompleted: boolean,
   clarificationCode: Shortlist["clarificationCode"],
   openCoreRequirements: readonly string[],
@@ -144,9 +163,12 @@ function assistantText(
   }
   if (status === "no_reliable_match") {
     const openCriteria = openCoreRequirements.length
-      ? ` Besonders häufig offen: ${openCoreRequirements.join(", ")}.`
+      ? ` Über den gesamten internen Profilpool hinweg besonders häufig offen: ${openCoreRequirements.join(", ")}.`
       : "";
-    return `${analysisCompleted ? "Ich habe" : "Die sichere Basisanalyse hat"} Ihre Angaben strukturiert. Aktuell erfüllt kein reales, direkt buchbares Profil alle Muss-Kriterien und mindestens 70 % der Kernkompetenzgruppen.${openCriteria} Welches Kriterium möchten Sie präzisieren oder lockern? Alternativ können Sie ausdrücklich die getrennte KI-Websuche starten.`;
+    const partialCopy = partialResultCount
+      ? ` Ich zeige ${partialResultCount} ${partialResultCount === 1 ? "nicht empfohlenen Teiltreffer" : "nicht empfohlene Teiltreffer"} mit den belegten Überschneidungen und den ausschlaggebenden Lücken.`
+      : "";
+    return `${analysisCompleted ? "Ich habe" : "Die sichere Basisanalyse hat"} Ihre Angaben strukturiert. Aktuell erfüllt kein reales, direkt buchbares Profil alle Muss-Kriterien und mindestens 70 % der Kernkompetenzgruppen.${partialCopy}${openCriteria} Sie können ein Kriterium präzisieren oder lockern. Wenn die internen Ergebnisse nicht ausreichen, können Sie als letzte Option die getrennte KI-Internetsuche ausdrücklich starten.`;
   }
   return `${analysisCompleted ? "Ich habe" : "Die sichere Basisanalyse hat"} Ihre Angaben strukturiert und ${resultCount} ${
     resultCount === 1 ? "aktuell passendes Profil" : "aktuell passende Profile"
@@ -610,7 +632,9 @@ async function processChatRequest(
         ? "Noch keine Anforderung erkennbar · Rückfrage wird vorbereitet …"
         : shortlist.matches.length
           ? `${shortlist.matches.length} passende Profile werden nachvollziehbar aufbereitet …`
-          : "Keine Empfehlung über der 70-%-Schwelle · Rückfrage wird vorbereitet …",
+          : shortlist.partialMatches.length
+            ? `${shortlist.partialMatches.length} nicht empfohlene Teiltreffer werden transparent aufbereitet …`
+            : "Keine Empfehlung über der 70-%-Schwelle · Rückfrage wird vorbereitet …",
     );
     const shortlistId = randomUUID();
     const profileCatalogVersion = catalogVersion(profiles);
@@ -625,6 +649,7 @@ async function processChatRequest(
       profile_catalog_version: profileCatalogVersion,
       result_status: shortlist.status,
       decision_snapshot: shortlist.decisionSnapshot,
+      partial_matches_snapshot: shortlist.partialMatches.map(storedShortlistMatch),
     });
     if (shortlistError) throw shortlistError;
 
@@ -660,6 +685,7 @@ async function processChatRequest(
     const text = assistantText(
       shortlist.status,
       shortlist.matches.length,
+      shortlist.partialMatches.length,
       analysisCompleted,
       shortlist.clarificationCode,
       shortlist.decisionSnapshot.openCoreRequirements,
@@ -677,6 +703,7 @@ async function processChatRequest(
           shortlistId,
           matchingRuleVersion: MATCHING_RULE_VERSION,
           resultStatus: shortlist.status,
+          partialResultCount: shortlist.partialMatches.length,
           requestKey,
         },
       })
@@ -721,6 +748,7 @@ async function processChatRequest(
       traceId,
       metadata: {
         resultCount: shortlist.matches.length,
+        partialResultCount: shortlist.partialMatches.length,
         matchingRuleVersion: MATCHING_RULE_VERSION,
         matchingResultStatus: shortlist.status,
         extractionMode: extraction.mode,
@@ -745,6 +773,7 @@ async function processChatRequest(
         },
         brief: presentBrief(extraction.brief),
         matches: shortlist.matches.map(presentMatch),
+        partialMatches: shortlist.partialMatches.map(presentMatch),
         matchingStatus: shortlist.status,
         mode: extraction.mode === "openai" ? "ai" : "fallback",
         notice:
@@ -818,13 +847,17 @@ async function processChatRequest(
                   ? "Verlässliche Matches vorbereitet"
                   : shortlist.status === "needs_clarification"
                     ? "Rückfrage erforderlich"
-                    : "Mindestpassung nicht erreicht",
+                    : shortlist.partialMatches.length
+                      ? "Nicht empfohlene Teiltreffer ausgewiesen"
+                      : "Mindestpassung nicht erreicht",
               detail:
                 shortlist.status === "ranked"
                   ? `${shortlist.matches.length} Treffer werden nach Regel ${MATCHING_RULE_VERSION} angezeigt; offene Nachweise sind gekennzeichnet und die KI entscheidet nicht über die Auswahl.`
                   : shortlist.status === "needs_clarification"
                     ? "Die Anforderung wird vor einer Empfehlung präzisiert; es wird kein Profil geraten."
-                    : `Kein Profil erfüllt alle Muss-Kriterien und mindestens ${MINIMUM_CORE_COVERAGE_BASIS_POINTS / 100} % der Kernkompetenzgruppen.`,
+                    : shortlist.partialMatches.length
+                      ? `${shortlist.partialMatches.length} Profile mit belegter Kernüberschneidung bleiben unter der Empfehlungsschwelle. Sie werden ausdrücklich nicht empfohlen und nicht zur direkten Buchung freigegeben.`
+                      : `Kein Profil erfüllt alle Muss-Kriterien und mindestens ${MINIMUM_CORE_COVERAGE_BASIS_POINTS / 100} % der Kernkompetenzgruppen.`,
               status: "completed",
             },
           ],
