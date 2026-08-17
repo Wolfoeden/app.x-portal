@@ -149,15 +149,25 @@ Eligible rows are ordered by this visible, stable rule:
 9. Normalized display name ascending.
 10. UUID ascending as the final stable tie-breaker.
 
-The first three relevant rows are returned, including disclosed near matches
-when fewer than three profiles cover every requested core skill. There is no
-hidden score and no automated hiring decision. Each result stores reasons, known gaps, verified facts,
-self-reported facts, the complete public-safe profile snapshot, profile version
-and matching-rule version. The customer chooses a profile.
+Up to three reliable rows are returned only when every hard requirement is
+satisfied and the profile covers at least 70 percent of the core requirement
+groups. There is no automated hiring decision. Each recommended result stores
+reasons, known gaps, verified facts, self-reported facts, the complete
+public-safe profile snapshot, profile version and matching-rule version. The
+customer chooses a recommended profile.
 
-Every run first creates `shortlists`, even when `result_count = 0`. A zero-result
-record therefore preserves the brief, rule and catalogue version without
-fabricating a candidate. `profile_catalog_version` is a deterministic SHA-256
+When no profile clears that gate, v13 may additionally persist and display the
+two strongest eligible overlaps with at least 25 percent core coverage as
+`partial_matches_snapshot`. They remain
+inside a `no_reliable_match` decision, are labeled "Nicht empfohlen", carry no
+booking URL and cannot enter the introduction flow. They are evidence for
+comparison, not recommendations. Only after this internal result may the user
+explicitly start the separately disclosed, credit-bearing internet search.
+
+Every run first creates `shortlists`, even when `result_count = 0`. Here
+`result_count` counts reliable recommendations only; bounded partial snapshots
+remain separate. A zero-result record therefore preserves the brief, rule and
+catalogue version without fabricating a recommendation. `profile_catalog_version` is a deterministic SHA-256
 marker computed server-side from the ordered eligible public-safe profile IDs
 and versions (for example, hash of `id:version` lines sorted by ID). Matches are
 inserted in the same transaction and their count must equal `result_count`.

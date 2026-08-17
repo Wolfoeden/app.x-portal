@@ -620,6 +620,16 @@ describe("deterministic freelancer matching", () => {
     const shortlist = buildShortlist(brief, [cordula]);
     expect(shortlist.status).toBe("no_reliable_match");
     expect(shortlist.matches).toEqual([]);
+    expect(shortlist.partialMatches).toHaveLength(1);
+    expect(shortlist.partialMatches[0]).toMatchObject({
+      recommendationRole: "partial",
+      coreCoverage: 50,
+      profile: { displayName: "Cordula Buss" },
+    });
+    expect(shortlist.decisionSnapshot).toMatchObject({
+      schemaVersion: 2,
+      partialProfileIds: [cordula.id],
+    });
     expect(evaluation.reliable).toBe(false);
     expect(evaluation.scoreBreakdown.coreCoverageBasisPoints).toBe(5_000);
     expect(evaluation.matchReasons).toContain(
@@ -630,6 +640,103 @@ describe("deterministic freelancer matching", () => {
       "Explizite Muss-Kompetenz ist im Profil nicht belegt: SAP PP; vor dem Gespräch verifizieren.",
     ]));
     expect(evaluation.knownGaps.join(" ")).not.toContain("800");
+  });
+
+  it("orders the two strongest SAP overlaps as non-recommended partial matches", () => {
+    const brief = applyBriefPatch(
+      parseFallbackBrief(
+        `SAP S/4HANA consultant remote.
+Muss-Anforderungen:
+- SAP MM
+- SAP PP
+- Requirements Management
+- SAP Customizing
+Kernkompetenzen:
+- SAP S/4HANA
+- Process Management
+- Project Management`,
+        { now },
+      ),
+      {
+        requiredSkills: [
+          "SAP MM",
+          "SAP PP",
+          "Requirements Management",
+          "SAP Customizing",
+          "SAP S/4HANA",
+          "Process Management",
+          "Project Management",
+        ],
+        workMode: "remote",
+      },
+    );
+    const christopher = {
+      ...profileFixtures[4]!,
+      id: "00000000-0000-4000-8000-000000000061",
+      displayName: "Christopher Grolmus",
+      role: "Business Analyst & IT Project Manager",
+      skillTags: [
+        { value: "SAP S/4HANA migration", source: "self_reported" as const },
+        { value: "Requirements Management", source: "self_reported" as const },
+        { value: "Process Management", source: "self_reported" as const },
+        { value: "Project Management", source: "self_reported" as const },
+      ],
+      workModes: ["remote" as const],
+      introPolicy: {
+        type: "free" as const,
+        label: "Kostenfreies Erstgespräch",
+        bookingUrl: "https://calendly.com/christopher-grolmus",
+      },
+    };
+    const cordula = {
+      ...profileFixtures[4]!,
+      id: "00000000-0000-4000-8000-000000000062",
+      displayName: "Cordula Buss",
+      role: "SAP S/4HANA & Requirements Management Consultant",
+      skillTags: [
+        { value: "SAP S/4HANA", source: "self_reported" as const },
+        { value: "Requirements Management", source: "self_reported" as const },
+      ],
+      workModes: ["remote" as const],
+      introPolicy: {
+        type: "free" as const,
+        label: "Kostenfreies Erstgespräch",
+        bookingUrl: "https://calendly.com/cordula-buss",
+      },
+    };
+
+    const shortlist = buildShortlist(brief, [profileFixtures[0]!, cordula, christopher]);
+
+    expect(shortlist.status).toBe("no_reliable_match");
+    expect(shortlist.matches).toEqual([]);
+    expect(shortlist.partialMatches.map((match) => match.profile.displayName)).toEqual([
+      "Christopher Grolmus",
+      "Cordula Buss",
+    ]);
+    expect(shortlist.partialMatches.every(
+      (match) => match.recommendationRole === "partial" && match.coreCoverage! < 70,
+    )).toBe(true);
+  });
+
+  it("does not present a token overlap below the 25 percent partial threshold", () => {
+    const brief = applyBriefPatch(
+      parseFallbackBrief(
+        "Kernkompetenzen:\n- React\n- TypeScript\n- C++\n- Python\n- SAP MM",
+        { now },
+      ),
+      {
+        requiredSkills: ["React", "TypeScript", "C++", "Python", "SAP MM"],
+      },
+    );
+    const oneOfFive = {
+      ...profileFixtures[0]!,
+      skillTags: [{ value: "React", source: "verified" as const }],
+    };
+
+    const shortlist = buildShortlist(brief, [oneOfFive]);
+
+    expect(shortlist.status).toBe("no_reliable_match");
+    expect(shortlist.partialMatches).toEqual([]);
   });
 
   it("ranks an exact primary SAP skill ahead of generic secondary matches", () => {

@@ -83,7 +83,7 @@ export interface FreelancerProfileResult {
   matchReasons: string[];
   knownGaps: string[];
   /** Null on historical matches whose evaluation was never stored. */
-  recommendationRole: "primary" | "alternative" | null;
+  recommendationRole: "primary" | "alternative" | "partial" | null;
   /** Deterministic criterion score, not a probability of project success. */
   fitScore: number | null;
   coreCoverage: number | null;
@@ -242,6 +242,8 @@ export interface ChatResponse {
   brief: StructuredBrief;
   /** Already filtered and deterministically ordered by the server. */
   matches: FreelancerProfileResult[];
+  /** Best internal overlaps below the recommendation gate; never directly bookable. */
+  partialMatches: FreelancerProfileResult[];
   matchingStatus?: MatchingStatus;
   mode?: "ai" | "fallback";
   notice?: string;
@@ -281,6 +283,7 @@ export interface ProjectDetailResponse {
   messages: ConversationMessage[];
   brief: StructuredBrief | null;
   profiles: FreelancerProfileResult[];
+  partialProfiles: FreelancerProfileResult[];
   analysisMode?: "ai" | "fallback";
   analysisNotice?: string | null;
   matchingStatus?: MatchingStatus;
@@ -306,7 +309,7 @@ export interface ChatApiPaths {
   credits?: string;
   /** Protected operator-only usage dashboard. */
   adminUsage?: string;
-  /** Explicit, separately disclosed web search offered only after zero internal matches. */
+  /** Explicit, separately disclosed web search offered only after no reliable internal match. */
   freelancerSearch: string;
   emailLogin: string;
   emailRegister: string;

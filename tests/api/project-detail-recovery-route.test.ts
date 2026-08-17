@@ -22,7 +22,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 
 import { GET } from "@/app/api/projects/[id]/route";
-import { parseFallbackBrief } from "@/lib/domain";
+import { applyBriefPatch, buildShortlist, parseFallbackBrief } from "@/lib/domain";
 import { profileFixtures } from "../domain/fixtures";
 
 const userId = "10000000-0000-4000-8000-000000000001";
@@ -30,7 +30,7 @@ const projectId = "20000000-0000-4000-8000-000000000001";
 const fixedNow = new Date("2026-08-13T12:00:00.000Z");
 
 function configureProjectQueries(
-  shortlist: { id: string } | null = null,
+  shortlist: Record<string, unknown> | null = null,
   projectOverrides: Record<string, unknown> = {},
 ) {
   const project = {
@@ -153,5 +153,52 @@ describe("project detail deterministic recovery", () => {
     expect(body.analysisMode).toBe("ai");
     expect(mocks.fetchActiveProfiles).not.toHaveBeenCalled();
     expect(mocks.fetchProfilesByIds).toHaveBeenCalledWith(expect.anything(), []);
+  });
+
+  it("restores persisted partial matches separately and without booking access", async () => {
+    const partialBrief = applyBriefPatch(
+      parseFallbackBrief(
+        "Muss-Anforderungen:\n- React\n- C++\n100% remote",
+        { now: fixedNow },
+      ),
+      { requiredSkills: ["React", "C++"], workMode: "remote" },
+    );
+    const partialShortlist = buildShortlist(partialBrief, [profileFixtures[0]!]);
+    configureProjectQueries(
+      {
+        id: "30000000-0000-4000-8000-000000000002",
+        result_count: 0,
+        result_status: "no_reliable_match",
+        decision_snapshot: partialShortlist.decisionSnapshot,
+        partial_matches_snapshot: partialShortlist.partialMatches.map((match) => ({
+          ...match,
+          profile: {
+            ...match.profile,
+            introPolicy: { ...match.profile.introPolicy, bookingUrl: null },
+          },
+        })),
+        matching_rule_version: "freelancer-match-v13",
+      },
+      {
+        structured_brief: partialBrief,
+        brief_status: "ready",
+        status: "matching",
+      },
+    );
+
+    const response = await GET(new Request(`https://x-portal.eu/api/projects/${projectId}`), {
+      params: Promise.resolve({ id: projectId }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.matchingStatus).toBe("no_reliable_match");
+    expect(body.profiles).toEqual([]);
+    expect(body.partialProfiles).toHaveLength(1);
+    expect(body.partialProfiles[0]).toMatchObject({
+      displayName: "Anna Keller",
+      recommendationRole: "partial",
+      bookingUrl: null,
+    });
   });
 });

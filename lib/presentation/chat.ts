@@ -161,7 +161,11 @@ function formatRate(match: ShortlistMatch): string | null {
 export function presentMatch(match: ShortlistMatch): FreelancerProfileResult {
   const profile = match.profile;
   const firstMode = profile.workModes[0] ?? "unknown";
-  const bookingUrl = profile.introPolicy.bookingUrl;
+  // A partial result is evidence for comparison, never a recommendation or an
+  // introduction entitlement. Hiding the URL here protects both the immediate
+  // response and persisted/reloaded snapshots independently of the UI.
+  const isPartial = match.recommendationRole === "partial";
+  const bookingUrl = isPartial ? null : profile.introPolicy.bookingUrl;
 
   return {
     id: profile.id,
@@ -191,7 +195,11 @@ export function presentMatch(match: ShortlistMatch): FreelancerProfileResult {
     coreCoverage: match.coreCoverage ?? null,
     introPolicy: {
       type: bookingUrl ? "free" : "premium",
-      label: bookingUrl ? "Direkt buchbares Erstgespräch" : "Aktuell nicht direkt buchbar",
+      label: isPartial
+        ? "Nicht empfohlen – keine direkte Buchung"
+        : bookingUrl
+          ? "Direkt buchbares Erstgespräch"
+          : "Aktuell nicht direkt buchbar",
       manualApprovalRequired: !bookingUrl,
       readyToBook: Boolean(bookingUrl),
     },
