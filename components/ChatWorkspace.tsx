@@ -13,6 +13,7 @@ import {
 } from "react";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { openCookieSettings } from "@/components/CookieConsent";
+import { appPath } from "@/lib/app-path";
 import {
   AgentDetails,
   AgentDirectory,
@@ -64,6 +65,7 @@ import {
   type ChatResponse,
   type ChatStreamEvent,
   type ConversationMessage,
+  type CvAccess,
   type ExternalFreelancerCandidate,
   type ExternalFreelancerSearchResponse,
   type FreelancerProfileResult,
@@ -532,6 +534,15 @@ function normalizeBrief(value: unknown): StructuredBrief {
   };
 }
 
+export function normalizeCvAccess(value: unknown): CvAccess {
+  return value === "login_required" ||
+    value === "available" ||
+    value === "missing" ||
+    value === "forbidden"
+    ? value
+    : "forbidden";
+}
+
 function normalizeProfile(value: unknown): FreelancerProfileResult | null {
   if (!isRecord(value)) return null;
   const profileSource = isRecord(value.profile) ? value.profile : value;
@@ -571,6 +582,9 @@ function normalizeProfile(value: unknown): FreelancerProfileResult | null {
     id,
     demoStatus,
     bookingUrl,
+    cvAccess: normalizeCvAccess(
+      profileSource.cvAccess ?? profileSource.cv_access,
+    ),
     displayName: stringValue(profileSource.displayName ?? profileSource.display_name, "Profil"),
     role: stringValue(profileSource.role, "Freelancer"),
     skillTags: stringList(profileSource.skillTags ?? profileSource.skill_tags),
@@ -1225,6 +1239,7 @@ export function ChatWorkspace({
         const response = await fetch(`${apiPaths.projects}/${encodeURIComponent(projectId)}`, {
           credentials: "same-origin",
           headers: { Accept: "application/json" },
+          cache: "no-store",
         });
         if (!response.ok) throw new Error("Projekt konnte nicht geladen werden.");
         const detail = normalizeProjectDetail(await response.json());
@@ -1791,6 +1806,10 @@ export function ChatWorkspace({
   const handleAuthenticated = async () => {
     const view = await refreshAuth();
     if (view.anonymous) return;
+    const projectIdToReload =
+      activeProject?.id ?? sessionStorage.getItem("pending_project_id");
+    const profileIdToRestore =
+      pendingProfileId ?? sessionStorage.getItem("pending_profile_selection");
     setAuthOpen(false);
     const searchParams = new URLSearchParams(window.location.search);
     if (searchParams.get("admin-login") === "1") {
@@ -1810,12 +1829,19 @@ export function ChatWorkspace({
         "error",
       );
     }
-    if (pendingProfileId) {
-      setSelectedProfileId(pendingProfileId);
-      setPendingProfileId(null);
-      sessionStorage.removeItem("pending_profile_selection");
+    const refreshedProject = projectIdToReload
+      ? await loadProject(projectIdToReload)
+      : null;
+    if (
+      profileIdToRestore &&
+      refreshedProject?.profiles.some((profile) => profile.id === profileIdToRestore)
+    ) {
+      setSelectedProfileId(profileIdToRestore);
       setContactOpen(true);
     }
+    setPendingProfileId(null);
+    sessionStorage.removeItem("pending_profile_selection");
+    sessionStorage.removeItem("pending_project_id");
     await Promise.all([loadProjects(), loadProjectCollections()]);
   };
 
@@ -2183,6 +2209,7 @@ export function ChatWorkspace({
                 {hasResult && !pendingAssistant ? (
                   <ResultSection
                     brief={brief}
+                    projectId={activeProject?.id ?? null}
                     profiles={profiles}
                     partialProfiles={partialProfiles}
                     matchingStatus={matchingStatus}
@@ -2477,6 +2504,7 @@ function PendingMessage({
 
 function ResultSection({
   brief,
+  projectId,
   profiles,
   partialProfiles,
   matchingStatus,
@@ -2493,6 +2521,7 @@ function ResultSection({
   onContact,
 }: {
   brief: StructuredBrief | null;
+  projectId: string | null;
   profiles: FreelancerProfileResult[];
   partialProfiles: FreelancerProfileResult[];
   matchingStatus: MatchingStatus | null;
@@ -2549,6 +2578,8 @@ function ResultSection({
                 key={profile.id}
                 profile={profile}
                 position={index + 1}
+                isAccountUser={isAccountUser}
+                projectId={projectId}
                 selected={selectedProfileId === profile.id}
                 onSelect={() => onSelect(profile)}
                 onContact={() => onContact(profile)}
@@ -2569,6 +2600,8 @@ function ResultSection({
                     key={profile.id}
                     profile={profile}
                     position={index + 1}
+                    isAccountUser={isAccountUser}
+                    projectId={projectId}
                     selected={false}
                     onSelect={() => undefined}
                     onContact={() => undefined}
@@ -2926,15 +2959,107 @@ function languageHint(brief: StructuredBrief): string | undefined {
   return brief.languageSource === "detected" ? "aus der Anfrage abgeleitet" : undefined;
 }
 
-function ProfileCard({
+export type CvActionState = {
+  kind: CvAccess;
+  label: string;
+  disabled: boolean;
+};
+
+export function cvActionState(
+  profile: Pick<FreelancerProfileResult, "cvAccess">,
+  isAccountUser: boolean,
+): CvActionState {
+  // Authentication wins over response data so a stale or malformed guest
+  // payload cannot disclose whether a CV exists.
+  if (!isAccountUser) {
+    return { kind: "login_required", label: "Download CV", disabled: true };
+  }
+
+  const access = profile.cvAccess ?? "forbidden";
+  if (access === "available") {
+    return { kind: access, label: "Download CV", disabled: false };
+  }
+  if (access === "missing") {
+    return {
+      kind: access,
+      label: "Freelancer hat noch kein CV hochgeladen",
+      disabled: true,
+    };
+  }
+  return { kind: access, label: "Download CV", disabled: true };
+}
+
+function cvDownloadErrorMessage(status: number): string {
+  if (status === 401) return "Bitte melden Sie sich erneut an, um den CV herunterzuladen.";
+  if (status === 403) return "Für diesen CV-Download fehlt die Berechtigung.";
+  if (status === 404) return "Der CV ist nicht verfügbar.";
+  return "Der CV konnte nicht heruntergeladen werden. Bitte versuchen Sie es erneut.";
+}
+
+function secureDownloadUrl(value: unknown): string | null {
+  const candidate = nullableString(value);
+  if (!candidate) return null;
+  try {
+    return new URL(candidate).protocol === "https:" ? candidate : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function requestFreelancerCvDownload(
+  profileId: string,
+  projectId: string,
+  fetcher: typeof fetch = fetch,
+): Promise<string> {
+  if (!profileId || !projectId) {
+    throw new Error("Der CV-Download ist keinem gültigen Projekt zugeordnet.");
+  }
+  const response = await fetcher(
+    appPath(`/api/freelancers/${encodeURIComponent(profileId)}/cv`),
+    {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ projectId }),
+      cache: "no-store",
+    },
+  );
+  if (!response.ok) throw new Error(cvDownloadErrorMessage(response.status));
+
+  const body: unknown = await response.json().catch(() => null);
+  const source = isRecord(body) && isRecord(body.data) ? body.data : body;
+  const downloadUrl = isRecord(source)
+    ? secureDownloadUrl(source.downloadUrl ?? source.download_url)
+    : null;
+  if (!downloadUrl) {
+    throw new Error("Der Server hat keinen sicheren CV-Download bereitgestellt.");
+  }
+  return downloadUrl;
+}
+
+export function navigateToCvDownload(
+  downloadUrl: string,
+  navigator: { assign: (url: string) => void } = window.location,
+): void {
+  navigator.assign(downloadUrl);
+}
+
+export function ProfileCard({
   profile,
   position,
+  isAccountUser,
+  projectId,
   selected,
   onSelect,
   onContact,
 }: {
   profile: FreelancerProfileResult;
   position: number;
+  isAccountUser: boolean;
+  projectId: string | null;
   selected: boolean;
   onSelect: () => void;
   onContact: () => void;
@@ -2942,6 +3067,27 @@ function ProfileCard({
   const verifiedFacts = profile.facts.filter((fact) => fact.verification === "verified");
   const selfReportedFacts = profile.facts.filter((fact) => fact.verification === "self-reported");
   const isPartial = profile.recommendationRole === "partial";
+  const cvAction = cvActionState(profile, isAccountUser);
+  const [cvDownloadState, setCvDownloadState] = useState<"idle" | "loading" | "error">("idle");
+  const [cvDownloadError, setCvDownloadError] = useState<string | null>(null);
+
+  const downloadCv = async () => {
+    if (cvAction.disabled || !projectId || cvDownloadState === "loading") return;
+    setCvDownloadState("loading");
+    setCvDownloadError(null);
+    try {
+      const downloadUrl = await requestFreelancerCvDownload(profile.id, projectId);
+      navigateToCvDownload(downloadUrl);
+      setCvDownloadState("idle");
+    } catch (error) {
+      setCvDownloadError(
+        error instanceof Error
+          ? error.message
+          : "Der CV konnte nicht heruntergeladen werden. Bitte versuchen Sie es erneut.",
+      );
+      setCvDownloadState("error");
+    }
+  };
   return (
     <article className={`profile-card ${isPartial ? "is-partial" : ""} ${selected ? "is-selected" : ""}`}>
       <div className="profile-rank" aria-label={`${isPartial ? "Teiltreffer" : "Ergebnis"} ${position}`}>{position.toString().padStart(2, "0")}</div>
@@ -3025,6 +3171,25 @@ function ProfileCard({
           </div>
           {!isPartial ? (
             <div className="profile-actions">
+              <div className="cv-action-group">
+                <button
+                  className="secondary-action cv-action"
+                  type="button"
+                  disabled={cvAction.disabled || !projectId || cvDownloadState === "loading"}
+                  aria-busy={cvDownloadState === "loading"}
+                  aria-describedby={cvDownloadError ? `cv-error-${profile.id}` : undefined}
+                  title={cvAction.kind === "login_required" ? "Bitte anmelden, um CVs herunterzuladen." : undefined}
+                  onClick={downloadCv}
+                >
+                  <IconDocument size={13} />
+                  {cvDownloadState === "loading" ? "CV wird vorbereitet …" : cvAction.label}
+                </button>
+                {cvDownloadError ? (
+                  <p className="cv-download-status is-error" id={`cv-error-${profile.id}`} role="alert">
+                    {cvDownloadError}
+                  </p>
+                ) : null}
+              </div>
               {selected ? (
                 <button className="secondary-action" type="button" onClick={onContact}><IconCheck size={13} /> Kontaktoptionen</button>
               ) : (

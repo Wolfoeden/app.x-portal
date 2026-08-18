@@ -132,6 +132,43 @@ Never convert the supplied synthetic seed identities into real people. Create a
 new row for a real freelancer; keep or archive demo fixtures according to the
 launch checklist.
 
+## Attach or replace a private freelancer CV
+
+CV handling is a service-role operation, not a browser or public-profile
+operation. Never commit a CV to Git, place it in a public bucket, or paste its
+contents into profile facts. Before upload, record outside the public profile
+who authorized the document, when, for which purpose and how withdrawal can be
+handled.
+
+1. Confirm the production project reference and the exact
+   `freelancer_profiles.id`. Do not proceed from a display name alone.
+2. Accept PDF only, verify the file opens, has an expected filename and is no
+   larger than 10 MiB. Scan it according to the controller's document-security
+   process before upload.
+3. Read the current `freelancer_cv_documents.version`; use `1` for the first CV
+   or increment it for a replacement. The object path is fixed as
+   `<profile-uuid>/cv-v<version>.pdf`.
+4. Upload with a controlled server-side Supabase client and the service role.
+   Set `contentType: "application/pdf"`, `cacheControl: "60"` and
+   `upsert: false`. The default Storage cache value is not acceptable for this
+   private download flow.
+5. Verify Storage `info(path)` reports bucket `freelancer-cvs`, PDF content
+   type, the recorded byte size and `max-age=60`. Then insert or update the
+   metadata row with the same path, filename, byte size and version, initially
+   with `is_downloadable=false`.
+6. Have a second operator verify profile ID, permission record and document.
+   Only then set `is_downloadable=true`.
+7. Test all three states: a guest sees only a disabled `Download CV`; a
+   permanent account with the latest owned recommendation can download; a
+   partial or unrelated project receives no access. Check the corresponding
+   audit event.
+8. After a replacement is verified, remove the superseded object. For
+   withdrawal or deletion, first set `is_downloadable=false`, then remove the
+   object and metadata row, and record completion in the controller record.
+
+The application re-checks the live Storage metadata before every signed URL.
+An incorrect path, MIME type, byte size or cache TTL therefore fails closed.
+
 ## Edit an active profile
 
 1. Confirm the correct row by `id`, `slug` and display name.

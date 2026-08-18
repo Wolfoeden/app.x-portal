@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireCurrentUser } from "@/lib/auth/current-user";
+import { attachFreelancerCvAccess } from "@/lib/data/freelancer-cvs";
 import {
   fetchActiveBookableRealProfiles,
   fetchRealProfilesByIds,
@@ -255,6 +256,7 @@ export async function GET(
       .eq("project_id", project.id)
       .eq("owner_user_id", user.id)
       .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
       .limit(1)
       .maybeSingle();
     if (shortlistError) throw shortlistError;
@@ -350,6 +352,25 @@ export async function GET(
       outcome: "success",
     });
 
+    const hasActionableCvShortlist =
+      !projectStillProcessing &&
+      (project.brief_status === "ready" || project.brief_status === "manual") &&
+      storedShortlist?.result_status === "ranked";
+    const [cvAwareProfiles, cvAwarePartialProfiles] = await Promise.all([
+      attachFreelancerCvAccess(
+        admin,
+        profiles,
+        user.isAnonymous,
+        hasActionableCvShortlist,
+      ),
+      attachFreelancerCvAccess(
+        admin,
+        partialProfiles,
+        user.isAnonymous,
+        hasActionableCvShortlist,
+      ),
+    ]);
+
     return NextResponse.json(
       {
         project: presentProject(project),
@@ -360,8 +381,8 @@ export async function GET(
           createdAt: message.created_at,
         })),
         brief: brief.success ? presentBrief(brief.data) : null,
-        profiles,
-        partialProfiles,
+        profiles: cvAwareProfiles,
+        partialProfiles: cvAwarePartialProfiles,
         matchingStatus,
         analysisMode:
           usedDeterministicRecovery

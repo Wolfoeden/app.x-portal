@@ -57,6 +57,7 @@ export interface StructuredBrief {
 export type VerificationLevel = "verified" | "self-reported" | "unknown";
 export type AvailabilityStatus = "available" | "limited" | "unavailable" | "unknown";
 export type IntroType = "free" | "premium";
+export type CvAccess = "login_required" | "available" | "missing" | "forbidden";
 
 export interface ProfileFact {
   label: string;
@@ -68,6 +69,11 @@ export interface FreelancerProfileResult {
   id: string;
   demoStatus?: "demo" | "real";
   bookingUrl: string | null;
+  /**
+   * Server-authoritative CV affordance. Optional so historical stored matches
+   * remain readable; clients must treat an absent value as `forbidden`.
+   */
+  cvAccess?: CvAccess;
   displayName: string;
   role: string;
   skillTags: string[];

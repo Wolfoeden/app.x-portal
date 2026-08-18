@@ -73,4 +73,21 @@ describe("server-side admin authorization", () => {
       isAdmin: true,
     });
   });
+
+  it("treats a missing anonymous claim as non-account state", async () => {
+    getClaims.mockResolvedValue({
+      data: {
+        claims: {
+          sub: "claim-without-account-proof",
+          email: "untrusted@example.test",
+        },
+      },
+      error: null,
+    });
+
+    await expect(getCurrentUser()).resolves.toMatchObject({
+      isAnonymous: true,
+      isAdmin: false,
+    });
+  });
 });

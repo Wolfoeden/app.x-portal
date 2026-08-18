@@ -1915,7 +1915,13 @@ dd.is-unknown,
 .profile-footer > .profile-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.profile-footer > .profile-actions > .cv-action-group {
+  display: grid;
+  gap: 4px;
 }
 
 .profile-footer strong {
@@ -1962,6 +1968,35 @@ dd.is-unknown,
 
 .secondary-action:hover {
   background: var(--surface-soft);
+}
+
+.cv-action {
+  max-width: 260px;
+  white-space: normal;
+}
+
+.cv-action:disabled {
+  cursor: not-allowed;
+  border-color: var(--border);
+  background: var(--surface-soft);
+  color: var(--muted-light);
+  opacity: .72;
+}
+
+.cv-action:disabled:hover {
+  background: var(--surface-soft);
+}
+
+.cv-download-status {
+  max-width: 260px;
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+  line-height: 1.35;
+}
+
+.cv-download-status.is-error {
+  color: var(--danger);
 }
 
 .no-match-card {
@@ -3722,6 +3757,14 @@ dd.is-unknown,
 
   .profile-footer button {
     width: 100%;
+  }
+
+  .profile-footer > .profile-actions,
+  .profile-footer > .profile-actions > .cv-action-group,
+  .cv-action,
+  .cv-download-status {
+    width: 100%;
+    max-width: none;
   }
 
   /* Previously display:none together with its toggle, which made the project
