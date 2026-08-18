@@ -49,6 +49,7 @@ logs.
 | `project_collections` | User-created folders that group multiple chat/project rows | Own rows, read-only | Validated server routes |
 | `messages` | Minimal reconstructable conversation state | Own rows, read-only | Validated server routes |
 | `freelancer_profiles` | Curated public-safe provider catalogue | None; server releases only owned shortlist snapshots | Supabase Studio or service route |
+| `freelancer_cv_documents` | Service-only metadata for private PDF CV objects | None | Controlled operator/service-role workflow only |
 | `shortlists` | One deterministic search run, including zero results | Own rows, read-only | Matching service only |
 | `matches` | Up to three candidate snapshots beneath a shortlist | Own rows, read-only | Matching service only |
 | `intro_bookings` | Explicit introduction request and minimal booking state | Own rows, read-only | Introduction service or Studio |
@@ -66,6 +67,15 @@ Every public table has RLS enabled and forced. All Data API grants are explicit.
 The unauthenticated PostgreSQL `anon` role has no table access. A product guest
 first calls Supabase anonymous sign-in and therefore receives a unique
 `auth.uid()` under the `authenticated` role.
+
+Freelancer CV files live only in the private `freelancer-cvs` Storage bucket.
+There is deliberately no browser Storage policy. A permanent account can ask
+the server for a 60-second signed download only when the exact profile is a
+primary or alternative recommendation in the latest persisted ranked shortlist
+of an owned, non-pending project. The server checks live object MIME type, size
+and a maximum 60-second object cache TTL before signing. Anonymous accounts,
+partial matches and legacy/unclassified snapshots fail closed without exposing
+document existence.
 
 ## Structured brief contract
 

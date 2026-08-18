@@ -51,6 +51,17 @@ function configureProjectQueries(
   };
 
   mocks.from.mockImplementation((table: string) => {
+    if (table === "freelancer_cv_documents") {
+      const cvQuery: Record<string, (...args: unknown[]) => unknown> = {};
+      cvQuery.select = () => cvQuery;
+      cvQuery.in = () => cvQuery;
+      cvQuery.eq = () =>
+        Promise.resolve({
+          data: [{ profile_id: profileFixtures[0]!.id }],
+          error: null,
+        });
+      return cvQuery;
+    }
     const query: Record<string, (...args: unknown[]) => unknown> = {};
     query.select = () => query;
     query.eq = () => query;
@@ -78,7 +89,7 @@ function configureProjectQueries(
 beforeEach(() => {
   vi.clearAllMocks();
   process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role";
-  mocks.requireUser.mockResolvedValue({ id: userId });
+  mocks.requireUser.mockResolvedValue({ id: userId, isAnonymous: false });
   mocks.audit.mockResolvedValue("audit-id");
   mocks.fetchActiveProfiles.mockResolvedValue(profileFixtures);
   mocks.fetchProfilesByIds.mockResolvedValue([]);
@@ -107,6 +118,30 @@ describe("project detail deterministic recovery", () => {
     expect(body.analysisNotice).toContain("deterministisch");
     expect(mocks.fetchActiveProfiles).toHaveBeenCalledTimes(1);
     expect(mocks.fetchProfilesByIds).not.toHaveBeenCalled();
+    expect(
+      body.profiles.every(
+        (profile: { cvAccess: string }) => profile.cvAccess === "forbidden",
+      ),
+    ).toBe(true);
+    expect(mocks.from).not.toHaveBeenCalledWith("freelancer_cv_documents");
+  });
+
+  it("keeps pending recovery CV existence opaque to guests without a metadata query", async () => {
+    mocks.requireUser.mockResolvedValue({ id: userId, isAnonymous: true });
+
+    const response = await GET(new Request(`https://x-portal.eu/api/projects/${projectId}`), {
+      params: Promise.resolve({ id: projectId }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.profiles).toHaveLength(3);
+    expect(
+      body.profiles.every(
+        (profile: { cvAccess: string }) => profile.cvAccess === "login_required",
+      ),
+    ).toBe(true);
+    expect(mocks.from).not.toHaveBeenCalledWith("freelancer_cv_documents");
   });
 
   it("returns an honest empty profile list when no current profile is eligible", async () => {
@@ -123,7 +158,10 @@ describe("project detail deterministic recovery", () => {
   });
 
   it("does not combine a pending follow-up brief with an older shortlist", async () => {
-    configureProjectQueries({ id: "30000000-0000-4000-8000-000000000001" });
+    configureProjectQueries({
+      id: "30000000-0000-4000-8000-000000000001",
+      result_status: "ranked",
+    });
 
     const response = await GET(new Request(`https://x-portal.eu/api/projects/${projectId}`), {
       params: Promise.resolve({ id: projectId }),
@@ -135,6 +173,12 @@ describe("project detail deterministic recovery", () => {
     expect(body.analysisNotice).toContain("ältere Shortlist");
     expect(mocks.fetchActiveProfiles).toHaveBeenCalledTimes(1);
     expect(mocks.fetchProfilesByIds).not.toHaveBeenCalled();
+    expect(
+      body.profiles.every(
+        (profile: { cvAccess: string }) => profile.cvAccess === "forbidden",
+      ),
+    ).toBe(true);
+    expect(mocks.from).not.toHaveBeenCalledWith("freelancer_cv_documents");
   });
 
   it("keeps a completed zero-result shortlist when status remains matching", async () => {

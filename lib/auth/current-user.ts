@@ -42,7 +42,9 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     id,
     email:
       typeof data.claims.email === "string" ? data.claims.email : null,
-    isAnonymous: data.claims.is_anonymous === true,
+    // A permanent account is security-sensitive state. Fail closed when the
+    // required claim is absent or malformed instead of treating it as false.
+    isAnonymous: data.claims.is_anonymous !== false,
     isAdmin: hasAdminClaim(data.claims as Record<string, unknown>, id),
   };
 }

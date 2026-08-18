@@ -147,6 +147,18 @@ export default function PrivacyPage() {
               widersprechen und Berichtigung oder Löschung verlangen. XPORTAL
               trifft keine automatische Einstellungs- oder Vertragsentscheidung.
             </p>
+            <p>
+              Ein Lebenslauf wird nur mit dokumentierter Berechtigung des
+              betroffenen Freelancers in einem privaten Supabase-Speicher
+              hinterlegt. Gäste erhalten weder den Lebenslauf noch einen
+              Hinweis darauf, ob ein Dokument vorhanden ist. Angemeldete
+              Nutzer können einen Lebenslauf nur zu einem Profil abrufen, das
+              im neuesten gespeicherten Ergebnis ihres eigenen Projekts als
+              primäre oder alternative Empfehlung ausgewiesen ist. Der Abruf
+              erfolgt über einen kurzzeitig gültigen Download-Link und wird zu
+              Sicherheits- und Nachweiszwecken protokolliert. Nicht empfohlene
+              Teiltreffer erhalten keinen Dokumentzugriff.
+            </p>
           </div>
         </section>
 
@@ -215,7 +227,7 @@ export default function PrivacyPage() {
             <p>Je nach genutzter Funktion erhalten folgende Empfänger Daten:</p>
             <ul>
               <li>Netlify, Inc. für Hosting, CDN, Serverfunktionen und technische Protokolle;</li>
-              <li>Supabase für Authentifizierung, Datenbank und Backups; das primäre Projekt ist in <code>eu-west-1</code> (Irland) eingerichtet;</li>
+              <li>Supabase für Authentifizierung, Datenbank, privaten Dokumentenspeicher und Backups; das primäre Projekt ist in <code>eu-west-1</code> (Irland) eingerichtet;</li>
               <li>OpenAI Ireland Ltd. und verbundene API-Unterauftragsverarbeiter für die angeforderten KI-Funktionen;</li>
               <li>Google erst nach Wahl der Google-Anmeldung;</li>
               <li>der jeweils angezeigte Buchungsanbieter erst nach Ihrem Klick;</li>
@@ -247,6 +259,7 @@ export default function PrivacyPage() {
               <li>ungenutzte anonyme Auth-Konten und abgelaufene Gast-Übertragungsnachweise: Prüfung beziehungsweise Löschung nach 30 Tagen;</li>
               <li>Nachrichten in inaktiven Projekten: 180 Tage;</li>
               <li>inaktive Projekte, Match-Snapshots und externe Suchergebnisse: Prüfung beziehungsweise Löschung nach 365 Tagen;</li>
+              <li>Lebensläufe von Freelancern: bis zum Widerruf der Bereitstellung, zur Beendigung des Vermittlungszwecks oder bis zu einer früheren berechtigten Löschanfrage; die Erforderlichkeit wird bei Profilprüfung und Deaktivierung erneut geprüft;</li>
               <li>Whitelist-Datensätze: Überprüfung nach 365 Tagen und Löschung, wenn keine Rechtsgrundlage mehr besteht;</li>
               <li>technische KI-Nutzungsdaten: je nach Kontotyp und Abrechnungsfenster 90 bis 400 Tage;</li>
               <li>Audit- und Vermittlungsnachweise: grundsätzlich bis zu 730 Tage; danach Löschung oder Pseudonymisierung nach der geltenden Richtlinie;</li>

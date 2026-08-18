@@ -16,6 +16,7 @@ import {
   type MonthlyAiUsageSettlementOutcome,
 } from "@/lib/ai/product-entitlements";
 import { requireCurrentUser } from "@/lib/auth/current-user";
+import { attachFreelancerCvAccess } from "@/lib/data/freelancer-cvs";
 import { deriveProjectTitle, presentProject, type ProjectRow } from "@/lib/data/projects";
 import { fetchActiveBookableRealProfiles } from "@/lib/data/freelancers";
 import {
@@ -762,6 +763,19 @@ async function processChatRequest(
       },
     });
 
+    const [presentedMatches, presentedPartialMatches] = await Promise.all([
+      attachFreelancerCvAccess(
+        admin,
+        shortlist.matches.map(presentMatch),
+        user.isAnonymous,
+      ),
+      attachFreelancerCvAccess(
+        admin,
+        shortlist.partialMatches.map(presentMatch),
+        user.isAnonymous,
+      ),
+    ]);
+
     return NextResponse.json(
       {
         project: presentProject(updatedProject as ProjectRow),
@@ -772,8 +786,8 @@ async function processChatRequest(
           createdAt: assistantMessage.created_at,
         },
         brief: presentBrief(extraction.brief),
-        matches: shortlist.matches.map(presentMatch),
-        partialMatches: shortlist.partialMatches.map(presentMatch),
+        matches: presentedMatches,
+        partialMatches: presentedPartialMatches,
         matchingStatus: shortlist.status,
         mode: extraction.mode === "openai" ? "ai" : "fallback",
         notice:
