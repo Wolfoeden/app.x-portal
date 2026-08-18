@@ -14,6 +14,15 @@ import {
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { openCookieSettings } from "@/components/CookieConsent";
 import {
+  AgentDetails,
+  AgentDirectory,
+  agentById,
+  agentCatalog,
+  agentTaskById,
+  type AgentDefinition,
+  type AgentTask,
+} from "@/components/AgentDirectory";
+import {
   IconAlertCircle,
   IconAlertTriangle,
   IconArrowRight,
@@ -132,6 +141,7 @@ type PendingAssistant = {
 
 interface ChatWorkspaceProps {
   apiPaths?: Partial<ChatApiPaths>;
+  view?: "chat" | "agents";
 }
 
 const emptyAuth: AuthView = {
@@ -1053,7 +1063,10 @@ export async function parseStreamResponse(
   );
 }
 
-export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
+export function ChatWorkspace({
+  apiPaths: apiOverrides,
+  view: workspaceView = "chat",
+}: ChatWorkspaceProps) {
   const apiPaths = useMemo(
     () => ({ ...defaultChatApiPaths, ...apiOverrides }),
     [apiOverrides],
@@ -1084,9 +1097,12 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [manageChat, setManageChat] = useState<ProjectListItem | null>(null);
-  const [agentsOpen, setAgentsOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(true);
+  const [selectedAgentId, setSelectedAgentId] = useState(agentCatalog[0]!.id);
+  const [selectedAgentTaskId, setSelectedAgentTaskId] = useState(
+    agentCatalog[0]!.tasks[0]!.id,
+  );
   const [loadingProjectId, setLoadingProjectId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [dataAction, setDataAction] = useState<"export" | "delete" | null>(null);
@@ -1104,6 +1120,9 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
   const externalSearchRequestIdsRef = useRef(new Map<string, string>());
 
   const selectedProfile = profiles.find((profile) => profile.id === selectedProfileId) ?? null;
+  const selectedAgent = agentById(selectedAgentId);
+  const selectedAgentTask = agentTaskById(selectedAgent, selectedAgentTaskId);
+  const isAgentView = workspaceView === "agents";
   const isAccountUser = auth.authenticated && !auth.anonymous;
   const freeUsageExhausted = Boolean(
     usage && (usage.freeUsage.exhausted || usage.freeUsage.remaining <= 0),
@@ -1322,6 +1341,16 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
           }
         }
         await Promise.all([loadProjects(), loadProjectCollections()]);
+        const requestedProjectId =
+          workspaceView === "chat" ? searchParams.get("project") : null;
+        if (requestedProjectId) {
+          await loadProject(requestedProjectId);
+          searchParams.delete("project");
+          const cleanUrl = `${window.location.pathname}${
+            searchParams.size ? `?${searchParams.toString()}` : ""
+          }${window.location.hash}`;
+          window.history.replaceState({}, "", cleanUrl);
+        }
         const refreshRecovery = sessionStorage.getItem(REFRESH_RECOVERY_KEY);
         if (refreshRecovery) {
           sessionStorage.removeItem(REFRESH_RECOVERY_KEY);
@@ -1378,6 +1407,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
     refreshAuth,
     refreshUsage,
     showToast,
+    workspaceView,
   ]);
 
   useEffect(() => {
@@ -1392,6 +1422,13 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
   }, [messages, pendingAssistant, profiles, partialProfiles]);
 
   const startNewProject = () => {
+    if (workspaceView === "agents") {
+      // This shell is rendered without an App Router context in presentation tests.
+      // A hard navigation is intentional when crossing from the directory into chat.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign("/chat");
+      return;
+    }
     setActiveProject(null);
     setMessages([]);
     setBrief(null);
@@ -1892,11 +1929,34 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
     showToast("Sie wurden abgemeldet. Ein neuer Gastzugang ist aktiv.");
   };
 
+  const openProjectFromSidebar = (project: ProjectListItem) => {
+    if (workspaceView === "agents") {
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign(`/chat?project=${encodeURIComponent(project.id)}`);
+      return;
+    }
+    void loadProject(project);
+  };
+
+  const selectAgent = (agent: AgentDefinition) => {
+    setSelectedAgentId(agent.id);
+    setSelectedAgentTaskId(agent.tasks[0]!.id);
+    setDetailsOpen(true);
+  };
+
+  const selectAgentTask = (agent: AgentDefinition, task: AgentTask) => {
+    setSelectedAgentId(agent.id);
+    setSelectedAgentTaskId(task.id);
+    setDetailsOpen(true);
+  };
+
   const unassignedChats = projects.filter((project) => !project.collectionId);
 
   return (
-    <div className={`app-shell ${detailsOpen ? "" : "details-hidden"}`}>
-      <a className="skip-link" href="#chat-composer">Direkt zur Nachricht</a>
+    <div className={`app-shell ${detailsOpen ? "" : "details-hidden"}${isAgentView ? " is-agent-view" : ""}`}>
+      <a className="skip-link" href={isAgentView ? "#agent-directory-title" : "#chat-composer"}>
+        {isAgentView ? "Direkt zu den Agenten" : "Direkt zur Nachricht"}
+      </a>
 
       <aside className={`project-sidebar ${sidebarOpen ? "is-open" : ""}`} aria-label="Projekte">
         <div className="sidebar-top">
@@ -1928,16 +1988,17 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
             <span>Projekte</span>
             <span className="sidebar-primary-chevron" aria-hidden="true"><IconPlus size={16} /></span>
           </button>
-          <button
-            className="sidebar-primary-button"
-            type="button"
-            onClick={() => setAgentsOpen(true)}
+          <a
+            className={`sidebar-primary-button${isAgentView ? " is-active" : ""}`}
+            href="/agent"
+            aria-current={isAgentView ? "page" : undefined}
+            onClick={() => setSidebarOpen(false)}
             data-sidebar-primary="agents"
           >
             <span className="agent-glyph" aria-hidden="true">A</span>
             <span>Agenten</span>
             <span className="sidebar-primary-chevron" aria-hidden="true"><IconChevronRight size={16} /></span>
-          </button>
+          </a>
         </nav>
 
         <nav className="project-nav" aria-label="Gespeicherte Chats">
@@ -1953,7 +2014,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
               chats={unassignedChats}
               activeProjectId={activeProject?.id ?? null}
               loadingProjectId={loadingProjectId}
-              onOpen={(project) => void loadProject(project)}
+              onOpen={openProjectFromSidebar}
               onManage={setManageChat}
             />
           )}
@@ -1976,7 +2037,7 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
                         chats={chats}
                         activeProjectId={activeProject?.id ?? null}
                         loadingProjectId={loadingProjectId}
-                        onOpen={(project) => void loadProject(project)}
+                        onOpen={openProjectFromSidebar}
                         onManage={setManageChat}
                       />
                     ) : <p className="collection-empty">Noch keine Chats</p>}
@@ -2058,16 +2119,47 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
           <div className="topbar-left">
             <button className="icon-button mobile-menu" type="button" onClick={() => setSidebarOpen(true)} aria-label="Projekte öffnen"><IconMenu size={18} /></button>
             <div>
-              <p className="topbar-title">{activeProject?.title ?? "Freelancer finden"}</p>
-              <p className="topbar-subtitle">KI-gestützte Anfrage · Sie treffen jede Entscheidung</p>
+              <p className="topbar-title">
+                {isAgentView ? "KI-Agenten" : activeProject?.title ?? "Freelancer finden"}
+              </p>
+              <p className="topbar-subtitle">
+                {isAgentView
+                  ? "Spezialisierte Rollen · transparente Task-Vorlagen"
+                  : "KI-gestützte Anfrage · Sie treffen jede Entscheidung"}
+              </p>
             </div>
           </div>
           <div className="topbar-actions">
-            <button className="icon-button details-toggle" type="button" onClick={() => setDetailsOpen((current) => !current)} aria-label={detailsOpen ? "Projektübersicht ausblenden" : "Projektübersicht einblenden"} aria-pressed={detailsOpen}><IconPanelRight size={18} /></button>
+            <button
+              className="icon-button details-toggle"
+              type="button"
+              onClick={() => setDetailsOpen((current) => !current)}
+              aria-label={
+                isAgentView
+                  ? detailsOpen
+                    ? "Agentendetails ausblenden"
+                    : "Agentendetails einblenden"
+                  : detailsOpen
+                    ? "Projektübersicht ausblenden"
+                    : "Projektübersicht einblenden"
+              }
+              aria-pressed={detailsOpen}
+            ><IconPanelRight size={18} /></button>
           </div>
         </header>
 
-        <div className="chat-scroll" aria-live="polite">
+        {isAgentView ? (
+          <div className="agent-scroll">
+            <AgentDirectory
+              selectedAgentId={selectedAgent.id}
+              selectedTaskId={selectedAgentTask.id}
+              onSelectAgent={selectAgent}
+              onSelectTask={selectAgentTask}
+            />
+          </div>
+        ) : (
+          <>
+          <div className="chat-scroll" aria-live="polite">
           <div className="conversation">
             {messages.length === 0 && !pendingAssistant ? (
               <WelcomeState onSuggestion={startGuidedRequest} />
@@ -2162,14 +2254,23 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
           ) : null}
           <p className="composer-disclosure">KI kann Fehler machen. Profile werden regelbasiert gefiltert; Sie wählen selbst. Keine Gesundheitsdaten oder vertraulichen Daten Dritter eingeben.</p>
         </div>
+          </>
+        )}
       </main>
 
-      <aside className={`details-panel ${detailsOpen ? "is-open" : ""}`} aria-label="Projektübersicht">
-        <ProjectDetails
-          brief={brief}
-          selectedProfile={selectedProfile}
-          onContact={() => setContactOpen(true)}
-        />
+      <aside
+        className={`details-panel ${detailsOpen ? "is-open" : ""}`}
+        aria-label={isAgentView ? "Agentendetails" : "Projektübersicht"}
+      >
+        {isAgentView ? (
+          <AgentDetails agent={selectedAgent} task={selectedAgentTask} />
+        ) : (
+          <ProjectDetails
+            brief={brief}
+            selectedProfile={selectedProfile}
+            onContact={() => setContactOpen(true)}
+          />
+        )}
       </aside>
 
       {authOpen ? (
@@ -2212,8 +2313,6 @@ export function ChatWorkspace({ apiPaths: apiOverrides }: ChatWorkspaceProps) {
           onDelete={() => deleteChat(manageChat)}
         />
       ) : null}
-
-      {agentsOpen ? <AgentsDialog onClose={() => setAgentsOpen(false)} /> : null}
 
       {toast ? <div className={`toast ${toast.tone}`} role="status" key={toast.id}>{toast.message}</div> : null}
     </div>
@@ -3384,20 +3483,6 @@ function ManageChatDialog({
           )}
           <button className="secondary-action" type="button" onClick={onClose} disabled={busy}>Schließen</button>
         </div>
-      </div>
-    </Modal>
-  );
-}
-
-function AgentsDialog({ onClose }: { onClose: () => void }) {
-  return (
-    <Modal titleId="agents-title" onClose={onClose}>
-      <div className="agents-dialog">
-        <span className="agent-glyph is-large" aria-hidden="true">A</span>
-        <span className="dialog-eyebrow">Vorbereitet für die nächste Ausbaustufe</span>
-        <h2 id="agents-title">Agenten</h2>
-        <p>Hier können zukünftig eigene spezialisierte Agenten angeschlossen werden. Im aktuellen Freelancer-MVP ist noch kein Agent aktiviert und es werden keine autonomen Aktionen ausgeführt.</p>
-        <button className="primary-action" type="button" onClick={onClose}>Verstanden</button>
       </div>
     </Modal>
   );
