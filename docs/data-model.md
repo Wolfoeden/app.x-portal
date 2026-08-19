@@ -50,6 +50,7 @@ logs.
 | `messages` | Minimal reconstructable conversation state | Own rows, read-only | Validated server routes |
 | `freelancer_profiles` | Curated public-safe provider catalogue | None; server releases only owned shortlist snapshots | Supabase Studio or service route |
 | `freelancer_cv_documents` | Service-only metadata for private PDF CV objects | None | Controlled operator/service-role workflow only |
+| `freelancer_applications` | Self-registered freelancer claims waiting for operator verification | None | Public application route inserts; admin review route decides. Both through the service role |
 | `shortlists` | One deterministic search run, including zero results | Own rows, read-only | Matching service only |
 | `matches` | Up to three candidate snapshots beneath a shortlist | Own rows, read-only | Matching service only |
 | `intro_bookings` | Explicit introduction request and minimal booking state | Own rows, read-only | Introduction service or Studio |
@@ -76,6 +77,50 @@ of an owned, non-pending project. The server checks live object MIME type, size
 and a maximum 60-second object cache TTL before signing. Anonymous accounts,
 partial matches and legacy/unclassified snapshots fail closed without exposing
 document existence.
+
+## Freelancer self-registration and verification
+
+`freelancer_applications` is a staging table, never a second catalogue. A
+freelancer fills in `/freelancer/apply`; the row lands with
+`status='submitted'` and is invisible to the product. Matching reads
+`freelancer_profiles` only, so nothing an applicant types can reach a customer
+before a named administrator publishes it.
+
+```mermaid
+flowchart LR
+  Applicant["Freelancer / freelancer/apply"] -->|"validated POST"| Route["/api/freelancer-applications"]
+  Applicant -->|"signed upload token"| Storage["freelancer-cvs / incoming/"]
+  Route -->|"service role"| Staging["freelancer_applications (status=submitted)"]
+  Admin["Named administrator / chat/admin/freelancers"] -->|"reads, corrects, ticks verified facts"| Staging
+  Admin -->|"publish"| Catalogue["freelancer_profiles (active, real)"]
+  Admin -->|"publish; is_downloadable is a separate tick"| Cv["freelancer_cv_documents"]
+  Catalogue --> Match["Deterministic matching"]
+```
+
+Rules the publish path enforces:
+
+- **Claims stay claims.** Every submitted statement is written as a
+  `self_reported_facts` entry. A statement moves to `verified_facts` only when
+  the reviewer ticks it individually in the review screen.
+- **A published profile must be reachable.** `fetchActiveBookableRealProfiles`
+  filters on `profile_status='active'`, `demo_status='real'`, a non-null HTTPS
+  `booking_url` and an availability other than `unavailable`. Publishing
+  therefore refuses a missing booking URL rather than creating a row that can
+  never appear in a shortlist.
+- **One decision per application.** `published_profile_id` is set in the same
+  update that sets `status='approved'`, and the insert is rolled back if that
+  update fails, so a live catalogue row never exists without its provenance
+  record.
+- **CVs never enter the database.** The file is uploaded straight to the private
+  `freelancer-cvs` bucket with a short-lived signed token under an `incoming/`
+  prefix; the row keeps only the object key, and reviewers open it through a
+  two-minute signed URL. On approval the object is re-uploaded as the profile's
+  `<profile-uuid>/cv-v1.pdf` with the `application/pdf` content type and the
+  `max-age=60` the download route verifies, a `freelancer_cv_documents` row is
+  written, and the staging copy is removed. `is_downloadable` stays a separate
+  reviewer decision and defaults to false: consent to be reviewed is not consent
+  to be shown to customers. A failed handover keeps the staging copy and is
+  reported to the reviewer instead of rolling back an otherwise correct profile.
 
 ## Structured brief contract
 

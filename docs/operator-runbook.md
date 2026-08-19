@@ -169,6 +169,53 @@ handled.
 The application re-checks the live Storage metadata before every signed URL.
 An incorrect path, MIME type, byte size or cache TTL therefore fails closed.
 
+## Review a freelancer self-registration
+
+Freelancers can apply themselves at `/freelancer/apply`. The application is
+stored in `freelancer_applications` and is invisible to customers until an
+administrator publishes it. Use the application screen at
+`/chat/admin/freelancers` rather than Studio for this flow: it writes both the
+catalogue row and the decision record in one audited step.
+
+1. Sign in with the administrator account (`app_metadata.role='admin'` or an
+   entry in `ADMIN_USER_IDS`) and open **Freelancer-Bewerbungen prüfen** from
+   the account menu.
+2. Open the application and read the submitted values and the CV. The CV link is
+   a two-minute signed URL into the private `freelancer-cvs` bucket; do not
+   forward it and do not store a copy outside the approved location.
+3. Verify identity and claims outside the application, exactly as for a curated
+   profile. Record the evidence where the verification process requires it.
+4. Correct the fields in the review panel where needed. The submitted
+   application is never overwritten — it stays as the provenance record.
+5. Tick **only** the individual statements you personally verified. Everything
+   left unticked is published as a self-reported claim. An untouched application
+   therefore publishes with no verified facts at all, which is the safe default.
+6. Set `verification_status` to the process you actually completed. It is not a
+   claim about every statement in the profile.
+7. Enter an HTTPS booking URL. The publish action refuses without one, because
+   matching filters out profiles that cannot be booked.
+8. Decide separately whether the CV may be shown to customers. Leave the tick
+   off unless the applicant's permission actually covers sharing the document
+   with matched customers; it maps to `freelancer_cv_documents.is_downloadable`
+   and can be enabled later in Studio.
+9. Choose **Prüfen & freigeben**. This creates the `freelancer_profiles` row
+   with `profile_status='active'` and `demo_status='real'`, so the profile can
+   appear in customer shortlists immediately, and moves the CV into the
+   profile's own `<profile-uuid>/cv-v1.pdf` object. Run one staging search
+   afterwards and confirm the rendered disclosures.
+10. If the screen reports that the CV could not be transferred, the profile is
+    still correct and live. Attach the document manually with *Attach or replace
+    a private freelancer CV* above; the applicant's file is still under
+    `incoming/` in the same bucket.
+11. Use **Ablehnen** with an internal note when the application fails review.
+    The applicant is not notified automatically; contact them separately if the
+    process requires it.
+
+A published application can no longer be changed from this screen. Later
+corrections follow *Edit an active profile* below, and deletions follow the
+retention procedure — a rejected application's CV object under `incoming/` must
+be removed together with the application row.
+
 ## Edit an active profile
 
 1. Confirm the correct row by `id`, `slug` and display name.
