@@ -2093,6 +2093,16 @@ export function ChatWorkspace({
                         Geschütztes AI-Usage-Dashboard
                       </button>
                     ) : null}
+                    {auth.admin && apiPaths.adminFreelancers ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          window.location.assign(apiPaths.adminFreelancers!)
+                        }
+                      >
+                        Freelancer-Bewerbungen prüfen
+                      </button>
+                    ) : null}
                     <button type="button" onClick={() => void exportData()} disabled={dataAction === "export"}>Daten exportieren</button>
                     <button type="button" onClick={() => { setAccountMenuOpen(false); openCookieSettings(); }}>Cookie-Einstellungen verwalten</button>
                     <button type="button" onClick={() => { setAccountMenuOpen(false); setDeleteOpen(true); }}>Daten & Konto löschen</button>

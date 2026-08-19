@@ -315,6 +315,8 @@ export interface ChatApiPaths {
   credits?: string;
   /** Protected operator-only usage dashboard. */
   adminUsage?: string;
+  /** Protected operator-only review queue for freelancer applications. */
+  adminFreelancers?: string;
   /** Explicit, separately disclosed web search offered only after no reliable internal match. */
   freelancerSearch: string;
   emailLogin: string;
@@ -333,6 +335,7 @@ export const defaultChatApiPaths: ChatApiPaths = {
   session: appPath("/api/auth/session"),
   credits: appPath("/api/ai/credits"),
   adminUsage: appPath("/chat/admin/ai-usage"),
+  adminFreelancers: appPath("/chat/admin/freelancers"),
   freelancerSearch: appPath("/api/freelancer-search"),
   emailLogin: appPath("/api/auth/login"),
   emailRegister: appPath("/api/auth/register"),
