@@ -50,6 +50,7 @@ export const AiBriefCandidateSchema = z
     summary: z.string().trim().min(1).max(4_000),
     requiredSkills: NullableTextListSchema,
     optionalSkills: NullableTextListSchema,
+    excludedSkills: NullableTextListSchema,
     language: z.string().trim().min(1).max(80).nullable(),
     workMode: z.enum(["remote", "on_site", "hybrid", "unknown"]),
     location: z.string().trim().min(1).max(200).nullable(),
@@ -201,6 +202,7 @@ Rules:
 - Preserve corrections in the latest message over older statements.
 - Treat a follow-up as an addition unless it explicitly corrects or removes an earlier fact.
 - Put professional capabilities explicitly required from the freelancer in requiredSkills and clearly optional professional capabilities in optionalSkills.
+- A capability the user rules out ("keine Angular-Leute", "ohne SAP", "not Java") belongs in excludedSkills and must never appear in requiredSkills or optionalSkills. Negation reverses a requirement, it does not create one.
 - Do not put personality traits, working style, commitment, workload, schedule, availability, preparation obligations or other delivery conditions in skill fields; preserve them in constraints.
 - Consolidate examples and subtopics under the named professional capability instead of turning every task bullet into an independent skill.
 - When the source names alternatives with "or" or "oder", include every named alternative; never choose only one.
@@ -1222,19 +1224,47 @@ export function reconcileAiBrief(
       ? groundedStartWindow(proposed.startWindow, latest)
       : null;
 
+  // Both paths may spot an exclusion the other misses: the regex only sees a
+  // negation standing directly in front of the term, the model reads the
+  // sentence. Union them.
+  const excludedSkills = mergeLists(
+    deterministic.excludedSkills,
+    groundedList(proposed.excludedSkills, source),
+  );
+
+  /**
+   * Last line of defence for the reported inversion.
+   *
+   * Enforcing it once here rather than trusting every merge branch above is
+   * deliberate: an exclusion that leaks back into requiredSkills does not
+   * degrade the result, it reverses it — "keine Angular-Leute" ranked Angular
+   * profiles first.
+   */
+  const withoutExcluded = (list: string[] | null): string[] | null => {
+    if (!list || !excludedSkills?.length) return list;
+    const blocked = new Set(excludedSkills.map(normalizeText));
+    const kept = list.filter((skill) => !blocked.has(normalizeText(skill)));
+    return kept.length ? kept : null;
+  };
+
   const candidate = {
     ...deterministic,
     projectTitle: proposed.projectTitle ?? deterministic.projectTitle,
     // A generated summary can silently introduce facts; the normalized source
     // itself is the safe V1 summary.
     summary: deterministic.summary,
-    requiredSkills: removeExplicitItems(
-      mergeLists(deterministic.requiredSkills, proposedRequired),
-      latest,
+    excludedSkills,
+    requiredSkills: withoutExcluded(
+      removeExplicitItems(
+        mergeLists(deterministic.requiredSkills, proposedRequired),
+        latest,
+      ),
     ),
-    optionalSkills: removeExplicitItems(
-      mergeLists(deterministic.optionalSkills, proposedOptional),
-      latest,
+    optionalSkills: withoutExcluded(
+      removeExplicitItems(
+        mergeLists(deterministic.optionalSkills, proposedOptional),
+        latest,
+      ),
     ),
     language: proposedLanguage ?? deterministic.language,
     location: proposedLocation ?? deterministic.location,

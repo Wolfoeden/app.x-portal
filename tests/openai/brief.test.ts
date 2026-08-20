@@ -84,6 +84,7 @@ function candidate(
     summary: "A concise summary",
     requiredSkills: null,
     optionalSkills: null,
+    excludedSkills: null,
     language: null,
     workMode: "unknown",
     location: null,

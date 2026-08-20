@@ -1009,6 +1009,20 @@ export function evaluateProfile(
   if (!secureBookingUrl(profile)) {
     rejectionReasons.push("Profil hat keinen sicheren direkten Booking-Link.");
   }
+
+  // An exclusion is a filter, never a score component. "Keine Angular-Leute"
+  // has to remove those profiles outright — ranking them lower would still put
+  // one at the top as soon as the rest of the field is thin.
+  for (const excluded of brief.excludedSkills ?? []) {
+    const present =
+      matchingFact(profile.skillTags, excluded) ??
+      matchingFact(profile.contextEvidence, excluded);
+    if (present) {
+      rejectionReasons.push(
+        `Ausgeschlossen: Das Profil führt ${present.value}.`,
+      );
+    }
+  }
   if (profile.availability.status === "unavailable") {
     rejectionReasons.push("Profil ist als nicht verfügbar markiert.");
   } else if (profile.availability.status === "available") {

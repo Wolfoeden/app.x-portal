@@ -58,6 +58,13 @@ function briefSummary(brief: ProjectBrief): string {
   } else if (requiredSkills.length) {
     details.push(`Pflichtkompetenzen: ${requiredSkills.join(", ")}`);
   }
+  // Shown although it is a filter rather than a requirement: a misread
+  // exclusion is invisible in the result — the client sees the candidates that
+  // are there, never the ones wrongly removed.
+  const excludedSkills = (brief.excludedSkills ?? []).slice(0, 4);
+  if (excludedSkills.length) {
+    details.push(`Ausgeschlossen: ${excludedSkills.join(", ")}`);
+  }
   if (brief.language) details.push(`Sprache: ${brief.language}`);
   if (brief.workMode !== "unknown") {
     details.push(
