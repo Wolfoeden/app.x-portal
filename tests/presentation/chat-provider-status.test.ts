@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   analysisDisclosure,
-  assistantAttribution,
-  normalizeAnalysisTrace,
   providerModelLabel,
   providerStatusLabel,
+} from "@/components/chat/results";
+import {
+  assistantAttribution,
+  normalizeAnalysisTrace,
   sidebarAccountButtonClassName,
 } from "@/components/ChatWorkspace";
 import type { AiAnalysisTrace } from "@/components/chat-contract";

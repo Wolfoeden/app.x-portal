@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   externalSearchCtaState,
+  visibleAnalysisSteps,
+} from "@/components/chat/results";
+import {
   mergeUsageSnapshot,
   normalizeUsageSnapshot,
   publicProgressLabel,
   usageSummary,
-  visibleAnalysisSteps,
 } from "@/components/ChatWorkspace";
 import type { AiAnalysisTrace, AiUsageSnapshot } from "@/components/chat-contract";
 
