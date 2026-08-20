@@ -5,10 +5,10 @@ import { describe, expect, it, vi } from "vitest";
 import {
   cvActionState,
   navigateToCvDownload,
-  normalizeCvAccess,
   ProfileCard,
   requestFreelancerCvDownload,
-} from "@/components/ChatWorkspace";
+} from "@/components/chat/results";
+import { normalizeCvAccess } from "@/components/ChatWorkspace";
 import type { FreelancerProfileResult } from "@/components/chat-contract";
 
 function profile(

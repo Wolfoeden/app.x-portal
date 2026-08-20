@@ -19,6 +19,22 @@ export type ToastState = {
   tone: "neutral" | "error";
 };
 
+/** Narrows an unknown payload before reading fields off it. */
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** A trimmed non-empty string, or null — blank and missing mean the same. */
+export function nullableString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+export function formatCredits(value: number) {
+  return new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 }).format(
+    value,
+  );
+}
+
 /** Up to two initials for an avatar, with a neutral fallback. */
 export function initials(name: string) {
   const result = name
