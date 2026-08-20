@@ -112,23 +112,49 @@ function parseAllocationConstraint(text: string): string[] | null {
   return allocation ? [allocation.replace(/\s*%\s*/u, "% ").trim()] : null;
 }
 
+const OPTIONAL_MARKER =
+  /(?:nice[ -]to[ -]have|optional(?:ly)?|ideally|wünschenswert|optional)\s*[:,-]?\s*$/iu;
+
+/**
+ * A negation standing directly in front of the skill: "keine Angular-Leute",
+ * "ohne Angular", "no Angular".
+ *
+ * Adjacency is required on purpose. Allowing filler words in between would
+ * swallow "nicht nur React, sondern auch Angular" and silently drop React —
+ * and a wrong exclusion is invisible to the client, unlike a missed one. This
+ * trades recall for precision; the model path covers the wordier phrasings.
+ */
+const NEGATION_MARKER =
+  /(?:^|[^\p{L}\p{N}])(?:kein[a-zäöüß]{0,3}|ohne|nicht|no|not|without|exklusive|ausgenommen)\s*$/iu;
+
+function classifySkillMention(
+  prefix: string,
+): "excluded" | "optional" | "required" {
+  if (NEGATION_MARKER.test(prefix)) return "excluded";
+  if (OPTIONAL_MARKER.test(prefix)) return "optional";
+  return "required";
+}
+
 function parseSkills(
   text: string,
   catalog: readonly string[],
-): { required: string[] | null; optional: string[] | null } {
-  const required: string[] = [];
-  const optional: string[] = [];
+): {
+  required: string[] | null;
+  optional: string[] | null;
+  excluded: string[] | null;
+} {
+  const buckets = {
+    required: [] as string[],
+    optional: [] as string[],
+    excluded: [] as string[],
+  };
 
   for (const skill of catalog) {
     const match = new RegExp(`(?:^|[^\\p{L}\\p{N}])${escapeRegex(skill)}(?:$|[^\\p{L}\\p{N}])`, "iu").exec(text);
     if (!match || match.index === undefined) continue;
 
     const prefix = text.slice(Math.max(0, match.index - 55), match.index);
-    if (/(?:nice[ -]to[ -]have|optional(?:ly)?|ideally|wünschenswert|optional)\s*[:,-]?\s*$/iu.test(prefix)) {
-      optional.push(skill);
-    } else {
-      required.push(skill);
-    }
+    buckets[classifySkillMention(prefix)].push(skill);
   }
 
   for (const [canonical, aliases] of Object.entries(DEFAULT_SKILL_ALIASES)) {
@@ -141,20 +167,25 @@ function parseSkills(
       if (!match || match.index === undefined) continue;
 
       const prefix = text.slice(Math.max(0, match.index - 55), match.index);
-      if (
-        /(?:nice[ -]to[ -]have|optional(?:ly)?|ideally|wünschenswert|optional)\s*[:,-]?\s*$/iu.test(
-          prefix,
-        )
-      ) {
-        optional.push(canonical);
-      } else {
-        required.push(canonical);
-      }
+      buckets[classifySkillMention(prefix)].push(canonical);
       break;
     }
   }
 
-  return { required: canonicalList(required), optional: canonicalList(optional) };
+  // An excluded term must never also survive as a requirement: the catalogue
+  // and the alias pass can both reach the same skill through different
+  // spellings, and one unnegated hit would reinstate what the client ruled out.
+  const excluded = canonicalList(buckets.excluded);
+  const isExcluded = (skill: string) =>
+    (excluded ?? []).some(
+      (entry) => entry.toLocaleLowerCase("en-US") === skill.toLocaleLowerCase("en-US"),
+    );
+
+  return {
+    required: canonicalList(buckets.required.filter((skill) => !isExcluded(skill))),
+    optional: canonicalList(buckets.optional.filter((skill) => !isExcluded(skill))),
+    excluded,
+  };
 }
 
 function parseLanguage(
@@ -367,6 +398,7 @@ export function parseFallbackBrief(
     summary: originalRequest.replace(/\s+/gu, " ").trim(),
     requiredSkills: skills.required,
     optionalSkills: skills.optional,
+    excludedSkills: skills.excluded,
     language: parseLanguage(originalRequest, options.languageAliases ?? DEFAULT_LANGUAGE_ALIASES),
     workMode: parseWorkMode(originalRequest),
     location: parseLocation(originalRequest),

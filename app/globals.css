@@ -533,6 +533,87 @@ a {
   padding: 10px;
 }
 
+/* Quiet by default, unmistakably a control on hover and focus. Deliberately
+   flatter than .sidebar-primary-button so it never reads as a fourth item in
+   the customer's main navigation. */
+.sidebar-apply-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  text-decoration: none;
+  transition: background-color 120ms ease, border-color 120ms ease,
+    color 120ms ease;
+}
+
+.sidebar-apply-link:hover,
+.sidebar-apply-link:focus-visible {
+  border-color: var(--border);
+  background: var(--surface-hover);
+  color: var(--ink);
+}
+
+.sidebar-apply-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border: 1px dashed var(--border);
+  border-radius: 50%;
+  color: inherit;
+}
+
+.sidebar-apply-link:hover .sidebar-apply-icon,
+.sidebar-apply-link:focus-visible .sidebar-apply-icon {
+  border-style: solid;
+}
+
+.sidebar-apply-copy {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.sidebar-apply-copy strong {
+  font-size: var(--fs-2xs);
+  font-weight: 650;
+  line-height: 1.3;
+  color: inherit;
+}
+
+.sidebar-apply-copy small {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--muted-light);
+}
+
+.sidebar-apply-chevron {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.sidebar-apply-link:hover .sidebar-apply-chevron,
+.sidebar-apply-link:focus-visible .sidebar-apply-chevron {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-apply-link,
+  .sidebar-apply-chevron {
+    transition: none;
+  }
+}
+
 .sidebar-account-button {
   display: flex;
   width: 100%;

@@ -155,6 +155,20 @@ const ProjectBriefCommonSchema = z
     summary: SummarySchema,
     requiredSkills: NormalizedTextListSchema,
     optionalSkills: NormalizedTextListSchema,
+    /**
+     * Skills that disqualify a profile ("keine Angular-Leute").
+     *
+     * Deliberately its own field rather than a negative entry in
+     * `requiredSkills`: with nowhere else to put it, an exclusion used to be
+     * extracted as a requirement, so asking for *no* Angular ranked Angular
+     * profiles first.
+     *
+     * Defaults to null so briefs stored before this field existed still parse,
+     * and so "never asked" stays distinguishable from "asked, nothing
+     * excluded". Not part of BRIEF_FACT_FIELDS — a request without exclusions
+     * is complete, not missing an answer.
+     */
+    excludedSkills: NormalizedTextListSchema.default(null),
     language: LanguageSchema,
     workMode: WorkModeSchema,
     location: LocationSchema,
@@ -248,6 +262,7 @@ export const ProjectBriefPatchSchema = z
     summary: SummarySchema.optional(),
     requiredSkills: NormalizedTextListSchema.optional(),
     optionalSkills: NormalizedTextListSchema.optional(),
+    excludedSkills: NormalizedTextListSchema.optional(),
     language: LanguageSchema.optional(),
     workMode: WorkModeSchema.optional(),
     location: LocationSchema.optional(),

@@ -14,6 +14,7 @@ import {
   MatchingDecisionSnapshotSchema,
   MatchingEvaluationSnapshotSchema,
   ProjectBriefSchema,
+  READABLE_RULE_VERSIONS,
   ShortlistMatchSchema,
   type FreelancerProfile,
   type ShortlistMatch,
@@ -288,7 +289,7 @@ export async function GET(
         storedShortlist.decision_snapshot,
       );
       if (
-        ["freelancer-match-v11", "freelancer-match-v12", "freelancer-match-v13"].includes(
+        (READABLE_RULE_VERSIONS as readonly string[]).includes(
           storedShortlist.matching_rule_version,
         ) && !decision.success
       ) {

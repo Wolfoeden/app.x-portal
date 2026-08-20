@@ -16,7 +16,13 @@ import {
 } from "../../lib/domain";
 import { AI_TRAINER_REQUEST } from "../fixtures/project-2973429";
 
-type BriefInput = Omit<ProjectBrief, "schemaVersion" | "unknownFields">;
+type BriefInput = Omit<
+  ProjectBrief,
+  "schemaVersion" | "unknownFields" | "excludedSkills"
+> &
+  // Optional so the recorded cases stay untouched: a case that states no
+  // exclusion must keep producing exactly the brief it produced before.
+  Partial<Pick<ProjectBrief, "excludedSkills">>;
 
 /** Builds a schema-valid brief and derives `unknownFields` instead of hand-listing them. */
 export const brief = (input: BriefInput): ProjectBrief =>
