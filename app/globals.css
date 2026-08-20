@@ -194,39 +194,24 @@ a {
 }
 
 /*
- * The toggle keeps one screen position in both states.
+ * One fixed screen position, in every state and at every width.
  *
- * It used to sit at the right edge of the middle grid column, so opening the
- * panel narrowed that column and slid the button left — closing and reopening
- * meant chasing it with the mouse. Anchoring it to the viewport instead means
- * the pointer can stay put. Only needed above the breakpoint: below it the
- * panel is an overlay and the grid never changes.
+ * The button must not sit inside `.topbar`: that element sets
+ * `backdrop-filter`, and that makes it the containing block for its
+ * `position: fixed` descendants — so "fixed" would anchor to the very box
+ * that moves when the panel opens. It is a child of `.app-shell` instead.
  */
-@media (min-width: 1221px) {
-  .details-toggle {
-    position: fixed;
-    top: 0;
-    right: 17px;
-    z-index: 45;
-    height: var(--topbar-height);
-  }
-
-  /* Reserve the corner the button now occupies. */
-  .details-panel .details-heading {
-    padding-right: 40px;
-  }
+.details-toggle {
+  position: fixed;
+  top: 0;
+  right: 17px;
+  z-index: 60;
+  height: var(--topbar-height);
 }
 
-.app-shell.sidebar-collapsed {
-  grid-template-columns: 0 minmax(520px, 1fr) var(--details-width);
-}
-
-.app-shell.sidebar-collapsed.details-hidden {
-  grid-template-columns: 0 minmax(520px, 1fr);
-}
-
-.app-shell.sidebar-collapsed .project-sidebar {
-  display: none;
+/* Reserve the corner the button now occupies. */
+.details-panel .details-heading {
+  padding-right: 40px;
 }
 
 /* Kill text selection while dragging, otherwise the pointer paints the chat
@@ -265,28 +250,11 @@ a {
   opacity: 0.35;
 }
 
-/* Collapsing and resizing are desktop affordances. Below the breakpoint the
-   sidebar is already a full-height overlay with its own close button, and a
-   drag handle would fight with touch scrolling. */
-.sidebar-collapse,
-.sidebar-expand {
-  display: none;
-}
-
-@media (min-width: 861px) {
-  .sidebar-collapse,
-  .sidebar-expand {
-    display: inline-grid;
-  }
-}
-
+/* Resizing is a desktop affordance: below the breakpoint the sidebar is a
+   full-height overlay, and a drag handle would fight with touch scrolling. */
 @media (max-width: 860px) {
   .sidebar-resize-handle {
     display: none;
-  }
-
-  .app-shell.sidebar-collapsed .project-sidebar {
-    display: flex;
   }
 }
 
