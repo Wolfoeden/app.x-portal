@@ -1255,6 +1255,14 @@ export function ChatWorkspace({
   const [manageChat, setManageChat] = useState<ProjectListItem | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(true);
+  /**
+   * True until the first workspace load resolves.
+   *
+   * Without it the sidebar rendered "Noch keine freien Chats" while the list
+   * was still on its way — a returning user with twenty chats was told they
+   * had none. An empty state may only appear once emptiness is a fact.
+   */
+  const [workspaceLoading, setWorkspaceLoading] = useState(true);
   const {
     sidebarWidth,
     startSidebarResize,
@@ -1605,6 +1613,10 @@ export function ChatWorkspace({
         }
       } catch {
         if (alive) showToast("Der temporäre Zugang konnte nicht gestartet werden. Bitte neu laden.", "error");
+      } finally {
+        // Also on failure: an error state is still a known state, and holding
+        // the skeleton forever would be worse than showing what we have.
+        if (alive) setWorkspaceLoading(false);
       }
     })();
 
@@ -2236,7 +2248,9 @@ export function ChatWorkspace({
 
         <nav className="project-nav" aria-label="Gespeicherte Chats">
           <p className="nav-label">Chats</p>
-          {unassignedChats.length === 0 ? (
+          {workspaceLoading ? (
+            <SidebarSkeleton rows={4} />
+          ) : unassignedChats.length === 0 ? (
             <div className="empty-projects">
               <span aria-hidden="true"><IconChat size={22} /></span>
               <p>Noch keine freien Chats</p>
@@ -2256,7 +2270,9 @@ export function ChatWorkspace({
             <p className="nav-label">In Projekten</p>
             <button type="button" onClick={() => setCreateProjectOpen(true)}><IconPlus size={13} /> Projekt</button>
           </div>
-          {projectCollections.length === 0 ? (
+          {workspaceLoading ? (
+            <SidebarSkeleton rows={2} />
+          ) : projectCollections.length === 0 ? (
             <p className="sidebar-section-empty">Erstellen Sie ein Projekt und speichern Sie mehrere Chats darin.</p>
           ) : (
             <div className="collection-list">
@@ -2668,6 +2684,22 @@ function UsagePanel({
         </div>
       ) : null}
     </section>
+  );
+}
+
+/**
+ * Placeholder rows in the shape the real list will take.
+ *
+ * Aria-hidden and marked busy: a screen reader should hear "wird geladen",
+ * not a handful of empty list items.
+ */
+function SidebarSkeleton({ rows }: { rows: number }) {
+  return (
+    <div className="sidebar-skeleton" aria-busy="true" aria-label="Wird geladen">
+      {Array.from({ length: rows }, (_, index) => (
+        <span key={index} className="sidebar-skeleton-row" aria-hidden="true" />
+      ))}
+    </div>
   );
 }
 

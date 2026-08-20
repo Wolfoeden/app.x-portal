@@ -258,6 +258,38 @@ a {
   }
 }
 
+/* Placeholders in the shape of the rows that are coming. Waiting in front of
+   a structure reads as shorter than the same wait in front of an empty box,
+   and it avoids asserting the list is empty before that is known. */
+.sidebar-skeleton {
+  display: grid;
+  gap: 8px;
+  padding: 4px 2px;
+}
+
+.sidebar-skeleton-row {
+  height: 30px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-hover);
+  animation: sidebar-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.sidebar-skeleton-row:nth-child(2) { width: 86%; animation-delay: 0.12s; }
+.sidebar-skeleton-row:nth-child(3) { width: 72%; animation-delay: 0.24s; }
+.sidebar-skeleton-row:nth-child(4) { width: 90%; animation-delay: 0.36s; }
+
+@keyframes sidebar-skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-skeleton-row {
+    animation: none;
+    opacity: 0.7;
+  }
+}
+
 .project-sidebar {
   position: relative;
   z-index: 20;
