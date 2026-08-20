@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  type CSSProperties,
   type FormEvent,
   type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
   useCallback,
   useEffect,
@@ -39,6 +41,7 @@ import {
   IconFolder,
   IconInfo,
   IconMenu,
+  IconPanelLeft,
   IconPanelRight,
   IconPen,
   IconPlus,
@@ -90,34 +93,188 @@ export function sidebarAccountButtonClassName(isAccountUser: boolean): string {
   return `sidebar-account-button${isAccountUser ? "" : " is-guest-login"}`;
 }
 
+/**
+ * Examples, not a menu. They are worded broadly on purpose: the catalogue
+ * spans roughly fifty distinct roles — development, marketing, design, AI,
+ * consulting — and four narrow labels made it look like the platform only
+ * covered those four.
+ */
+const SIDEBAR_MIN_WIDTH = 208;
+const SIDEBAR_MAX_WIDTH = 480;
+const SIDEBAR_DEFAULT_WIDTH = 264;
+const SIDEBAR_WIDTH_STORAGE_KEY = "xportal.sidebar-width.v1";
+const SIDEBAR_COLLAPSED_STORAGE_KEY = "xportal.sidebar-collapsed.v1";
+
+function clampSidebarWidth(value: number): number {
+  return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, Math.round(value)));
+}
+
+type SidebarPreferences = { width: number; collapsed: boolean };
+
+/**
+ * The saved sidebar layout, modelled as the external store it actually is.
+ *
+ * localStorage cannot be read while rendering without desyncing from the
+ * server-rendered markup, and reading it in an effect would mean calling
+ * setState from an effect body. `useSyncExternalStore` is the supported way in
+ * and matches how this file already reads the platform.
+ */
+const SERVER_SIDEBAR_PREFERENCES: SidebarPreferences = {
+  width: SIDEBAR_DEFAULT_WIDTH,
+  collapsed: false,
+};
+
+let sidebarPreferences: SidebarPreferences = SERVER_SIDEBAR_PREFERENCES;
+let sidebarPreferencesLoaded = false;
+const sidebarPreferenceListeners = new Set<() => void>();
+
+function readStoredSidebarPreferences(): SidebarPreferences {
+  try {
+    const storedWidth = Number.parseInt(
+      window.localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY) ?? "",
+      10,
+    );
+    return {
+      width: Number.isFinite(storedWidth)
+        ? clampSidebarWidth(storedWidth)
+        : SIDEBAR_DEFAULT_WIDTH,
+      collapsed:
+        window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "1",
+    };
+  } catch {
+    // Blocked or full storage must never stop the workspace from rendering.
+    return SERVER_SIDEBAR_PREFERENCES;
+  }
+}
+
+function subscribeSidebarPreferences(listener: () => void) {
+  if (!sidebarPreferencesLoaded) {
+    sidebarPreferencesLoaded = true;
+    sidebarPreferences = readStoredSidebarPreferences();
+  }
+  sidebarPreferenceListeners.add(listener);
+  return () => {
+    sidebarPreferenceListeners.delete(listener);
+  };
+}
+
+/** Identity is stable between writes, which is what getSnapshot requires. */
+const getSidebarPreferences = () => sidebarPreferences;
+const getServerSidebarPreferences = () => SERVER_SIDEBAR_PREFERENCES;
+
+function writeSidebarPreferences(next: SidebarPreferences, persist = true) {
+  sidebarPreferences = next;
+  if (persist) {
+    try {
+      window.localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(next.width));
+      window.localStorage.setItem(
+        SIDEBAR_COLLAPSED_STORAGE_KEY,
+        next.collapsed ? "1" : "0",
+      );
+    } catch {
+      // The preference is a convenience, never a requirement.
+    }
+  }
+  for (const listener of sidebarPreferenceListeners) listener();
+}
+
+/**
+ * Draggable, collapsible project sidebar. The default width truncates most
+ * chat titles, and the only way to read one was to hover for the tooltip.
+ */
+function useSidebarWidth() {
+  const preferences = useSyncExternalStore(
+    subscribeSidebarPreferences,
+    getSidebarPreferences,
+    getServerSidebarPreferences,
+  );
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+
+  const startSidebarResize = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      // Primary button only: a right-click or a second touch point must not
+      // leave the layout stuck mid-resize.
+      if (event.button !== 0) return;
+      event.preventDefault();
+      setIsResizingSidebar(true);
+
+      const startX = event.clientX;
+      const startWidth = sidebarPreferences.width;
+
+      const onMove = (moveEvent: PointerEvent) => {
+        // Not persisted per frame — only the released width is written.
+        writeSidebarPreferences(
+          {
+            ...sidebarPreferences,
+            width: clampSidebarWidth(startWidth + moveEvent.clientX - startX),
+          },
+          false,
+        );
+      };
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+        setIsResizingSidebar(false);
+        writeSidebarPreferences(sidebarPreferences);
+      };
+
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
+    },
+    [],
+  );
+
+  const resetSidebarWidth = useCallback(() => {
+    writeSidebarPreferences({
+      ...sidebarPreferences,
+      width: SIDEBAR_DEFAULT_WIDTH,
+    });
+  }, []);
+
+  const setSidebarCollapsed = useCallback((collapsed: boolean) => {
+    writeSidebarPreferences({ ...sidebarPreferences, collapsed });
+  }, []);
+
+  return {
+    sidebarWidth: preferences.width,
+    sidebarCollapsed: preferences.collapsed,
+    setSidebarCollapsed,
+    startSidebarResize,
+    resetSidebarWidth,
+    isResizingSidebar,
+  };
+}
+
 const suggestions = [
   {
-    label: "React-Entwicklung",
-    description: "Freelancer für ein Webprojekt finden",
-    draftPrefix: "React-Entwicklung\n\nProjektbeschreibung:\n",
+    label: "Software & Web",
+    description: "Von der Einzelseite bis zur Cloud-Anwendung",
+    draftPrefix: "Software & Web\n\nProjektbeschreibung:\n",
     intro:
-      "React-Entwicklung ist ausgewählt. Fügen Sie jetzt einfach Ihre vorhandene Projektbeschreibung ein – auch als langen Copy-and-paste-Text. Ich strukturiere Aufgaben, benötigte Kompetenzen, Rahmenbedingungen und offene Angaben und gleiche sie anschließend mit verfügbaren Profilen ab.",
+      "Beschreiben Sie Ihr Vorhaben – Sie können auch eine vorhandene Projektbeschreibung einfach hineinkopieren, egal wie lang. Ich sortiere daraus Aufgaben, nötige Kenntnisse und Rahmenbedingungen und suche danach passende Profile. Was Sie nicht erwähnen, ergänze ich nicht.",
   },
   {
-    label: "Anforderungsmanagement",
-    description: "Anforderungen strukturieren und begleiten",
-    draftPrefix: "Anforderungsmanagement\n\nProjektbeschreibung:\n",
+    label: "Marketing & Content",
+    description: "Sichtbarkeit, Kampagnen, Texte",
+    draftPrefix: "Marketing & Content\n\nProjektbeschreibung:\n",
     intro:
-      "Anforderungsmanagement ist ausgewählt. Fügen Sie jetzt Ihre Projektbeschreibung, Ihr Lastenheft oder vorhandene Notizen ein. Ich fasse Ziel, Aufgaben, Pflichtkompetenzen, Rahmenbedingungen und offene Punkte zusammen und suche danach passende verfügbare Profile.",
+      "Beschreiben Sie, was Sie erreichen wollen – Reichweite, Kampagne, Website-Texte oder etwas anderes. Ich sortiere daraus Aufgaben, nötige Kenntnisse und Rahmenbedingungen und suche danach passende Profile. Was Sie nicht erwähnen, ergänze ich nicht.",
   },
   {
-    label: "Prozessmanagement",
-    description: "Abläufe analysieren und verbessern",
-    draftPrefix: "Prozessmanagement\n\nProjektbeschreibung:\n",
+    label: "KI & Automatisierung",
+    description: "Abläufe mit KI unterstützen",
+    draftPrefix: "KI & Automatisierung\n\nProjektbeschreibung:\n",
     intro:
-      "Prozessmanagement ist ausgewählt. Kopieren Sie Ihre Ausgangslage oder Projektbeschreibung in das Eingabefeld. Ich strukturiere Prozessziel, Aufgaben, benötigte Erfahrung, zeitliche Vorgaben und weitere Einschränkungen und starte dann den Profilabgleich.",
+      "Beschreiben Sie den Ablauf, den Sie verbessern wollen, und was heute daran hakt. Ich sortiere daraus Aufgaben, nötige Kenntnisse und Rahmenbedingungen und suche danach passende Profile. Was Sie nicht erwähnen, ergänze ich nicht.",
   },
   {
-    label: "Informationssicherheit",
-    description: "Expertise für sichere Organisationen",
-    draftPrefix: "Informationssicherheit\n\nProjektbeschreibung:\n",
+    label: "Beratung & Projektleitung",
+    description: "Anforderungen, Prozesse, Umsetzung begleiten",
+    draftPrefix: "Beratung & Projektleitung\n\nProjektbeschreibung:\n",
     intro:
-      "Informationssicherheit ist ausgewählt. Fügen Sie Ihre Projektbeschreibung oder Anforderungsliste direkt ein. Ich erfasse Thema, benötigte Qualifikationen, Standards, Einsatzrahmen und offene Angaben, ohne fehlende Fakten zu erfinden, und gleiche das Ergebnis anschließend mit verfügbaren Profilen ab.",
+      "Beschreiben Sie Ausgangslage und Ziel – gern auch als Lastenheft oder lose Notizen. Ich sortiere daraus Aufgaben, nötige Kenntnisse und Rahmenbedingungen und suche danach passende Profile. Was Sie nicht erwähnen, ergänze ich nicht.",
   },
 ] as const;
 
@@ -1113,6 +1270,14 @@ export function ChatWorkspace({
   const [manageChat, setManageChat] = useState<ProjectListItem | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(true);
+  const {
+    sidebarWidth,
+    sidebarCollapsed,
+    setSidebarCollapsed,
+    startSidebarResize,
+    resetSidebarWidth,
+    isResizingSidebar,
+  } = useSidebarWidth();
   const [selectedAgentId, setSelectedAgentId] = useState(agentCatalog[0]!.id);
   const [selectedAgentTaskId, setSelectedAgentTaskId] = useState(
     agentCatalog[0]!.tasks[0]!.id,
@@ -1979,7 +2144,10 @@ export function ChatWorkspace({
   const unassignedChats = projects.filter((project) => !project.collectionId);
 
   return (
-    <div className={`app-shell ${detailsOpen ? "" : "details-hidden"}${isAgentView ? " is-agent-view" : ""}`}>
+    <div
+      className={`app-shell ${detailsOpen ? "" : "details-hidden"}${isAgentView ? " is-agent-view" : ""}${sidebarCollapsed ? " sidebar-collapsed" : ""}${isResizingSidebar ? " is-resizing-sidebar" : ""}`}
+      style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
+    >
       <a className="skip-link" href={isAgentView ? "#agent-directory-title" : "#chat-composer"}>
         {isAgentView ? "Direkt zu den Agenten" : "Direkt zur Nachricht"}
       </a>
@@ -1990,6 +2158,12 @@ export function ChatWorkspace({
             <span className="mark-glyph" aria-hidden="true">F</span>
             <span>Freelancer Beta</span>
           </div>
+          <button
+            className="icon-button sidebar-collapse"
+            type="button"
+            onClick={() => setSidebarCollapsed(true)}
+            aria-label="Projektleiste einklappen"
+          ><IconPanelLeft size={18} /></button>
           <button className="icon-button sidebar-close" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schließen"><IconClose size={18} /></button>
         </div>
 
@@ -2166,6 +2340,16 @@ export function ChatWorkspace({
             </button>
           </div>
         </div>
+        {/* Separator and control in one: drag to resize, double-click to
+            restore the default width. */}
+        <div
+          className="sidebar-resize-handle"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Breite der Projektleiste ändern"
+          onPointerDown={startSidebarResize}
+          onDoubleClick={resetSidebarWidth}
+        />
       </aside>
 
       {sidebarOpen ? <button className="sidebar-scrim" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schließen" /> : null}
@@ -2174,6 +2358,14 @@ export function ChatWorkspace({
         <header className="topbar">
           <div className="topbar-left">
             <button className="icon-button mobile-menu" type="button" onClick={() => setSidebarOpen(true)} aria-label="Projekte öffnen"><IconMenu size={18} /></button>
+            {sidebarCollapsed ? (
+              <button
+                className="icon-button sidebar-expand"
+                type="button"
+                onClick={() => setSidebarCollapsed(false)}
+                aria-label="Projektleiste ausklappen"
+              ><IconMenu size={18} /></button>
+            ) : null}
             <div>
               <p className="topbar-title">
                 {isAgentView ? "KI-Agenten" : activeProject?.title ?? "Freelancer finden"}
@@ -2309,7 +2501,20 @@ export function ChatWorkspace({
                 : `Noch ${formatCredits(usage.freeUsage.remaining)} von ${formatCredits(usage.freeUsage.limit)} kostenlosen Nano-Analysen in diesem Monat verfügbar.`}
             </p>
           ) : null}
-          <p className="composer-disclosure">KI kann Fehler machen. Profile werden regelbasiert gefiltert; Sie wählen selbst. Keine Gesundheitsdaten oder vertraulichen Daten Dritter eingeben.</p>
+          {/* "Sie wählen selbst" left readers guessing what the AI actually
+              does. Spelled out: it never picks a person, it only narrows the
+              list by fixed rules. */}
+          <p className="composer-disclosure">
+            Die KI kann Fehler machen. Sie sucht niemanden für Sie aus – sie
+            engt die Liste nach festen Regeln ein, entscheiden tun Sie. Bitte
+            keine Gesundheitsdaten und keine vertraulichen Daten Dritter
+            eingeben.
+            <span className="composer-legal">
+              <a href="/imprint">Impressum</a>
+              <span aria-hidden="true">·</span>
+              <a href="/privacy">Datenschutz</a>
+            </span>
+          </p>
         </div>
           </>
         )}
@@ -2443,7 +2648,9 @@ function WelcomeState({ onSuggestion }: { onSuggestion: (suggestion: Suggestion)
       <p className="eyebrow">Freelancer-Suche</p>
       <h1 id="welcome-title">Wobei können wir Sie unterstützen?</h1>
       <p className="welcome-copy">
-        Beschreiben Sie das Projekt so, wie Sie es einem Kollegen erklären würden. Die KI strukturiert Ihre Angaben und zeigt bis zu drei nachvollziehbar passende Profile.
+        Beschreiben Sie das Projekt so, wie Sie es einem Kollegen erklären
+        würden. Die KI sortiert Ihre Angaben und zeigt bis zu drei Profile –
+        jeweils mit Begründung, warum sie passen, und was noch offen ist.
       </p>
       <div className="trust-row" aria-label="So funktioniert die Suche">
         <span><b>1</b> Frei beschreiben</span>
@@ -2452,6 +2659,9 @@ function WelcomeState({ onSuggestion }: { onSuggestion: (suggestion: Suggestion)
         <span className="trust-line" aria-hidden="true" />
         <span><b>3</b> Kontakt starten</span>
       </div>
+      <p className="suggestion-intro">
+        Beispiele zum Einsteigen – Ihr Thema muss nicht dabei sein:
+      </p>
       <div className="suggestion-grid" aria-label="Beispielanfragen">
         {suggestions.map((suggestion) => (
           <button key={suggestion.label} type="button" onClick={() => onSuggestion(suggestion)}>
@@ -2461,7 +2671,11 @@ function WelcomeState({ onSuggestion }: { onSuggestion: (suggestion: Suggestion)
           </button>
         ))}
       </div>
-      <p className="no-form-note"><span aria-hidden="true"><IconPen size={15} /></span> Kein Fragebogen – fehlende Angaben bleiben sichtbar als „nicht angegeben“.</p>
+      <p className="no-form-note">
+        <span aria-hidden="true"><IconPen size={15} /></span> Kein Formular:
+        Schreiben Sie einfach los. Was Sie nicht erwähnen, bleibt offen — wir
+        raten nichts dazu.
+      </p>
     </section>
   );
 }
