@@ -104,9 +104,13 @@ Rules the publish path enforces:
   the reviewer ticks it individually in the review screen.
 - **A published profile must be reachable.** `fetchActiveBookableRealProfiles`
   filters on `profile_status='active'`, `demo_status='real'`, a non-null HTTPS
-  `booking_url` and an availability other than `unavailable`. Publishing
-  therefore refuses a missing booking URL rather than creating a row that can
-  never appear in a shortlist.
+  `booking_url` and an availability other than `unavailable`. The booking URL is
+  therefore mandatory at *submission* — `freelancer_applications.booking_url` is
+  `not null` — and publishing refuses without one as well. Only the applicant
+  knows their own scheduling link, so requiring it at review time would put the
+  dead end in front of the operator, who cannot resolve it. Format is validated
+  (HTTPS, parseable); whether the link actually works is a human check during
+  review.
 - **One decision per application.** `published_profile_id` is set in the same
   update that sets `status='approved'`, and the insert is rolled back if that
   update fails, so a live catalogue row never exists without its provenance

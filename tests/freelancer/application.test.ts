@@ -32,6 +32,7 @@ function applicationPayload(overrides: Record<string, unknown> = {}) {
     workModes: ["remote", "hybrid"],
     hourlyRate: "95.50",
     currency: "EUR",
+    bookingUrl: "https://calendly.com/joerg-mueller/30min",
     consent: true,
     ...overrides,
   };
@@ -80,7 +81,7 @@ describe("freelancer application input", () => {
     expect(insert.day_rate_minor).toBeNull();
     expect(insert.currency).toBe("EUR");
     expect(insert.status).toBe("submitted");
-    expect(insert.booking_url).toBeNull();
+    expect(insert.booking_url).toBe("https://calendly.com/joerg-mueller/30min");
     expect(insert.cv_storage_path).toBeNull();
   });
 
@@ -133,7 +134,6 @@ describe("freelancer application input", () => {
         websiteUrl: "",
         locationText: "  ",
         availabilityFrom: "",
-        bookingUrl: "",
       }),
     );
 
@@ -141,7 +141,25 @@ describe("freelancer application input", () => {
     expect(input.websiteUrl).toBeNull();
     expect(input.locationText).toBeNull();
     expect(input.availabilityFrom).toBeNull();
-    expect(input.bookingUrl).toBeNull();
+  });
+
+  it("requires a booking link at submission, not just at publication", () => {
+    // Matching filters on an HTTPS booking URL. Accepting an application
+    // without one only defers the dead end to the review screen, where the
+    // operator cannot supply a link only the applicant knows.
+    for (const value of ["", "   ", "calendly.com/joerg", "mailto:j@example.com"]) {
+      expect(
+        FreelancerApplicationInputSchema.safeParse(
+          applicationPayload({ bookingUrl: value }),
+        ).success,
+      ).toBe(false);
+    }
+
+    const withoutField = { ...applicationPayload() } as Record<string, unknown>;
+    delete withoutField.bookingUrl;
+    expect(
+      FreelancerApplicationInputSchema.safeParse(withoutField).success,
+    ).toBe(false);
   });
 
   it("refuses a non-HTTPS booking link", () => {
@@ -374,7 +392,7 @@ describe("reviewer defaults", () => {
     currency: "EUR",
     availability_status: "available",
     availability_from: null,
-    booking_url: null,
+    booking_url: "https://calendly.com/joerg-mueller/30min",
     applicant_note: null,
     cv_storage_path: null,
     cv_original_filename: null,
@@ -397,6 +415,6 @@ describe("reviewer defaults", () => {
     expect(defaults.dayRate).toBe("");
     expect(defaults.verifiedFacts).toEqual([]);
     expect(defaults.slug).toBe("joerg-mueller");
-    expect(defaults.bookingUrl).toBe("");
+    expect(defaults.bookingUrl).toBe("https://calendly.com/joerg-mueller/30min");
   });
 });

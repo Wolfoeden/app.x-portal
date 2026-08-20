@@ -30,6 +30,11 @@ export default function FreelancerApplyPage() {
             melden uns. Erst nach unserer Freigabe wird dein Profil im Portal
             sichtbar.
           </p>
+          <p>
+            Halte einen <strong>Terminlink</strong> bereit (Calendly, Cal.com,
+            TidyCal oder ähnlich). Kunden buchen darüber das Erstgespräch — ohne
+            ihn können wir dich nicht aufnehmen.
+          </p>
         </header>
 
         <ol className={styles.steps}>

@@ -192,8 +192,12 @@ catalogue row and the decision record in one audited step.
    therefore publishes with no verified facts at all, which is the safe default.
 6. Set `verification_status` to the process you actually completed. It is not a
    claim about every statement in the profile.
-7. Enter an HTTPS booking URL. The publish action refuses without one, because
-   matching filters out profiles that cannot be booked.
+7. Open the booking link the applicant supplied and confirm it really leads to
+   their scheduling page. The form enforces only the format; a link that is
+   dead, points at the wrong person or asks for payment is a review finding.
+   Correct it here or reject the application. The publish action refuses an
+   empty booking URL, because matching filters out profiles that cannot be
+   booked.
 8. Decide separately whether the CV may be shown to customers. Leave the tick
    off unless the applicant's permission actually covers sharing the document
    with matched customers; it maps to `freelancer_cv_documents.is_downloadable`
