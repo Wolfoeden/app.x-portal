@@ -149,6 +149,9 @@ export default async function FreelancerApplicationsPage({
                     <th scope="col">Unterlagen</th>
                     <th scope="col">Eingegangen</th>
                     <th scope="col">Status</th>
+                    <th scope="col">
+                      <span className={styles.srOnly}>Aktion</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -204,16 +207,37 @@ export default async function FreelancerApplicationsPage({
                           {APPLICATION_STATUS_LABELS[row.status]}
                         </span>
                       </td>
+                      <td>
+                        <Link
+                          href={`/chat/admin/freelancers/${row.id}`}
+                          className={styles.rowAction}
+                        >
+                          {row.published_profile_id
+                            ? "Ansehen"
+                            : "Prüfen & freigeben"}
+                          <span aria-hidden="true">→</span>
+                        </Link>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           ) : (
-            <p className={styles.empty}>
-              Keine Bewerbungen in dieser Ansicht. Der öffentliche Link lautet{" "}
-              <code>/freelancer/apply</code>.
-            </p>
+            <div className={styles.empty}>
+              <p>
+                {activeStatus
+                  ? "In diesem Status liegt gerade nichts."
+                  : "Es liegt noch keine Bewerbung vor."}
+              </p>
+              <p>
+                Freelancer bewerben sich über{" "}
+                <Link href="/freelancer/apply">/freelancer/apply</Link>. Sobald
+                eine Bewerbung eingeht, erscheint sie hier — zum
+                Freigeben klickst du dann rechts in der Zeile auf{" "}
+                <strong>Prüfen &amp; freigeben</strong>.
+              </p>
+            </div>
           )}
         </div>
       </div>

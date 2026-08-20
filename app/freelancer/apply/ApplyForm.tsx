@@ -49,6 +49,16 @@ function formatFileSize(bytes: number): string {
     : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
+/** Mirrors the server rule: a parseable HTTPS URL with a real hostname. */
+function isUsableBookingUrl(value: string): boolean {
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === "https:" && url.hostname.includes(".");
+  } catch {
+    return false;
+  }
+}
+
 const tagClasses = {
   field: styles.field,
   tagBox: styles.tagBox,
@@ -77,6 +87,7 @@ export function ApplyForm() {
     useState<AvailabilityStatus>("available");
   const [availabilityFrom, setAvailabilityFrom] = useState("");
   const [bookingUrl, setBookingUrl] = useState("");
+  const [bookingUrlTouched, setBookingUrlTouched] = useState(false);
   const [applicantNote, setApplicantNote] = useState("");
   const [consent, setConsent] = useState(false);
   const [honeypot, setHoneypot] = useState("");
@@ -91,6 +102,9 @@ export function ApplyForm() {
   >("editing");
   const [formError, setFormError] = useState<string | null>(null);
   const [issues, setIssues] = useState<SubmitIssue[]>([]);
+
+  const bookingUrlInvalid =
+    bookingUrlTouched && !isUsableBookingUrl(bookingUrl);
 
   function toggleWorkMode(mode: WorkMode) {
     setWorkModes((current) =>
@@ -182,6 +196,13 @@ export function ApplyForm() {
     }
     if (!hourlyRate && !dayRate) {
       setFormError("Bitte Stundensatz oder Tagessatz angeben.");
+      return;
+    }
+    if (!isUsableBookingUrl(bookingUrl)) {
+      setBookingUrlTouched(true);
+      setFormError(
+        "Ohne Terminlink können wir dich nicht aufnehmen. Bitte eine vollständige HTTPS-Adresse angeben, zum Beispiel https://calendly.com/dein-name/30min",
+      );
       return;
     }
 
@@ -513,24 +534,39 @@ export function ApplyForm() {
             ohne Umsatzsteuer.
           </span>
 
-          <label className={`${styles.field} ${styles.full}`}>
+          <label
+            className={`${styles.field} ${styles.full} ${
+              bookingUrlInvalid ? styles.invalid : ""
+            }`}
+          >
             <span>Terminlink für ein Erstgespräch</span>
             <input
               value={bookingUrl}
               onChange={(event) => setBookingUrl(event.target.value)}
+              onBlur={() => setBookingUrlTouched(true)}
               type="url"
               inputMode="url"
               placeholder="https://calendly.com/dein-name/30min"
               maxLength={1000}
+              required
+              aria-invalid={bookingUrlInvalid}
             />
+            {bookingUrlInvalid ? (
+              <span className={styles.error}>
+                Bitte eine vollständige HTTPS-Adresse angeben, zum Beispiel
+                https://calendly.com/dein-name/30min
+              </span>
+            ) : null}
           </label>
 
           <div className={`${styles.callout} ${styles.full}`}>
-            <strong>Warum der Terminlink wichtig ist</strong>
+            <strong>Ohne Terminlink geht es nicht</strong>
             <span>
-              Kunden buchen das Erstgespräch direkt über diesen Link. Profile
-              ohne Terminlink können nicht freigeschaltet werden — du kannst ihn
-              aber auch später nachreichen.
+              Kunden buchen das Erstgespräch direkt über diesen Link — ein
+              Profil ohne funktionierenden Terminlink wird bei uns niemandem
+              vorgeschlagen. Wenn du noch keinen hast: Calendly, Cal.com und
+              TidyCal sind in wenigen Minuten eingerichtet und kostenlos.
+              Bitte prüfe den Link vor dem Absenden einmal selbst im Browser.
             </span>
           </div>
         </div>

@@ -145,7 +145,10 @@ export const FreelancerApplicationInputSchema = z
     ...rateShape,
     availabilityStatus: z.enum(AVAILABILITY_STATUSES).default("unknown"),
     availabilityFrom: optionalDate,
-    bookingUrl: optionalHttpsUrl,
+    // Required, not optional: matching filters on an HTTPS booking URL, so an
+    // application without one could never become a findable profile. Only the
+    // applicant knows their own scheduling link, so this is their field to fill.
+    bookingUrl: httpsUrl(),
     applicantNote: optionalText(2_000),
     cv: z
       .object({
@@ -219,7 +222,7 @@ export type ApplicationInsert = {
   currency: CurrencyCode | null;
   availability_status: AvailabilityStatus;
   availability_from: string | null;
-  booking_url: string | null;
+  booking_url: string;
   applicant_note: string | null;
   cv_storage_path: string | null;
   cv_original_filename: string | null;
@@ -491,7 +494,7 @@ export function decisionDefaultsFromApplication(row: ApplicationRow) {
     currency: row.currency ?? "EUR",
     availabilityStatus: row.availability_status,
     availabilityFrom: row.availability_from ?? "",
-    bookingUrl: row.booking_url ?? "",
+    bookingUrl: row.booking_url,
     introPolicy: "free" as const,
     verificationStatus: "identity_checked" as const,
     referencesSummary: "",
