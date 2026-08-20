@@ -2075,6 +2075,26 @@ export function ChatWorkspace({
         </nav>
 
         <div className="sidebar-footer">
+          {/* Freelancers are the other half of the marketplace, but not the
+              audience this workspace is built for. A quiet, permanent row keeps
+              the entry findable without competing with the search flow. */}
+          <a
+            className="sidebar-apply-link"
+            href="/freelancer/apply"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <span className="sidebar-apply-icon" aria-hidden="true">
+              <IconPlus size={15} />
+            </span>
+            <span className="sidebar-apply-copy">
+              <strong>Als Freelancer bewerben</strong>
+              <small>Profil einreichen und prüfen lassen</small>
+            </span>
+            <span className="sidebar-apply-chevron" aria-hidden="true">
+              <IconChevronRight size={15} />
+            </span>
+          </a>
+
           <div className="account-menu-wrap sidebar-account-menu-wrap">
             {accountMenuOpen ? (
               <div className="account-popover sidebar-account-popover" role="dialog" aria-label="Konto und Einstellungen">
