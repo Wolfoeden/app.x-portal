@@ -1378,6 +1378,64 @@ export function ChatWorkspace({
     }
   }, [apiPaths.projectCollections]);
 
+  /**
+   * First paint: session, credits, chats and folders in a single request.
+   *
+   * The guest session still has to be established first — that is what puts
+   * the cookie in place — but everything after it now arrives together
+   * instead of in three further round trips that each waited for the last.
+   */
+  const loadWorkspace = useCallback(async () => {
+    const claims = await ensureGuestSession();
+    let view = authViewFromClaims(claims);
+
+    try {
+      const response = await fetch(apiPaths.workspaceBootstrap, {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("bootstrap_unavailable");
+
+      const body: unknown = await response.json();
+      if (!isRecord(body)) throw new Error("bootstrap_malformed");
+
+      if (isRecord(body.auth)) view = authViewFromClaims(body.auth);
+      setAuth(view);
+
+      const snapshot = normalizeUsageSnapshot(body.usage);
+      if (snapshot) setUsage(snapshot);
+
+      if (Array.isArray(body.projects)) {
+        setProjects(
+          body.projects.map((item) =>
+            normalizeProject(item, "Gespeichertes Projekt"),
+          ),
+        );
+      }
+      if (Array.isArray(body.collections)) {
+        setProjectCollections(body.collections.map(normalizeProjectCollection));
+      }
+      return view;
+    } catch {
+      // The separate endpoints stay as a fallback so the workspace still opens
+      // if the combined route is unavailable — mid-rollout, for instance.
+      const fallbackView = await refreshAuth();
+      await Promise.all([
+        refreshUsage(),
+        loadProjects(),
+        loadProjectCollections(),
+      ]);
+      return fallbackView;
+    }
+  }, [
+    apiPaths.workspaceBootstrap,
+    loadProjectCollections,
+    loadProjects,
+    refreshAuth,
+    refreshUsage,
+  ]);
+
   const loadProject = useCallback(
     async (project: ProjectListItem | string) => {
       const projectId = typeof project === "string" ? project : project.id;
@@ -1420,9 +1478,8 @@ export function ChatWorkspace({
 
     void (async () => {
       try {
-        const view = await refreshAuth();
+        const view = await loadWorkspace();
         if (!alive) return;
-        await refreshUsage();
         if (!alive) return;
         const searchParams = new URLSearchParams(window.location.search);
         const authError = searchParams.get("auth_error");
@@ -1503,7 +1560,7 @@ export function ChatWorkspace({
             );
           }
         }
-        await Promise.all([loadProjects(), loadProjectCollections()]);
+        // Chats and folders already arrived with the bootstrap response.
         const requestedProjectId =
           workspaceView === "chat" ? searchParams.get("project") : null;
         if (requestedProjectId) {
@@ -1565,8 +1622,7 @@ export function ChatWorkspace({
   }, [
     apiPaths.adminUsage,
     loadProject,
-    loadProjectCollections,
-    loadProjects,
+    loadWorkspace,
     refreshAuth,
     refreshUsage,
     showToast,
