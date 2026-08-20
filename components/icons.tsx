@@ -167,6 +167,15 @@ export function IconPanelRight(props: IconProps) {
   );
 }
 
+export function IconPanelLeft(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <rect x="3" y="4.5" width="18" height="15" rx="2.5" />
+      <path d="M9.5 4.5v15" />
+    </Glyph>
+  );
+}
+
 export function IconChat(props: IconProps) {
   return (
     <Glyph {...props}>
