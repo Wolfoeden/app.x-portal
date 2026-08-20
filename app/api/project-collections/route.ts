@@ -7,6 +7,7 @@ import {
   presentProjectCollection,
   type ProjectCollectionRow,
 } from "@/lib/data/projects";
+import { loadOwnedCollections } from "@/lib/data/workspace";
 import { assertSameOrigin, readJsonWithLimit } from "@/lib/security/request";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -17,17 +18,8 @@ const CreateCollectionSchema = z.object({ name: z.string().trim().min(1).max(120
 export async function GET() {
   try {
     const user = await requireCurrentUser();
-    const admin = createAdminSupabaseClient();
-    const { data, error } = await admin
-      .from("project_collections")
-      .select("*")
-      .eq("owner_user_id", user.id)
-      .is("archived_at", null)
-      .order("updated_at", { ascending: false })
-      .limit(100);
-    if (error) throw error;
     return NextResponse.json(
-      { collections: (data as ProjectCollectionRow[]).map(presentProjectCollection) },
+      { collections: await loadOwnedCollections(user) },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {

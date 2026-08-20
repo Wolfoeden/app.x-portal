@@ -1,24 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { presentWorkspaceAuth } from "@/lib/data/workspace";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const user = await getCurrentUser();
-  return NextResponse.json(
-    {
-      authenticated: user !== null,
-      anonymous: user?.isAnonymous ?? true,
-      admin: user?.isAdmin ?? false,
-      user: user
-        ? {
-            id: user.id,
-            displayName: null,
-            email: user.email,
-          }
-        : null,
-    },
-    { headers: { "Cache-Control": "no-store" } },
-  );
+  return NextResponse.json(presentWorkspaceAuth(await getCurrentUser()), {
+    headers: { "Cache-Control": "no-store" },
+  });
 }

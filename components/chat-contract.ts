@@ -313,6 +313,8 @@ export interface ChatApiPaths {
   session: string;
   /** Monthly free-usage and purchased-product-credit snapshot endpoint. */
   credits?: string;
+  /** Session, credits, chats and folders in one request on first paint. */
+  workspaceBootstrap: string;
   /** Protected operator-only usage dashboard. */
   adminUsage?: string;
   /** Protected operator-only review queue for freelancer applications. */
@@ -333,6 +335,7 @@ export const defaultChatApiPaths: ChatApiPaths = {
   projects: appPath("/api/projects"),
   projectCollections: appPath("/api/project-collections"),
   session: appPath("/api/auth/session"),
+  workspaceBootstrap: appPath("/api/workspace/bootstrap"),
   credits: appPath("/api/ai/credits"),
   adminUsage: appPath("/chat/admin/ai-usage"),
   adminFreelancers: appPath("/chat/admin/freelancers"),
