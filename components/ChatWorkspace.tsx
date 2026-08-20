@@ -5,7 +5,6 @@ import {
   type FormEvent,
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
-  type ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -27,11 +26,9 @@ import {
 } from "@/components/AgentDirectory";
 import {
   IconAlertCircle,
-  IconAlertTriangle,
   IconArrowRight,
   IconArrowUp,
   IconArrowUpRight,
-  IconCalendar,
   IconChat,
   IconCheck,
   IconChevronDown,
@@ -50,13 +47,21 @@ import {
 import {
   claimPreparedGuestWorkspace,
   ensureGuestSession,
-  registerEmailAccount,
-  requestPasswordRecovery,
-  setAccountPassword,
-  signInExistingAccount,
   signOut as signOutAccount,
-  startOauthUpgrade,
 } from "@/lib/auth/browser";
+
+import {
+  AuthDialog,
+  ConfirmDeleteDialog,
+  ContactDialog,
+  CreateProjectDialog,
+  ManageChatDialog,
+} from "./chat/dialogs";
+import {
+  initials,
+  type AuthDialogMode,
+  type ToastState,
+} from "./chat/shared";
 import {
   type AiAnalysisTrace,
   type AiUsageSnapshot,
@@ -85,8 +90,6 @@ import {
   defaultChatApiPaths,
 } from "./chat-contract";
 
-const GOOGLE_AUTH_ENABLED = process.env.NEXT_PUBLIC_AUTH_GOOGLE_ENABLED === "true";
-const MICROSOFT_AUTH_ENABLED = process.env.NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED === "true";
 
 export function sidebarAccountButtonClassName(isAccountUser: boolean): string {
   return `sidebar-account-button${isAccountUser ? "" : " is-guest-login"}`;
@@ -265,14 +268,6 @@ const suggestions = [
 
 type Suggestion = (typeof suggestions)[number];
 
-type AuthView = SessionResponse;
-type AuthDialogMode = "login" | "register" | "recover" | "set-password";
-
-type ToastState = {
-  id: number;
-  message: string;
-  tone: "neutral" | "error";
-};
 
 type PendingAssistant = {
   id: string;
@@ -287,6 +282,8 @@ interface ChatWorkspaceProps {
   apiPaths?: Partial<ChatApiPaths>;
   view?: "chat" | "agents";
 }
+
+type AuthView = SessionResponse;
 
 const emptyAuth: AuthView = {
   authenticated: false,
@@ -1050,16 +1047,6 @@ function formatDateTime(value: string | null) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
-}
-
-function initials(name: string) {
-  const result = name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-  return result || "P";
 }
 
 function modeLabel(mode: ProjectMode) {
@@ -3573,241 +3560,6 @@ function ProjectDetails({
   );
 }
 
-function Modal({ titleId, onClose, children, size = "default" }: { titleId: string; onClose: () => void; children: ReactNode; size?: "default" | "large" }) {
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const cardRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    closeRef.current?.focus();
-    const onKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-      if (event.key === "Tab" && cardRef.current) {
-        const focusable = Array.from(
-          cardRef.current.querySelectorAll<HTMLElement>(
-            'button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-          ),
-        );
-        const first = focusable[0];
-        const last = focusable.at(-1);
-        if (!first || !last) return;
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault();
-          last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      previouslyFocused?.focus();
-    };
-  }, [onClose]);
-  return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section ref={cardRef} className={`modal-card ${size === "large" ? "is-large" : ""}`} role="dialog" aria-modal="true" aria-labelledby={titleId}>
-        <button ref={closeRef} className="modal-close" type="button" onClick={onClose} aria-label="Dialog schließen"><IconClose size={17} /></button>
-        {children}
-      </section>
-    </div>
-  );
-}
-
-function AuthDialog({
-  initialMode,
-  onClose,
-  onAuthenticated,
-  showToast,
-}: {
-  initialMode: AuthDialogMode;
-  onClose: () => void;
-  onAuthenticated: () => void;
-  showToast: (message: string, tone?: ToastState["tone"]) => void;
-}) {
-  const [mode, setMode] = useState(initialMode);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [passwordRepeat, setPasswordRepeat] = useState("");
-  const [confirmationSent, setConfirmationSent] = useState(false);
-  const [busy, setBusy] = useState<"google" | "microsoft" | "email" | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const connectProvider = async (provider: "google" | "microsoft") => {
-    setBusy(provider);
-    setError(null);
-    try {
-      await startOauthUpgrade(provider);
-    } catch (providerError) {
-      setError(providerError instanceof Error ? providerError.message : "Anmeldung konnte nicht gestartet werden.");
-      setBusy(null);
-    }
-  };
-
-  const submitEmail = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setBusy("email");
-    setError(null);
-    if ((mode === "register" || mode === "set-password") && password !== passwordRepeat) {
-      setError("Die beiden Passwörter stimmen nicht überein.");
-      setBusy(null);
-      return;
-    }
-    try {
-      if (mode === "login") {
-        await signInExistingAccount(email, password);
-        showToast("Anmeldung erfolgreich. Ihre Auswahl wird fortgesetzt.");
-        onAuthenticated();
-      } else if (mode === "register") {
-        const result = await registerEmailAccount(email, password);
-        if (result.confirmationRequired) {
-          setConfirmationSent(true);
-          setBusy(null);
-        } else {
-          showToast("Konto erstellt. Ihre Auswahl wird fortgesetzt.");
-          onAuthenticated();
-        }
-      } else if (mode === "recover") {
-        await requestPasswordRecovery(email);
-        setConfirmationSent(true);
-        setBusy(null);
-      } else {
-        await setAccountPassword(password);
-        const cleanUrl = `${window.location.pathname}${window.location.hash}`;
-        window.history.replaceState({}, "", cleanUrl);
-        showToast("Ihr Konto ist eingerichtet. Ihre Auswahl wird fortgesetzt.");
-        onAuthenticated();
-      }
-    } catch (emailError) {
-      const fallback = mode === "login"
-        ? "E-Mail oder Passwort ist nicht korrekt. Nutzen Sie bei Bedarf ‚Passwort vergessen?‘."
-        : mode === "recover"
-          ? "Der Wiederherstellungslink konnte gerade nicht versendet werden."
-          : mode === "register"
-            ? "Das Konto konnte gerade nicht erstellt werden. Prüfen Sie E-Mail und Passwort."
-            : "Das neue Passwort konnte gerade nicht gespeichert werden.";
-      const message = emailError instanceof Error ? emailError.message.toLowerCase() : "";
-      setError(
-        mode === "login" && (message.includes("invalid login") || message.includes("invalid credentials"))
-          ? "E-Mail oder Passwort ist nicht korrekt. Nutzen Sie bei Bedarf ‚Passwort vergessen?‘."
-          : fallback,
-      );
-      setBusy(null);
-    }
-  };
-
-  return (
-    <Modal titleId="auth-title" onClose={onClose}>
-      <div className="auth-dialog">
-        <span className="dialog-eyebrow">Auswahl sichern</span>
-        <h2 id="auth-title">
-          {mode === "set-password"
-            ? "Neues Passwort festlegen"
-            : mode === "recover"
-              ? "Zugang wiederherstellen"
-              : mode === "register"
-                ? "Konto erstellen"
-                : "Anmelden und direkt fortfahren"}
-        </h2>
-        <p>
-          {mode === "set-password"
-            ? "Legen Sie jetzt ein neues Passwort für Ihr bestätigtes Konto fest."
-            : mode === "recover"
-              ? "Wir senden einen sicheren Link an Ihre E-Mail-Adresse. Ihre aktuelle Anfrage bleibt dabei erhalten."
-              : "Ihre Anfrage bleibt erhalten. Nach der Anmeldung kehren Sie genau zu Ihrem ausgewählten Profil zurück."}
-        </p>
-
-        {mode !== "set-password" && mode !== "recover" ? (
-          <>
-            {GOOGLE_AUTH_ENABLED || MICROSOFT_AUTH_ENABLED ? (
-              <>
-                <div className="provider-buttons">
-                  {GOOGLE_AUTH_ENABLED ? (
-                    <button type="button" onClick={() => void connectProvider("google")} disabled={Boolean(busy)}><span className="provider-letter" aria-hidden="true">G</span>{busy === "google" ? "Google wird geöffnet …" : "Mit Google fortfahren"}</button>
-                  ) : null}
-                  {MICROSOFT_AUTH_ENABLED ? (
-                    <button type="button" onClick={() => void connectProvider("microsoft")} disabled={Boolean(busy)}><span className="provider-letter microsoft" aria-hidden="true">M</span>{busy === "microsoft" ? "Microsoft wird geöffnet …" : "Mit Microsoft fortfahren"}</button>
-                  ) : null}
-                </div>
-                <div className="or-divider"><span>oder</span></div>
-              </>
-            ) : null}
-            <div className="auth-mode-tabs" role="tablist" aria-label="E-Mail-Zugang">
-              <button type="button" role="tab" aria-selected={mode === "login"} className={mode === "login" ? "active" : ""} onClick={() => { setMode("login"); setError(null); }}>Bestehendes Konto</button>
-              <button type="button" role="tab" aria-selected={mode === "register"} className={mode === "register" ? "active" : ""} onClick={() => { setMode("register"); setError(null); }}>Neues Konto</button>
-            </div>
-          </>
-        ) : null}
-
-        {confirmationSent ? (
-          <div className="confirmation-state" role="status">
-            <span aria-hidden="true"><IconCheck size={16} /></span>
-            <h3>{mode === "recover" ? "Wiederherstellungslink versendet" : "Bestätigungslink versendet"}</h3>
-            <p>
-              {mode === "recover" ? (
-                <>Öffnen Sie den Link in der E-Mail an <strong>{email}</strong> und legen Sie anschließend ein neues Passwort fest.</>
-              ) : (
-                <>Öffnen Sie den Link in der E-Mail an <strong>{email}</strong>, um Ihr Konto mit dem gewählten Passwort zu aktivieren.</>
-              )}
-            </p>
-            <button type="button" onClick={onClose}>Verstanden</button>
-          </div>
-        ) : (
-          <form className="email-login" onSubmit={submitEmail}>
-            {mode !== "set-password" ? (
-              <>
-                <label htmlFor="login-email">E-Mail-Adresse</label>
-                <input id="login-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
-              </>
-            ) : null}
-            {mode === "login" || mode === "register" || mode === "set-password" ? (
-              <>
-                <label htmlFor="login-password">{mode === "set-password" ? "Neues Passwort" : "Passwort"}</label>
-                <input id="login-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={mode === "login" ? "current-password" : "new-password"} minLength={8} required />
-              </>
-            ) : null}
-            {mode === "register" || mode === "set-password" ? (
-              <>
-                <label htmlFor="login-password-repeat">Passwort wiederholen</label>
-                <input id="login-password-repeat" type="password" value={passwordRepeat} onChange={(event) => setPasswordRepeat(event.target.value)} autoComplete="new-password" minLength={8} required />
-              </>
-            ) : null}
-            {mode === "login" ? (
-              <button className="forgot-password" type="button" onClick={() => { setMode("recover"); setError(null); setPassword(""); }}>
-                Passwort vergessen?
-              </button>
-            ) : null}
-            {mode === "recover" ? (
-              <button className="back-to-login" type="button" onClick={() => { setMode("login"); setError(null); }}>
-                Zurück zur Anmeldung
-              </button>
-            ) : null}
-            {error ? <p className="form-error" role="alert">{error}</p> : null}
-            <button className="auth-submit" type="submit" disabled={Boolean(busy)}>
-              {busy === "email"
-                ? "Bitte warten …"
-                : mode === "login"
-                  ? "Mit E-Mail anmelden"
-                  : mode === "register"
-                    ? "Konto erstellen"
-                    : mode === "recover"
-                      ? "Wiederherstellungslink senden"
-                      : "Passwort speichern & fortfahren"}
-            </button>
-          </form>
-        )}
-        <p className="auth-privacy">
-          Die Anmeldung dient dazu, Projekte geräteübergreifend zuzuordnen und
-          eine Profilwahl sicher fortzusetzen.
-          {GOOGLE_AUTH_ENABLED ? " Google wird erst nach Ihrem Klick geöffnet; alternativ steht die E-Mail-Anmeldung zur Verfügung." : ""}
-          {" "}<a href="/privacy">Datenschutzhinweise</a>
-        </p>
-      </div>
-    </Modal>
-  );
-}
-
 function SidebarChatList({
   chats,
   activeProjectId,
@@ -3851,147 +3603,3 @@ function SidebarChatList({
   );
 }
 
-function CreateProjectDialog({
-  onClose,
-  onCreate,
-}: {
-  onClose: () => void;
-  onCreate: (name: string) => Promise<ProjectCollectionItem>;
-}) {
-  const [name, setName] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!name.trim() || busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await onCreate(name.trim());
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Projekt konnte nicht erstellt werden.");
-      setBusy(false);
-    }
-  };
-  return (
-    <Modal titleId="create-project-title" onClose={onClose}>
-      <form className="project-dialog" onSubmit={submit}>
-        <span className="dialog-eyebrow">Mehrere Chats organisieren</span>
-        <h2 id="create-project-title">Neues Projekt</h2>
-        <p>Ein Projekt ist ein Ordner, in dem Sie mehrere zusammengehörige Chats speichern können.</p>
-        <label htmlFor="project-name">Projektname</label>
-        <input id="project-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={120} autoFocus placeholder="z. B. SAP-Rollout 2026" />
-        {error ? <p className="form-error" role="alert">{error}</p> : null}
-        <div className="dialog-actions">
-          <button className="secondary-action" type="button" onClick={onClose} disabled={busy}>Abbrechen</button>
-          <button className="primary-action" type="submit" disabled={busy || !name.trim()}>{busy ? "Wird erstellt …" : "Projekt erstellen"}</button>
-        </div>
-      </form>
-    </Modal>
-  );
-}
-
-function ManageChatDialog({
-  chat,
-  collections,
-  onClose,
-  onMove,
-  onDelete,
-}: {
-  chat: ProjectListItem;
-  collections: ProjectCollectionItem[];
-  onClose: () => void;
-  onMove: (collectionId: string | null) => Promise<void>;
-  onDelete: () => Promise<void>;
-}) {
-  const [busy, setBusy] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const run = async (operation: () => Promise<void>) => {
-    setBusy(true);
-    setError(null);
-    try {
-      await operation();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Aktion fehlgeschlagen.");
-      setBusy(false);
-    }
-  };
-  return (
-    <Modal titleId="manage-chat-title" onClose={onClose}>
-      <div className="project-dialog manage-chat-dialog">
-        <span className="dialog-eyebrow">Chat verwalten</span>
-        <h2 id="manage-chat-title">{chat.title}</h2>
-        <p>Speichern Sie den Chat in einem Projekt oder löschen Sie ihn dauerhaft.</p>
-        <div className="project-destination-list">
-          <button type="button" className={!chat.collectionId ? "active" : ""} disabled={busy} onClick={() => void run(() => onMove(null))}>Ohne Projekt</button>
-          {collections.map((collection) => (
-            <button key={collection.id} type="button" className={chat.collectionId === collection.id ? "active" : ""} disabled={busy} onClick={() => void run(() => onMove(collection.id))}>{collection.name}</button>
-          ))}
-        </div>
-        {error ? <p className="form-error" role="alert">{error}</p> : null}
-        <div className="dialog-actions split-actions">
-          {confirmDelete ? (
-            <button className="danger-action" type="button" disabled={busy} onClick={() => void run(onDelete)}>{busy ? "Wird gelöscht …" : "Löschen bestätigen"}</button>
-          ) : (
-            <button className="danger-text-action" type="button" disabled={busy} onClick={() => setConfirmDelete(true)}>Chat löschen</button>
-          )}
-          <button className="secondary-action" type="button" onClick={onClose} disabled={busy}>Schließen</button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-function ContactDialog({ profile, onClose }: { profile: FreelancerProfileResult; onClose: () => void }) {
-  return (
-    <Modal titleId="contact-title" onClose={onClose} size="large">
-      <div className="contact-dialog">
-        <div className="contact-dialog-header">
-          <div className="contact-profile-avatar" aria-hidden="true">{initials(profile.displayName)}</div>
-          <div><span className="dialog-eyebrow">Reales Profil ausgewählt</span><h2 id="contact-title">Termin mit {profile.displayName}</h2><p>{profile.role}</p></div>
-        </div>
-        <div className="contact-layout">
-          <div className="contact-copy">
-            <div className="continue-note"><span aria-hidden="true"><IconPlus size={17} /></span><p><strong>Noch etwas ergänzen?</strong>Schließen Sie dieses Fenster und schreiben Sie frei im Chat weiter. Die Terminoption bleibt sichtbar.</p></div>
-          </div>
-          <div className="calendar-area">
-            <div className="calendar-consent">
-              <div className="calendar-symbol" aria-hidden="true"><span><IconCalendar size={26} /></span><small>BOOKING</small></div>
-              <h3>{profile.bookingUrl ? "Direkt Termin wählen" : "Aktuell nicht buchbar"}</h3>
-              <p>{profile.bookingUrl ? `Die Buchungsseite von ${profile.displayName} wird erst nach Ihrem Klick in einem neuen Tab geöffnet.` : "Der frühere Treffer bleibt zur Nachvollziehbarkeit sichtbar, aber es ist kein aktueller Booking-Link freigegeben."}</p>
-              {profile.bookingUrl ? (
-                <a
-                  className="booking-link-action"
-                  href={profile.bookingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Meeting buchen <IconArrowRight size={13} />
-                </a>
-              ) : (
-                <span className="booking-unavailable">Aktuell kein direkter Booking-Link</span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-function ConfirmDeleteDialog({ busy, onClose, onConfirm }: { busy: boolean; onClose: () => void; onConfirm: () => void }) {
-  return (
-    <Modal titleId="delete-title" onClose={onClose}>
-      <div className="delete-dialog">
-        <span className="danger-symbol" aria-hidden="true"><IconAlertTriangle size={19} /></span>
-        <h2 id="delete-title">Anwendungsdaten löschen?</h2>
-        <p>Ihre Projekte, Nachrichten und gespeicherten Ergebnisse werden entsprechend der geltenden Aufbewahrungsregeln gelöscht oder anonymisiert. Dieser Schritt kann nicht rückgängig gemacht werden.</p>
-        <div className="dialog-actions">
-          <button className="secondary-action" type="button" onClick={onClose} disabled={busy}>Abbrechen</button>
-          <button className="danger-action" type="button" onClick={onConfirm} disabled={busy}>{busy ? "Wird gelöscht …" : "Daten endgültig löschen"}</button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
