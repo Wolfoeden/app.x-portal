@@ -41,7 +41,6 @@ import {
   IconFolder,
   IconInfo,
   IconMenu,
-  IconPanelLeft,
   IconPanelRight,
   IconPen,
   IconPlus,
@@ -103,13 +102,12 @@ const SIDEBAR_MIN_WIDTH = 208;
 const SIDEBAR_MAX_WIDTH = 480;
 const SIDEBAR_DEFAULT_WIDTH = 264;
 const SIDEBAR_WIDTH_STORAGE_KEY = "xportal.sidebar-width.v1";
-const SIDEBAR_COLLAPSED_STORAGE_KEY = "xportal.sidebar-collapsed.v1";
 
 function clampSidebarWidth(value: number): number {
   return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, Math.round(value)));
 }
 
-type SidebarPreferences = { width: number; collapsed: boolean };
+type SidebarPreferences = { width: number };
 
 /**
  * The saved sidebar layout, modelled as the external store it actually is.
@@ -121,7 +119,6 @@ type SidebarPreferences = { width: number; collapsed: boolean };
  */
 const SERVER_SIDEBAR_PREFERENCES: SidebarPreferences = {
   width: SIDEBAR_DEFAULT_WIDTH,
-  collapsed: false,
 };
 
 let sidebarPreferences: SidebarPreferences = SERVER_SIDEBAR_PREFERENCES;
@@ -138,8 +135,6 @@ function readStoredSidebarPreferences(): SidebarPreferences {
       width: Number.isFinite(storedWidth)
         ? clampSidebarWidth(storedWidth)
         : SIDEBAR_DEFAULT_WIDTH,
-      collapsed:
-        window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "1",
     };
   } catch {
     // Blocked or full storage must never stop the workspace from rendering.
@@ -167,10 +162,6 @@ function writeSidebarPreferences(next: SidebarPreferences, persist = true) {
   if (persist) {
     try {
       window.localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(next.width));
-      window.localStorage.setItem(
-        SIDEBAR_COLLAPSED_STORAGE_KEY,
-        next.collapsed ? "1" : "0",
-      );
     } catch {
       // The preference is a convenience, never a requirement.
     }
@@ -179,8 +170,8 @@ function writeSidebarPreferences(next: SidebarPreferences, persist = true) {
 }
 
 /**
- * Draggable, collapsible project sidebar. The default width truncates most
- * chat titles, and the only way to read one was to hover for the tooltip.
+ * Draggable project sidebar. The default width truncates most chat titles,
+ * and the only way to read one was to hover for the tooltip.
  */
 function useSidebarWidth() {
   const preferences = useSyncExternalStore(
@@ -233,14 +224,8 @@ function useSidebarWidth() {
     });
   }, []);
 
-  const setSidebarCollapsed = useCallback((collapsed: boolean) => {
-    writeSidebarPreferences({ ...sidebarPreferences, collapsed });
-  }, []);
-
   return {
     sidebarWidth: preferences.width,
-    sidebarCollapsed: preferences.collapsed,
-    setSidebarCollapsed,
     startSidebarResize,
     resetSidebarWidth,
     isResizingSidebar,
@@ -1272,8 +1257,6 @@ export function ChatWorkspace({
   const [detailsOpen, setDetailsOpen] = useState(true);
   const {
     sidebarWidth,
-    sidebarCollapsed,
-    setSidebarCollapsed,
     startSidebarResize,
     resetSidebarWidth,
     isResizingSidebar,
@@ -2145,7 +2128,7 @@ export function ChatWorkspace({
 
   return (
     <div
-      className={`app-shell ${detailsOpen ? "" : "details-hidden"}${isAgentView ? " is-agent-view" : ""}${sidebarCollapsed ? " sidebar-collapsed" : ""}${isResizingSidebar ? " is-resizing-sidebar" : ""}`}
+      className={`app-shell ${detailsOpen ? "" : "details-hidden"}${isAgentView ? " is-agent-view" : ""}${isResizingSidebar ? " is-resizing-sidebar" : ""}`}
       style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
     >
       <a className="skip-link" href={isAgentView ? "#agent-directory-title" : "#chat-composer"}>
@@ -2158,12 +2141,6 @@ export function ChatWorkspace({
             <span className="mark-glyph" aria-hidden="true">F</span>
             <span>Freelancer Beta</span>
           </div>
-          <button
-            className="icon-button sidebar-collapse"
-            type="button"
-            onClick={() => setSidebarCollapsed(true)}
-            aria-label="Projektleiste einklappen"
-          ><IconPanelLeft size={18} /></button>
           <button className="icon-button sidebar-close" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schließen"><IconClose size={18} /></button>
         </div>
 
@@ -2352,20 +2329,36 @@ export function ChatWorkspace({
         />
       </aside>
 
+      {/*
+        Deliberately a child of the shell, not of the topbar.
+        `.topbar` sets `backdrop-filter`, and that makes an element the
+        containing block for its `position: fixed` descendants — the button
+        was anchored to the topbar, which is exactly the box that moves when
+        the panel opens. Out here it is anchored to the viewport and keeps one
+        screen position, so closing and reopening needs no mouse movement.
+      */}
+      <button
+        className="icon-button details-toggle"
+        type="button"
+        onClick={() => setDetailsOpen((current) => !current)}
+        aria-label={
+          isAgentView
+            ? detailsOpen
+              ? "Agentendetails ausblenden"
+              : "Agentendetails einblenden"
+            : detailsOpen
+              ? "Projektübersicht ausblenden"
+              : "Projektübersicht einblenden"
+        }
+        aria-pressed={detailsOpen}
+      ><IconPanelRight size={18} /></button>
+
       {sidebarOpen ? <button className="sidebar-scrim" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schließen" /> : null}
 
       <main className="chat-panel">
         <header className="topbar">
           <div className="topbar-left">
             <button className="icon-button mobile-menu" type="button" onClick={() => setSidebarOpen(true)} aria-label="Projekte öffnen"><IconMenu size={18} /></button>
-            {sidebarCollapsed ? (
-              <button
-                className="icon-button sidebar-expand"
-                type="button"
-                onClick={() => setSidebarCollapsed(false)}
-                aria-label="Projektleiste ausklappen"
-              ><IconMenu size={18} /></button>
-            ) : null}
             <div>
               <p className="topbar-title">
                 {isAgentView ? "KI-Agenten" : activeProject?.title ?? "Freelancer finden"}
@@ -2376,23 +2369,6 @@ export function ChatWorkspace({
                   : "KI-gestützte Anfrage · Sie treffen jede Entscheidung"}
               </p>
             </div>
-          </div>
-          <div className="topbar-actions">
-            <button
-              className="icon-button details-toggle"
-              type="button"
-              onClick={() => setDetailsOpen((current) => !current)}
-              aria-label={
-                isAgentView
-                  ? detailsOpen
-                    ? "Agentendetails ausblenden"
-                    : "Agentendetails einblenden"
-                  : detailsOpen
-                    ? "Projektübersicht ausblenden"
-                    : "Projektübersicht einblenden"
-              }
-              aria-pressed={detailsOpen}
-            ><IconPanelRight size={18} /></button>
           </div>
         </header>
 
@@ -2505,10 +2481,8 @@ export function ChatWorkspace({
               does. Spelled out: it never picks a person, it only narrows the
               list by fixed rules. */}
           <p className="composer-disclosure">
-            Die KI kann Fehler machen. Sie sucht niemanden für Sie aus – sie
-            engt die Liste nach festen Regeln ein, entscheiden tun Sie. Bitte
-            keine Gesundheitsdaten und keine vertraulichen Daten Dritter
-            eingeben.
+            Die KI kann Fehler machen. Daten werden nicht zum Trainieren von
+            Modellen verwendet.
             <span className="composer-legal">
               <a href="/imprint">Impressum</a>
               <span aria-hidden="true">·</span>
@@ -2645,23 +2619,7 @@ function WelcomeState({ onSuggestion }: { onSuggestion: (suggestion: Suggestion)
   return (
     <section className="welcome-state" aria-labelledby="welcome-title">
       <div className="assistant-emblem" aria-hidden="true"><span><IconSpark size={22} /></span></div>
-      <p className="eyebrow">Freelancer-Suche</p>
       <h1 id="welcome-title">Wobei können wir Sie unterstützen?</h1>
-      <p className="welcome-copy">
-        Beschreiben Sie das Projekt so, wie Sie es einem Kollegen erklären
-        würden. Die KI sortiert Ihre Angaben und zeigt bis zu drei Profile –
-        jeweils mit Begründung, warum sie passen, und was noch offen ist.
-      </p>
-      <div className="trust-row" aria-label="So funktioniert die Suche">
-        <span><b>1</b> Frei beschreiben</span>
-        <span className="trust-line" aria-hidden="true" />
-        <span><b>2</b> Profile vergleichen</span>
-        <span className="trust-line" aria-hidden="true" />
-        <span><b>3</b> Kontakt starten</span>
-      </div>
-      <p className="suggestion-intro">
-        Beispiele zum Einsteigen – Ihr Thema muss nicht dabei sein:
-      </p>
       <div className="suggestion-grid" aria-label="Beispielanfragen">
         {suggestions.map((suggestion) => (
           <button key={suggestion.label} type="button" onClick={() => onSuggestion(suggestion)}>
