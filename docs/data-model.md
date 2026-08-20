@@ -215,8 +215,18 @@ reasons, known gaps, verified facts, self-reported facts, the complete
 public-safe profile snapshot, profile version and matching-rule version. The
 customer chooses a recommended profile.
 
-When no profile clears that gate, v13 may additionally persist and display the
-two strongest eligible overlaps with at least 25 percent core coverage as
+A condition the request states but the catalogue cannot answer — a budget the
+profile never published, a contractual term it does not mention — is excluded
+from the weighted score since v14 and surfaced as a gap to clarify. Only a
+documented conflict lowers a score. Counting silence as a partial miss made a
+detailed request rank a candidate below the very same candidate on a vague one,
+because each further condition opened another dimension with no data behind it.
+Core and optional skills are deliberately exempt: there, missing evidence really
+does mean the competence is undemonstrated.
+
+When no profile clears that gate, v13 and later may additionally persist and
+display the two strongest eligible overlaps with at least 25 percent core
+coverage as
 `partial_matches_snapshot`. They remain
 inside a `no_reliable_match` decision, are labeled "Nicht empfohlen", carry no
 booking URL and cannot enter the introduction flow. They are evidence for

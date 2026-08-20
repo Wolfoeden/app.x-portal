@@ -16,8 +16,24 @@ import {
   hasAmbiguousSkillConnectors,
 } from "./requirements";
 
-export const MATCHING_RULE_VERSION = "freelancer-match-v13" as const;
-export const MATCHING_SCORE_VERSION = "freelancer-score-v1" as const;
+export const MATCHING_RULE_VERSION = "freelancer-match-v14" as const;
+export const MATCHING_SCORE_VERSION = "freelancer-score-v2" as const;
+
+/**
+ * Versions a stored snapshot may carry. New runs always write the current
+ * version; older ones stay readable so a past decision can still be shown
+ * exactly as it was made.
+ */
+export const READABLE_RULE_VERSIONS = [
+  "freelancer-match-v11",
+  "freelancer-match-v12",
+  "freelancer-match-v13",
+  "freelancer-match-v14",
+] as const;
+export const READABLE_SCORE_VERSIONS = [
+  "freelancer-score-v1",
+  "freelancer-score-v2",
+] as const;
 export const MINIMUM_CORE_COVERAGE_BASIS_POINTS = 7_000 as const;
 export const MINIMUM_PARTIAL_COVERAGE_BASIS_POINTS = 2_500 as const;
 export const MAX_PARTIAL_MATCHES = 2 as const;
@@ -92,7 +108,7 @@ export const RequirementAssessmentSchema = z
 
 export const ScoreBreakdownSchema = z
   .object({
-    scoreVersion: z.literal(MATCHING_SCORE_VERSION),
+    scoreVersion: z.enum(READABLE_SCORE_VERSIONS),
     fitScoreBasisPoints: z.number().int().min(0).max(10_000),
     coreCoverageBasisPoints: z.number().int().min(0).max(10_000),
     optionalCoverageBasisPoints: z.number().int().min(0).max(10_000).nullable(),
@@ -107,7 +123,7 @@ export const ScoreBreakdownSchema = z
 export const MatchingDecisionSnapshotSchema = z
   .object({
     schemaVersion: z.union([z.literal(1), z.literal(2)]),
-    scoreVersion: z.literal(MATCHING_SCORE_VERSION),
+    scoreVersion: z.enum(READABLE_SCORE_VERSIONS),
     status: z.enum(["ranked", "needs_clarification", "no_reliable_match"]),
     minimumCoreCoverageBasisPoints: z.literal(
       MINIMUM_CORE_COVERAGE_BASIS_POINTS,
@@ -203,7 +219,7 @@ export const ShortlistMatchSchema = z
 
 export const ShortlistSchema = z
   .object({
-    ruleVersion: z.literal(MATCHING_RULE_VERSION),
+    ruleVersion: z.enum(READABLE_RULE_VERSIONS),
     orderingRule: z.tuple([
       z.literal("fit_score_desc"),
       z.literal("core_coverage_desc"),
@@ -897,6 +913,11 @@ function weightedBasisPoints(
   );
 }
 
+/**
+ * Availability is scored on every run regardless of what the request says, so
+ * an unconfirmed calendar cannot make a detailed request score worse than a
+ * vague one. It stays a graded profile attribute, not a "silence" case.
+ */
 function availabilityFitBasisPoints(
   profile: FreelancerProfile,
   brief: ProjectBrief,
@@ -906,6 +927,33 @@ function availabilityFitBasisPoints(
   if (profile.availability.status === "limited") return 6_000;
   if (profile.availability.status === "unknown") return 3_000;
   return 0;
+}
+
+/**
+ * Share of *decidable* assessments that are satisfied.
+ *
+ * A requirement the profile contradicts is a miss. A requirement the profile
+ * is simply silent about is not evidence of anything, so it leaves the
+ * denominator and surfaces as a gap to clarify instead.
+ *
+ * Counting silence as a miss made the score fall the more a client wrote: each
+ * further condition opened another dimension the catalogue had no data for, so
+ * a detailed request scored worse than a vague one for the very same person.
+ * Core skills are deliberately not scored this way — there, missing evidence
+ * really does mean the competence is undemonstrated.
+ */
+function decidedRatioBasisPoints(
+  assessments: readonly RequirementAssessment[],
+): number | null {
+  const decided = assessments.filter(
+    (assessment) =>
+      assessment.status === "satisfied" || assessment.status === "contradicted",
+  );
+  if (decided.length === 0) return null;
+  return ratioBasisPoints(
+    decided.filter((assessment) => assessment.status === "satisfied").length,
+    decided.length,
+  );
 }
 
 export function evaluateProfile(
@@ -1272,22 +1320,16 @@ export function evaluateProfile(
   const categoricalAssessments = requirementAssessments.filter(
     (assessment) => assessment.category !== "skill",
   );
-  const categoricalFitBasisPoints =
-    categoricalAssessments.length > 0
-      ? ratioBasisPoints(
-          categoricalAssessments.filter(
-            (assessment) => assessment.status === "satisfied",
-          ).length,
-          categoricalAssessments.length,
-        )
-      : null;
+  const categoricalFitBasisPoints = decidedRatioBasisPoints(
+    categoricalAssessments,
+  );
   const availabilityScore = availabilityFitBasisPoints(profile, brief);
+  // `unconfirmed` means the profile carries no rate or budget at all. A rate
+  // that actually breaches the stated limit is a rejection reason further up,
+  // never a score of 4_000 — so scoring silence here only ever punished
+  // clients for naming a budget.
   const commercialFitBasisPoints =
-    commercial.confidence === "not_requested"
-      ? null
-      : commercial.confidence === "confirmed"
-        ? 10_000
-        : 4_000;
+    commercial.confidence === "confirmed" ? 10_000 : null;
   const evidenceConfidenceBasisPoints =
     averageBasisPoints(
       coreRequirementAssessments
