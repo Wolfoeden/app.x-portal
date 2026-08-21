@@ -111,6 +111,29 @@ production; create a corrective migration.
 Application rollback must not automatically reverse a database migration.
 Destructive down-migrations require a separately reviewed recovery plan.
 
+### Ordering for the token-metered AI balance
+
+The application commit that meters chat requests from token usage must not
+reach production before `20260821120000_monthly_ai_credit_period.sql` is
+applied. Without the period columns the balance is a lifetime allocation, so an
+exhausted account is locked out permanently instead of until the first of the
+next month, and there is no self-service purchase path yet.
+
+Apply in this order:
+
+1. the migration to staging;
+2. `supabase test db`, including `ai_credit_period.test.sql`;
+3. the same migration to production;
+4. the application deploy.
+
+Before that deploy, confirm `AI_CREDITS_GUEST_TOTAL` and
+`AI_CREDITS_USER_TOTAL` in Netlify. Stale pre-metering values of 2,500 and
+50,000 would grant roughly 138 and 2,700 requests per month instead of 5 and
+50.
+
+An application rollback past that commit is safe: the period columns are
+additive and the previous code does not read them.
+
 ## Application rollback
 
 Rollback is a controlled Netlify operation to the most recent known-good

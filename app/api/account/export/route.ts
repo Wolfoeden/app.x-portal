@@ -51,7 +51,7 @@ export async function GET() {
         admin
           .from("user_ai_credit_accounts")
           .select(
-            "is_anonymous,credits_total,credits_used,credits_reserved,created_at,updated_at",
+            "is_anonymous,credits_total,credits_used,credits_reserved,period_start,period_end,created_at,updated_at",
           )
           .eq("user_id", user.id)
           .maybeSingle(),
