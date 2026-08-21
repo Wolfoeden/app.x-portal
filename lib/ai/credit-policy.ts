@@ -6,9 +6,12 @@ import {
 } from "@/lib/ai/model-pricing";
 
 /**
- * Historical token-weighted provider-control units. Customer product credits
- * and the monthly Nano allowance use separate ledgers and must never be
- * derived from this policy.
+ * Token-weighted metering for the customer-facing AI balance. Every chat
+ * request is charged from this policy against `user_ai_credit_accounts`.
+ *
+ * The separate `product_credit_accounts` ledger keeps its own pricing for
+ * external freelancer research, which is expected to move to a different
+ * model, and is deliberately not derived from this policy.
  */
 export type AiCreditPolicy = {
   version: string;
@@ -26,17 +29,30 @@ export type AiCreditPolicy = {
 };
 
 export const XPORTAL_AI_CREDIT_POLICY_VERSION =
-  "xportal-ai-credits-mvp-2026-08-13-v3";
+  "xportal-ai-credits-2026-08-21-v4";
 
 /**
- * Simple MVP policy:
+ * Token weights:
  * - cached input: 1 weighted unit / token
  * - uncached input: 10 weighted units / token
  * - output: 60 weighted units / token
- * - one internal credit covers 1,000 weighted units, rounded up
+ * - one credit covers 1,000 weighted units, rounded half-up
+ *
+ * Calibrated on 30 confirmed `project_brief` settlements measured on
+ * 2026-08-20/21 (gpt-5.4-nano): input is near-constant at ~928 tokens because
+ * the system prompt dominates, output varies between 93 and 407. That puts a
+ * typical request at 18-21 credits.
+ *
+ * `project_brief` previously carried a 0.1x multiplier, which made a request
+ * cost 2-4 credits. At that resolution `ceil` overcharged by 20.1% and only
+ * three distinct prices existed. It now meters at 1.0x like `chat`: it is the
+ * primary customer-facing operation and has no reason to be discounted.
+ *
+ * `research` stays at 0.1x. External freelancer search is billed from the
+ * separate product-credit ledger under its own pricing.
  *
  * The weights are centrally versioned product policy. Allocation totals are a
- * separate business decision and intentionally do not live in this module.
+ * separate business decision and live in lib/ai/quota.ts.
  */
 export const XPORTAL_AI_CREDIT_POLICY = {
   version: XPORTAL_AI_CREDIT_POLICY_VERSION,
@@ -50,8 +66,7 @@ export const XPORTAL_AI_CREDIT_POLICY = {
   defaultPurposeMultiplierBasisPoints: 10_000,
   purposeMultiplierBasisPoints: {
     chat: 10_000,
-    // Kept only to reconstruct historical provider-control records.
-    project_brief: 1_000,
+    project_brief: 10_000,
     insight: 10_000,
     router: 10_000,
     research: 1_000,
@@ -116,9 +131,18 @@ function validatePolicy(policy: AiCreditPolicy): void {
   );
 }
 
-function divideAndRoundUp(numerator: bigint, denominator: bigint): bigint {
+/**
+ * Commercial rounding. `ceil` billed a request costing 2.01 credits as 3,
+ * a systematic 20.1% overcharge at the old resolution. Half-up keeps the
+ * rounding error symmetric and below 2.5% at current prices.
+ *
+ * Any real usage still costs at least one credit, so a request can never be
+ * metered as free.
+ */
+function divideAndRoundHalfUp(numerator: bigint, denominator: bigint): bigint {
   if (numerator === 0n) return 0n;
-  return (numerator + denominator - 1n) / denominator;
+  const rounded = (2n * numerator + denominator) / (2n * denominator);
+  return rounded === 0n ? 1n : rounded;
 }
 
 export function calculateCreditsConsumed(
@@ -166,7 +190,7 @@ export function calculateCreditsConsumed(
     BigInt(modelMultiplierBasisPoints);
   const denominator =
     BigInt(policy.weightedUnitsPerCredit) * BASIS_POINTS * BASIS_POINTS;
-  const creditsConsumed = divideAndRoundUp(numerator, denominator);
+  const creditsConsumed = divideAndRoundHalfUp(numerator, denominator);
 
   if (creditsConsumed > BigInt(Number.MAX_SAFE_INTEGER)) {
     throw new RangeError("creditsConsumed exceeds the safe integer range");

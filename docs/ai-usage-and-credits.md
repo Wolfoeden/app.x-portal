@@ -12,9 +12,26 @@ XPORTAL has three deliberately separate meters:
 3. `product_credit_accounts` stores purchased or operator-granted product
    credits. In V1, an external freelancer web search costs 30 credits.
 
-The historical `user_ai_credit_accounts` token-weighted values are retained
-only to reconstruct older provider-control records. They are never displayed
-as a customer balance and are never converted into product credits.
+`user_ai_credit_accounts` was previously a provider-control artifact that
+could not gate a request: the application hardcoded both the credit hold and
+the debit to zero. It is now the token-metered customer balance. A chat request
+is charged from the real provider token counts of its own response, so a short
+brief costs less than a long one.
+
+The free monthly allowance is sized from the measured price of a brief:
+5 requests for a guest and 50 for an account, at a measured p90 of 21 credits
+per request. Both totals are environment-tunable through
+`AI_CREDITS_GUEST_TOTAL` and `AI_CREDITS_USER_TOTAL` and reset on the UTC
+calendar month.
+
+Credits are still never converted into product credits, and product credits
+keep their own pricing: external freelancer research is expected to move to a
+different model and is metered separately.
+
+Transitional state: the 10/100 counter in `ai_free_usage_accounts` still runs
+in parallel and also gates. Whichever limit binds first applies. Removing it is
+a separate change and must not ship before the monthly period migration is in
+production.
 
 ## Models and matching
 

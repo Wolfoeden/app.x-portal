@@ -30,6 +30,17 @@ export const DEFAULT_OPENAI_BRIEF_MODEL = "gpt-5.4-nano-2026-03-17";
 export const DEFAULT_OPENAI_TIMEOUT_MS = 20_000;
 export const MAX_OPENAI_BRIEF_OUTPUT_TOKENS = 600;
 
+/**
+ * Realistic output size for a credit reservation, as opposed to the hard cap
+ * above. 30 confirmed settlements on 2026-08-20/21 had a median of 147 output
+ * tokens and a p90 of 187; 250 leaves headroom.
+ *
+ * Reserving against the 600-token cap instead would hold roughly twice the
+ * credits a request actually costs and deny requests the user can still pay
+ * for. Settlement replaces this estimate with real usage either way.
+ */
+export const EXPECTED_OPENAI_BRIEF_OUTPUT_TOKENS = 250;
+
 const MAX_SOURCE_LENGTH = 20_000;
 const MIN_TIMEOUT_MS = 100;
 const MAX_TIMEOUT_MS = 55_000;
@@ -1419,7 +1430,13 @@ function providerRequest(
 export function estimateProjectBriefTokenCeiling(
   rawInput: ExtractProjectBriefInput,
   options: Pick<ExtractProjectBriefOptions, "now"> = {},
-): { inputTokens: number; outputTokens: number; totalTokens: number; model: string } {
+): {
+  inputTokens: number;
+  outputTokens: number;
+  expectedOutputTokens: number;
+  totalTokens: number;
+  model: string;
+} {
   const parsedInput = ExtractProjectBriefInputSchema.parse(rawInput);
   const deterministic = buildDeterministicBrief(parsedInput, options.now);
   const model = DEFAULT_OPENAI_BRIEF_MODEL;
@@ -1429,10 +1446,16 @@ export function estimateProjectBriefTokenCeiling(
     model,
     parsedInput.safetyIdentifier ?? "quota_preflight",
   );
-  const inputTokens = Buffer.byteLength(JSON.stringify(request), "utf8");
+  // JSON.stringify returns bytes, not tokens. This value was fed to the quota
+  // RPC as "estimated tokens", inflating every preflight estimate roughly
+  // fourfold. German prose runs about 3.5-4 bytes per token; dividing by 3
+  // keeps the estimate conservative without the inflation.
+  const requestBytes = Buffer.byteLength(JSON.stringify(request), "utf8");
+  const inputTokens = Math.ceil(requestBytes / 3);
   return {
     inputTokens,
     outputTokens: MAX_OPENAI_BRIEF_OUTPUT_TOKENS,
+    expectedOutputTokens: EXPECTED_OPENAI_BRIEF_OUTPUT_TOKENS,
     totalTokens: inputTokens + MAX_OPENAI_BRIEF_OUTPUT_TOKENS,
     model,
   };
