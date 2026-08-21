@@ -1,10 +1,14 @@
 import "server-only";
 
 import {
-  getMonthlyAiUsageSnapshot,
   getProductCreditSnapshot,
   PRODUCT_CREDIT_EURO_PER_UNIT,
 } from "@/lib/ai/product-entitlements";
+import {
+  currentPeriodEndIso,
+  getAiCreditSnapshot,
+  TYPICAL_PROJECT_BRIEF_CREDITS,
+} from "@/lib/ai/quota";
 import { getCurrentUser, type CurrentUser } from "@/lib/auth/current-user";
 import {
   presentProject,
@@ -35,8 +39,11 @@ export type WorkspaceAuth = {
 };
 
 export type WorkspaceUsage = {
-  freeUsage: Awaited<ReturnType<typeof getMonthlyAiUsageSnapshot>> & {
+  credits: Awaited<ReturnType<typeof getAiCreditSnapshot>> & {
+    periodEnd: string;
     exhausted: boolean;
+    creditsPerRequest: number;
+    lastRequestCost: number | null;
   };
   productCredits:
     | (NonNullable<Awaited<ReturnType<typeof getProductCreditSnapshot>>> & {
@@ -66,8 +73,8 @@ export function presentWorkspaceAuth(user: CurrentUser | null): WorkspaceAuth {
 export async function loadWorkspaceUsage(
   user: CurrentUser,
 ): Promise<WorkspaceUsage> {
-  const [freeUsage, productCredits] = await Promise.all([
-    getMonthlyAiUsageSnapshot({
+  const [credits, productCredits] = await Promise.all([
+    getAiCreditSnapshot({
       userId: user.id,
       isAnonymous: user.isAnonymous,
     }),
@@ -75,7 +82,14 @@ export async function loadWorkspaceUsage(
   ]);
 
   return {
-    freeUsage: { ...freeUsage, exhausted: freeUsage.remaining <= 0 },
+    credits: {
+      ...credits,
+      periodEnd: currentPeriodEndIso(),
+      exhausted: credits.remaining <= 0,
+      creditsPerRequest: TYPICAL_PROJECT_BRIEF_CREDITS,
+      // Nothing was spent by loading the workspace.
+      lastRequestCost: null,
+    },
     productCredits: productCredits
       ? { ...productCredits, euroPerCredit: PRODUCT_CREDIT_EURO_PER_UNIT }
       : null,

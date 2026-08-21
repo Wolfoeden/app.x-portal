@@ -84,6 +84,17 @@ export const TYPICAL_PROJECT_BRIEF_CREDITS = 21;
 export const GUEST_FREE_REQUESTS = 5;
 export const ACCOUNT_FREE_REQUESTS = 50;
 
+/**
+ * First instant of the next UTC month, which is when
+ * roll_ai_credit_period refills the allowance. Derived rather than read back,
+ * so the snapshot RPC keeps its existing return signature.
+ */
+export function currentPeriodEndIso(now: Date = new Date()): string {
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1),
+  ).toISOString();
+}
+
 export function configuredInitialCredits(isAnonymous: boolean): number {
   return nonNegativeInteger(
     isAnonymous ? "AI_CREDITS_GUEST_TOTAL" : "AI_CREDITS_USER_TOTAL",

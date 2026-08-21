@@ -129,15 +129,23 @@ export interface ChatRequest {
   clientMessageId?: string;
 }
 
-/** Monthly, non-purchasable allowance for the normal Nano brief analysis. */
-export interface FreeAnalysisUsageSnapshot {
-  limit: number;
+/**
+ * Monthly credit balance for normal brief analyses. A request is charged from
+ * the real token usage of its own response, so the price varies with the
+ * length of the brief rather than counting flat analyses.
+ */
+export interface CreditBalanceSnapshot {
+  total: number;
   used: number;
   reserved: number;
   remaining: number;
-  periodStart: string;
+  /** ISO instant at which the allowance refills. */
   periodEnd: string;
   exhausted: boolean;
+  /** Typical price of one request, for the "roughly N left" estimate. */
+  creditsPerRequest: number;
+  /** What the request returning this snapshot cost. Null outside a request. */
+  lastRequestCost: number | null;
 }
 
 /** Purchased product credits. These never replace the monthly free allowance. */
@@ -149,14 +157,14 @@ export interface ProductCreditSnapshot {
 }
 
 export interface AiUsageSnapshot {
-  freeUsage: FreeAnalysisUsageSnapshot;
+  credits: CreditBalanceSnapshot;
   /** Null for guest sessions because paid searches require an account. */
   productCredits: ProductCreditSnapshot | null;
 }
 
 /** Routes may return only the balance they changed; the client merges safely. */
 export interface AiUsageUpdate {
-  freeUsage?: FreeAnalysisUsageSnapshot;
+  credits?: CreditBalanceSnapshot;
   productCredits?: ProductCreditSnapshot | null;
 }
 

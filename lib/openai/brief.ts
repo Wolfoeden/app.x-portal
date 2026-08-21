@@ -39,7 +39,7 @@ export const MAX_OPENAI_BRIEF_OUTPUT_TOKENS = 600;
  * credits a request actually costs and deny requests the user can still pay
  * for. Settlement replaces this estimate with real usage either way.
  */
-export const EXPECTED_OPENAI_BRIEF_OUTPUT_TOKENS = 250;
+export const EXPECTED_OPENAI_BRIEF_OUTPUT_TOKENS = 200;
 
 const MAX_SOURCE_LENGTH = 20_000;
 const MIN_TIMEOUT_MS = 100;
@@ -1448,10 +1448,16 @@ export function estimateProjectBriefTokenCeiling(
   );
   // JSON.stringify returns bytes, not tokens. This value was fed to the quota
   // RPC as "estimated tokens", inflating every preflight estimate roughly
-  // fourfold. German prose runs about 3.5-4 bytes per token; dividing by 3
-  // keeps the estimate conservative without the inflation.
+  // fourfold.
+  //
+  // The first production settlement under this policy measured 6,300 request
+  // bytes against ~1,030 real input tokens: 6.1 bytes per token, because the
+  // serialized request carries JSON structure and escaping on top of the
+  // prose. Dividing by 5 stays conservative against that sample while keeping
+  // the hold close enough to actual cost that the advertised request count
+  // survives to the end of the period.
   const requestBytes = Buffer.byteLength(JSON.stringify(request), "utf8");
-  const inputTokens = Math.ceil(requestBytes / 3);
+  const inputTokens = Math.ceil(requestBytes / 5);
   return {
     inputTokens,
     outputTokens: MAX_OPENAI_BRIEF_OUTPUT_TOKENS,

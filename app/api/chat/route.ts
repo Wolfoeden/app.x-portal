@@ -10,11 +10,9 @@ import type {
 import { writeAuditEvent } from "@/lib/audit/write";
 import { executeTrackedAiRequest } from "@/lib/ai/gateway";
 import {
-  reserveMonthlyAiUsage,
-  settleMonthlyAiUsage,
-  type MonthlyAiUsageSnapshot,
-  type MonthlyAiUsageSettlementOutcome,
-} from "@/lib/ai/product-entitlements";
+  currentPeriodEndIso,
+  TYPICAL_PROJECT_BRIEF_CREDITS,
+} from "@/lib/ai/quota";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { attachFreelancerCvAccess } from "@/lib/data/freelancer-cvs";
 import { deriveProjectTitle, presentProject, type ProjectRow } from "@/lib/data/projects";
@@ -181,16 +179,17 @@ function fallbackNotice(
   isAnonymous: boolean,
   fallbackReason: string | undefined,
 ): string {
-  if (reason === "monthly_limit" || reason === "monthly_usage_exhausted") {
+  if (
+    reason === "insufficient_credits" ||
+    reason === "monthly_limit" ||
+    reason === "monthly_usage_exhausted"
+  ) {
     return isAnonymous
-      ? "Ihre 10 kostenlosen Nano-Analysen für diesen Monat sind verbraucht. Die Anfrage wurde gespeichert und weiterhin regelbasiert mit der internen Freelancer-Datenbank abgeglichen."
-      : "Ihre 100 kostenlosen Nano-Analysen für diesen Monat sind verbraucht. Die Anfrage wurde gespeichert und weiterhin regelbasiert mit der internen Freelancer-Datenbank abgeglichen.";
+      ? "Ihr kostenloses Monatsguthaben ist verbraucht. Mit einem Konto erhalten Sie deutlich mehr Guthaben. Die Anfrage wurde gespeichert und weiterhin regelbasiert mit der internen Freelancer-Datenbank abgeglichen."
+      : "Ihr Monatsguthaben ist verbraucht. Es wird zum Ersten des nächsten Monats erneuert. Die Anfrage wurde gespeichert und weiterhin regelbasiert mit der internen Freelancer-Datenbank abgeglichen.";
   }
   if (reason === "provider_monthly_budget") {
     return "Das monatliche KI-Budget ist erreicht. Ihre Anfrage wurde gespeichert und mit der sicheren Basisanalyse gegen die interne Freelancer-Datenbank abgeglichen.";
-  }
-  if (reason === "insufficient_credits") {
-    return "Die technische Provider-Sicherung hat die Nano-Analyse nicht freigegeben. Die Anfrage wurde gespeichert und intern mit der sicheren Basisanalyse abgeglichen.";
   }
   if (
     reason === "anonymous_user_daily_token_limit" ||
@@ -237,16 +236,6 @@ function providerFailureCategory(
     return "unconfigured";
   }
   if (extraction.fallbackReason === "provider_timeout") return "timeout";
-  return "provider_error";
-}
-
-function monthlySettlementOutcome(extraction: {
-  mode: "openai" | "fallback";
-  fallbackReason?: string;
-}): MonthlyAiUsageSettlementOutcome {
-  if (extraction.mode === "openai") return "succeeded";
-  if (extraction.fallbackReason === "provider_timeout") return "timeout";
-  if (extraction.fallbackReason === "invalid_output") return "invalid_response";
   return "provider_error";
 }
 
@@ -477,28 +466,10 @@ async function processChatRequest(
     const estimate = estimateProjectBriefTokenCeiling(extractionInput);
     const providerConnection = resolveOpenAiConnection();
     reporter.progress("Nano strukturiert die Anforderungen …");
-    let freeUsageReservation: Awaited<
-      ReturnType<typeof reserveMonthlyAiUsage>
-    > | null = null;
-    if (userHash && ipHash) {
-      try {
-        freeUsageReservation = await reserveMonthlyAiUsage({
-          userId: user.id,
-          isAnonymous: user.isAnonymous,
-          requestKey,
-        });
-      } catch {
-        logEvent("monthly_ai_usage_reservation_failed", {
-          interactionId,
-          requestKey,
-        });
-      }
-    }
-
-    let tracked;
-    try {
-      tracked =
-      userHash && ipHash && freeUsageReservation?.allowed
+    // The credit balance inside executeTrackedAiRequest is the only meter.
+    // A denied reservation still runs the deterministic path below.
+    const tracked =
+      userHash && ipHash
         ? await executeTrackedAiRequest({
             requestKey,
             interactionId,
@@ -562,49 +533,16 @@ async function processChatRequest(
             }),
             quota: {
               allowed: false,
-              reason:
-                freeUsageReservation?.reason ??
-                "pseudonym_configuration_missing",
+              reason: "pseudonym_configuration_missing",
               retryAfterSeconds: null,
               reservationId: null,
               credits: null,
             },
             credits: null,
+            creditsCharged: null,
           };
-    } catch (error) {
-      if (freeUsageReservation?.allowed) {
-        await settleMonthlyAiUsage({
-          userId: user.id,
-          requestKey,
-          outcome: "provider_error",
-        })
-          .catch(() => undefined);
-      }
-      throw error;
-    }
     const extraction = tracked.value;
     const quota = tracked.quota;
-    let freeUsage: MonthlyAiUsageSnapshot | null = freeUsageReservation;
-    if (freeUsageReservation?.allowed) {
-      try {
-        freeUsage = await settleMonthlyAiUsage({
-          userId: user.id,
-          requestKey,
-          outcome: monthlySettlementOutcome(extraction),
-        });
-      } catch {
-        logEvent("monthly_ai_usage_settlement_failed", {
-          interactionId,
-          requestKey,
-        });
-        if (extraction.mode === "openai") {
-          throw new Response(
-            "Die Nano-Analyse konnte nicht sicher dem Monatskontingent zugeordnet werden. Es wurde kein Ergebnis ausgeliefert; bitte versuchen Sie es erneut.",
-            { status: 503 },
-          );
-        }
-      }
-    }
     const providerSucceeded = Boolean(extraction.provider);
     const analysisCompleted = extraction.mode === "openai";
     const failureCategory = providerFailureCategory(extraction);
@@ -813,16 +751,17 @@ async function processChatRequest(
           remainingRequests: Math.min(userLimit.remaining, ipLimit.remaining),
           retryAfterSeconds: quota.retryAfterSeconds,
         },
-        usage: freeUsage
+        usage: tracked.credits
           ? {
-              freeUsage: {
-                limit: freeUsage.limit,
-                used: freeUsage.used,
-                reserved: freeUsage.reserved,
-                remaining: freeUsage.remaining,
-                periodStart: freeUsage.periodStart,
-                periodEnd: freeUsage.periodEnd,
-                exhausted: freeUsage.remaining <= 0,
+              credits: {
+                total: tracked.credits.total,
+                used: tracked.credits.used,
+                reserved: tracked.credits.reserved,
+                remaining: tracked.credits.remaining,
+                periodEnd: currentPeriodEndIso(),
+                exhausted: tracked.credits.remaining <= 0,
+                creditsPerRequest: TYPICAL_PROJECT_BRIEF_CREDITS,
+                lastRequestCost: tracked.creditsCharged,
               },
             }
           : undefined,

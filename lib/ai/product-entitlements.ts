@@ -6,21 +6,6 @@ import type { ExternalFreelancerCandidate } from "@/lib/openai/external-freelanc
 export const EXTERNAL_FREELANCER_SEARCH_CREDITS = 30;
 export const PRODUCT_CREDIT_EURO_PER_UNIT = "0.0166666667";
 
-export type MonthlyAiUsageSnapshot = {
-  limit: number;
-  used: number;
-  reserved: number;
-  remaining: number;
-  periodStart: string;
-  periodEnd: string;
-};
-
-export type MonthlyAiUsageReservation = MonthlyAiUsageSnapshot & {
-  allowed: boolean;
-  reason: string;
-  reservationId: string | null;
-};
-
 export type ProductCreditSnapshot = {
   balance: number;
   reserved: number;
@@ -75,17 +60,6 @@ function text(row: Row, key: string): string {
   return value;
 }
 
-function monthlySnapshot(row: Row): MonthlyAiUsageSnapshot {
-  return {
-    limit: integer(row, "usage_limit"),
-    used: integer(row, "used"),
-    reserved: integer(row, "reserved"),
-    remaining: integer(row, "remaining"),
-    periodStart: text(row, "period_start"),
-    periodEnd: text(row, "period_end"),
-  };
-}
-
 function productSnapshot(row: Row): ProductCreditSnapshot {
   return {
     balance: integer(row, "balance"),
@@ -106,81 +80,6 @@ function requireServiceRole(): void {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
     throw new Error("entitlement_service_not_configured");
   }
-}
-
-export async function getMonthlyAiUsageSnapshot(input: {
-  userId: string;
-  isAnonymous: boolean;
-}): Promise<MonthlyAiUsageSnapshot> {
-  requireServiceRole();
-  const { data, error } = await createAdminSupabaseClient().rpc(
-    "get_monthly_ai_usage_snapshot",
-    {
-      p_user_id: input.userId,
-      p_is_anonymous: input.isAnonymous,
-    },
-  );
-  if (error) throw error;
-  const row = firstRow(data);
-  if (!row) throw new Error("invalid_monthly_usage_snapshot");
-  return monthlySnapshot(row);
-}
-
-export async function reserveMonthlyAiUsage(input: {
-  userId: string;
-  isAnonymous: boolean;
-  requestKey: string;
-}): Promise<MonthlyAiUsageReservation> {
-  requireServiceRole();
-  const { data, error } = await createAdminSupabaseClient().rpc(
-    "reserve_monthly_ai_usage",
-    {
-      p_user_id: input.userId,
-      p_is_anonymous: input.isAnonymous,
-      p_request_key: input.requestKey,
-    },
-  );
-  if (error) throw error;
-  const row = firstRow(data);
-  if (!row) throw new Error("invalid_monthly_usage_reservation");
-  return {
-    ...monthlySnapshot(row),
-    allowed: row.allowed === true,
-    reason: typeof row.reason === "string" ? row.reason : "usage_denied",
-    reservationId:
-      typeof row.reservation_id === "string" ? row.reservation_id : null,
-  };
-}
-
-export type MonthlyAiUsageSettlementOutcome =
-  | "succeeded"
-  | "provider_error"
-  | "timeout"
-  | "invalid_response"
-  | "cancelled";
-
-export async function settleMonthlyAiUsage(input: {
-  userId: string;
-  requestKey: string;
-  outcome: MonthlyAiUsageSettlementOutcome;
-}): Promise<MonthlyAiUsageSnapshot> {
-  requireServiceRole();
-  const { data, error } = await createAdminSupabaseClient().rpc(
-    "settle_monthly_ai_usage",
-    {
-      p_user_id: input.userId,
-      p_request_key: input.requestKey,
-      p_outcome: input.outcome,
-    },
-  );
-  if (error) throw error;
-  const row = firstRow(data);
-  if (!row || row.recorded !== true) {
-    throw new Error(
-      `monthly_usage_not_settled:${typeof row?.reason === "string" ? row.reason : "unknown"}`,
-    );
-  }
-  return monthlySnapshot(row);
 }
 
 export async function getProductCreditSnapshot(

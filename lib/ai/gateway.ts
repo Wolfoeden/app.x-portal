@@ -39,6 +39,12 @@ export type TrackedAiResult<T> = {
   value: T;
   quota: AiQuotaReservation;
   credits: AiCreditSnapshot | null;
+  /**
+   * Credits this request consumed. Zero when the provider was never called or
+   * definitely used no tokens, null when the charge is not yet known and the
+   * reservation stays open for reconciliation.
+   */
+  creditsCharged: number | null;
 };
 
 export async function executeTrackedAiRequest<T>(input: {
@@ -115,6 +121,7 @@ export async function executeTrackedAiRequest<T>(input: {
       value: operationResult.value,
       quota,
       credits: quota.credits,
+      creditsCharged: null,
     };
   }
 
@@ -132,6 +139,7 @@ export async function executeTrackedAiRequest<T>(input: {
         value: operationResult.value,
         quota,
         credits: releasedCredits ?? quota.credits,
+        creditsCharged: 0,
       };
     }
 
@@ -140,6 +148,7 @@ export async function executeTrackedAiRequest<T>(input: {
       value: operationResult.value,
       quota,
       credits: quota.credits,
+      creditsCharged: null,
     };
   }
 
@@ -159,6 +168,7 @@ export async function executeTrackedAiRequest<T>(input: {
       value: operationResult.value,
       quota,
       credits: quota.credits,
+      creditsCharged: null,
     };
   }
   const computedTotalTokens = usage.inputTokens + usage.outputTokens;
@@ -172,6 +182,18 @@ export async function executeTrackedAiRequest<T>(input: {
     });
   }
 
+  // The customer balance is debited from real provider usage, never from the
+  // preflight estimate.
+  const creditsCharged = calculateCreditsConsumed({
+    requestedModel: usage.requestedModel,
+    actualModel: usage.actualModel,
+    purpose: input.purpose,
+    inputTokens: actualCost.usage.inputTokens,
+    cachedInputTokens: actualCost.usage.cachedInputTokens,
+    cacheWriteTokens: actualCost.usage.cacheWriteTokens,
+    outputTokens: actualCost.usage.outputTokens,
+  }).creditsConsumed;
+
   let settledCredits = quota.credits;
   try {
     settledCredits = await recordAiUsage({
@@ -183,17 +205,7 @@ export async function executeTrackedAiRequest<T>(input: {
       outputTokens: actualCost.usage.outputTokens,
       totalTokens: computedTotalTokens,
       actualCostNanoUsd: actualCost.estimatedCostNanoUsd,
-      // The customer balance is debited from real provider usage, never from
-      // the preflight estimate.
-      actualCredits: calculateCreditsConsumed({
-        requestedModel: usage.requestedModel,
-        actualModel: usage.actualModel,
-        purpose: input.purpose,
-        inputTokens: actualCost.usage.inputTokens,
-        cachedInputTokens: actualCost.usage.cachedInputTokens,
-        cacheWriteTokens: actualCost.usage.cacheWriteTokens,
-        outputTokens: actualCost.usage.outputTokens,
-      }).creditsConsumed,
+      actualCredits: creditsCharged,
       actualCostCents:
         actualCost.estimatedCostNanoUsd === null
           ? null
@@ -215,6 +227,7 @@ export async function executeTrackedAiRequest<T>(input: {
     value: operationResult.value,
     quota,
     credits: settledCredits,
+    creditsCharged,
   };
 }
 

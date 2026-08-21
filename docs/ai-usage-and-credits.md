@@ -28,10 +28,9 @@ Credits are still never converted into product credits, and product credits
 keep their own pricing: external freelancer research is expected to move to a
 different model and is metered separately.
 
-Transitional state: the 10/100 counter in `ai_free_usage_accounts` still runs
-in parallel and also gates. Whichever limit binds first applies. Removing it is
-a separate change and must not ship before the monthly period migration is in
-production.
+The flat 10/100 counter that `ai_free_usage_accounts` implemented is no longer
+read, written or displayed. The table and its RPCs remain for the historical
+record and the account export; the balance above is the only meter.
 
 ## Models and matching
 

@@ -5,6 +5,7 @@ import {
   visibleAnalysisSteps,
 } from "@/components/chat/results";
 import {
+  estimatedRequestsLeft,
   mergeUsageSnapshot,
   normalizeUsageSnapshot,
   publicProgressLabel,
@@ -13,14 +14,15 @@ import {
 import type { AiAnalysisTrace, AiUsageSnapshot } from "@/components/chat-contract";
 
 const usage: AiUsageSnapshot = {
-  freeUsage: {
-    limit: 10,
-    used: 0,
+  credits: {
+    total: 1_050,
+    used: 24,
     reserved: 0,
-    remaining: 10,
-    periodStart: "2026-08-01T00:00:00.000Z",
+    remaining: 1_026,
     periodEnd: "2026-09-01T00:00:00.000Z",
     exhausted: false,
+    creditsPerRequest: 21,
+    lastRequestCost: 24,
   },
   productCredits: {
     balance: 42,
@@ -53,32 +55,43 @@ const nanoTrace: AiAnalysisTrace = {
 };
 
 describe("chat usage presentation contract", () => {
-  it("normalizes monthly usage and purchased credits as separate balances", () => {
+  it("normalizes the credit balance and purchased credits as separate ledgers", () => {
     expect(normalizeUsageSnapshot({ usage })).toEqual(usage);
     expect(normalizeUsageSnapshot({
-      freeUsage: usage.freeUsage,
+      credits: usage.credits,
       productCredits: null,
-    })).toEqual({ freeUsage: usage.freeUsage, productCredits: null });
+    })).toEqual({ credits: usage.credits, productCredits: null });
+    // A partial balance is rejected rather than rendered as a wrong number.
     expect(normalizeUsageSnapshot({ credits: { total: 500, used: 10, remaining: 490 } })).toBeNull();
   });
 
   it("merges a partial chat usage update without erasing purchased credits", () => {
-    expect(mergeUsageSnapshot(usage, {
-      freeUsage: { ...usage.freeUsage, used: 1, remaining: 9 },
-    })).toEqual({
-      freeUsage: { ...usage.freeUsage, used: 1, remaining: 9 },
+    const spent = { ...usage.credits, used: 48, remaining: 1_002, lastRequestCost: 24 };
+    expect(mergeUsageSnapshot(usage, { credits: spent })).toEqual({
+      credits: spent,
       productCredits: usage.productCredits,
     });
   });
 
-  it("shows guests a free-analysis count without guest-credit wording", () => {
-    const summary = usageSummary(usage, false);
-    expect(summary).toBe("10/10 freie Analysen");
-    expect(summary).not.toMatch(/Gast-Credits|Credits/u);
+  it("reports the balance and a floored request estimate", () => {
+    // 1,026 remaining at 21 credits per request floors to 48, never rounds up
+    // into a request the balance cannot pay for.
+    expect(estimatedRequestsLeft(usage.credits)).toBe(48);
+    expect(usageSummary(usage, false)).toBe("1.026 Credits · ca. 48 Anfragen");
   });
 
-  it("shows account free usage separately from purchased product credits", () => {
-    expect(usageSummary(usage, true)).toBe("10/10 freie Analysen · 42 Credits");
+  it("keeps the research credits distinct from the monthly balance", () => {
+    expect(usageSummary(usage, true)).toBe(
+      "1.026 Credits · ca. 48 Anfragen · 42 Recherche-Credits",
+    );
+  });
+
+  it("uses the singular when exactly one request remains", () => {
+    const almostEmpty = { ...usage.credits, remaining: 30, used: 1_020 };
+    expect(usageSummary({ ...usage, productCredits: null }, false)).toContain("Anfragen");
+    expect(usageSummary({ credits: almostEmpty, productCredits: null }, false)).toBe(
+      "30 Credits · ca. 1 Anfrage",
+    );
   });
 
   it("requires login and 30 product credits before the explicit search confirmation", () => {

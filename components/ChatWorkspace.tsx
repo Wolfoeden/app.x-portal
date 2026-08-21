@@ -75,7 +75,7 @@ import {
   type ExternalFreelancerCandidate,
   type ExternalFreelancerSearchResponse,
   type FreelancerProfileResult,
-  type FreeAnalysisUsageSnapshot,
+  type CreditBalanceSnapshot,
   type MatchingStatus,
   type ProjectDetailResponse,
   type ProjectCollectionItem,
@@ -383,13 +383,8 @@ export function normalizeUsageUpdate(value: unknown): AiUsageUpdate | null {
   const envelope = isRecord(value) && isRecord(value.data) ? value.data : value;
   if (!isRecord(envelope)) return null;
   const source = isRecord(envelope.usage) ? envelope.usage : envelope;
-  const hasFreeUsageField = Object.prototype.hasOwnProperty.call(source, "freeUsage") ||
-    Object.prototype.hasOwnProperty.call(source, "free_usage");
-  const freeUsageSource = isRecord(source.freeUsage)
-    ? source.freeUsage
-    : isRecord(source.free_usage)
-      ? source.free_usage
-      : null;
+  const hasCreditsField = Object.prototype.hasOwnProperty.call(source, "credits");
+  const creditsSource = isRecord(source.credits) ? source.credits : null;
   const hasProductCreditField = Object.prototype.hasOwnProperty.call(source, "productCredits") ||
     Object.prototype.hasOwnProperty.call(source, "product_credits");
   const productCreditsSource = isRecord(source.productCredits)
@@ -397,33 +392,38 @@ export function normalizeUsageUpdate(value: unknown): AiUsageUpdate | null {
     : isRecord(source.product_credits)
       ? source.product_credits
       : null;
-  if (!hasFreeUsageField && !hasProductCreditField) return null;
+  if (!hasCreditsField && !hasProductCreditField) return null;
 
   const update: AiUsageUpdate = {};
-  if (hasFreeUsageField) {
-    if (!freeUsageSource) return null;
-    const limit = nonNegativeNumber(freeUsageSource.limit ?? freeUsageSource.usage_limit);
-    const used = nonNegativeNumber(freeUsageSource.used);
-    const reserved = nonNegativeNumber(freeUsageSource.reserved);
-    const remaining = nonNegativeNumber(freeUsageSource.remaining);
-    const periodStart = nullableString(
-      freeUsageSource.periodStart ?? freeUsageSource.period_start,
+  if (hasCreditsField) {
+    if (!creditsSource) return null;
+    const total = nonNegativeNumber(creditsSource.total);
+    const used = nonNegativeNumber(creditsSource.used);
+    const reserved = nonNegativeNumber(creditsSource.reserved);
+    const remaining = nonNegativeNumber(creditsSource.remaining);
+    const periodEnd = nullableString(creditsSource.periodEnd ?? creditsSource.period_end);
+    const creditsPerRequest = nonNegativeNumber(
+      creditsSource.creditsPerRequest ?? creditsSource.credits_per_request,
     );
-    const periodEnd = nullableString(freeUsageSource.periodEnd ?? freeUsageSource.period_end);
     if (
-      limit === null || used === null || reserved === null || remaining === null ||
-      !periodStart || !periodEnd
+      total === null || used === null || reserved === null || remaining === null ||
+      !periodEnd || creditsPerRequest === null
     ) {
       return null;
     }
-    update.freeUsage = {
-      limit,
+    update.credits = {
+      total,
       used,
       reserved,
       remaining,
-      periodStart,
       periodEnd,
-      exhausted: freeUsageSource.exhausted === true || remaining <= 0,
+      exhausted: creditsSource.exhausted === true || remaining <= 0,
+      creditsPerRequest,
+      // Absent outside a chat response, and absent when a request was
+      // answered without ever reaching the provider.
+      lastRequestCost: nonNegativeNumber(
+        creditsSource.lastRequestCost ?? creditsSource.last_request_cost,
+      ),
     };
   }
 
@@ -453,9 +453,9 @@ export function normalizeUsageUpdate(value: unknown): AiUsageUpdate | null {
 
 export function normalizeUsageSnapshot(value: unknown): AiUsageSnapshot | null {
   const update = normalizeUsageUpdate(value);
-  if (!update?.freeUsage || !("productCredits" in update)) return null;
+  if (!update?.credits || !("productCredits" in update)) return null;
   return {
-    freeUsage: update.freeUsage,
+    credits: update.credits,
     productCredits: update.productCredits ?? null,
   };
 }
@@ -465,12 +465,12 @@ export function mergeUsageSnapshot(
   update: AiUsageUpdate | null | undefined,
 ): AiUsageSnapshot | null {
   if (!update) return current;
-  const freeUsage = update.freeUsage ?? current?.freeUsage;
-  if (!freeUsage) return current;
+  const credits = update.credits ?? current?.credits;
+  if (!credits) return current;
   const productCredits = Object.prototype.hasOwnProperty.call(update, "productCredits")
     ? update.productCredits ?? null
     : current?.productCredits ?? null;
-  return { freeUsage, productCredits };
+  return { credits, productCredits };
 }
 
 function secureBookingUrl(value: unknown): string | null {
@@ -949,21 +949,31 @@ function formatRelativeDate(value: string) {
 }
 
 
-function freeUsageIsLow(usage: FreeAnalysisUsageSnapshot) {
-  if (usage.exhausted || usage.remaining <= 0) return false;
-  return usage.limit > 0 && usage.remaining / usage.limit <= 0.2;
+function creditsAreLow(credits: CreditBalanceSnapshot) {
+  if (credits.exhausted || credits.remaining <= 0) return false;
+  return credits.total > 0 && credits.remaining / credits.total <= 0.2;
+}
+
+/**
+ * Deliberately floored against the typical price rather than the cheapest
+ * request, so the figure never promises more than the balance can deliver.
+ */
+export function estimatedRequestsLeft(credits: CreditBalanceSnapshot): number {
+  if (credits.creditsPerRequest <= 0) return 0;
+  return Math.floor(credits.remaining / credits.creditsPerRequest);
 }
 
 export function usageSummary(
   usage: AiUsageSnapshot,
   authenticated: boolean,
 ): string {
-  const free = `${formatCredits(usage.freeUsage.remaining)}/${formatCredits(usage.freeUsage.limit)} freie Analysen`;
-  return authenticated
-    ? usage.productCredits
-      ? `${free} · ${formatCredits(usage.productCredits.available)} Credits`
-      : `${free} · Produkt-Credits werden geladen`
-    : free;
+  const left = estimatedRequestsLeft(usage.credits);
+  const balance = `${formatCredits(usage.credits.remaining)} Credits · ca. ${formatCredits(left)} ${
+    left === 1 ? "Anfrage" : "Anfragen"
+  }`;
+  return authenticated && usage.productCredits
+    ? `${balance} · ${formatCredits(usage.productCredits.available)} Recherche-Credits`
+    : balance;
 }
 
 
@@ -1192,9 +1202,9 @@ export function ChatWorkspace({
   const isAgentView = workspaceView === "agents";
   const isAccountUser = auth.authenticated && !auth.anonymous;
   const freeUsageExhausted = Boolean(
-    usage && (usage.freeUsage.exhausted || usage.freeUsage.remaining <= 0),
+    usage && (usage.credits.exhausted || usage.credits.remaining <= 0),
   );
-  const freeUsageLow = Boolean(usage && freeUsageIsLow(usage.freeUsage));
+  const freeUsageLow = Boolean(usage && creditsAreLow(usage.credits));
 
   const showToast = useCallback((message: string, tone: ToastState["tone"] = "neutral") => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -2442,8 +2452,8 @@ export function ChatWorkspace({
           {usage && (freeUsageExhausted || freeUsageLow) ? (
             <p className={`composer-credit-status ${freeUsageExhausted ? "is-exhausted" : ""}`} role="status">
               {freeUsageExhausted
-                ? `Das monatliche Nano-Kontingent ist aufgebraucht. Sie können weiter schreiben; XPORTAL speichert und gleicht Ihre Angaben regelbasiert ab. Neue Nano-Analysen sind ab ${formatUsageReset(usage.freeUsage.periodEnd)} möglich.`
-                : `Noch ${formatCredits(usage.freeUsage.remaining)} von ${formatCredits(usage.freeUsage.limit)} kostenlosen Nano-Analysen in diesem Monat verfügbar.`}
+                ? `Ihr Monatsguthaben ist aufgebraucht. Sie können weiter schreiben; XPORTAL speichert und gleicht Ihre Angaben regelbasiert ab. Neues Guthaben gibt es ab ${formatUsageReset(usage.credits.periodEnd)}.`
+                : `Noch ${formatCredits(usage.credits.remaining)} Credits · reicht für ca. ${formatCredits(estimatedRequestsLeft(usage.credits))} Anfragen.`}
             </p>
           ) : null}
           {/* "Sie wählen selbst" left readers guessing what the AI actually
@@ -2531,43 +2541,48 @@ function UsagePanel({
   usage: AiUsageSnapshot;
   authenticated: boolean;
 }) {
-  const exhausted = usage.freeUsage.exhausted || usage.freeUsage.remaining <= 0;
-  const low = freeUsageIsLow(usage.freeUsage);
-  const consumed = usage.freeUsage.used + usage.freeUsage.reserved;
-  const progress = usage.freeUsage.limit > 0
-    ? Math.min(100, Math.max(0, (consumed / usage.freeUsage.limit) * 100))
+  const credits = usage.credits;
+  const exhausted = credits.exhausted || credits.remaining <= 0;
+  const low = creditsAreLow(credits);
+  const consumed = credits.used + credits.reserved;
+  const progress = credits.total > 0
+    ? Math.min(100, Math.max(0, (consumed / credits.total) * 100))
     : 0;
+  const requestsLeft = estimatedRequestsLeft(credits);
 
   return (
-    <section className={`credit-usage ${exhausted ? "is-exhausted" : low ? "is-low" : ""}`} aria-label="KI-Nutzung">
+    <section className={`credit-usage ${exhausted ? "is-exhausted" : low ? "is-low" : ""}`} aria-label="KI-Guthaben">
       <div className="credit-usage-heading">
-        <span>Freie Nano-Analysen · monatlich</span>
-        <strong>{formatCredits(usage.freeUsage.remaining)}/{formatCredits(usage.freeUsage.limit)}</strong>
+        <span>KI-Guthaben · monatlich</span>
+        <strong>{formatCredits(credits.remaining)}/{formatCredits(credits.total)}</strong>
       </div>
       <div
         className="credit-progress"
         role="progressbar"
-        aria-label={`${formatCredits(usage.freeUsage.remaining)} von ${formatCredits(usage.freeUsage.limit)} kostenlosen Analysen verfügbar`}
+        aria-label={`${formatCredits(credits.remaining)} von ${formatCredits(credits.total)} Credits verfügbar`}
         aria-valuemin={0}
-        aria-valuemax={Math.max(usage.freeUsage.limit, 1)}
-        aria-valuenow={Math.min(consumed, Math.max(usage.freeUsage.limit, 1))}
+        aria-valuemax={Math.max(credits.total, 1)}
+        aria-valuenow={Math.min(consumed, Math.max(credits.total, 1))}
       >
         <span style={{ width: `${progress}%` }} />
       </div>
       <dl className="credit-stats">
-        <div><dt>Verfügbar</dt><dd>{formatCredits(usage.freeUsage.remaining)}</dd></div>
-        <div><dt>Genutzt</dt><dd>{formatCredits(usage.freeUsage.used)}</dd></div>
-        {usage.freeUsage.reserved > 0 ? (
-          <div><dt>In Bearbeitung</dt><dd>{formatCredits(usage.freeUsage.reserved)}</dd></div>
+        <div><dt>Verfügbar</dt><dd>{formatCredits(credits.remaining)}</dd></div>
+        <div><dt>Verbraucht</dt><dd>{formatCredits(credits.used)}</dd></div>
+        {credits.reserved > 0 ? (
+          <div><dt>In Bearbeitung</dt><dd>{formatCredits(credits.reserved)}</dd></div>
         ) : null}
-        <div><dt>Monatslimit</dt><dd>{formatCredits(usage.freeUsage.limit)}</dd></div>
+        {credits.lastRequestCost !== null ? (
+          <div><dt>Letzte Anfrage</dt><dd>−{formatCredits(credits.lastRequestCost)}</dd></div>
+        ) : null}
+        <div><dt>Monatsguthaben</dt><dd>{formatCredits(credits.total)}</dd></div>
       </dl>
       <p className={`credit-status-copy ${exhausted ? "is-exhausted" : low ? "is-low" : ""}`}>
         {exhausted
-          ? `Neue kostenlose Analysen sind ab ${formatUsageReset(usage.freeUsage.periodEnd)} wieder möglich.`
+          ? `Neues Guthaben gibt es ab ${formatUsageReset(credits.periodEnd)}.`
           : low
-            ? "Ihr kostenloses Monatskontingent wird knapp."
-            : "Eine erfolgreiche Projektanalyse zählt als eine Nutzung."}
+            ? `Ihr Monatsguthaben wird knapp · noch ca. ${formatCredits(requestsLeft)} Anfragen.`
+            : `Jede Anfrage kostet je nach Länge etwa ${formatCredits(credits.creditsPerRequest)} Credits · reicht noch für ca. ${formatCredits(requestsLeft)} Anfragen.`}
       </p>
       {authenticated ? (
         <div className="product-credit-balance" aria-label="Gekaufte Produkt-Credits">
@@ -2577,7 +2592,7 @@ function UsagePanel({
               ? `${formatCredits(usage.productCredits.available)} verfügbar`
               : "Wird geladen …"}
           </strong>
-          <small>Getrennt vom kostenlosen Monatskontingent · Internetsuche: 30 Credits</small>
+          <small>Getrennt vom Monatsguthaben · Internetsuche: 30 Credits</small>
         </div>
       ) : null}
     </section>
