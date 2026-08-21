@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { logEvent } from "@/lib/security/request";
 
 export type AiCreditSnapshot = {
   total: number;
@@ -209,6 +210,21 @@ export async function reserveAiQuota(input: {
       ? configuredUnknownModelEstimatedCostCents()
       : nanoUsdToCeilingCents(input.estimatedCostNanoUsd);
   const admin = createAdminSupabaseClient();
+
+  // Refill an expired monthly period before the reservation predicate runs.
+  // The RPC is idempotent and no-ops inside a live period, so running it as a
+  // separate statement is safe under concurrency. It is advisory: if it fails,
+  // the reservation below still decides the request rather than denying it
+  // outright, and the next request retries the roll.
+  const { error: rollError } = await admin.rpc("roll_ai_credit_period", {
+    p_user_id: input.userId,
+  });
+  if (rollError) {
+    logEvent("ai_credit_period_roll_failed", {
+      interactionId: input.interactionId,
+    });
+  }
+
   const { data, error } = await admin.rpc("consume_ai_quota", {
     p_request_key: input.requestKey,
     p_user_hash: input.userHash,
