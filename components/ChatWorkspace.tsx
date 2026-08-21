@@ -2232,7 +2232,7 @@ export function ChatWorkspace({
                   <strong>{isAccountUser ? auth.user?.displayName ?? "Ihr Konto" : "Ohne Konto"}</strong>
                   <span>{isAccountUser ? auth.user?.email ?? "Angemeldet" : "Aktuelle Anfrage bleibt in diesem Browser verfügbar"}</span>
                 </div>
-                {usage ? <UsagePanel usage={usage} authenticated={isAccountUser} /> : null}
+                {usage ? <UsagePanel usage={usage} /> : null}
                 {isAccountUser ? (
                   <>
                     {auth.admin && apiPaths.adminUsage ? (
@@ -2534,13 +2534,7 @@ export function ChatWorkspace({
   );
 }
 
-function UsagePanel({
-  usage,
-  authenticated,
-}: {
-  usage: AiUsageSnapshot;
-  authenticated: boolean;
-}) {
+function UsagePanel({ usage }: { usage: AiUsageSnapshot }) {
   const credits = usage.credits;
   const exhausted = credits.exhausted || credits.remaining <= 0;
   const low = creditsAreLow(credits);
@@ -2577,23 +2571,12 @@ function UsagePanel({
         ) : null}
         <div><dt>Monatsguthaben</dt><dd>{formatCredits(credits.total)}</dd></div>
       </dl>
-      <p className={`credit-status-copy ${exhausted ? "is-exhausted" : low ? "is-low" : ""}`}>
-        {exhausted
-          ? `Neues Guthaben gibt es ab ${formatUsageReset(credits.periodEnd)}.`
-          : low
-            ? `Ihr Monatsguthaben wird knapp · noch ca. ${formatCredits(requestsLeft)} Anfragen.`
-            : `Jede Anfrage kostet je nach Länge etwa ${formatCredits(credits.creditsPerRequest)} Credits · reicht noch für ca. ${formatCredits(requestsLeft)} Anfragen.`}
-      </p>
-      {authenticated ? (
-        <div className="product-credit-balance" aria-label="Gekaufte Produkt-Credits">
-          <span>Produkt-Credits</span>
-          <strong>
-            {usage.productCredits
-              ? `${formatCredits(usage.productCredits.available)} verfügbar`
-              : "Wird geladen …"}
-          </strong>
-          <small>Getrennt vom Monatsguthaben · Internetsuche: 30 Credits</small>
-        </div>
+      {exhausted || low ? (
+        <p className={`credit-status-copy ${exhausted ? "is-exhausted" : "is-low"}`}>
+          {exhausted
+            ? `Neues Guthaben gibt es ab ${formatUsageReset(credits.periodEnd)}.`
+            : `Ihr Monatsguthaben wird knapp · noch ca. ${formatCredits(requestsLeft)} Anfragen.`}
+        </p>
       ) : null}
     </section>
   );
