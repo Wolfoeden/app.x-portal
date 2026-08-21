@@ -2560,17 +2560,16 @@ function UsagePanel({ usage }: { usage: AiUsageSnapshot }) {
       >
         <span style={{ width: `${progress}%` }} />
       </div>
-      <dl className="credit-stats">
-        <div><dt>Verfügbar</dt><dd>{formatCredits(credits.remaining)}</dd></div>
-        <div><dt>Verbraucht</dt><dd>{formatCredits(credits.used)}</dd></div>
-        {credits.reserved > 0 ? (
-          <div><dt>In Bearbeitung</dt><dd>{formatCredits(credits.reserved)}</dd></div>
-        ) : null}
-        {credits.lastRequestCost !== null ? (
-          <div><dt>Letzte Anfrage</dt><dd>−{formatCredits(credits.lastRequestCost)}</dd></div>
-        ) : null}
-        <div><dt>Monatsguthaben</dt><dd>{formatCredits(credits.total)}</dd></div>
-      </dl>
+      {credits.reserved > 0 || credits.lastRequestCost !== null ? (
+        <dl className="credit-stats">
+          {credits.reserved > 0 ? (
+            <div><dt>In Bearbeitung</dt><dd>{formatCredits(credits.reserved)}</dd></div>
+          ) : null}
+          {credits.lastRequestCost !== null ? (
+            <div><dt>Letzte Anfrage</dt><dd>−{formatCredits(credits.lastRequestCost)}</dd></div>
+          ) : null}
+        </dl>
+      ) : null}
       {exhausted || low ? (
         <p className={`credit-status-copy ${exhausted ? "is-exhausted" : "is-low"}`}>
           {exhausted
