@@ -1,6 +1,9 @@
 import "server-only";
 
-import { XPORTAL_AI_CREDIT_POLICY_VERSION } from "@/lib/ai/credit-policy";
+import {
+  calculateCreditsConsumed,
+  XPORTAL_AI_CREDIT_POLICY_VERSION,
+} from "@/lib/ai/credit-policy";
 import {
   calculateEstimatedProviderCost,
   type AiTokenUsage,
@@ -50,6 +53,11 @@ export async function executeTrackedAiRequest<T>(input: {
   requestedModel: string;
   estimatedInputTokens: number;
   estimatedOutputTokens: number;
+  /**
+   * Token figures used only to size the credit hold. Defaults to the
+   * provider-safety estimate above, which is deliberately pessimistic.
+   */
+  creditReservationTokens?: { inputTokens: number; outputTokens: number };
   operation: (providerAllowed: boolean) => Promise<AiOperationResult<T>>;
 }): Promise<TrackedAiResult<T>> {
   const estimatedCost = calculateEstimatedProviderCost({
@@ -58,6 +66,22 @@ export async function executeTrackedAiRequest<T>(input: {
     cachedInputTokens: 0,
     outputTokens: input.estimatedOutputTokens,
   });
+  // The provider-safety estimate stays pessimistic on purpose. Holding that
+  // many credits would deny requests the customer can still afford, so the
+  // credit hold uses a realistic figure and settlement corrects it to actual
+  // usage. The hold is released in full either way.
+  const reservationTokens = input.creditReservationTokens ?? {
+    inputTokens: input.estimatedInputTokens,
+    outputTokens: input.estimatedOutputTokens,
+  };
+  const estimatedCredits = calculateCreditsConsumed({
+    requestedModel: input.requestedModel,
+    purpose: input.purpose,
+    inputTokens: reservationTokens.inputTokens,
+    cachedInputTokens: 0,
+    outputTokens: reservationTokens.outputTokens,
+  }).creditsConsumed;
+
   const quota = await reserveAiQuota({
     requestKey: input.requestKey,
     userId: input.userId,
@@ -70,10 +94,7 @@ export async function executeTrackedAiRequest<T>(input: {
     purpose: input.purpose,
     estimatedInputTokens: input.estimatedInputTokens,
     estimatedOutputTokens: input.estimatedOutputTokens,
-    // The legacy token-weighted balance remains an audit artifact only.
-    // Customer entitlements are now metered by monthly successful analyses or
-    // the separate product-credit ledger, never by estimated provider tokens.
-    estimatedCredits: 0,
+    estimatedCredits,
     estimatedCostNanoUsd: estimatedCost.estimatedCostNanoUsd,
     pricingVersion: estimatedCost.pricingVersion,
     creditPolicyVersion: XPORTAL_AI_CREDIT_POLICY_VERSION,
@@ -162,7 +183,17 @@ export async function executeTrackedAiRequest<T>(input: {
       outputTokens: actualCost.usage.outputTokens,
       totalTokens: computedTotalTokens,
       actualCostNanoUsd: actualCost.estimatedCostNanoUsd,
-      actualCredits: 0,
+      // The customer balance is debited from real provider usage, never from
+      // the preflight estimate.
+      actualCredits: calculateCreditsConsumed({
+        requestedModel: usage.requestedModel,
+        actualModel: usage.actualModel,
+        purpose: input.purpose,
+        inputTokens: actualCost.usage.inputTokens,
+        cachedInputTokens: actualCost.usage.cachedInputTokens,
+        cacheWriteTokens: actualCost.usage.cacheWriteTokens,
+        outputTokens: actualCost.usage.outputTokens,
+      }).creditsConsumed,
       actualCostCents:
         actualCost.estimatedCostNanoUsd === null
           ? null

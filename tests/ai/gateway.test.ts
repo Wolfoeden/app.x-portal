@@ -94,6 +94,91 @@ describe("executeTrackedAiRequest", () => {
     expect(result.credits).toEqual(settledCredits);
   });
 
+  it("debits the customer balance from real usage, not from the estimate", async () => {
+    const operation = vi.fn().mockResolvedValue({
+      value: "ok",
+      outcome: "succeeded" as const,
+      usage: {
+        requestedModel: "gpt-5.6-luna",
+        actualModel: "gpt-5.6-luna",
+        providerResponseId: "resp_123",
+        inputTokens: 100,
+        cachedInputTokens: 40,
+        cacheWriteTokens: 10,
+        outputTokens: 20,
+        totalTokens: 120,
+      },
+    });
+
+    await executeTrackedAiRequest({
+      ...baseInput(),
+      creditReservationTokens: { inputTokens: 1_000, outputTokens: 250 },
+      operation,
+    });
+
+    // Hold: (1,000 x 10) + (250 x 60) = 25,000 weighted units = 25 credits.
+    expect(mocks.reserveAiQuota).toHaveBeenCalledWith(
+      expect.objectContaining({ estimatedCredits: 25 }),
+    );
+    // Charge: ((50 + 10) x 10) + (40 x 1) + (20 x 60) = 1,840 units = 2 credits.
+    expect(mocks.recordAiUsage).toHaveBeenCalledWith(
+      expect.objectContaining({ actualCredits: 2 }),
+    );
+  });
+
+  it("sizes the hold from the provider-safety estimate when none is given", async () => {
+    const operation = vi.fn().mockResolvedValue({
+      value: "ok",
+      outcome: "succeeded" as const,
+      usage: {
+        requestedModel: "gpt-5.6-luna",
+        actualModel: "gpt-5.6-luna",
+        providerResponseId: "resp_123",
+        inputTokens: 100,
+        cachedInputTokens: 0,
+        outputTokens: 20,
+        totalTokens: 120,
+      },
+    });
+
+    await executeTrackedAiRequest({ ...baseInput(), operation });
+
+    // Falls back to estimatedInputTokens/estimatedOutputTokens:
+    // (1,000 x 10) + (200 x 60) = 22,000 weighted units = 22 credits.
+    expect(mocks.reserveAiQuota).toHaveBeenCalledWith(
+      expect.objectContaining({ estimatedCredits: 22 }),
+    );
+  });
+
+  it("holds credits so an exhausted balance can deny the provider call", async () => {
+    mocks.reserveAiQuota.mockResolvedValue({
+      allowed: false,
+      reason: "insufficient_credits",
+      retryAfterSeconds: null,
+      reservationId: null,
+      credits: { total: 105, used: 100, reserved: 0, remaining: 5 },
+    });
+    const operation = vi.fn().mockResolvedValue({
+      value: "deterministic-fallback",
+      outcome: "succeeded" as const,
+    });
+
+    const result = await executeTrackedAiRequest({
+      ...baseInput(),
+      creditReservationTokens: { inputTokens: 1_000, outputTokens: 250 },
+      operation,
+    });
+
+    // A non-zero hold is what makes the balance able to gate at all; with the
+    // previous hardcoded 0 the RPC predicate was always satisfied.
+    expect(mocks.reserveAiQuota).toHaveBeenCalledWith(
+      expect.objectContaining({ estimatedCredits: 25 }),
+    );
+    expect(operation).toHaveBeenCalledWith(false);
+    expect(mocks.recordAiUsage).not.toHaveBeenCalled();
+    expect(result.value).toBe("deterministic-fallback");
+  });
+
   it("runs only the deterministic operation when quota or credits are denied", async () => {
     mocks.reserveAiQuota.mockResolvedValue({
       allowed: false,

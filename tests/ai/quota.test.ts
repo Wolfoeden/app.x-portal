@@ -42,8 +42,11 @@ describe("provider cost reconciliation", () => {
     expect(calculateProviderCostCents(1_000_000, 1_000_000)).toBe(1540);
   });
 
-  it("allows a new guest enough internal credits for a full project analysis", () => {
-    expect(configuredInitialCredits(true)).toBe(2_500);
+  it("allocates the monthly free allowance from the measured brief price", () => {
+    // 21 credits is the measured p90 of a project brief, so the advertised
+    // request count holds even for long prompts.
+    expect(configuredInitialCredits(true)).toBe(5 * 21);
+    expect(configuredInitialCredits(false)).toBe(50 * 21);
   });
 
   it("honors zero as an explicit hard-stop configuration", () => {

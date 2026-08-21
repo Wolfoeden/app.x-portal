@@ -70,10 +70,25 @@ function firstRow(data: unknown): Record<string, unknown> | null {
     : null;
 }
 
+/**
+ * Monthly free allowance, expressed in the credits of
+ * XPORTAL_AI_CREDIT_POLICY. Sized on the measured p90 of a project brief
+ * (21 credits) so the advertised request count holds for long prompts too:
+ * 5 guest requests and 50 account requests. A median request costs 19, so a
+ * typical user gets slightly more than advertised rather than less.
+ *
+ * Both values are environment-tunable, so the allowance can be re-cut from
+ * production data without a code deploy.
+ */
+export const TYPICAL_PROJECT_BRIEF_CREDITS = 21;
+export const GUEST_FREE_REQUESTS = 5;
+export const ACCOUNT_FREE_REQUESTS = 50;
+
 export function configuredInitialCredits(isAnonymous: boolean): number {
   return nonNegativeInteger(
     isAnonymous ? "AI_CREDITS_GUEST_TOTAL" : "AI_CREDITS_USER_TOTAL",
-    isAnonymous ? 2_500 : 50_000,
+    (isAnonymous ? GUEST_FREE_REQUESTS : ACCOUNT_FREE_REQUESTS) *
+      TYPICAL_PROJECT_BRIEF_CREDITS,
   );
 }
 

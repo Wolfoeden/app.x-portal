@@ -511,6 +511,10 @@ async function processChatRequest(
             requestedModel: estimate.model,
             estimatedInputTokens: estimate.inputTokens,
             estimatedOutputTokens: estimate.outputTokens,
+            creditReservationTokens: {
+              inputTokens: estimate.inputTokens,
+              outputTokens: estimate.expectedOutputTokens,
+            },
             operation: async (providerAllowed) => {
               const extraction = await extractProjectBrief({
                 ...extractionInput,
