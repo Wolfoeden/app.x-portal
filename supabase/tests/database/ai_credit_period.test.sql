@@ -43,14 +43,21 @@ select is(
   'a new account starts in the current UTC calendar month'
 );
 
+-- Compared as timestamps rather than as a difference: subtracting two
+-- timestamptz values yields days, never months, so the window of a 31-day
+-- month would read as '31 days' against an expected '1 mon'.
 select is(
   (
-    select a.period_end - a.period_start
+    select a.period_end
     from public.user_ai_credit_accounts a
     where a.user_id = 'd1111111-1111-4111-8111-111111111111'
   ),
-  interval '1 month',
-  'the period window is exactly one month'
+  (
+    select a.period_start + interval '1 month'
+    from public.user_ai_credit_accounts a
+    where a.user_id = 'd1111111-1111-4111-8111-111111111111'
+  ),
+  'the period window is exactly one calendar month'
 );
 
 -- ---------------------------------------------------------------------
@@ -211,6 +218,59 @@ select is(
   ),
   105::bigint,
   'an exhausted guest is refilled after the period ends'
+);
+
+-- ---------------------------------------------------------------------
+-- A new period re-reads the configured allowance, downward included.
+-- This is what reaches the pre-metering production accounts, whose
+-- credits_total is a lifetime figure the upsert would otherwise only raise.
+-- ---------------------------------------------------------------------
+update public.user_ai_credit_accounts
+  set credits_total = 50000,
+      credits_used = 20225,
+      period_start = private.current_ai_credit_period_start()
+        - interval '2 months',
+      period_end = private.current_ai_credit_period_start()
+        - interval '1 month'
+  where user_id = 'd1111111-1111-4111-8111-111111111111';
+
+select is(
+  (
+    select s.credits_total::text || ':' || s.credits_remaining
+    from public.get_ai_credit_snapshot(
+      'd1111111-1111-4111-8111-111111111111', false, 1050
+    ) s
+  ),
+  '1050:1050',
+  'a rolled period lowers a lifetime allowance to the configured one'
+);
+
+-- Within a live period the operator floor must still only move upward, which
+-- is the behaviour ai_credits.test.sql pins for the guest allocation.
+update public.user_ai_credit_accounts
+  set credits_total = 105, credits_used = 0, credits_reserved = 0
+  where user_id = 'd2222222-2222-4222-8222-222222222222';
+
+select is(
+  (
+    select s.credits_total
+    from public.get_ai_credit_snapshot(
+      'd2222222-2222-4222-8222-222222222222', true, 500
+    ) s
+  ),
+  500::bigint,
+  'raising the configured guest floor inside a live period still applies'
+);
+
+select is(
+  (
+    select s.credits_total
+    from public.get_ai_credit_snapshot(
+      'd2222222-2222-4222-8222-222222222222', true, 105
+    ) s
+  ),
+  500::bigint,
+  'lowering the floor inside a live period does not shrink the allowance'
 );
 
 -- ---------------------------------------------------------------------

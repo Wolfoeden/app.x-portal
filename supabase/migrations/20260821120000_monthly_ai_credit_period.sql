@@ -1,19 +1,33 @@
 -- Monthly period for the customer-facing AI credit balance.
 --
 -- user_ai_credit_accounts was built as a lifetime allocation: credits_total is
--- set once and credits_used only ever grows. That was harmless while the
--- balance could not gate anything, because the flat 10/100 monthly counter in
--- ai_free_usage_accounts was the real entitlement.
+-- set once, only ever revised upward, and credits_used only ever grows. That
+-- was harmless while the balance could not gate anything, because the flat
+-- 10/100 monthly counter in ai_free_usage_accounts was the real entitlement.
 --
 -- The balance now gates requests, so it needs the same UTC calendar-month
 -- period the counter it replaces already had. Without this, an exhausted
 -- account would be locked out permanently rather than until the first of the
--- next month.
+-- next month, and there is no self-service purchase path yet.
+--
+-- Two consequences for the accounts already in production:
+--
+-- 1. Their credits_used was accumulated while the figure was an audit artifact
+--    under an older policy version, and was never a customer entitlement.
+--    Carrying it into a binding meter would charge people for consumption they
+--    were never billed for. The per-request history stays in
+--    ai_usage_reservations, which is the ledger of record.
+-- 2. Their credits_total is a lifetime figure that the upsert below only ever
+--    raises, so a smaller configured allowance would never reach them.
+--
+-- Both are resolved by giving existing rows an already-expired period: the
+-- next access rolls them, which clears usage and re-reads the configured
+-- allowance. No allocation figure is duplicated into SQL.
 --
 -- Purchased credits are deliberately not part of this migration. They arrive
 -- with the payment provider as a separate persistent column; the reset below
--- only zeroes usage within the free monthly allowance and therefore keeps
--- working unchanged once that column exists.
+-- only zeroes usage within the free monthly allowance and keeps working
+-- unchanged once that column exists.
 
 alter table public.user_ai_credit_accounts
   add column period_start timestamptz,
@@ -29,12 +43,13 @@ as $$
   select date_trunc('month', (now() at time zone 'utc')) at time zone 'utc';
 $$;
 
--- Existing accounts join the current period with their usage intact. Their
--- allowance was a lifetime figure, so carrying used/reserved over means the
--- first period is at most as generous as before, never more.
+-- Existing rows land in an already-closed period, so the first access rolls
+-- them onto the current configuration instead of inheriting pre-metering
+-- usage and a pre-metering allowance.
 update public.user_ai_credit_accounts
-  set period_start = private.current_ai_credit_period_start(),
-      period_end = private.current_ai_credit_period_start() + interval '1 month'
+  set period_start = private.current_ai_credit_period_start()
+        - interval '1 month',
+      period_end = private.current_ai_credit_period_start()
   where period_start is null or period_end is null;
 
 alter table public.user_ai_credit_accounts
@@ -48,15 +63,14 @@ alter table public.user_ai_credit_accounts
 
 -- Idempotent period roll.
 --
--- The predicate makes a second concurrent call a no-op, so this is safe to run
--- as its own statement ahead of a reservation rather than inside
--- consume_ai_quota. Callers must treat it as advisory: it never fails a
--- request, it only refills an expired period.
+-- The predicate makes a second concurrent call a no-op, so two callers racing
+-- at a month boundary cannot refill twice.
 --
 -- credits_reserved is cleared alongside credits_used. A reservation open
 -- across a month boundary would otherwise consume the new period's allowance
 -- forever. record_ai_usage floors the reservation release at zero, so an
 -- in-flight request still settles correctly against the new period.
+--
 -- The output names deliberately avoid period_start/period_end: RETURNS TABLE
 -- parameters become plpgsql variables and would shadow the identically named
 -- columns of the table this function updates.
@@ -100,7 +114,8 @@ $$;
 
 -- Same contract as before, with the expired period refilled before the
 -- balance is read. The return signature is intentionally unchanged so every
--- existing caller keeps working.
+-- existing caller keeps working, including consume_ai_quota, which calls this
+-- function to ensure the account before its reservation predicate runs.
 create or replace function public.get_ai_credit_snapshot(
   p_user_id uuid,
   p_is_anonymous boolean,
@@ -118,6 +133,8 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  v_rolled boolean;
 begin
   if p_user_id is null
      or p_is_anonymous is null
@@ -134,9 +151,10 @@ begin
   end if;
 
   -- Before the upsert: the guest-to-account branch below reads credits_used,
-  -- which must not be a previous period's figure. PERFORM needs the FROM form
-  -- here because the function returns a set.
-  perform * from public.roll_ai_credit_period(p_user_id);
+  -- which must not be a previous period's figure.
+  select r.rolled into v_rolled
+  from public.roll_ai_credit_period(p_user_id) r;
+  v_rolled := coalesce(v_rolled, false);
 
   insert into public.user_ai_credit_accounts (
     user_id, is_anonymous, credits_total
@@ -146,6 +164,12 @@ begin
   on conflict on constraint user_ai_credit_accounts_pkey do update
     set is_anonymous = excluded.is_anonymous,
         credits_total = case
+          -- A fresh period takes the currently configured allowance, in either
+          -- direction. The high-water-mark rules below exist only because the
+          -- balance used to be a lifetime allocation; within a live period
+          -- they still hold, so raising the operator floor mid-month keeps
+          -- working as before.
+          when v_rolled then excluded.credits_total
           when public.user_ai_credit_accounts.is_anonymous
                and not excluded.is_anonymous
             then greatest(
