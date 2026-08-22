@@ -253,7 +253,7 @@ const suggestions = [
     draftPrefix:
       "Ich suche einen Freelancer für SEO und Google Ads für unseren B2B-Onlineshop. Etwa zwei Tage pro Woche, zunächst drei Monate, remote. Erfahrung mit GA4 und Conversion-Optimierung ist wichtig.",
     intro:
-      "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Sie erhalten passende Freelancer-Profile inklusive Match-Begründung und sichtbaren Informationslücken. Was Sie nicht erwähnen, ergänze ich nicht.",
+      "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Was Sie nicht erwähnen, ergänze ich nicht.",
   },
   {
     label: "KI-Automatisierung",
@@ -261,7 +261,7 @@ const suggestions = [
     draftPrefix:
       "Wir wollen wiederkehrende Abläufe automatisieren und dabei ein LLM anbinden. Konkret: n8n-Workflows, Anbindung an unsere Bestandssysteme, Projektbasis, remote, Start kurzfristig.",
     intro:
-      "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Sie erhalten passende Freelancer-Profile inklusive Match-Begründung und sichtbaren Informationslücken. Was Sie nicht erwähnen, ergänze ich nicht.",
+      "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Was Sie nicht erwähnen, ergänze ich nicht.",
   },
   {
     label: "Requirements Engineering",
@@ -269,7 +269,7 @@ const suggestions = [
     draftPrefix:
       "Für ein IT-Rollout-Projekt suche ich einen Requirements Engineer. Anforderungsaufnahme mit den Fachbereichen, Dokumentation, Scrum-Umfeld. Sechs Monate, remote möglich, Start in den nächsten Wochen.",
     intro:
-      "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Sie erhalten passende Freelancer-Profile inklusive Match-Begründung und sichtbaren Informationslücken. Was Sie nicht erwähnen, ergänze ich nicht.",
+      "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Was Sie nicht erwähnen, ergänze ich nicht.",
   },
 ] as const;
 
