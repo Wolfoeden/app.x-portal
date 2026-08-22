@@ -107,7 +107,7 @@ describe("freelancer CV data access", () => {
     expect(guestClient.client.from).not.toHaveBeenCalled();
   });
 
-  it("keeps partial and unclassified profiles forbidden and out of the query", async () => {
+  it("admits a partial match and keeps unclassified profiles forbidden", async () => {
     const { client, query } = listClient();
 
     const result = await attachFreelancerCvAccess(
@@ -121,10 +121,12 @@ describe("freelancer CV data access", () => {
       false,
     );
 
-    expect(query.in).toHaveBeenCalledWith("profile_id", ["primary"]);
+    // A decided role authorizes the lookup; an absent one is not a decision
+    // and still fails closed.
+    expect(query.in).toHaveBeenCalledWith("profile_id", ["primary", "partial"]);
     expect(result.map((profile) => profile.cvAccess)).toEqual([
       "missing",
-      "forbidden",
+      "missing",
       "forbidden",
       "forbidden",
     ]);

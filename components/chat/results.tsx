@@ -845,11 +845,10 @@ export function ProfileCard({
 
         <footer className="profile-footer">
           <div>
-            <strong>{isPartial ? "Nicht zur Kontaktaufnahme freigegeben" : profile.bookingUrl ? "Direktes Erstgespräch" : "Historisches Match"}</strong>
-            <span>{isPartial ? "Die offenen Muss-Kriterien müssen zuerst belegt oder bewusst geändert werden." : profile.bookingUrl ? "Der Booking-Link des Freelancers öffnet sich in einem neuen Tab." : "Dieses Profil ist aktuell nicht direkt buchbar."}</span>
+            <strong>{isPartial ? "Nicht empfohlen – Kontakt dennoch möglich" : profile.bookingUrl ? "Direktes Erstgespräch" : "Historisches Match"}</strong>
+            <span>{isPartial ? "Die offenen Muss-Kriterien bleiben offen. Sie entscheiden, ob Sie trotzdem Kontakt aufnehmen." : profile.bookingUrl ? "Der Booking-Link des Freelancers öffnet sich in einem neuen Tab." : "Dieses Profil ist aktuell nicht direkt buchbar."}</span>
           </div>
-          {!isPartial ? (
-            <div className="profile-actions">
+          <div className="profile-actions">
               <div className="cv-action-group">
                 <button
                   className="secondary-action cv-action"
@@ -897,8 +896,7 @@ export function ProfileCard({
               ) : (
                 <button className="primary-action" type="button" disabled>Nicht mehr buchbar</button>
               )}
-            </div>
-          ) : null}
+          </div>
         </footer>
       </div>
     </article>

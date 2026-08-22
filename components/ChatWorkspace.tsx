@@ -1581,9 +1581,12 @@ export function ChatWorkspace({
   }, [messages, pendingAssistant, profiles, partialProfiles]);
 
   const startNewProject = () => {
-    if (workspaceView === "agents") {
+    // Any view that is not the chat lives on its own route, so opening a chat
+    // has to navigate rather than only reset state. Testing for "agents" alone
+    // left /mein-team with buttons that changed state nobody could see.
+    if (workspaceView !== "chat") {
       // This shell is rendered without an App Router context in presentation tests.
-      // A hard navigation is intentional when crossing from the directory into chat.
+      // A hard navigation is intentional when crossing from another view into chat.
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.assign("/chat");
       return;
@@ -2187,7 +2190,7 @@ export function ChatWorkspace({
   };
 
   const openProjectFromSidebar = (project: ProjectListItem) => {
-    if (workspaceView === "agents") {
+    if (workspaceView !== "chat") {
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.assign(`/chat?project=${encodeURIComponent(project.id)}`);
       return;

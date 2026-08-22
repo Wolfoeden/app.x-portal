@@ -388,7 +388,7 @@ describe("POST /api/freelancers/[id]/cv", () => {
     expect(mocks.fetchDocument).not.toHaveBeenCalled();
   });
 
-  it("denies a partial match with the same generic 404", async () => {
+  it("authorizes a partial match, which is a decided role", async () => {
     mocks.match = {
       id: MATCH_ID,
       evaluation_snapshot: evaluationSnapshot("partial"),
@@ -396,9 +396,10 @@ describe("POST /api/freelancers/[id]/cv", () => {
 
     const response = await POST(request(), context());
 
-    await expectGenericUnavailable(response);
-    expect(mocks.fetchDocument).not.toHaveBeenCalled();
-    expect(mocks.createSignedUrl).not.toHaveBeenCalled();
+    // The card labels it as not recommended; the download is still the
+    // reader's to make. Only an absent or unrecognised role fails closed.
+    expect(response.status).toBe(200);
+    expect(mocks.fetchDocument).toHaveBeenCalled();
   });
 
   it("denies an invalid evaluation snapshot with the same generic 404", async () => {

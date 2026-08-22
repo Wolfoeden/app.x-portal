@@ -166,11 +166,15 @@ export async function POST(
     const evaluation = MatchingEvaluationSnapshotSchema.safeParse(
       match?.evaluation_snapshot,
     );
+    // Primary, alternative and partial are all decided roles and authorize a
+    // download. An absent or unrecognised role is not a decision and still
+    // fails closed.
     if (
       !match ||
       !evaluation.success ||
       (evaluation.data.recommendationRole !== "primary" &&
-        evaluation.data.recommendationRole !== "alternative")
+        evaluation.data.recommendationRole !== "alternative" &&
+        evaluation.data.recommendationRole !== "partial")
     ) {
       await writeAuditEvent({
         actorUserId: user.id,

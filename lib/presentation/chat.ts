@@ -239,7 +239,10 @@ export function presentMatch(match: ShortlistMatch): FreelancerProfileResult {
   // introduction entitlement. Hiding the URL here protects both the immediate
   // response and persisted/reloaded snapshots independently of the UI.
   const isPartial = match.recommendationRole === "partial";
-  const bookingUrl = isPartial ? null : profile.introPolicy.bookingUrl;
+  // A partial result keeps its booking URL. It is still labelled as not
+  // recommended everywhere it appears, but the reader decides whether to make
+  // contact; withholding the link decided that for them.
+  const bookingUrl = profile.introPolicy.bookingUrl;
 
   return {
     id: profile.id,
@@ -265,7 +268,9 @@ export function presentMatch(match: ShortlistMatch): FreelancerProfileResult {
     introPolicy: {
       type: bookingUrl ? "free" : "premium",
       label: isPartial
-        ? "Nicht empfohlen – keine direkte Buchung"
+        ? bookingUrl
+          ? "Nicht empfohlen – Kontakt dennoch möglich"
+          : "Nicht empfohlen – aktuell nicht direkt buchbar"
         : bookingUrl
           ? "Direkt buchbares Erstgespräch"
           : "Aktuell nicht direkt buchbar",

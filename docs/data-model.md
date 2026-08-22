@@ -71,12 +71,12 @@ first calls Supabase anonymous sign-in and therefore receives a unique
 
 Freelancer CV files live only in the private `freelancer-cvs` Storage bucket.
 There is deliberately no browser Storage policy. A permanent account can ask
-the server for a 60-second signed download only when the exact profile is a
-primary or alternative recommendation in the latest persisted ranked shortlist
-of an owned, non-pending project. The server checks live object MIME type, size
-and a maximum 60-second object cache TTL before signing. Anonymous accounts,
-partial matches and legacy/unclassified snapshots fail closed without exposing
-document existence.
+the server for a 60-second signed download only when the exact profile carries
+a decided role — primary, alternative or partial — in the latest persisted
+ranked shortlist of an owned, non-pending project. The server checks live object
+MIME type, size and a maximum 60-second object cache TTL before signing.
+Anonymous accounts and legacy/unclassified snapshots fail closed without
+exposing document existence.
 
 ## Freelancer self-registration and verification
 
@@ -228,9 +228,11 @@ When no profile clears that gate, v13 and later may additionally persist and
 display the two strongest eligible overlaps with at least 25 percent core
 coverage as
 `partial_matches_snapshot`. They remain
-inside a `no_reliable_match` decision, are labeled "Nicht empfohlen", carry no
-booking URL and cannot enter the introduction flow. They are evidence for
-comparison, not recommendations. Only after this internal result may the user
+inside a `no_reliable_match` decision and are labeled "Nicht empfohlen"
+wherever they appear. They keep their booking URL and their CV affordance: the
+ranking states that the request's criteria are not met, and the reader decides
+whether to make contact anyway. They are evidence for comparison, not
+recommendations, and are never counted as one. Only after this internal result may the user
 explicitly start the separately disclosed, credit-bearing internet search.
 
 Every run first creates `shortlists`, even when `result_count = 0`. Here

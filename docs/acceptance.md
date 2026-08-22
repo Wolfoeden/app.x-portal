@@ -21,10 +21,10 @@ allowlists are separate from production.
 - [ ] No booking provider makes a network request before the user clicks.
 - [ ] Demo profiles and profiles without a secure booking link never render.
 - [ ] Guest profile cards do not reveal whether a freelancer CV exists.
-- [ ] A permanent account can download a CV only for a primary or alternative
-      recommendation in the latest ranked result of its own non-pending project.
-- [ ] Partial, legacy, unrelated and older superseded matches cannot authorize
-      a CV download.
+- [ ] A permanent account can download a CV only for a primary, alternative or
+      partial match in the latest ranked result of its own non-pending project.
+- [ ] Legacy, unclassified, unrelated and older superseded matches cannot
+      authorize a CV download. An absent role is not a decision.
 
 ## Identity and isolation
 

@@ -119,10 +119,12 @@ describe("recommended profile CV affordance", () => {
     expect(markup).toMatch(/cv-action[^>]*disabled/u);
   });
 
-  it("never renders a CV control on non-recommended partial cards", () => {
+  it("renders the CV control on a partial card too", () => {
     const markup = renderProfile(profile("available", "partial"), true);
-    expect(markup).not.toContain("Download CV");
-    expect(markup).not.toContain("Freelancer hat noch kein CV hochgeladen");
+    // Shown as not recommended, but the reader can still read the CV and
+    // decide for themselves.
+    expect(markup).toContain("Download CV");
+    expect(markup).toContain("Nicht empfohlen");
   });
 });
 

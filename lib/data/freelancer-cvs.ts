@@ -116,11 +116,15 @@ export async function attachFreelancerCvAccess<T extends CvAwareProfile>(
   isAnonymous: boolean,
   actionable = true,
 ): Promise<Array<T & { cvAccess: FreelancerCvAccess }>> {
+  // Partial results are included: they are shown as not recommended, but the
+  // reader can still evaluate and contact them. Legacy and unclassified
+  // snapshots stay closed, because an absent role is not a decision.
   const eligibleIds = profiles
     .filter(
       (profile) =>
         profile.recommendationRole === "primary" ||
-        profile.recommendationRole === "alternative",
+        profile.recommendationRole === "alternative" ||
+        profile.recommendationRole === "partial",
     )
     .map((profile) => profile.id);
   let availabilityFailed = false;
@@ -139,7 +143,8 @@ export async function attachFreelancerCvAccess<T extends CvAwareProfile>(
     ...profile,
     cvAccess:
       profile.recommendationRole !== "primary" &&
-      profile.recommendationRole !== "alternative"
+      profile.recommendationRole !== "alternative" &&
+      profile.recommendationRole !== "partial"
         ? "forbidden"
         : !actionable
           ? isAnonymous

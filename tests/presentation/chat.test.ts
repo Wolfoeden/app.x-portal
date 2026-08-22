@@ -140,7 +140,7 @@ describe("chat presentation", () => {
     expect(result.introPolicy.readyToBook).toBe(false);
   });
 
-  it("never exposes booking or introduction actions for a partial match", () => {
+  it("keeps a partial match bookable while labelling it as not recommended", () => {
     const brief = applyBriefPatch(
       parseFallbackBrief("Muss-Anforderungen:\n- React\n- C++\n100% remote"),
       { requiredSkills: ["React", "C++"], workMode: "remote" },
@@ -150,13 +150,15 @@ describe("chat presentation", () => {
 
     expect(shortlist.status).toBe("no_reliable_match");
     expect(partial).toBeDefined();
+    // The label still says it is not recommended; the decision to make
+    // contact belongs to the reader, so the booking URL survives.
     expect(presentMatch(partial!)).toMatchObject({
       recommendationRole: "partial",
-      bookingUrl: null,
+      bookingUrl: profileFixtures[0]!.introPolicy.bookingUrl,
       introPolicy: {
-        label: "Nicht empfohlen – keine direkte Buchung",
-        manualApprovalRequired: true,
-        readyToBook: false,
+        label: "Nicht empfohlen – Kontakt dennoch möglich",
+        manualApprovalRequired: false,
+        readyToBook: true,
       },
     });
   });
