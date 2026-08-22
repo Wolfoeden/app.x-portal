@@ -54,7 +54,7 @@
   /* Layout -------------------------------------------------------------- */
   --sidebar-width: 264px;
   --details-width: 340px;
-  --topbar-height: 68px;
+  --topbar-height: 52px;
 
   /* Radius. Three steps plus a pill; everything else was noise. */
   --radius-xs: 6px;
@@ -867,16 +867,17 @@ a {
   background: var(--surface);
 }
 
+/* No rule and no blur: the border cut the window in half horizontally and
+   was the strongest single source of visual noise above the conversation. The
+   column now reads as one surface from the title down to the composer. */
 .topbar {
   position: relative;
   z-index: 40;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--surface);
   padding: 0 17px 0 21px;
-  backdrop-filter: blur(16px);
 }
 
 .topbar-left,
@@ -890,25 +891,15 @@ a {
   gap: 8px;
 }
 
-.topbar-title,
-.topbar-subtitle {
-  overflow: hidden;
-  margin: 0;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .topbar-title {
+  overflow: hidden;
   max-width: 520px;
+  margin: 0;
   font-size: var(--fs-base);
   font-weight: 650;
   letter-spacing: -0.01em;
-}
-
-.topbar-subtitle {
-  margin-top: 1px;
-  color: var(--muted-light);
-  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .topbar-actions {
@@ -3869,7 +3860,7 @@ dd.is-unknown,
 
 @media (max-width: 620px) {
   :root {
-    --topbar-height: 62px;
+    --topbar-height: 52px;
   }
 
   .app-shell {
@@ -3880,7 +3871,6 @@ dd.is-unknown,
     padding: 0 10px;
   }
 
-  .topbar-subtitle,
   .guest-state {
     display: none;
   }

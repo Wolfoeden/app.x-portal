@@ -1178,7 +1178,11 @@ export function ChatWorkspace({
   const [pendingSaveProfileId, setPendingSaveProfileId] = useState<string | null>(null);
   const [manageChat, setManageChat] = useState<ProjectListItem | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(true);
+  // Closed on arrival: a first-time visitor should meet two columns, not
+  // three. It opens itself once there is a result to show, unless the reader
+  // has already expressed a preference by using the toggle.
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const detailsTouchedRef = useRef(false);
   /**
    * True until the first workspace load resolves.
    *
@@ -1663,6 +1667,7 @@ export function ChatWorkspace({
       setPartialProfiles(result.partialMatches.slice(0, 2));
       setMatchingStatus(result.matchingStatus ?? null);
       setHasResult(true);
+      if (!detailsTouchedRef.current) setDetailsOpen(true);
       setAnalysisMode(result.mode ?? "ai");
       setAnalysisTrace(result.analysis ?? null);
       setExternalSearch(null);
@@ -2428,7 +2433,10 @@ export function ChatWorkspace({
       <button
         className="icon-button details-toggle"
         type="button"
-        onClick={() => setDetailsOpen((current) => !current)}
+        onClick={() => {
+          detailsTouchedRef.current = true;
+          setDetailsOpen((current) => !current);
+        }}
         aria-label={
           isAgentView
             ? detailsOpen
@@ -2454,11 +2462,6 @@ export function ChatWorkspace({
                   : isAgentView
                     ? "KI-Agenten"
                     : activeProject?.title ?? "Freelancer finden"}
-              </p>
-              <p className="topbar-subtitle">
-                {isAgentView
-                  ? "Spezialisierte Rollen · transparente Task-Vorlagen"
-                  : "KI-gestützte Anfrage · Sie treffen jede Entscheidung"}
               </p>
             </div>
           </div>
