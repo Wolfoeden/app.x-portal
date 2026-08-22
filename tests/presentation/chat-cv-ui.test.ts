@@ -58,6 +58,8 @@ function renderProfile(
     selected: false,
     onSelect: () => undefined,
     onContact: () => undefined,
+      saved: false,
+      onToggleSave: () => undefined,
   }));
 }
 
@@ -105,6 +107,8 @@ describe("recommended profile CV affordance", () => {
       selected: false,
       onSelect: () => undefined,
       onContact: () => undefined,
+      saved: false,
+      onToggleSave: () => undefined,
     }));
     expect(markup).toMatch(/cv-action[^>]*disabled/u);
   });

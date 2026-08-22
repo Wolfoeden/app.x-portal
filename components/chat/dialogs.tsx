@@ -29,6 +29,7 @@ import type {
   FreelancerProfileResult,
   ProjectCollectionItem,
   ProjectListItem,
+  SavedFreelancer,
 } from "../chat-contract";
 import {
   IconAlertTriangle,
@@ -422,6 +423,82 @@ export function ConfirmDeleteDialog({ busy, onClose, onConfirm }: { busy: boolea
           <button className="secondary-action" type="button" onClick={onClose} disabled={busy}>Abbrechen</button>
           <button className="danger-action" type="button" onClick={onConfirm} disabled={busy}>{busy ? "Wird gelöscht …" : "Daten endgültig löschen"}</button>
         </div>
+      </div>
+    </Modal>
+  );
+}
+
+export function TeamDialog({
+  team,
+  loading,
+  busyId,
+  onRemove,
+  onClose,
+}: {
+  team: readonly SavedFreelancer[];
+  loading: boolean;
+  busyId: string | null;
+  onRemove: (freelancerId: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <Modal titleId="team-dialog-title" onClose={onClose} size="large">
+      <div className="team-dialog">
+        <span className="dialog-eyebrow">Gemerkte Profile</span>
+        <h2 id="team-dialog-title">Mein Team</h2>
+        <p>
+          Profile, die Sie sich aus einem Suchergebnis gemerkt haben. Sie bleiben
+          Ihrem Konto zugeordnet, unabhängig vom einzelnen Chat.
+        </p>
+        {loading ? (
+          <p className="sidebar-section-empty">Ihr Team wird geladen …</p>
+        ) : team.length === 0 ? (
+          <div className="empty-projects">
+            <p>Noch niemand gemerkt</p>
+            <small>
+              Klicken Sie bei einem Suchergebnis auf „Profil merken“, dann steht
+              das Profil hier dauerhaft bereit.
+            </small>
+          </div>
+        ) : (
+          <ul className="team-list">
+            {team.map((member) => (
+              <li className="team-member" key={member.id}>
+                <div className="team-member-copy">
+                  <strong>{member.displayName}</strong>
+                  <span>{member.role}</span>
+                  {member.location ? <small>{member.location}</small> : null}
+                  {member.skillTags.length ? (
+                    <p className="team-member-skills">
+                      {member.skillTags.slice(0, 6).join(" · ")}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="team-member-actions">
+                  {member.bookingUrl ? (
+                    <a
+                      className="primary-action"
+                      href={member.bookingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Meeting mit ${member.displayName} buchen`}
+                    >
+                      <IconCalendar size={13} /> Meeting buchen
+                    </a>
+                  ) : null}
+                  <button
+                    className="secondary-action"
+                    type="button"
+                    onClick={() => onRemove(member.id)}
+                    disabled={busyId === member.id}
+                  >
+                    {busyId === member.id ? "Wird entfernt …" : "Entfernen"}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </Modal>
   );

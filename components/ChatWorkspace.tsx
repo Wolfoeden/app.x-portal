@@ -50,6 +50,7 @@ import {
   ConfirmDeleteDialog,
   ContactDialog,
   CreateProjectDialog,
+  TeamDialog,
   ManageChatDialog,
 } from "./chat/dialogs";
 import {
@@ -64,6 +65,7 @@ import { ProjectDetails, ResultSection } from "./chat/results";
 import {
   type AiAnalysisTrace,
   type AiUsageSnapshot,
+  type SavedFreelancer,
   type AiUsageUpdate,
   type AvailabilityStatus,
   type ChatApiPaths,
@@ -1159,6 +1161,13 @@ export function ChatWorkspace({
   const [usage, setUsage] = useState<AiUsageSnapshot | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
+  const [team, setTeam] = useState<SavedFreelancer[]>([]);
+  const [teamOpen, setTeamOpen] = useState(false);
+  const [teamLoading, setTeamLoading] = useState(false);
+  const [teamBusyId, setTeamBusyId] = useState<string | null>(null);
+  // Survives the auth dialog so a guest who clicks "merken" gets the profile
+  // saved after logging in rather than having to find it again.
+  const [pendingSaveProfileId, setPendingSaveProfileId] = useState<string | null>(null);
   const [manageChat, setManageChat] = useState<ProjectListItem | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(true);
@@ -1913,6 +1922,80 @@ export function ChatWorkspace({
     }
   };
 
+  const loadTeam = useCallback(async () => {
+    setTeamLoading(true);
+    try {
+      const response = await fetch(apiPaths.savedFreelancers, {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) return;
+      const payload: unknown = await response.json();
+      if (isRecord(payload) && Array.isArray(payload.team)) {
+        setTeam(payload.team as SavedFreelancer[]);
+      }
+    } catch {
+      // A failed team read must not cost the user their chat.
+    } finally {
+      setTeamLoading(false);
+    }
+  }, [apiPaths.savedFreelancers]);
+
+  const persistSavedFreelancer = useCallback(
+    async (freelancerId: string, method: "POST" | "DELETE") => {
+      const response = await fetch(apiPaths.savedFreelancers, {
+        method,
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ freelancerId }),
+      });
+      if (!response.ok) throw new Error("save_failed");
+      const payload: unknown = await response.json();
+      if (isRecord(payload) && Array.isArray(payload.team)) {
+        setTeam(payload.team as SavedFreelancer[]);
+      }
+    },
+    [apiPaths.savedFreelancers],
+  );
+
+  const toggleSavedFreelancer = async (profile: FreelancerProfileResult) => {
+    if (!isAccountUser) {
+      // Keep the intent across the login, then finish it in handleAuthenticated.
+      setPendingSaveProfileId(profile.id);
+      sessionStorage.setItem("pending_profile_save", profile.id);
+      if (activeProject?.id) sessionStorage.setItem("pending_project_id", activeProject.id);
+      setAuthInitialMode("register");
+      setAuthOpen(true);
+      return;
+    }
+    const alreadySaved = team.some((member) => member.id === profile.id);
+    setTeamBusyId(profile.id);
+    try {
+      await persistSavedFreelancer(profile.id, alreadySaved ? "DELETE" : "POST");
+      showToast(
+        alreadySaved
+          ? `${profile.displayName} ist nicht mehr in Ihrem Team.`
+          : `${profile.displayName} ist jetzt in Ihrem Team.`,
+        "neutral",
+      );
+    } catch {
+      showToast("Das Profil konnte nicht gespeichert werden.", "error");
+    } finally {
+      setTeamBusyId(null);
+    }
+  };
+
+  const removeSavedFreelancer = async (freelancerId: string) => {
+    setTeamBusyId(freelancerId);
+    try {
+      await persistSavedFreelancer(freelancerId, "DELETE");
+    } catch {
+      showToast("Das Profil konnte nicht entfernt werden.", "error");
+    } finally {
+      setTeamBusyId(null);
+    }
+  };
+
   const requestProfileSelection = (profile: FreelancerProfileResult) => {
     if (!isAccountUser) {
       setPendingProfileId(profile.id);
@@ -1962,10 +2045,22 @@ export function ChatWorkspace({
       setSelectedProfileId(profileIdToRestore);
       setContactOpen(true);
     }
+    const profileIdToSave =
+      pendingSaveProfileId ?? sessionStorage.getItem("pending_profile_save");
+    if (profileIdToSave) {
+      try {
+        await persistSavedFreelancer(profileIdToSave, "POST");
+        showToast("Das Profil ist jetzt in Ihrem Team.", "neutral");
+      } catch {
+        showToast("Das Profil konnte nicht gespeichert werden.", "error");
+      }
+    }
     setPendingProfileId(null);
+    setPendingSaveProfileId(null);
     sessionStorage.removeItem("pending_profile_selection");
+    sessionStorage.removeItem("pending_profile_save");
     sessionStorage.removeItem("pending_project_id");
-    await Promise.all([loadProjects(), loadProjectCollections()]);
+    await Promise.all([loadProjects(), loadProjectCollections(), loadTeam()]);
   };
 
   const createProjectCollection = async (name: string) => {
@@ -2133,12 +2228,20 @@ export function ChatWorkspace({
           <button
             className="sidebar-primary-button"
             type="button"
-            onClick={() => setCreateProjectOpen(true)}
-            data-sidebar-primary="projects"
+            onClick={() => {
+              setSidebarOpen(false);
+              setTeamOpen(true);
+              if (isAccountUser) void loadTeam();
+            }}
+            data-sidebar-primary="team"
           >
             <span className="sidebar-primary-icon" aria-hidden="true"><IconFolder size={18} /></span>
-            <span>Projekte</span>
-            <span className="sidebar-primary-chevron" aria-hidden="true"><IconPlus size={16} /></span>
+            <span>Mein Team</span>
+            {team.length ? (
+              <span className="sidebar-primary-count" aria-hidden="true">{team.length}</span>
+            ) : (
+              <span className="sidebar-primary-chevron" aria-hidden="true"><IconChevronRight size={16} /></span>
+            )}
           </button>
           <a
             className={`sidebar-primary-button${isAgentView ? " is-active" : ""}`}
@@ -2402,6 +2505,8 @@ export function ChatWorkspace({
                       setAuthOpen(true);
                     }}
                     selectedProfileId={selectedProfileId}
+                    savedFreelancerIds={team.map((member) => member.id)}
+                    onToggleSave={(profile) => void toggleSavedFreelancer(profile)}
                     onSelect={requestProfileSelection}
                     onContact={(profile) => {
                       setSelectedProfileId(profile.id);
@@ -2512,6 +2617,15 @@ export function ChatWorkspace({
         />
       ) : null}
 
+      {teamOpen ? (
+        <TeamDialog
+          team={team}
+          loading={teamLoading}
+          busyId={teamBusyId}
+          onRemove={(freelancerId) => void removeSavedFreelancer(freelancerId)}
+          onClose={() => setTeamOpen(false)}
+        />
+      ) : null}
       {createProjectOpen ? (
         <CreateProjectDialog
           onClose={() => setCreateProjectOpen(false)}

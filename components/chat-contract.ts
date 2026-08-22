@@ -314,10 +314,28 @@ export interface SessionResponse {
   };
 }
 
+/**
+ * One freelancer the user marked for "Mein Team". Account-only: a guest has
+ * no durable identity to hang a team on.
+ */
+export interface SavedFreelancer {
+  id: string;
+  displayName: string;
+  role: string;
+  skillTags: string[];
+  location: string | null;
+  bookingUrl: string | null;
+  availabilityStatus: string;
+  /** ISO instant the profile was marked. */
+  savedAt: string;
+}
+
 export interface ChatApiPaths {
   chat: string;
   projects: string;
   projectCollections: string;
+  /** The account's saved freelancers, shown as "Mein Team". */
+  savedFreelancers: string;
   session: string;
   /** Monthly free-usage and purchased-product-credit snapshot endpoint. */
   credits?: string;
@@ -342,6 +360,7 @@ export const defaultChatApiPaths: ChatApiPaths = {
   chat: appPath("/api/chat"),
   projects: appPath("/api/projects"),
   projectCollections: appPath("/api/project-collections"),
+  savedFreelancers: appPath("/api/saved-freelancers"),
   session: appPath("/api/auth/session"),
   workspaceBootstrap: appPath("/api/workspace/bootstrap"),
   credits: appPath("/api/ai/credits"),

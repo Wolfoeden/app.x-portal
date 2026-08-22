@@ -415,6 +415,94 @@ a {
   font-weight: 400;
 }
 
+/* Count of saved profiles, in the slot the chevron would otherwise take. */
+.sidebar-primary-count {
+  margin-left: auto;
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-hover);
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+  font-weight: 560;
+  line-height: 20px;
+  text-align: center;
+}
+
+/* A saved profile reads as done rather than as another thing to click. */
+.secondary-action.is-saved {
+  border-color: var(--green-border);
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.secondary-action.is-saved:hover {
+  background: var(--green-soft);
+  border-color: var(--green);
+}
+
+.team-dialog > p {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.team-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.team-member {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+}
+
+.team-member-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.team-member-copy strong {
+  font-size: var(--fs-base);
+  font-weight: 650;
+}
+
+.team-member-copy span {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.team-member-copy small {
+  color: var(--muted-light);
+  font-size: var(--fs-2xs);
+}
+
+.team-member-skills {
+  margin: 4px 0 0;
+  color: var(--muted-light);
+  font-size: var(--fs-2xs);
+}
+
+.team-member-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
 .sidebar-primary-button .agent-glyph {
   border-color: transparent;
   background: transparent;

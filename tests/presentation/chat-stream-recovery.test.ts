@@ -54,16 +54,16 @@ describe("chat stream recovery", () => {
 });
 
 describe("sidebar hierarchy", () => {
-  it("places Neuer Chat, Projekte and Agenten before saved chats", () => {
+  it("places Neuer Chat, Mein Team and Agenten before saved chats", () => {
     const markup = renderToStaticMarkup(createElement(ChatWorkspace));
     const newChat = markup.indexOf('data-sidebar-primary="new-chat"');
-    const projects = markup.indexOf('data-sidebar-primary="projects"');
+    const team = markup.indexOf('data-sidebar-primary="team"');
     const agents = markup.indexOf('data-sidebar-primary="agents"');
     const savedChats = markup.indexOf('aria-label="Gespeicherte Chats"');
 
     expect(newChat).toBeGreaterThan(-1);
-    expect(projects).toBeGreaterThan(newChat);
-    expect(agents).toBeGreaterThan(projects);
+    expect(team).toBeGreaterThan(newChat);
+    expect(agents).toBeGreaterThan(team);
     expect(savedChats).toBeGreaterThan(agents);
   });
 });

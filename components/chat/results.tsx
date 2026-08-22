@@ -145,6 +145,8 @@ export function ResultSection({
   selectedProfileId,
   onSelect,
   onContact,
+  savedFreelancerIds,
+  onToggleSave,
 }: {
   brief: StructuredBrief | null;
   projectId: string | null;
@@ -162,6 +164,8 @@ export function ResultSection({
   selectedProfileId: string | null;
   onSelect: (profile: FreelancerProfileResult) => void;
   onContact: (profile: FreelancerProfileResult) => void;
+  savedFreelancerIds: readonly string[];
+  onToggleSave: (profile: FreelancerProfileResult) => void;
 }) {
   const searchCta = externalSearchCtaState(isAccountUser, productCredits);
   const resultHeading =
@@ -209,6 +213,8 @@ export function ResultSection({
                 selected={selectedProfileId === profile.id}
                 onSelect={() => onSelect(profile)}
                 onContact={() => onContact(profile)}
+                saved={savedFreelancerIds.includes(profile.id)}
+                onToggleSave={() => onToggleSave(profile)}
               />
             ))}
           </div>
@@ -231,6 +237,8 @@ export function ResultSection({
                     selected={false}
                     onSelect={() => undefined}
                     onContact={() => undefined}
+                    saved={savedFreelancerIds.includes(profile.id)}
+                    onToggleSave={() => onToggleSave(profile)}
                   />
                 ))}
               </div>
@@ -681,6 +689,8 @@ export function ProfileCard({
   selected,
   onSelect,
   onContact,
+  saved,
+  onToggleSave,
 }: {
   profile: FreelancerProfileResult;
   position: number;
@@ -689,6 +699,8 @@ export function ProfileCard({
   selected: boolean;
   onSelect: () => void;
   onContact: () => void;
+  saved: boolean;
+  onToggleSave: () => void;
 }) {
   const verifiedFacts = profile.facts.filter((fact) => fact.verification === "verified");
   const selfReportedFacts = profile.facts.filter((fact) => fact.verification === "self-reported");
@@ -816,11 +828,21 @@ export function ProfileCard({
                   </p>
                 ) : null}
               </div>
-              {selected ? (
-                <button className="secondary-action" type="button" onClick={onContact}><IconCheck size={13} /> Kontaktoptionen</button>
-              ) : (
-                <button className="secondary-action" type="button" onClick={onSelect}>Profil merken</button>
-              )}
+              {/* Marking and contacting used to be the same button, which is
+                  why "Profil merken" opened the contact dialog and saved
+                  nothing. They are now separate actions. */}
+              <button
+                className={`secondary-action${saved ? " is-saved" : ""}`}
+                type="button"
+                onClick={onToggleSave}
+                aria-pressed={saved}
+                title={saved ? "Aus „Mein Team“ entfernen" : "Zu „Mein Team“ hinzufügen"}
+              >
+                {saved ? <><IconCheck size={13} /> Im Team</> : "Profil merken"}
+              </button>
+              <button className="secondary-action" type="button" onClick={selected ? onContact : onSelect}>
+                Kontaktoptionen
+              </button>
               {profile.bookingUrl ? (
                 <a
                   className="primary-action"

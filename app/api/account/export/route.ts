@@ -38,6 +38,7 @@ export async function GET() {
       externalSearchResults,
       aiUsage,
       auditEvents,
+      savedFreelancers,
     ] = await Promise.all([
         admin.from("user_profiles").select("*").eq("id", user.id).maybeSingle(),
         owned("project_collections"),
@@ -108,6 +109,7 @@ export async function GET() {
             "action,target_type,target_id,occurred_at,outcome,trace_id,metadata",
           )
           .eq("actor_user_id", user.id),
+        owned("saved_freelancers"),
       ]);
     const failed = [
       userProfile,
@@ -128,6 +130,7 @@ export async function GET() {
       externalSearchResults,
       aiUsage,
       auditEvents,
+      savedFreelancers,
     ].find((result) => result.error);
     if (failed?.error) throw failed.error;
 
@@ -162,6 +165,7 @@ export async function GET() {
         externalFreelancerSearchResults: externalSearchResults.data ?? [],
         aiUsage: aiUsage.data ?? [],
         auditEvents: auditEvents.data ?? [],
+        savedFreelancers: savedFreelancers.data ?? [],
       },
       {
         headers: {
