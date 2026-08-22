@@ -35,7 +35,6 @@ import {
   IconFolder,
   IconMenu,
   IconPanelRight,
-  IconPen,
   IconPlus,
   IconSpark,
 } from "@/components/icons";
@@ -2456,13 +2455,17 @@ export function ChatWorkspace({
           <div className="topbar-left">
             <button className="icon-button mobile-menu" type="button" onClick={() => setSidebarOpen(true)} aria-label="Projekte öffnen"><IconMenu size={18} /></button>
             <div>
-              <p className="topbar-title">
-                {isTeamView
-                  ? "Mein Team"
-                  : isAgentView
-                    ? "KI-Agenten"
-                    : activeProject?.title ?? "Freelancer finden"}
-              </p>
+              {/* No placeholder title: an untitled conversation shows nothing
+                  rather than a label that repeats what the page already is. */}
+              {isTeamView || isAgentView || activeProject?.title ? (
+                <p className="topbar-title">
+                  {isTeamView
+                    ? "Mein Team"
+                    : isAgentView
+                      ? "KI-Agenten"
+                      : activeProject?.title}
+                </p>
+              ) : null}
             </div>
           </div>
         </header>
@@ -2570,6 +2573,7 @@ export function ChatWorkspace({
                       setAuthOpen(true);
                     }}
                     selectedProfileId={selectedProfileId}
+                    onOpenDetails={() => setDetailsOpen(true)}
                     savedFreelancerIds={
                       isAccountUser ? team.map((member) => member.profile.id) : []
                     }
@@ -2621,9 +2625,6 @@ export function ChatWorkspace({
               </button>
             </div>
           </form>
-          {/* States the outcome where the decision to send is made. The
-              audit found visitors unsure what happens after submitting. */}
-          <p className="composer-promise">Sie erhalten passende Freelancer-Profile inklusive Match-Begründung und sichtbaren Informationslücken.</p>
           {usage && (freeUsageExhausted || freeUsageLow) ? (
             <p className={`composer-credit-status ${freeUsageExhausted ? "is-exhausted" : ""}`} role="status">
               {freeUsageExhausted
@@ -2777,7 +2778,6 @@ function WelcomeState({ onSuggestion }: { onSuggestion: (suggestion: Suggestion)
     <section className="welcome-state" aria-labelledby="welcome-title">
       <div className="assistant-emblem" aria-hidden="true"><span><IconSpark size={22} /></span></div>
       <h1 id="welcome-title">Welchen Freelancer suchen Sie?</h1>
-      <p className="welcome-subline">Sie erhalten passende Freelancer-Profile inklusive Match-Begründung und sichtbaren Informationslücken.</p>
       <div className="suggestion-grid" aria-label="Beispielanfragen">
         {suggestions.map((suggestion) => (
           <button key={suggestion.label} type="button" onClick={() => onSuggestion(suggestion)}>
@@ -2787,11 +2787,6 @@ function WelcomeState({ onSuggestion }: { onSuggestion: (suggestion: Suggestion)
           </button>
         ))}
       </div>
-      <p className="no-form-note">
-        <span aria-hidden="true"><IconPen size={15} /></span> Kein Formular:
-        Schreiben Sie einfach los. Was Sie nicht erwähnen, bleibt offen — wir
-        raten nichts dazu.
-      </p>
     </section>
   );
 }

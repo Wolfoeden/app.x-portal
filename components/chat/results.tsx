@@ -11,6 +11,7 @@
 import { useState } from "react";
 
 import { appPath } from "@/lib/app-path";
+import { MINIMUM_CORE_COVERAGE_BASIS_POINTS } from "@/lib/domain/matching";
 
 import type {
   AiAnalysisTrace,
@@ -148,6 +149,7 @@ export function ResultSection({
   onContact,
   savedFreelancerIds,
   onToggleSave,
+  onOpenDetails,
 }: {
   brief: StructuredBrief | null;
   projectId: string | null;
@@ -167,6 +169,7 @@ export function ResultSection({
   onContact: (profile: FreelancerProfileResult) => void;
   savedFreelancerIds: readonly string[];
   onToggleSave: (profile: FreelancerProfileResult) => void;
+  onOpenDetails?: () => void;
 }) {
   const searchCta = externalSearchCtaState(isAccountUser, productCredits);
   const resultHeading =
@@ -181,7 +184,7 @@ export function ResultSection({
           : "Kein gespeicherter interner Match";
   return (
     <section className="result-section" aria-label="Suchergebnis">
-      {brief ? <BriefCard brief={brief} /> : null}
+      {brief ? <BriefCard brief={brief} onOpenDetails={onOpenDetails} /> : null}
       {analysis ? (
         <AnalysisTrace
           trace={analysis}
@@ -521,20 +524,54 @@ function ExternalSearchResults({ result }: { result: ExternalFreelancerSearchRes
   );
 }
 
-export function BriefCard({ brief }: { brief: StructuredBrief }) {
-  const openFields = presentUnknownFields(brief.unknownFields);
-  const skillGroups = brief.requirementGroups.filter(
-    (group) => group.category === "skill",
+/** Basis points are the matcher's unit; the reader wants a percentage. */
+const RECOMMENDATION_THRESHOLD_PERCENT = MINIMUM_CORE_COVERAGE_BASIS_POINTS / 100;
+
+function groupedRequirements(
+  brief: StructuredBrief,
+  priority: StructuredRequirementGroup["priority"],
+): string | null {
+  const groups = brief.requirementGroups.filter(
+    (group) => group.priority === priority,
   );
-  const formattedGroups = (priority: StructuredRequirementGroup["priority"]) => {
-    const values = skillGroups
-      .filter((group) => group.priority === priority)
-      .map((group) =>
-        group.values.join(group.operator === "any_of" ? " oder " : " und "),
-      );
-    return values.length ? values.join(" · ") : null;
-  };
-  const hasV2SkillGroups = skillGroups.length > 0;
+  if (!groups.length) return null;
+  return groups
+    .map((group) =>
+      group.values.join(group.operator === "any_of" ? " oder " : " und "),
+    )
+    .join(" · ");
+}
+
+function requirementCount(
+  brief: StructuredBrief,
+  priority: StructuredRequirementGroup["priority"],
+): number {
+  return brief.requirementGroups.filter((group) => group.priority === priority)
+    .length;
+}
+
+/**
+ * The chat carries the narrative, the detail panel carries the state. This card
+ * used to repeat all ten fields the panel already showed, so the same brief was
+ * rendered twice on one screen. It now says what was understood and hands off.
+ */
+export function BriefCard({
+  brief,
+  onOpenDetails,
+}: {
+  brief: StructuredBrief;
+  onOpenDetails?: () => void;
+}) {
+  const openFields = presentUnknownFields(brief.unknownFields);
+  const counts = [
+    requirementCount(brief, "hard") ? `${requirementCount(brief, "hard")} Muss` : null,
+    requirementCount(brief, "core") ? `${requirementCount(brief, "core")} Kern` : null,
+    requirementCount(brief, "optional")
+      ? `${requirementCount(brief, "optional")} optional`
+      : null,
+    openFields.length ? `${openFields.length} offen` : null,
+  ].filter(Boolean);
+
   return (
     <article className="brief-card">
       <div className="brief-header">
@@ -545,30 +582,11 @@ export function BriefCard({ brief }: { brief: StructuredBrief }) {
         <span className="brief-status"><span aria-hidden="true"><IconCheck size={12} /></span> Strukturiert</span>
       </div>
       {brief.summary ? <p className="brief-summary">{brief.summary}</p> : null}
-      <dl className="brief-grid brief-grid-detailed">
-        {hasV2SkillGroups ? (
-          <>
-            <DetailTerm label="Muss-Kriterien" value={formattedGroups("hard")} />
-            <DetailTerm label="Kernkriterien" value={formattedGroups("core")} />
-            <DetailTerm label="Optional" value={formattedGroups("optional")} />
-          </>
-        ) : (
-          <>
-            <DetailTerm label="Pflichtkompetenzen" value={brief.requiredSkills.length ? brief.requiredSkills.join(", ") : null} />
-            <DetailTerm label="Optionale Kompetenzen" value={brief.optionalSkills.length ? brief.optionalSkills.join(", ") : null} />
-          </>
-        )}
-        <DetailTerm label="Sprache" value={brief.languages.length ? brief.languages.join(", ") : null} hint={languageHint(brief)} />
-        <DetailTerm label="Arbeitsmodus / Ort" value={[brief.mode === "unknown" ? null : modeLabel(brief.mode), brief.location].filter(Boolean).join(" · ") || null} />
-        <DetailTerm label="Start & Dauer" value={[brief.startWindow, brief.duration].filter(Boolean).join(" · ") || null} />
-        <DetailTerm label="Budget / Satz" value={brief.budgetOrRate} />
-        <DetailTerm label="Qualifikationen" value={brief.qualifications.length ? brief.qualifications.join(", ") : null} />
-        <DetailTerm label="Verfügbarkeit" value={brief.availabilityRequirement} />
-        <DetailTerm label="Vertragsanforderungen" value={brief.contractualRequirements.length ? brief.contractualRequirements.join(", ") : null} />
-        <DetailTerm label="Weitere Rahmenbedingungen" value={brief.constraints.length ? brief.constraints.join(", ") : null} />
-      </dl>
-      {openFields.length ? (
-        <div className="unknown-row"><span>Noch offen</span>{openFields.join(" · ")}</div>
+      {counts.length ? <p className="brief-counts">{counts.join(" · ")}</p> : null}
+      {onOpenDetails ? (
+        <button className="brief-open-details" type="button" onClick={onOpenDetails}>
+          Anforderungen ansehen <IconArrowRight size={13} />
+        </button>
       ) : null}
     </article>
   );
@@ -758,7 +776,27 @@ export function ProfileCard({
 
         {profile.experienceSummary ? <p className="experience-summary">{profile.experienceSummary}</p> : null}
 
-        {profile.coreCoverage !== null ? (
+        {isPartial ? (
+          <div className="partial-reason">
+            <p className="partial-reason-headline">
+              <span aria-hidden="true"><IconAlertCircle size={13} /></span>
+              Was für eine Empfehlung fehlt
+            </p>
+            {profile.coreCoverage !== null ? (
+              <p className="partial-reason-coverage">
+                Kernabdeckung {profile.coreCoverage} % · empfohlen ab{" "}
+                {RECOMMENDATION_THRESHOLD_PERCENT} %
+              </p>
+            ) : null}
+            {profile.knownGaps.length ? (
+              <ul>{profile.knownGaps.map((gap) => <li key={gap}>{gap}</li>)}</ul>
+            ) : (
+              <p className="unknown-text">
+                Die Muss-Kriterien der Anfrage sind nicht vollständig belegt.
+              </p>
+            )}
+          </div>
+        ) : profile.coreCoverage !== null ? (
           <p className="matching-score-note">
             Kernabdeckung: {profile.coreCoverage} % · regelbasierter Kriterienwert, keine Erfolgswahrscheinlichkeit
           </p>
@@ -775,12 +813,14 @@ export function ProfileCard({
               <ul>{profile.matchReasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
             ) : <p className="unknown-text">Keine Begründung übermittelt</p>}
           </div>
-          <div className="match-column gaps">
-            <h4><span aria-hidden="true"><IconAlertCircle size={13} /></span> Bekannte Lücken</h4>
-            {profile.knownGaps.length ? (
-              <ul>{profile.knownGaps.map((gap) => <li key={gap}>{gap}</li>)}</ul>
-            ) : <p>Keine bekannten Lücken im Abgleich</p>}
-          </div>
+          {isPartial ? null : (
+            <div className="match-column gaps">
+              <h4><span aria-hidden="true"><IconAlertCircle size={13} /></span> Bekannte Lücken</h4>
+              {profile.knownGaps.length ? (
+                <ul>{profile.knownGaps.map((gap) => <li key={gap}>{gap}</li>)}</ul>
+              ) : <p>Keine bekannten Lücken im Abgleich</p>}
+            </div>
+          )}
         </div>
 
         <div className="fact-row">
@@ -879,6 +919,12 @@ function FactGroup({ label, facts, verified = false }: { label: string; facts: s
   );
 }
 
+/**
+ * The requirements as a state, not as a second copy of the brief: what has to
+ * be met, what only orders the results, what is optional and what is still
+ * missing. The priorities come straight from the matcher, so the panel shows
+ * the same distinction the ranking actually uses.
+ */
 export function ProjectDetails({
   brief,
   selectedProfile,
@@ -888,6 +934,36 @@ export function ProjectDetails({
   selectedProfile: FreelancerProfileResult | null;
   onContact: () => void;
 }) {
+  const openFields = brief ? presentUnknownFields(brief.unknownFields) : [];
+  const frame = brief
+    ? [
+        {
+          label: "Modus / Ort",
+          value:
+            [brief.mode === "unknown" ? null : modeLabel(brief.mode), brief.location]
+              .filter(Boolean)
+              .join(" · ") || null,
+        },
+        {
+          label: "Start & Dauer",
+          value: [brief.startWindow, brief.duration].filter(Boolean).join(" · ") || null,
+        },
+        { label: "Budget / Satz", value: brief.budgetOrRate },
+        { label: "Verfügbarkeit", value: brief.availabilityRequirement },
+        {
+          label: "Sprache",
+          value: brief.languages.length ? brief.languages.join(", ") : null,
+          hint: languageHint(brief),
+        },
+        {
+          label: "Vertrag",
+          value: brief.contractualRequirements.length
+            ? brief.contractualRequirements.join(", ")
+            : null,
+        },
+      ]
+    : [];
+
   return (
     <div className="details-inner">
       <div className="details-heading">
@@ -896,19 +972,42 @@ export function ProjectDetails({
       </div>
       {brief ? (
         <>
-          <div className="project-status-line"><span aria-hidden="true"><IconCheck size={11} /></span><div><strong>Anfrage strukturiert</strong><small>Angaben können jederzeit ergänzt werden</small></div></div>
+          <div className="project-status-line"><span aria-hidden="true"><IconCheck size={11} /></span><div><strong>{brief.projectTitle || "Anfrage strukturiert"}</strong><small>Angaben können jederzeit ergänzt werden</small></div></div>
+
+          <p className="details-section-label">Anforderungen</p>
           <dl className="side-details">
-            <DetailTerm label="Projekt" value={brief.projectTitle || null} />
-            <DetailTerm label="Pflichtkompetenzen" value={brief.requiredSkills.length ? brief.requiredSkills.join(", ") : null} />
-            <DetailTerm label="Optionale Kompetenzen" value={brief.optionalSkills.length ? brief.optionalSkills.join(", ") : null} />
-            <DetailTerm label="Sprache" value={brief.languages.length ? brief.languages.join(", ") : null} hint={languageHint(brief)} />
-            <DetailTerm label="Modus / Ort" value={[brief.mode === "unknown" ? null : modeLabel(brief.mode), brief.location].filter(Boolean).join(" · ") || null} />
-            <DetailTerm label="Budget / Satz" value={brief.budgetOrRate} />
-            <DetailTerm label="Qualifikationen" value={brief.qualifications.length ? brief.qualifications.join(", ") : null} />
-            <DetailTerm label="Verfügbarkeit" value={brief.availabilityRequirement} />
-            <DetailTerm label="Vertragsanforderungen" value={brief.contractualRequirements.length ? brief.contractualRequirements.join(", ") : null} />
-            <DetailTerm label="Rahmenbedingungen" value={brief.constraints.length ? brief.constraints.join(", ") : null} />
+            <DetailTerm
+              label="Muss"
+              value={groupedRequirements(brief, "hard")}
+              hint="blockiert ohne Beleg"
+            />
+            <DetailTerm
+              label="Kern"
+              value={groupedRequirements(brief, "core")}
+              hint="bestimmt die Reihenfolge"
+            />
+            <DetailTerm label="Optional" value={groupedRequirements(brief, "optional")} />
           </dl>
+
+          <p className="details-section-label">Rahmen</p>
+          <dl className="side-details">
+            {frame.map((entry) => (
+              <DetailTerm
+                key={entry.label}
+                label={entry.label}
+                value={entry.value}
+                hint={entry.hint}
+              />
+            ))}
+          </dl>
+
+          {openFields.length ? (
+            <div className="details-open-fields">
+              <p className="details-section-label">Noch offen</p>
+              <p>{openFields.join(" · ")}</p>
+              <small>Ergänzen Sie diese Punkte im Chat, um die Auswahl zu schärfen.</small>
+            </div>
+          ) : null}
         </>
       ) : (
         <div className="details-empty">

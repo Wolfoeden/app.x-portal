@@ -1460,33 +1460,6 @@ a {
 
 /* Says what the visitor gets, directly under the headline and again at the
    composer, where the decision to send is actually made. */
-.welcome-subline {
-  max-width: 54ch;
-  margin: -6px auto 22px;
-  color: var(--muted);
-  font-size: var(--fs-sm);
-  text-align: center;
-}
-
-.composer-promise {
-  margin: 10px 2px 0;
-  color: var(--muted-light);
-  font-size: var(--fs-xs);
-}
-
-.no-form-note {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin: 15px 2px 0;
-  color: var(--muted-light);
-  font-size: var(--fs-xs);
-}
-
-.no-form-note span {
-  font-size: var(--fs-base);
-}
-
 .message-list {
   display: grid;
   gap: 26px;
@@ -1668,26 +1641,11 @@ a {
   line-height: 1.6;
 }
 
-.brief-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px 22px;
-  margin: 0;
-  border-top: 1px solid var(--border);
-  padding: 14px 0;
-}
-
-.brief-grid-detailed {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.brief-grid > div,
 .profile-meta-grid > div,
 .side-details > div {
   min-width: 0;
 }
 
-.brief-grid dt,
 .profile-meta-grid dt,
 .side-details dt {
   margin-bottom: 3px;
@@ -1698,7 +1656,6 @@ a {
   text-transform: uppercase;
 }
 
-.brief-grid dd,
 .profile-meta-grid dd,
 .side-details dd {
   overflow-wrap: anywhere;
@@ -1724,22 +1681,6 @@ dd.is-unknown,
   font-size: var(--fs-2xs);
   font-style: italic;
   font-weight: 450;
-}
-
-.unknown-row {
-  display: flex;
-  gap: 8px;
-  margin: 0 -19px;
-  border-top: 1px solid var(--border);
-  background: var(--surface-raised);
-  padding: 8px 19px;
-  color: var(--muted);
-  font-size: var(--fs-2xs);
-}
-
-.unknown-row span {
-  color: var(--ink-soft);
-  font-weight: 700;
 }
 
 .shortlist-heading {
@@ -1944,6 +1885,107 @@ dd.is-unknown,
   color: var(--muted);
   font-size: var(--fs-xs);
   line-height: 1.55;
+}
+
+/* The chat card states what was understood and hands off to the panel. */
+.brief-counts {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 560;
+}
+
+.brief-open-details {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.brief-open-details:hover {
+  text-decoration: underline;
+}
+
+.details-section-label {
+  margin: 18px 0 8px;
+  color: var(--muted-light);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.065em;
+  text-transform: uppercase;
+}
+
+.details-open-fields {
+  margin-top: 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--amber-border);
+  border-radius: var(--radius-sm);
+  background: var(--amber-soft);
+}
+
+.details-open-fields .details-section-label {
+  margin: 0 0 6px;
+  color: var(--amber);
+}
+
+.details-open-fields p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--fs-xs);
+  font-weight: 560;
+}
+
+.details-open-fields small {
+  display: block;
+  margin-top: 6px;
+  color: var(--amber);
+  font-size: var(--fs-2xs);
+}
+
+/* A partial result leads with what blocks it, not with what it happens to
+   match. Without this the reader had to hunt for the reason. */
+.partial-reason {
+  margin: 12px 0 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--amber-border);
+  border-radius: var(--radius-sm);
+  background: var(--amber-soft);
+}
+
+.partial-reason-headline {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--amber);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.partial-reason-coverage {
+  margin: 6px 0 0;
+  color: var(--ink-soft);
+  font-size: var(--fs-2xs);
+  font-weight: 560;
+}
+
+.partial-reason ul {
+  margin: 8px 0 0;
+  padding-left: 17px;
+  color: var(--ink-soft);
+  font-size: var(--fs-xs);
+}
+
+.partial-reason li + li {
+  margin-top: 3px;
 }
 
 .matching-score-note {
@@ -3298,7 +3340,6 @@ dd.is-unknown,
 .suggestion-arrow,
 .analysis-trace-toggle,
 .composer-hint span,
-.no-form-note span,
 .brief-status > span,
 .match-column h4 span,
 .reference-note > span,
@@ -3987,7 +4028,6 @@ dd.is-unknown,
     margin-left: 0;
   }
 
-  .brief-grid,
   .match-columns,
   .fact-row {
     grid-template-columns: 1fr;
