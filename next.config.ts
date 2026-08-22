@@ -32,14 +32,20 @@ const nextConfig: NextConfig = {
   },
   poweredByHeader: false,
   typedRoutes: false,
+  async redirects() {
+    return [
+      // /home was the Cardano page until the root became the product. External
+      // links, bookmarks and the whitelist confirmation still point here.
+      { source: "/home", destination: "/cardano", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {
+        // /chat is the landing page now and must be indexable. Its operator
+        // sub-routes stay out of the index; see netlify.toml for /chat/*.
         source: "/chat",
-        headers: [
-          { key: "X-Robots-Tag", value: "noindex, nofollow" },
-          { key: "Cache-Control", value: "private, no-store" },
-        ],
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
       },
       {
         source: "/:path*",

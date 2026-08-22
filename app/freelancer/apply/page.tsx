@@ -49,7 +49,7 @@ export default function FreelancerApplyPage() {
         <ApplyForm />
 
         <p className={styles.footer}>
-          Fragen? Schreib uns über den <Link href="/home">XPORTAL-Zugang</Link>.
+          Fragen? Schreib uns über den <Link href="/cardano">XPORTAL-Zugang</Link>.
           Deine Daten verarbeiten wir nach dem{" "}
           <Link href="/privacy">Datenschutzhinweis</Link>.
         </p>

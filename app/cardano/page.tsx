@@ -57,7 +57,7 @@ export default async function XPortalHome({ searchParams }: HomeProps) {
               <p className="xhome-eyebrow">Request received</p>
               <h2 id="access-title">You are on the list.</h2>
               <p>We will contact you when the next XPORTAL access window opens.</p>
-              <Link href="/home" className="xhome-text-link">Return to XPORTAL</Link>
+              <Link href="/cardano" className="xhome-text-link">Return to XPORTAL</Link>
             </div>
           ) : (
             <>

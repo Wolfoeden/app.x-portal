@@ -23,7 +23,7 @@ const WhitelistSchema = z
   .strict();
 
 function landingUrl(request: Request, state: "joined" | "error") {
-  const url = new URL("/home", request.url);
+  const url = new URL("/cardano", request.url);
   url.searchParams.set(state, "1");
   url.hash = "access";
   return url;

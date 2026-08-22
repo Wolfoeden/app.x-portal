@@ -234,34 +234,43 @@ function useSidebarWidth() {
   };
 }
 
+/**
+ * Three ready-to-send briefs instead of four category headings.
+ *
+ * Each aims at a cluster the catalogue can actually serve: measured on
+ * 2026-08-21 across the 66 matchable profiles, at least two skill hits are
+ * available for performance marketing (9 profiles), AI automation (8) and
+ * requirements engineering (6). Classic software development reaches 4 and is
+ * deliberately not offered, because the example a visitor clicks first sets
+ * the expectation the result then has to meet.
+ *
+ * No rate is named: 52 of those 66 profiles carry none, so a budget in the
+ * example would promise a filter the data cannot honour.
+ */
 const suggestions = [
   {
-    label: "Software & Web",
-    description: "Von der Einzelseite bis zur Cloud-Anwendung",
-    draftPrefix: "Software & Web\n\nProjektbeschreibung:\n",
+    label: "SEO & Google Ads",
+    description: "B2B-Shop · 3 Monate · remote",
+    draftPrefix:
+      "Ich suche einen Freelancer für SEO und Google Ads für unseren B2B-Onlineshop. Etwa zwei Tage pro Woche, zunächst drei Monate, remote. Erfahrung mit GA4 und Conversion-Optimierung ist wichtig.",
     intro:
-      "Beschreiben Sie Ihr Vorhaben – Sie können auch eine vorhandene Projektbeschreibung einfach hineinkopieren, egal wie lang. Ich sortiere daraus Aufgaben, nötige Kenntnisse und Rahmenbedingungen und suche danach passende Profile. Was Sie nicht erwähnen, ergänze ich nicht.",
+      "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Sie erhalten passende Freelancer-Profile inklusive Match-Begründung und sichtbaren Informationslücken. Was Sie nicht erwähnen, ergänze ich nicht.",
   },
   {
-    label: "Marketing & Content",
-    description: "Sichtbarkeit, Kampagnen, Texte",
-    draftPrefix: "Marketing & Content\n\nProjektbeschreibung:\n",
+    label: "KI-Automatisierung",
+    description: "n8n · LLM-Anbindung · Projektbasis",
+    draftPrefix:
+      "Wir wollen wiederkehrende Abläufe automatisieren und dabei ein LLM anbinden. Konkret: n8n-Workflows, Anbindung an unsere Bestandssysteme, Projektbasis, remote, Start kurzfristig.",
     intro:
-      "Beschreiben Sie, was Sie erreichen wollen – Reichweite, Kampagne, Website-Texte oder etwas anderes. Ich sortiere daraus Aufgaben, nötige Kenntnisse und Rahmenbedingungen und suche danach passende Profile. Was Sie nicht erwähnen, ergänze ich nicht.",
+      "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Sie erhalten passende Freelancer-Profile inklusive Match-Begründung und sichtbaren Informationslücken. Was Sie nicht erwähnen, ergänze ich nicht.",
   },
   {
-    label: "KI & Automatisierung",
-    description: "Abläufe mit KI unterstützen",
-    draftPrefix: "KI & Automatisierung\n\nProjektbeschreibung:\n",
+    label: "Requirements Engineering",
+    description: "IT-Rollout · Scrum · 6 Monate",
+    draftPrefix:
+      "Für ein IT-Rollout-Projekt suche ich einen Requirements Engineer. Anforderungsaufnahme mit den Fachbereichen, Dokumentation, Scrum-Umfeld. Sechs Monate, remote möglich, Start in den nächsten Wochen.",
     intro:
-      "Beschreiben Sie den Ablauf, den Sie verbessern wollen, und was heute daran hakt. Ich sortiere daraus Aufgaben, nötige Kenntnisse und Rahmenbedingungen und suche danach passende Profile. Was Sie nicht erwähnen, ergänze ich nicht.",
-  },
-  {
-    label: "Beratung & Projektleitung",
-    description: "Anforderungen, Prozesse, Umsetzung begleiten",
-    draftPrefix: "Beratung & Projektleitung\n\nProjektbeschreibung:\n",
-    intro:
-      "Beschreiben Sie Ausgangslage und Ziel – gern auch als Lastenheft oder lose Notizen. Ich sortiere daraus Aufgaben, nötige Kenntnisse und Rahmenbedingungen und suche danach passende Profile. Was Sie nicht erwähnen, ergänze ich nicht.",
+      "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Sie erhalten passende Freelancer-Profile inklusive Match-Begründung und sichtbaren Informationslücken. Was Sie nicht erwähnen, ergänze ich nicht.",
   },
 ] as const;
 
@@ -2609,6 +2618,9 @@ export function ChatWorkspace({
               </button>
             </div>
           </form>
+          {/* States the outcome where the decision to send is made. The
+              audit found visitors unsure what happens after submitting. */}
+          <p className="composer-promise">Sie erhalten passende Freelancer-Profile inklusive Match-Begründung und sichtbaren Informationslücken.</p>
           {usage && (freeUsageExhausted || freeUsageLow) ? (
             <p className={`composer-credit-status ${freeUsageExhausted ? "is-exhausted" : ""}`} role="status">
               {freeUsageExhausted
@@ -2761,7 +2773,8 @@ function WelcomeState({ onSuggestion }: { onSuggestion: (suggestion: Suggestion)
   return (
     <section className="welcome-state" aria-labelledby="welcome-title">
       <div className="assistant-emblem" aria-hidden="true"><span><IconSpark size={22} /></span></div>
-      <h1 id="welcome-title">Wobei können wir Sie unterstützen?</h1>
+      <h1 id="welcome-title">Welchen Freelancer suchen Sie?</h1>
+      <p className="welcome-subline">Sie erhalten passende Freelancer-Profile inklusive Match-Begründung und sichtbaren Informationslücken.</p>
       <div className="suggestion-grid" aria-label="Beispielanfragen">
         {suggestions.map((suggestion) => (
           <button key={suggestion.label} type="button" onClick={() => onSuggestion(suggestion)}>

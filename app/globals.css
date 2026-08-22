@@ -1467,6 +1467,22 @@ a {
   font-size: var(--fs-xs);
 }
 
+/* Says what the visitor gets, directly under the headline and again at the
+   composer, where the decision to send is actually made. */
+.welcome-subline {
+  max-width: 54ch;
+  margin: -6px auto 22px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  text-align: center;
+}
+
+.composer-promise {
+  margin: 10px 2px 0;
+  color: var(--muted-light);
+  font-size: var(--fs-xs);
+}
+
 .no-form-note {
   display: flex;
   align-items: center;

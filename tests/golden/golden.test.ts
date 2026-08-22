@@ -45,7 +45,10 @@ describe("golden set", () => {
       const recorded = expected()[goldenCase.id] ?? [];
       const actual = actualShortlist(goldenCase);
       expect(actual, explainMismatch(goldenCase, recorded, actual)).toEqual(recorded);
-    });
+      // One case runs the matcher over the whole synthetic pool and needs 3-5s,
+      // so the 5s default made it fail whenever the suite ran under load.
+      // Raised only here: a global bump would hide real hangs elsewhere.
+    }, 30_000);
   }
 
   /**

@@ -10,7 +10,7 @@ export default function ImprintPage() {
   return (
     <main className="xlegal" lang="de">
       <header className="xlegal-header">
-        <Link href="/home" className="xlegal-wordmark">XPORTAL</Link>
+        <Link href="/chat" className="xlegal-wordmark">XPORTAL</Link>
         <span>IMPRINT / 01</span>
       </header>
 
@@ -53,7 +53,7 @@ export default function ImprintPage() {
       </article>
 
       <footer className="xlegal-footer">
-        <Link href="/home">Zurück zu XPORTAL</Link>
+        <Link href="/chat">Zurück zu XPORTAL</Link>
         <Link href="/privacy">Datenschutz</Link>
       </footer>
     </main>

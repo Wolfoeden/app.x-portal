@@ -18,10 +18,11 @@ NEXT_PUBLIC_AUTH_GOOGLE_ENABLED = "true"
 [[plugins]]
 package = "@netlify/plugin-nextjs"
 
+# /chat is the landing page and must be indexable. Only its operator
+# sub-routes below stay out of the index.
 [[headers]]
 for = "/chat"
 [headers.values]
-X-Robots-Tag = "noindex, nofollow"
 Cache-Control = "private, no-store"
 
 [[headers]]
