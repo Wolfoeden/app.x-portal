@@ -319,15 +319,14 @@ export interface SessionResponse {
  * no durable identity to hang a team on.
  */
 export interface SavedFreelancer {
-  id: string;
-  displayName: string;
-  role: string;
-  skillTags: string[];
-  location: string | null;
-  bookingUrl: string | null;
-  availabilityStatus: string;
   /** ISO instant the profile was marked. */
   savedAt: string;
+  /**
+   * The same shape the chat renders, so a saved profile looks exactly like it
+   * did in the result list. Its match fields are empty: it was never evaluated
+   * against a brief.
+   */
+  profile: FreelancerProfileResult;
 }
 
 export interface ChatApiPaths {

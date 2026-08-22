@@ -5,6 +5,7 @@ import type {
   StructuredBrief,
 } from "@/components/chat-contract";
 import type {
+  FreelancerProfile,
   ProjectBrief,
   ShortlistMatch,
 } from "@/lib/domain";
@@ -147,7 +148,10 @@ function profileFacts(match: ShortlistMatch): ProfileFact[] {
 }
 
 function formatRate(match: ShortlistMatch): string | null {
-  const profile = match.profile;
+  return formatProfileRate(match.profile);
+}
+
+function formatProfileRate(profile: FreelancerProfile): string | null {
   if (profile.dayRate) {
     return `${new Intl.NumberFormat("de-DE", {
       style: "currency",
@@ -163,6 +167,69 @@ function formatRate(match: ShortlistMatch): string | null {
     }).format(profile.hourlyRate.amount)} / Stunde`;
   }
   return null;
+}
+
+function presentReferenceStatus(
+  status: FreelancerProfile["referenceStatus"],
+): string {
+  return status === "not_verified"
+    ? "Nicht verifiziert"
+    : status === "self_reported"
+      ? "Selbstauskunft"
+      : "Verifiziert";
+}
+
+/**
+ * A saved profile has no match behind it: it was never evaluated against a
+ * brief. Score, coverage, matched reasons and known gaps therefore stay null
+ * and empty rather than being invented, so a card on "Mein Team" can never
+ * read as a recommendation for a project it was never assessed for.
+ */
+export function presentSavedProfile(
+  profile: FreelancerProfile,
+): FreelancerProfileResult {
+  const firstMode = profile.workModes[0] ?? "unknown";
+  const bookingUrl = profile.introPolicy.bookingUrl;
+  const facts: ProfileFact[] = [
+    ...profile.qualifications,
+    ...profile.contractualCapabilities,
+    ...profile.contextEvidence,
+  ].map((fact) => ({
+    label: fact.source === "verified" ? "Geprüft" : "Selbstauskunft",
+    value: fact.value,
+    verification: fact.source === "verified" ? "verified" : "self-reported",
+  }));
+
+  return {
+    id: profile.id,
+    demoStatus: profile.demoStatus,
+    bookingUrl,
+    displayName: profile.displayName,
+    role: profile.role,
+    skillTags: profile.skillTags.map(({ value }) => value),
+    languages: profile.languages.map(({ value }) => value),
+    location: profile.location?.value ?? null,
+    remoteMode: presentMode(firstMode),
+    experienceSummary: profile.experienceSummary.value,
+    facts,
+    referenceStatus: presentReferenceStatus(profile.referenceStatus),
+    rate: formatProfileRate(profile),
+    availabilityStatus: profile.availability.status,
+    availabilityUpdatedAt: profile.availability.checkedAt,
+    matchReasons: [],
+    knownGaps: [],
+    recommendationRole: null,
+    fitScore: null,
+    coreCoverage: null,
+    introPolicy: {
+      type: bookingUrl ? "free" : "premium",
+      label: bookingUrl
+        ? "Direkt buchbares Erstgespräch"
+        : "Aktuell nicht direkt buchbar",
+      manualApprovalRequired: !bookingUrl,
+      readyToBook: Boolean(bookingUrl),
+    },
+  };
 }
 
 export function presentMatch(match: ShortlistMatch): FreelancerProfileResult {
@@ -186,12 +253,7 @@ export function presentMatch(match: ShortlistMatch): FreelancerProfileResult {
     remoteMode: presentMode(firstMode),
     experienceSummary: profile.experienceSummary.value,
     facts: profileFacts(match),
-    referenceStatus:
-      profile.referenceStatus === "not_verified"
-        ? "Nicht verifiziert"
-        : profile.referenceStatus === "self_reported"
-          ? "Selbstauskunft"
-          : "Verifiziert",
+    referenceStatus: presentReferenceStatus(profile.referenceStatus),
     rate: formatRate(match),
     availabilityStatus: match.availabilityStatus,
     availabilityUpdatedAt: match.availabilityCheckedAt,

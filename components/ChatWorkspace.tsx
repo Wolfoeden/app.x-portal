@@ -50,7 +50,6 @@ import {
   ConfirmDeleteDialog,
   ContactDialog,
   CreateProjectDialog,
-  TeamDialog,
   ManageChatDialog,
 } from "./chat/dialogs";
 import {
@@ -61,7 +60,7 @@ import {
   type AuthDialogMode,
   type ToastState,
 } from "./chat/shared";
-import { ProjectDetails, ResultSection } from "./chat/results";
+import { ProjectDetails, ResultSection, SavedProfileList } from "./chat/results";
 import {
   type AiAnalysisTrace,
   type AiUsageSnapshot,
@@ -280,7 +279,7 @@ type PendingAssistant = {
 
 interface ChatWorkspaceProps {
   apiPaths?: Partial<ChatApiPaths>;
-  view?: "chat" | "agents";
+  view?: "chat" | "agents" | "team";
 }
 
 type AuthView = SessionResponse;
@@ -1162,9 +1161,9 @@ export function ChatWorkspace({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [team, setTeam] = useState<SavedFreelancer[]>([]);
-  const [teamOpen, setTeamOpen] = useState(false);
-  const [teamLoading, setTeamLoading] = useState(false);
-  const [teamBusyId, setTeamBusyId] = useState<string | null>(null);
+  // Starts true: an account always loads its team on mount, and setting the
+  // flag inside the effect would be a synchronous state change during render.
+  const [teamLoading, setTeamLoading] = useState(true);
   // Survives the auth dialog so a guest who clicks "merken" gets the profile
   // saved after logging in rather than having to find it again.
   const [pendingSaveProfileId, setPendingSaveProfileId] = useState<string | null>(null);
@@ -1209,6 +1208,7 @@ export function ChatWorkspace({
   const selectedAgent = agentById(selectedAgentId);
   const selectedAgentTask = agentTaskById(selectedAgent, selectedAgentTaskId);
   const isAgentView = workspaceView === "agents";
+  const isTeamView = workspaceView === "team";
   const isAccountUser = auth.authenticated && !auth.anonymous;
   const freeUsageExhausted = Boolean(
     usage && (usage.credits.exhausted || usage.credits.remaining <= 0),
@@ -1923,7 +1923,6 @@ export function ChatWorkspace({
   };
 
   const loadTeam = useCallback(async () => {
-    setTeamLoading(true);
     try {
       const response = await fetch(apiPaths.savedFreelancers, {
         credentials: "same-origin",
@@ -1968,8 +1967,7 @@ export function ChatWorkspace({
       setAuthOpen(true);
       return;
     }
-    const alreadySaved = team.some((member) => member.id === profile.id);
-    setTeamBusyId(profile.id);
+    const alreadySaved = team.some((member) => member.profile.id === profile.id);
     try {
       await persistSavedFreelancer(profile.id, alreadySaved ? "DELETE" : "POST");
       showToast(
@@ -1980,21 +1978,23 @@ export function ChatWorkspace({
       );
     } catch {
       showToast("Das Profil konnte nicht gespeichert werden.", "error");
-    } finally {
-      setTeamBusyId(null);
     }
   };
 
-  const removeSavedFreelancer = async (freelancerId: string) => {
-    setTeamBusyId(freelancerId);
-    try {
-      await persistSavedFreelancer(freelancerId, "DELETE");
-    } catch {
-      showToast("Das Profil konnte nicht entfernt werden.", "error");
-    } finally {
-      setTeamBusyId(null);
-    }
-  };
+  // The sidebar shows the team size everywhere, and the team page needs the
+  // profiles themselves. Both wait until the session is known to be an account,
+  // because the endpoint answers a guest with an empty list.
+  useEffect(() => {
+    if (!isAccountUser) return;
+    let alive = true;
+    void (async () => {
+      await loadTeam();
+      if (!alive) return;
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [isAccountUser, loadTeam]);
 
   const requestProfileSelection = (profile: FreelancerProfileResult) => {
     if (!isAccountUser) {
@@ -2225,24 +2225,21 @@ export function ChatWorkspace({
             <span>Neuer Chat</span>
             <span className="new-chat-key" aria-hidden="true">{newChatShortcut}</span>
           </button>
-          <button
-            className="sidebar-primary-button"
-            type="button"
-            onClick={() => {
-              setSidebarOpen(false);
-              setTeamOpen(true);
-              if (isAccountUser) void loadTeam();
-            }}
+          <a
+            className={`sidebar-primary-button${isTeamView ? " is-active" : ""}`}
+            href="/mein-team"
+            aria-current={isTeamView ? "page" : undefined}
+            onClick={() => setSidebarOpen(false)}
             data-sidebar-primary="team"
           >
             <span className="sidebar-primary-icon" aria-hidden="true"><IconFolder size={18} /></span>
             <span>Mein Team</span>
-            {team.length ? (
+            {isAccountUser && team.length ? (
               <span className="sidebar-primary-count" aria-hidden="true">{team.length}</span>
             ) : (
               <span className="sidebar-primary-chevron" aria-hidden="true"><IconChevronRight size={16} /></span>
             )}
-          </button>
+          </a>
           <a
             className={`sidebar-primary-button${isAgentView ? " is-active" : ""}`}
             href="/agent"
@@ -2443,7 +2440,11 @@ export function ChatWorkspace({
             <button className="icon-button mobile-menu" type="button" onClick={() => setSidebarOpen(true)} aria-label="Projekte öffnen"><IconMenu size={18} /></button>
             <div>
               <p className="topbar-title">
-                {isAgentView ? "KI-Agenten" : activeProject?.title ?? "Freelancer finden"}
+                {isTeamView
+                  ? "Mein Team"
+                  : isAgentView
+                    ? "KI-Agenten"
+                    : activeProject?.title ?? "Freelancer finden"}
               </p>
               <p className="topbar-subtitle">
                 {isAgentView
@@ -2454,7 +2455,59 @@ export function ChatWorkspace({
           </div>
         </header>
 
-        {isAgentView ? (
+        {isTeamView ? (
+          <div className="agent-scroll">
+            <section className="team-page" aria-label="Mein Team">
+              <header className="team-page-header">
+                <h2>Mein Team</h2>
+                <p>
+                  Profile, die Sie sich aus Ihren Suchergebnissen gemerkt haben.
+                  Sie bleiben Ihrem Konto zugeordnet, unabhängig vom einzelnen
+                  Chat.
+                </p>
+              </header>
+              {!isAccountUser ? (
+                <div className="empty-projects">
+                  <p>Für „Mein Team“ ist ein Konto erforderlich</p>
+                  <small>
+                    Melden Sie sich an, dann bleiben gemerkte Profile dauerhaft
+                    erhalten.
+                  </small>
+                  <button
+                    className="primary-action"
+                    type="button"
+                    onClick={() => {
+                      setAuthInitialMode("register");
+                      setAuthOpen(true);
+                    }}
+                  >
+                    Konto erstellen
+                  </button>
+                </div>
+              ) : teamLoading ? (
+                <SidebarSkeleton rows={3} />
+              ) : team.length === 0 ? (
+                <div className="empty-projects">
+                  <p>Noch niemand gemerkt</p>
+                  <small>
+                    Klicken Sie bei einem Suchergebnis auf „Profil merken“, dann
+                    steht das Profil hier dauerhaft bereit.
+                  </small>
+                </div>
+              ) : (
+                <SavedProfileList
+                  team={team}
+                  isAccountUser={isAccountUser}
+                  onToggleSave={(profile) => void toggleSavedFreelancer(profile)}
+                  onContact={(profile) => {
+                    setSelectedProfileId(profile.id);
+                    setContactOpen(true);
+                  }}
+                />
+              )}
+            </section>
+          </div>
+        ) : isAgentView ? (
           <div className="agent-scroll">
             <AgentDirectory
               selectedAgentId={selectedAgent.id}
@@ -2505,7 +2558,9 @@ export function ChatWorkspace({
                       setAuthOpen(true);
                     }}
                     selectedProfileId={selectedProfileId}
-                    savedFreelancerIds={team.map((member) => member.id)}
+                    savedFreelancerIds={
+                      isAccountUser ? team.map((member) => member.profile.id) : []
+                    }
                     onToggleSave={(profile) => void toggleSavedFreelancer(profile)}
                     onSelect={requestProfileSelection}
                     onContact={(profile) => {
@@ -2617,15 +2672,6 @@ export function ChatWorkspace({
         />
       ) : null}
 
-      {teamOpen ? (
-        <TeamDialog
-          team={team}
-          loading={teamLoading}
-          busyId={teamBusyId}
-          onRemove={(freelancerId) => void removeSavedFreelancer(freelancerId)}
-          onClose={() => setTeamOpen(false)}
-        />
-      ) : null}
       {createProjectOpen ? (
         <CreateProjectDialog
           onClose={() => setCreateProjectOpen(false)}

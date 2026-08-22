@@ -441,66 +441,36 @@ a {
   border-color: var(--green);
 }
 
-.team-dialog > p {
-  margin: 0 0 4px;
-  color: var(--muted);
-  font-size: var(--fs-sm);
-}
-
-.team-list {
+/* Mein Team reuses the chat's profile cards, so it only needs page chrome. */
+.team-page {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  gap: 18px;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 0 40px;
 }
 
-.team-member {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface-raised);
-}
-
-.team-member-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.team-member-copy strong {
-  font-size: var(--fs-base);
+.team-page-header h2 {
+  margin: 0 0 6px;
+  font-size: var(--fs-xl);
   font-weight: 650;
 }
 
-.team-member-copy span {
+.team-page-header p {
+  margin: 0;
+  max-width: 60ch;
   color: var(--muted);
   font-size: var(--fs-sm);
 }
 
-.team-member-copy small {
-  color: var(--muted-light);
-  font-size: var(--fs-2xs);
+.team-page .empty-projects {
+  align-items: flex-start;
+  text-align: left;
 }
 
-.team-member-skills {
-  margin: 4px 0 0;
-  color: var(--muted-light);
-  font-size: var(--fs-2xs);
-}
-
-.team-member-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
+.team-page .empty-projects .primary-action {
+  margin-top: 12px;
 }
 
 .sidebar-primary-button .agent-glyph {

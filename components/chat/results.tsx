@@ -21,6 +21,7 @@ import type {
   MatchingStatus,
   ProductCreditSnapshot,
   ProjectMode,
+  SavedFreelancer,
   StructuredBrief,
   StructuredRequirementGroup,
 } from "../chat-contract";
@@ -927,6 +928,43 @@ export function ProjectDetails({
       ) : null}
 
       <div className="ai-note"><span aria-hidden="true"><IconInfo size={11} /></span><p><strong>Transparente Unterstützung</strong>Die KI strukturiert Ihre Anfrage. Profile werden nach festen, überprüfbaren Regeln gefiltert.</p></div>
+    </div>
+  );
+}
+
+/**
+ * "Mein Team" renders the same card the chat result list uses, so a saved
+ * profile looks exactly as it did when the user marked it. The match block of
+ * the card stays empty because a saved profile carries no evaluation: it was
+ * never scored against a brief.
+ */
+export function SavedProfileList({
+  team,
+  isAccountUser,
+  onToggleSave,
+  onContact,
+}: {
+  team: readonly SavedFreelancer[];
+  isAccountUser: boolean;
+  onToggleSave: (profile: FreelancerProfileResult) => void;
+  onContact: (profile: FreelancerProfileResult) => void;
+}) {
+  return (
+    <div className="profile-list">
+      {team.map((entry, index) => (
+        <ProfileCard
+          key={entry.profile.id}
+          profile={entry.profile}
+          position={index + 1}
+          isAccountUser={isAccountUser}
+          projectId={null}
+          selected={false}
+          onSelect={() => onContact(entry.profile)}
+          onContact={() => onContact(entry.profile)}
+          saved
+          onToggleSave={() => onToggleSave(entry.profile)}
+        />
+      ))}
     </div>
   );
 }
