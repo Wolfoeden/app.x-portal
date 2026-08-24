@@ -256,18 +256,18 @@ const suggestions = [
       "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Was Sie nicht erwähnen, ergänze ich nicht.",
   },
   {
-    label: "Requirements & Business Analysis",
-    description: "Requirements Engineering · Business Analysis · IREB",
+    label: "SAP",
+    description: "S/4HANA · FI/CO · HCM · Migration",
     draftPrefix:
-      "Für ein IT-Projekt suche ich Unterstützung im Requirements Engineering: Anforderungsaufnahme mit den Fachbereichen, saubere Dokumentation und Abstimmung mit der Entwicklung. Erfahrung in der Business Analysis ist willkommen, eine IREB-Zertifizierung wäre ein Plus. Sechs Monate, remote möglich.",
+      "Wir suchen Unterstützung im SAP-Umfeld: SAP S/4HANA, Anbindung an unsere bestehenden Systeme und Begleitung der Migration. Erfahrung mit SAP FI/CO oder SAP HCM ist willkommen. Projektbasis, remote möglich, Start in den nächsten Wochen.",
     intro:
       "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Was Sie nicht erwähnen, ergänze ich nicht.",
   },
   {
-    label: "SEO, SEA & Performance",
-    description: "SEO · Google Ads · Meta Ads · GA4",
+    label: "1st & 2nd Level Support",
+    description: "IT Support · Helpdesk · L1/L2",
     draftPrefix:
-      "Ich suche einen Freelancer für SEO und SEA für unseren B2B-Onlineshop: Google Ads und Meta Ads betreuen, technisches SEO verbessern und das Tracking mit GA4 sauber aufsetzen. Etwa zwei Tage pro Woche, zunächst drei Monate, remote.",
+      "Wir brauchen Verstärkung im IT Support: 1st und 2nd Level, Helpdesk für unsere Mitarbeitenden, Ticketbearbeitung und Störungsbehebung. Remote möglich, Start kurzfristig.",
     intro:
       "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Was Sie nicht erwähnen, ergänze ich nicht.",
   },
