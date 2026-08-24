@@ -273,8 +273,12 @@ describe("publish decision", () => {
     const insert = profileInsertFromDecision(decision, {
       slug: "joerg-mueller",
       checkedAt: "2026-08-19T10:00:00.000Z",
+      ownerUserId: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
     });
 
+    expect(insert.owner_user_id).toBe(
+      "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+    );
     expect(insert.profile_status).toBe("active");
     expect(insert.demo_status).toBe("real");
     expect(insert.booking_url).toBe("https://calendly.com/joerg/30min");

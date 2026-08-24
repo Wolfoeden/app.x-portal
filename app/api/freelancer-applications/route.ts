@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 
 import { writeAuditEvent } from "@/lib/audit/write";
-import { getCurrentUser } from "@/lib/auth/current-user";
+import { requireCurrentUser } from "@/lib/auth/current-user";
 import {
   applicationInsertFromInput,
   CV_BUCKET,
@@ -77,6 +77,12 @@ export async function POST(request: Request) {
   const traceId = randomUUID();
   try {
     assertSameOrigin(request);
+    const user = await requireCurrentUser();
+    if (user.isAnonymous || !user.email) {
+      throw new Response("Ein dauerhaftes Konto ist erforderlich.", {
+        status: 403,
+      });
+    }
 
     const payload = await readJsonWithLimit(request, 24_000);
     const parsed = FreelancerApplicationInputSchema.safeParse(payload);
@@ -96,6 +102,15 @@ export async function POST(request: Request) {
     // A bot that filled the honeypot gets the same answer as a real applicant.
     if (parsed.data.website) {
       return NextResponse.json({ status: "received" }, { status: 201 });
+    }
+    if (
+      parsed.data.contactEmail.toLocaleLowerCase("en-US") !==
+      user.email.toLocaleLowerCase("en-US")
+    ) {
+      return NextResponse.json(
+        { error: "Bitte verwenden Sie die E-Mail-Adresse Ihres XPORTAL-Kontos." },
+        { status: 400 },
+      );
     }
 
     const ipHash = pseudonymizeIp(getClientIp(request));
@@ -130,9 +145,8 @@ export async function POST(request: Request) {
       ? await inspectUploadedCv(admin, input.cv.storagePath)
       : null;
 
-    const user = await getCurrentUser();
     const insert = applicationInsertFromInput(input, {
-      submittedByUserId: user?.id ?? null,
+      submittedByUserId: user.id,
       consentAt: new Date().toISOString(),
     });
 
@@ -146,12 +160,12 @@ export async function POST(request: Request) {
       insert.cv_size_bytes = null;
     }
 
-    // A resubmission replaces the applicant's own pending entry instead of
-    // queueing a near-duplicate for the reviewer. Decided applications stay.
+    // A resubmission replaces only this authenticated applicant's own pending
+    // entry. An email address alone is not an ownership credential.
     const { data: pending, error: pendingError } = await admin
       .from("freelancer_applications")
       .select("id,cv_storage_path")
-      .eq("contact_email", insert.contact_email)
+      .eq("submitted_by_user_id", user.id)
       .in("status", ["submitted", "in_review"]);
     if (pendingError) throw pendingError;
 
@@ -182,7 +196,7 @@ export async function POST(request: Request) {
     if (error) throw error;
 
     await writeAuditEvent({
-      actorUserId: user?.id ?? null,
+      actorUserId: user.id,
       action: "freelancer_application_submitted",
       targetType: "freelancer_application",
       targetId: data.id as string,

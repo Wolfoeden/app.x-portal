@@ -67,9 +67,9 @@ const tagClasses = {
   optional: styles.optional,
 };
 
-export function ApplyForm() {
+export function ApplyForm({ accountEmail = "" }: { accountEmail?: string }) {
   const [fullName, setFullName] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
+  const [contactEmail, setContactEmail] = useState(accountEmail);
   const [contactPhone, setContactPhone] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [roleTitle, setRoleTitle] = useState("");
@@ -310,8 +310,12 @@ export function ApplyForm() {
               type="email"
               autoComplete="email"
               maxLength={160}
+              readOnly={Boolean(accountEmail)}
               required
             />
+            {accountEmail ? (
+              <span className={styles.hint}>Mit deinem Konto verknüpft</span>
+            ) : null}
           </label>
           <label className={styles.field}>
             <span>

@@ -40,6 +40,7 @@ export const FreelancerProfileSchema = z
     dataVersion: z.string().trim().min(1).max(100),
     demoStatus: z.enum(["demo", "real"]),
     profileStatus: z.enum(["active", "paused", "archived"]),
+    avatarUrl: z.url().nullable().default(null),
     displayName: z.string().trim().min(1).max(120),
     role: z.string().trim().min(1).max(160),
     skillTags: z.array(LabeledFactSchema).max(100),

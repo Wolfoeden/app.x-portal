@@ -1,13 +1,51 @@
 .shell {
   min-height: 100vh;
-  background: #f6f6f3;
+  background: #f4f4f1;
   color: #20201e;
-  padding: 42px clamp(20px, 5vw, 72px) 80px;
+  padding: 0 clamp(20px, 5vw, 72px) 80px;
 }
 
 .inner {
-  max-width: 880px;
+  max-width: 1040px;
   margin: 0 auto;
+}
+
+.topbar {
+  display: flex;
+  min-height: 66px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid #ddddda;
+  color: #8b8b84;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.topbar > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wordmark {
+  color: #20201e;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-decoration: none;
+}
+
+.backLink {
+  border-bottom: 1px solid #9b9b94;
+  color: #555550;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+}
+
+.header {
+  padding: 46px 0 8px;
 }
 
 .eyebrow {
@@ -83,10 +121,9 @@
 
 .section {
   border: 1px solid #dfdfda;
-  border-radius: 14px;
+  border-radius: 18px;
   background: #fff;
-  padding: 22px clamp(16px, 3vw, 26px) 26px;
-  box-shadow: 0 8px 24px rgba(29, 29, 26, 0.035);
+  padding: 26px clamp(18px, 3vw, 30px) 30px;
 }
 
 .section h2 {
@@ -446,4 +483,298 @@
 
 .footer a {
   color: #6d6d67;
+}
+
+.dashboard {
+  display: grid;
+  gap: 18px;
+  margin-top: 28px;
+}
+
+.portalCard,
+.dashboardHead {
+  margin-top: 28px;
+  border: 1px solid #dfdfda;
+  border-radius: 14px;
+  background: #fff;
+  padding: 28px clamp(18px, 4vw, 34px);
+  box-shadow: 0 8px 24px rgba(29, 29, 26, 0.035);
+}
+
+.dashboardHead {
+  display: flex;
+  min-height: 220px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 34px;
+  margin-top: 0;
+  border-color: #20201e;
+  border-radius: 22px;
+  background: #20201e;
+  color: #fff;
+  padding: 34px clamp(24px, 4vw, 42px);
+  box-shadow: 0 16px 38px rgba(28, 28, 25, 0.12);
+}
+
+.portalCard h2,
+.dashboardHead h2 {
+  margin: 7px 0 9px;
+  font-size: clamp(22px, 3vw, 30px);
+  letter-spacing: -0.035em;
+}
+
+.portalCard > p:not(.eyebrow),
+.dashboardHead .profileHeading > p:not(.eyebrow) {
+  max-width: 640px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.dashboardHead .eyebrow {
+  color: rgba(255, 255, 255, 0.48);
+}
+
+.profileOverview {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 22px;
+}
+
+.profileHeading {
+  min-width: 0;
+}
+
+.profileHeading h2 {
+  margin: 7px 0 3px;
+  font-size: clamp(26px, 3.4vw, 38px);
+}
+
+.avatarActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 17px;
+}
+
+.dashboardHead .textButton {
+  padding: 0;
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration-color: rgba(255, 255, 255, 0.3);
+}
+
+.dashboardHead .textButton:hover {
+  color: #fff;
+}
+
+.dashboardControls {
+  display: grid;
+  flex: 0 0 auto;
+  justify-items: end;
+  gap: 12px;
+}
+
+.statusLine {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 11px;
+}
+
+.statusLine span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #8fd19a;
+  box-shadow: 0 0 0 4px rgba(143, 209, 154, 0.12);
+}
+
+.statusLine.isPaused span {
+  background: #e0b06a;
+  box-shadow: 0 0 0 4px rgba(224, 176, 106, 0.12);
+}
+
+.metaLine {
+  color: #8b8b84 !important;
+  font-size: 11px !important;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.metricCard {
+  position: relative;
+  display: grid;
+  gap: 5px;
+  border: 1px solid #dfdfda;
+  border-radius: 18px;
+  background: #fff;
+  padding: 26px 28px 28px;
+  overflow: hidden;
+}
+
+.metricCard::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: #20201e;
+  content: "";
+}
+
+.metricCard span {
+  color: #6d6d67;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.metricCard strong {
+  font-size: 44px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.05em;
+  line-height: 1.05;
+}
+
+.metricCard small {
+  color: #8b8b84;
+  font-size: 11px;
+}
+
+.statusSwitch {
+  display: inline-flex;
+  gap: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 4px;
+}
+
+.statusSwitch button {
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  padding: 9px 15px;
+  color: rgba(255, 255, 255, 0.62);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.statusSwitch button.isActive {
+  background: #fff;
+  color: #20201e;
+}
+
+.avatarPreview {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 104px;
+  height: 104px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  background: #353532 center / cover no-repeat;
+  color: #fff;
+  font-size: 23px;
+  font-weight: 700;
+}
+
+.textButton {
+  border: 0;
+  background: transparent;
+  padding: 6px;
+  color: #686861;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.dangerZone {
+  border-color: #e1c3be;
+  background: #fffafa;
+}
+
+.deleteRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.deleteRow input {
+  flex: 1 1 240px;
+  min-height: 42px;
+  border: 1px solid #d9b7b1;
+  border-radius: 9px;
+  padding: 10px 12px;
+  color: #292927;
+  font: inherit;
+  font-size: 13px;
+}
+
+.deleteButton {
+  min-height: 42px;
+  border: 1px solid #8d4138;
+  border-radius: 9px;
+  background: #8d4138;
+  padding: 0 16px;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.deleteButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.reapply {
+  margin-top: 22px;
+}
+
+@media (max-width: 640px) {
+  .shell {
+    padding: 0 16px 56px;
+  }
+
+  .topbar {
+    min-height: 58px;
+  }
+
+  .header {
+    padding-top: 34px;
+  }
+
+  .metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboardHead {
+    display: grid;
+    min-height: 0;
+    gap: 28px;
+    padding: 26px 22px;
+  }
+
+  .profileOverview {
+    align-items: flex-start;
+  }
+
+  .avatarPreview {
+    width: 76px;
+    height: 76px;
+  }
+
+  .dashboardControls {
+    justify-items: start;
+  }
 }

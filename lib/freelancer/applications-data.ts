@@ -187,6 +187,7 @@ async function insertProfileWithUniqueSlug(
   admin: SupabaseClient,
   decision: PublishDecision,
   checkedAt: string,
+  ownerUserId: string | null,
 ): Promise<{ id: string; slug: string }> {
   const base = decision.slug ?? slugFromName(decision.displayName);
 
@@ -194,7 +195,13 @@ async function insertProfileWithUniqueSlug(
     const slug = slugWithAttempt(base, attempt);
     const { data, error } = await admin
       .from("freelancer_profiles")
-      .insert(profileInsertFromDecision(decision, { slug, checkedAt }))
+      .insert(
+        profileInsertFromDecision(decision, {
+          slug,
+          checkedAt,
+          ownerUserId,
+        }),
+      )
       .select("id,slug")
       .single();
 
@@ -232,6 +239,7 @@ export async function publishApplication(input: {
     admin,
     input.decision,
     now,
+    input.application.submitted_by_user_id,
   );
 
   // `published_profile_id is null` is the concurrency guard: if a second

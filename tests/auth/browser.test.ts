@@ -132,6 +132,26 @@ describe("browser authentication journeys", () => {
     });
   });
 
+  it("returns OAuth to the freelancer portal when authentication starts there", async () => {
+    vi.stubGlobal("window", {
+      location: {
+        origin: "https://x-portal.eu",
+        pathname: "/freelancer/apply",
+        search: "",
+      },
+    });
+
+    await startOauthUpgrade("google");
+
+    expect(auth.linkIdentity).toHaveBeenCalledWith({
+      provider: "google",
+      options: {
+        redirectTo:
+          "https://x-portal.eu/auth/callback?next=%2Ffreelancer%2Fapply",
+      },
+    });
+  });
+
   it("keeps the Microsoft integration ready with the required email scope", async () => {
     await startOauthUpgrade("microsoft");
 
@@ -155,6 +175,27 @@ describe("browser authentication journeys", () => {
         emailRedirectTo: "https://x-portal.eu/auth/complete?next=%2Fchat&state=email-state",
       },
     });
+  });
+
+  it("returns a confirmed email account to the freelancer portal", async () => {
+    vi.stubGlobal("window", {
+      location: {
+        origin: "https://x-portal.eu",
+        pathname: "/freelancer/apply",
+        search: "",
+      },
+    });
+
+    await registerEmailAccount("freelancer@example.com", "secure-password");
+
+    expect(auth.signUp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: {
+          emailRedirectTo:
+            "https://x-portal.eu/auth/complete?next=%2Ffreelancer%2Fapply&state=email-state",
+        },
+      }),
+    );
   });
 
   it("claims the guest workspace immediately when email confirmation is disabled", async () => {

@@ -400,6 +400,7 @@ export const PublishDecisionSchema = z
 export type PublishDecision = z.infer<typeof PublishDecisionSchema>;
 
 export type ProfileInsert = {
+  owner_user_id: string | null;
   slug: string;
   display_name: string;
   role_title: string;
@@ -434,7 +435,7 @@ export type ProfileInsert = {
  */
 export function profileInsertFromDecision(
   decision: PublishDecision,
-  context: { slug: string; checkedAt: string },
+  context: { slug: string; checkedAt: string; ownerUserId?: string | null },
 ): ProfileInsert {
   const hourly = toMinor(decision.hourlyRate);
   const day = toMinor(decision.dayRate);
@@ -442,6 +443,7 @@ export function profileInsertFromDecision(
   const facts = candidateFacts(decision);
 
   return {
+    owner_user_id: context.ownerUserId ?? null,
     slug: context.slug,
     display_name: decision.displayName,
     role_title: decision.roleTitle,

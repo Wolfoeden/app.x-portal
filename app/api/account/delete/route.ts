@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireCurrentUser } from "@/lib/auth/current-user";
+import { deleteOwnedFreelancerProfile } from "@/lib/freelancer/profile-data";
 import { assertSameOrigin } from "@/lib/security/request";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -12,6 +13,9 @@ export async function DELETE(request: Request) {
       throw new Response("Serverkonfiguration unvollständig.", { status: 503 });
     }
     const admin = createAdminSupabaseClient();
+    // A freelancer profile is public professional data and must not become an
+    // ownerless catalogue row when the associated auth account disappears.
+    await deleteOwnedFreelancerProfile(user.id);
     const { error: preparationError } = await admin.rpc(
       "prepare_user_deletion",
       { p_user_id: user.id },

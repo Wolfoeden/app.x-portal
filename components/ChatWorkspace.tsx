@@ -721,6 +721,9 @@ function normalizeProfile(value: unknown): FreelancerProfileResult | null {
   return {
     id,
     demoStatus,
+    avatarUrl: secureBookingUrl(
+      profileSource.avatarUrl ?? profileSource.avatar_url,
+    ),
     bookingUrl,
     cvAccess: normalizeCvAccess(
       profileSource.cvAccess ?? profileSource.cv_access,

@@ -8,7 +8,7 @@
  * actually reads a recommendation from, and it had no boundary of its own.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { appPath } from "@/lib/app-path";
 import { MINIMUM_CORE_COVERAGE_BASIS_POINTS } from "@/lib/domain/matching";
@@ -66,6 +66,61 @@ import {
   isRecord,
   nullableString,
 } from "./shared";
+
+const observedProfileCards = new Set<string>();
+
+function avatarStyle(avatarUrl?: string | null) {
+  return avatarUrl
+    ? { backgroundImage: `url(${JSON.stringify(avatarUrl)})` }
+    : undefined;
+}
+
+function useProfileImpression(
+  profile: FreelancerProfileResult,
+  projectId: string | null,
+) {
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const element = ref.current;
+    if (!element || profile.demoStatus !== "real") return;
+    const observationKey = `${projectId ?? "saved"}:${profile.id}`;
+    if (observedProfileCards.has(observationKey)) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting && entry.intersectionRatio >= 0.5)) {
+          if (timer) return;
+          timer = setTimeout(() => {
+            observedProfileCards.add(observationKey);
+            observer.disconnect();
+            void fetch(appPath("/api/freelancer-events"), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "same-origin",
+              keepalive: true,
+              body: JSON.stringify({
+                eventKey: crypto.randomUUID(),
+                profileId: profile.id,
+                eventType: "profile_view",
+                source: "profile_card",
+              }),
+            }).catch(() => undefined);
+          }, 1_000);
+        } else if (timer) {
+          clearTimeout(timer);
+          timer = null;
+        }
+      },
+      { threshold: [0.5] },
+    );
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+      if (timer) clearTimeout(timer);
+    };
+  }, [profile.demoStatus, profile.id, projectId]);
+  return ref;
+}
 
 export function externalSearchCtaState(
   authenticated: boolean,
@@ -727,6 +782,7 @@ export function ProfileCard({
   const cvAction = cvActionState(profile, isAccountUser);
   const [cvDownloadState, setCvDownloadState] = useState<"idle" | "loading" | "error">("idle");
   const [cvDownloadError, setCvDownloadError] = useState<string | null>(null);
+  const cardRef = useProfileImpression(profile, projectId);
 
   const downloadCv = async () => {
     if (cvAction.disabled || !projectId || cvDownloadState === "loading") return;
@@ -746,12 +802,12 @@ export function ProfileCard({
     }
   };
   return (
-    <article className={`profile-card ${isPartial ? "is-partial" : ""} ${selected ? "is-selected" : ""}`}>
+    <article ref={cardRef} className={`profile-card ${isPartial ? "is-partial" : ""} ${selected ? "is-selected" : ""}`}>
       <div className="profile-rank" aria-label={`${isPartial ? "Teiltreffer" : "Ergebnis"} ${position}`}>{position.toString().padStart(2, "0")}</div>
       <div className="profile-main">
         <header className="profile-header">
           <div className="profile-identity">
-            <div className="profile-avatar" aria-hidden="true">{initials(profile.displayName)}</div>
+            <div className={`profile-avatar ${profile.avatarUrl ? "has-image" : ""}`} style={avatarStyle(profile.avatarUrl)} aria-hidden="true">{profile.avatarUrl ? null : initials(profile.displayName)}</div>
             <div>
               <h3>{profile.displayName}</h3>
               <p>{profile.role}</p>
@@ -886,7 +942,7 @@ export function ProfileCard({
               {profile.bookingUrl ? (
                 <a
                   className="primary-action"
-                  href={profile.bookingUrl}
+                  href={appPath(`/api/freelancers/${profile.id}/book`)}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={`Meeting mit ${profile.displayName} buchen`}

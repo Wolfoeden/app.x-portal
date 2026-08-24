@@ -54,7 +54,7 @@ export const CV_MIME_TYPES = ["application/pdf"] as const;
 export type CvMimeType = (typeof CV_MIME_TYPES)[number];
 
 /**
- * `freelancer_profiles` allows at most 40 entries per provenance column. The
+ * `freelancer_profiles` allows at most 80 entries per provenance column. The
  * form limits are chosen so a reviewer can promote every claim without hitting
  * that ceiling.
  */
@@ -70,7 +70,7 @@ export const MAX_SKILLS = 25;
 export const MAX_LANGUAGES = 8;
 export const MAX_QUALIFICATIONS = 8;
 export const MAX_INDUSTRIES = 8;
-export const MAX_FACTS_PER_COLUMN = 40;
+export const MAX_FACTS_PER_COLUMN = 80;
 
 export const WORK_MODE_LABELS: Readonly<Record<WorkMode, string>> = {
   remote: "Remote",

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { publicAvatarUrl } from "@/lib/freelancer/avatar-limits";
 import {
   FreelancerProfileSchema,
   type FactSource,
@@ -9,6 +10,7 @@ import {
 
 export type FreelancerProfileRow = {
   id: string;
+  avatar_path?: string | null;
   display_name: string;
   role_title: string;
   skill_tags: string[];
@@ -37,7 +39,7 @@ export type FreelancerProfileRow = {
 };
 
 const FREELANCER_PROFILE_SELECT =
-  "id,display_name,role_title,skill_tags,languages,location_text,work_modes,experience_summary,verified_facts,self_reported_facts,verification_status,hourly_rate_minor,day_rate_minor,currency,profile_status,availability_status,availability_from,availability_updated_at,intro_policy,booking_url,demo_status,version";
+  "id,avatar_path,display_name,role_title,skill_tags,languages,location_text,work_modes,experience_summary,verified_facts,self_reported_facts,verification_status,hourly_rate_minor,day_rate_minor,currency,profile_status,availability_status,availability_from,availability_updated_at,intro_policy,booking_url,demo_status,version";
 
 function normalizeFact(value: string): string {
   return value.normalize("NFKC").trim().toLocaleLowerCase("en-US");
@@ -163,6 +165,7 @@ export function mapFreelancerProfileRow(
     id: row.id,
     dataVersion: `profile-v${row.version}`,
     demoStatus: row.demo_status,
+    avatarUrl: publicAvatarUrl(row.avatar_path ?? null),
     profileStatus: row.profile_status === "active" ? "active" : row.profile_status === "archived" ? "archived" : "paused",
     displayName: row.display_name,
     role: row.role_title,

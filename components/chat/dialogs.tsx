@@ -24,6 +24,7 @@ import {
   signInExistingAccount,
   startOauthUpgrade,
 } from "@/lib/auth/browser";
+import { appPath } from "@/lib/app-path";
 
 import type {
   FreelancerProfileResult,
@@ -379,7 +380,13 @@ export function ContactDialog({ profile, onClose }: { profile: FreelancerProfile
     <Modal titleId="contact-title" onClose={onClose} size="large">
       <div className="contact-dialog">
         <div className="contact-dialog-header">
-          <div className="contact-profile-avatar" aria-hidden="true">{initials(profile.displayName)}</div>
+          <div
+            className={`contact-profile-avatar ${profile.avatarUrl ? "has-image" : ""}`}
+            style={profile.avatarUrl ? { backgroundImage: `url(${JSON.stringify(profile.avatarUrl)})` } : undefined}
+            aria-hidden="true"
+          >
+            {profile.avatarUrl ? null : initials(profile.displayName)}
+          </div>
           <div><span className="dialog-eyebrow">Reales Profil ausgewählt</span><h2 id="contact-title">Termin mit {profile.displayName}</h2><p>{profile.role}</p></div>
         </div>
         <div className="contact-layout">
@@ -394,7 +401,7 @@ export function ContactDialog({ profile, onClose }: { profile: FreelancerProfile
               {profile.bookingUrl ? (
                 <a
                   className="booking-link-action"
-                  href={profile.bookingUrl}
+                  href={appPath(`/api/freelancers/${profile.id}/book`)}
                   target="_blank"
                   rel="noopener noreferrer"
                 >

@@ -203,6 +203,7 @@ export function presentSavedProfile(
   return {
     id: profile.id,
     demoStatus: profile.demoStatus,
+    avatarUrl: profile.avatarUrl,
     bookingUrl,
     displayName: profile.displayName,
     role: profile.role,
@@ -247,6 +248,7 @@ export function presentMatch(match: ShortlistMatch): FreelancerProfileResult {
   return {
     id: profile.id,
     demoStatus: profile.demoStatus,
+    avatarUrl: profile.avatarUrl,
     bookingUrl,
     displayName: profile.displayName,
     role: profile.role,

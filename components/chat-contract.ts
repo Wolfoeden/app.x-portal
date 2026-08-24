@@ -68,6 +68,7 @@ export interface ProfileFact {
 export interface FreelancerProfileResult {
   id: string;
   demoStatus?: "demo" | "real";
+  avatarUrl?: string | null;
   bookingUrl: string | null;
   /**
    * Server-authoritative CV affordance. Optional so historical stored matches

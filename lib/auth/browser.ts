@@ -21,9 +21,11 @@ function siteUrl() {
   );
 }
 
-function oauthDestination() {
+function authDestination() {
   const chatPath = appPath("/chat");
   if (typeof window === "undefined") return chatPath;
+  const freelancerPath = appPath("/freelancer/apply");
+  if (window.location.pathname === freelancerPath) return freelancerPath;
   if (window.location.pathname !== chatPath) return chatPath;
 
   const params = new URLSearchParams(window.location.search);
@@ -93,7 +95,7 @@ export async function startOauthUpgrade(
   const claims = await ensureGuestSession();
   await prepareGuestClaim();
   const provider = supportedOauthProviders[providerName];
-  const destination = oauthDestination();
+  const destination = authDestination();
   const redirectTo = `${siteUrl()}${appPath("/auth/callback")}?next=${encodeURIComponent(destination)}`;
   const options = {
     redirectTo,
@@ -166,7 +168,7 @@ export async function registerEmailAccount(email: string, password: string) {
   const supabase = getBrowserSupabaseClient();
   await ensureGuestSession();
   await prepareGuestClaim();
-  const destination = appPath("/chat");
+  const destination = authDestination();
   const state = await prepareEmailAuthState();
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -205,7 +207,8 @@ export async function requestPasswordRecovery(email: string) {
   const supabase = getBrowserSupabaseClient();
   await ensureGuestSession();
   await prepareGuestClaim();
-  const destination = `${appPath("/chat")}?set-password=1`;
+  const baseDestination = authDestination();
+  const destination = `${baseDestination}${baseDestination.includes("?") ? "&" : "?"}set-password=1`;
   const state = await prepareEmailAuthState();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${siteUrl()}${appPath("/auth/complete")}?next=${encodeURIComponent(destination)}&state=${encodeURIComponent(state)}`,

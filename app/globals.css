@@ -1795,6 +1795,13 @@ dd.is-unknown,
   font-size: var(--fs-sm);
 }
 
+.profile-avatar.has-image,
+.contact-profile-avatar.has-image {
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
 .profile-identity h3 {
   margin: 0;
   font-size: var(--fs-base);
