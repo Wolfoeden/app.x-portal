@@ -10,14 +10,15 @@ export type AdminAccountRow = {
   kind: AdminAccountKind;
   createdAt: string;
   lastSignInAt: string | null;
-  /** Latest of sign-in, project change and message — null when never active. */
+  /** When this account last wrote a message — null when it never did. */
   lastActiveAt: string | null;
   projects: number;
+  /** Messages the person wrote; assistant replies are not counted. */
   messages: number;
 };
 
 export type AdminActivityWindow = {
-  /** Accounts with any activity inside the window. */
+  /** Accounts that wrote at least one message inside the window. */
   active: number;
   registeredActive: number;
   guestActive: number;
@@ -110,16 +111,21 @@ async function readOwnerActivity(
   table: "projects" | "messages",
   timestampColumn: "updated_at" | "created_at",
   since: string,
+  equals: Readonly<Record<string, string>> = {},
 ): Promise<Map<string, { count: number; last: string | null }>> {
   const admin = createAdminSupabaseClient();
   const byOwner = new Map<string, { count: number; last: string | null }>();
   for (let offset = 0; offset < ROW_MAX; offset += ROW_PAGE_SIZE) {
-    const { data, error } = await admin
+    let query = admin
       .from(table)
       .select(`owner_user_id,${timestampColumn}`)
       .gte(timestampColumn, since)
       .order(timestampColumn, { ascending: false })
       .range(offset, offset + ROW_PAGE_SIZE - 1);
+    for (const [column, value] of Object.entries(equals)) {
+      query = query.eq(column, value);
+    }
+    const { data, error } = await query;
     if (error) throw error;
     const rows = (data ?? []) as unknown as {
       owner_user_id: string | null;
@@ -179,10 +185,9 @@ export function buildUserMetrics(input: {
     const kind: AdminAccountKind = account.anonymous ? "guest" : "registered";
     const projectActivity = input.projects.get(account.id);
     const messageActivity = input.messages.get(account.id);
-    const lastActiveAt = laterOf(
-      account.lastSignInAt,
-      laterOf(projectActivity?.last ?? null, messageActivity?.last ?? null),
-    );
+    // Activity means the person wrote something. A sign-in on its own is an
+    // account event, not usage, and a project row can be touched by the system.
+    const lastActiveAt = messageActivity?.last ?? null;
 
     const row: AdminAccountRow = {
       userId: account.id,
@@ -204,7 +209,7 @@ export function buildUserMetrics(input: {
       }
     } else {
       guests += 1;
-      if (row.projects > 0 || row.messages > 0) activeGuests.push(row);
+      if (row.messages > 0) activeGuests.push(row);
     }
 
     if (lastActiveAt) {
@@ -253,7 +258,9 @@ export async function getAdminUserMetrics(): Promise<AdminUserMetrics> {
   const [auth, projects, messages] = await Promise.all([
     readAuthAccounts(),
     readOwnerActivity("projects", "updated_at", since),
-    readOwnerActivity("messages", "created_at", since),
+    // Only what the person typed. Assistant replies would double every count
+    // and would make a user look active for an answer they did not ask for.
+    readOwnerActivity("messages", "created_at", since, { role: "user" }),
   ]);
   return buildUserMetrics({
     accounts: auth.accounts,

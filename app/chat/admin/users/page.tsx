@@ -152,8 +152,8 @@ export default async function AdminUsersPage() {
             <h1>Wer nutzt XPORTAL</h1>
             <p>
               Jedes Konto aus Supabase Auth, aufgeteilt in angemeldete Nutzer und
-              Gastsitzungen. „Aktiv“ heißt: in diesem Zeitraum angemeldet, einen
-              Chat geändert oder eine Nachricht geschrieben.
+              Gastsitzungen. <strong>„Aktiv“ heißt: hat in diesem Zeitraum selbst
+              eine Nachricht geschrieben.</strong> Eine bloße Anmeldung zählt nicht.
             </p>
           </div>
           <Link href="/chat" className={styles.backLink}>
@@ -210,9 +210,10 @@ export default async function AdminUsersPage() {
 
         <h2 className={styles.sectionTitle}>Aktive Nutzer</h2>
         <p className={styles.sectionNote}>
-          Gezählt wird jedes Konto mit echter Aktivität im Zeitraum. Die Aktivität
-          wird über ein Fenster von {metrics.activityWindowDays} Tagen gelesen;
-          alles Ältere zählt als inaktiv.
+          Gezählt wird jedes Konto, das im Zeitraum mindestens eine eigene
+          Nachricht geschrieben hat — Antworten des Assistenten zählen nicht.
+          Gelesen wird ein Fenster von {metrics.activityWindowDays} Tagen; alles
+          Ältere zählt als inaktiv.
         </p>
         <div className={styles.windowGrid}>
           {[
@@ -307,7 +308,7 @@ export default async function AdminUsersPage() {
           Gäste mit Aktivität ({numberFormat.format(metrics.activeGuests.length)})
         </h2>
         <p className={styles.sectionNote}>
-          Gastsitzungen, die tatsächlich einen Chat geführt haben. Genau diese
+          Gastsitzungen, die tatsächlich selbst geschrieben haben. Genau diese
           Nutzer lohnt es zur Anmeldung zu führen — sie sind höchstens 50 Einträge
           lang und nach letzter Aktivität sortiert.
         </p>
@@ -318,9 +319,8 @@ export default async function AdminUsersPage() {
         />
 
         <p className={styles.footNote}>
-          Erhoben am {formatDateTime(metrics.generatedAt)}. Aktivität aus
-          Anmeldungen, Chats und Nachrichten der letzten{" "}
-          {metrics.activityWindowDays} Tage.
+          Erhoben am {formatDateTime(metrics.generatedAt)}. Aktivität aus eigenen
+          Nachrichten der letzten {metrics.activityWindowDays} Tage.
         </p>
       </div>
     </main>
