@@ -32,8 +32,13 @@ export default async function AdminLayout({
               </Link>
             </li>
             <li>
+              <Link className={styles.link} href="/chat/admin/profiles">
+                Freelancer-Leistung
+              </Link>
+            </li>
+            <li>
               <Link className={styles.link} href="/chat/admin/freelancers">
-                Freelancer-Bewerbungen
+                Bewerbungen
               </Link>
             </li>
             <li>
