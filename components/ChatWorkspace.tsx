@@ -1178,6 +1178,7 @@ export function ChatWorkspace({
   // Survives the auth dialog so a guest who clicks "merken" gets the profile
   // saved after logging in rather than having to find it again.
   const [pendingSaveProfileId, setPendingSaveProfileId] = useState<string | null>(null);
+  const [pendingBookingProfileId, setPendingBookingProfileId] = useState<string | null>(null);
   const [manageChat, setManageChat] = useState<ProjectListItem | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Closed on arrival: a first-time visitor should meet two columns, not
@@ -2028,6 +2029,60 @@ export function ChatWorkspace({
     setContactOpen(true);
   };
 
+  /**
+   * Records the introduction so a booking that leaves the product is still
+   * visible in the funnel. Returns the URL the server approved, `null` when the
+   * profile needs manual approval, and `undefined` when nothing could be
+   * recorded — the caller then falls back to the URL it already has.
+   */
+  const recordIntroduction = async (
+    profile: FreelancerProfileResult,
+  ): Promise<string | null | undefined> => {
+    const projectId = activeProject?.id ?? null;
+    // A saved profile outside a project has no match to reference, so the
+    // introduction cannot be recorded. Booking still has to work.
+    if (!projectId) return undefined;
+    try {
+      const response = await fetch(apiPaths.introductions, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          projectId,
+          profileId: profile.id,
+          idempotencyKey: `booking:${projectId}:${profile.id}`,
+        }),
+      });
+      if (!response.ok) return undefined;
+      const body: unknown = await response.json().catch(() => ({}));
+      const introduction =
+        body && typeof body === "object" && "introduction" in body
+          ? (body as { introduction?: { bookingUrl?: unknown } }).introduction
+          : undefined;
+      return typeof introduction?.bookingUrl === "string"
+        ? introduction.bookingUrl
+        : null;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const requestBooking = (profile: FreelancerProfileResult) => {
+    if (!profile.bookingUrl) return;
+    if (!isAccountUser) {
+      // Keep the intent across the login, then finish it in handleAuthenticated.
+      setPendingBookingProfileId(profile.id);
+      sessionStorage.setItem("pending_profile_booking", profile.id);
+      if (activeProject?.id) sessionStorage.setItem("pending_project_id", activeProject.id);
+      setAuthInitialMode("register");
+      setAuthOpen(true);
+      return;
+    }
+    // The link navigates to the redirect route that records the click. This
+    // only files the introduction alongside it and must never block it.
+    void recordIntroduction(profile);
+  };
+
   const handleAuthenticated = async () => {
     const view = await refreshAuth();
     if (view.anonymous) return;
@@ -2074,10 +2129,32 @@ export function ChatWorkspace({
         showToast("Das Profil konnte nicht gespeichert werden.", "error");
       }
     }
+    const profileIdToBook =
+      pendingBookingProfileId ?? sessionStorage.getItem("pending_profile_booking");
+    if (profileIdToBook) {
+      // A popup opened this late is blocked by the browser, so the booking is
+      // handed back through the contact dialog instead of a new tab.
+      const bookedProfile =
+        refreshedProject?.profiles.find((profile) => profile.id === profileIdToBook) ??
+        null;
+      if (bookedProfile) {
+        setSelectedProfileId(bookedProfile.id);
+        setContactOpen(true);
+        const approved = await recordIntroduction(bookedProfile);
+        showToast(
+          approved === null
+            ? "Ihre Kontaktanfrage ist eingegangen und wird persönlich geprüft."
+            : `Weiter mit ${bookedProfile.displayName}: Der Termin lässt sich jetzt buchen.`,
+          "neutral",
+        );
+      }
+    }
     setPendingProfileId(null);
     setPendingSaveProfileId(null);
+    setPendingBookingProfileId(null);
     sessionStorage.removeItem("pending_profile_selection");
     sessionStorage.removeItem("pending_profile_save");
+    sessionStorage.removeItem("pending_profile_booking");
     sessionStorage.removeItem("pending_project_id");
     await Promise.all([loadProjects(), loadProjectCollections(), loadTeam()]);
   };
@@ -2524,6 +2601,7 @@ export function ChatWorkspace({
                     setSelectedProfileId(profile.id);
                     setContactOpen(true);
                   }}
+                  onRequestBooking={requestBooking}
                 />
               )}
             </section>
@@ -2589,6 +2667,7 @@ export function ChatWorkspace({
                       setSelectedProfileId(profile.id);
                       setContactOpen(true);
                     }}
+                    onRequestBooking={requestBooking}
                   />
                 ) : null}
               </div>

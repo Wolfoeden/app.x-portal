@@ -58,6 +58,7 @@ function renderProfile(
     selected: false,
     onSelect: () => undefined,
     onContact: () => undefined,
+    onRequestBooking: () => undefined,
       saved: false,
       onToggleSave: () => undefined,
   }));
@@ -107,6 +108,7 @@ describe("recommended profile CV affordance", () => {
       selected: false,
       onSelect: () => undefined,
       onContact: () => undefined,
+      onRequestBooking: () => undefined,
       saved: false,
       onToggleSave: () => undefined,
     }));

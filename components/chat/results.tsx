@@ -202,6 +202,7 @@ export function ResultSection({
   selectedProfileId,
   onSelect,
   onContact,
+  onRequestBooking,
   savedFreelancerIds,
   onToggleSave,
   onOpenDetails,
@@ -222,6 +223,7 @@ export function ResultSection({
   selectedProfileId: string | null;
   onSelect: (profile: FreelancerProfileResult) => void;
   onContact: (profile: FreelancerProfileResult) => void;
+  onRequestBooking: (profile: FreelancerProfileResult) => void;
   savedFreelancerIds: readonly string[];
   onToggleSave: (profile: FreelancerProfileResult) => void;
   onOpenDetails?: () => void;
@@ -272,6 +274,7 @@ export function ResultSection({
                 selected={selectedProfileId === profile.id}
                 onSelect={() => onSelect(profile)}
                 onContact={() => onContact(profile)}
+                onRequestBooking={() => onRequestBooking(profile)}
                 saved={savedFreelancerIds.includes(profile.id)}
                 onToggleSave={() => onToggleSave(profile)}
               />
@@ -296,6 +299,7 @@ export function ResultSection({
                     selected={false}
                     onSelect={() => undefined}
                     onContact={() => undefined}
+                    onRequestBooking={() => onRequestBooking(profile)}
                     saved={savedFreelancerIds.includes(profile.id)}
                     onToggleSave={() => onToggleSave(profile)}
                   />
@@ -755,6 +759,46 @@ export function navigateToCvDownload(
   navigator.assign(downloadUrl);
 }
 
+export type BookingActionState = {
+  kind: "login_required" | "bookable" | "unavailable";
+  label: string;
+  hint: string;
+  disabled: boolean;
+};
+
+/**
+ * Booking used to be a bare link straight to the freelancer's calendar, so a
+ * guest left the product without the selection ever being recorded. A guest is
+ * now taken through the sign-in first and returns to this exact profile.
+ */
+export function bookingActionState(
+  profile: Pick<FreelancerProfileResult, "bookingUrl">,
+  isAccountUser: boolean,
+): BookingActionState {
+  if (!profile.bookingUrl) {
+    return {
+      kind: "unavailable",
+      label: "Nicht mehr buchbar",
+      hint: "Dieses Profil ist aktuell nicht direkt buchbar.",
+      disabled: true,
+    };
+  }
+  if (!isAccountUser) {
+    return {
+      kind: "login_required",
+      label: "Anmelden & Meeting buchen",
+      hint: "Nach der Anmeldung geht es direkt mit diesem Profil weiter.",
+      disabled: false,
+    };
+  }
+  return {
+    kind: "bookable",
+    label: "Meeting buchen",
+    hint: "Der Booking-Link des Freelancers öffnet sich in einem neuen Tab.",
+    disabled: false,
+  };
+}
+
 export function ProfileCard({
   profile,
   position,
@@ -763,6 +807,7 @@ export function ProfileCard({
   selected,
   onSelect,
   onContact,
+  onRequestBooking,
   saved,
   onToggleSave,
 }: {
@@ -773,6 +818,7 @@ export function ProfileCard({
   selected: boolean;
   onSelect: () => void;
   onContact: () => void;
+  onRequestBooking: () => void;
   saved: boolean;
   onToggleSave: () => void;
 }) {
@@ -780,6 +826,7 @@ export function ProfileCard({
   const selfReportedFacts = profile.facts.filter((fact) => fact.verification === "self-reported");
   const isPartial = profile.recommendationRole === "partial";
   const cvAction = cvActionState(profile, isAccountUser);
+  const bookingAction = bookingActionState(profile, isAccountUser);
   const [cvDownloadState, setCvDownloadState] = useState<"idle" | "loading" | "error">("idle");
   const [cvDownloadError, setCvDownloadError] = useState<string | null>(null);
   const cardRef = useProfileImpression(profile, projectId);
@@ -902,7 +949,7 @@ export function ProfileCard({
         <footer className="profile-footer">
           <div>
             <strong>{isPartial ? "Nicht empfohlen – Kontakt dennoch möglich" : profile.bookingUrl ? "Direktes Erstgespräch" : "Historisches Match"}</strong>
-            <span>{isPartial ? "Die offenen Muss-Kriterien bleiben offen. Sie entscheiden, ob Sie trotzdem Kontakt aufnehmen." : profile.bookingUrl ? "Der Booking-Link des Freelancers öffnet sich in einem neuen Tab." : "Dieses Profil ist aktuell nicht direkt buchbar."}</span>
+            <span>{isPartial ? "Die offenen Muss-Kriterien bleiben offen. Sie entscheiden, ob Sie trotzdem Kontakt aufnehmen." : bookingAction.hint}</span>
           </div>
           <div className="profile-actions">
               <div className="cv-action-group">
@@ -939,18 +986,35 @@ export function ProfileCard({
               <button className="secondary-action" type="button" onClick={selected ? onContact : onSelect}>
                 Kontaktoptionen
               </button>
-              {profile.bookingUrl ? (
+              {bookingAction.kind === "bookable" ? (
+                // The redirect route records the click and then forwards to the
+                // freelancer's calendar. onClick only files the introduction
+                // alongside it and must not prevent the navigation.
                 <a
                   className="primary-action"
                   href={appPath(`/api/freelancers/${profile.id}/book`)}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={onRequestBooking}
                   aria-label={`Meeting mit ${profile.displayName} buchen`}
                 >
-                  Meeting buchen <IconArrowRight size={13} />
+                  {bookingAction.label} <IconArrowRight size={13} />
                 </a>
               ) : (
-                <button className="primary-action" type="button" disabled>Nicht mehr buchbar</button>
+                <button
+                  className="primary-action"
+                  type="button"
+                  disabled={bookingAction.disabled}
+                  onClick={onRequestBooking}
+                  aria-label={
+                    bookingAction.kind === "login_required"
+                      ? `Anmelden und Meeting mit ${profile.displayName} buchen`
+                      : undefined
+                  }
+                >
+                  {bookingAction.label}
+                  {bookingAction.disabled ? null : <IconArrowRight size={13} />}
+                </button>
               )}
           </div>
         </footer>
@@ -1096,11 +1160,13 @@ export function SavedProfileList({
   isAccountUser,
   onToggleSave,
   onContact,
+  onRequestBooking,
 }: {
   team: readonly SavedFreelancer[];
   isAccountUser: boolean;
   onToggleSave: (profile: FreelancerProfileResult) => void;
   onContact: (profile: FreelancerProfileResult) => void;
+  onRequestBooking: (profile: FreelancerProfileResult) => void;
 }) {
   return (
     <div className="profile-list">
@@ -1114,6 +1180,7 @@ export function SavedProfileList({
           selected={false}
           onSelect={() => onContact(entry.profile)}
           onContact={() => onContact(entry.profile)}
+          onRequestBooking={() => onRequestBooking(entry.profile)}
           saved
           onToggleSave={() => onToggleSave(entry.profile)}
         />
