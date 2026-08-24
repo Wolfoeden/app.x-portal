@@ -248,26 +248,26 @@ function useSidebarWidth() {
  */
 const suggestions = [
   {
-    label: "SEO & Google Ads",
-    description: "B2B-Shop · 3 Monate · remote",
+    label: "KI & Automatisierung",
+    description: "LLM · RAG · n8n · AI Agents",
     draftPrefix:
-      "Ich suche einen Freelancer für SEO und Google Ads für unseren B2B-Onlineshop. Etwa zwei Tage pro Woche, zunächst drei Monate, remote. Erfahrung mit GA4 und Conversion-Optimierung ist wichtig.",
+      "Wir wollen wiederkehrende Abläufe mit KI automatisieren: n8n-Workflows bauen und ein LLM an unsere Bestandssysteme anbinden, perspektivisch auch RAG auf unsere eigenen Dokumente. Projektbasis, remote, Start kurzfristig.",
     intro:
       "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Was Sie nicht erwähnen, ergänze ich nicht.",
   },
   {
-    label: "KI-Automatisierung",
-    description: "n8n · LLM-Anbindung · Projektbasis",
+    label: "Requirements & Business Analysis",
+    description: "Requirements Engineering · Business Analysis · IREB",
     draftPrefix:
-      "Wir wollen wiederkehrende Abläufe automatisieren und dabei ein LLM anbinden. Konkret: n8n-Workflows, Anbindung an unsere Bestandssysteme, Projektbasis, remote, Start kurzfristig.",
+      "Für ein IT-Projekt suche ich Unterstützung im Requirements Engineering: Anforderungsaufnahme mit den Fachbereichen, saubere Dokumentation und Abstimmung mit der Entwicklung. Erfahrung in der Business Analysis ist willkommen, eine IREB-Zertifizierung wäre ein Plus. Sechs Monate, remote möglich.",
     intro:
       "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Was Sie nicht erwähnen, ergänze ich nicht.",
   },
   {
-    label: "Requirements Engineering",
-    description: "IT-Rollout · Scrum · 6 Monate",
+    label: "SEO, SEA & Performance",
+    description: "SEO · Google Ads · Meta Ads · GA4",
     draftPrefix:
-      "Für ein IT-Rollout-Projekt suche ich einen Requirements Engineer. Anforderungsaufnahme mit den Fachbereichen, Dokumentation, Scrum-Umfeld. Sechs Monate, remote möglich, Start in den nächsten Wochen.",
+      "Ich suche einen Freelancer für SEO und SEA für unseren B2B-Onlineshop: Google Ads und Meta Ads betreuen, technisches SEO verbessern und das Tracking mit GA4 sauber aufsetzen. Etwa zwei Tage pro Woche, zunächst drei Monate, remote.",
     intro:
       "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Was Sie nicht erwähnen, ergänze ich nicht.",
   },
