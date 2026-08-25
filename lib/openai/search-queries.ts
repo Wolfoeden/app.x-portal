@@ -162,14 +162,14 @@ function isGerman(brief: QueryBrief): boolean {
  * Ort für die Anfrage. Ohne Ortsangabe im Brief wird bei deutschsprachigen
  * Anfragen "Deutschland" ergänzt — sonst dominieren internationale Treffer.
  */
-function regionTerm(brief: QueryBrief): string {
+function regionTerm(brief: QueryBrief, german: boolean): string {
   const location = brief.location?.trim();
   if (location) return quote(location);
-  return isGerman(brief) ? "Deutschland" : "";
+  return german ? "Deutschland" : "";
 }
 
-function freelanceTerm(brief: QueryBrief): string {
-  return isGerman(brief)
+function freelanceTerm(german: boolean): string {
+  return german
     ? "(freelancer OR freiberuflich OR selbstständig)"
     : "(freelancer OR freelance OR contractor)";
 }
@@ -190,11 +190,25 @@ function assemble(parts: readonly string[]): string {
     .join(" ");
 }
 
+export type QueryOptions = {
+  /** Nur diese Vorlagen bauen, in dieser Reihenfolge. */
+  channels?: readonly SearchQuery["template"][];
+  /** Ort weglassen — die zweite Runde sucht bewusst überregional. */
+  dropRegion?: boolean;
+  /** Nur die erste Anforderung verwenden. Zwei Kriterien sind oft eins zu viel. */
+  narrowToPrimarySkill?: boolean;
+  /** Sprache erzwingen, statt sie aus dem Brief abzuleiten. */
+  language?: "de" | "en";
+};
+
 /**
  * Baut bis zu fünf Anfragen. Die Reihenfolge ist die Rangfolge: Berufsprofile
  * zuerst, die breite Suche zuletzt als Auffangnetz.
  */
-export function buildSearchQueries(brief: QueryBrief): SearchQuery[] {
+export function buildSearchQueries(
+  brief: QueryBrief,
+  options: QueryOptions = {},
+): SearchQuery[] {
   const skills = (brief.requiredSkills ?? []).filter((skill) => skill?.trim());
   const fallbackSkills = skills.length
     ? skills
@@ -204,7 +218,10 @@ export function buildSearchQueries(brief: QueryBrief): SearchQuery[] {
     : [brief.projectTitle ?? ""].filter((value) => value.trim());
   if (usable.length === 0) return [];
 
-  const german = isGerman(brief);
+  const german =
+    options.language === undefined
+      ? isGerman(brief)
+      : options.language === "de";
   const role = roleGroup(brief);
   // Ein Begriff aus der geprüften Taxonomie ist ein echter Fachbegriff. Steht
   // dort nichts, ist die extrahierte "Kompetenz" meist Prosa — dann führt die
@@ -214,12 +231,13 @@ export function buildSearchQueries(brief: QueryBrief): SearchQuery[] {
   const skillSecondary = usable[1] ? skillGroup(usable[1]!, german, 2) : "";
 
   const primary = firstIsRealSkill || !role ? skillPrimary : role;
-  const secondary =
-    firstIsRealSkill || !role
+  const secondary = options.narrowToPrimarySkill
+    ? ""
+    : firstIsRealSkill || !role
       ? skillSecondary || role
       : skillPrimary;
-  const region = regionTerm(brief);
-  const freelance = freelanceTerm(brief);
+  const region = options.dropRegion ? "" : regionTerm(brief, german);
+  const freelance = freelanceTerm(german);
 
   const queries: SearchQuery[] = [
     {
@@ -268,5 +286,74 @@ export function buildSearchQueries(brief: QueryBrief): SearchQuery[] {
     query: assemble([primary, secondary, freelance, region]),
   });
 
-  return queries.slice(0, MAX_SEARCH_QUERIES);
+  const wanted = options.channels;
+  const selected = wanted
+    ? wanted
+        .map((channel) => queries.find((entry) => entry.template === channel))
+        .filter((entry): entry is SearchQuery => Boolean(entry))
+    : queries;
+  return selected.slice(0, MAX_SEARCH_QUERIES);
+}
+
+export type SearchRound = {
+  round: 1 | 2;
+  /** Kurzer Text für die Fortschrittsanzeige im Chat. */
+  label: string;
+  queries: SearchQuery[];
+};
+
+/**
+ * Die Strategieleiter — das eigentlich Agentenhafte.
+ *
+ * Runde 1 sucht dort, wo Menschen über sich schreiben. Bringt sie zu wenig,
+ * sucht Runde 2 nicht dasselbe noch einmal, sondern *anders*: nur die
+ * wichtigste Anforderung, ohne Ortsbindung, in der anderen Sprache und über
+ * andere Kanäle. Wer zweimal dieselbe Frage stellt, bekommt zweimal dieselbe
+ * Antwort — und zahlt zweimal.
+ *
+ * Die Leiter steht bewusst hier und nicht im Prompt: so ist sie testbar,
+ * nachvollziehbar und kostet beim Entwickeln nichts.
+ */
+export function planSearchRounds(brief: QueryBrief): SearchRound[] {
+  const german = isGerman(brief);
+  const technical = looksTechnical(brief);
+
+  const firstChannels: SearchQuery["template"][] = german
+    ? ["linkedin", "xing", "own_site"]
+    : technical
+      ? ["linkedin", "code_profile", "own_site"]
+      : ["linkedin", "own_site", "broad"];
+
+  const first = buildSearchQueries(brief, { channels: firstChannels });
+
+  // Runde 2 dreht jeden Regler in die andere Richtung.
+  const second = buildSearchQueries(brief, {
+    channels: german
+      ? ["own_site", "linkedin", "broad"]
+      : ["broad", "own_site", "linkedin"],
+    narrowToPrimarySkill: true,
+    dropRegion: true,
+    language: german ? "en" : "de",
+  });
+
+  const rounds: SearchRound[] = [];
+  if (first.length) {
+    rounds.push({
+      round: 1,
+      label: german
+        ? "Berufsprofile und eigene Seiten"
+        : "Professional profiles and own sites",
+      queries: first,
+    });
+  }
+  if (second.length) {
+    rounds.push({
+      round: 2,
+      label: german
+        ? "Zweiter Anlauf: breiter, ohne Ortsbindung"
+        : "Second attempt: broader, no region",
+      queries: second,
+    });
+  }
+  return rounds;
 }

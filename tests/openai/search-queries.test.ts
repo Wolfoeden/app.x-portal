@@ -4,6 +4,7 @@ import {
   buildSearchQueries,
   JOB_AD_EXCLUSIONS,
   MAX_SEARCH_QUERIES,
+  planSearchRounds,
 } from "@/lib/openai/search-queries";
 
 const german = {
@@ -161,5 +162,81 @@ describe("Sprache und Rolle aus dem Brief", () => {
     expect(first?.query).toContain("Helpdesk");
     expect(first?.query).not.toContain("Senior");
     expect(first?.query).not.toContain("gesucht");
+  });
+});
+
+describe("Strategieleiter", () => {
+  const brief = {
+    projectTitle: "IT-Support (1st/2nd Level) & Helpdesk",
+    requiredSkills: ["Störungsbehebung", "Ticketbearbeitung"],
+    optionalSkills: [],
+    language: null,
+    location: "Hamburg",
+    originalRequest: "Wir brauchen Verstärkung im IT Support für unsere Mitarbeitenden.",
+  };
+
+  it("plant zwei Runden mit je höchstens drei Anfragen", () => {
+    const rounds = planSearchRounds(brief);
+    expect(rounds.map((r) => r.round)).toEqual([1, 2]);
+    for (const round of rounds) {
+      expect(round.queries.length).toBeLessThanOrEqual(3);
+      expect(round.label).toBeTruthy();
+    }
+  });
+
+  it("bleibt im Budget von acht Suchen", () => {
+    const total = planSearchRounds(brief).reduce(
+      (sum, round) => sum + round.queries.length,
+      0,
+    );
+    expect(total).toBeLessThanOrEqual(6);
+  });
+
+  it("sucht in Runde 1 auf Berufsprofilen", () => {
+    const [first] = planSearchRounds(brief);
+    expect(first?.queries.map((q) => q.template)).toEqual([
+      "linkedin",
+      "xing",
+      "own_site",
+    ]);
+  });
+
+  it("stellt in Runde 2 andere Fragen, nicht dieselben", () => {
+    const [first, second] = planSearchRounds(brief);
+    const firstQueries = new Set(first?.queries.map((q) => q.query));
+    for (const entry of second?.queries ?? []) {
+      expect(firstQueries.has(entry.query)).toBe(false);
+    }
+  });
+
+  it("löst in Runde 2 die Ortsbindung und die Zweitanforderung", () => {
+    const [, second] = planSearchRounds(brief);
+    const query = second!.queries[0]!.query;
+    expect(query).not.toContain("Hamburg");
+    expect(query).not.toContain("Ticketbearbeitung");
+  });
+
+  it("wechselt in Runde 2 die Sprache", () => {
+    const [first, second] = planSearchRounds(brief);
+    expect(first!.queries[0]!.query).toContain("freiberuflich");
+    expect(second!.queries[0]!.query).toContain("contractor");
+  });
+
+  it("nimmt bei technischen Anfragen ohne Deutsch GitHub in Runde 1", () => {
+    const rounds = planSearchRounds({
+      ...brief,
+      language: "English",
+      location: "London",
+      originalRequest: "We need a React and TypeScript contractor.",
+      projectTitle: "React relaunch",
+      requiredSkills: ["TypeScript"],
+    });
+    expect(rounds[0]?.queries.map((q) => q.template)).toContain("code_profile");
+  });
+
+  it("liefert keine Runden für einen leeren Brief", () => {
+    expect(
+      planSearchRounds({ projectTitle: "", requiredSkills: [], optionalSkills: [] }),
+    ).toEqual([]);
   });
 });
