@@ -592,6 +592,7 @@ function normalizeExternalCandidate(value: unknown): ExternalFreelancerCandidate
     matchedRequirements: stringList(value.matchedRequirements),
     knownGaps: stringList(value.knownGaps),
     verificationStatus: "external_unverified",
+    nameVerified: value.nameVerified === true,
   };
 }
 

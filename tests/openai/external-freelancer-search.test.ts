@@ -435,3 +435,54 @@ describe("Namensprüfung bei Netzwerkprofilen", () => {
     ).toBe(true);
   });
 });
+
+describe("Name aus der Adresse belegt", () => {
+  it("behält einen Marktplatz-Treffer, kennzeichnet den Namen aber als unbelegt", () => {
+    const profileUrl = "https://www.freelancermap.de/profil/freelance-it-support";
+    const reconciled = reconcileExternalCandidates(
+      {
+        candidates: [
+          candidate({
+            displayName: "Daniel Kahr",
+            profileUrl,
+            bookingUrl: null,
+            sourceUrls: [profileUrl],
+          }),
+        ],
+      },
+      webOutput([profileUrl]),
+    );
+
+    expect(reconciled.candidates).toHaveLength(1);
+    expect(reconciled.candidates[0]?.nameVerified).toBe(false);
+  });
+
+  it("markiert einen Namen als belegt, wenn er in der Adresse steht", () => {
+    const profileUrl = "https://www.xing.com/profile/Anna_Beispiel3";
+    const reconciled = reconcileExternalCandidates(
+      { candidates: [candidate({ profileUrl, bookingUrl: null, sourceUrls: [profileUrl] })] },
+      webOutput([profileUrl]),
+    );
+
+    expect(reconciled.candidates[0]?.nameVerified).toBe(true);
+  });
+
+  it("sortiert belegte Namen vor unbelegten bei gleichem Rang", () => {
+    const unverified = "https://www.xing.com/profile/it-support-spezialist";
+    const verified = "https://www.xing.com/profile/Bob_Schmidt";
+    const reconciled = reconcileExternalCandidates(
+      {
+        candidates: [
+          candidate({ displayName: "Anna Beispiel", profileUrl: unverified, bookingUrl: null, sourceUrls: [unverified] }),
+          candidate({ displayName: "Bob Schmidt", profileUrl: verified, bookingUrl: null, sourceUrls: [verified] }),
+        ],
+      },
+      webOutput([unverified, verified]),
+    );
+
+    expect(reconciled.candidates.map((c) => c.displayName)).toEqual([
+      "Bob Schmidt",
+      "Anna Beispiel",
+    ]);
+  });
+});

@@ -552,6 +552,16 @@ function ExternalSearchResults({ result }: { result: ExternalFreelancerSearchRes
               <div className="external-profile-topline"><span>Extern</span><span>Angaben vor Kontakt prüfen</span></div>
               <h3>{candidate.displayName}</h3>
               <p className="external-role">{candidate.role}</p>
+              {candidate.nameVerified ? null : (
+                <p className="external-fact is-gap">
+                  <strong>Name nicht aus der Adresse belegt</strong>
+                  <span>
+                    Die Profilseite nennt diesen Namen, die Adresse selbst
+                    enthält ihn nicht. Vor einer Kontaktaufnahme auf der
+                    verlinkten Quelle prüfen.
+                  </span>
+                </p>
+              )}
               <p>{candidate.summary}</p>
               {candidate.skills.length ? (
                 <div className="external-fact"><strong>Kenntnisse</strong><p>{candidate.skills.join(" · ")}</p></div>

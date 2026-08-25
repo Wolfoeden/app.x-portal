@@ -243,6 +243,8 @@ export interface ExternalFreelancerCandidate {
   projects: string[];
   sourceUrls: string[];
   verificationStatus: "external_unverified";
+  /** Falsch, wenn der Name nur von der Seite stammt, nicht aus der Adresse. */
+  nameVerified: boolean;
 }
 
 export interface ExternalFreelancerSearchResponse {

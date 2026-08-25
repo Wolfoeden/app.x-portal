@@ -70,6 +70,13 @@ export type ExternalFreelancerCandidate = z.infer<
   typeof ExternalFreelancerCandidateSchema
 > & {
   verificationStatus: "external_unverified";
+  /**
+   * Wahr, wenn der Name in der Profiladresse steht — dann kann er nicht an
+   * eine fremde Seite geheftet worden sein. Falsch bei Marktplätzen, die ihre
+   * Adressen aus der Rollenbezeichnung bilden: der Name stammt dann allein
+   * aus der Seite und wird in der Darstellung entsprechend gekennzeichnet.
+   */
+  nameVerified: boolean;
 };
 
 const ExternalFreelancerSearchInputSchema = z
@@ -462,7 +469,14 @@ export function reconcileExternalCandidates(
   for (const candidate of parsed.data.candidates) {
     const profileUrl = canonicalHttpsUrl(candidate.profileUrl);
     if (!profileUrl || !evidence.urls.has(profileUrl)) continue;
-    if (!urlMatchesCandidateIdentity(profileUrl, candidate.displayName)) continue;
+    // Der Name muss nicht mehr in der Adresse stehen — deutsche Marktplätze
+    // bilden ihre Pfade aus der Rollenbezeichnung, was sonst jeden dort
+    // gefundenen Menschen ausschließt. Ob er belegt ist, wird stattdessen
+    // mitgeführt und angezeigt.
+    const nameVerified = urlMatchesCandidateIdentity(
+      profileUrl,
+      candidate.displayName,
+    );
 
     /**
      * An optional URL is dropped, never guessed. A candidate without a
@@ -520,6 +534,7 @@ export function reconcileExternalCandidates(
       projects: cleanList(candidate.projects, 12),
       sourceUrls,
       verificationStatus: "external_unverified",
+      nameVerified,
     });
     if (candidates.length === MAX_EXTERNAL_FREELANCER_RESULTS) break;
   }
@@ -530,7 +545,10 @@ export function reconcileExternalCandidates(
     .sort(
       (left, right) =>
         candidatePreferenceRank(left.candidate) -
-          candidatePreferenceRank(right.candidate) || left.index - right.index,
+          candidatePreferenceRank(right.candidate) ||
+        Number(right.candidate.nameVerified) -
+          Number(left.candidate.nameVerified) ||
+        left.index - right.index,
     )
     .map((entry) => entry.candidate);
 
