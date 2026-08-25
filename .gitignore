@@ -28,3 +28,4 @@
 # Supabase local runtime
 /supabase/.branches
 /supabase/.temp
+/.claude
