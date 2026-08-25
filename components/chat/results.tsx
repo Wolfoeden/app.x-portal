@@ -548,11 +548,20 @@ function ExternalSearchResults({ result }: { result: ExternalFreelancerSearchRes
       {result.candidates.length ? (
         <div className="external-profile-list">
           {result.candidates.map((candidate) => (
-            <article className="external-profile-card" key={`${candidate.profileUrl}:${candidate.bookingUrl}`}>
-              <div className="external-profile-topline"><span>Extern</span><span>Angaben vor Buchung prüfen</span></div>
+            <article className="external-profile-card" key={candidate.profileUrl}>
+              <div className="external-profile-topline"><span>Extern</span><span>Angaben vor Kontakt prüfen</span></div>
               <h3>{candidate.displayName}</h3>
               <p className="external-role">{candidate.role}</p>
               <p>{candidate.summary}</p>
+              {candidate.skills.length ? (
+                <div className="external-fact"><strong>Kenntnisse</strong><p>{candidate.skills.join(" · ")}</p></div>
+              ) : null}
+              {candidate.activities.length ? (
+                <div className="external-fact"><strong>Tätigkeiten</strong><p>{candidate.activities.join(" · ")}</p></div>
+              ) : null}
+              {candidate.projects.length ? (
+                <div className="external-fact"><strong>Projekte</strong><p>{candidate.projects.join(" · ")}</p></div>
+              ) : null}
               {candidate.matchedRequirements.length ? (
                 <div className="external-fact"><strong>Gefundene Übereinstimmungen</strong><p>{candidate.matchedRequirements.join(" · ")}</p></div>
               ) : null}
@@ -561,7 +570,18 @@ function ExternalSearchResults({ result }: { result: ExternalFreelancerSearchRes
               ) : null}
               <div className="external-links">
                 <a href={candidate.profileUrl} target="_blank" rel="noopener noreferrer">Öffentliches Profil prüfen</a>
-                <a className="external-booking-link" href={candidate.bookingUrl} target="_blank" rel="noopener noreferrer">Buchungslink öffnen <IconArrowUpRight size={12} /></a>
+                {candidate.linkedinUrl ? (
+                  <a href={candidate.linkedinUrl} target="_blank" rel="noopener noreferrer">LinkedIn</a>
+                ) : null}
+                {candidate.websiteUrl ? (
+                  <a href={candidate.websiteUrl} target="_blank" rel="noopener noreferrer">Website</a>
+                ) : null}
+                {candidate.portfolioUrl ? (
+                  <a href={candidate.portfolioUrl} target="_blank" rel="noopener noreferrer">Portfolio</a>
+                ) : null}
+                {candidate.bookingUrl ? (
+                  <a className="external-booking-link" href={candidate.bookingUrl} target="_blank" rel="noopener noreferrer">Buchungslink öffnen <IconArrowUpRight size={12} /></a>
+                ) : null}
               </div>
               {candidate.sourceUrls.length ? (
                 <p className="external-sources">Quellen: {candidate.sourceUrls.map((url, index) => (
@@ -572,7 +592,7 @@ function ExternalSearchResults({ result }: { result: ExternalFreelancerSearchRes
           ))}
         </div>
       ) : (
-        <p className="external-empty">Auch in der Websuche wurde kein Profil mit belegbarem öffentlichen Profil und direktem HTTPS-Buchungslink gefunden.</p>
+        <p className="external-empty">Auch in der Websuche wurde kein Profil gefunden, dessen öffentliche Quellen sich belegen ließen.</p>
       )}
       <details className="external-trace">
         <summary>Suchschritte ansehen</summary>

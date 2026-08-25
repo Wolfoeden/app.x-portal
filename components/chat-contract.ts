@@ -232,7 +232,15 @@ export interface ExternalFreelancerCandidate {
   matchedRequirements: string[];
   knownGaps: string[];
   profileUrl: string;
-  bookingUrl: string;
+  /** Null when the person publishes no calendar — der Normalfall. */
+  bookingUrl: string | null;
+  linkedinUrl: string | null;
+  websiteUrl: string | null;
+  portfolioUrl: string | null;
+  /** Aus den Quellen übernommen, nicht wie eine URL gegengeprüft. */
+  skills: string[];
+  activities: string[];
+  projects: string[];
   sourceUrls: string[];
   verificationStatus: "external_unverified";
 }

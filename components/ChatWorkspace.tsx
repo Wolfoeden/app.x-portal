@@ -571,8 +571,8 @@ function normalizeExternalCandidate(value: unknown): ExternalFreelancerCandidate
   const role = nullableString(value.role);
   const summary = nullableString(value.summary);
   const profileUrl = secureBookingUrl(value.profileUrl);
-  const bookingUrl = secureBookingUrl(value.bookingUrl);
-  if (!displayName || !role || !summary || !profileUrl || !bookingUrl) return null;
+  // Ein fehlender Kalender ist kein Grund, den Treffer zu verwerfen.
+  if (!displayName || !role || !summary || !profileUrl) return null;
   const sourceUrls = stringList(value.sourceUrls)
     .map(secureBookingUrl)
     .filter((url): url is string => Boolean(url));
@@ -581,7 +581,13 @@ function normalizeExternalCandidate(value: unknown): ExternalFreelancerCandidate
     role,
     summary,
     profileUrl,
-    bookingUrl,
+    bookingUrl: secureBookingUrl(value.bookingUrl),
+    linkedinUrl: secureBookingUrl(value.linkedinUrl),
+    websiteUrl: secureBookingUrl(value.websiteUrl),
+    portfolioUrl: secureBookingUrl(value.portfolioUrl),
+    skills: stringList(value.skills),
+    activities: stringList(value.activities),
+    projects: stringList(value.projects),
     sourceUrls,
     matchedRequirements: stringList(value.matchedRequirements),
     knownGaps: stringList(value.knownGaps),

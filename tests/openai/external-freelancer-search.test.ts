@@ -42,6 +42,12 @@ function candidate(overrides: Record<string, unknown> = {}) {
     knownGaps: ["Verfügbarkeit nicht bestätigt"],
     profileUrl: "https://portfolio.example/anna-beispiel",
     bookingUrl: "https://calendly.com/annabeispiel/30min",
+    linkedinUrl: null,
+    websiteUrl: null,
+    portfolioUrl: null,
+    skills: [],
+    activities: [],
+    projects: [],
     sourceUrls: [
       "https://portfolio.example/anna-beispiel",
       "https://calendly.com/annabeispiel/30min",
@@ -96,19 +102,29 @@ describe("external freelancer web search", () => {
     expect((body as typeof body & { max_tool_calls?: number }).max_tool_calls).toBe(3);
   });
 
-  it("rejects invented URLs that are not present in provider evidence", () => {
+  it("drops an invented booking URL but keeps the evidenced candidate", () => {
     const reconciled = reconcileExternalCandidates(
       { candidates: [candidate()] },
       webOutput(["https://portfolio.example/anna-beispiel"]),
     );
 
-    expect(reconciled.candidates).toEqual([]);
     expect(reconciled.evidence.urls).not.toContain(
       "https://calendly.com/annabeispiel/30min",
     );
+    expect(reconciled.candidates).toHaveLength(1);
+    expect(reconciled.candidates[0]?.bookingUrl).toBeNull();
   });
 
-  it("rejects a contact page even when the model calls it a booking link", () => {
+  it("rejects the whole candidate when the profile URL itself is invented", () => {
+    const reconciled = reconcileExternalCandidates(
+      { candidates: [candidate()] },
+      webOutput(["https://calendly.com/annabeispiel/30min"]),
+    );
+
+    expect(reconciled.candidates).toEqual([]);
+  });
+
+  it("drops a contact page that the model called a booking link", () => {
     const contact = "https://portfolio.example/anna-beispiel/contact";
     const reconciled = reconcileExternalCandidates(
       {
@@ -123,10 +139,11 @@ describe("external freelancer web search", () => {
     );
 
     expect(isDirectBookingUrl(contact)).toBe(false);
-    expect(reconciled.candidates).toEqual([]);
+    expect(reconciled.candidates).toHaveLength(1);
+    expect(reconciled.candidates[0]?.bookingUrl).toBeNull();
   });
 
-  it("rejects a globally evidenced booking URL belonging to another person", () => {
+  it("drops a booking URL that belongs to another person", () => {
     const annaProfile = "https://portfolio.example/anna-beispiel";
     const bobBooking = "https://calendly.com/bob-smith/30min";
     const reconciled = reconcileExternalCandidates(
@@ -143,7 +160,62 @@ describe("external freelancer web search", () => {
     );
 
     expect(reconciled.evidence.urls).toContain(bobBooking);
-    expect(reconciled.candidates).toEqual([]);
+    expect(reconciled.candidates).toHaveLength(1);
+    expect(reconciled.candidates[0]?.bookingUrl).toBeNull();
+  });
+
+  it("keeps only the researched links the search actually opened", () => {
+    const profileUrl = "https://portfolio.example/anna-beispiel";
+    const linkedin = "https://www.linkedin.com/in/anna-beispiel";
+    const website = "https://anna-codes.example";
+    const reconciled = reconcileExternalCandidates(
+      {
+        candidates: [
+          candidate({
+            profileUrl,
+            bookingUrl: null,
+            linkedinUrl: linkedin,
+            websiteUrl: website,
+            portfolioUrl: "https://erfunden.example/nie-geoeffnet",
+            skills: ["React", "React", " PostgreSQL "],
+            activities: ["Frontend-Architektur"],
+            projects: ["Relaunch eines Shops"],
+            sourceUrls: [profileUrl, linkedin, website],
+          }),
+        ],
+      },
+      webOutput([profileUrl, linkedin, website]),
+    );
+
+    const found = reconciled.candidates[0];
+    expect(found?.linkedinUrl).toBe(linkedin);
+    // Die Kanonisierung behält den Schrägstrich am Wurzelpfad.
+    expect(found?.websiteUrl).toBe(`${website}/`);
+    expect(found?.portfolioUrl).toBeNull();
+    // Doppelte und ungetrimmte Einträge werden normalisiert, nicht übernommen.
+    expect(found?.skills).toEqual(["React", "PostgreSQL"]);
+    expect(found?.activities).toEqual(["Frontend-Architektur"]);
+    expect(found?.projects).toEqual(["Relaunch eines Shops"]);
+  });
+
+  it("drops a LinkedIn URL that carries someone else's name", () => {
+    const profileUrl = "https://portfolio.example/anna-beispiel";
+    const foreign = "https://www.linkedin.com/in/bob-smith";
+    const reconciled = reconcileExternalCandidates(
+      {
+        candidates: [
+          candidate({
+            profileUrl,
+            bookingUrl: null,
+            linkedinUrl: foreign,
+            sourceUrls: [profileUrl, foreign],
+          }),
+        ],
+      },
+      webOutput([profileUrl, foreign]),
+    );
+
+    expect(reconciled.candidates[0]?.linkedinUrl).toBeNull();
   });
 
   it("accepts hyphenated and compact forms of the candidate's full name", () => {
