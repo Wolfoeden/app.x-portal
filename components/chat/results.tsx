@@ -203,6 +203,8 @@ export function ResultSection({
   onSelect,
   onContact,
   onRequestBooking,
+  expandedProfileUrl,
+  onToggleExpand,
   savedFreelancerIds,
   onToggleSave,
   onOpenDetails,
@@ -224,6 +226,8 @@ export function ResultSection({
   onSelect: (profile: FreelancerProfileResult) => void;
   onContact: (profile: FreelancerProfileResult) => void;
   onRequestBooking: (profile: FreelancerProfileResult) => void;
+  expandedProfileUrl: string | null;
+  onToggleExpand: (profileUrl: string | null) => void;
   savedFreelancerIds: readonly string[];
   onToggleSave: (profile: FreelancerProfileResult) => void;
   onOpenDetails?: () => void;
@@ -370,7 +374,13 @@ export function ResultSection({
               ) : null}
             </div>
           </div>
-          {externalSearch ? <ExternalSearchResults result={externalSearch} /> : null}
+          {externalSearch ? (
+            <ExternalSearchResults
+              result={externalSearch}
+              expandedProfileUrl={expandedProfileUrl}
+              onToggleExpand={onToggleExpand}
+            />
+          ) : null}
         </>
       )}
     </section>
@@ -537,7 +547,18 @@ function AnalysisTrace({
   );
 }
 
-function ExternalSearchResults({ result }: { result: ExternalFreelancerSearchResponse }) {
+/** Eingeklappt zeigt die Karte nur, was zum Wiedererkennen nötig ist. */
+export const COLLAPSED_SKILL_COUNT = 5;
+
+function ExternalSearchResults({
+  result,
+  expandedProfileUrl,
+  onToggleExpand,
+}: {
+  result: ExternalFreelancerSearchResponse;
+  expandedProfileUrl: string | null;
+  onToggleExpand: (profileUrl: string | null) => void;
+}) {
   return (
     <section className="external-results" aria-label="Externe, nicht verifizierte Suchergebnisse">
       <div className="external-results-heading">
@@ -547,11 +568,56 @@ function ExternalSearchResults({ result }: { result: ExternalFreelancerSearchRes
       <p className="external-disclosure">{result.disclosure}</p>
       {result.candidates.length ? (
         <div className="external-profile-list">
-          {result.candidates.map((candidate) => (
-            <article className="external-profile-card" key={candidate.profileUrl}>
-              <div className="external-profile-topline"><span>Extern</span><span>Angaben vor Kontakt prüfen</span></div>
+          {result.candidates.map((candidate) => {
+            const expanded = expandedProfileUrl === candidate.profileUrl;
+            const collapsedSkills = candidate.skills.slice(0, COLLAPSED_SKILL_COUNT);
+            const hiddenSkillCount = Math.max(
+              candidate.skills.length - COLLAPSED_SKILL_COUNT,
+              0,
+            );
+            return (
+            <article
+              className={`external-profile-card${expanded ? " is-expanded" : ""}`}
+              key={candidate.profileUrl}
+            >
+              <div className="external-profile-topline">
+                <span>Extern</span>
+                <button
+                  type="button"
+                  className="external-expand-toggle"
+                  aria-expanded={expanded}
+                  onClick={() => onToggleExpand(expanded ? null : candidate.profileUrl)}
+                >
+                  {expanded ? "Einklappen" : "Alle Angaben"}
+                  <IconChevronDown size={12} />
+                </button>
+              </div>
               <h3>{candidate.displayName}</h3>
               <p className="external-role">{candidate.role}</p>
+
+              {expanded ? null : (
+                <>
+                  {collapsedSkills.length ? (
+                    <ul className="external-skill-chips">
+                      {collapsedSkills.map((skill) => (
+                        <li key={skill}>{skill}</li>
+                      ))}
+                      {hiddenSkillCount ? (
+                        <li className="is-more">+{hiddenSkillCount}</li>
+                      ) : null}
+                    </ul>
+                  ) : null}
+                  <div className="external-links is-compact">
+                    <a href={candidate.profileUrl} target="_blank" rel="noopener noreferrer">
+                      Profil öffnen
+                    </a>
+                  </div>
+                </>
+              )}
+
+              {expanded ? (
+                <>
+                <p className="external-verify-note">Angaben vor Kontakt prüfen</p>
               {candidate.nameVerified ? null : (
                 <p className="external-fact is-gap">
                   <strong>Name nicht aus der Adresse belegt</strong>
@@ -598,8 +664,11 @@ function ExternalSearchResults({ result }: { result: ExternalFreelancerSearchRes
                   <span key={url}>{index ? " · " : ""}<a href={url} target="_blank" rel="noopener noreferrer">{new URL(url).hostname}</a></span>
                 ))}</p>
               ) : null}
+                </>
+              ) : null}
             </article>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <p className="external-empty">Auch in der Websuche wurde kein Profil gefunden, dessen öffentliche Quellen sich belegen ließen.</p>

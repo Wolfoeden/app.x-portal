@@ -1186,6 +1186,8 @@ export function ChatWorkspace({
   // saved after logging in rather than having to find it again.
   const [pendingSaveProfileId, setPendingSaveProfileId] = useState<string | null>(null);
   const [pendingBookingProfileId, setPendingBookingProfileId] = useState<string | null>(null);
+  /** Welches externe Profil ausgeklappt ist — höchstens eines. */
+  const [expandedExternalUrl, setExpandedExternalUrl] = useState<string | null>(null);
   const [manageChat, setManageChat] = useState<ProjectListItem | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Closed on arrival: a first-time visitor should meet two columns, not
@@ -2675,6 +2677,14 @@ export function ChatWorkspace({
                       setContactOpen(true);
                     }}
                     onRequestBooking={requestBooking}
+                    expandedProfileUrl={expandedExternalUrl}
+                    onToggleExpand={(profileUrl) => {
+                      // Ein ausgeklapptes Profil braucht die volle Breite, also
+                      // weicht die Detailleiste. Beim Einklappen bleibt sie zu:
+                      // sie wieder aufzureißen würde den Chat verspringen lassen.
+                      if (profileUrl) setDetailsOpen(false);
+                      setExpandedExternalUrl(profileUrl);
+                    }}
                   />
                 ) : null}
               </div>
