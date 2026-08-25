@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { executeTrackedAiRequest } from "@/lib/ai/gateway";
+import { actualSearchCost } from "@/lib/ai/search-cost";
 import {
   EXTERNAL_FREELANCER_SEARCH_CREDITS,
   PRODUCT_CREDIT_EURO_PER_UNIT,
@@ -460,6 +461,13 @@ export async function POST(request: Request) {
             ? "Die externe KI-Suche konnte nicht ausgeführt werden oder lieferte keine ausreichend belegten Treffer."
             : undefined,
         searchTrace: tracked.value.searchTrace,
+        // Was der Lauf den Betreiber gekostet hat — nicht, was berechnet wird.
+        costCents: actualSearchCost({
+          toolCalls: tracked.value.searchTrace.toolCallCount,
+          inputTokens: tracked.value.provider?.inputTokens,
+          cachedInputTokens: tracked.value.provider?.cachedInputTokens,
+          outputTokens: tracked.value.provider?.outputTokens,
+        }).cents,
         quota: {
           retryAfterSeconds: tracked.quota.retryAfterSeconds,
         },

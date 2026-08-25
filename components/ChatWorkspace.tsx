@@ -620,7 +620,11 @@ function normalizeExternalSearchResponse(value: unknown): ExternalFreelancerSear
       queries: stringList(trace.queries),
       consultedSourceCount: nonNegativeNumber(trace.consultedSourceCount) ?? 0,
       returnedCandidateCount: nonNegativeNumber(trace.returnedCandidateCount) ?? candidates.length,
+      toolCallCount: nonNegativeNumber(trace.toolCallCount) ?? 0,
     },
+    ...(typeof response.costCents === "number" && response.costCents >= 0
+      ? { costCents: response.costCents }
+      : {}),
     ...(usage ? { usage } : {}),
   };
 }

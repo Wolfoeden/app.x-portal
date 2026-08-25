@@ -257,7 +257,10 @@ export interface ExternalFreelancerSearchResponse {
     queries: string[];
     consultedSourceCount: number;
     returnedCandidateCount: number;
+    toolCallCount: number;
   };
+  /** Gemessene Anbieterkosten dieses Laufs in Cent. */
+  costCents?: number;
   usage?: AiUsageUpdate;
 }
 

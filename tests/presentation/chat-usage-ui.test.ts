@@ -105,11 +105,13 @@ describe("chat usage presentation contract", () => {
       label: "30 Credits erforderlich · 29 verfügbar",
       disabled: true,
     });
-    expect(externalSearchCtaState(true, productCredits)).toEqual({
-      kind: "ready",
-      label: "Internetsuche starten – 30 Credits / 0,50 €",
-      disabled: false,
-    });
+    // Kein Festpreis mehr: die Beschriftung nennt die geschätzten Suchkosten
+    // und muss als Schätzung erkennbar bleiben.
+    const ready = externalSearchCtaState(true, productCredits);
+    expect(ready.kind).toBe("ready");
+    expect(ready.disabled).toBe(false);
+    expect(ready.label).toMatch(/^Internetsuche starten – ca\. \d+,\d ct geschätzt$/u);
+    expect(ready.label).not.toContain("0,50");
   });
 
   it("maps provider progress to public milestones instead of exposing arbitrary details", () => {

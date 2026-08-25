@@ -10,6 +10,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { estimateSearchCost, formatCostEstimate } from "@/lib/ai/search-cost";
 import { appPath } from "@/lib/app-path";
 import { MINIMUM_CORE_COVERAGE_BASIS_POINTS } from "@/lib/domain/matching";
 
@@ -149,7 +150,9 @@ export function externalSearchCtaState(
   }
   return {
     kind: "ready",
-    label: "Internetsuche starten – 30 Credits / 0,50 €",
+    // Kein Festpreis mehr: die Zahl ist eine Schätzung der tatsächlichen
+    // Anbieterkosten und schwankt mit der Zahl der Suchen.
+    label: `Internetsuche starten – ${formatCostEstimate(estimateSearchCost())} geschätzt`,
     disabled: false,
   };
 }
@@ -348,7 +351,11 @@ export function ResultSection({
                   </button>
                   {searchCta.kind === "ready" && externalSearchState !== "searching" ? (
                     <p className="external-search-cost-note">
-                      Mit Ihrem Klick bestätigen Sie die einmalige Belastung von 30 Produkt-Credits (0,50 €).
+                      Mit Ihrem Klick bestätigen Sie die einmalige Belastung von
+                      30 Produkt-Credits. Der angezeigte Betrag ist eine Schätzung
+                      der tatsächlichen Suchkosten und hängt davon ab, wie oft
+                      gesucht werden muss — nach dem Lauf steht der genaue Betrag
+                      unter &bdquo;Suchschritte ansehen&ldquo;.
                     </p>
                   ) : null}
                   {searchCta.kind === "insufficient" ? (
@@ -676,6 +683,14 @@ function ExternalSearchResults({
       <details className="external-trace">
         <summary>Suchschritte ansehen</summary>
         <p>{result.searchTrace.consultedSourceCount} öffentlich zugängliche Quellen wurden berücksichtigt; {result.searchTrace.returnedCandidateCount} Ergebnis(se) erfüllten die Ausgaberegeln.</p>
+        {result.searchTrace.toolCallCount ? (
+          <p>
+            {result.searchTrace.toolCallCount} Suchanfrage(n) ausgeführt
+            {typeof result.costCents === "number"
+              ? ` · tatsächliche Kosten ${result.costCents.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ct`
+              : ""}
+          </p>
+        ) : null}
         {result.searchTrace.queries.length ? <ul>{result.searchTrace.queries.map((query) => <li key={query}>{query}</li>)}</ul> : null}
       </details>
     </section>

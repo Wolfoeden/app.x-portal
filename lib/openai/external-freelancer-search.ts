@@ -128,6 +128,8 @@ export type ExternalFreelancerSearchResult = {
     queries: string[];
     consultedSourceCount: number;
     returnedCandidateCount: number;
+    /** Tatsächliche Werkzeugaufrufe — der eigentliche Kostentreiber. */
+    toolCallCount: number;
   };
 };
 
@@ -401,17 +403,21 @@ export function urlMatchesCandidateIdentity(
 type SearchEvidence = {
   urls: Set<string>;
   queries: string[];
+  /** Zahl der tatsächlichen Werkzeugaufrufe — jeder kostet einen Cent. */
+  toolCalls: number;
 };
 
 export function extractSearchEvidence(output: unknown): SearchEvidence {
   const urls = new Set<string>();
   const queries = new Set<string>();
-  if (!Array.isArray(output)) return { urls, queries: [] };
+  let toolCalls = 0;
+  if (!Array.isArray(output)) return { urls, queries: [], toolCalls };
 
   for (const item of output) {
     if (!item || typeof item !== "object") continue;
     const record = item as Record<string, unknown>;
     if (record.type === "web_search_call") {
+      toolCalls += 1;
       const action = record.action;
       if (action && typeof action === "object") {
         const actionRecord = action as Record<string, unknown>;
@@ -454,7 +460,7 @@ export function extractSearchEvidence(output: unknown): SearchEvidence {
     }
   }
 
-  return { urls, queries: [...queries].slice(0, 20) };
+  return { urls, queries: [...queries].slice(0, 20), toolCalls };
 }
 
 export function reconcileExternalCandidates(
@@ -683,6 +689,7 @@ function unavailable(
       queries: [],
       consultedSourceCount: 0,
       returnedCandidateCount: 0,
+      toolCallCount: 0,
     },
   };
 }
@@ -753,6 +760,7 @@ export async function searchExternalFreelancers(
         queries: reconciled.evidence.queries,
         consultedSourceCount: reconciled.evidence.urls.size,
         returnedCandidateCount: reconciled.candidates.length,
+        toolCallCount: reconciled.evidence.toolCalls,
       },
     };
   } catch (error) {
