@@ -446,7 +446,12 @@ export async function POST(request: Request) {
       metadata: {
         candidateCount: responseCandidates.length,
         consultedSourceCount: tracked.value.searchTrace.consultedSourceCount,
+        toolCallCount: tracked.value.searchTrace.toolCallCount,
         providerAttempted: tracked.value.providerAttempted,
+        // Ohne diese Zeile meldet ein Anbieterfehler nur "keine Treffer" —
+        // genau das hat die Funktion monatelang unbemerkt lahmgelegt.
+        fallbackReason: tracked.value.fallbackReason ?? "none",
+        fallbackDetail: tracked.value.fallbackDetail ?? "none",
       },
     });
 

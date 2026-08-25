@@ -5,7 +5,7 @@ import type { ResponseCreateParamsNonStreaming } from "openai/resources/response
 import { z } from "zod";
 
 import { ProjectBriefSchema, type ProjectBrief } from "@/lib/domain";
-import { buildSearchQueries } from "@/lib/openai/search-queries";
+import { buildSearchQueries, planSearchRounds } from "@/lib/openai/search-queries";
 import { createOpenAiClient } from "@/lib/openai/provider";
 
 export const DEFAULT_OPENAI_WEB_SEARCH_MODEL = "gpt-5.4-nano-2026-03-17";
@@ -109,11 +109,33 @@ export type ExternalSearchFallbackReason =
   | "provider_error"
   | "invalid_output";
 
+/**
+ * Kurzfassung des Anbieterfehlers, ohne Schlüssel oder Nutzerdaten.
+ *
+ * Ein verschluckter Fehler hat diese Funktion monatelang stillschweigend
+ * unbrauchbar gemacht: die Route meldete "keine Treffer", während OpenAI in
+ * Wahrheit jedes Mal mit HTTP 400 antwortete. Was hier steht, landet im
+ * Audit-Eintrag und macht den nächsten Fehlschlag in Minuten erklärbar.
+ */
+export function describeProviderFailure(error: unknown): string {
+  if (!(error instanceof Error)) return "unknown_error";
+  const status = (error as { status?: unknown }).status;
+  const code = (error as { error?: { code?: unknown } }).error?.code;
+  const parts = [
+    typeof status === "number" ? `http_${status}` : null,
+    typeof code === "string" ? code : null,
+    error.message.slice(0, 200),
+  ].filter(Boolean);
+  return parts.join(" | ") || "unknown_error";
+}
+
 export type ExternalFreelancerSearchResult = {
   candidates: ExternalFreelancerCandidate[];
   mode: "openai" | "unavailable";
   providerAttempted: boolean;
   fallbackReason?: ExternalSearchFallbackReason;
+  /** Klartext des Anbieterfehlers, ohne Geheimnisse. */
+  fallbackDetail?: string;
   provider?: {
     requestedModel: string;
     model: string;
@@ -569,8 +591,9 @@ function providerRequest(
   brief: ProjectBrief,
   model: string,
   safetyIdentifier: string,
+  plannedQueries?: readonly { query: string }[],
 ): ResponseCreateParamsNonStreaming {
-  const queries = buildSearchQueries(brief);
+  const queries = plannedQueries ?? buildSearchQueries(brief);
   // Die Anfragen stehen im Auftrag, nicht in den Anweisungen: Anweisungen
   // gelten für jeden Lauf gleich, diese Anfragen gelten für diesen Brief.
   const searchPlan = queries.length
@@ -719,10 +742,29 @@ export async function searchExternalFreelancers(
     ? options.model.trim()
     : DEFAULT_OPENAI_WEB_SEARCH_MODEL;
   const timeoutMs = configuredTimeout(options.timeoutMs);
+  const rounds = planSearchRounds(input.brief);
   let providerAttempted = false;
   let provider: ExternalFreelancerSearchResult["provider"];
+
+  /** Ein belastbarer Treffer: eigener Auftritt oder Netzwerkprofil, Name belegt. */
+  const isSolid = (candidate: ExternalFreelancerCandidate) =>
+    candidate.nameVerified && candidatePreferenceRank(candidate) <= 1;
+
+  const merged: ExternalFreelancerCandidate[] = [];
+  const seenProfiles = new Set<string>();
+  const allQueries: string[] = [];
+  let consultedSources = 0;
+  let toolCallCount = 0;
+  let sawAnyResponse = false;
+
   try {
-    const request = providerRequest(input.brief, model, input.safetyIdentifier);
+    for (const round of rounds.length ? rounds : [null]) {
+    const request = providerRequest(
+      input.brief,
+      model,
+      input.safetyIdentifier,
+      round?.queries,
+    );
     const response = await withHardTimeout(
       (signal) => {
         providerAttempted = true;
@@ -734,40 +776,81 @@ export async function searchExternalFreelancers(
       },
       timeoutMs,
     );
+    sawAnyResponse = true;
+    // Über beide Runden summiert, sonst zeigt die Kostenanzeige nur die letzte.
     provider = {
       requestedModel: model,
       model: response.model?.trim() || model,
       responseId: response.id,
-      inputTokens: response.usage?.input_tokens,
-      cachedInputTokens: response.usage?.input_tokens_details?.cached_tokens,
+      inputTokens:
+        (provider?.inputTokens ?? 0) + (response.usage?.input_tokens ?? 0),
+      cachedInputTokens:
+        (provider?.cachedInputTokens ?? 0) +
+        (response.usage?.input_tokens_details?.cached_tokens ?? 0),
       cacheWriteTokens:
-        response.usage?.input_tokens_details?.cache_write_tokens,
-      outputTokens: response.usage?.output_tokens,
-      totalTokens: response.usage?.total_tokens,
+        (provider?.cacheWriteTokens ?? 0) +
+        (response.usage?.input_tokens_details?.cache_write_tokens ?? 0),
+      outputTokens:
+        (provider?.outputTokens ?? 0) + (response.usage?.output_tokens ?? 0),
+      totalTokens:
+        (provider?.totalTokens ?? 0) + (response.usage?.total_tokens ?? 0),
     };
     const parsed = ExternalFreelancerSearchOutputSchema.safeParse(
       response.output_parsed,
     );
-    if (!parsed.success) return unavailable("invalid_output", true, provider);
+    if (parsed.success) {
+      const reconciled = reconcileExternalCandidates(parsed.data, response.output);
+      for (const candidate of reconciled.candidates) {
+        if (seenProfiles.has(candidate.profileUrl)) continue;
+        seenProfiles.add(candidate.profileUrl);
+        merged.push(candidate);
+      }
+      for (const query of reconciled.evidence.queries) {
+        if (!allQueries.includes(query)) allQueries.push(query);
+      }
+      consultedSources += reconciled.evidence.urls.size;
+      toolCallCount += reconciled.evidence.toolCalls;
+    }
 
-    const reconciled = reconcileExternalCandidates(parsed.data, response.output);
+    // Genug Belastbares gefunden — eine zweite Runde wäre nur Geld.
+    if (merged.filter(isSolid).length >= 2) break;
+    }
+
+    if (!sawAnyResponse) return unavailable("invalid_output", true, provider);
+
+    const ranked = merged
+      .map((candidate, index) => ({ candidate, index }))
+      .sort(
+        (left, right) =>
+          candidatePreferenceRank(left.candidate) -
+            candidatePreferenceRank(right.candidate) ||
+          Number(right.candidate.nameVerified) -
+            Number(left.candidate.nameVerified) ||
+          left.index - right.index,
+      )
+      .map((entry) => entry.candidate)
+      .slice(0, MAX_EXTERNAL_FREELANCER_RESULTS);
+
     return {
-      candidates: reconciled.candidates,
+      candidates: ranked,
       mode: "openai",
       providerAttempted: true,
       provider,
       searchTrace: {
-        queries: reconciled.evidence.queries,
-        consultedSourceCount: reconciled.evidence.urls.size,
-        returnedCandidateCount: reconciled.candidates.length,
-        toolCallCount: reconciled.evidence.toolCalls,
+        queries: allQueries.slice(0, 20),
+        consultedSourceCount: consultedSources,
+        returnedCandidateCount: ranked.length,
+        toolCallCount,
       },
     };
   } catch (error) {
-    return unavailable(
-      isTimeoutError(error) ? "provider_timeout" : "provider_error",
-      providerAttempted,
-      provider,
-    );
+    return {
+      ...unavailable(
+        isTimeoutError(error) ? "provider_timeout" : "provider_error",
+        providerAttempted,
+        provider,
+      ),
+      fallbackDetail: describeProviderFailure(error),
+    };
   }
 }
