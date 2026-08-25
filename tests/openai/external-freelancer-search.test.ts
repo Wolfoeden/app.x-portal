@@ -102,7 +102,11 @@ describe("external freelancer web search", () => {
     expect(body.safety_identifier).toBe(SAFETY_IDENTIFIER);
     expect(requestOptions).toMatchObject({ maxRetries: 0, timeout: 30_000 });
     expect(body.reasoning).toEqual({ effort: "none" });
-    expect((body as typeof body & { max_tool_calls?: number }).max_tool_calls).toBe(3);
+    expect((body as typeof body & { max_tool_calls?: number }).max_tool_calls).toBe(5);
+    // Die Anfragen stehen im Auftrag, damit das Modell sie nicht selbst erfindet.
+    const prompt = JSON.stringify(body.input);
+    expect(prompt).toContain("site:linkedin.com/in");
+    expect(prompt).toContain("-stellenangebot");
   });
 
   it("drops an invented booking URL but keeps the evidenced candidate", () => {

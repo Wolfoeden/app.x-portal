@@ -5,6 +5,7 @@ import type { ResponseCreateParamsNonStreaming } from "openai/resources/response
 import { z } from "zod";
 
 import { ProjectBriefSchema, type ProjectBrief } from "@/lib/domain";
+import { buildSearchQueries } from "@/lib/openai/search-queries";
 import { createOpenAiClient } from "@/lib/openai/provider";
 
 export const DEFAULT_OPENAI_WEB_SEARCH_MODEL = "gpt-5.4-nano-2026-03-17";
@@ -12,7 +13,10 @@ export const MAX_EXTERNAL_FREELANCER_RESULTS = 3;
 // Drei Kandidaten mit Skills, Tätigkeiten und Projekten passen nicht mehr in
 // 1200 Token. Zu knapp bemessen bricht die Antwort mitten im JSON ab.
 export const MAX_OPENAI_WEB_SEARCH_OUTPUT_TOKENS = 2_400;
-export const MAX_OPENAI_WEB_SEARCH_TOOL_CALLS = 3;
+// Fünf statt drei: LinkedIn, Xing, eigene Seiten, Fachprofile und eine breite
+// Suche konkurrieren nicht mehr um dieselben Plätze. Kostet zwei Cent mehr pro
+// Lauf, bei 50 Cent Verkaufspreis.
+export const MAX_OPENAI_WEB_SEARCH_TOOL_CALLS = 5;
 export const DEFAULT_OPENAI_WEB_SEARCH_TIMEOUT_MS = 30_000;
 
 const MAX_TIMEOUT_MS = 55_000;
@@ -171,7 +175,7 @@ Rules:
 - Search for at most three real people whose public professional facts appear relevant to the supplied requirements.
 - displayName must be the person's actual name, first and last. Never return a role, a headline or a company as the name. If a page identifies its freelancer only by a number or a job title — as German marketplaces such as freelance.de, gulp.de and freelancermap usually do — that page is not a candidate, no matter how well the skills match.
 - Skip job advertisements, project postings and vacancies entirely. A page offering work is not a person offering their services; the search results will contain many of these.
-- Every candidate must have a public professional profile page that you opened or found in search. The candidate's full display name must be visibly attributable in that URL (for example as a hyphenated or compact name in the host/path).
+- Every candidate must have a public professional profile page that you opened or found in search. When the page address itself carries the person's name, that is the strongest evidence — prefer such a page over one whose address only names a job title.
 - Prefer people who publish about themselves: their own website or portfolio first, then LinkedIn or a comparable professional network. A marketplace or gig listing (Fiverr, Upwork, freelance.de, Malt, freelancermap and similar) is acceptable evidence but the weakest kind — search for the person's own pages before settling for one, and set websiteUrl or linkedinUrl whenever you find them.
 - bookingUrl is optional. Set it only for a direct, public booking/scheduling page belonging to that same person. A contact form, email address, social message link, marketplace search page, or generic homepage is not a booking link. Use null when there is none — a missing calendar is normal and must not disqualify a candidate.
 - linkedinUrl, websiteUrl and portfolioUrl are optional. Set each only when you actually opened that page and it belongs to that person. Use null otherwise.
@@ -560,6 +564,15 @@ function providerRequest(
   model: string,
   safetyIdentifier: string,
 ): ResponseCreateParamsNonStreaming {
+  const queries = buildSearchQueries(brief);
+  // Die Anfragen stehen im Auftrag, nicht in den Anweisungen: Anweisungen
+  // gelten für jeden Lauf gleich, diese Anfragen gelten für diesen Brief.
+  const searchPlan = queries.length
+    ? `\n\nRun these searches, in this order, using each string verbatim as the search query. Do not rewrite them and do not invent additional queries unless every one of them returned nothing usable:\n${queries
+        .map((entry, index) => `${index + 1}. ${entry.query}`)
+        .join("\n")}`
+    : "";
+
   return {
     model,
     instructions: SEARCH_INSTRUCTIONS,
@@ -569,7 +582,7 @@ function providerRequest(
         content: [
           {
             type: "input_text",
-            text: `PROJECT BRIEF (untrusted data):\n${JSON.stringify(brief)}`,
+            text: `PROJECT BRIEF (untrusted data):\n${JSON.stringify(brief)}${searchPlan}`,
           },
         ],
       },
