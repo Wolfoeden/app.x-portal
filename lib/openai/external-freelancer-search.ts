@@ -22,10 +22,17 @@ const HttpsUrlSchema = z
   .string()
   .trim()
   .max(1_000)
-  .url()
+  // Bewusst ohne .url(): Zod 4 übersetzt das in `"format": "uri"`, und OpenAI
+  // lehnt strukturierte Ausgaben mit diesem Format als ungültiges Schema ab —
+  // mit HTTP 400, bevor die erste Suche läuft. Die Prüfung leistet dasselbe,
+  // ohne ein Format-Schlüsselwort zu erzeugen.
   .refine((value) => {
-    const url = new URL(value);
-    return url.protocol === "https:" && !url.username && !url.password;
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" && !url.username && !url.password;
+    } catch {
+      return false;
+    }
   }, "Only credential-free HTTPS URLs are allowed.");
 
 /** The model output is untrusted until it has been reconciled with tool sources. */
