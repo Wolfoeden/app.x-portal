@@ -6,7 +6,9 @@ import { parseFallbackBrief } from "@/lib/domain";
 import {
   estimateExternalSearchTokenCeiling,
   extractSearchEvidence,
+  candidatePreferenceRank,
   isDirectBookingUrl,
+  isMarketplaceUrl,
   reconcileExternalCandidates,
   searchExternalFreelancers,
   type ExternalSearchResponsesClient,
@@ -298,5 +300,87 @@ describe("external freelancer web search", () => {
     expect(estimate.totalTokens).toBe(
       estimate.inputTokens + estimate.outputTokens,
     );
+  });
+});
+
+describe("Rangfolge der Quellen", () => {
+  const base = {
+    profileUrl: "https://www.fiverr.com/annabeispiel/react",
+    linkedinUrl: null,
+    websiteUrl: null,
+    portfolioUrl: null,
+  };
+
+  it("stuft eine eigene Website am höchsten ein", () => {
+    expect(
+      candidatePreferenceRank({ ...base, websiteUrl: "https://anna-beispiel.de" }),
+    ).toBe(0);
+  });
+
+  it("wertet eine Marktplatz-Website nicht als eigene Seite", () => {
+    expect(
+      candidatePreferenceRank({ ...base, websiteUrl: "https://www.malt.de/profile/anna" }),
+    ).toBe(3);
+  });
+
+  it("stuft LinkedIn über eine Marktplatz-Anzeige", () => {
+    expect(
+      candidatePreferenceRank({
+        ...base,
+        linkedinUrl: "https://www.linkedin.com/in/anna-beispiel",
+      }),
+    ).toBe(1);
+  });
+
+  it("erkennt ein Netzwerkprofil auch ohne separaten LinkedIn-Link", () => {
+    expect(
+      candidatePreferenceRank({
+        ...base,
+        profileUrl: "https://github.com/anna-beispiel",
+      }),
+    ).toBe(1);
+  });
+
+  it("stuft eine neutrale Seite über eine Marktplatz-Anzeige", () => {
+    expect(
+      candidatePreferenceRank({ ...base, profileUrl: "https://agentur.example/team/anna" }),
+    ).toBe(2);
+    expect(candidatePreferenceRank(base)).toBe(3);
+  });
+
+  it("erkennt Marktplätze auch auf Subdomains", () => {
+    expect(isMarketplaceUrl("https://de.fiverr.com/anna/react")).toBe(true);
+    expect(isMarketplaceUrl("https://anna-beispiel.de/react")).toBe(false);
+  });
+
+  it("sortiert eigene Seiten vor Marktplatz-Treffern", () => {
+    const marketplace = "https://www.fiverr.com/bob-schmidt/react";
+    const ownProfile = "https://anna-beispiel.de/ueber-mich";
+    const ownSite = "https://anna-beispiel.de";
+    const reconciled = reconcileExternalCandidates(
+      {
+        candidates: [
+          candidate({
+            displayName: "Bob Schmidt",
+            profileUrl: marketplace,
+            bookingUrl: null,
+            sourceUrls: [marketplace],
+          }),
+          candidate({
+            displayName: "Anna Beispiel",
+            profileUrl: ownProfile,
+            bookingUrl: null,
+            websiteUrl: ownSite,
+            sourceUrls: [ownProfile, ownSite],
+          }),
+        ],
+      },
+      webOutput([marketplace, ownProfile, ownSite]),
+    );
+
+    expect(reconciled.candidates.map((entry) => entry.displayName)).toEqual([
+      "Anna Beispiel",
+      "Bob Schmidt",
+    ]);
   });
 });
