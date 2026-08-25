@@ -11,6 +11,7 @@ import {
   isMarketplaceUrl,
   reconcileExternalCandidates,
   searchExternalFreelancers,
+  urlMatchesCandidateIdentity,
   type ExternalSearchResponsesClient,
 } from "@/lib/openai/external-freelancer-search";
 
@@ -382,5 +383,55 @@ describe("Rangfolge der Quellen", () => {
       "Anna Beispiel",
       "Bob Schmidt",
     ]);
+  });
+});
+
+describe("Namensprüfung bei Netzwerkprofilen", () => {
+  it("akzeptiert eine angehängte Kennung, wie Xing und LinkedIn sie vergeben", () => {
+    expect(
+      urlMatchesCandidateIdentity(
+        "https://www.xing.com/profile/Marcel_Kowalski7",
+        "Marcel Kowalski",
+      ),
+    ).toBe(true);
+    expect(
+      urlMatchesCandidateIdentity(
+        "https://www.linkedin.com/in/anna-beispiel-1234",
+        "Anna Beispiel",
+      ),
+    ).toBe(true);
+  });
+
+  it("akzeptiert die Kennung auch als eigenen Pfadbestandteil", () => {
+    expect(
+      urlMatchesCandidateIdentity(
+        "https://www.linkedin.com/in/anna-beispiel-1a2b3c4",
+        "Anna Beispiel",
+      ),
+    ).toBe(true);
+  });
+
+  it("lässt sich nicht auf einen anderen Namen ausdehnen", () => {
+    expect(
+      urlMatchesCandidateIdentity(
+        "https://www.xing.com/profile/Marcel_Kowalskimann",
+        "Marcel Kowalski",
+      ),
+    ).toBe(false);
+    expect(
+      urlMatchesCandidateIdentity(
+        "https://www.xing.com/profile/Marcel7_Kowalski",
+        "Marcel Kowalski",
+      ),
+    ).toBe(false);
+  });
+
+  it("akzeptiert weiterhin die kompakte Schreibweise mit Kennung", () => {
+    expect(
+      urlMatchesCandidateIdentity(
+        "https://cal.com/annabeispiel2/intro",
+        "Anna Beispiel",
+      ),
+    ).toBe(true);
   });
 });
