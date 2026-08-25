@@ -69,7 +69,7 @@ describe("recommended profile CV affordance", () => {
     expect(normalizeCvAccess(undefined)).toBe("forbidden");
     expect(cvActionState({}, true)).toEqual({
       kind: "forbidden",
-      label: "Download CV",
+      label: "Lebenslauf nicht verfügbar",
       disabled: true,
     });
   });
@@ -77,25 +77,24 @@ describe("recommended profile CV affordance", () => {
   it("does not reveal CV existence to guests", () => {
     expect(cvActionState(profile("available"), false)).toEqual({
       kind: "login_required",
-      label: "Download CV",
+      label: "Lebenslauf nur mit Konto",
       disabled: true,
     });
     expect(cvActionState(profile("missing"), false)).toEqual({
       kind: "login_required",
-      label: "Download CV",
+      label: "Lebenslauf nur mit Konto",
       disabled: true,
     });
 
     const markup = renderProfile(profile("missing"), false);
-    expect(markup).toContain("Download CV");
-    expect(markup).toContain("disabled");
-    expect(markup).not.toContain("Freelancer hat noch kein CV hochgeladen");
+    expect(markup).toContain("Lebenslauf nur mit Konto");
+    expect(markup).not.toContain("Kein Lebenslauf hinterlegt");
   });
 
   it("enables an available CV only for account users", () => {
     const markup = renderProfile(profile("available"), true);
     expect(cvActionState(profile("available"), true).disabled).toBe(false);
-    expect(markup).toContain("Download CV");
+    expect(markup).toContain("Lebenslauf herunterladen");
     expect(markup).not.toMatch(/cv-action[^>]*disabled/u);
   });
 
@@ -117,16 +116,24 @@ describe("recommended profile CV affordance", () => {
 
   it("shows the explicit missing state to account users", () => {
     const markup = renderProfile(profile("missing"), true);
-    expect(markup).toContain("Freelancer hat noch kein CV hochgeladen");
-    expect(markup).toMatch(/cv-action[^>]*disabled/u);
+    expect(markup).toContain("Kein Lebenslauf hinterlegt");
+    expect(markup).not.toMatch(/cv-action[^>]*disabled/u);
   });
 
   it("renders the CV control on a partial card too", () => {
     const markup = renderProfile(profile("available", "partial"), true);
     // Shown as not recommended, but the reader can still read the CV and
     // decide for themselves.
-    expect(markup).toContain("Download CV");
+    expect(markup).toContain("Lebenslauf herunterladen");
     expect(markup).toContain("Nicht empfohlen");
+    expect(markup).toContain("Kontakt auf eigene Entscheidung");
+    expect(markup).toContain("Kontaktwege anzeigen");
+  });
+
+  it("labels coverage as evidence rather than an outcome probability", () => {
+    const markup = renderProfile(profile("available"), true);
+    expect(markup).toContain("Kernanforderungen 100 % belegt");
+    expect(markup).not.toContain("Passung 90 %");
   });
 });
 

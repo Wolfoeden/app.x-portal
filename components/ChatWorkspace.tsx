@@ -36,6 +36,7 @@ import {
   IconMenu,
   IconPanelRight,
   IconPlus,
+  IconSearch,
   IconSpark,
 } from "@/components/icons";
 import {
@@ -288,6 +289,16 @@ type PendingAssistant = {
 interface ChatWorkspaceProps {
   apiPaths?: Partial<ChatApiPaths>;
   view?: "chat" | "agents" | "team";
+  /** Development-only visual fixture; its presence disables all data loading. */
+  previewData?: {
+    auth: SessionResponse;
+    projects: ProjectListItem[];
+    messages: ConversationMessage[];
+    brief: StructuredBrief;
+    profiles: FreelancerProfileResult[];
+    analysis: AiAnalysisTrace;
+    usage: AiUsageSnapshot;
+  };
 }
 
 type AuthView = SessionResponse;
@@ -615,6 +626,9 @@ function normalizeExternalSearchResponse(value: unknown): ExternalFreelancerSear
       "Externe Treffer stammen aus öffentlich zugänglichen Quellen und sind nicht durch XPORTAL verifiziert.",
     ),
     mode: response.mode === "openai" ? "openai" : "unavailable",
+    ...(nullableString(response.completedAt ?? response.completed_at)
+      ? { completedAt: nullableString(response.completedAt ?? response.completed_at)! }
+      : {}),
     notice: nullableString(response.notice) ?? undefined,
     searchTrace: {
       queries: stringList(trace.queries),
@@ -912,6 +926,9 @@ function normalizeProjectDetail(value: unknown): ProjectDetailResponse {
   const matchingStatus = normalizeMatchingStatus(
     response.matchingStatus ?? response.matching_status,
   );
+  const externalSearch = response.externalSearch
+    ? normalizeExternalSearchResponse(response.externalSearch)
+    : null;
   return {
     project: normalizeProject(response.project, "Gespeichertes Projekt"),
     messages,
@@ -923,6 +940,7 @@ function normalizeProjectDetail(value: unknown): ProjectDetailResponse {
       ? { analysisMode: response.analysisMode }
       : {}),
     analysisNotice: nullableString(response.analysisNotice),
+    externalSearch,
   };
 }
 
@@ -991,11 +1009,11 @@ export function usageSummary(
   authenticated: boolean,
 ): string {
   const left = estimatedRequestsLeft(usage.credits);
-  const balance = `${formatCredits(usage.credits.remaining)} Credits · ca. ${formatCredits(left)} ${
+  const balance = `KI-Guthaben: ${formatCredits(usage.credits.remaining)} Credits · ca. ${formatCredits(left)} ${
     left === 1 ? "Anfrage" : "Anfragen"
   }`;
   return authenticated && usage.productCredits
-    ? `${balance} · ${formatCredits(usage.productCredits.available)} Recherche-Credits`
+    ? `${balance} · Recherche-Guthaben: ${formatCredits(usage.productCredits.available)} Credits`
     : balance;
 }
 
@@ -1003,23 +1021,23 @@ export function usageSummary(
 
 export function publicProgressLabel(label: string): string {
   const normalized = label.toLocaleLowerCase("de-DE");
-  if (normalized.includes("speicher")) return "Anfrage wird sicher gespeichert …";
+  if (normalized.includes("speicher")) return "Anfrage wird gespeichert";
   if (normalized.includes("teiltreffer")) {
-    return "Nicht empfohlene Teiltreffer werden transparent vorbereitet …";
+    return "Teiltreffer und offene Muss-Kriterien werden aufbereitet";
   }
   if (normalized.includes("kein") && normalized.includes("treffer")) {
-    return "Interner Profilabgleich abgeschlossen · kein passendes Profil gefunden …";
+    return "Interner Profilabgleich abgeschlossen · kein passendes Profil gefunden";
   }
   if (normalized.includes("profil") || normalized.includes("abgleich")) {
     if (normalized.includes("aufbereit") || normalized.includes("vorbereit")) {
-      return "Bis zu drei Ergebnisse werden nachvollziehbar vorbereitet …";
+      return "Passende Profile werden nach belegter Passung priorisiert";
     }
-    return "Interne Profile werden regelbasiert abgeglichen …";
+    return "Profile werden nach belegten Kriterien geprüft";
   }
   if (normalized.includes("struktur") || normalized.includes("analys")) {
-    return "GPT-5.4 Nano strukturiert Ihre Anforderungen …";
+    return "Projektanforderungen werden strukturiert";
   }
-  return "Anfrage wird verarbeitet …";
+  return "Anfrage wird verarbeitet";
 }
 
 
@@ -1152,25 +1170,27 @@ export async function parseStreamResponse(
 export function ChatWorkspace({
   apiPaths: apiOverrides,
   view: workspaceView = "chat",
+  previewData,
 }: ChatWorkspaceProps) {
+  const preview = Boolean(previewData);
   const apiPaths = useMemo(
     () => ({ ...defaultChatApiPaths, ...apiOverrides }),
     [apiOverrides],
   );
-  const [auth, setAuth] = useState<AuthView>(emptyAuth);
+  const [auth, setAuth] = useState<AuthView>(previewData?.auth ?? emptyAuth);
   const [authOpen, setAuthOpen] = useState(false);
   const [authInitialMode, setAuthInitialMode] = useState<AuthDialogMode>("login");
-  const [projects, setProjects] = useState<ProjectListItem[]>([]);
+  const [projects, setProjects] = useState<ProjectListItem[]>(previewData?.projects ?? []);
   const [projectCollections, setProjectCollections] = useState<ProjectCollectionItem[]>([]);
-  const [activeProject, setActiveProject] = useState<ProjectListItem | null>(null);
-  const [messages, setMessages] = useState<ConversationMessage[]>([]);
-  const [brief, setBrief] = useState<StructuredBrief | null>(null);
-  const [profiles, setProfiles] = useState<FreelancerProfileResult[]>([]);
+  const [activeProject, setActiveProject] = useState<ProjectListItem | null>(previewData?.projects[0] ?? null);
+  const [messages, setMessages] = useState<ConversationMessage[]>(previewData?.messages ?? []);
+  const [brief, setBrief] = useState<StructuredBrief | null>(previewData?.brief ?? null);
+  const [profiles, setProfiles] = useState<FreelancerProfileResult[]>(previewData?.profiles ?? []);
   const [partialProfiles, setPartialProfiles] = useState<FreelancerProfileResult[]>([]);
-  const [matchingStatus, setMatchingStatus] = useState<MatchingStatus | null>(null);
-  const [hasResult, setHasResult] = useState(false);
-  const [analysisMode, setAnalysisMode] = useState<"ai" | "fallback" | null>(null);
-  const [analysisTrace, setAnalysisTrace] = useState<AiAnalysisTrace | null>(null);
+  const [matchingStatus, setMatchingStatus] = useState<MatchingStatus | null>(preview ? "ranked" : null);
+  const [hasResult, setHasResult] = useState(preview);
+  const [analysisMode, setAnalysisMode] = useState<"ai" | "fallback" | null>(preview ? "ai" : null);
+  const [analysisTrace, setAnalysisTrace] = useState<AiAnalysisTrace | null>(previewData?.analysis ?? null);
   const [externalSearch, setExternalSearch] = useState<ExternalFreelancerSearchResponse | null>(null);
   const [externalSearchState, setExternalSearchState] = useState<"idle" | "searching" | "error">("idle");
   const [draft, setDraft] = useState("");
@@ -1179,13 +1199,13 @@ export function ChatWorkspace({
   const [pendingProfileId, setPendingProfileId] = useState<string | null>(null);
   const [contactOpen, setContactOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [usage, setUsage] = useState<AiUsageSnapshot | null>(null);
+  const [usage, setUsage] = useState<AiUsageSnapshot | null>(previewData?.usage ?? null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [team, setTeam] = useState<SavedFreelancer[]>([]);
   // Starts true: an account always loads its team on mount, and setting the
   // flag inside the effect would be a synchronous state change during render.
-  const [teamLoading, setTeamLoading] = useState(true);
+  const [teamLoading, setTeamLoading] = useState(!preview);
   // Survives the auth dialog so a guest who clicks "merken" gets the profile
   // saved after logging in rather than having to find it again.
   const [pendingSaveProfileId, setPendingSaveProfileId] = useState<string | null>(null);
@@ -1193,6 +1213,7 @@ export function ChatWorkspace({
   /** Welches externe Profil ausgeklappt ist — höchstens eines. */
   const [expandedExternalUrl, setExpandedExternalUrl] = useState<string | null>(null);
   const [manageChat, setManageChat] = useState<ProjectListItem | null>(null);
+  const [chatSearchQuery, setChatSearchQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Closed on arrival: a first-time visitor should meet two columns, not
   // three. It opens itself once there is a result to show, unless the reader
@@ -1206,7 +1227,7 @@ export function ChatWorkspace({
    * was still on its way — a returning user with twenty chats was told they
    * had none. An empty state may only appear once emptiness is a fact.
    */
-  const [workspaceLoading, setWorkspaceLoading] = useState(true);
+  const [workspaceLoading, setWorkspaceLoading] = useState(!preview);
   const {
     sidebarWidth,
     startSidebarResize,
@@ -1411,7 +1432,7 @@ export function ChatWorkspace({
         setHasResult(Boolean(detail.brief));
         setAnalysisMode(detail.analysisMode ?? null);
         setAnalysisTrace(null);
-        setExternalSearch(null);
+        setExternalSearch(detail.externalSearch ?? null);
         setExternalSearchState("idle");
         setSelectedProfileId(null);
         return detail;
@@ -1426,6 +1447,7 @@ export function ChatWorkspace({
   );
 
   useEffect(() => {
+    if (preview) return;
     let alive = true;
     const supabase = getBrowserSupabaseClient();
 
@@ -1584,6 +1606,7 @@ export function ChatWorkspace({
     refreshUsage,
     showToast,
     workspaceView,
+    preview,
   ]);
 
   useEffect(() => {
@@ -1726,7 +1749,7 @@ export function ChatWorkspace({
         id: makeId("assistant"),
         clientMessageId: optimistic.id,
         content: "",
-        progress: "GPT-5.4 Nano strukturiert Ihre Anforderungen …",
+        progress: "Projektanforderungen werden strukturiert",
         retryText: null,
       });
       const recoveryProjectId = activeProject?.id ?? null;
@@ -1885,7 +1908,7 @@ export function ChatWorkspace({
       return;
     }
     if (!usage?.productCredits || usage.productCredits.available < 30) {
-      showToast("Für die Internetsuche sind 30 verfügbare Produkt-Credits erforderlich.", "error");
+      showToast("Für die externe Recherche sind 30 Recherche-Credits erforderlich.", "error");
       void refreshUsage();
       return;
     }
@@ -2005,8 +2028,8 @@ export function ChatWorkspace({
       await persistSavedFreelancer(profile.id, alreadySaved ? "DELETE" : "POST");
       showToast(
         alreadySaved
-          ? `${profile.displayName} ist nicht mehr in Ihrem Team.`
-          : `${profile.displayName} ist jetzt in Ihrem Team.`,
+          ? `${profile.displayName} wurde aus Ihrer Merkliste entfernt.`
+          : `${profile.displayName} wurde zu Ihrer Merkliste hinzugefügt.`,
         "neutral",
       );
     } catch {
@@ -2018,7 +2041,7 @@ export function ChatWorkspace({
   // profiles themselves. Both wait until the session is known to be an account,
   // because the endpoint answers a guest with an empty list.
   useEffect(() => {
-    if (!isAccountUser) return;
+    if (preview || !isAccountUser) return;
     let alive = true;
     void (async () => {
       await loadTeam();
@@ -2027,7 +2050,7 @@ export function ChatWorkspace({
     return () => {
       alive = false;
     };
-  }, [isAccountUser, loadTeam]);
+  }, [isAccountUser, loadTeam, preview]);
 
   const requestProfileSelection = (profile: FreelancerProfileResult) => {
     if (!isAccountUser) {
@@ -2137,7 +2160,7 @@ export function ChatWorkspace({
     if (profileIdToSave) {
       try {
         await persistSavedFreelancer(profileIdToSave, "POST");
-        showToast("Das Profil ist jetzt in Ihrem Team.", "neutral");
+        showToast("Das Profil wurde zu Ihrer Merkliste hinzugefügt.", "neutral");
       } catch {
         showToast("Das Profil konnte nicht gespeichert werden.", "error");
       }
@@ -2303,7 +2326,18 @@ export function ChatWorkspace({
     setDetailsOpen(true);
   };
 
-  const unassignedChats = projects.filter((project) => !project.collectionId);
+  const normalizedChatSearch = chatSearchQuery.trim().toLocaleLowerCase("de-DE");
+  const visibleProjects = normalizedChatSearch
+    ? projects.filter((project) =>
+        project.title.toLocaleLowerCase("de-DE").includes(normalizedChatSearch),
+      )
+    : projects;
+  const unassignedChats = visibleProjects.filter((project) => !project.collectionId);
+  const visibleCollections = normalizedChatSearch
+    ? projectCollections.filter((collection) =>
+        visibleProjects.some((project) => project.collectionId === collection.id),
+      )
+    : projectCollections;
 
   return (
     <div
@@ -2316,9 +2350,9 @@ export function ChatWorkspace({
 
       <aside className={`project-sidebar ${sidebarOpen ? "is-open" : ""}`} aria-label="Projekte">
         <div className="sidebar-top">
-          <div className="product-mark" aria-label="Freelancer Beta">
-            <span className="mark-glyph" aria-hidden="true">F</span>
-            <span>Freelancer Beta</span>
+          <div className="product-mark" aria-label="XPORTAL Freelancer">
+            <span className="mark-glyph" aria-hidden="true">X</span>
+            <span>XPORTAL / Freelancer</span>
           </div>
           <button className="icon-button sidebar-close" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schließen"><IconClose size={18} /></button>
         </div>
@@ -2342,7 +2376,7 @@ export function ChatWorkspace({
             data-sidebar-primary="team"
           >
             <span className="sidebar-primary-icon" aria-hidden="true"><IconFolder size={18} /></span>
-            <span>Mein Team</span>
+            <span>Merkliste</span>
             {isAccountUser && team.length ? (
               <span className="sidebar-primary-count" aria-hidden="true">{team.length}</span>
             ) : (
@@ -2364,13 +2398,23 @@ export function ChatWorkspace({
 
         <nav className="project-nav" aria-label="Gespeicherte Chats">
           <p className="nav-label">Chats</p>
+          <label className="sidebar-chat-search">
+            <span aria-hidden="true"><IconSearch size={14} /></span>
+            <input
+              type="search"
+              value={chatSearchQuery}
+              onChange={(event) => setChatSearchQuery(event.target.value)}
+              placeholder="Chats durchsuchen"
+              aria-label="Gespeicherte Chats durchsuchen"
+            />
+          </label>
           {workspaceLoading ? (
             <SidebarSkeleton rows={4} />
           ) : unassignedChats.length === 0 ? (
             <div className="empty-projects">
               <span aria-hidden="true"><IconChat size={22} /></span>
-              <p>Noch keine freien Chats</p>
-              <small>Neue Unterhaltungen erscheinen automatisch hier.</small>
+              <p>{normalizedChatSearch ? "Keine passenden freien Chats" : "Noch keine freien Chats"}</p>
+              <small>{normalizedChatSearch ? "Passen Sie den Suchbegriff an." : "Neue Unterhaltungen erscheinen automatisch hier."}</small>
             </div>
           ) : (
             <SidebarChatList
@@ -2388,12 +2432,12 @@ export function ChatWorkspace({
           </div>
           {workspaceLoading ? (
             <SidebarSkeleton rows={2} />
-          ) : projectCollections.length === 0 ? (
-            <p className="sidebar-section-empty">Erstellen Sie ein Projekt und speichern Sie mehrere Chats darin.</p>
+          ) : visibleCollections.length === 0 ? (
+            <p className="sidebar-section-empty">{normalizedChatSearch ? "Keine passenden Chats in Projekten." : "Erstellen Sie ein Projekt und speichern Sie mehrere Chats darin."}</p>
           ) : (
             <div className="collection-list">
-              {projectCollections.map((collection) => {
-                const chats = projects.filter((project) => project.collectionId === collection.id);
+              {visibleCollections.map((collection) => {
+                const chats = visibleProjects.filter((project) => project.collectionId === collection.id);
                 return (
                   <section className="collection-group" key={collection.id} aria-label={`Projekt ${collection.name}`}>
                     <div className="collection-title"><span aria-hidden="true"><IconChevronDown size={14} /></span>{collection.name}<small>{chats.length}</small></div>
@@ -2556,7 +2600,7 @@ export function ChatWorkspace({
               {isTeamView || isAgentView || activeProject?.title ? (
                 <p className="topbar-title">
                   {isTeamView
-                    ? "Mein Team"
+                    ? "Merkliste"
                     : isAgentView
                       ? "KI-Agenten"
                       : activeProject?.title}
@@ -2568,18 +2612,18 @@ export function ChatWorkspace({
 
         {isTeamView ? (
           <div className="agent-scroll">
-            <section className="team-page" aria-label="Mein Team">
+            <section className="team-page" aria-label="Merkliste">
               <header className="team-page-header">
-                <h2>Mein Team</h2>
+                <h2>Merkliste</h2>
                 <p>
-                  Profile, die Sie sich aus Ihren Suchergebnissen gemerkt haben.
-                  Sie bleiben Ihrem Konto zugeordnet, unabhängig vom einzelnen
-                  Chat.
+                  Gespeicherte Freelancer-Profile für Ihre spätere Auswahl.
+                  Die Merkliste bleibt Ihrem Konto zugeordnet und ist unabhängig
+                  vom einzelnen Chat.
                 </p>
               </header>
               {!isAccountUser ? (
                 <div className="empty-projects">
-                  <p>Für „Mein Team“ ist ein Konto erforderlich</p>
+                  <p>Für die Merkliste ist ein Konto erforderlich</p>
                   <small>
                     Melden Sie sich an, dann bleiben gemerkte Profile dauerhaft
                     erhalten.
@@ -2599,10 +2643,10 @@ export function ChatWorkspace({
                 <SidebarSkeleton rows={3} />
               ) : team.length === 0 ? (
                 <div className="empty-projects">
-                  <p>Noch niemand gemerkt</p>
+                  <p>Noch keine Profile gemerkt</p>
                   <small>
-                    Klicken Sie bei einem Suchergebnis auf „Profil merken“, dann
-                    steht das Profil hier dauerhaft bereit.
+                    Wählen Sie bei einem Suchergebnis „Zur Merkliste“, dann
+                    bleibt das Profil hier dauerhaft verfügbar.
                   </small>
                 </div>
               ) : (
@@ -2910,9 +2954,20 @@ export function assistantAttribution(): {
 
 function MessageBubble({ message }: { message: ConversationMessage }) {
   if (message.role === "user") {
+    const isLongMessage = message.content.length > 700;
     return (
       <article className="message-row user-message" aria-label="Ihre Nachricht">
-        <div className="message-content"><p>{message.content}</p></div>
+        <div className="message-content">
+          {isLongMessage ? (
+            <details className="long-user-message">
+              <summary>
+                <span>{message.content.slice(0, 240).trim()} …</span>
+                <strong>Vollständig anzeigen</strong>
+              </summary>
+              <p>{message.content}</p>
+            </details>
+          ) : <p>{message.content}</p>}
+        </div>
       </article>
     );
   }
@@ -2948,7 +3003,21 @@ function PendingMessage({
         <div className="message-author">XPORTAL</div>
         {pending.content ? <p>{pending.content}</p> : null}
         {!failed ? (
-          <div className="thinking-line"><span className="thinking-dots" aria-hidden="true"><i /><i /><i /></span>{pending.progress}</div>
+          <details className="work-process" role="status">
+            <summary>
+              <span className="thinking-dots" aria-hidden="true"><i /><i /><i /></span>
+              <span>{pending.progress}</span>
+              <span className="work-process-toggle" aria-hidden="true"><IconChevronDown size={14} /></span>
+            </summary>
+            <div className="work-process-details">
+              <p>XPORTAL zeigt zusammengefasste Arbeitsschritte, keine internen Gedankengänge.</p>
+              <ol>
+                <li>Anforderungen aus Ihrer Nachricht strukturieren</li>
+                <li>Aktive Profile nach festen Kriterien prüfen</li>
+                <li>Belegte Stärken und offene Punkte verständlich aufbereiten</li>
+              </ol>
+            </div>
+          </details>
         ) : (
           <button
             className="text-button"
@@ -2961,6 +3030,46 @@ function PendingMessage({
       </div>
     </article>
   );
+}
+
+export function projectStatusLabel(status: ProjectListItem["status"]): string | null {
+  if (status === "draft") return "Entwurf";
+  if (status === "matching") return "Abgleich";
+  if (status === "shortlisted") return "Auswahl";
+  if (status === "contact") return "Kontakt";
+  if (status === "closed") return "Abgeschlossen";
+  return null;
+}
+
+export function sidebarChatGroups(
+  chats: ProjectListItem[],
+  now = new Date(),
+): { label: string; chats: ProjectListItem[] }[] {
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const groups = new Map<string, ProjectListItem[]>([
+    ["Heute", []],
+    ["Gestern", []],
+    ["Letzte 7 Tage", []],
+    ["Früher", []],
+  ]);
+  for (const chat of chats) {
+    const updatedAt = new Date(chat.updatedAt);
+    updatedAt.setHours(0, 0, 0, 0);
+    const ageInDays = Number.isNaN(updatedAt.getTime())
+      ? Number.POSITIVE_INFINITY
+      : Math.floor((today.getTime() - updatedAt.getTime()) / 86_400_000);
+    const label = ageInDays <= 0
+      ? "Heute"
+      : ageInDays === 1
+        ? "Gestern"
+        : ageInDays <= 7
+          ? "Letzte 7 Tage"
+          : "Früher";
+    groups.get(label)!.push(chat);
+  }
+  return Array.from(groups, ([label, groupedChats]) => ({ label, chats: groupedChats }))
+    .filter((group) => group.chats.length > 0);
 }
 
 
@@ -2979,31 +3088,42 @@ function SidebarChatList({
 }) {
   if (!chats.length) return <p className="sidebar-section-empty">Keine unzugeordneten Chats</p>;
   return (
-    <ul className="project-list">
-      {chats.map((chat) => (
-        <li key={chat.id} className="sidebar-chat-row">
-          <button
-            type="button"
-            className={`sidebar-chat-open${activeProjectId === chat.id ? " active" : ""}`}
-            onClick={() => onOpen(chat)}
-            aria-current={activeProjectId === chat.id ? "page" : undefined}
-          >
-            <span className="project-title">{chat.title}</span>
-            <span className="project-meta">
-              {loadingProjectId === chat.id ? "Wird geladen …" : formatRelativeDate(chat.updatedAt)}
-            </span>
-          </button>
-          <button
-            className="sidebar-chat-manage"
-            type="button"
-            onClick={() => onManage(chat)}
-            aria-label={`${chat.title} verwalten`}
-          >
-            •••
-          </button>
-        </li>
+    <div className="sidebar-chat-groups">
+      {sidebarChatGroups(chats).map((group) => (
+        <section className="sidebar-chat-group" key={group.label}>
+          <h3>{group.label}</h3>
+          <ul className="project-list">
+            {group.chats.map((chat) => {
+              const status = projectStatusLabel(chat.status);
+              return (
+                <li key={chat.id} className="sidebar-chat-row">
+                  <button
+                    type="button"
+                    className={`sidebar-chat-open${activeProjectId === chat.id ? " active" : ""}`}
+                    onClick={() => onOpen(chat)}
+                    aria-current={activeProjectId === chat.id ? "page" : undefined}
+                  >
+                    <span className="project-title">{chat.title}</span>
+                    <span className="project-meta">
+                      {loadingProjectId === chat.id ? "Wird geladen …" : formatRelativeDate(chat.updatedAt)}
+                      {status ? <span className={`project-status-badge is-${chat.status}`}>{status}</span> : null}
+                    </span>
+                  </button>
+                  <button
+                    className="sidebar-chat-manage"
+                    type="button"
+                    onClick={() => onManage(chat)}
+                    aria-label={`${chat.title} verwalten`}
+                  >
+                    •••
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       ))}
-    </ul>
+    </div>
   );
 }
 

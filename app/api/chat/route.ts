@@ -147,7 +147,7 @@ function assistantText(
   status: Shortlist["status"],
   resultCount: number,
   partialResultCount: number,
-  analysisCompleted: boolean,
+  isFollowUp: boolean,
   clarificationCode: Shortlist["clarificationCode"],
   openCoreRequirements: readonly string[],
 ): string {
@@ -156,9 +156,10 @@ function assistantText(
     // to a user. Collapsing them into the empty-result text below would claim
     // the catalogue was searched and found wanting, when in fact nothing was
     // searched for.
+    const clarificationPrefix = isFollowUp ? "Ihre Ergänzung wurde übernommen. " : "";
     return clarificationCode === "ambiguous_requirement_logic"
-      ? `${analysisCompleted ? "Ich habe" : "Die sichere Basisanalyse hat"} die Anforderungen gelesen, aber die gemischte UND-/ODER-Verknüpfung ist nicht eindeutig. Schreiben Sie bitte ausdrücklich, welche Kompetenzen gemeinsam erforderlich sind und welche echte Alternativen darstellen. Danach starte ich den internen Abgleich.`
-      : `${analysisCompleted ? "Ich habe" : "Die sichere Basisanalyse hat"} Ihre Nachricht gelesen, konnte daraus aber noch keine konkrete Anforderung ableiten. Nennen Sie mir bitte die gewünschte Rolle oder die benötigten Kompetenzen — gern auch Sprache, Einsatzort und Startzeitpunkt. Danach gleiche ich das kuratierte Verzeichnis regelbasiert ab.`;
+      ? `${clarificationPrefix}Die Anforderungen sind noch nicht eindeutig: Bitte schreiben Sie, welche Kompetenzen gemeinsam erforderlich sind und welche echte Alternativen darstellen. Danach prüft XPORTAL den internen Profilpool nach diesen festen Kriterien.`
+      : `${clarificationPrefix}Für einen belastbaren Profilabgleich fehlt noch mindestens die gewünschte Rolle oder eine Kernkompetenz. Ergänzen Sie diese Angabe gern um Sprache, Arbeitsort und Startzeitpunkt; fehlende Daten bleiben bis dahin offen.`;
   }
   if (status === "no_reliable_match") {
     const openCriteria = openCoreRequirements.length
@@ -167,11 +168,11 @@ function assistantText(
     const partialCopy = partialResultCount
       ? ` Ich zeige ${partialResultCount} ${partialResultCount === 1 ? "nicht empfohlenen Teiltreffer" : "nicht empfohlene Teiltreffer"} mit den belegten Überschneidungen und den ausschlaggebenden Lücken.`
       : "";
-    return `${analysisCompleted ? "Ich habe" : "Die sichere Basisanalyse hat"} Ihre Angaben strukturiert. Aktuell erfüllt kein reales, direkt buchbares Profil alle Muss-Kriterien und mindestens 70 % der Kernkompetenzgruppen.${partialCopy}${openCriteria} Sie können ein Kriterium präzisieren oder lockern. Wenn die internen Ergebnisse nicht ausreichen, können Sie als letzte Option die getrennte KI-Internetsuche ausdrücklich starten.`;
+    return `${isFollowUp ? "Ihre Ergänzung wurde übernommen. Der aktualisierte" : "Der"} interne Profilabgleich ist abgeschlossen. Derzeit erfüllt kein aktives, direkt buchbares Profil zugleich alle Muss-Kriterien und mindestens 70 % der Kernanforderungen.${partialCopy}${openCriteria} Kennzeichnen Sie ein genanntes Kriterium im Chat als Muss, flexibel oder optional. Wenn das interne Ergebnis danach weiterhin nicht ausreicht, können Sie die getrennte externe Recherche für 30 Credits ausdrücklich starten.`;
   }
-  return `${analysisCompleted ? "Ich habe" : "Die sichere Basisanalyse hat"} Ihre Angaben strukturiert und ${resultCount} ${
-    resultCount === 1 ? "aktuell passendes Profil" : "aktuell passende Profile"
-  } nach den dokumentierten Regeln gefunden. Sie können das gewünschte Erstgespräch direkt über den jeweiligen Booking-Link buchen.`;
+  return `${isFollowUp ? "Ihre Ergänzung wurde übernommen. Der aktualisierte" : "Der"} interne Profilabgleich ist abgeschlossen. ${resultCount} ${
+    resultCount === 1 ? "aktives Profil erfüllt" : "aktive Profile erfüllen"
+  } die aktuellen Muss-Kriterien und die Empfehlungsschwelle. Die Profile stehen direkt unter dieser Nachricht — mit belegten Stärken, offenen Punkten, Merkliste und eindeutigen Kontaktwegen.`;
 }
 
 function fallbackNotice(
@@ -465,7 +466,7 @@ async function processChatRequest(
     };
     const estimate = estimateProjectBriefTokenCeiling(extractionInput);
     const providerConnection = resolveOpenAiConnection();
-    reporter.progress("Nano strukturiert die Anforderungen …");
+    reporter.progress("Projektanforderungen werden strukturiert");
     // The credit balance inside executeTrackedAiRequest is the only meter.
     // A denied reservation still runs the deterministic path below.
     const tracked =
@@ -629,7 +630,7 @@ async function processChatRequest(
       shortlist.status,
       shortlist.matches.length,
       shortlist.partialMatches.length,
-      analysisCompleted,
+      Boolean(existing),
       shortlist.clarificationCode,
       shortlist.decisionSnapshot.openCoreRequirements,
     );

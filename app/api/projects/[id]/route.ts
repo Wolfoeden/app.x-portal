@@ -21,6 +21,7 @@ import {
 } from "@/lib/domain";
 import { presentBrief, presentMatch } from "@/lib/presentation/chat";
 import { writeAuditEvent } from "@/lib/audit/write";
+import { ExternalFreelancerCandidateSchema } from "@/lib/openai/external-freelancer-search";
 import { assertSameOrigin, readJsonWithLimit } from "@/lib/security/request";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -62,6 +63,33 @@ type StoredShortlistRow = {
 };
 
 const StoredPartialMatchesSchema = z.array(ShortlistMatchSchema).max(2);
+const StoredExternalCandidateSchema = z.preprocess(
+  (value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+    // Snapshots written before sourced-candidate enrichment did not include
+    // the split public links or detail arrays. Those searches were already
+    // identity-checked, so they can be upgraded without losing a paid result.
+    return {
+      linkedinUrl: null,
+      websiteUrl: null,
+      portfolioUrl: null,
+      skills: [],
+      activities: [],
+      projects: [],
+      verificationStatus: "external_unverified",
+      nameVerified: true,
+      ...value,
+    };
+  },
+  ExternalFreelancerCandidateSchema.extend({
+    verificationStatus: z.literal("external_unverified"),
+    nameVerified: z.boolean(),
+  }),
+);
+const StoredExternalSearchRowSchema = z.object({
+  result_snapshot: z.array(StoredExternalCandidateSchema).max(3),
+  created_at: z.string().min(1),
+});
 
 function restorePartialMatch(value: unknown): ShortlistMatch | null {
   const parsed = ShortlistMatchSchema.safeParse(value);
@@ -372,6 +400,62 @@ export async function GET(
       ),
     ]);
 
+    // External research is charged and stored separately from the internal
+    // shortlist. Restore only the latest completed snapshot so reopening a
+    // chat does not make a paid result appear to have vanished.
+    let externalSearch: {
+      projectId: string;
+      candidates: z.infer<typeof StoredExternalCandidateSchema>[];
+      disclosure: string;
+      mode: "openai";
+      completedAt: string;
+      searchTrace: {
+        queries: string[];
+        consultedSourceCount: number;
+        returnedCandidateCount: number;
+        toolCallCount: number;
+      };
+    } | null = null;
+    try {
+      const { data: externalSearchData, error: externalSearchError } = await admin
+        .from("external_freelancer_search_results")
+        .select("result_snapshot,created_at")
+        .eq("project_id", project.id)
+        .eq("owner_user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!externalSearchError) {
+        const storedExternalSearch = StoredExternalSearchRowSchema.safeParse(
+          externalSearchData,
+        );
+        if (storedExternalSearch.success) {
+          const sourceUrls = new Set(
+            storedExternalSearch.data.result_snapshot.flatMap(
+              (candidate) => candidate.sourceUrls,
+            ),
+          );
+          externalSearch = {
+            projectId: project.id,
+            candidates: storedExternalSearch.data.result_snapshot,
+            disclosure:
+              "Diese Profile stammen aus einer früheren externen Recherche und sind nicht durch XPORTAL verifiziert. Angaben, Verfügbarkeit und Terminlinks bitte erneut prüfen.",
+            mode: "openai",
+            completedAt: storedExternalSearch.data.created_at,
+            searchTrace: {
+              queries: [],
+              consultedSourceCount: sourceUrls.size,
+              returnedCandidateCount:
+                storedExternalSearch.data.result_snapshot.length,
+              toolCallCount: 0,
+            },
+          };
+        }
+      }
+    } catch {
+      // A history read must never make the internal project inaccessible.
+    }
+
     return NextResponse.json(
       {
         project: presentProject(project),
@@ -403,6 +487,7 @@ export async function GET(
             : matchingStatus === undefined && storedShortlist?.result_count === 0
               ? "Für dieses historische Nullergebnis wurde noch keine Qualitätsklassifikation gespeichert."
               : undefined),
+        externalSearch,
       },
       { headers: { "Cache-Control": "no-store" } },
     );

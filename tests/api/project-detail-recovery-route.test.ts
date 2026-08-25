@@ -32,6 +32,7 @@ const fixedNow = new Date("2026-08-13T12:00:00.000Z");
 function configureProjectQueries(
   shortlist: Record<string, unknown> | null = null,
   projectOverrides: Record<string, unknown> = {},
+  externalSearch: Record<string, unknown> | null = null,
 ) {
   const project = {
     id: projectId,
@@ -79,6 +80,9 @@ function configureProjectQueries(
       }
       if (table === "shortlists") {
         return Promise.resolve({ data: shortlist, error: null });
+      }
+      if (table === "external_freelancer_search_results") {
+        return Promise.resolve({ data: externalSearch, error: null });
       }
       throw new Error(`Unexpected maybeSingle for ${table}`);
     };
@@ -244,5 +248,49 @@ describe("project detail deterministic recovery", () => {
       recommendationRole: "partial",
       bookingUrl: null,
     });
+  });
+
+  it("restores the latest paid external research when a saved chat is reopened", async () => {
+    configureProjectQueries(
+      null,
+      { brief_status: "ready", status: "matching" },
+      {
+        created_at: "2026-08-24T10:30:00.000Z",
+        result_snapshot: [
+          {
+            displayName: "Anna Extern",
+            role: "React Consultant",
+            summary: "Öffentliches Profil mit passender Projekterfahrung.",
+            matchedRequirements: ["React", "Deutsch"],
+            knownGaps: ["Verfügbarkeit erneut prüfen"],
+            profileUrl: "https://portfolio.example/anna",
+            bookingUrl: "https://calendly.com/anna/30min",
+            sourceUrls: [
+              "https://portfolio.example/anna",
+              "https://calendly.com/anna/30min",
+            ],
+            verificationStatus: "external_unverified",
+          },
+        ],
+      },
+    );
+
+    const response = await GET(new Request(`https://x-portal.eu/api/projects/${projectId}`), {
+      params: Promise.resolve({ id: projectId }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.externalSearch).toMatchObject({
+      projectId,
+      mode: "openai",
+      completedAt: "2026-08-24T10:30:00.000Z",
+      searchTrace: {
+        consultedSourceCount: 2,
+        returnedCandidateCount: 1,
+      },
+    });
+    expect(body.externalSearch.candidates[0].displayName).toBe("Anna Extern");
+    expect(body.externalSearch.disclosure).toContain("früheren externen Recherche");
   });
 });

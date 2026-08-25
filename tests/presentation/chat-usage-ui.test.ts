@@ -1,6 +1,9 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import {
+  AnalysisTrace,
   externalSearchCtaState,
   visibleAnalysisSteps,
 } from "@/components/chat/results";
@@ -77,12 +80,12 @@ describe("chat usage presentation contract", () => {
     // 1,026 remaining at 21 credits per request floors to 48, never rounds up
     // into a request the balance cannot pay for.
     expect(estimatedRequestsLeft(usage.credits)).toBe(48);
-    expect(usageSummary(usage, false)).toBe("1.026 Credits · ca. 48 Anfragen");
+    expect(usageSummary(usage, false)).toBe("KI-Guthaben: 1.026 Credits · ca. 48 Anfragen");
   });
 
   it("keeps the research credits distinct from the monthly balance", () => {
     expect(usageSummary(usage, true)).toBe(
-      "1.026 Credits · ca. 48 Anfragen · 42 Recherche-Credits",
+      "KI-Guthaben: 1.026 Credits · ca. 48 Anfragen · Recherche-Guthaben: 42 Credits",
     );
   });
 
@@ -90,7 +93,7 @@ describe("chat usage presentation contract", () => {
     const almostEmpty = { ...usage.credits, remaining: 30, used: 1_020 };
     expect(usageSummary({ ...usage, productCredits: null }, false)).toContain("Anfragen");
     expect(usageSummary({ credits: almostEmpty, productCredits: null }, false)).toBe(
-      "30 Credits · ca. 1 Anfrage",
+      "KI-Guthaben: 30 Credits · ca. 1 Anfrage",
     );
   });
 
@@ -102,25 +105,23 @@ describe("chat usage presentation contract", () => {
     });
     expect(externalSearchCtaState(true, { ...productCredits, available: 29 })).toEqual({
       kind: "insufficient",
-      label: "30 Credits erforderlich · 29 verfügbar",
+      label: "30 Recherche-Credits erforderlich · 29 verfügbar",
       disabled: true,
     });
-    // Kein Festpreis mehr: die Beschriftung nennt die geschätzten Suchkosten
-    // und muss als Schätzung erkennbar bleiben.
-    const ready = externalSearchCtaState(true, productCredits);
-    expect(ready.kind).toBe("ready");
-    expect(ready.disabled).toBe(false);
-    expect(ready.label).toMatch(/^Internetsuche starten – ca\. \d+,\d ct geschätzt$/u);
-    expect(ready.label).not.toContain("0,50");
+    expect(externalSearchCtaState(true, productCredits)).toEqual({
+      kind: "ready",
+      label: "Externe Profile suchen · 30 Credits",
+      disabled: false,
+    });
   });
 
   it("maps provider progress to public milestones instead of exposing arbitrary details", () => {
-    expect(publicProgressLabel("hidden chain of thought detail")).toBe("Anfrage wird verarbeitet …");
+    expect(publicProgressLabel("hidden chain of thought detail")).toBe("Anfrage wird verarbeitet");
     expect(publicProgressLabel("12 aktive Profile werden regelbasiert abgeglichen …")).toBe(
-      "Interne Profile werden regelbasiert abgeglichen …",
+      "Profile werden nach belegten Kriterien geprüft",
     );
     expect(publicProgressLabel("2 nicht empfohlene Teiltreffer werden transparent aufbereitet …")).toBe(
-      "Nicht empfohlene Teiltreffer werden transparent vorbereitet …",
+      "Teiltreffer und offene Muss-Kriterien werden aufbereitet",
     );
   });
 
@@ -128,14 +129,26 @@ describe("chat usage presentation contract", () => {
     const steps = visibleAnalysisSteps(nanoTrace, 7);
     expect(steps).toHaveLength(3);
     expect(steps.map((step) => step.label)).toEqual([
-      "Anforderungen mit GPT-5.4 Nano strukturiert",
-      "Interne Profile regelbasiert abgeglichen",
-      "Ergebnis vorbereitet",
+      "Projektanforderungen strukturiert",
+      "Profile nach festen Kriterien geprüft",
+      "Ergebnis nach belegter Passung priorisiert",
     ]);
     expect(JSON.stringify(steps)).not.toContain("internal reasoning");
     expect(steps[2]?.detail).toContain("3 von maximal drei Profilen");
 
     const partialSteps = visibleAnalysisSteps(nanoTrace, 0, 2);
     expect(partialSteps[2]?.detail).toContain("2 nicht empfohlene Teiltreffer");
+  });
+
+  it("keeps the public work process collapsed by default", () => {
+    const markup = renderToStaticMarkup(createElement(AnalysisTrace, {
+      trace: nanoTrace,
+      profileCount: 1,
+      partialProfileCount: 0,
+    }));
+    expect(markup).toContain('<details class="analysis-trace">');
+    expect(markup).not.toContain('<details class="analysis-trace" open="">');
+    expect(markup).toContain("Arbeitsprozess");
+    expect(markup).not.toContain("internal reasoning");
   });
 });

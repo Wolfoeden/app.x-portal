@@ -24,7 +24,7 @@ const FreelancerIdSchema = z
 
 /** Guests get an empty team and a 403, never a row they could not read back. */
 const ACCOUNT_REQUIRED = {
-  error: "Für „Mein Team“ ist ein Konto erforderlich.",
+  error: "Für die Merkliste ist ein Konto erforderlich.",
   reason: "account_required" as const,
 };
 
@@ -44,7 +44,7 @@ export async function GET() {
   } catch (error) {
     if (error instanceof Response) return error;
     return NextResponse.json(
-      { error: "Ihr Team konnte nicht geladen werden." },
+      { error: "Ihre Merkliste konnte nicht geladen werden." },
       { status: 503 },
     );
   }

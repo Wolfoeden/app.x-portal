@@ -252,6 +252,8 @@ export interface ExternalFreelancerSearchResponse {
   candidates: ExternalFreelancerCandidate[];
   disclosure: string;
   mode: "openai" | "unavailable";
+  /** Present when a completed external search was restored from chat history. */
+  completedAt?: string;
   notice?: string;
   searchTrace: {
     queries: string[];
@@ -315,6 +317,8 @@ export interface ProjectDetailResponse {
   analysisMode?: "ai" | "fallback";
   analysisNotice?: string | null;
   matchingStatus?: MatchingStatus;
+  /** Latest completed, charged research run for this saved chat, if any. */
+  externalSearch?: ExternalFreelancerSearchResponse | null;
 }
 
 export interface SessionResponse {
@@ -329,7 +333,7 @@ export interface SessionResponse {
 }
 
 /**
- * One freelancer the user marked for "Mein Team". Account-only: a guest has
+ * One freelancer the user added to the saved-profile list. Account-only: a guest has
  * no durable identity to hang a team on.
  */
 export interface SavedFreelancer {
@@ -347,7 +351,7 @@ export interface ChatApiPaths {
   chat: string;
   projects: string;
   projectCollections: string;
-  /** The account's saved freelancers, shown as "Mein Team". */
+  /** The account's saved freelancers, shown as the "Merkliste". */
   savedFreelancers: string;
   session: string;
   /** Monthly free-usage and purchased-product-credit snapshot endpoint. */

@@ -10,7 +10,6 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { estimateSearchCost, formatCostEstimate } from "@/lib/ai/search-cost";
 import { appPath } from "@/lib/app-path";
 import { MINIMUM_CORE_COVERAGE_BASIS_POINTS } from "@/lib/domain/matching";
 
@@ -130,7 +129,7 @@ export function externalSearchCtaState(
   if (!authenticated) {
     return {
       kind: "login",
-      label: "Anmelden, um die Internetsuche zu nutzen",
+      label: "Anmelden und externe Profile suchen",
       disabled: false,
     };
   }
@@ -144,15 +143,13 @@ export function externalSearchCtaState(
   if (productCredits.available < 30) {
     return {
       kind: "insufficient",
-      label: `30 Credits erforderlich · ${formatCredits(productCredits.available)} verfügbar`,
+      label: `30 Recherche-Credits erforderlich · ${formatCredits(productCredits.available)} verfügbar`,
       disabled: true,
     };
   }
   return {
     kind: "ready",
-    // Kein Festpreis mehr: die Zahl ist eine Schätzung der tatsächlichen
-    // Anbieterkosten und schwankt mit der Zahl der Suchen.
-    label: `Internetsuche starten – ${formatCostEstimate(estimateSearchCost())} geschätzt`,
+    label: "Externe Profile suchen · 30 Credits",
     disabled: false,
   };
 }
@@ -178,10 +175,10 @@ function modeLabel(mode: ProjectMode) {
 }
 
 function availabilityLabel(status: AvailabilityStatus) {
-  if (status === "available") return "Projektverfügbarkeit bestätigt";
-  if (status === "limited") return "Projektverfügbarkeit begrenzt";
+  if (status === "available") return "Verfügbarkeit bestätigt";
+  if (status === "limited") return "Begrenzt verfügbar";
   if (status === "unavailable") return "Nicht verfügbar";
-  return "Projektverfügbarkeit nicht bestätigt";
+  return "Verfügbarkeit offen";
 }
 
 function presentUnknownFields(fields: string[]) {
@@ -238,27 +235,19 @@ export function ResultSection({
   const searchCta = externalSearchCtaState(isAccountUser, productCredits);
   const resultHeading =
     matchingStatus === "needs_clarification"
-      ? "Anforderung noch nicht ausreichend konkret"
+      ? "Bitte konkretisieren Sie die Anforderung"
       : matchingStatus === "no_reliable_match"
         ? partialProfiles.length
           ? `${partialProfiles.length} ${partialProfiles.length === 1 ? "nicht empfohlener Teiltreffer" : "nicht empfohlene Teiltreffer"}`
-          : "Kein zuverlässiger interner Match"
+          : "Kein ausreichend passendes internes Profil"
         : profiles.length
-          ? `${profiles.length} ${profiles.length === 1 ? "verlässlicher interner Match" : "verlässliche interne Matches"}`
-          : "Kein gespeicherter interner Match";
+          ? `${profiles.length} ${profiles.length === 1 ? "passendes internes Profil" : "passende interne Profile"}`
+          : "Kein gespeichertes internes Ergebnis";
   return (
     <section className="result-section" aria-label="Suchergebnis">
-      {brief ? <BriefCard brief={brief} onOpenDetails={onOpenDetails} /> : null}
-      {analysis ? (
-        <AnalysisTrace
-          trace={analysis}
-          profileCount={profiles.length}
-          partialProfileCount={partialProfiles.length}
-        />
-      ) : null}
       <div className="shortlist-heading">
         <div>
-          <p className="eyebrow">Regelbasierter Abgleich</p>
+          <p className="eyebrow">Interner Profilabgleich</p>
           <h2>{resultHeading}</h2>
         </div>
         {profiles.length ? (
@@ -324,14 +313,14 @@ export function ResultSection({
                     ? "Keiner der internen Teiltreffer erreicht die Empfehlungsschwelle."
                   : analysisMode === "fallback"
                     ? "Die sichere Basisanalyse hat keinen zuverlässigen internen Match gefunden."
-                    : "Kein aktives, reales und direkt buchbares Profil erreicht derzeit die Empfehlungsschwelle."}
+                    : "Kein aktives und direkt buchbares Profil erreicht derzeit die Empfehlungsschwelle."}
               </strong>
               <p>
                 {matchingStatus === "needs_clarification"
                   ? "Ohne prüfbare Kompetenzanforderung wird kein Profil geraten und keine kostenpflichtige Websuche angeboten."
                   : matchingStatus === "no_reliable_match"
                     ? partialProfiles.length
-                      ? "Prüfen Sie zuerst die offengelegten Lücken oder präzisieren Sie ein Kriterium im Chat. Reicht das interne Ergebnis nicht aus, steht darunter als letzte Option die getrennte Internetsuche bereit."
+                      ? "Prüfen Sie zuerst die offengelegten Lücken oder präzisieren Sie ein Kriterium im Chat. Reicht das interne Ergebnis nicht aus, steht darunter als getrennte Option die externe Recherche bereit."
                       : "Wir empfehlen nur Profile, die alle Muss-Kriterien und mindestens 70 % der Kernkompetenzgruppen erfüllen. Sie können ein Kriterium im Chat präzisieren oder lockern."
                     : "Für dieses historische Ergebnis ist keine Qualitätsklassifikation gespeichert."}
               </p>
@@ -351,11 +340,7 @@ export function ResultSection({
                   </button>
                   {searchCta.kind === "ready" && externalSearchState !== "searching" ? (
                     <p className="external-search-cost-note">
-                      Mit Ihrem Klick bestätigen Sie die einmalige Belastung von
-                      30 Produkt-Credits. Der angezeigte Betrag ist eine Schätzung
-                      der tatsächlichen Suchkosten und hängt davon ab, wie oft
-                      gesucht werden muss — nach dem Lauf steht der genaue Betrag
-                      unter &bdquo;Suchschritte ansehen&ldquo;.
+                      Einmalige Belastung: 30 Recherche-Credits. Bei einem technischen Fehler werden sie automatisch wieder freigegeben.
                     </p>
                   ) : null}
                   {searchCta.kind === "insufficient" ? (
@@ -369,10 +354,18 @@ export function ResultSection({
                     </p>
                   ) : null}
                   {externalSearchState === "searching" ? (
-                    <p className="external-search-progress" role="status">
-                      <span className="thinking-dots" aria-hidden="true"><i /><i /><i /></span>
-                      KI sucht · Quellen und Buchungslinks werden geprüft
-                    </p>
+                    <details className="external-search-progress" role="status">
+                      <summary>
+                        <span className="thinking-dots" aria-hidden="true"><i /><i /><i /></span>
+                        Recherche läuft · Arbeitsschritte anzeigen
+                        <span className="analysis-trace-toggle" aria-hidden="true"><IconChevronDown size={14} /></span>
+                      </summary>
+                      <ol>
+                        <li>Öffentliche Profile werden anhand der Muss-Kriterien gesucht.</li>
+                        <li>Quellen, Verfügbarkeit und Terminlinks werden auf Plausibilität geprüft.</li>
+                        <li>Nur belegbare Treffer werden getrennt vom internen Ergebnis angezeigt.</li>
+                      </ol>
+                    </details>
                   ) : null}
                   {externalSearchState === "error" ? (
                     <button className="text-button" type="button" onClick={onExternalSearch}>Websuche erneut versuchen</button>
@@ -390,6 +383,19 @@ export function ResultSection({
           ) : null}
         </>
       )}
+      {brief || analysis ? (
+        <div className="result-supporting-context">
+          <p className="eyebrow">Anfrage &amp; Arbeitsprozess</p>
+          {brief ? <BriefCard brief={brief} onOpenDetails={onOpenDetails} /> : null}
+          {analysis ? (
+            <AnalysisTrace
+              trace={analysis}
+              profileCount={profiles.length}
+              partialProfileCount={partialProfiles.length}
+            />
+          ) : null}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -475,12 +481,12 @@ export function providerModelLabel(trace: AiAnalysisTrace): string | null {
 
 export function analysisDisclosure(trace: AiAnalysisTrace): string {
   if (trace.provider.succeeded && !trace.provider.fallback) {
-    return "Die Angaben wurden anhand der bestätigten Provider-Antwort strukturiert. Die interne Auswahl bleibt ein reproduzierbarer Regelabgleich; Sie treffen die Entscheidung.";
+    return "Die Anforderungen wurden mit einer bestätigten KI-Antwort strukturiert. XPORTAL unterstützt die Vorauswahl, trifft aber keine Einstellungsentscheidung und ergänzt keine fehlenden Profildaten.";
   }
   if (trace.provider.succeeded) {
-    return "Eine Provider-Antwort wurde empfangen, aber nicht für die Strukturierung verwendet. Das interne Freelancer-Matching wurde transparent mit der sicheren Basisanalyse ausgeführt.";
+    return "Die KI-Antwort wurde nicht für die Strukturierung oder Profilauswahl verwendet. Eine konservative Basisanalyse hat die Angaben strukturiert; die Profilauswahl bleibt regelbasiert.";
   }
-  return "Die Anfrage wurde ohne bestätigte Provider-Antwort gespeichert. Das interne Freelancer-Matching wurde transparent mit der sicheren Basisanalyse ausgeführt.";
+  return "Die Anfrage wurde ohne bestätigte KI-Antwort verarbeitet. Eine konservative Basisanalyse hat die Angaben strukturiert; die Profilauswahl bleibt regelbasiert.";
 }
 
 export function visibleAnalysisSteps(
@@ -489,29 +495,23 @@ export function visibleAnalysisSteps(
   partialProfileCount = 0,
 ): AiAnalysisTrace["steps"] {
   const providerConfirmed = trace.provider.succeeded && !trace.provider.fallback;
-  const nanoConfirmed = providerConfirmed &&
-    trace.provider.actualModel?.toLocaleLowerCase("en-US").startsWith("gpt-5.4-nano");
   return [
     {
-      label: providerConfirmed
-        ? nanoConfirmed
-          ? "Anforderungen mit GPT-5.4 Nano strukturiert"
-          : "Anforderungen mit bestätigter KI-Antwort strukturiert"
-        : "Anforderungen mit Basisanalyse strukturiert",
+      label: "Projektanforderungen strukturiert",
       detail: providerConfirmed
-        ? "Die Angaben wurden in die vorgegebenen Projektfelder übertragen; fehlende Fakten bleiben unbekannt."
-        : "Es lag keine verwendbare Nano-Antwort vor. Die gespeicherten Angaben wurden konservativ in die Projektfelder übertragen.",
+        ? "Rolle, Kompetenzen und Rahmenbedingungen wurden getrennt; fehlende Angaben bleiben ausdrücklich offen."
+        : "Die gespeicherten Angaben wurden konservativ in Projektfelder übertragen; fehlende Angaben bleiben ausdrücklich offen.",
       status: providerConfirmed ? "completed" : "warning",
     },
     {
-      label: "Interne Profile regelbasiert abgeglichen",
-      detail: "Aktive Profile wurden ohne KI-Auswahl anhand der dokumentierten Kriterien geprüft.",
+      label: "Profile nach festen Kriterien geprüft",
+      detail: "Aktive und buchbare Profile wurden anhand der dokumentierten Muss- und Kernanforderungen geprüft.",
       status: "completed",
     },
     {
-      label: "Ergebnis vorbereitet",
+      label: "Ergebnis nach belegter Passung priorisiert",
       detail: profileCount > 0
-        ? `${Math.min(profileCount, 3)} von maximal drei Profilen werden mit Gründen und bekannten Lücken angezeigt.`
+        ? `${Math.min(profileCount, 3)} von maximal drei Profilen werden mit Belegen und offenen Punkten angezeigt.`
         : partialProfileCount > 0
           ? `${Math.min(partialProfileCount, 2)} nicht empfohlene Teiltreffer werden mit ihren belegten Überschneidungen und ausschlaggebenden Lücken angezeigt.`
         : "Es wurde kein ausreichend relevantes internes Profil gefunden; es wird kein Kandidat erfunden.",
@@ -520,7 +520,7 @@ export function visibleAnalysisSteps(
   ];
 }
 
-function AnalysisTrace({
+export function AnalysisTrace({
   trace,
   profileCount,
   partialProfileCount,
@@ -532,12 +532,12 @@ function AnalysisTrace({
   const modelLabel = providerModelLabel(trace);
   const steps = visibleAnalysisSteps(trace, profileCount, partialProfileCount);
   return (
-    <details className="analysis-trace" open>
+    <details className="analysis-trace">
       <summary>
         <span className="analysis-trace-icon" aria-hidden="true"><IconSpark size={15} /></span>
         <span>
-          <strong>So wurde Ihre Anfrage bearbeitet</strong>
-          <small>{providerStatusLabel(trace)}{modelLabel ? ` · ${modelLabel}` : ""}</small>
+          <strong>Arbeitsprozess</strong>
+          <small>Anfrage strukturiert · Profile geprüft · Ergebnis priorisiert</small>
         </span>
         <span className="analysis-trace-toggle" aria-hidden="true"><IconChevronDown size={15} /></span>
       </summary>
@@ -549,6 +549,9 @@ function AnalysisTrace({
           </li>
         ))}
       </ol>
+      <p className="analysis-runtime-note">
+        Technischer Status: {providerStatusLabel(trace)}{modelLabel ? ` · ${modelLabel}` : ""}
+      </p>
       <p className="analysis-trace-disclosure">{analysisDisclosure(trace)}</p>
     </details>
   );
@@ -569,9 +572,12 @@ function ExternalSearchResults({
   return (
     <section className="external-results" aria-label="Externe, nicht verifizierte Suchergebnisse">
       <div className="external-results-heading">
-        <div><p className="eyebrow">Optionale Websuche</p><h3>Öffentlich gefundene Profile</h3></div>
-        <span>Nicht durch XPORTAL verifiziert</span>
+        <div><p className="eyebrow">Externe Recherche · 30 Credits</p><h3>Öffentlich gefundene Profile</h3></div>
+        <span>Nicht verifiziert</span>
       </div>
+      {result.completedAt ? (
+        <p className="external-history-meta">Gespeicherte Recherche vom {formatDateTime(result.completedAt)}</p>
+      ) : null}
       <p className="external-disclosure">{result.disclosure}</p>
       {result.candidates.length ? (
         <div className="external-profile-list">
@@ -652,7 +658,7 @@ function ExternalSearchResults({
                 <div className="external-fact is-gap"><strong>Offen / ungeprüft</strong><p>{candidate.knownGaps.join(" · ")}</p></div>
               ) : null}
               <div className="external-links">
-                <a href={candidate.profileUrl} target="_blank" rel="noopener noreferrer">Öffentliches Profil prüfen</a>
+                <a href={candidate.profileUrl} target="_blank" rel="noopener noreferrer">Profilquelle öffnen</a>
                 {candidate.linkedinUrl ? (
                   <a href={candidate.linkedinUrl} target="_blank" rel="noopener noreferrer">LinkedIn</a>
                 ) : null}
@@ -663,7 +669,7 @@ function ExternalSearchResults({
                   <a href={candidate.portfolioUrl} target="_blank" rel="noopener noreferrer">Portfolio</a>
                 ) : null}
                 {candidate.bookingUrl ? (
-                  <a className="external-booking-link" href={candidate.bookingUrl} target="_blank" rel="noopener noreferrer">Buchungslink öffnen <IconArrowUpRight size={12} /></a>
+                  <a className="external-booking-link" href={candidate.bookingUrl} target="_blank" rel="noopener noreferrer">Terminseite öffnen <IconArrowUpRight size={12} /></a>
                 ) : null}
               </div>
               {candidate.sourceUrls.length ? (
@@ -681,14 +687,11 @@ function ExternalSearchResults({
         <p className="external-empty">Auch in der Websuche wurde kein Profil gefunden, dessen öffentliche Quellen sich belegen ließen.</p>
       )}
       <details className="external-trace">
-        <summary>Suchschritte ansehen</summary>
+        <summary>Rechercheprozess anzeigen</summary>
         <p>{result.searchTrace.consultedSourceCount} öffentlich zugängliche Quellen wurden berücksichtigt; {result.searchTrace.returnedCandidateCount} Ergebnis(se) erfüllten die Ausgaberegeln.</p>
         {result.searchTrace.toolCallCount ? (
           <p>
-            {result.searchTrace.toolCallCount} Suchanfrage(n) ausgeführt
-            {typeof result.costCents === "number"
-              ? ` · tatsächliche Kosten ${result.costCents.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ct`
-              : ""}
+            {result.searchTrace.toolCallCount} Suchanfrage(n) ausgeführt · 30 Recherche-Credits belastet
           </p>
         ) : null}
         {result.searchTrace.queries.length ? <ul>{result.searchTrace.queries.map((query) => <li key={query}>{query}</li>)}</ul> : null}
@@ -798,21 +801,21 @@ export function cvActionState(
   // Authentication wins over response data so a stale or malformed guest
   // payload cannot disclose whether a CV exists.
   if (!isAccountUser) {
-    return { kind: "login_required", label: "Download CV", disabled: true };
+    return { kind: "login_required", label: "Lebenslauf nur mit Konto", disabled: true };
   }
 
   const access = profile.cvAccess ?? "forbidden";
   if (access === "available") {
-    return { kind: access, label: "Download CV", disabled: false };
+    return { kind: access, label: "Lebenslauf herunterladen", disabled: false };
   }
   if (access === "missing") {
     return {
       kind: access,
-      label: "Freelancer hat noch kein CV hochgeladen",
+      label: "Kein Lebenslauf hinterlegt",
       disabled: true,
     };
   }
-  return { kind: access, label: "Download CV", disabled: true };
+  return { kind: access, label: "Lebenslauf nicht verfügbar", disabled: true };
 }
 
 function cvDownloadErrorMessage(status: number): string {
@@ -892,7 +895,7 @@ export function bookingActionState(
   if (!profile.bookingUrl) {
     return {
       kind: "unavailable",
-      label: "Nicht mehr buchbar",
+      label: "Aktuell nicht buchbar",
       hint: "Dieses Profil ist aktuell nicht direkt buchbar.",
       disabled: true,
     };
@@ -900,15 +903,15 @@ export function bookingActionState(
   if (!isAccountUser) {
     return {
       kind: "login_required",
-      label: "Anmelden & Meeting buchen",
+      label: "Anmelden & Terminseite öffnen",
       hint: "Nach der Anmeldung geht es direkt mit diesem Profil weiter.",
       disabled: false,
     };
   }
   return {
     kind: "bookable",
-    label: "Meeting buchen",
-    hint: "Der Booking-Link des Freelancers öffnet sich in einem neuen Tab.",
+    label: "Terminseite öffnen",
+    hint: "Die Terminseite des Freelancers öffnet sich in einem neuen Tab.",
     disabled: false,
   };
 }
@@ -963,7 +966,7 @@ export function ProfileCard({
     }
   };
   return (
-    <article ref={cardRef} className={`profile-card ${isPartial ? "is-partial" : ""} ${selected ? "is-selected" : ""}`}>
+    <article ref={cardRef} className={`profile-card ${profile.recommendationRole === "primary" ? "is-primary" : ""} ${isPartial ? "is-partial" : ""} ${selected ? "is-selected" : ""}`}>
       <div className="profile-rank" aria-label={`${isPartial ? "Teiltreffer" : "Ergebnis"} ${position}`}>{position.toString().padStart(2, "0")}</div>
       <div className="profile-main">
         <header className="profile-header">
@@ -984,8 +987,11 @@ export function ProfileCard({
                     : "Alternative"}
               </span>
             ) : null}
-            {profile.fitScore !== null ? (
-              <span className="match-score">{isPartial ? "Kriterienpassung" : "Passung"} {profile.fitScore} %</span>
+            {profile.coreCoverage !== null ? (
+              <span className="match-score">Kernanforderungen {profile.coreCoverage} % belegt</span>
+            ) : null}
+            {profile.knownGaps.length ? (
+              <span className="match-gaps">{profile.knownGaps.length} {profile.knownGaps.length === 1 ? "Punkt" : "Punkte"} offen</span>
             ) : null}
             <span className={`availability ${profile.availabilityStatus}`}>{availabilityLabel(profile.availabilityStatus)}</span>
           </div>
@@ -1006,7 +1012,12 @@ export function ProfileCard({
               </p>
             ) : null}
             {profile.knownGaps.length ? (
-              <ul>{profile.knownGaps.map((gap) => <li key={gap}>{gap}</li>)}</ul>
+              <>
+                <ul>{profile.knownGaps.slice(0, 3).map((gap) => <li key={gap}>{gap}</li>)}</ul>
+                {profile.knownGaps.length > 3 ? (
+                  <details className="profile-more"><summary>{profile.knownGaps.length - 3} weitere offene Punkte</summary><ul>{profile.knownGaps.slice(3).map((gap) => <li key={gap}>{gap}</li>)}</ul></details>
+                ) : null}
+              </>
             ) : (
               <p className="unknown-text">
                 Die Muss-Kriterien der Anfrage sind nicht vollständig belegt.
@@ -1020,21 +1031,32 @@ export function ProfileCard({
         ) : null}
 
         <div className="profile-tags">
-          {profile.skillTags.slice(0, 7).map((skill) => <span key={skill}>{skill}</span>)}
+          {profile.skillTags.slice(0, 5).map((skill) => <span key={skill}>{skill}</span>)}
+          {profile.skillTags.length > 5 ? <span className="profile-tags-more">+{profile.skillTags.length - 5}</span> : null}
         </div>
 
         <div className="match-columns">
           <div className="match-column reasons">
             <h4><span aria-hidden="true"><IconCheck size={13} /></span> Warum passend</h4>
             {profile.matchReasons.length ? (
-              <ul>{profile.matchReasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+              <>
+                <ul>{profile.matchReasons.slice(0, 3).map((reason) => <li key={reason}>{reason}</li>)}</ul>
+                {profile.matchReasons.length > 3 ? (
+                  <details className="profile-more"><summary>{profile.matchReasons.length - 3} weitere Belege</summary><ul>{profile.matchReasons.slice(3).map((reason) => <li key={reason}>{reason}</li>)}</ul></details>
+                ) : null}
+              </>
             ) : <p className="unknown-text">Keine Begründung übermittelt</p>}
           </div>
           {isPartial ? null : (
             <div className="match-column gaps">
               <h4><span aria-hidden="true"><IconAlertCircle size={13} /></span> Bekannte Lücken</h4>
               {profile.knownGaps.length ? (
-                <ul>{profile.knownGaps.map((gap) => <li key={gap}>{gap}</li>)}</ul>
+                <>
+                  <ul>{profile.knownGaps.slice(0, 3).map((gap) => <li key={gap}>{gap}</li>)}</ul>
+                  {profile.knownGaps.length > 3 ? (
+                    <details className="profile-more"><summary>{profile.knownGaps.length - 3} weitere offene Punkte</summary><ul>{profile.knownGaps.slice(3).map((gap) => <li key={gap}>{gap}</li>)}</ul></details>
+                  ) : null}
+                </>
               ) : <p>Keine bekannten Lücken im Abgleich</p>}
             </div>
           )}
@@ -1042,9 +1064,9 @@ export function ProfileCard({
 
         <div className="fact-row">
           {verifiedFacts.length ? (
-            <FactGroup label="Verifiziert" facts={verifiedFacts.map((fact) => fact.value)} verified />
+            <FactGroup label="Von XPORTAL geprüft" facts={verifiedFacts.map((fact) => fact.value)} verified />
           ) : null}
-          <FactGroup label="Selbstauskunft" facts={selfReportedFacts.map((fact) => fact.value)} />
+          <FactGroup label="Vom Freelancer angegeben" facts={selfReportedFacts.map((fact) => fact.value)} />
         </div>
 
         <dl className="profile-meta-grid">
@@ -1062,23 +1084,26 @@ export function ProfileCard({
 
         <footer className="profile-footer">
           <div>
-            <strong>{isPartial ? "Nicht empfohlen – Kontakt dennoch möglich" : profile.bookingUrl ? "Direktes Erstgespräch" : "Historisches Match"}</strong>
-            <span>{isPartial ? "Die offenen Muss-Kriterien bleiben offen. Sie entscheiden, ob Sie trotzdem Kontakt aufnehmen." : bookingAction.hint}</span>
+            <strong>{isPartial ? "Nicht empfohlen · Kontakt auf eigene Entscheidung" : profile.bookingUrl ? "Bereit für den nächsten Schritt" : "Derzeit nicht direkt buchbar"}</strong>
+            <span>{isPartial ? "Offene Muss-Kriterien bleiben sichtbar. Sie entscheiden, ob Sie dennoch Kontakt aufnehmen." : bookingAction.hint}</span>
           </div>
           <div className="profile-actions">
               <div className="cv-action-group">
-                <button
-                  className="secondary-action cv-action"
-                  type="button"
-                  disabled={cvAction.disabled || !projectId || cvDownloadState === "loading"}
-                  aria-busy={cvDownloadState === "loading"}
-                  aria-describedby={cvDownloadError ? `cv-error-${profile.id}` : undefined}
-                  title={cvAction.kind === "login_required" ? "Bitte anmelden, um CVs herunterzuladen." : undefined}
-                  onClick={downloadCv}
-                >
-                  <IconDocument size={13} />
-                  {cvDownloadState === "loading" ? "CV wird vorbereitet …" : cvAction.label}
-                </button>
+                {cvAction.kind === "available" ? (
+                  <button
+                    className="secondary-action cv-action"
+                    type="button"
+                    disabled={!projectId || cvDownloadState === "loading"}
+                    aria-busy={cvDownloadState === "loading"}
+                    aria-describedby={cvDownloadError ? `cv-error-${profile.id}` : undefined}
+                    onClick={downloadCv}
+                  >
+                    <IconDocument size={13} />
+                    {cvDownloadState === "loading" ? "Lebenslauf wird vorbereitet …" : cvAction.label}
+                  </button>
+                ) : (
+                  <span className="profile-action-status"><IconDocument size={13} /> {cvAction.label}</span>
+                )}
                 {cvDownloadError ? (
                   <p className="cv-download-status is-error" id={`cv-error-${profile.id}`} role="alert">
                     {cvDownloadError}
@@ -1093,12 +1118,12 @@ export function ProfileCard({
                 type="button"
                 onClick={onToggleSave}
                 aria-pressed={saved}
-                title={saved ? "Aus „Mein Team“ entfernen" : "Zu „Mein Team“ hinzufügen"}
+                title={saved ? "Aus der Merkliste entfernen" : "Zur Merkliste hinzufügen"}
               >
-                {saved ? <><IconCheck size={13} /> Im Team</> : "Profil merken"}
+                {saved ? <><IconCheck size={13} /> Gemerkt</> : "Zur Merkliste"}
               </button>
               <button className="secondary-action" type="button" onClick={selected ? onContact : onSelect}>
-                Kontaktoptionen
+                Kontaktwege anzeigen
               </button>
               {bookingAction.kind === "bookable" ? (
                 // The redirect route records the click and then forwards to the
@@ -1264,7 +1289,7 @@ export function ProjectDetails({
 }
 
 /**
- * "Mein Team" renders the same card the chat result list uses, so a saved
+ * The saved-profile list renders the same card the chat result list uses, so a saved
  * profile looks exactly as it did when the user marked it. The match block of
  * the card stays empty because a saved profile carries no evaluation: it was
  * never scored against a brief.

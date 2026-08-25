@@ -7,6 +7,8 @@ import {
   ChatWorkspace,
   IncompleteChatStreamError,
   parseStreamResponse,
+  projectStatusLabel,
+  sidebarChatGroups,
 } from "@/components/ChatWorkspace";
 
 function eventStream(...events: unknown[]): Response {
@@ -54,7 +56,7 @@ describe("chat stream recovery", () => {
 });
 
 describe("sidebar hierarchy", () => {
-  it("places Neuer Chat, Mein Team and Agenten before saved chats", () => {
+  it("places Neuer Chat, Merkliste and Agenten before saved chats", () => {
     const markup = renderToStaticMarkup(createElement(ChatWorkspace));
     const newChat = markup.indexOf('data-sidebar-primary="new-chat"');
     const team = markup.indexOf('data-sidebar-primary="team"');
@@ -65,5 +67,19 @@ describe("sidebar hierarchy", () => {
     expect(team).toBeGreaterThan(newChat);
     expect(agents).toBeGreaterThan(team);
     expect(savedChats).toBeGreaterThan(agents);
+    expect(markup).toContain("Merkliste");
+  });
+
+  it("groups chat history by recency and translates workflow states", () => {
+    const groups = sidebarChatGroups([
+      { id: "today", title: "Heute", updatedAt: "2026-08-25T12:00:00.000Z", status: "matching" },
+      { id: "yesterday", title: "Gestern", updatedAt: "2026-08-24T12:00:00.000Z", status: "shortlisted" },
+      { id: "older", title: "Früher", updatedAt: "2026-08-01T12:00:00.000Z", status: "closed" },
+    ], new Date("2026-08-25T15:00:00.000Z"));
+
+    expect(groups.map((group) => group.label)).toEqual(["Heute", "Gestern", "Früher"]);
+    expect(projectStatusLabel("matching")).toBe("Abgleich");
+    expect(projectStatusLabel("shortlisted")).toBe("Auswahl");
+    expect(projectStatusLabel("closed")).toBe("Abgeschlossen");
   });
 });

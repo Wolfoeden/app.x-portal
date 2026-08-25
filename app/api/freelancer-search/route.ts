@@ -78,7 +78,7 @@ function completedSearchResponse(input: {
       disclosure: EXTERNAL_RESULT_DISCLOSURE,
       mode: "openai",
       notice: input.replayed
-        ? "Die bereits bezahlte Internetsuche wurde ohne neue Belastung wiederhergestellt."
+        ? "Die bereits mit 30 Credits bezahlte Recherche wurde ohne neue Belastung wiederhergestellt."
         : undefined,
       searchTrace: {
         queries: [],
@@ -155,7 +155,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "Bitte melden Sie sich an, bevor Sie eine kostenpflichtige Internetsuche starten.",
+            "Bitte melden Sie sich an, bevor Sie die externe Recherche für 30 Credits starten.",
           code: "account_required",
           traceId,
         },
@@ -292,7 +292,7 @@ export async function POST(request: Request) {
         {
           error: duplicate
             ? "Diese Internetsuche wurde bereits gestartet oder abgeschlossen."
-            : "Für diese Internetsuche sind 30 Produkt-Credits erforderlich.",
+            : "Für diese externe Recherche sind 30 Recherche-Credits erforderlich.",
           code: duplicate
             ? productReservation.reason === "already_released"
               ? "search_previous_attempt_released"

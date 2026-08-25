@@ -75,7 +75,7 @@ describe("truthful chat provider status", () => {
       "Basisanalyse · OpenAI-Aufruf fehlgeschlagen",
     );
     expect(providerModelLabel(failed)).toBe("Angefordert: gpt-requested");
-    expect(analysisDisclosure(failed)).toContain("ohne bestätigte Provider-Antwort");
+    expect(analysisDisclosure(failed)).toContain("ohne bestätigte KI-Antwort");
   });
 
   it("surfaces a redacted billing or provider-quota failure", () => {
@@ -119,7 +119,7 @@ describe("truthful chat provider status", () => {
     expect(providerModelLabel(succeeded)).toBe(
       "Antwortmodell: gpt-response-snapshot",
     );
-    expect(analysisDisclosure(succeeded)).toContain("bestätigten Provider-Antwort");
+    expect(analysisDisclosure(succeeded)).toContain("bestätigten KI-Antwort");
   });
 
   it("keeps provider success and deterministic fallback independent", () => {
@@ -138,7 +138,7 @@ describe("truthful chat provider status", () => {
     expect(providerModelLabel(invalidOutput)).toBe(
       "Antwortmodell: gpt-response-snapshot",
     );
-    expect(analysisDisclosure(invalidOutput)).toContain("nicht für die Strukturierung verwendet");
+    expect(analysisDisclosure(invalidOutput)).toContain("nicht für die Strukturierung oder Profilauswahl verwendet");
   });
 });
 

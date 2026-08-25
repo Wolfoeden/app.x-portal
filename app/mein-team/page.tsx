@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import { ChatWorkspace } from "@/components/ChatWorkspace";
 
 export const metadata: Metadata = {
-  title: "Mein Team | XPORTAL",
+  title: "Merkliste | XPORTAL",
   description:
-    "Die Freelancer-Profile, die Sie sich aus Ihren Suchergebnissen gemerkt haben.",
+    "Ihre gespeicherten Freelancer-Profile für die spätere Auswahl.",
   // The page only ever shows one account's own saved profiles.
   robots: {
     index: false,
