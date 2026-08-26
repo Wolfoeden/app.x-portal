@@ -1,5 +1,11 @@
 import "server-only";
 
+import {
+  aggregateSearchUsage,
+  groupSearchUsageByUser,
+  readSearchUsageRows,
+  type SearchUsageTotals,
+} from "@/lib/ai/admin-search-usage";
 import { formatNanoUsdAsUsd } from "@/lib/ai/model-pricing";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -115,6 +121,19 @@ export type AdminUserUsage = AdminUsageTotals & {
   freeMonthlyUsage: AdminFreeUsageBalance | null;
   productCredits: AdminProductCreditBalance | null;
   lastUsedAt: string | null;
+  /** Websuchen dieses Kontos — der teurere Posten. */
+  searchRuns: number;
+  searchToolCalls: number;
+};
+
+/** Nutzung getrennt nach Gästen und angemeldeten Konten. */
+export type AdminUsageSegment = {
+  accounts: number;
+  activeAccounts: number;
+  totalTokens: number;
+  tokenCostNanoUsd: string;
+  searchRuns: number;
+  searchToolCalls: number;
 };
 
 export type AdminUsageDashboard = {
@@ -127,6 +146,16 @@ export type AdminUsageDashboard = {
   byModel: AdminUsageBreakdown[];
   users: AdminUserUsage[];
   recentInteractions: AdminUsageInteraction[];
+  /**
+   * Websuchen stehen nicht in `ai_usage_events` — nur Token stehen dort. Ohne
+   * diese Zahlen unterschlägt jede Kostenanzeige den größeren Posten: Token
+   * kosten Zehntelcent, ein Suchaufruf einen ganzen.
+   */
+  searchUsage: SearchUsageTotals & { costUsd: string };
+  /** Token- und Suchkosten zusammen. */
+  combinedCostNanoUsd: string;
+  combinedCostUsd: string;
+  segments: { guests: AdminUsageSegment; registered: AdminUsageSegment };
 };
 
 export type AdminUsageInteraction = {
@@ -543,13 +572,17 @@ export async function getAdminUsageDashboard(input: {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
     throw new Error("Admin usage service is not configured");
   }
-  const [usageResult, legacyResult, freeUsageResult, productResult, emails] = await Promise.all([
-    readUsageRows(input),
-    readLegacyCreditRows(),
-    readCurrentFreeUsageRows(),
-    readProductCreditRows(),
-    readAuthEmails(),
-  ]);
+  const [usageResult, legacyResult, freeUsageResult, productResult, emails, searchResult] =
+    await Promise.all([
+      readUsageRows(input),
+      readLegacyCreditRows(),
+      readCurrentFreeUsageRows(),
+      readProductCreditRows(),
+      readAuthEmails(),
+      readSearchUsageRows(input),
+    ]);
+  const searchTotals = aggregateSearchUsage(searchResult.rows);
+  const searchByUser = groupSearchUsageByUser(searchResult.rows);
   const { rows, truncated: usageTruncated } = usageResult;
   const accountData = aggregateAdminAccountRows({
     legacy: legacyResult.rows,
@@ -570,6 +603,8 @@ export async function getAdminUsageDashboard(input: {
       freeMonthlyUsage: account.freeMonthlyUsage,
       productCredits: account.productCredits,
       lastUsedAt: null,
+      searchRuns: 0,
+      searchToolCalls: 0,
     });
   }
 
@@ -590,6 +625,8 @@ export async function getAdminUsageDashboard(input: {
         freeMonthlyUsage: null,
         productCredits: null,
         lastUsedAt: null,
+        searchRuns: 0,
+        searchToolCalls: 0,
       };
       addRow(userTotal, row);
       userTotal.lastUsedAt =
@@ -619,17 +656,57 @@ export async function getAdminUsageDashboard(input: {
       right.estimatedOrReconciled.totalTokens - left.estimatedOrReconciled.totalTokens,
     );
 
+  const withSearch = users.map((user) => {
+    const search = searchByUser.get(user.userId);
+    return {
+      ...user,
+      searchRuns: search?.runs ?? 0,
+      searchToolCalls: search?.toolCalls ?? 0,
+    };
+  });
+
+  const emptySegment = (): AdminUsageSegment => ({
+    accounts: 0,
+    activeAccounts: 0,
+    totalTokens: 0,
+    tokenCostNanoUsd: "0",
+    searchRuns: 0,
+    searchToolCalls: 0,
+  });
+  const segments = { guests: emptySegment(), registered: emptySegment() };
+  for (const user of withSearch) {
+    const segment = user.anonymous ? segments.guests : segments.registered;
+    segment.accounts += 1;
+    const tokens =
+      user.confirmedProvider.totalTokens + user.estimatedOrReconciled.totalTokens;
+    if (tokens > 0 || user.searchRuns > 0) segment.activeAccounts += 1;
+    segment.totalTokens += tokens;
+    segment.tokenCostNanoUsd = (
+      BigInt(segment.tokenCostNanoUsd) +
+      BigInt(user.confirmedProvider.costNanoUsd) +
+      BigInt(user.estimatedOrReconciled.costNanoUsd)
+    ).toString();
+    segment.searchRuns += user.searchRuns;
+    segment.searchToolCalls += user.searchToolCalls;
+  }
+
+  const finalizedTotals = finalize(totals);
+  const tokenCostNanoUsd =
+    BigInt(finalizedTotals.confirmedProvider.costNanoUsd) +
+    BigInt(finalizedTotals.estimatedOrReconciled.costNanoUsd);
+  const combined = tokenCostNanoUsd + BigInt(searchTotals.costNanoUsd);
+
   return {
     generatedAt: new Date().toISOString(),
     from: input.from ?? null,
     to: input.to ?? null,
     truncated:
       usageTruncated || legacyResult.truncated || freeUsageResult.truncated ||
-      productResult.truncated,
-    totals: finalize(totals),
+      productResult.truncated || searchResult.truncated,
+    totals: finalizedTotals,
     accountTotals: accountData.totals,
     byModel: modelRows,
-    users,
+    users: withSearch,
     recentInteractions: rows
       .slice(0, 100)
       .map((row) =>
@@ -638,6 +715,13 @@ export async function getAdminUsageDashboard(input: {
           row.user_id ? emails.get(row.user_id) ?? null : null,
         ),
       ),
+    searchUsage: {
+      ...searchTotals,
+      costUsd: formatNanoUsdAsUsd(String(searchTotals.costNanoUsd)),
+    },
+    combinedCostNanoUsd: combined.toString(),
+    combinedCostUsd: formatNanoUsdAsUsd(combined.toString()),
+    segments,
   };
 }
 
