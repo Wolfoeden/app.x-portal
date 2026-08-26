@@ -4866,3 +4866,123 @@ dd.is-unknown,
   .xlegal-document { width: min(100% - 40px, 980px); }
   .xlegal-document section { grid-template-columns: 1fr; gap: 14px; }
 }
+
+/* --- Kontoübersicht im Menü (Vorbild: Konto-Popover) --- */
+
+.account-summary { display: flex; flex-direction: column; gap: 12px; padding-bottom: 4px; }
+.account-summary-head { display: flex; align-items: center; gap: 10px; }
+.account-summary-avatar {
+  display: grid; place-items: center;
+  width: 36px; height: 36px; flex: 0 0 36px;
+  border-radius: 50%;
+  background: var(--ink); color: #fff;
+  font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .02em;
+}
+.account-summary-identity { display: flex; flex-direction: column; min-width: 0; }
+.account-summary-identity strong { font-size: var(--fs-sm); }
+.account-summary-identity span {
+  overflow: hidden; color: var(--muted);
+  font-size: var(--fs-2xs); text-overflow: ellipsis; white-space: nowrap;
+}
+
+.account-summary-status { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.account-status-dot { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: var(--fs-2xs); }
+.account-status-dot::before {
+  content: ""; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--green, #1f7a4d);
+}
+.account-plan-badge {
+  border: 1px solid var(--border); border-radius: var(--radius-pill);
+  padding: 2px 9px; color: var(--ink-soft);
+  font-size: var(--fs-2xs); font-weight: 650;
+}
+
+.account-balance { display: flex; flex-direction: column; gap: 1px; }
+.account-balance strong { font-size: 26px; letter-spacing: -.03em; line-height: 1.15; }
+.account-balance span { color: var(--muted); font-size: var(--fs-2xs); }
+
+.account-credit-block {
+  display: flex; flex-direction: column; gap: 5px;
+  border-top: 1px solid var(--border); padding-top: 10px;
+}
+.account-credit-block h4 { margin: 0; font-size: var(--fs-2xs); font-weight: 700; }
+.account-credit-block p { margin: 0; color: var(--muted); font-size: var(--fs-2xs); }
+.account-credit-block .account-credit-strong { color: var(--ink); font-size: var(--fs-md); font-weight: 650; }
+.account-credit-muted { color: var(--muted); }
+
+.account-credit-progress {
+  overflow: hidden; height: 6px;
+  border-radius: var(--radius-pill); background: var(--surface-soft);
+}
+.account-credit-progress > span {
+  display: block; height: 100%;
+  border-radius: inherit; background: #b9a7f0;
+}
+
+.account-upgrade {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  width: 100%;
+  border: 1px solid var(--ink); border-radius: var(--radius-sm);
+  background: var(--ink); padding: 10px 12px;
+  color: #fff; font: inherit; font-size: var(--fs-2xs); font-weight: 700;
+  cursor: pointer;
+}
+.account-upgrade:hover { opacity: .9; }
+
+/* --- Plan-Dialog (Vorbild: Abrechnungsseite) --- */
+
+.plans-dialog {
+  position: fixed; inset: 0; z-index: 60;
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: 18px;
+  background: var(--surface-soft);
+  padding: clamp(18px, 4vw, 42px);
+}
+.plans-balance {
+  display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--surface); padding: 18px 20px;
+}
+.plans-balance h2 { margin: 0 0 3px; font-family: var(--font-serif); font-size: var(--fs-md); font-weight: 400; }
+.plans-balance p { margin: 0; color: var(--muted); font-size: var(--fs-2xs); }
+.plans-balance-figure { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.plans-balance-figure strong { font-size: 24px; letter-spacing: -.03em; }
+.plans-balance-figure code { color: var(--muted); font-size: var(--fs-2xs); }
+
+.plans-note {
+  margin: 0; border: 1px solid var(--border); border-left: 3px solid #b9a7f0;
+  border-radius: var(--radius-sm); background: var(--surface);
+  padding: 10px 13px; color: var(--muted); font-size: var(--fs-2xs);
+}
+
+.plans-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+.plan-card {
+  display: flex; flex-direction: column; gap: 8px;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--surface); padding: 20px;
+}
+.plan-card.is-current { border-color: var(--border-strong); }
+.plan-card h3 { margin: 0; font-family: var(--font-serif); font-size: var(--fs-md); font-weight: 400; }
+.plan-audience { margin: 0; color: var(--muted); font-size: var(--fs-2xs); min-height: 2.6em; }
+.plan-price { display: flex; align-items: baseline; gap: 7px; margin: 6px 0 0; font-size: 30px; letter-spacing: -.03em; }
+.plan-price span { color: var(--muted); font-size: var(--fs-2xs); letter-spacing: 0; }
+.plan-credits { margin: 0 0 4px; font-size: var(--fs-2xs); font-weight: 650; }
+.plan-features { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.plan-features li { display: flex; align-items: flex-start; gap: 7px; color: var(--muted); font-size: var(--fs-2xs); line-height: 1.45; }
+.plan-features svg { flex: 0 0 auto; margin-top: 2px; color: var(--green, #1f7a4d); }
+.plan-card > button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  margin-top: auto;
+  border: 1px solid var(--ink); border-radius: var(--radius-sm);
+  background: var(--ink); padding: 11px 14px;
+  color: #fff; font: inherit; font-size: var(--fs-2xs); font-weight: 700;
+  cursor: pointer;
+}
+.plan-card > button:disabled { border-color: var(--border); background: var(--surface-soft); color: var(--muted); cursor: not-allowed; }
+
+.plans-close {
+  align-self: flex-start;
+  border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  background: var(--surface); padding: 9px 14px;
+  color: var(--ink); font: inherit; font-size: var(--fs-2xs); font-weight: 650; cursor: pointer;
+}

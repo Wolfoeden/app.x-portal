@@ -45,6 +45,7 @@ import {
   signOut as signOutAccount,
 } from "@/lib/auth/browser";
 
+import { AccountSummary, CreditPlansDialog } from "./chat/account";
 import {
   AuthDialog,
   ConfirmDeleteDialog,
@@ -1199,6 +1200,7 @@ export function ChatWorkspace({
   const [pendingProfileId, setPendingProfileId] = useState<string | null>(null);
   const [contactOpen, setContactOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [plansOpen, setPlansOpen] = useState(false);
   const [usage, setUsage] = useState<AiUsageSnapshot | null>(previewData?.usage ?? null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
@@ -2481,11 +2483,24 @@ export function ChatWorkspace({
           <div className="account-menu-wrap sidebar-account-menu-wrap">
             {accountMenuOpen ? (
               <div className="account-popover sidebar-account-popover" role="dialog" aria-label="Konto und Einstellungen">
-                <div className="account-identity">
-                  <strong>{isAccountUser ? auth.user?.displayName ?? "Ihr Konto" : "Ohne Konto"}</strong>
-                  <span>{isAccountUser ? auth.user?.email ?? "Angemeldet" : "Aktuelle Anfrage bleibt in diesem Browser verfügbar"}</span>
-                </div>
-                {usage ? <UsagePanel usage={usage} /> : null}
+                <AccountSummary
+                  usage={usage}
+                  displayName={
+                    isAccountUser
+                      ? auth.user?.displayName ?? auth.user?.email ?? "Ihr Konto"
+                      : "Ohne Konto"
+                  }
+                  email={
+                    isAccountUser
+                      ? auth.user?.email ?? "Angemeldet"
+                      : "Anfrage bleibt in diesem Browser"
+                  }
+                  isAccountUser={isAccountUser}
+                  onMoreCredits={() => {
+                    setAccountMenuOpen(false);
+                    setPlansOpen(true);
+                  }}
+                />
                 {isAccountUser ? (
                   <>
                     {auth.admin && apiPaths.adminUsage ? (
@@ -2814,6 +2829,14 @@ export function ChatWorkspace({
         )}
       </aside>
 
+      {plansOpen ? (
+        <CreditPlansDialog
+          usage={usage}
+          customerReference={auth.user?.id ?? null}
+          onClose={() => setPlansOpen(false)}
+        />
+      ) : null}
+
       {authOpen ? (
         <AuthDialog
           initialMode={authInitialMode}
@@ -2860,52 +2883,6 @@ export function ChatWorkspace({
   );
 }
 
-function UsagePanel({ usage }: { usage: AiUsageSnapshot }) {
-  const credits = usage.credits;
-  const exhausted = credits.exhausted || credits.remaining <= 0;
-  const low = creditsAreLow(credits);
-  const consumed = credits.used + credits.reserved;
-  const progress = credits.total > 0
-    ? Math.min(100, Math.max(0, (consumed / credits.total) * 100))
-    : 0;
-  const requestsLeft = estimatedRequestsLeft(credits);
-
-  return (
-    <section className={`credit-usage ${exhausted ? "is-exhausted" : low ? "is-low" : ""}`} aria-label="KI-Guthaben">
-      <div className="credit-usage-heading">
-        <span>KI-Guthaben · monatlich</span>
-        <strong>{formatCredits(credits.remaining)}/{formatCredits(credits.total)}</strong>
-      </div>
-      <div
-        className="credit-progress"
-        role="progressbar"
-        aria-label={`${formatCredits(credits.remaining)} von ${formatCredits(credits.total)} Credits verfügbar`}
-        aria-valuemin={0}
-        aria-valuemax={Math.max(credits.total, 1)}
-        aria-valuenow={Math.min(consumed, Math.max(credits.total, 1))}
-      >
-        <span style={{ width: `${progress}%` }} />
-      </div>
-      {credits.reserved > 0 || credits.lastRequestCost !== null ? (
-        <dl className="credit-stats">
-          {credits.reserved > 0 ? (
-            <div><dt>In Bearbeitung</dt><dd>{formatCredits(credits.reserved)}</dd></div>
-          ) : null}
-          {credits.lastRequestCost !== null ? (
-            <div><dt>Letzte Anfrage</dt><dd>−{formatCredits(credits.lastRequestCost)}</dd></div>
-          ) : null}
-        </dl>
-      ) : null}
-      {exhausted || low ? (
-        <p className={`credit-status-copy ${exhausted ? "is-exhausted" : "is-low"}`}>
-          {exhausted
-            ? `Neues Guthaben gibt es ab ${formatUsageReset(credits.periodEnd)}.`
-            : `Ihr Monatsguthaben wird knapp · noch ca. ${formatCredits(requestsLeft)} Anfragen.`}
-        </p>
-      ) : null}
-    </section>
-  );
-}
 
 /**
  * Placeholder rows in the shape the real list will take.
