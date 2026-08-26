@@ -87,14 +87,17 @@ export function AccountSummary({
 
       {usage ? (
         <>
+          {/* Ein Guthaben, eine Zahl. Gekaufte und monatliche Credits werden
+              zusammengezählt — die Unterscheidung war für den Nutzer nur dann
+              wichtig, wenn er sie beim Monatswechsel bemerkt, und dafür steht
+              die Erneuerungszeile darunter. */}
           <div className="account-balance">
             <strong>{formatCreditAmount(totalBalance(usage))} Credits</strong>
-            <span>Gesamtsaldo</span>
+            <span>verfügbar</span>
           </div>
 
           {monthly ? (
-            <section className="account-credit-block" aria-label="Monatliche Credits">
-              <h4>Monatliche Credits</h4>
+            <section className="account-credit-block" aria-label="Guthaben">
               <div
                 className="account-credit-progress"
                 role="progressbar"
@@ -106,19 +109,11 @@ export function AccountSummary({
               </div>
               <p>
                 {formatCreditAmount(consumed)} / {formatCreditAmount(monthly.total)}{" "}
-                Credits verwendet
+                Credits diesen Monat verwendet
               </p>
               <p className="account-credit-muted">{renewalLabel(monthly.periodEnd)}</p>
             </section>
           ) : null}
-
-          <section className="account-credit-block" aria-label="Zusätzliche Credits">
-            <h4>Zusätzliche Credits</h4>
-            <p className="account-credit-strong">
-              {formatCreditAmount(usage.productCredits?.available ?? 0)} Credits
-            </p>
-            <p className="account-credit-muted">Laufen nie ab</p>
-          </section>
         </>
       ) : (
         <p className="account-credit-muted">Guthaben wird geladen …</p>

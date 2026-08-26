@@ -991,10 +991,6 @@ function formatRelativeDate(value: string) {
 }
 
 
-function creditsAreLow(credits: CreditBalanceSnapshot) {
-  if (credits.exhausted || credits.remaining <= 0) return false;
-  return credits.total > 0 && credits.remaining / credits.total <= 0.2;
-}
 
 /**
  * Deliberately floored against the typical price rather than the cheapest
@@ -1265,7 +1261,6 @@ export function ChatWorkspace({
   const freeUsageExhausted = Boolean(
     usage && (usage.credits.exhausted || usage.credits.remaining <= 0),
   );
-  const freeUsageLow = Boolean(usage && creditsAreLow(usage.credits));
 
   const showToast = useCallback((message: string, tone: ToastState["tone"] = "neutral") => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -2790,12 +2785,36 @@ export function ChatWorkspace({
               </button>
             </div>
           </form>
-          {usage && (freeUsageExhausted || freeUsageLow) ? (
-            <p className={`composer-credit-status ${freeUsageExhausted ? "is-exhausted" : ""}`} role="status">
-              {freeUsageExhausted
-                ? `Ihr Monatsguthaben ist aufgebraucht. Sie können weiter schreiben; XPORTAL speichert und gleicht Ihre Angaben regelbasiert ab. Neues Guthaben gibt es ab ${formatUsageReset(usage.credits.periodEnd)}.`
-                : `Noch ${formatCredits(usage.credits.remaining)} Credits · reicht für ca. ${formatCredits(estimatedRequestsLeft(usage.credits))} Anfragen.`}
-            </p>
+          {/* Der laufende Zählerstand stand hier früher bei jeder Anfrage und
+              lenkte vom Schreiben ab. Gemeldet wird nur noch der Moment, in dem
+              das Guthaben aufgebraucht ist — und für einen Gast ist das der
+              Zeitpunkt, ein Konto anzulegen, keine Fehlermeldung. */}
+          {usage && freeUsageExhausted ? (
+            isAccountUser ? (
+              <p className="composer-credit-status is-exhausted" role="status">
+                Ihr Monatsguthaben ist aufgebraucht. Sie können weiter schreiben;
+                XPORTAL speichert und gleicht Ihre Angaben regelbasiert ab. Neues
+                Guthaben gibt es ab {formatUsageReset(usage.credits.periodEnd)}.
+              </p>
+            ) : (
+              <div className="composer-credit-status is-exhausted" role="status">
+                <p>
+                  Ihre drei kostenlosen Anfragen sind aufgebraucht. Mit einem
+                  Konto erhalten Sie 300 Credits, die sich jeden Monat wieder
+                  auffüllen.
+                </p>
+                <button
+                  type="button"
+                  className="composer-signup"
+                  onClick={() => {
+                    setAuthInitialMode("register");
+                    setAuthOpen(true);
+                  }}
+                >
+                  Konto erstellen
+                </button>
+              </div>
+            )
           ) : null}
           {/* "Sie wählen selbst" left readers guessing what the AI actually
               does. Spelled out: it never picks a person, it only narrows the

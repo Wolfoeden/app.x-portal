@@ -4986,3 +4986,11 @@ dd.is-unknown,
   background: var(--surface); padding: 9px 14px;
   color: var(--ink); font: inherit; font-size: var(--fs-2xs); font-weight: 650; cursor: pointer;
 }
+
+.composer-credit-status.is-exhausted { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.composer-signup {
+  border: 1px solid var(--ink); border-radius: var(--radius-sm);
+  background: var(--ink); padding: 8px 14px;
+  color: #fff; font: inherit; font-size: var(--fs-2xs); font-weight: 700; cursor: pointer;
+}
+.composer-signup:hover { opacity: .9; }

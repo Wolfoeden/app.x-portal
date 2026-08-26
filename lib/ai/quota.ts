@@ -81,8 +81,19 @@ function firstRow(data: unknown): Record<string, unknown> | null {
  * production data without a code deploy.
  */
 export const TYPICAL_PROJECT_BRIEF_CREDITS = 21;
-export const GUEST_FREE_REQUESTS = 5;
-export const ACCOUNT_FREE_REQUESTS = 50;
+/**
+ * Ein Gast hat drei Anfragen frei. Danach ist nicht Schluss, sondern die
+ * Aufforderung, ein Konto anzulegen — die Grenze ist ein Umwandlungspunkt,
+ * keine Strafe.
+ */
+export const GUEST_FREE_REQUESTS = 3;
+/**
+ * Ein angemeldetes Konto bekommt 300 Credits, die sich monatlich wieder
+ * auffüllen. Bewusst eine runde Zahl statt eines Vielfachen der gemessenen
+ * Anfragekosten: sie steht so in der Oberfläche und muss dort verständlich
+ * sein, nicht rechnerisch hergeleitet.
+ */
+export const ACCOUNT_MONTHLY_CREDITS = 300;
 
 /**
  * First instant of the next UTC month, which is when
@@ -98,8 +109,9 @@ export function currentPeriodEndIso(now: Date = new Date()): string {
 export function configuredInitialCredits(isAnonymous: boolean): number {
   return nonNegativeInteger(
     isAnonymous ? "AI_CREDITS_GUEST_TOTAL" : "AI_CREDITS_USER_TOTAL",
-    (isAnonymous ? GUEST_FREE_REQUESTS : ACCOUNT_FREE_REQUESTS) *
-      TYPICAL_PROJECT_BRIEF_CREDITS,
+    isAnonymous
+      ? GUEST_FREE_REQUESTS * TYPICAL_PROJECT_BRIEF_CREDITS
+      : ACCOUNT_MONTHLY_CREDITS,
   );
 }
 
