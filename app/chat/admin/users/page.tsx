@@ -41,11 +41,24 @@ function formatDay(value: string): string {
   return Number.isNaN(parsed.getTime()) ? value : dateFormat.format(parsed);
 }
 
+function startOfLocalDay(value: number): number {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
+}
+
+/**
+ * Kalendertage, nicht 24-Stunden-Blöcke. Gerechnet in 24ern hieß ein Zeitpunkt
+ * von vorgestern 10:10 am Morgen darauf noch "gestern", weil erst 23 Stunden
+ * vergangen waren.
+ */
 function relativeDays(value: string | null, now: number): string {
   if (!value) return "nie";
   const parsed = new Date(value).getTime();
   if (Number.isNaN(parsed)) return "nie";
-  const days = Math.floor((now - parsed) / (24 * 60 * 60 * 1000));
+  const days = Math.round(
+    (startOfLocalDay(now) - startOfLocalDay(parsed)) / (24 * 60 * 60 * 1000),
+  );
   if (days <= 0) return "heute";
   if (days === 1) return "gestern";
   return `vor ${days} Tagen`;
@@ -198,12 +211,12 @@ export default async function AdminUsersPage() {
             </p>
           </div>
           <div className={styles.stat}>
-            <p className={styles.statLabel}>Nie zurückgekehrt</p>
+            <p className={styles.statLabel}>Nie geschrieben</p>
             <p className={styles.statValue}>
-              {numberFormat.format(metrics.totals.registeredNeverReturned)}
+              {numberFormat.format(metrics.totals.registeredNeverWrote)}
             </p>
             <p className={styles.statHint}>
-              angemeldet, aber seit der Registrierung nie erneut eingeloggt
+              angemeldete Konten ohne eine einzige eigene Nachricht
             </p>
           </div>
         </div>

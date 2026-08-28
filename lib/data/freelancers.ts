@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { publicAvatarUrl } from "@/lib/freelancer/avatar-limits";
+import { avatarImageUrl } from "@/lib/freelancer/avatar-limits";
 import {
   FreelancerProfileSchema,
   type FactSource,
@@ -165,7 +165,7 @@ export function mapFreelancerProfileRow(
     id: row.id,
     dataVersion: `profile-v${row.version}`,
     demoStatus: row.demo_status,
-    avatarUrl: publicAvatarUrl(row.avatar_path ?? null),
+    avatarUrl: avatarImageUrl(row.avatar_path ?? null),
     profileStatus: row.profile_status === "active" ? "active" : row.profile_status === "archived" ? "archived" : "paused",
     displayName: row.display_name,
     role: row.role_title,

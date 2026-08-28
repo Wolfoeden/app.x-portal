@@ -12,8 +12,15 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import {
+  ACCOUNT_MONTHLY_CREDITS,
+  BRIEF_ANALYSIS_CREDITS,
+  CREDIT_PLANS,
+  creditPlan,
+} from "@/lib/ai/credit-policy";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { openCookieSettings } from "@/components/CookieConsent";
+import { LegalFooter } from "@/components/LegalFooter";
 import {
   AgentDetails,
   AgentDirectory,
@@ -65,6 +72,7 @@ import { ProjectDetails, ResultSection, SavedProfileList } from "./chat/results"
 import {
   type AiAnalysisTrace,
   type AiUsageSnapshot,
+  type PlanTeamSnapshot,
   type SavedFreelancer,
   type AiUsageUpdate,
   type AvailabilityStatus,
@@ -440,6 +448,8 @@ export function normalizeUsageUpdate(value: unknown): AiUsageUpdate | null {
       periodEnd,
       exhausted: creditsSource.exhausted === true || remaining <= 0,
       creditsPerRequest,
+      planId:
+        nullableString(creditsSource.planId ?? creditsSource.plan_id) ?? "free",
       // Absent outside a chat response, and absent when a request was
       // answered without ever reaching the provider.
       lastRequestCost: nonNegativeNumber(
@@ -993,8 +1003,9 @@ function formatRelativeDate(value: string) {
 
 
 /**
- * Deliberately floored against the typical price rather than the cheapest
- * request, so the figure never promises more than the balance can deliver.
+ * Exact since a normal search carries a flat price: the balance divided by
+ * that price is the number of searches left, not an estimate. Still floored,
+ * so a remainder below one search is never advertised as one.
  */
 export function estimatedRequestsLeft(credits: CreditBalanceSnapshot): number {
   if (credits.creditsPerRequest <= 0) return 0;
@@ -1006,7 +1017,7 @@ export function usageSummary(
   authenticated: boolean,
 ): string {
   const left = estimatedRequestsLeft(usage.credits);
-  const balance = `KI-Guthaben: ${formatCredits(usage.credits.remaining)} Credits · ca. ${formatCredits(left)} ${
+  const balance = `KI-Guthaben: ${formatCredits(usage.credits.remaining)} Credits · ${formatCredits(left)} ${
     left === 1 ? "Anfrage" : "Anfragen"
   }`;
   return authenticated && usage.productCredits
@@ -1197,6 +1208,11 @@ export function ChatWorkspace({
   const [contactOpen, setContactOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [plansOpen, setPlansOpen] = useState(false);
+  const [planTeam, setPlanTeam] = useState<PlanTeamSnapshot | null>(null);
+  const [planTeamBusy, setPlanTeamBusy] = useState(false);
+  const [planTeamNotice, setPlanTeamNotice] = useState<
+    { tone: "error" | "success"; message: string } | null
+  >(null);
   const [usage, setUsage] = useState<AiUsageSnapshot | null>(previewData?.usage ?? null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
@@ -1258,6 +1274,8 @@ export function ChatWorkspace({
   const isAgentView = workspaceView === "agents";
   const isTeamView = workspaceView === "team";
   const isAccountUser = auth.authenticated && !auth.anonymous;
+  // Nur die Gaststufe hat keinen Agentenzugang; jeder Plan darüber schon.
+  const agentsAllowed = creditPlan(usage?.credits.planId, !isAccountUser).agents;
   const freeUsageExhausted = Boolean(
     usage && (usage.credits.exhausted || usage.credits.remaining <= 0),
   );
@@ -2269,13 +2287,16 @@ export function ChatWorkspace({
     }
   };
 
-  const deleteData = async () => {
+  const deleteData = async (confirmation: string) => {
     setDataAction("delete");
     try {
       const response = await fetch(apiPaths.deleteData, {
         method: "DELETE",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
+        // Der Server prüft die Bestätigung erneut; der Dialog allein wäre
+        // kein Schutz.
+        body: JSON.stringify({ confirm: confirmation }),
       });
       if (!response.ok) throw new Error("Die Daten konnten nicht gelöscht werden.");
       await signOutAccount();
@@ -2310,6 +2331,79 @@ export function ChatWorkspace({
     }
     void loadProject(project);
   };
+
+  /**
+   * Team-Aufrufe teilen sich eine Auswertung: die Route antwortet bei jedem
+   * Ausgang mit demselben Umschlag, damit die Oberfläche den Grund anzeigen
+   * kann statt einer allgemeinen Fehlermeldung.
+   */
+  const runPlanTeamRequest = useCallback(
+    async (init: RequestInit, successMessage: string | null) => {
+      setPlanTeamBusy(true);
+      try {
+        const response = await fetch(apiPaths.teamMembers, {
+          credentials: "same-origin",
+          ...init,
+        });
+        const body = (await response.json().catch(() => null)) as
+          | { team?: PlanTeamSnapshot; isOwner?: boolean; error?: string }
+          | null;
+
+        if (!response.ok) {
+          setPlanTeamNotice({
+            tone: "error",
+            message:
+              body?.error ?? "Die Anfrage konnte nicht bearbeitet werden.",
+          });
+          return;
+        }
+        if (body?.team) {
+          setPlanTeam({ ...body.team, isOwner: body.isOwner !== false });
+        }
+        setPlanTeamNotice(
+          successMessage ? { tone: "success", message: successMessage } : null,
+        );
+      } catch {
+        setPlanTeamNotice({
+          tone: "error",
+          message: "Die Verbindung ist unterbrochen.",
+        });
+      } finally {
+        setPlanTeamBusy(false);
+      }
+    },
+    [apiPaths.teamMembers],
+  );
+
+  const loadPlanTeam = useCallback(async () => {
+    await runPlanTeamRequest({ method: "GET" }, null);
+  }, [runPlanTeamRequest]);
+
+  const invitePlanTeamMember = useCallback(
+    (email: string) =>
+      void runPlanTeamRequest(
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        },
+        `${email} nutzt jetzt Ihren Plan mit.`,
+      ),
+    [runPlanTeamRequest],
+  );
+
+  const removePlanTeamMember = useCallback(
+    (memberUserId: string) =>
+      void runPlanTeamRequest(
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ memberUserId }),
+        },
+        "Das Mitglied wurde entfernt.",
+      ),
+    [runPlanTeamRequest],
+  );
 
   const selectAgent = (agent: AgentDefinition) => {
     setSelectedAgentId(agent.id);
@@ -2494,6 +2588,7 @@ export function ChatWorkspace({
                   onMoreCredits={() => {
                     setAccountMenuOpen(false);
                     setPlansOpen(true);
+                    void loadPlanTeam();
                   }}
                 />
                 {isAccountUser ? (
@@ -2672,15 +2767,51 @@ export function ChatWorkspace({
                 />
               )}
             </section>
+            <LegalFooter />
           </div>
         ) : isAgentView ? (
           <div className="agent-scroll">
-            <AgentDirectory
-              selectedAgentId={selectedAgent.id}
-              selectedTaskId={selectedAgentTask.id}
-              onSelectAgent={selectAgent}
-              onSelectTask={selectAgentTask}
-            />
+            {/* Die Agenten sind die Stufe hinter der Anmeldung. Ein Gast
+                bekommt die Standardanalyse; alles andere braucht ein Konto,
+                an dem Verlauf und Guthaben hängen können. */}
+            {agentsAllowed ? (
+              <AgentDirectory
+                selectedAgentId={selectedAgent.id}
+                selectedTaskId={selectedAgentTask.id}
+                onSelectAgent={selectAgent}
+                onSelectTask={selectAgentTask}
+              />
+            ) : (
+              <div className="agent-locked" role="status">
+                <p className="eyebrow">KI-Agenten</p>
+                <h1>Agenten gibt es mit einem Konto.</h1>
+                <p>
+                  Als Gast steht Ihnen die Standardanalyse im Chat offen —
+                  {" "}{BRIEF_ANALYSIS_CREDITS} Credits pro Suche aus Ihrem
+                  Guthaben von{" "}
+                  {formatCredits(CREDIT_PLANS.guest.monthlyCredits)}. Die
+                  spezialisierten Agenten für Recherche, Planung und Analyse
+                  arbeiten mit Verlauf und Merkliste und brauchen deshalb ein
+                  dauerhaftes Konto.
+                </p>
+                <p>
+                  Ein Konto bringt{" "}
+                  {formatCredits(CREDIT_PLANS.free.monthlyCredits)} Credits im
+                  Monat und den vollen Zugang zu den Agenten.
+                </p>
+                <button
+                  type="button"
+                  className="composer-signup"
+                  onClick={() => {
+                    setAuthInitialMode("register");
+                    setAuthOpen(true);
+                  }}
+                >
+                  Konto erstellen
+                </button>
+              </div>
+            )}
+            <LegalFooter />
           </div>
         ) : (
           <>
@@ -2799,9 +2930,14 @@ export function ChatWorkspace({
             ) : (
               <div className="composer-credit-status is-exhausted" role="status">
                 <p>
-                  Ihre drei kostenlosen Anfragen sind aufgebraucht. Mit einem
-                  Konto erhalten Sie 300 Credits, die sich jeden Monat wieder
-                  auffüllen.
+                  Ihr kostenloses Guthaben ist aufgebraucht. Mit einem Konto
+                  erhalten Sie {formatCredits(ACCOUNT_MONTHLY_CREDITS)} Credits
+                  im Monat — bei {BRIEF_ANALYSIS_CREDITS} Credits pro Suche
+                  reicht das für{" "}
+                  {formatCredits(
+                    Math.floor(ACCOUNT_MONTHLY_CREDITS / BRIEF_ANALYSIS_CREDITS),
+                  )}{" "}
+                  Anfragen.
                 </p>
                 <button
                   type="button"
@@ -2826,6 +2962,10 @@ export function ChatWorkspace({
               <a href="/imprint">Impressum</a>
               <span aria-hidden="true">·</span>
               <a href="/privacy">Datenschutz</a>
+              <span aria-hidden="true">·</span>
+              <a href="/terms">AGB</a>
+              <span aria-hidden="true">·</span>
+              <a href="/contact">Kontakt</a>
             </span>
           </p>
         </div>
@@ -2852,7 +2992,15 @@ export function ChatWorkspace({
         <CreditPlansDialog
           usage={usage}
           customerReference={auth.user?.id ?? null}
-          onClose={() => setPlansOpen(false)}
+          team={planTeam}
+          teamBusy={planTeamBusy}
+          teamNotice={planTeamNotice}
+          onInviteTeamMember={invitePlanTeamMember}
+          onRemoveTeamMember={removePlanTeamMember}
+          onClose={() => {
+            setPlansOpen(false);
+            setPlanTeamNotice(null);
+          }}
         />
       ) : null}
 
@@ -2875,8 +3023,9 @@ export function ChatWorkspace({
       {deleteOpen ? (
         <ConfirmDeleteDialog
           busy={dataAction === "delete"}
+          accountEmail={auth.user?.email ?? null}
           onClose={() => setDeleteOpen(false)}
-          onConfirm={() => void deleteData()}
+          onConfirm={(confirmation) => void deleteData(confirmation)}
         />
       ) : null}
 

@@ -1,0 +1,206 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+
+import { appPath } from "@/lib/app-path";
+import { writeAuditEvent } from "@/lib/audit/write";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import {
+  ART14_DEADLINE_DAYS,
+  ART14_WARNING_DAYS,
+  OUTREACH_STATE_LABELS,
+  type OutreachState,
+} from "@/lib/freelancer/outreach-deadline";
+import {
+  listSourcedCandidates,
+  summarizeOutreach,
+} from "@/lib/freelancer/sourced-candidates-data";
+
+import styles from "./outreach.module.css";
+
+export const metadata: Metadata = {
+  title: "Informationspflicht | XPORTAL",
+  robots: { index: false, follow: false },
+};
+
+export const dynamic = "force-dynamic";
+
+const dateFormat = new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" });
+
+const badgeClass: Record<OutreachState, string> = {
+  overdue: styles.badgeOverdue,
+  warning: styles.badgeWarning,
+  open: styles.badgeOpen,
+  informed: styles.badgeInformed,
+};
+
+function formatDate(value: string | Date | null): string {
+  if (!value) return "–";
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? "–" : dateFormat.format(date);
+}
+
+function remainingLabel(state: OutreachState, remainingDays: number): string {
+  if (state === "informed") return "–";
+  if (remainingDays < 0) {
+    const late = Math.abs(remainingDays);
+    return `${late} ${late === 1 ? "Tag" : "Tage"} überfällig`;
+  }
+  if (remainingDays === 0) return "heute fällig";
+  return `noch ${remainingDays} ${remainingDays === 1 ? "Tag" : "Tage"}`;
+}
+
+/**
+ * Die Arbeitsliste für die Informationspflicht nach Art. 14 DSGVO.
+ *
+ * Recherchierte Profile stammen nicht von den betroffenen Personen selbst.
+ * Diese Personen sind zu informieren, spätestens einen Monat nach der
+ * Erhebung. Der Text dafür entsteht in `lib/freelancer/outreach.ts`, verschickt
+ * wird er von einem Menschen — bis hierher gab es aber keine Stelle, an der zu
+ * sehen war, für wen die Frist gerade läuft.
+ */
+export default async function OutreachDeadlinesPage() {
+  const currentUser = await getCurrentUser();
+  if (!currentUser || currentUser.isAnonymous) {
+    redirect(`${appPath("/chat")}?admin-login=1`);
+  }
+  if (!currentUser.isAdmin) notFound();
+
+  const candidates = await listSourcedCandidates();
+  const summary = summarizeOutreach(candidates);
+
+  await writeAuditEvent({
+    actorUserId: currentUser.id,
+    action: "outreach_deadlines_admin_viewed",
+    targetType: "freelancer_application",
+    outcome: "success",
+    metadata: {
+      listed: summary.total,
+      overdue: summary.overdue,
+      warning: summary.warning,
+    },
+    required: true,
+  });
+
+  return (
+    <main className={styles.shell}>
+      <div className={styles.inner}>
+        <header className={styles.header}>
+          <div>
+            <p className={styles.eyebrow}>Admin / Informationspflicht</p>
+            <h1>Art. 14 DSGVO</h1>
+            <p>
+              Recherchierte Profile stammen nicht von den betroffenen Personen.
+              Sie sind zu informieren — spätestens {ART14_DEADLINE_DAYS} Tage
+              nach der Recherche. Diese Liste zeigt, für wen die Frist läuft.
+            </p>
+          </div>
+          <Link href="/chat" className={styles.backLink}>
+            Zurück zum Chat
+          </Link>
+        </header>
+
+        <div className={styles.tiles}>
+          <div className={`${styles.tile} ${styles.tileOverdue}`}>
+            <b>{summary.overdue}</b>
+            <span>Frist verstrichen</span>
+          </div>
+          <div className={`${styles.tile} ${styles.tileWarning}`}>
+            <b>{summary.warning}</b>
+            <span>ab Tag {ART14_WARNING_DAYS}</span>
+          </div>
+          <div className={`${styles.tile} ${styles.tileOpen}`}>
+            <b>{summary.open}</b>
+            <span>Frist läuft</span>
+          </div>
+          <div className={`${styles.tile} ${styles.tileInformed}`}>
+            <b>{summary.informed}</b>
+            <span>Informiert</span>
+          </div>
+        </div>
+
+        <p className={styles.law}>
+          <strong>Zwei Wege enden die Frist.</strong> Entweder die Person wird
+          informiert — den Text erzeugt das Outreach-Modul, verschickt wird er
+          von Hand, und der Zeitpunkt gehört danach in{" "}
+          <code>outreach_sent_at</code>. Oder der Datensatz wird gelöscht:{" "}
+          <code>run_sourced_candidate_cleanup()</code> entfernt jeden
+          recherchierten Kandidaten ohne Einwilligung nach{" "}
+          {ART14_DEADLINE_DAYS} Tagen automatisch. Eine gelöschte Person ist
+          allerdings nicht dasselbe wie eine informierte — die Information ist
+          die eigentliche Pflicht, die Löschung nur die Obergrenze des Schadens.
+        </p>
+
+        <div className={styles.panel}>
+          {candidates.length ? (
+            <div className={styles.tableScroll}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th scope="col">Person</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Frist</th>
+                    <th scope="col">Recherchiert</th>
+                    <th scope="col">Fällig</th>
+                    <th scope="col">Quellen</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {candidates.map((candidate) => (
+                    <tr key={candidate.id}>
+                      <td>
+                        <div className={styles.name}>{candidate.full_name}</div>
+                        <div className={styles.role}>{candidate.role_title}</div>
+                      </td>
+                      <td>
+                        <span
+                          className={`${styles.badge} ${
+                            badgeClass[candidate.deadline.state]
+                          }`}
+                        >
+                          {OUTREACH_STATE_LABELS[candidate.deadline.state]}
+                        </span>
+                      </td>
+                      <td className={styles.days}>
+                        {remainingLabel(
+                          candidate.deadline.state,
+                          candidate.deadline.remainingDays,
+                        )}
+                      </td>
+                      <td className={styles.days}>
+                        {formatDate(candidate.sourced_at)}
+                      </td>
+                      <td className={styles.days}>
+                        {formatDate(candidate.deadline.dueAt)}
+                      </td>
+                      <td>
+                        <div className={styles.sources}>
+                          {(candidate.source_urls ?? []).slice(0, 3).map((url) => (
+                            <a
+                              key={url}
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer nofollow"
+                            >
+                              {url}
+                            </a>
+                          ))}
+                          {!candidate.source_urls?.length ? "–" : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className={styles.empty}>
+              Keine offenen Fälle. Es liegt derzeit kein recherchierter Kandidat
+              ohne Einwilligung vor.
+            </p>
+          )}
+        </div>
+      </div>
+    </main>
+  );
+}

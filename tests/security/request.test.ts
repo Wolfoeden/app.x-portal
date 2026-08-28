@@ -28,6 +28,45 @@ describe("request security", () => {
     expect(() => assertSameOrigin(request)).not.toThrow();
   });
 
+  it("rejects a write that carries neither Origin nor Sec-Fetch-Site", () => {
+    // Früher lief genau dieser Fall durch — ein Fail-open in der einen
+    // Funktion, deren Aufgabe das Ablehnen ist.
+    const request = new Request("https://app.example/api/chat", {
+      method: "POST",
+    });
+
+    expect(() => assertSameOrigin(request)).toThrow(Response);
+  });
+
+  it("accepts a browser-set same-origin fetch without an Origin header", () => {
+    const request = new Request("https://app.example/api/chat", {
+      method: "POST",
+      headers: { "sec-fetch-site": "same-origin" },
+    });
+
+    expect(() => assertSameOrigin(request)).not.toThrow();
+  });
+
+  it("rejects a cross-site fetch even when the Origin header looks right", () => {
+    // Seitenskript kann Sec-Fetch-Site nicht setzen, Origin in manchen
+    // Konstellationen schon eher. Widersprechen sie sich, gilt der strengere.
+    const request = new Request("https://app.example/api/chat", {
+      method: "POST",
+      headers: {
+        origin: "https://app.example",
+        "sec-fetch-site": "cross-site",
+      },
+    });
+
+    expect(() => assertSameOrigin(request)).toThrow(Response);
+  });
+
+  it("leaves reads alone", () => {
+    const request = new Request("https://app.example/api/session");
+
+    expect(() => assertSameOrigin(request)).not.toThrow();
+  });
+
   it("accepts the browser Host origin when the server listens on an internal address", () => {
     const request = new Request("http://0.0.0.0:3011/api/chat", {
       method: "POST",

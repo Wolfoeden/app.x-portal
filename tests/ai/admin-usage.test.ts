@@ -142,6 +142,7 @@ describe("admin AI usage truthfulness", () => {
       credits_total: 500,
       credits_used: 120,
       credits_reserved: 10,
+      plan_id: "enterprise",
     }];
     const freeMonthly: AdminFreeUsageSourceRow[] = [{
       user_id: userId,
@@ -163,6 +164,9 @@ describe("admin AI usage truthfulness", () => {
     expect(result.users).toEqual([{
       userId,
       anonymous: false,
+      // Die Stufe steht neben dem Betrag: 500 Credits auf der Enterprise-Stufe
+      // sind ein Bestandskonto, kein aktuelles Kontingent.
+      planId: "enterprise",
       legacyTechnicalCredits: {
         total: 500,
         used: 120,

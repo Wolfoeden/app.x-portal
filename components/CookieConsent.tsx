@@ -3,6 +3,28 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
+/**
+ * Die Datenschutz-Auswahl.
+ *
+ * XPORTAL setzt derzeit ausschließlich technisch notwendige Cookies und
+ * Sitzungsspeicher ein. Ein Layer mit „Alle akzeptieren“ holte damit eine
+ * Einwilligung ein, die nichts trug: Es gab keinen Dienst, den sie aktiviert
+ * hätte. Rechtlich unschädlich, aber es gewöhnt Nutzer an eine bedeutungslose
+ * Zustimmung — und bei einer Prüfung sieht es aus wie ein Platzhalter.
+ *
+ * Solange `OPTIONAL_SERVICES_AVAILABLE` falsch ist, zeigt der Layer deshalb
+ * nur eine Kenntnisnahme. Der Auswahlpfad bleibt im Code stehen und schaltet
+ * sich mit dem ersten optionalen Dienst wieder ein — der Schalter ist die
+ * ehrlichere Lösung, als den Code zu löschen und ihn später neu zu erfinden.
+ */
+
+/**
+ * Auf `true` setzen, sobald ein Dienst existiert, der ohne Einwilligung nicht
+ * geladen werden darf. Dann greift wieder die vollständige Auswahl, und die
+ * gespeicherte Kenntnisnahme reicht nicht mehr als Einwilligung.
+ */
+const OPTIONAL_SERVICES_AVAILABLE = false;
+
 type ConsentChoice = "all" | "essential";
 type ConsentView = "hidden" | "banner" | "settings";
 
@@ -78,15 +100,20 @@ export function CookieConsent() {
         <div className="cookie-copy">
           <p className="xhome-label">Datenschutz-Einstellungen</p>
           <h2 id="cookie-title">
-            {view === "settings" ? "Cookie-Einstellungen" : "Ihre Datenschutz-Auswahl"}
+            {view === "settings"
+              ? "Cookie-Einstellungen"
+              : OPTIONAL_SERVICES_AVAILABLE
+                ? "Ihre Datenschutz-Auswahl"
+                : "Nur notwendige Cookies"}
           </h2>
           <p>
-            XPORTAL verwendet derzeit nur technisch notwendige Cookies und
-            Sitzungsspeicher für Anmeldung, Sicherheit und Ihre Auswahl. Es
-            werden keine Analyse- oder Marketingdienste automatisch geladen.
-            „Alle akzeptieren“ speichert ausschließlich Ihre aktuelle Auswahl;
-            neue optionale Dienste würden eine neue Zustimmung erfordern.
-            {" "}<a href="/privacy">Datenschutzhinweise ansehen</a>.
+            XPORTAL verwendet ausschließlich technisch notwendige Cookies und
+            Sitzungsspeicher für Anmeldung, Sicherheit und Ihre Auswahl.
+            {OPTIONAL_SERVICES_AVAILABLE
+              ? " Optionale Dienste werden erst nach Ihrer Zustimmung geladen."
+              : " Analyse- und Marketingdienste setzen wir nicht ein — hier gibt es nichts zu entscheiden. Sollte sich das ändern, fragen wir vorher."}
+            {" "}<a href="/privacy">Datenschutzhinweise</a>
+            {" · "}<a href="/imprint">Impressum</a>
           </p>
         </div>
 
@@ -99,15 +126,47 @@ export function CookieConsent() {
             </div>
             <div>
               <span>Optional</span>
-              <strong>{choice === "all" ? "Auswahl: akzeptiert" : "Auswahl: abgelehnt"}</strong>
-              <p>Derzeit nicht eingesetzt. Diese Auswahl aktiviert keinen Drittanbieter-Dienst und gilt nicht für künftige Dienste.</p>
+              <strong>
+                {OPTIONAL_SERVICES_AVAILABLE
+                  ? choice === "all"
+                    ? "Auswahl: akzeptiert"
+                    : "Auswahl: abgelehnt"
+                  : "Nicht eingesetzt"}
+              </strong>
+              <p>
+                {OPTIONAL_SERVICES_AVAILABLE
+                  ? "Diese Auswahl steuert, ob optionale Dienste geladen werden."
+                  : "Es ist kein optionaler Dienst eingebunden. Eine Zustimmung würde nichts aktivieren."}
+              </p>
             </div>
           </div>
         ) : null}
 
         <div className="cookie-actions">
-          <button type="button" onClick={() => saveChoice("essential")}>Optionale ablehnen</button>
-          <button type="button" className="is-primary" onClick={() => saveChoice("all")}>Alle akzeptieren</button>
+          {OPTIONAL_SERVICES_AVAILABLE ? (
+            <>
+              <button type="button" onClick={() => saveChoice("essential")}>
+                Optionale ablehnen
+              </button>
+              <button
+                type="button"
+                className="is-primary"
+                onClick={() => saveChoice("all")}
+              >
+                Alle akzeptieren
+              </button>
+            </>
+          ) : (
+            // Eine Schaltfläche, weil es genau eine Möglichkeit gibt. Zwei
+            // gleich wirkende Knöpfe wären eine Scheinwahl.
+            <button
+              type="button"
+              className="is-primary"
+              onClick={() => saveChoice("essential")}
+            >
+              Verstanden
+            </button>
+          )}
         </div>
       </section>
     </div>

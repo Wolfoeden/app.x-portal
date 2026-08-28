@@ -9,6 +9,8 @@ import type {
   ProjectBrief,
   ShortlistMatch,
 } from "@/lib/domain";
+import { normalizeAvatarUrl } from "@/lib/freelancer/avatar-limits";
+
 import { detectRequestLanguage } from "./request-language";
 
 function presentMode(mode: ProjectBrief["workMode"]): ProjectMode {
@@ -203,7 +205,10 @@ export function presentSavedProfile(
   return {
     id: profile.id,
     demoStatus: profile.demoStatus,
-    avatarUrl: profile.avatarUrl,
+    // Ein Snapshot aus der Zeit des öffentlichen Buckets trägt noch die alte
+    // Storage-Adresse. Sie wird hier auf die Bildroute umgeschrieben, statt
+    // gespeicherte Zeilen anzufassen.
+    avatarUrl: normalizeAvatarUrl(profile.avatarUrl),
     bookingUrl,
     displayName: profile.displayName,
     role: profile.role,
@@ -248,7 +253,10 @@ export function presentMatch(match: ShortlistMatch): FreelancerProfileResult {
   return {
     id: profile.id,
     demoStatus: profile.demoStatus,
-    avatarUrl: profile.avatarUrl,
+    // Ein Snapshot aus der Zeit des öffentlichen Buckets trägt noch die alte
+    // Storage-Adresse. Sie wird hier auf die Bildroute umgeschrieben, statt
+    // gespeicherte Zeilen anzufassen.
+    avatarUrl: normalizeAvatarUrl(profile.avatarUrl),
     bookingUrl,
     displayName: profile.displayName,
     role: profile.role,

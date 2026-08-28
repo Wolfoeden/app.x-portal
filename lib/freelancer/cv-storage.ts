@@ -24,6 +24,18 @@ export function signCvObjectPath(objectPath: string): string {
   return pseudonymizeSubject(`freelancer-cv:${objectPath}`);
 }
 
+/**
+ * `%PDF-`. Jede PDF-Datei beginnt damit; kein HTML-, SVG- oder Skriptdokument
+ * tut es. Die Prüfung ist der einzige Punkt im Upload, an dem der tatsächliche
+ * Inhalt zählt — MIME-Typ und Größe im Ticket sind Angaben des Clients, und
+ * auch der von Storage gemeldete Content-Type stammt aus dem Upload selbst.
+ */
+const PDF_MAGIC_BYTES = [0x25, 0x50, 0x44, 0x46, 0x2d] as const;
+
+export function hasPdfMagicBytes(bytes: Uint8Array): boolean {
+  return PDF_MAGIC_BYTES.every((value, index) => bytes[index] === value);
+}
+
 export function verifyCvObjectPath(objectPath: string, token: string): boolean {
   if (!CV_OBJECT_PATH_PATTERN.test(objectPath)) return false;
   if (!/^[0-9a-f]{64}$/u.test(token)) return false;

@@ -16,7 +16,7 @@ import {
   pseudonymizeIp,
   readJsonWithLimit,
 } from "@/lib/security/request";
-import { takeRateLimit } from "@/lib/security/rate-limit";
+import { consumeRateLimit } from "@/lib/security/shared-rate-limit";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { getSupabasePublicEnv } from "@/lib/supabase/env";
 
@@ -62,9 +62,6 @@ export async function POST(
   let actorUserId: string | null = null;
   let profileId: string | null = null;
   try {
-    if (!request.headers.get("origin")) {
-      throw new Response("Origin required", { status: 403 });
-    }
     assertSameOrigin(request);
     const user = await requireCurrentUser();
     actorUserId = user.id;
@@ -90,12 +87,14 @@ export async function POST(
       return json({ error: "Der CV-Download ist gerade nicht verfügbar." }, 503);
     }
 
-    const userLimit = takeRateLimit(`cv-download-user:${user.id}`, 30, 10 * 60_000);
-    const ipLimit = takeRateLimit(
-      `cv-download-ip:${pseudonymizeIp(getClientIp(request))}`,
-      60,
-      10 * 60_000,
-    );
+    const [userLimit, ipLimit] = await Promise.all([
+      consumeRateLimit(`cv-download-user:${user.id}`, 30, 10 * 60_000),
+      consumeRateLimit(
+        `cv-download-ip:${pseudonymizeIp(getClientIp(request))}`,
+        60,
+        10 * 60_000,
+      ),
+    ]);
     if (!userLimit.allowed || !ipLimit.allowed) {
       return retryAfterResponse(
         Math.max(userLimit.retryAfterSeconds, ipLimit.retryAfterSeconds),

@@ -31,8 +31,12 @@ export type AdminUserMetrics = {
     accounts: number;
     registered: number;
     guests: number;
-    /** Registered accounts that never signed in again after creation. */
-    registeredNeverReturned: number;
+    /**
+     * Registered accounts that never wrote a single message. The page defines
+     * activity as writing, so this counts the same way — a sign-in on its own
+     * used to be counted here and contradicted the table below it.
+     */
+    registeredNeverWrote: number;
   };
   activity: {
     day: AdminActivityWindow;
@@ -179,7 +183,7 @@ export function buildUserMetrics(input: {
 
   let registered = 0;
   let guests = 0;
-  let registeredNeverReturned = 0;
+  let registeredNeverWrote = 0;
 
   for (const account of input.accounts) {
     const kind: AdminAccountKind = account.anonymous ? "guest" : "registered";
@@ -203,10 +207,7 @@ export function buildUserMetrics(input: {
     if (kind === "registered") {
       registered += 1;
       registeredAccounts.push(row);
-      // A sign-in stamped at creation time is the signup itself, not a return.
-      if (!account.lastSignInAt || account.lastSignInAt <= account.createdAt) {
-        registeredNeverReturned += 1;
-      }
+      if (row.messages === 0) registeredNeverWrote += 1;
     } else {
       guests += 1;
       if (row.messages > 0) activeGuests.push(row);
@@ -237,7 +238,7 @@ export function buildUserMetrics(input: {
       accounts: input.accounts.length,
       registered,
       guests,
-      registeredNeverReturned,
+      registeredNeverWrote,
     },
     activity,
     registrationsByDay: [...byDay.entries()]

@@ -1,0 +1,31 @@
+# Abhängigkeiten aktuell halten.
+#
+# Das Qualitätstor prüft mit `pnpm audit --prod --audit-level=high` bereits, ob
+# eine bekannte Lücke im Produktionsbaum steckt — aber erst, wenn jemand einen
+# Pull Request öffnet. Dependabot dreht das um und meldet sich von selbst.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 5
+    # Patch- und Minor-Sprünge gebündelt: einzeln erzeugen sie mehr Rauschen
+    # als Erkenntnis. Major-Sprünge kommen bewusst einzeln.
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    labels: ["dependencies"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 3
+    labels: ["dependencies", "ci"]

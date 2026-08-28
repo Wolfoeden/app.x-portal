@@ -25,6 +25,7 @@ const usage: AiUsageSnapshot = {
     periodEnd: "2026-09-01T00:00:00.000Z",
     exhausted: false,
     creditsPerRequest: 21,
+    planId: "free",
     lastRequestCost: 24,
   },
   productCredits: {
@@ -76,16 +77,16 @@ describe("chat usage presentation contract", () => {
     });
   });
 
-  it("reports the balance and a floored request estimate", () => {
+  it("reports the balance and an exact floored request count", () => {
     // 1,026 remaining at 21 credits per request floors to 48, never rounds up
     // into a request the balance cannot pay for.
     expect(estimatedRequestsLeft(usage.credits)).toBe(48);
-    expect(usageSummary(usage, false)).toBe("KI-Guthaben: 1.026 Credits · ca. 48 Anfragen");
+    expect(usageSummary(usage, false)).toBe("KI-Guthaben: 1.026 Credits · 48 Anfragen");
   });
 
   it("keeps the research credits distinct from the monthly balance", () => {
     expect(usageSummary(usage, true)).toBe(
-      "KI-Guthaben: 1.026 Credits · ca. 48 Anfragen · Recherche-Guthaben: 42 Credits",
+      "KI-Guthaben: 1.026 Credits · 48 Anfragen · Recherche-Guthaben: 42 Credits",
     );
   });
 
@@ -93,7 +94,7 @@ describe("chat usage presentation contract", () => {
     const almostEmpty = { ...usage.credits, remaining: 30, used: 1_020 };
     expect(usageSummary({ ...usage, productCredits: null }, false)).toContain("Anfragen");
     expect(usageSummary({ credits: almostEmpty, productCredits: null }, false)).toBe(
-      "KI-Guthaben: 30 Credits · ca. 1 Anfrage",
+      "KI-Guthaben: 30 Credits · 1 Anfrage",
     );
   });
 

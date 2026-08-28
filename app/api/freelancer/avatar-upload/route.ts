@@ -11,11 +11,11 @@ import {
   mintAvatarObjectPath,
   signAvatarObjectPath,
 } from "@/lib/freelancer/avatar-storage";
-import { takeRateLimit } from "@/lib/security/rate-limit";
 import {
   assertSameOrigin,
   readJsonWithLimit,
 } from "@/lib/security/request";
+import { consumeRateLimit } from "@/lib/security/shared-rate-limit";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -38,7 +38,11 @@ export async function POST(request: Request) {
         status: 403,
       });
     }
-    const limit = takeRateLimit(`freelancer-avatar:${user.id}`, 10, 15 * 60_000);
+    const limit = await consumeRateLimit(
+      `freelancer-avatar:${user.id}`,
+      10,
+      15 * 60_000,
+    );
     if (!limit.allowed) {
       return NextResponse.json(
         { error: "Zu viele Uploads. Bitte später erneut versuchen." },

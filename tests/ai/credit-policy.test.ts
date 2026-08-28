@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BRIEF_ANALYSIS_CREDITS,
   calculateCreditsConsumed,
   type AiCreditPolicy,
   XPORTAL_AI_CREDIT_POLICY,
@@ -56,14 +57,14 @@ describe("XPORTAL AI credit policy", () => {
   it("never meters real usage as free", () => {
     const result = calculateCreditsConsumed({
       requestedModel: "gpt-5.6-luna",
-      purpose: "project_brief",
+      purpose: "chat",
       inputTokens: 1,
       outputTokens: 0,
     });
 
     expect(result.creditsConsumed).toBe(1);
     expect(result.unitLabel).toBe("XPORTAL_AI_CREDIT");
-    expect(result.policyVersion).toBe("xportal-ai-credits-2026-08-21-v4");
+    expect(result.policyVersion).toBe("xportal-ai-credits-2026-08-26-v5");
   });
 
   it("rounds half-up instead of always rounding up", () => {
@@ -94,9 +95,10 @@ describe("XPORTAL AI credit policy", () => {
     expect(up.creditsConsumed).toBe(2);
   });
 
-  it("meters a measured project brief at the calibrated price", () => {
-    // Median of 30 confirmed settlements on 2026-08-20/21:
-    // 920 input tokens, 147 output tokens, no cache hit.
+  it("charges the same for a short and a long brief", () => {
+    // Median and p90 of 30 confirmed settlements on 2026-08-20/21. Under
+    // token metering these cost 18 and 21 credits; the customer could not
+    // predict either. The advertised price is one number, so both pay it.
     const median = calculateCreditsConsumed({
       requestedModel: "gpt-5.4-nano",
       purpose: "project_brief",
@@ -104,7 +106,6 @@ describe("XPORTAL AI credit policy", () => {
       cachedInputTokens: 0,
       outputTokens: 147,
     });
-    // p90 of the same sample: 949 input, 187 output.
     const p90 = calculateCreditsConsumed({
       requestedModel: "gpt-5.4-nano",
       purpose: "project_brief",
@@ -113,11 +114,57 @@ describe("XPORTAL AI credit policy", () => {
       outputTokens: 187,
     });
 
-    expect(median.creditsConsumed).toBe(18);
-    expect(p90.creditsConsumed).toBe(21);
-    // A brief is the primary customer-facing operation and is no longer
-    // discounted against a plain chat turn.
-    expect(median.purposeMultiplierBasisPoints).toBe(10_000);
+    expect(median.creditsConsumed).toBe(BRIEF_ANALYSIS_CREDITS);
+    expect(p90.creditsConsumed).toBe(BRIEF_ANALYSIS_CREDITS);
+    expect(BRIEF_ANALYSIS_CREDITS).toBe(3);
+    // What the metering would have charged stays on the record.
+    expect(median.meteredCredits).toBe(18);
+    expect(p90.meteredCredits).toBe(21);
+    expect(median.flatPriceCredits).toBe(3);
+  });
+
+  it("keeps a flat price flat across models", () => {
+    // gpt-5.5-pro carries a 19x model multiplier. A customer who gets routed
+    // to it must not discover a 19x bill for the same action.
+    const nano = calculateCreditsConsumed({
+      requestedModel: "gpt-5.4-nano",
+      purpose: "project_brief",
+      inputTokens: 900,
+      outputTokens: 150,
+    });
+    const pro = calculateCreditsConsumed({
+      requestedModel: "gpt-5.5-pro",
+      purpose: "project_brief",
+      inputTokens: 15_000,
+      outputTokens: 1_800,
+    });
+
+    expect(nano.creditsConsumed).toBe(BRIEF_ANALYSIS_CREDITS);
+    expect(pro.creditsConsumed).toBe(BRIEF_ANALYSIS_CREDITS);
+    expect(pro.meteredCredits).toBe(4_902);
+  });
+
+  it("charges nothing for a flat-priced request that never reached the provider", () => {
+    const result = calculateCreditsConsumed({
+      requestedModel: "gpt-5.4-nano",
+      purpose: "project_brief",
+      inputTokens: 0,
+      outputTokens: 0,
+    });
+
+    expect(result.creditsConsumed).toBe(0);
+  });
+
+  it("leaves metered purposes untouched by the flat-price table", () => {
+    const research = calculateCreditsConsumed({
+      requestedModel: "gpt-5.4-nano",
+      purpose: "research",
+      inputTokens: 920,
+      outputTokens: 147,
+    });
+
+    expect(research.flatPriceCredits).toBeNull();
+    expect(research.creditsConsumed).toBe(research.meteredCredits);
   });
 
   it("keeps external research on its own discounted multiplier", () => {
@@ -145,10 +192,10 @@ describe("XPORTAL AI credit policy", () => {
     expect(result.usedDefaultModelMultiplier).toBe(false);
   });
 
-  it("meters a GPT-5.5 Pro brief at its explicit model multiplier", () => {
+  it("meters a GPT-5.5 Pro chat turn at its explicit model multiplier", () => {
     const result = calculateCreditsConsumed({
       requestedModel: "gpt-5.5-pro",
-      purpose: "project_brief",
+      purpose: "chat",
       inputTokens: 15_000,
       outputTokens: 1_800,
     });
@@ -157,10 +204,10 @@ describe("XPORTAL AI credit policy", () => {
     expect(result.creditsConsumed).toBe(4_902);
   });
 
-  it("meters a Terra project brief at its explicit model multiplier", () => {
+  it("meters a Terra chat turn at its explicit model multiplier", () => {
     const result = calculateCreditsConsumed({
       requestedModel: "gpt-5.6-terra",
-      purpose: "project_brief",
+      purpose: "chat",
       inputTokens: 15_000,
       outputTokens: 1_800,
     });

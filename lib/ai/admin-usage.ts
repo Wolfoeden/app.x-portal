@@ -6,6 +6,7 @@ import {
   readSearchUsageRows,
   type SearchUsageTotals,
 } from "@/lib/ai/admin-search-usage";
+import { creditPlan, type CreditPlanId } from "@/lib/ai/credit-policy";
 import { formatNanoUsdAsUsd } from "@/lib/ai/model-pricing";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -33,6 +34,7 @@ export type AdminLegacyCreditSourceRow = {
   credits_total: number | string;
   credits_used: number | string;
   credits_reserved: number | string;
+  plan_id?: string | null;
 };
 
 export type AdminFreeUsageSourceRow = {
@@ -84,6 +86,8 @@ export type AdminAccountTotals = {
 export type AdminAccountUserSnapshot = {
   userId: string;
   anonymous: boolean;
+  /** Die Stufe des Kontos. Siehe CREDIT_PLANS. */
+  planId: CreditPlanId;
   legacyTechnicalCredits: AdminLegacyTechnicalCreditBalance | null;
   freeMonthlyUsage: AdminFreeUsageBalance | null;
   productCredits: AdminProductCreditBalance | null;
@@ -117,6 +121,7 @@ export type AdminUserUsage = AdminUsageTotals & {
   userId: string;
   email: string | null;
   anonymous: boolean;
+  planId: CreditPlanId;
   legacyTechnicalCredits: AdminLegacyTechnicalCreditBalance | null;
   freeMonthlyUsage: AdminFreeUsageBalance | null;
   productCredits: AdminProductCreditBalance | null;
@@ -218,6 +223,7 @@ export function aggregateAdminAccountRows(input: {
     const created: AdminAccountUserSnapshot = {
       userId,
       anonymous,
+      planId: creditPlan(null, anonymous).id,
       legacyTechnicalCredits: null,
       freeMonthlyUsage: null,
       productCredits: null,
@@ -230,7 +236,9 @@ export function aggregateAdminAccountRows(input: {
     const total = count(row.credits_total);
     const used = count(row.credits_used);
     const reserved = count(row.credits_reserved);
-    account(row.user_id, row.is_anonymous).legacyTechnicalCredits = {
+    const user = account(row.user_id, row.is_anonymous);
+    user.planId = creditPlan(row.plan_id, row.is_anonymous).id;
+    user.legacyTechnicalCredits = {
       total,
       used,
       reserved,
@@ -494,7 +502,7 @@ async function readLegacyCreditRows() {
     const { data, error } = await admin
       .from("user_ai_credit_accounts")
       .select(
-        "user_id,is_anonymous,credits_total,credits_used,credits_reserved",
+        "user_id,is_anonymous,credits_total,credits_used,credits_reserved,plan_id",
       )
       .order("user_id", { ascending: true })
       .range(rows.length, rows.length + pageSize - 1);
@@ -597,6 +605,7 @@ export async function getAdminUsageDashboard(input: {
     byUser.set(account.userId, {
       ...emptyTotals(),
       userId: account.userId,
+      planId: account.planId,
       email: emails.get(account.userId) ?? null,
       anonymous: account.anonymous,
       legacyTechnicalCredits: account.legacyTechnicalCredits,
@@ -627,6 +636,7 @@ export async function getAdminUsageDashboard(input: {
         lastUsedAt: null,
         searchRuns: 0,
         searchToolCalls: 0,
+        planId: creditPlan(null, false).id,
       };
       addRow(userTotal, row);
       userTotal.lastUsedAt =

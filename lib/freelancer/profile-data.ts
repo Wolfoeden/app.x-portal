@@ -13,7 +13,7 @@ import {
   inspectUploadedAvatar,
   verifyAvatarObjectPath,
 } from "./avatar-storage";
-import { publicAvatarUrl } from "./avatar-limits";
+import { avatarImageUrl } from "./avatar-limits";
 import { CV_BUCKET } from "./limits";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -83,7 +83,7 @@ function mapEditableProfile(row: ProfileRow): EditableFreelancerProfile {
     bookingUrl: row.booking_url ?? "",
     profileStatus: row.profile_status === "active" ? "active" : "paused",
     verificationStatus: row.verification_status,
-    avatarUrl: publicAvatarUrl(row.avatar_path),
+    avatarUrl: avatarImageUrl(row.avatar_path),
     version: row.version,
   };
 }
@@ -293,7 +293,7 @@ export async function attachOwnedAvatar(input: {
   if (previous && previous !== input.objectPath) {
     await admin.storage.from(AVATAR_BUCKET).remove([previous]);
   }
-  return publicAvatarUrl(input.objectPath) ?? "";
+  return avatarImageUrl(input.objectPath) ?? "";
 }
 
 export async function removeOwnedAvatar(
@@ -404,13 +404,23 @@ export async function recordFreelancerProfileEvent(input: {
   return !error;
 }
 
+export type BookingDestination = {
+  displayName: string;
+  url: string;
+};
+
+/**
+ * Das Buchungsziel eines freigegebenen Profils. Der Name gehört dazu, weil die
+ * Zwischenseite für nicht gelistete Hosts sagen können muss, wessen Adresse
+ * gleich aufgerufen wird.
+ */
 export async function loadBookingDestination(
   profileId: string,
-): Promise<string | null> {
+): Promise<BookingDestination | null> {
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
     .from("freelancer_profiles")
-    .select("booking_url")
+    .select("display_name,booking_url")
     .eq("id", profileId)
     .eq("demo_status", "real")
     .eq("profile_status", "active")
@@ -420,7 +430,14 @@ export async function loadBookingDestination(
   if (!data?.booking_url) return null;
   try {
     const url = new URL(data.booking_url);
-    return url.protocol === "https:" ? url.toString() : null;
+    if (url.protocol !== "https:") return null;
+    return {
+      displayName:
+        typeof data.display_name === "string" && data.display_name.trim()
+          ? data.display_name.trim()
+          : "Dieses Profil",
+      url: url.toString(),
+    };
   } catch {
     return null;
   }

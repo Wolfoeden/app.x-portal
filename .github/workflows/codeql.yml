@@ -1,0 +1,44 @@
+# Statische Codeanalyse.
+#
+# Das Qualitätstor prüft Stil, Typen, Tests und bekannte Lücken in
+# Abhängigkeiten — aber nichts im eigenen Code. CodeQL schließt genau diese
+# Lücke und ist für dieses Repository kostenlos.
+name: CodeQL
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Einmal wöchentlich, damit neue Regeln auch alten Code erreichen.
+    - cron: "0 5 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Initialise CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-and-quality
+
+      # Kein eigener Build-Schritt: Für JavaScript und TypeScript wertet
+      # CodeQL den Quelltext direkt aus. Ein Next-Build hier würde nur Zeit
+      # kosten und Secrets brauchen.
+      - name: Analyse
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript-typescript"

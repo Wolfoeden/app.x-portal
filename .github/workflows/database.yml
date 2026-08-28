@@ -1,0 +1,55 @@
+# Die Datenbanktests, die bisher niemand automatisch ausgeführt hat.
+#
+# Unter `supabase/tests/database/` liegen Tests für Row Level Security, die
+# Guthaben-RPCs und die Matching-Snapshots — also für den wichtigsten
+# Schutzmechanismus der Anwendung. Lokal brauchen sie Docker und die
+# Supabase-CLI; auf einem Runner ist beides vorhanden.
+#
+# Eigener Workflow statt eines Jobs im Qualitätstor: Der Lauf startet eine
+# vollständige lokale Supabase-Umgebung und dauert deutlich länger als Lint
+# und Tests. Er soll den schnellen Durchlauf nicht ausbremsen, aber sehr wohl
+# blockieren, wenn eine Migration die Isolation bricht.
+name: Database
+
+on:
+  pull_request:
+    paths:
+      - "supabase/**"
+      - ".github/workflows/database.yml"
+  push:
+    branches: [main]
+    paths:
+      - "supabase/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase
+        run: supabase start
+
+      # `supabase start` spielt die Migrationen bereits ein. Schlägt eine fehl,
+      # bricht der Schritt oben ab — auch das ist ein Testergebnis.
+      - name: Run database tests
+        run: supabase test db
+
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop --no-backup

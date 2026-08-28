@@ -8,13 +8,13 @@ import {
   CV_MIME_TYPES,
 } from "@/lib/freelancer/application";
 import { mintCvObjectPath, signCvObjectPath } from "@/lib/freelancer/cv-storage";
-import { takeRateLimit } from "@/lib/security/rate-limit";
 import {
   assertSameOrigin,
   getClientIp,
   pseudonymizeIp,
   readJsonWithLimit,
 } from "@/lib/security/request";
+import { consumeRateLimit } from "@/lib/security/shared-rate-limit";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     }
 
     const ipHash = pseudonymizeIp(getClientIp(request));
-    const limit = takeRateLimit(
+    const limit = await consumeRateLimit(
       `freelancer-cv:${user.id}:${ipHash}`,
       10,
       15 * 60_000,

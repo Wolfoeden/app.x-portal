@@ -205,6 +205,134 @@
   margin: 0 auto 14px;
 }
 
+/* Die eine Zahl, nach der zuerst gefragt wird. Sie steht über der Aufteilung
+   in bestätigt und geschätzt, weil die Aufteilung eine Frage der Messgüte ist
+   und nicht der Höhe. */
+.headline {
+  max-width: 1440px;
+  margin: 0 auto 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.headline article {
+  border: 1px solid #dfdfda;
+  border-radius: 14px;
+  background: #fff;
+  padding: 18px;
+  display: grid;
+  gap: 6px;
+  box-shadow: 0 8px 24px rgba(29, 29, 26, 0.035);
+}
+
+.headline .primary {
+  border-color: #1d6b5f;
+  background: #f2f8f6;
+}
+
+.headline span,
+.headline small {
+  color: #82827b;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.headline small {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+}
+
+.headline strong {
+  font-size: clamp(26px, 2.8vw, 38px);
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Betriebszustand. Rot heißt: hier geht gerade etwas kaputt, unabhängig
+   davon, wie hoch die Rechnung ist. */
+.health {
+  max-width: 1440px;
+  margin: 0 auto 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.health span {
+  border-radius: 999px;
+  border: 1px solid #dfdfda;
+  background: #fff;
+  padding: 6px 12px;
+  font-size: 11px;
+  color: #52636c;
+}
+
+.health .alarm {
+  border-color: #e0b4ac;
+  background: #fcf3f1;
+  color: #8d3a29;
+}
+
+.health .warn {
+  border-color: #e7d39e;
+  background: #fff9e9;
+  color: #73591f;
+}
+
+.health b {
+  font-variant-numeric: tabular-nums;
+}
+
+.planBadge {
+  display: inline-block;
+  border-radius: 999px;
+  border: 1px solid #dfdfda;
+  background: #fff;
+  padding: 2px 9px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.planBadge[data-plan="enterprise"] {
+  border-color: #1d6b5f;
+  background: #1d6b5f;
+  color: #fff;
+}
+
+.planBadge[data-plan="guest"] {
+  color: #82827b;
+}
+
+/* Werkzeugleiste einer Tabelle: was gefiltert ist und wie man es abschaltet. */
+.tableTools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 0 18px 12px;
+  font-size: 11px;
+  color: #82827b;
+}
+
+.tableTools a {
+  color: #1d6b5f;
+}
+
+.sortLink {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted #b9b9b1;
+}
+
+.sortLink[data-active="true"] {
+  color: #1d6b5f;
+  border-bottom-color: #1d6b5f;
+}
+
 .kpis article,
 .panel,
 .detail {

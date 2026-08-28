@@ -7,10 +7,36 @@ import { applicationOrigin } from "@/lib/auth/redirect";
 
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
+/**
+ * `Sec-Fetch-Site` gehört zu den verbotenen Headern: Seitenskript kann ihn
+ * nicht setzen, der Browser schreibt ihn selbst. Damit ist er als Aussage über
+ * die Herkunft mindestens so belastbar wie `Origin` — und er ist auch dann da,
+ * wenn `Origin` unterwegs verloren geht.
+ */
+const SAME_SITE_FETCH_VALUES = new Set(["same-origin", "same-site"]);
+
 export function assertSameOrigin(request: Request) {
   if (!WRITE_METHODS.has(request.method.toUpperCase())) return;
 
+  const fetchSite = request.headers
+    .get("sec-fetch-site")
+    ?.trim()
+    .toLowerCase();
+  if (fetchSite && !SAME_SITE_FETCH_VALUES.has(fetchSite)) {
+    throw new Response("Origin not allowed", { status: 403 });
+  }
+
   const origin = request.headers.get("origin");
+  if (!origin) {
+    // Bisher lief eine Anfrage ohne `Origin` einfach durch. Das machte aus der
+    // einen Funktion, deren einzige Aufgabe das Ablehnen ist, ein Fail-open:
+    // Wer den Header wegließ, war damit durch. Ein vom Browser gesetztes
+    // `Sec-Fetch-Site` ist der einzige akzeptierte Ersatz; fehlt auch das,
+    // wird abgelehnt.
+    if (fetchSite && SAME_SITE_FETCH_VALUES.has(fetchSite)) return;
+    throw new Response("Origin required", { status: 403 });
+  }
+
   const requestOrigin = new URL(request.url).origin;
   const configuredOrigin = applicationOrigin(request);
   const host = request.headers.get("host")?.trim();
@@ -24,7 +50,6 @@ export function assertSameOrigin(request: Request) {
   }
 
   if (
-    origin &&
     origin !== requestOrigin &&
     origin !== configuredOrigin &&
     origin !== hostOrigin

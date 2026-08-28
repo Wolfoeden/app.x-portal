@@ -18,7 +18,7 @@ vi.mock("@/lib/ai/product-entitlements", () => ({
 vi.mock("@/lib/ai/quota", () => ({
   getAiCreditSnapshot: mocks.getAiCreditSnapshot,
   currentPeriodEndIso: () => "2026-09-01T00:00:00.000Z",
-  TYPICAL_PROJECT_BRIEF_CREDITS: 21,
+  BRIEF_ANALYSIS_CREDITS: 3,
 }));
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminSupabaseClient: () => ({ from: mocks.from }),
@@ -91,7 +91,7 @@ describe("workspace bootstrap", () => {
 
     expect(bootstrap.usage?.credits.remaining).toBe(1_026);
     expect(bootstrap.usage?.credits.exhausted).toBe(false);
-    expect(bootstrap.usage?.credits.creditsPerRequest).toBe(21);
+    expect(bootstrap.usage?.credits.creditsPerRequest).toBe(3);
     // Loading the workspace spends nothing.
     expect(bootstrap.usage?.credits.lastRequestCost).toBeNull();
     expect(bootstrap.projects).toEqual([]);

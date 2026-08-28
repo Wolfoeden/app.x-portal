@@ -12,6 +12,7 @@ import {
   nanoUsdToCeilingCents,
   recordAiUsage,
   reserveAiQuota,
+  resolveBillingAccount,
   type AiCreditSnapshot,
   type AiQuotaReservation,
   type AiUsageOutcome,
@@ -88,13 +89,22 @@ export async function executeTrackedAiRequest<T>(input: {
     outputTokens: reservationTokens.outputTokens,
   }).creditsConsumed;
 
+  // Erst das eigene Kontingent, danach der Pool des Teams. Rate-Limit und
+  // Tageslimit bleiben an der echten Person haengen: userHash und ipHash
+  // werden nicht mit umgeschrieben, sonst teilte sich ein Team ein Limit.
+  const billing = await resolveBillingAccount({
+    userId: input.userId,
+    isAnonymous: input.isAnonymous,
+    requiredCredits: estimatedCredits,
+  });
+
   const quota = await reserveAiQuota({
     requestKey: input.requestKey,
-    userId: input.userId,
+    userId: billing.userId,
     interactionId: input.interactionId,
     userHash: input.userHash,
     ipHash: input.ipHash,
-    isAnonymous: input.isAnonymous,
+    isAnonymous: billing.isAnonymous,
     isAdmin: input.isAdmin,
     requestedModel: input.requestedModel,
     purpose: input.purpose,

@@ -4,12 +4,15 @@ vi.mock("server-only", () => ({}));
 
 import {
   ACCOUNT_MONTHLY_CREDITS,
+  BRIEF_ANALYSIS_CREDITS,
+  GUEST_MONTHLY_CREDITS,
+} from "@/lib/ai/credit-policy";
+import {
   calculateProviderCostCents,
   configuredDailyTokenLimit,
   configuredInitialCredits,
   configuredMonthlyProviderBudgetCents,
   configuredUnknownModelEstimatedCostCents,
-  GUEST_FREE_REQUESTS,
 } from "@/lib/ai/quota";
 
 describe("provider cost reconciliation", () => {
@@ -44,15 +47,20 @@ describe("provider cost reconciliation", () => {
     expect(calculateProviderCostCents(1_000_000, 1_000_000)).toBe(1540);
   });
 
-  it("gives a guest three requests and an account a round 300 credits", () => {
-    // Beim Gast bleibt die Herleitung aus dem gemessenen Anfragepreis richtig:
-    // die Zusage lautet "drei Anfragen", nicht "63 Credits".
-    expect(GUEST_FREE_REQUESTS).toBe(3);
-    expect(configuredInitialCredits(true)).toBe(GUEST_FREE_REQUESTS * 21);
-    // Beim Konto steht die Zahl selbst in der Oberfläche und muss dort
-    // verständlich sein — deshalb glatt statt gerechnet.
+  it("gives a guest 100 and an account 300 credits a month", () => {
+    expect(GUEST_MONTHLY_CREDITS).toBe(100);
+    expect(configuredInitialCredits(true)).toBe(100);
     expect(ACCOUNT_MONTHLY_CREDITS).toBe(300);
     expect(configuredInitialCredits(false)).toBe(300);
+  });
+
+  it("buys 33 guest and 100 account searches at the flat price", () => {
+    // Die Zahl, die in der Oberfläche steht, muss aus den Kontingenten
+    // folgen — sonst verspricht die Seite etwas, das die Abrechnung nicht hält.
+    expect(Math.floor(GUEST_MONTHLY_CREDITS / BRIEF_ANALYSIS_CREDITS)).toBe(33);
+    expect(
+      Math.floor(ACCOUNT_MONTHLY_CREDITS / BRIEF_ANALYSIS_CREDITS),
+    ).toBe(100);
   });
 
   it("honors zero as an explicit hard-stop configuration", () => {

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import {
+  canEditSavedFreelancers,
   canSaveFreelancers,
   loadSavedFreelancers,
   removeSavedFreelancer,
@@ -26,6 +27,17 @@ const FreelancerIdSchema = z
 const ACCOUNT_REQUIRED = {
   error: "Für die Merkliste ist ein Konto erforderlich.",
   reason: "account_required" as const,
+};
+
+/**
+ * Ein eingeladenes Teammitglied liest die Merkliste des Plan-Inhabers. Es in
+ * dieselbe Liste schreiben zu lassen, hiesse, dass jemand fremde Auswahl
+ * verändert — deshalb nur lesend.
+ */
+const TEAM_MEMBER_READ_ONLY = {
+  error:
+    "Sie sehen die Merkliste Ihres Teams. Änderungen nimmt der Plan-Inhaber vor.",
+  reason: "team_member_read_only" as const,
 };
 
 export async function GET() {
@@ -56,6 +68,9 @@ export async function POST(request: Request) {
     const user = await requireCurrentUser();
     if (!canSaveFreelancers(user)) {
       return NextResponse.json(ACCOUNT_REQUIRED, { status: 403 });
+    }
+    if (!(await canEditSavedFreelancers(user))) {
+      return NextResponse.json(TEAM_MEMBER_READ_ONLY, { status: 403 });
     }
     const input = FreelancerIdSchema.parse(await readJsonWithLimit(request, 2_000));
     await saveFreelancer(user, input.freelancerId);
@@ -88,6 +103,9 @@ export async function DELETE(request: Request) {
     const user = await requireCurrentUser();
     if (!canSaveFreelancers(user)) {
       return NextResponse.json(ACCOUNT_REQUIRED, { status: 403 });
+    }
+    if (!(await canEditSavedFreelancers(user))) {
+      return NextResponse.json(TEAM_MEMBER_READ_ONLY, { status: 403 });
     }
     const input = FreelancerIdSchema.parse(await readJsonWithLimit(request, 2_000));
     await removeSavedFreelancer(user, input.freelancerId);

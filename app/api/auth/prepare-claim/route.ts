@@ -12,7 +12,7 @@ import {
   getClientIp,
   pseudonymizeIp,
 } from "@/lib/security/request";
-import { takeRateLimit } from "@/lib/security/rate-limit";
+import { consumeRateLimit } from "@/lib/security/shared-rate-limit";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
@@ -23,12 +23,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ prepared: false, reason: "not_anonymous" });
     }
 
-    const userLimit = takeRateLimit(`guest-claim-user:${user.id}`, 5, 10 * 60_000);
-    const ipLimit = takeRateLimit(
-      `guest-claim-ip:${pseudonymizeIp(getClientIp(request))}`,
-      20,
-      10 * 60_000,
-    );
+    // Beide Zähler laufen nebeneinander: nacheinander wären es zwei
+    // Datenbankumläufe für eine Entscheidung.
+    const [userLimit, ipLimit] = await Promise.all([
+      consumeRateLimit(`guest-claim-user:${user.id}`, 5, 10 * 60_000),
+      consumeRateLimit(
+        `guest-claim-ip:${pseudonymizeIp(getClientIp(request))}`,
+        20,
+        10 * 60_000,
+      ),
+    ]);
     if (!userLimit.allowed || !ipLimit.allowed) {
       const retryAfter = Math.max(
         userLimit.retryAfterSeconds,

@@ -3,6 +3,7 @@ import "server-only";
 import type { SavedFreelancer } from "@/components/chat-contract";
 import type { CurrentUser } from "@/lib/auth/current-user";
 import { fetchRealProfilesByIds } from "@/lib/data/freelancers";
+import { findOwnerForMember } from "@/lib/data/plan-teams";
 import { presentSavedProfile } from "@/lib/presentation/chat";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -15,6 +16,31 @@ export function canSaveFreelancers(user: CurrentUser): boolean {
   return !user.isAnonymous;
 }
 
+/**
+ * Wessen Merkliste dieses Konto sieht.
+ *
+ * Ein eingeladenes Teammitglied sieht die Liste des Plan-Inhabers, nicht
+ * seine eigene. Es darf sie nur ansehen — schreibend bleibt jede Zeile beim
+ * Inhaber, siehe canEditSavedFreelancers.
+ */
+export async function resolveSavedListOwner(
+  user: CurrentUser,
+): Promise<{ ownerUserId: string; readOnly: boolean }> {
+  if (user.isAnonymous) return { ownerUserId: user.id, readOnly: true };
+  const ownerUserId = await findOwnerForMember(user.id);
+  return ownerUserId
+    ? { ownerUserId, readOnly: true }
+    : { ownerUserId: user.id, readOnly: false };
+}
+
+/** Ein Teammitglied merkt nicht in die Liste des Inhabers hinein. */
+export async function canEditSavedFreelancers(
+  user: CurrentUser,
+): Promise<boolean> {
+  if (!canSaveFreelancers(user)) return false;
+  return (await findOwnerForMember(user.id)) === null;
+}
+
 export async function loadSavedFreelancers(
   user: CurrentUser,
 ): Promise<SavedFreelancer[]> {
@@ -23,11 +49,12 @@ export async function loadSavedFreelancers(
 
   // The service role is deliberately constrained again by owner_user_id here,
   // the same way loadOwnedProjects does it.
+  const { ownerUserId } = await resolveSavedListOwner(user);
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
     .from("saved_freelancers")
     .select("freelancer_id,created_at")
-    .eq("owner_user_id", user.id)
+    .eq("owner_user_id", ownerUserId)
     .order("created_at", { ascending: false })
     .limit(200);
   if (error) throw error;

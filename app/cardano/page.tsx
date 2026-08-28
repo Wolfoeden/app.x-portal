@@ -193,6 +193,8 @@ export default async function XPortalHome({ searchParams }: HomeProps) {
         <nav aria-label="Legal">
           <Link href="/privacy">Privacy</Link>
           <Link href="/imprint">Imprint</Link>
+          <Link href="/terms">Terms</Link>
+          <Link href="/contact">Contact</Link>
           <CookieSettingsButton />
         </nav>
       </footer>

@@ -33,6 +33,12 @@
   list-style: none;
 }
 
+.link[data-active="true"] {
+  border-color: #1d6b5f;
+  background: #1d6b5f;
+  color: #fff;
+}
+
 .link {
   display: inline-flex;
   border: 1px solid #dfdfda;

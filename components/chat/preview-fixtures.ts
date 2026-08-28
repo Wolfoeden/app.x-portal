@@ -190,7 +190,8 @@ export const previewUsage: AiUsageSnapshot = {
     remaining: 1_182,
     periodEnd: "2026-09-01T00:00:00.000Z",
     exhausted: false,
-    creditsPerRequest: 24,
+    creditsPerRequest: 3,
+    planId: "free",
     lastRequestCost: 22,
   },
   productCredits: {

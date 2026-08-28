@@ -8,6 +8,12 @@ import {
   agentTaskById,
 } from "@/components/AgentDirectory";
 import { ChatWorkspace } from "@/components/ChatWorkspace";
+import {
+  previewAnalysis,
+  previewAuth,
+  previewBrief,
+  previewUsage,
+} from "@/components/chat/preview-fixtures";
 
 const forbiddenPersonNames = ["Elena", "Hannah", "Alex", "Jamal", "Maya"];
 
@@ -38,7 +44,18 @@ describe("agent directory", () => {
 
   it("renders the agent experience inside the familiar chat shell", () => {
     const markup = renderToStaticMarkup(
-      createElement(ChatWorkspace, { view: "agents" }),
+      createElement(ChatWorkspace, {
+        view: "agents",
+        previewData: {
+          auth: previewAuth,
+          projects: [],
+          messages: [],
+          brief: previewBrief,
+          profiles: [],
+          analysis: previewAnalysis,
+          usage: previewUsage,
+        },
+      }),
     );
 
     expect(markup).toContain('href="/agent"');
@@ -52,5 +69,18 @@ describe("agent directory", () => {
     for (const name of forbiddenPersonNames) {
       expect(markup).not.toContain(name);
     }
+  });
+
+  it("keeps the agents behind an account", () => {
+    // Ein Gast bekommt die Standardanalyse, nicht die Agenten. Die Sperre
+    // erklaert den Unterschied, statt eine leere Seite zu zeigen.
+    const markup = renderToStaticMarkup(
+      createElement(ChatWorkspace, { view: "agents" }),
+    );
+
+    expect(markup).toContain("Agenten gibt es mit einem Konto.");
+    expect(markup).toContain("Konto erstellen");
+    expect(markup).not.toContain("Der passende KI-Agent für die nächste Aufgabe.");
+    expect(markup).not.toContain("Ready-To-Run Tasks");
   });
 });

@@ -1,13 +1,13 @@
 import { z } from "zod";
 
 import { recordFreelancerProfileEvent } from "@/lib/freelancer/profile-data";
-import { takeRateLimit } from "@/lib/security/rate-limit";
 import {
   assertSameOrigin,
   getClientIp,
   pseudonymizeIp,
   readJsonWithLimit,
 } from "@/lib/security/request";
+import { consumeRateLimit } from "@/lib/security/shared-rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,7 +25,11 @@ export async function POST(request: Request) {
   try {
     assertSameOrigin(request);
     const ipHash = pseudonymizeIp(getClientIp(request));
-    const limit = takeRateLimit(`freelancer-view:${ipHash}`, 120, 60 * 60_000);
+    const limit = await consumeRateLimit(
+      `freelancer-view:${ipHash}`,
+      120,
+      60 * 60_000,
+    );
     if (!limit.allowed) {
       return new Response(null, {
         status: 429,

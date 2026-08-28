@@ -9,10 +9,8 @@ import type {
 } from "@/components/chat-contract";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { executeTrackedAiRequest } from "@/lib/ai/gateway";
-import {
-  currentPeriodEndIso,
-  TYPICAL_PROJECT_BRIEF_CREDITS,
-} from "@/lib/ai/quota";
+import { BRIEF_ANALYSIS_CREDITS } from "@/lib/ai/credit-policy";
+import { currentPeriodEndIso, getAccountPlanId } from "@/lib/ai/quota";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { attachFreelancerCvAccess } from "@/lib/data/freelancer-cvs";
 import { deriveProjectTitle, presentProject, type ProjectRow } from "@/lib/data/projects";
@@ -49,7 +47,7 @@ import {
   readJsonWithLimit,
   logEvent,
 } from "@/lib/security/request";
-import { takeRateLimit } from "@/lib/security/rate-limit";
+import { consumeRateLimit } from "@/lib/security/shared-rate-limit";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -321,14 +319,16 @@ async function processChatRequest(
     }
 
     const perMinute = Number.parseInt(process.env.AI_REQUESTS_PER_MINUTE ?? "6", 10);
-    const userLimit = takeRateLimit(
-      `user:${userHash ?? user.id}`,
-      Number.isSafeInteger(perMinute) && perMinute > 0 ? perMinute : 6,
-    );
-    const ipLimit = takeRateLimit(
-      `ip:${ipHash ?? "unconfigured"}`,
-      Number.isSafeInteger(perMinute) && perMinute > 0 ? perMinute : 6,
-    );
+    const [userLimit, ipLimit] = await Promise.all([
+      consumeRateLimit(
+        `user:${userHash ?? user.id}`,
+        Number.isSafeInteger(perMinute) && perMinute > 0 ? perMinute : 6,
+      ),
+      consumeRateLimit(
+        `ip:${ipHash ?? "unconfigured"}`,
+        Number.isSafeInteger(perMinute) && perMinute > 0 ? perMinute : 6,
+      ),
+    ]);
     if (!userLimit.allowed || !ipLimit.allowed) {
       const retryAfter = Math.max(
         userLimit.retryAfterSeconds,
@@ -706,6 +706,11 @@ async function processChatRequest(
       },
     });
 
+    const requesterPlanId = await getAccountPlanId({
+      userId: user.id,
+      isAnonymous: user.isAnonymous,
+    });
+
     const [presentedMatches, presentedPartialMatches] = await Promise.all([
       attachFreelancerCvAccess(
         admin,
@@ -761,7 +766,10 @@ async function processChatRequest(
                 remaining: tracked.credits.remaining,
                 periodEnd: currentPeriodEndIso(),
                 exhausted: tracked.credits.remaining <= 0,
-                creditsPerRequest: TYPICAL_PROJECT_BRIEF_CREDITS,
+                creditsPerRequest: BRIEF_ANALYSIS_CREDITS,
+                // Die Stufe des Anfragenden — nicht die des belasteten
+                // Kontos, das bei einem Teammitglied dem Inhaber gehört.
+                planId: requesterPlanId,
                 lastRequestCost: tracked.creditsCharged,
               },
             }

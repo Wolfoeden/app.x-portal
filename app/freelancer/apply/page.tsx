@@ -144,9 +144,11 @@ export default async function FreelancerApplyPage({
         )}
 
         <p className={styles.footer}>
-          Fragen? Schreib uns über den <Link href="/cardano">XPORTAL-Zugang</Link>.
-          Deine Daten verarbeiten wir nach dem{" "}
-          <Link href="/privacy">Datenschutzhinweis</Link>.
+          Fragen? Schreib uns über das{" "}
+          <Link href="/contact">Kontaktformular</Link>. Deine Daten verarbeiten
+          wir nach dem <Link href="/privacy">Datenschutzhinweis</Link>; es
+          gelten die <Link href="/terms">AGB</Link> und das{" "}
+          <Link href="/imprint">Impressum</Link>.
         </p>
       </div>
     </main>

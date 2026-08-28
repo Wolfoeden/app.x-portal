@@ -4,11 +4,8 @@ import {
   getProductCreditSnapshot,
   PRODUCT_CREDIT_EURO_PER_UNIT,
 } from "@/lib/ai/product-entitlements";
-import {
-  currentPeriodEndIso,
-  getAiCreditSnapshot,
-  TYPICAL_PROJECT_BRIEF_CREDITS,
-} from "@/lib/ai/quota";
+import { BRIEF_ANALYSIS_CREDITS } from "@/lib/ai/credit-policy";
+import { currentPeriodEndIso, getAiCreditSnapshot } from "@/lib/ai/quota";
 import { getCurrentUser, type CurrentUser } from "@/lib/auth/current-user";
 import {
   presentProject,
@@ -86,7 +83,7 @@ export async function loadWorkspaceUsage(
       ...credits,
       periodEnd: currentPeriodEndIso(),
       exhausted: credits.remaining <= 0,
-      creditsPerRequest: TYPICAL_PROJECT_BRIEF_CREDITS,
+      creditsPerRequest: BRIEF_ANALYSIS_CREDITS,
       // Nothing was spent by loading the workspace.
       lastRequestCost: null,
     },

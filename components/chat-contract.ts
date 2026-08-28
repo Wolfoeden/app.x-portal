@@ -143,10 +143,27 @@ export interface CreditBalanceSnapshot {
   /** ISO instant at which the allowance refills. */
   periodEnd: string;
   exhausted: boolean;
-  /** Typical price of one request, for the "roughly N left" estimate. */
+  /** Fixed price of one normal search. */
   creditsPerRequest: number;
+  /** Die Stufe des Kontos: "guest", "free" oder "enterprise". */
+  planId: string;
   /** What the request returning this snapshot cost. Null outside a request. */
   lastRequestCost: number | null;
+}
+
+/** Ein Konto, das aus dem Plan eines anderen bezahlt. */
+export interface PlanTeamMember {
+  userId: string;
+  email: string | null;
+  invitedAt: string;
+}
+
+export interface PlanTeamSnapshot {
+  ownerUserId: string;
+  ownerEmail: string | null;
+  members: PlanTeamMember[];
+  /** False, solange dieses Konto selbst eingeladen wurde. */
+  isOwner: boolean;
 }
 
 /** Purchased product credits. These never replace the monthly free allowance. */
@@ -353,6 +370,8 @@ export interface ChatApiPaths {
   projectCollections: string;
   /** The account's saved freelancers, shown as the "Merkliste". */
   savedFreelancers: string;
+  /** Members who draw on this account's plan. */
+  teamMembers: string;
   session: string;
   /** Monthly free-usage and purchased-product-credit snapshot endpoint. */
   credits?: string;
@@ -378,6 +397,7 @@ export const defaultChatApiPaths: ChatApiPaths = {
   projects: appPath("/api/projects"),
   projectCollections: appPath("/api/project-collections"),
   savedFreelancers: appPath("/api/saved-freelancers"),
+  teamMembers: appPath("/api/team/members"),
   session: appPath("/api/auth/session"),
   workspaceBootstrap: appPath("/api/workspace/bootstrap"),
   credits: appPath("/api/ai/credits"),

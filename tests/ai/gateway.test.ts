@@ -5,12 +5,14 @@ vi.mock("server-only", () => ({}));
 const mocks = vi.hoisted(() => ({
   reserveAiQuota: vi.fn(),
   recordAiUsage: vi.fn(),
+  resolveBillingAccount: vi.fn(),
   logEvent: vi.fn(),
 }));
 
 vi.mock("@/lib/ai/quota", () => ({
   reserveAiQuota: mocks.reserveAiQuota,
   recordAiUsage: mocks.recordAiUsage,
+  resolveBillingAccount: mocks.resolveBillingAccount,
   XPORTAL_AI_CREDIT_POLICY_VERSION: "test-credit-policy",
   nanoUsdToCeilingCents: (value: string | null) =>
     value === null ? 0 : Number((BigInt(value) + 9_999_999n) / 10_000_000n),
@@ -33,7 +35,7 @@ function baseInput() {
     userHash: "user-hmac-12345678",
     ipHash: "ip-hmac-1234567890",
     isAnonymous: true,
-    purpose: "project_brief",
+    purpose: "chat",
     requestedModel: "gpt-5.6-luna",
     estimatedInputTokens: 1_000,
     estimatedOutputTokens: 200,
@@ -44,6 +46,15 @@ beforeEach(() => {
   mocks.reserveAiQuota.mockReset();
   mocks.recordAiUsage.mockReset();
   mocks.logEvent.mockReset();
+  // Ohne Team zahlt das eigene Konto; die Reihenfolge selbst prüft
+  // tests/ai/team-billing.test.ts.
+  mocks.resolveBillingAccount.mockImplementation(
+    async (input: { userId: string; isAnonymous: boolean }) => ({
+      userId: input.userId,
+      isAnonymous: input.isAnonymous,
+      billedToOwnerUserId: null,
+    }),
+  );
   mocks.reserveAiQuota.mockResolvedValue({
     allowed: true,
     reason: "reserved",
@@ -123,6 +134,39 @@ describe("executeTrackedAiRequest", () => {
     // Charge: ((50 + 10) x 10) + (40 x 1) + (20 x 60) = 1,840 units = 2 credits.
     expect(mocks.recordAiUsage).toHaveBeenCalledWith(
       expect.objectContaining({ actualCredits: 2 }),
+    );
+  });
+
+  it("holds and charges a normal search its flat price", async () => {
+    const operation = vi.fn().mockResolvedValue({
+      value: "ok",
+      outcome: "succeeded" as const,
+      usage: {
+        requestedModel: "gpt-5.6-luna",
+        actualModel: "gpt-5.6-luna",
+        providerResponseId: "resp_123",
+        inputTokens: 100,
+        cachedInputTokens: 40,
+        cacheWriteTokens: 10,
+        outputTokens: 20,
+        totalTokens: 120,
+      },
+    });
+
+    await executeTrackedAiRequest({
+      ...baseInput(),
+      purpose: "project_brief",
+      creditReservationTokens: { inputTokens: 1_000, outputTokens: 250 },
+      operation,
+    });
+
+    // Hold equals charge at a flat price, so no request is ever denied for
+    // credits it was never going to spend.
+    expect(mocks.reserveAiQuota).toHaveBeenCalledWith(
+      expect.objectContaining({ estimatedCredits: 3 }),
+    );
+    expect(mocks.recordAiUsage).toHaveBeenCalledWith(
+      expect.objectContaining({ actualCredits: 3 }),
     );
   });
 

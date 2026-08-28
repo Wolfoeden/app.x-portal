@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { LegalFooter } from "@/components/LegalFooter";
 import { completeEmailAuthSession } from "@/lib/auth/browser";
 import {
   emailAuthFailurePath,
@@ -65,6 +66,7 @@ export default function CompleteEmailAuthPage() {
             : "Einen Moment bitte. Danach können Sie Ihr Passwort sicher festlegen."}
         </p>
       </section>
+      <LegalFooter />
     </main>
   );
 }

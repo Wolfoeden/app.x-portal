@@ -55,10 +55,14 @@ export default function PrivacyPage() {
               Die Verarbeitung dient der sicheren Auslieferung, Fehleranalyse
               und Abwehr von Missbrauch. Rechtsgrundlage ist Art. 6 Abs. 1
               lit. f DSGVO; unser berechtigtes Interesse ist ein sicherer,
-              stabiler und nachvollziehbarer Betrieb. In der
-              Anwendungsdatenbank werden für die Ratenbegrenzung nur
-              pseudonymisierte IP-Ableitungen und keine Roh-IP-Adressen
-              gespeichert.
+              stabiler und nachvollziehbarer Betrieb.
+            </p>
+            <p>
+              Für die Ratenbegrenzung führt die Anwendungsdatenbank je
+              Zeitfenster einen Zähler. Der zugehörige Schlüssel enthält bei
+              IP-bezogenen Grenzen ausschließlich eine kryptografische
+              Ableitung (HMAC) der IP-Adresse, nie die Adresse selbst. Ein
+              abgelaufener Zähler wird täglich gelöscht.
             </p>
           </div>
         </section>
@@ -148,6 +152,16 @@ export default function PrivacyPage() {
               trifft keine automatische Einstellungs- oder Vertragsentscheidung.
             </p>
             <p>
+              Stammen die Daten nicht von der betroffenen Person selbst, sondern
+              aus einer Recherche in öffentlich zugänglichen Quellen,
+              informieren wir die betroffene Person nach Art. 14 DSGVO —
+              spätestens einen Monat nach der Erhebung, mit Angabe von Zweck,
+              Herkunft, Speicherdauer und Widerspruchsrecht. Erfolgt bis dahin
+              keine Information und keine Einwilligung, wird der Datensatz
+              automatisch gelöscht. Recherchierte Profile werden bis zu einer
+              Einwilligung nicht im Portal veröffentlicht.
+            </p>
+            <p>
               Ein Lebenslauf wird nur mit dokumentierter Berechtigung des
               betroffenen Freelancers in einem privaten Supabase-Speicher
               hinterlegt. Gäste erhalten weder den Lebenslauf noch einen
@@ -172,6 +186,7 @@ export default function PrivacyPage() {
               und Onboarding-Informationen zu senden. Rechtsgrundlage ist Ihre
               Einwilligung nach Art. 6 Abs. 1 lit. a DSGVO.
             </p>
+
             <p>
               Sie können die Einwilligung jederzeit mit Wirkung für die Zukunft
               per E-Mail an <a href="mailto:info@x-portal.eu?subject=Widerruf%20Whitelist">info@x-portal.eu</a> widerrufen.
@@ -196,7 +211,37 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>8. Cookies und Sitzungsspeicher</h2>
+          <h2>8. Kontaktanfragen</h2>
+          <div>
+            <p>
+              Wenn Sie das <a href="/contact">Kontaktformular</a> nutzen,
+              verarbeiten wir Ihren Namen, Ihre E-Mail-Adresse, den Betreff und
+              den Text Ihrer Nachricht, um das Anliegen zu bearbeiten und zu
+              beantworten. Weitere Angaben erheben wir dabei nicht; insbesondere
+              speichern wir zu einer Kontaktanfrage weder IP-Adresse noch
+              Browserkennung oder Referrer.
+            </p>
+            <p>
+              Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO, soweit Ihr
+              Anliegen einen Vertrag oder dessen Anbahnung betrifft, sonst Art.
+              6 Abs. 1 lit. f DSGVO mit unserem berechtigten Interesse an einer
+              nachvollziehbaren Bearbeitung von Anfragen. Die Angabe der
+              genannten Daten ist für die Bearbeitung erforderlich; alternativ
+              erreichen Sie uns unter{" "}
+              <a href="mailto:info@x-portal.eu">info@x-portal.eu</a>.
+            </p>
+            <p>
+              Wir löschen eine Anfrage, sobald sie erledigt ist und keine
+              gesetzliche Aufbewahrungspflicht entgegensteht. Führt die Anfrage
+              zu einem Vertrag, kann sie als Handelsbrief längeren gesetzlichen
+              Fristen unterliegen. Eine automatische Empfangsbestätigung per
+              E-Mail versenden wir nicht.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>9. Cookies und Sitzungsspeicher</h2>
           <div>
             <p>
               XPORTAL verwendet derzeit keine Analyse- oder Marketingcookies.
@@ -212,17 +257,20 @@ export default function PrivacyPage() {
             </ul>
             <p>
               Diese Speicherungen sind für ausdrücklich angeforderte Funktionen
-              erforderlich und werden auf § 25 Abs. 2 Nr. 2 TDDDG gestützt.
-              „Alle akzeptieren“ aktiviert derzeit keinen zusätzlichen
-              Drittanbieter-Dienst. Sollten künftig optionale Dienste
-              hinzukommen, wird zuvor eine neue, konkrete Auswahl eingeholt.
+              erforderlich und werden auf § 25 Abs. 2 Nr. 2 TDDDG gestützt. Eine
+              Einwilligung ist dafür nicht erforderlich, und wir holen auch
+              keine ein: Der Hinweis beim ersten Besuch ist eine Kenntnisnahme,
+              keine Auswahl — es gibt derzeit keinen optionalen Dienst, den sie
+              aktivieren könnte. Sollte künftig einer hinzukommen, wird zuvor
+              eine neue, konkrete Einwilligung eingeholt, und er wird nicht
+              geladen, bevor sie vorliegt.
             </p>
             <CookieSettingsButton />
           </div>
         </section>
 
         <section>
-          <h2>9. Empfänger und Drittländer</h2>
+          <h2>10. Empfänger und Drittländer</h2>
           <div>
             <p>Je nach genutzter Funktion erhalten folgende Empfänger Daten:</p>
             <ul>
@@ -247,7 +295,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>10. Speicherdauer</h2>
+          <h2>11. Speicherdauer</h2>
           <div>
             <p>
               Wir speichern personenbezogene Daten nur so lange, wie sie für
@@ -261,6 +309,8 @@ export default function PrivacyPage() {
               <li>inaktive Projekte, Match-Snapshots und externe Suchergebnisse: Prüfung beziehungsweise Löschung nach 365 Tagen;</li>
               <li>Lebensläufe von Freelancern: bis zum Widerruf der Bereitstellung, zur Beendigung des Vermittlungszwecks oder bis zu einer früheren berechtigten Löschanfrage; die Erforderlichkeit wird bei Profilprüfung und Deaktivierung erneut geprüft;</li>
               <li>Whitelist-Datensätze: Überprüfung nach 365 Tagen und Löschung, wenn keine Rechtsgrundlage mehr besteht;</li>
+              <li>Kontaktanfragen: Löschung nach Erledigung, spätestens Überprüfung nach 365 Tagen;</li>
+              <li>Zähler der Ratenbegrenzung: Löschung am Tag nach Ablauf des jeweiligen Zeitfensters;</li>
               <li>technische KI-Nutzungsdaten: je nach Kontotyp und Abrechnungsfenster 90 bis 400 Tage;</li>
               <li>Audit- und Vermittlungsnachweise: grundsätzlich bis zu 730 Tage; danach Löschung oder Pseudonymisierung nach der geltenden Richtlinie;</li>
               <li>rechtlich oder abrechnungsbezogen erforderliche minimale Ledger-Daten: Prüfung spätestens nach 2.555 Tagen.</li>
@@ -275,7 +325,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>11. Ihre Rechte</h2>
+          <h2>12. Ihre Rechte</h2>
           <div>
             <p>
               Sie haben nach Maßgabe der DSGVO das Recht auf Auskunft,
@@ -295,7 +345,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>12. Beschwerderecht</h2>
+          <h2>13. Beschwerderecht</h2>
           <div>
             <p>
               Sie können sich bei einer Datenschutzaufsichtsbehörde beschweren.
@@ -308,7 +358,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>13. Datenbereitstellung und Automatisierung</h2>
+          <h2>14. Datenbereitstellung und Automatisierung</h2>
           <div>
             <p>
               Whitelist und Google-Anmeldung sind freiwillig. Ohne die für eine
@@ -327,7 +377,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>14. Änderungen</h2>
+          <h2>15. Änderungen</h2>
           <div>
             <p>
               Wir aktualisieren diese Erklärung, wenn sich Funktionen,
@@ -338,12 +388,18 @@ export default function PrivacyPage() {
           </div>
         </section>
 
-        <p className="xlegal-updated">Stand: 16. August 2026</p>
+        <p className="xlegal-updated">Stand: 28. August 2026</p>
       </article>
 
       <footer className="xlegal-footer">
         <Link href="/chat">Zurück zu XPORTAL</Link>
-        <Link href="/imprint">Impressum</Link>
+        <span>
+          <Link href="/imprint">Impressum</Link>
+          {" · "}
+          <Link href="/terms">AGB</Link>
+          {" · "}
+          <Link href="/contact">Kontakt</Link>
+        </span>
       </footer>
     </main>
   );

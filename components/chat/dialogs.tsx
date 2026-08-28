@@ -277,6 +277,15 @@ export function AuthDialog({
           {GOOGLE_AUTH_ENABLED ? " Google wird erst nach Ihrem Klick geöffnet; alternativ steht die E-Mail-Anmeldung zur Verfügung." : ""}
           {" "}<a href="/privacy">Datenschutzhinweise</a>
         </p>
+        {/* Zwischen Unternehmern genügt für die Einbeziehung von AGB ein
+            klarer Hinweis vor Vertragsschluss — eine Checkbox verlangt § 305
+            Abs. 2 BGB hier nicht. Sichtbar sein muss der Hinweis trotzdem, und
+            zwar an der Stelle, an der jemand das Konto anlegt. */}
+        <p className="auth-privacy">
+          Mit dem Anlegen eines Kontos bestätigen Sie, dass Sie als Unternehmer
+          im Sinne des § 14 BGB handeln, und akzeptieren die{" "}
+          <a href="/terms">Allgemeinen Geschäftsbedingungen</a>.
+        </p>
       </div>
     </Modal>
   );
@@ -418,16 +427,59 @@ export function ContactDialog({ profile, onClose }: { profile: FreelancerProfile
   );
 }
 
-export function ConfirmDeleteDialog({ busy, onClose, onConfirm }: { busy: boolean; onClose: () => void; onConfirm: () => void }) {
+/** Muss zum Wert passen, den `app/api/account/delete/route.ts` erwartet. */
+export const GUEST_DELETE_PHRASE = "LÖSCHEN";
+
+export function ConfirmDeleteDialog({
+  busy,
+  accountEmail,
+  onClose,
+  onConfirm,
+}: {
+  busy: boolean;
+  accountEmail: string | null;
+  onClose: () => void;
+  onConfirm: (confirmation: string) => void;
+}) {
+  const expected = accountEmail?.trim() || GUEST_DELETE_PHRASE;
+  const [typed, setTyped] = useState("");
+  // Die eigentliche Prüfung macht der Server. Hier geht es nur darum, dass ein
+  // unumkehrbarer Schritt einen bewussten Moment kostet.
+  const matches =
+    typed.trim().toLocaleLowerCase("en-US") ===
+    expected.toLocaleLowerCase("en-US");
+
   return (
     <Modal titleId="delete-title" onClose={onClose}>
       <div className="delete-dialog">
         <span className="danger-symbol" aria-hidden="true"><IconAlertTriangle size={19} /></span>
         <h2 id="delete-title">Anwendungsdaten löschen?</h2>
         <p>Ihre Projekte, Nachrichten und gespeicherten Ergebnisse werden entsprechend der geltenden Aufbewahrungsregeln gelöscht oder anonymisiert. Dieser Schritt kann nicht rückgängig gemacht werden.</p>
+        <label className="delete-confirm">
+          <span>
+            {accountEmail
+              ? "Tippen Sie zur Bestätigung Ihre E-Mail-Adresse ein"
+              : `Tippen Sie zur Bestätigung ${GUEST_DELETE_PHRASE} ein`}
+          </span>
+          <input
+            value={typed}
+            onChange={(event) => setTyped(event.target.value)}
+            autoComplete="off"
+            spellCheck={false}
+            placeholder={expected}
+            disabled={busy}
+          />
+        </label>
         <div className="dialog-actions">
           <button className="secondary-action" type="button" onClick={onClose} disabled={busy}>Abbrechen</button>
-          <button className="danger-action" type="button" onClick={onConfirm} disabled={busy}>{busy ? "Wird gelöscht …" : "Daten endgültig löschen"}</button>
+          <button
+            className="danger-action"
+            type="button"
+            onClick={() => onConfirm(typed.trim())}
+            disabled={busy || !matches}
+          >
+            {busy ? "Wird gelöscht …" : "Daten endgültig löschen"}
+          </button>
         </div>
       </div>
     </Modal>

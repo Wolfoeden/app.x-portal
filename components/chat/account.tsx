@@ -9,22 +9,46 @@
  * sich wieder auf, gekaufte Credits nicht.
  */
 
-import type { AiUsageSnapshot } from "../chat-contract";
-import { IconArrowUpRight, IconCheck, IconSpark } from "../icons";
+import {
+  BRIEF_ANALYSIS_CREDITS,
+  CREDIT_PLANS,
+  creditPlan,
+} from "@/lib/ai/credit-policy";
+import { BUSINESS_ONLY_NOTICE } from "@/lib/legal/policy";
 
-/** Der einzige Plan, der aktuell verkauft wird. */
+import type { AiUsageSnapshot, PlanTeamSnapshot } from "../chat-contract";
+import { IconArrowUpRight, IconCheck, IconSpark } from "../icons";
+import { TeamMembersPanel } from "./team-members";
+
+/**
+ * Der Plan, der aktuell verkauft wird. Er hebt das monatliche Kontingent —
+ * er legt kein zweites, unbefristetes Guthaben daneben. Deshalb steht hier
+ * "pro Monat" und nicht "einmalig".
+ */
 export const STARTER_PLAN = {
-  id: "starter",
-  name: "Starter",
-  audience: "Für Freelancer und Kleinunternehmen.",
-  euro: 25,
-  credits: 1_500,
+  id: CREDIT_PLANS.enterprise.id,
+  name: CREDIT_PLANS.enterprise.label,
+  audience: "Für Teams, die gemeinsam suchen.",
+  euro: CREDIT_PLANS.enterprise.euro,
+  credits: CREDIT_PLANS.enterprise.monthlyCredits,
   features: [
     "Voller Zugang zur Freelancer-Suche",
     "Websuche nach externen Profilen",
-    "Credits laufen nie ab",
+    "KI-Agenten für Recherche und Planung",
+    "Teammitglieder teilen sich das Guthaben",
   ],
 } as const;
+
+/**
+ * Preisangabe mit Steuerhinweis.
+ *
+ * XPORTAL richtet sich ausschließlich an Unternehmer, deshalb sind Nettopreise
+ * mit "zzgl. USt." zulässig — aber nur, wenn der Hinweis auch dasteht. Bei 0 €
+ * bliebe er ein sinnloser Zusatz und entfällt.
+ */
+export function planPriceSuffix(euro: number): string {
+  return euro > 0 ? "pro Monat, zzgl. USt." : "pro Monat";
+}
 
 const creditFormat = new Intl.NumberFormat("de-DE");
 
@@ -82,7 +106,9 @@ export function AccountSummary({
         <span className="account-status-dot">
           {isAccountUser ? "Angemeldet" : "Gast"}
         </span>
-        <span className="account-plan-badge">Free</span>
+        <span className="account-plan-badge">
+          {creditPlan(usage?.credits.planId, !isAccountUser).label}
+        </span>
       </div>
 
       {usage ? (
@@ -131,12 +157,23 @@ export function AccountSummary({
 export function CreditPlansDialog({
   usage,
   customerReference,
+  team,
+  teamBusy,
+  teamNotice,
+  onInviteTeamMember,
+  onRemoveTeamMember,
   onClose,
 }: {
   usage: AiUsageSnapshot | null;
   customerReference: string | null;
+  team: PlanTeamSnapshot | null;
+  teamBusy: boolean;
+  teamNotice: { tone: "error" | "success"; message: string } | null;
+  onInviteTeamMember: (email: string) => void;
+  onRemoveTeamMember: (memberUserId: string) => void;
   onClose: () => void;
 }) {
+  const plan = creditPlan(usage?.credits.planId);
   return (
     <div className="plans-dialog" role="dialog" aria-label="Credits und Pläne">
       <header className="plans-balance">
@@ -157,12 +194,18 @@ export function CreditPlansDialog({
         ansehen, aber noch nicht kaufen.
       </p>
 
+      <p className="plans-note">
+        {BUSINESS_ONLY_NOTICE} Alle Preise verstehen sich netto zuzüglich der
+        gesetzlichen Umsatzsteuer. Es gelten die{" "}
+        <a href="/terms">Allgemeinen Geschäftsbedingungen</a>.
+      </p>
+
       <div className="plans-grid">
         <article className="plan-card is-current">
-          <h3>Free</h3>
+          <h3>{plan.label}</h3>
           <p className="plan-audience">Ihr aktueller Plan.</p>
           <p className="plan-price">
-            0 €<span>pro Monat</span>
+            {plan.euro} €<span>{planPriceSuffix(plan.euro)}</span>
           </p>
           <p className="plan-credits">
             {usage ? formatCreditAmount(usage.credits.total) : "–"} Credits monatlich
@@ -172,7 +215,14 @@ export function CreditPlansDialog({
               <IconCheck size={12} /> Freelancer-Suche im internen Katalog
             </li>
             <li>
-              <IconCheck size={12} /> Monatliches Kontingent, erneuert sich
+              <IconCheck size={12} /> Eine Suche kostet {BRIEF_ANALYSIS_CREDITS}{" "}
+              Credits
+            </li>
+            <li>
+              <IconCheck size={12} />{" "}
+              {plan.agents
+                ? "KI-Agenten nutzbar"
+                : "KI-Agenten erst mit einem Konto"}
             </li>
           </ul>
           <button type="button" disabled>
@@ -184,10 +234,11 @@ export function CreditPlansDialog({
           <h3>{STARTER_PLAN.name}</h3>
           <p className="plan-audience">{STARTER_PLAN.audience}</p>
           <p className="plan-price">
-            {STARTER_PLAN.euro} €<span>einmalig</span>
+            {STARTER_PLAN.euro} €
+            <span>{planPriceSuffix(STARTER_PLAN.euro)}</span>
           </p>
           <p className="plan-credits">
-            {formatCreditAmount(STARTER_PLAN.credits)} Credits enthalten
+            {formatCreditAmount(STARTER_PLAN.credits)} Credits monatlich
           </p>
           <ul className="plan-features">
             {STARTER_PLAN.features.map((feature) => (
@@ -201,6 +252,15 @@ export function CreditPlansDialog({
           </button>
         </article>
       </div>
+
+      <TeamMembersPanel
+        team={team}
+        planLabel={plan.label}
+        busy={teamBusy}
+        notice={teamNotice}
+        onInvite={onInviteTeamMember}
+        onRemove={onRemoveTeamMember}
+      />
 
       <button className="plans-close" type="button" onClick={onClose}>
         Schließen

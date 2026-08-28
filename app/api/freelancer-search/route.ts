@@ -25,7 +25,6 @@ import {
   searchExternalFreelancers,
   type ExternalFreelancerCandidate,
 } from "@/lib/openai/external-freelancer-search";
-import { takeRateLimit } from "@/lib/security/rate-limit";
 import {
   assertSameOrigin,
   getClientIp,
@@ -33,6 +32,7 @@ import {
   pseudonymizeSubject,
   readJsonWithLimit,
 } from "@/lib/security/request";
+import { consumeRateLimit } from "@/lib/security/shared-rate-limit";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -204,16 +204,10 @@ export async function POST(request: Request) {
       1,
       Number.parseInt(process.env.AI_WEB_SEARCH_REQUESTS_PER_MINUTE ?? "2", 10) || 2,
     );
-    const userLimit = takeRateLimit(
-      `web-search-user:${userHash}`,
-      perMinute,
-      60_000,
-    );
-    const ipLimit = takeRateLimit(
-      `web-search-ip:${ipHash}`,
-      perMinute,
-      60_000,
-    );
+    const [userLimit, ipLimit] = await Promise.all([
+      consumeRateLimit(`web-search-user:${userHash}`, perMinute, 60_000),
+      consumeRateLimit(`web-search-ip:${ipHash}`, perMinute, 60_000),
+    ]);
     if (!userLimit.allowed || !ipLimit.allowed) {
       const retryAfter = Math.max(
         userLimit.retryAfterSeconds,

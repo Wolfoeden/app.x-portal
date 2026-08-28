@@ -21,8 +21,11 @@ export const metadata: Metadata = {
     default: "XPORTAL",
     template: "%s",
   },
+  // Deutsch, passend zu lang="de" am Wurzelelement. Eine englische
+  // Beschreibung unter einer deutschen Sprachauszeichnung liest jeder
+  // Screenreader mit der falschen Aussprache vor.
   description:
-    "One intelligent conversational interface connecting insights and specialized digital spaces.",
+    "Beschreiben Sie Ihr Projekt im Dialog und erhalten Sie passende Freelancer-Profile nach nachvollziehbaren Regeln.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

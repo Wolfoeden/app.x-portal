@@ -1,14 +1,55 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { deleteOwnedFreelancerProfile } from "@/lib/freelancer/profile-data";
-import { assertSameOrigin } from "@/lib/security/request";
+import {
+  assertSameOrigin,
+  readJsonWithLimit,
+} from "@/lib/security/request";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+
+const ConfirmationSchema = z
+  .object({ confirm: z.string().trim().min(1).max(200) })
+  .strict();
+
+/**
+ * Was der Nutzer abtippen muss, wenn kein Konto mit E-Mail-Adresse dahinter
+ * steht. Bei einem dauerhaften Konto ist es die eigene Adresse.
+ */
+export const GUEST_DELETE_PHRASE = "LÖSCHEN";
+
+function expectedConfirmation(email: string | null): string {
+  return email?.trim() ? email.trim().toLocaleLowerCase("en-US") : GUEST_DELETE_PHRASE;
+}
 
 export async function DELETE(request: Request) {
   try {
     assertSameOrigin(request);
     const user = await requireCurrentUser();
+
+    // Ein Klick reicht für eine unumkehrbare Löschung nicht. Die Bestätigung
+    // wird serverseitig geprüft, nicht nur im Dialog abgefragt: Ein offenes
+    // fremdes Gerät oder ein eingeschleustes Skript käme sonst mit einer
+    // einzigen Anfrage durch.
+    const confirmation = ConfirmationSchema.safeParse(
+      await readJsonWithLimit(request, 1_000),
+    );
+    const expected = expectedConfirmation(user.email);
+    const provided = confirmation.success
+      ? confirmation.data.confirm.trim().toLocaleLowerCase("en-US")
+      : "";
+    if (provided !== expected.toLocaleLowerCase("en-US")) {
+      return NextResponse.json(
+        {
+          error: user.email
+            ? "Bitte tippen Sie zur Bestätigung Ihre E-Mail-Adresse ein."
+            : `Bitte tippen Sie zur Bestätigung ${GUEST_DELETE_PHRASE} ein.`,
+        },
+        { status: 400 },
+      );
+    }
+
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
       throw new Response("Serverkonfiguration unvollständig.", { status: 503 });
     }

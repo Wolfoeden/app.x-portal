@@ -7,6 +7,30 @@ export type CurrentUser = {
   isAdmin: boolean;
 };
 
+/**
+ * Wer den Admin-Bereich überhaupt sehen darf. Die Liste vergibt keine Rechte,
+ * sie nimmt sie nur: ein Konto muss zusätzlich über app_metadata.role oder
+ * ADMIN_USER_IDS berechtigt sein. Eine E-Mail-Adresse allein bleibt damit
+ * wertlos, auch wenn jemand sie in einem Claim unterschiebt.
+ *
+ * Über ADMIN_ALLOWED_EMAILS übersteuerbar, damit eine Testumgebung nicht auf
+ * die Produktionsadressen angewiesen ist.
+ */
+const DEFAULT_ADMIN_EMAILS = ["roman@dering.info", "paul@dering.info"];
+
+function allowedAdminEmails(): Set<string> {
+  const configured = (process.env.ADMIN_ALLOWED_EMAILS ?? "")
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+  return new Set(configured.length ? configured : DEFAULT_ADMIN_EMAILS);
+}
+
+function isAllowedAdminEmail(email: string | null): boolean {
+  if (!email) return false;
+  return allowedAdminEmails().has(email.trim().toLowerCase());
+}
+
 function configuredAdminIds(): Set<string> {
   return new Set(
     (process.env.ADMIN_USER_IDS ?? "")
@@ -38,14 +62,18 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (error || !data?.claims?.sub) return null;
 
   const id = data.claims.sub;
+  const email =
+    typeof data.claims.email === "string" ? data.claims.email : null;
   return {
     id,
-    email:
-      typeof data.claims.email === "string" ? data.claims.email : null,
+    email,
     // A permanent account is security-sensitive state. Fail closed when the
     // required claim is absent or malformed instead of treating it as false.
     isAnonymous: data.claims.is_anonymous !== false,
-    isAdmin: hasAdminClaim(data.claims as Record<string, unknown>, id),
+    // Beide Bedingungen müssen halten: berechtigt *und* auf der Liste.
+    isAdmin:
+      hasAdminClaim(data.claims as Record<string, unknown>, id) &&
+      isAllowedAdminEmail(email),
   };
 }
 

@@ -40,7 +40,16 @@ export const FreelancerProfileSchema = z
     dataVersion: z.string().trim().min(1).max(100),
     demoStatus: z.enum(["demo", "real"]),
     profileStatus: z.enum(["active", "paused", "archived"]),
-    avatarUrl: z.url().nullable().default(null),
+    /**
+     * Entweder die anwendungseigene Bildroute oder — in älteren, bereits
+     * gespeicherten Snapshots — die frühere absolute Storage-URL. Beide
+     * müssen gültig bleiben, sonst scheitert das Parsen jedes alten Matches.
+     * Umgeschrieben wird erst bei der Darstellung.
+     */
+    avatarUrl: z
+      .union([z.url(), z.string().regex(/^\/api\/freelancer\/avatar-image\/[^\s]+$/u)])
+      .nullable()
+      .default(null),
     displayName: z.string().trim().min(1).max(120),
     role: z.string().trim().min(1).max(160),
     skillTags: z.array(LabeledFactSchema).max(100),

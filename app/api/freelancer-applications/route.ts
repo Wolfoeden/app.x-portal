@@ -7,17 +7,21 @@ import { requireCurrentUser } from "@/lib/auth/current-user";
 import {
   applicationInsertFromInput,
   CV_BUCKET,
+  CV_MAX_BYTES,
   CV_MIME_TYPES,
   FreelancerApplicationInputSchema,
 } from "@/lib/freelancer/application";
-import { verifyCvObjectPath } from "@/lib/freelancer/cv-storage";
-import { takeRateLimit } from "@/lib/security/rate-limit";
+import {
+  hasPdfMagicBytes,
+  verifyCvObjectPath,
+} from "@/lib/freelancer/cv-storage";
 import {
   assertSameOrigin,
   getClientIp,
   pseudonymizeIp,
   readJsonWithLimit,
 } from "@/lib/security/request";
+import { consumeRateLimit } from "@/lib/security/shared-rate-limit";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -25,12 +29,25 @@ export const dynamic = "force-dynamic";
 
 type AdminClient = ReturnType<typeof createAdminSupabaseClient>;
 
+type CvInspection =
+  | { ok: true; sizeBytes: number | null; mimeType: string | null }
+  | { ok: false; reason: "missing" | "too_large" | "not_pdf" };
+
 /**
  * Confirms the object really was uploaded and reports what Storage actually
  * received. Client-declared size and MIME type are never trusted for the
  * stored record.
+ *
+ * Bis hierher hatte niemand die Datei selbst angesehen: Der Browser lädt mit
+ * einem signierten Ticket direkt zu Storage hoch, und `mimeType` wie
+ * `sizeBytes` im Ticket sind Behauptungen des Clients. Auch der von Storage
+ * gemeldete Content-Type stammt aus demselben Upload. Deshalb entscheiden hier
+ * die ersten Bytes — dieselbe Prüfung, die der Avatar-Pfad längst macht.
  */
-async function inspectUploadedCv(admin: AdminClient, objectPath: string) {
+async function inspectUploadedCv(
+  admin: AdminClient,
+  objectPath: string,
+): Promise<CvInspection> {
   const separator = objectPath.lastIndexOf("/");
   const folder = objectPath.slice(0, separator);
   const filename = objectPath.slice(separator + 1);
@@ -41,7 +58,7 @@ async function inspectUploadedCv(admin: AdminClient, objectPath: string) {
   if (error) throw error;
 
   const object = data?.find((entry) => entry.name === filename);
-  if (!object) return null;
+  if (!object) return { ok: false, reason: "missing" };
 
   const metadata = (object.metadata ?? {}) as {
     size?: number;
@@ -49,12 +66,31 @@ async function inspectUploadedCv(admin: AdminClient, objectPath: string) {
   };
   const reportedMimeType =
     typeof metadata.mimetype === "string" ? metadata.mimetype : null;
+  const sizeBytes =
+    typeof metadata.size === "number" && metadata.size > 0
+      ? metadata.size
+      : null;
+
+  // Die angekündigte Größe hat das Schema geprüft, die tatsächliche noch nicht.
+  if (sizeBytes !== null && sizeBytes > CV_MAX_BYTES) {
+    await discardUploadedCv(admin, objectPath);
+    return { ok: false, reason: "too_large" };
+  }
+
+  const { data: file, error: downloadError } = await admin.storage
+    .from(CV_BUCKET)
+    .download(objectPath);
+  if (downloadError || !file) return { ok: false, reason: "missing" };
+
+  const head = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+  if (!hasPdfMagicBytes(head)) {
+    await discardUploadedCv(admin, objectPath);
+    return { ok: false, reason: "not_pdf" };
+  }
 
   return {
-    sizeBytes:
-      typeof metadata.size === "number" && metadata.size > 0
-        ? metadata.size
-        : null,
+    ok: true,
+    sizeBytes,
     // A type outside the accepted set would only fail the row's CHECK
     // constraint; fall back to the declared one and let the reviewer see the
     // file itself.
@@ -64,6 +100,14 @@ async function inspectUploadedCv(admin: AdminClient, objectPath: string) {
         ? reportedMimeType
         : null,
   };
+}
+
+/** Eine abgelehnte Datei bleibt nicht liegen. */
+async function discardUploadedCv(admin: AdminClient, objectPath: string) {
+  await admin.storage
+    .from(CV_BUCKET)
+    .remove([objectPath])
+    .catch(() => undefined);
 }
 
 /**
@@ -114,7 +158,11 @@ export async function POST(request: Request) {
     }
 
     const ipHash = pseudonymizeIp(getClientIp(request));
-    const limit = takeRateLimit(`freelancer-apply:${ipHash}`, 5, 60 * 60_000);
+    const limit = await consumeRateLimit(
+      `freelancer-apply:${ipHash}`,
+      5,
+      60 * 60_000,
+    );
     if (!limit.allowed) {
       return NextResponse.json(
         { error: "Zu viele Anfragen. Bitte später erneut versuchen." },
@@ -145,12 +193,27 @@ export async function POST(request: Request) {
       ? await inspectUploadedCv(admin, input.cv.storagePath)
       : null;
 
+    // Eine Datei, die keine PDF ist, wird nicht stillschweigend verworfen: der
+    // Bewerber hat sie angehängt und soll erfahren, warum sie nicht ankommt.
+    // Nur ein gar nicht erst angekommenes Objekt bleibt folgenlos.
+    if (uploaded && !uploaded.ok && uploaded.reason !== "missing") {
+      return NextResponse.json(
+        {
+          error:
+            uploaded.reason === "too_large"
+              ? "Die Datei ist größer als 10 MB. Bitte laden Sie eine kleinere PDF-Datei hoch."
+              : "Die hochgeladene Datei ist keine PDF-Datei. Bitte laden Sie den Lebenslauf als PDF hoch.",
+        },
+        { status: 400 },
+      );
+    }
+
     const insert = applicationInsertFromInput(input, {
       submittedByUserId: user.id,
       consentAt: new Date().toISOString(),
     });
 
-    if (input.cv && uploaded) {
+    if (input.cv && uploaded?.ok) {
       insert.cv_size_bytes = uploaded.sizeBytes ?? input.cv.sizeBytes;
       insert.cv_mime_type = uploaded.mimeType ?? input.cv.mimeType;
     } else if (input.cv) {

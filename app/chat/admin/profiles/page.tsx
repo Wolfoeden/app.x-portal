@@ -51,6 +51,14 @@ export default async function AdminProfilePerformancePage() {
   const report = await getProfilePerformance();
   const { totals } = report;
 
+  // Zwei Quellen, zwei Startpunkte: Einblendungen stehen seit Beginn in
+  // `matches`, Kartenaufrufe und Terminklicks erst seit dem Einbau der
+  // Ereignisaufzeichnung. Solange das so ist, ist "19 % davon" keine Quote,
+  // sondern der Vergleich zweier verschiedener Zeiträume.
+  const eventBasisDiffers = Boolean(report.eventTrackingSince);
+  const shown = report.rows.filter((row) => row.impressions > 0);
+  const neverShown = report.rows.filter((row) => row.impressions === 0);
+
   await writeAuditEvent({
     actorUserId: currentUser.id,
     action: "admin_profile_performance_viewed",
@@ -69,7 +77,9 @@ export default async function AdminProfilePerformancePage() {
     {
       label: "Karte gesehen",
       value: totals.profileViews,
-      hint: rate(totals.profileViews, totals.impressions),
+      hint: eventBasisDiffers
+        ? "andere Zeitbasis"
+        : rate(totals.profileViews, totals.impressions),
     },
     {
       label: "Gemerkt",
@@ -84,7 +94,9 @@ export default async function AdminProfilePerformancePage() {
     {
       label: "Termin geklickt",
       value: totals.bookingClicks,
-      hint: rate(totals.bookingClicks, totals.impressions),
+      hint: eventBasisDiffers
+        ? "andere Zeitbasis"
+        : rate(totals.bookingClicks, totals.impressions),
     },
     {
       label: "Kontakt angefragt",
@@ -119,6 +131,17 @@ export default async function AdminProfilePerformancePage() {
           </p>
         ) : null}
 
+        {eventBasisDiffers ? (
+          <p className={styles.warning}>
+            Kartenaufrufe und Terminklicks werden erst seit{" "}
+            {formatDateTime(report.eventTrackingSince)} aufgezeichnet,
+            Einblendungen dagegen seit Beginn. Die beiden Spalten lassen sich
+            deshalb nicht ins Verhältnis setzen — ein Profil kann mehr
+            Kartenaufrufe als Einblendungen haben, ohne dass eine Zahl falsch
+            ist.
+          </p>
+        ) : null}
+
         {totals.bookingClicks === 0 && totals.impressions > 0 ? (
           <p className={styles.warning}>
             Noch kein einziger Terminklick aufgezeichnet
@@ -143,17 +166,39 @@ export default async function AdminProfilePerformancePage() {
           ))}
         </div>
 
+        {neverShown.length > 0 ? (
+          <>
+            <h2 className={styles.sectionTitle}>
+              Nie eingeblendet ({numberFormat.format(neverShown.length)} von{" "}
+              {numberFormat.format(totals.profiles)})
+            </h2>
+            <p className={styles.sectionNote}>
+              Diese Profile hat das Matching noch kein einziges Mal
+              vorgeschlagen. Das ist eine Arbeitsliste: Skills, Rollenbezeichnung
+              oder Verfügbarkeit passen zu keiner bisher gestellten Anfrage. Ein
+              Hinweis auf die Profildaten, nicht auf die Person.
+            </p>
+            <ul className={styles.neverShown}>
+              {neverShown.map((row) => (
+                <li key={row.profileId}>
+                  <span className={styles.name}>{row.displayName}</span>
+                  <span className={styles.role}>{row.roleTitle}</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
+
         <h2 className={styles.sectionTitle}>
-          Profile ({numberFormat.format(totals.activeProfiles)} aktiv von{" "}
+          Eingeblendete Profile ({numberFormat.format(shown.length)} von{" "}
           {numberFormat.format(totals.profiles)})
         </h2>
         <p className={styles.sectionNote}>
-          Nach Einblendungen sortiert. Ein Profil ganz unten ohne eine einzige
-          Einblendung wird vom Matching nie gefunden — das ist ein Hinweis auf die
-          Profildaten, nicht auf die Person.
+          Nach Einblendungen sortiert. {numberFormat.format(totals.activeProfiles)}{" "}
+          der {numberFormat.format(totals.profiles)} Profile stehen auf aktiv.
         </p>
 
-        {report.rows.length === 0 ? (
+        {shown.length === 0 ? (
           <p className={styles.empty}>Es gibt noch keine Freelancer-Profile.</p>
         ) : (
           <div className={styles.tableWrap}>
@@ -173,7 +218,7 @@ export default async function AdminProfilePerformancePage() {
                 </tr>
               </thead>
               <tbody>
-                {report.rows.map((row) => (
+                {shown.map((row) => (
                   <tr key={row.profileId}>
                     <td>
                       <div className={styles.name}>{row.displayName}</div>

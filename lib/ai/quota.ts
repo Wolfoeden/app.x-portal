@@ -1,5 +1,12 @@
 import "server-only";
 
+import {
+  ACCOUNT_MONTHLY_CREDITS,
+  creditPlan,
+  GUEST_MONTHLY_CREDITS,
+  type CreditPlanId,
+} from "@/lib/ai/credit-policy";
+import { findOwnerForMember } from "@/lib/data/plan-teams";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export type AiCreditSnapshot = {
@@ -7,6 +14,15 @@ export type AiCreditSnapshot = {
   used: number;
   reserved: number;
   remaining: number;
+};
+
+/**
+ * Der eigene Kontostand samt Stufe. Reservierung und Settlement liefern
+ * bewusst nur AiCreditSnapshot: sie beschreiben das belastete Konto, das bei
+ * einem Teammitglied dem Plan-Inhaber gehört.
+ */
+export type AiCreditSnapshotWithPlan = AiCreditSnapshot & {
+  planId: CreditPlanId;
 };
 
 export type AiQuotaReservation = {
@@ -71,29 +87,14 @@ function firstRow(data: unknown): Record<string, unknown> | null {
 }
 
 /**
- * Monthly free allowance, expressed in the credits of
- * XPORTAL_AI_CREDIT_POLICY. Sized on the measured p90 of a project brief
- * (21 credits) so the advertised request count holds for long prompts too:
- * 5 guest requests and 50 account requests. A median request costs 19, so a
- * typical user gets slightly more than advertised rather than less.
- *
- * Both values are environment-tunable, so the allowance can be re-cut from
- * production data without a code deploy.
+ * Die Kontingente selbst stehen in lib/ai/credit-policy.ts, weil die
+ * Oberfläche sie nennt. Hier bleibt nur, wie eine Umgebungsvariable sie
+ * übersteuern kann.
  */
-export const TYPICAL_PROJECT_BRIEF_CREDITS = 21;
-/**
- * Ein Gast hat drei Anfragen frei. Danach ist nicht Schluss, sondern die
- * Aufforderung, ein Konto anzulegen — die Grenze ist ein Umwandlungspunkt,
- * keine Strafe.
- */
-export const GUEST_FREE_REQUESTS = 3;
-/**
- * Ein angemeldetes Konto bekommt 300 Credits, die sich monatlich wieder
- * auffüllen. Bewusst eine runde Zahl statt eines Vielfachen der gemessenen
- * Anfragekosten: sie steht so in der Oberfläche und muss dort verständlich
- * sein, nicht rechnerisch hergeleitet.
- */
-export const ACCOUNT_MONTHLY_CREDITS = 300;
+export {
+  ACCOUNT_MONTHLY_CREDITS,
+  GUEST_MONTHLY_CREDITS,
+} from "@/lib/ai/credit-policy";
 
 /**
  * First instant of the next UTC month, which is when
@@ -109,9 +110,7 @@ export function currentPeriodEndIso(now: Date = new Date()): string {
 export function configuredInitialCredits(isAnonymous: boolean): number {
   return nonNegativeInteger(
     isAnonymous ? "AI_CREDITS_GUEST_TOTAL" : "AI_CREDITS_USER_TOTAL",
-    isAnonymous
-      ? GUEST_FREE_REQUESTS * TYPICAL_PROJECT_BRIEF_CREDITS
-      : ACCOUNT_MONTHLY_CREDITS,
+    isAnonymous ? GUEST_MONTHLY_CREDITS : ACCOUNT_MONTHLY_CREDITS,
   );
 }
 
@@ -120,8 +119,8 @@ export function configuredDailyTokenLimit(
   isAdmin = false,
 ): number {
   // This is a provider-safety ceiling, not a customer entitlement. The public
-  // product limit is 10/100 successful Nano analyses per calendar month. Use
-  // new names so stale pre-Nano Netlify values cannot block a valid request.
+  // product limit is the monthly credit allowance above. Use new names so
+  // stale pre-Nano Netlify values cannot block a valid request.
   return nonNegativeInteger(
     isAdmin && !isAnonymous
       ? "AI_PROVIDER_DAILY_TOKEN_SAFETY_LIMIT_ADMIN"
@@ -182,7 +181,7 @@ export function nanoUsdToCeilingCents(value: string | null): number {
 export async function getAiCreditSnapshot(input: {
   userId: string;
   isAnonymous: boolean;
-}): Promise<AiCreditSnapshot> {
+}): Promise<AiCreditSnapshotWithPlan> {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
     throw new Error("quota_service_not_configured");
   }
@@ -195,7 +194,108 @@ export async function getAiCreditSnapshot(input: {
   if (error) throw error;
   const credits = creditSnapshot(firstRow(data));
   if (!credits) throw new Error("invalid_credit_snapshot");
-  return credits;
+  return {
+    ...credits,
+    planId: await readPlanId(admin, input.userId, input.isAnonymous),
+  };
+}
+
+/**
+ * Die Stufe eines Kontos, ohne den vollen Snapshot zu ziehen. Für Antworten,
+ * die den Kontostand ohnehin schon kennen und nur noch die Stufe brauchen.
+ */
+export async function getAccountPlanId(input: {
+  userId: string;
+  isAnonymous: boolean;
+}): Promise<CreditPlanId> {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
+    return creditPlan(null, input.isAnonymous).id;
+  }
+  try {
+    return await readPlanId(
+      createAdminSupabaseClient(),
+      input.userId,
+      input.isAnonymous,
+    );
+  } catch {
+    return creditPlan(null, input.isAnonymous).id;
+  }
+}
+
+/**
+ * Die Stufe steht auf dem Konto, nicht in der Snapshot-RPC — deren Signatur
+ * wird von mehreren Stellen erwartet. Ein fehlender Wert ist kein Fehler:
+ * das Konto wird erst durch die RPC oben angelegt.
+ */
+async function readPlanId(
+  admin: ReturnType<typeof createAdminSupabaseClient>,
+  userId: string,
+  isAnonymous: boolean,
+): Promise<CreditPlanId> {
+  const { data } = await admin
+    .from("user_ai_credit_accounts")
+    .select("plan_id,is_anonymous")
+    .eq("user_id", userId)
+    .maybeSingle();
+  const row = data as { plan_id: string; is_anonymous: boolean } | null;
+  // Fehlt die Spalte noch, ist `data` null. Dann entscheidet die Anonymität
+  // des Aufrufers — sonst bekäme eine Gastsitzung die Kontostufe angezeigt.
+  return creditPlan(row?.plan_id, row?.is_anonymous ?? isAnonymous).id;
+}
+
+export type BillingAccount = {
+  userId: string;
+  isAnonymous: boolean;
+  /** Gesetzt, wenn nicht das eigene Konto zahlt, sondern der Plan-Inhaber. */
+  billedToOwnerUserId: string | null;
+};
+
+/**
+ * Wer diese Anfrage bezahlt.
+ *
+ * Reihenfolge: erst das eigene Monatskontingent, danach der Pool des Teams.
+ * Das eigene Guthaben zuerst zu verbrauchen ist die Zusage an das Mitglied —
+ * seine 300 Credits gehoeren ihm, auch wenn er eingeladen wurde. Der Pool ist
+ * der Puffer danach.
+ *
+ * Bewusst eine Vorabpruefung statt eines zweiten Reservierungsversuchs: eine
+ * Reservierung haengt am `request_key`, ein zweiter Anlauf mit einem anderen
+ * Konto liefe in `request_key_conflict`. Zwischen dieser Pruefung und der
+ * Reservierung kann sich der Stand aendern; dann wird die Anfrage abgelehnt
+ * und der naechste Versuch greift auf den Pool zu.
+ */
+export async function resolveBillingAccount(input: {
+  userId: string;
+  isAnonymous: boolean;
+  requiredCredits: number;
+}): Promise<BillingAccount> {
+  const own: BillingAccount = {
+    userId: input.userId,
+    isAnonymous: input.isAnonymous,
+    billedToOwnerUserId: null,
+  };
+  // Eine Gastsitzung kann kein Teammitglied sein; der Umweg entfaellt.
+  if (input.isAnonymous || input.requiredCredits <= 0) return own;
+
+  try {
+    const credits = await getAiCreditSnapshot({
+      userId: input.userId,
+      isAnonymous: input.isAnonymous,
+    });
+    if (credits.remaining >= input.requiredCredits) return own;
+
+    const ownerUserId = await findOwnerForMember(input.userId);
+    if (!ownerUserId) return own;
+    return {
+      userId: ownerUserId,
+      isAnonymous: false,
+      billedToOwnerUserId: ownerUserId,
+    };
+  } catch {
+    // Die Aufloesung ist eine Optimierung, keine Zugangspruefung. Faellt sie
+    // aus, zahlt das eigene Konto und die Reservierung entscheidet.
+    return own;
+  }
 }
 
 export async function reserveAiQuota(input: {

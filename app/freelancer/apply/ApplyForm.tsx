@@ -668,8 +668,9 @@ export function ApplyForm({ accountEmail = "" }: { accountEmail?: string }) {
             einverstanden, dass XPORTAL meine Angaben und den Lebenslauf zur
             Prüfung speichert und mich dazu kontaktiert. Nach der Freigabe wird
             mein Profil im Portal sichtbar; der Lebenslauf wird Kunden nur
-            gezeigt, wenn XPORTAL ihn zusätzlich dafür freigibt. Weitere
-            Informationen im <Link href="/privacy">Datenschutzhinweis</Link>.
+            gezeigt, wenn XPORTAL ihn zusätzlich dafür freigibt. Es gelten die{" "}
+            <Link href="/terms">AGB</Link>; weitere Informationen im{" "}
+            <Link href="/privacy">Datenschutzhinweis</Link>.
           </span>
         </label>
 

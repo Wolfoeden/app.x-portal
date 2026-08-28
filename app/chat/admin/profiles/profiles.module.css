@@ -111,6 +111,26 @@
 
 /* --- Tabelle --- */
 
+/* Eine Liste statt einer Tabelle: bei diesen Profilen ist jede Kennzahl null,
+   eine Zeile mit acht Nullen trägt nichts bei. */
+.neverShown {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+  margin: 0 0 22px;
+  padding: 0;
+  list-style: none;
+}
+
+.neverShown li {
+  border: 1px solid #e6e6e0;
+  border-radius: 10px;
+  background: #fdfdfb;
+  padding: 10px 12px;
+  display: grid;
+  gap: 2px;
+}
+
 .tableWrap {
   overflow-x: auto;
   border: 1px solid #e2e2dc;
