@@ -186,7 +186,17 @@ export default function PrivacyPage() {
               und Onboarding-Informationen zu senden. Rechtsgrundlage ist Ihre
               Einwilligung nach Art. 6 Abs. 1 lit. a DSGVO.
             </p>
-
+            <p>
+              Die Anmeldung wird im Doppelbestätigungsverfahren geprüft. Nach
+              dem Absenden speichern wir den Eintrag zunächst als unbestätigt
+              und senden einen Bestätigungslink an die angegebene Adresse. Erst
+              mit Ihrem Klick auf diesen Link entsteht die Einwilligung; vorher
+              erhalten Sie von uns keine weiteren Nachrichten. Dazu speichern
+              wir eine kryptografische Ableitung des Bestätigungstokens, dessen
+              Ablaufzeitpunkt und den Zeitpunkt der Bestätigung — Letzterer ist
+              der Nachweis nach Art. 7 Abs. 1 DSGVO. Ein unbestätigter Eintrag
+              wird nach 30 Tagen automatisch gelöscht.
+            </p>
             <p>
               Sie können die Einwilligung jederzeit mit Wirkung für die Zukunft
               per E-Mail an <a href="mailto:info@x-portal.eu?subject=Widerruf%20Whitelist">info@x-portal.eu</a> widerrufen.
@@ -279,7 +289,7 @@ export default function PrivacyPage() {
               <li>OpenAI Ireland Ltd. und verbundene API-Unterauftragsverarbeiter für die angeforderten KI-Funktionen;</li>
               <li>Google erst nach Wahl der Google-Anmeldung;</li>
               <li>der jeweils angezeigte Buchungsanbieter erst nach Ihrem Klick;</li>
-              <li>ein eingesetzter Transaktions-E-Mail-Dienst nur für Bestätigung, Anmeldung oder Wiederherstellung.</li>
+              <li>1&amp;1 IONOS SE, Montabaur, für den Versand von Transaktions-E-Mails wie Bestätigung, Anmeldung oder Wiederherstellung; die Verarbeitung findet innerhalb der EU statt.</li>
             </ul>
             <p>
               Soweit Anbieter als Auftragsverarbeiter tätig sind, erfolgt die
@@ -308,7 +318,8 @@ export default function PrivacyPage() {
               <li>Nachrichten in inaktiven Projekten: 180 Tage;</li>
               <li>inaktive Projekte, Match-Snapshots und externe Suchergebnisse: Prüfung beziehungsweise Löschung nach 365 Tagen;</li>
               <li>Lebensläufe von Freelancern: bis zum Widerruf der Bereitstellung, zur Beendigung des Vermittlungszwecks oder bis zu einer früheren berechtigten Löschanfrage; die Erforderlichkeit wird bei Profilprüfung und Deaktivierung erneut geprüft;</li>
-              <li>Whitelist-Datensätze: Überprüfung nach 365 Tagen und Löschung, wenn keine Rechtsgrundlage mehr besteht;</li>
+              <li>unbestätigte Whitelist-Anmeldungen: automatische Löschung nach 30 Tagen;</li>
+              <li>bestätigte Whitelist-Datensätze: Überprüfung nach 365 Tagen und Löschung, wenn keine Rechtsgrundlage mehr besteht;</li>
               <li>Kontaktanfragen: Löschung nach Erledigung, spätestens Überprüfung nach 365 Tagen;</li>
               <li>Zähler der Ratenbegrenzung: Löschung am Tag nach Ablauf des jeweiligen Zeitfensters;</li>
               <li>technische KI-Nutzungsdaten: je nach Kontotyp und Abrechnungsfenster 90 bis 400 Tage;</li>

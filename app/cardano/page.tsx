@@ -3,7 +3,11 @@ import Link from "next/link";
 import { CookieSettingsButton } from "@/components/CookieConsent";
 
 type HomeProps = {
-  searchParams?: Promise<{ joined?: string; error?: string }>;
+  searchParams?: Promise<{
+    joined?: string;
+    pending?: string;
+    error?: string;
+  }>;
 };
 
 const networkSteps = [
@@ -17,6 +21,10 @@ const networkSteps = [
 export default async function XPortalHome({ searchParams }: HomeProps) {
   const params = (await searchParams) ?? {};
   const joined = params.joined === "1";
+  // The entry is stored but no confirmation mail went out — the regular case
+  // until an email provider is connected. Saying "check your inbox" here would
+  // promise something that does not happen.
+  const pending = params.pending === "1";
   const hasError = params.error === "1";
 
   return (
@@ -54,9 +62,24 @@ export default async function XPortalHome({ searchParams }: HomeProps) {
           {joined ? (
             <div className="xhome-success" role="status">
               <span className="xhome-success-mark" aria-hidden="true">X</span>
-              <p className="xhome-eyebrow">Request received</p>
-              <h2 id="access-title">You are on the list.</h2>
-              <p>We will contact you when the next XPORTAL access window opens.</p>
+              <p className="xhome-eyebrow">One more step</p>
+              <h2 id="access-title">Check your inbox.</h2>
+              <p>
+                We sent you a confirmation link. Your address joins the list
+                once you confirm it — until then we send you nothing else.
+              </p>
+              <Link href="/cardano" className="xhome-text-link">Return to XPORTAL</Link>
+            </div>
+          ) : pending ? (
+            <div className="xhome-success" role="status">
+              <span className="xhome-success-mark" aria-hidden="true">X</span>
+              <p className="xhome-eyebrow">Request noted</p>
+              <h2 id="access-title">We have your details.</h2>
+              <p>
+                Our email delivery is not connected yet, so no confirmation has
+                been sent. We will confirm your address before sending anything
+                — nothing goes out until you have agreed to it.
+              </p>
               <Link href="/cardano" className="xhome-text-link">Return to XPORTAL</Link>
             </div>
           ) : (
@@ -93,8 +116,10 @@ export default async function XPortalHome({ searchParams }: HomeProps) {
                 <label className="xhome-consent">
                   <input name="consent" type="checkbox" value="yes" required />
                   <span>
-                    I agree to receive XPORTAL launch and whitelist updates by email.
-                    See the <Link href="/privacy">privacy notice</Link>.
+                    I agree to receive XPORTAL launch and whitelist updates by
+                    email. We send one confirmation link first and only write to
+                    you once you have confirmed. See the{" "}
+                    <Link href="/privacy">privacy notice</Link>.
                   </span>
                 </label>
                 <button type="submit" className="xhome-submit">

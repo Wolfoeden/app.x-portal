@@ -3,13 +3,22 @@ import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
+import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
-import { takeRateLimit } from "@/lib/security/rate-limit";
+import { applicationOrigin } from "@/lib/auth/redirect";
+import { deliverEmail } from "@/lib/email/deliver";
+import {
+  confirmationExpiresAt,
+  confirmationMessage,
+  confirmationUrl,
+  mintConfirmationToken,
+} from "@/lib/whitelist/confirmation";
 import {
   assertSameOrigin,
   getClientIp,
   pseudonymizeIp,
 } from "@/lib/security/request";
+import { consumeRateLimit } from "@/lib/security/shared-rate-limit";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 const WhitelistSchema = z
@@ -22,8 +31,14 @@ const WhitelistSchema = z
   })
   .strict();
 
-function landingUrl(request: Request, state: "joined" | "error") {
-  const url = new URL("/cardano", request.url);
+/**
+ * `joined` heißt: Bestätigungsmail ist unterwegs. `pending` heißt: der Eintrag
+ * ist notiert, aber es ging keine Mail raus — solange kein E-Mail-Anbieter
+ * angebunden ist, ist das der reguläre Fall. Die Unterscheidung existiert,
+ * damit die Seite nicht etwas zusagt, das nicht passiert ist.
+ */
+function landingUrl(request: Request, state: "joined" | "pending" | "error") {
+  const url = new URL(appPath("/cardano"), request.url);
   url.searchParams.set(state, "1");
   url.hash = "access";
   return url;
@@ -56,7 +71,7 @@ export async function POST(request: NextRequest) {
     }
 
     const ipHash = pseudonymizeIp(getClientIp(request));
-    const limit = takeRateLimit(`whitelist:${ipHash}`, 5, 15 * 60_000);
+    const limit = await consumeRateLimit(`whitelist:${ipHash}`, 5, 15 * 60_000);
     if (!limit.allowed) {
       return NextResponse.redirect(landingUrl(request, "error"), {
         status: 303,
@@ -65,7 +80,31 @@ export async function POST(request: NextRequest) {
     }
 
     const admin = createAdminSupabaseClient();
-    const consentAt = new Date().toISOString();
+
+    // Eine bereits bestätigte Adresse wird nicht auf "pending" zurückgesetzt.
+    // Sonst könnte ein Dritter mit einer fremden Adresse eine bestehende
+    // Einwilligung entwerten.
+    const { data: existing, error: lookupError } = await admin
+      .from("whitelist_leads")
+      .select("id,status")
+      .eq("email", parsed.data.email)
+      .maybeSingle();
+    if (lookupError) throw lookupError;
+
+    if (existing?.status === "confirmed") {
+      await writeAuditEvent({
+        actorUserId: null,
+        action: "whitelist_request_already_confirmed",
+        targetType: "whitelist_lead",
+        targetId: existing.id,
+        outcome: "success",
+        traceId,
+      });
+      return NextResponse.redirect(landingUrl(request, "joined"), 303);
+    }
+
+    const now = new Date();
+    const { token, hash } = mintConfirmationToken();
     const { data, error } = await admin
       .from("whitelist_leads")
       .upsert(
@@ -73,14 +112,33 @@ export async function POST(request: NextRequest) {
           full_name: parsed.data.fullName,
           email: parsed.data.email,
           country: parsed.data.country,
-          consent_at: consentAt,
+          // Die abgegebene Erklärung. Der Nachweis entsteht erst mit der
+          // Bestätigung — siehe confirmed_at.
+          consent_at: now.toISOString(),
           source: "home",
+          status: "pending",
+          confirmation_token_hash: hash,
+          confirmation_expires_at: confirmationExpiresAt(now).toISOString(),
+          confirmed_at: null,
         },
         { onConflict: "email" },
       )
       .select("id")
       .single();
     if (error) throw error;
+
+    const message = confirmationMessage({
+      fullName: parsed.data.fullName,
+      confirmUrl: confirmationUrl(applicationOrigin(request), token),
+    });
+    const delivery = await deliverEmail({ to: parsed.data.email, ...message });
+
+    if (delivery.delivered) {
+      await admin
+        .from("whitelist_leads")
+        .update({ confirmation_sent_at: new Date().toISOString() })
+        .eq("id", data.id);
+    }
 
     await writeAuditEvent({
       actorUserId: null,
@@ -89,10 +147,13 @@ export async function POST(request: NextRequest) {
       targetId: data.id,
       outcome: "success",
       traceId,
-      metadata: { source: "home" },
+      metadata: { source: "home", confirmation_sent: delivery.delivered },
     });
 
-    return NextResponse.redirect(landingUrl(request, "joined"), 303);
+    return NextResponse.redirect(
+      landingUrl(request, delivery.delivered ? "joined" : "pending"),
+      303,
+    );
   } catch (error) {
     if (error instanceof Response) return error;
     await writeAuditEvent({
