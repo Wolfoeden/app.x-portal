@@ -133,10 +133,6 @@ export function AccountSummary({
               >
                 <span style={{ width: `${progress}%` }} />
               </div>
-              <p>
-                {formatCreditAmount(consumed)} / {formatCreditAmount(monthly.total)}{" "}
-                Credits diesen Monat verwendet
-              </p>
               <p className="account-credit-muted">{renewalLabel(monthly.periodEnd)}</p>
             </section>
           ) : null}

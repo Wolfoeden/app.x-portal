@@ -39,6 +39,7 @@ import {
   IconClose,
   IconPlus,
 } from "../icons";
+import { authErrorMessage, isServiceSideAuthFailure } from "./auth-errors";
 import {
   GOOGLE_AUTH_ENABLED,
   initials,
@@ -105,8 +106,12 @@ export function AuthDialog({
   const [password, setPassword] = useState("");
   const [passwordRepeat, setPasswordRepeat] = useState("");
   const [confirmationSent, setConfirmationSent] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [marketingEmails, setMarketingEmails] = useState(false);
   const [busy, setBusy] = useState<"google" | "microsoft" | "email" | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const consentMissing = mode === "register" && !termsAccepted;
 
   const connectProvider = async (provider: "google" | "microsoft") => {
     setBusy(provider);
@@ -114,7 +119,13 @@ export function AuthDialog({
     try {
       await startOauthUpgrade(provider);
     } catch (providerError) {
-      setError(providerError instanceof Error ? providerError.message : "Anmeldung konnte nicht gestartet werden.");
+      setError(
+        isServiceSideAuthFailure(providerError)
+          ? authErrorMessage(providerError, mode)
+          : providerError instanceof Error
+            ? providerError.message
+            : "Anmeldung konnte nicht gestartet werden.",
+      );
       setBusy(null);
     }
   };
@@ -134,7 +145,10 @@ export function AuthDialog({
         showToast("Anmeldung erfolgreich. Ihre Auswahl wird fortgesetzt.");
         onAuthenticated();
       } else if (mode === "register") {
-        const result = await registerEmailAccount(email, password);
+        const result = await registerEmailAccount(email, password, {
+          termsAcceptedAt: new Date().toISOString(),
+          marketingEmails,
+        });
         if (result.confirmationRequired) {
           setConfirmationSent(true);
           setBusy(null);
@@ -154,19 +168,7 @@ export function AuthDialog({
         onAuthenticated();
       }
     } catch (emailError) {
-      const fallback = mode === "login"
-        ? "E-Mail oder Passwort ist nicht korrekt. Nutzen Sie bei Bedarf ‚Passwort vergessen?‘."
-        : mode === "recover"
-          ? "Der Wiederherstellungslink konnte gerade nicht versendet werden."
-          : mode === "register"
-            ? "Das Konto konnte gerade nicht erstellt werden. Prüfen Sie E-Mail und Passwort."
-            : "Das neue Passwort konnte gerade nicht gespeichert werden.";
-      const message = emailError instanceof Error ? emailError.message.toLowerCase() : "";
-      setError(
-        mode === "login" && (message.includes("invalid login") || message.includes("invalid credentials"))
-          ? "E-Mail oder Passwort ist nicht korrekt. Nutzen Sie bei Bedarf ‚Passwort vergessen?‘."
-          : fallback,
-      );
+      setError(authErrorMessage(emailError, mode));
       setBusy(null);
     }
   };
@@ -257,8 +259,38 @@ export function AuthDialog({
                 Zurück zur Anmeldung
               </button>
             ) : null}
+            {mode === "register" ? (
+              <div className="auth-consent">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={termsAccepted}
+                    onChange={(event) => setTermsAccepted(event.target.checked)}
+                    required
+                  />
+                  <span>
+                    Ich handle als Unternehmer im Sinne des § 14 BGB und
+                    akzeptiere die{" "}
+                    <a href="/terms">Allgemeinen Geschäftsbedingungen</a> sowie
+                    die <a href="/privacy">Datenschutzhinweise</a>.
+                  </span>
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={marketingEmails}
+                    onChange={(event) => setMarketingEmails(event.target.checked)}
+                  />
+                  <span>
+                    Optional: XPORTAL darf mir E-Mails zu neuen Funktionen und
+                    passenden Freelancern senden. Sie können dem jederzeit
+                    widersprechen.
+                  </span>
+                </label>
+              </div>
+            ) : null}
             {error ? <p className="form-error" role="alert">{error}</p> : null}
-            <button className="auth-submit" type="submit" disabled={Boolean(busy)}>
+            <button className="auth-submit" type="submit" disabled={Boolean(busy) || consentMissing}>
               {busy === "email"
                 ? "Bitte warten …"
                 : mode === "login"
@@ -277,15 +309,17 @@ export function AuthDialog({
           {GOOGLE_AUTH_ENABLED ? " Google wird erst nach Ihrem Klick geöffnet; alternativ steht die E-Mail-Anmeldung zur Verfügung." : ""}
           {" "}<a href="/privacy">Datenschutzhinweise</a>
         </p>
-        {/* Zwischen Unternehmern genügt für die Einbeziehung von AGB ein
-            klarer Hinweis vor Vertragsschluss — eine Checkbox verlangt § 305
-            Abs. 2 BGB hier nicht. Sichtbar sein muss der Hinweis trotzdem, und
-            zwar an der Stelle, an der jemand das Konto anlegt. */}
-        <p className="auth-privacy">
-          Mit dem Anlegen eines Kontos bestätigen Sie, dass Sie als Unternehmer
-          im Sinne des § 14 BGB handeln, und akzeptieren die{" "}
-          <a href="/terms">Allgemeinen Geschäftsbedingungen</a>.
-        </p>
+        {/* Beim Anlegen eines Kontos per E-Mail steht die Zustimmung als
+            Häkchen im Formular. Über einen Anbieter kann aber ebenfalls ein
+            Konto entstehen, ohne dass dieses Formular je sichtbar war —
+            deshalb bleibt der Hinweis für alle anderen Wege stehen. */}
+        {mode !== "register" ? (
+          <p className="auth-privacy">
+            Mit dem Anlegen eines Kontos bestätigen Sie, dass Sie als Unternehmer
+            im Sinne des § 14 BGB handeln, und akzeptieren die{" "}
+            <a href="/terms">Allgemeinen Geschäftsbedingungen</a>.
+          </p>
+        ) : null}
       </div>
     </Modal>
   );

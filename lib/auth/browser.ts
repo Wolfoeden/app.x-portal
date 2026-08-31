@@ -164,7 +164,11 @@ async function consumeEmailAuthState(state: string | null) {
   }
 }
 
-export async function registerEmailAccount(email: string, password: string) {
+export async function registerEmailAccount(
+  email: string,
+  password: string,
+  consent: { termsAcceptedAt: string; marketingEmails: boolean },
+) {
   const supabase = getBrowserSupabaseClient();
   await ensureGuestSession();
   await prepareGuestClaim();
@@ -175,6 +179,13 @@ export async function registerEmailAccount(email: string, password: string) {
     password,
     options: {
       emailRedirectTo: `${siteUrl()}${appPath("/auth/complete")}?next=${encodeURIComponent(destination)}&state=${encodeURIComponent(state)}`,
+      // Die Einwilligung entsteht in derselben Schreiboperation wie das Konto.
+      // Es gibt damit kein Fenster, in dem ein Konto ohne den Nachweis
+      // existiert — anders als bei einem nachgelagerten zweiten Aufruf.
+      data: {
+        terms_accepted_at: consent.termsAcceptedAt,
+        marketing_emails: consent.marketingEmails,
+      },
     },
   });
   if (error) throw error;

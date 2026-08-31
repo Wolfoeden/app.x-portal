@@ -8,10 +8,28 @@
  * actually reads a recommendation from, and it had no boundary of its own.
  */
 
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 
 import { appPath } from "@/lib/app-path";
 import { MINIMUM_CORE_COVERAGE_BASIS_POINTS } from "@/lib/domain/matching";
+
+import {
+  BRIEF_FIELDS,
+  briefToDraft,
+  composeBriefUpdateMessage,
+  draftChanges,
+  MODE_OPTIONS,
+  type BriefDraft,
+} from "./brief-editor";
+import { factPreview } from "./fact-preview";
+import { shouldHighlightProfile } from "./profile-fit";
 
 import type {
   AiAnalysisTrace,
@@ -32,8 +50,12 @@ import {
   IconArrowUpRight,
   IconCheck,
   IconChevronDown,
+  IconChevronLeft,
+  IconChevronRight,
   IconDocument,
   IconInfo,
+  IconMaximize,
+  IconMinimize,
   IconSearch,
   IconSpark,
 } from "../icons";
@@ -185,6 +207,117 @@ function presentUnknownFields(fields: string[]) {
   return fields.map((field) => unknownFieldLabels[field] ?? field);
 }
 
+/**
+ * Mehrere Treffer als Stapel statt untereinander.
+ *
+ * Drei volle Profilkarten hintereinander sind laenger als der Bildschirm hoch
+ * ist: wer den zweiten mit dem ersten vergleichen will, muss scrollen und aus
+ * dem Gedaechtnis vergleichen. Der Stapel zeigt einen und laesst durchblaettern,
+ * der vergroesserte Zustand klappt beide Leisten ein und stellt sie
+ * nebeneinander — dann liegt der Vergleich nebeneinander statt untereinander.
+ */
+function ProfileStack({
+  profiles,
+  renderCard,
+  focused,
+  onToggleFocus,
+}: {
+  profiles: FreelancerProfileResult[];
+  renderCard: (profile: FreelancerProfileResult, index: number) => ReactNode;
+  focused: boolean;
+  onToggleFocus: () => void;
+}) {
+  const [active, setActive] = useState(0);
+  // Kommt ein neues Ergebnis mit weniger Treffern, zeigt der Zeiger sonst ins
+  // Leere und der Stapel bliebe blank.
+  const current = Math.min(active, Math.max(0, profiles.length - 1));
+
+  useEffect(() => {
+    if (!focused) return;
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") onToggleFocus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [focused, onToggleFocus]);
+
+  if (profiles.length === 1) {
+    return <div className="profile-list">{renderCard(profiles[0], 0)}</div>;
+  }
+
+  if (focused) {
+    return (
+      <div className="profile-compare">
+        {/* Die Leiste bleibt beim Scrollen stehen: der Weg zurueck darf nicht
+            davon abhaengen, wie weit jemand in die Karten hineingescrollt ist.
+            Escape tut dasselbe — im vergroesserten Zustand sind beide
+            Seitenleisten weg, und das erwartet man dann zurueckdrehen zu
+            koennen, ohne den Knopf zu suchen. */}
+        <div className="profile-compare-bar">
+          <p>{profiles.length} Profile nebeneinander</p>
+          <button className="primary-action profile-compare-close" type="button" onClick={onToggleFocus}>
+            <IconMinimize size={13} /> Ansicht verkleinern
+          </button>
+        </div>
+        <div className="profile-compare-grid" data-count={profiles.length}>
+          {profiles.map((profile, index) => (
+            <div className="profile-compare-cell" key={profile.id}>
+              {renderCard(profile, index)}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="profile-stack">
+      <div className="profile-stack-bar">
+        <div className="profile-stack-nav">
+          <button
+            type="button"
+            aria-label="Vorheriges Profil"
+            disabled={current === 0}
+            onClick={() => setActive(current - 1)}
+          >
+            <IconChevronLeft size={15} />
+          </button>
+          <span aria-live="polite">
+            {current + 1} von {profiles.length}
+          </span>
+          <button
+            type="button"
+            aria-label="Nächstes Profil"
+            disabled={current === profiles.length - 1}
+            onClick={() => setActive(current + 1)}
+          >
+            <IconChevronRight size={15} />
+          </button>
+        </div>
+        <button className="text-button" type="button" onClick={onToggleFocus}>
+          <IconMaximize size={13} /> Nebeneinander vergleichen
+        </button>
+      </div>
+
+      {/* Die verdeckten Karten bleiben im Baum, damit ein Wechsel nicht jedes
+          Mal Zustand und Sichtbarkeitsmeldung der Karte neu aufbaut. */}
+      <div className="profile-stack-deck">
+        {profiles.map((profile, index) => (
+          <div
+            className={`profile-stack-item${index === current ? " is-active" : ""}`}
+            key={profile.id}
+            aria-hidden={index === current ? undefined : true}
+            inert={index !== current}
+          >
+            {renderCard(profile, index)}
+          </div>
+        ))}
+        <div className="profile-stack-shadow" aria-hidden="true" data-remaining={profiles.length - current - 1} />
+      </div>
+    </div>
+  );
+}
+
 export function ResultSection({
   brief,
   projectId,
@@ -208,6 +341,9 @@ export function ResultSection({
   savedFreelancerIds,
   onToggleSave,
   onOpenDetails,
+  profileFocus,
+  onToggleProfileFocus,
+  detailsOpen,
 }: {
   brief: StructuredBrief | null;
   projectId: string | null;
@@ -231,8 +367,23 @@ export function ResultSection({
   savedFreelancerIds: readonly string[];
   onToggleSave: (profile: FreelancerProfileResult) => void;
   onOpenDetails?: () => void;
+  /** Beide Leisten eingeklappt, Profile nebeneinander. */
+  profileFocus: boolean;
+  onToggleProfileFocus: () => void;
+  /** Steht die Projektuebersicht offen, bleibt fuer die Karten wenig Breite. */
+  detailsOpen: boolean;
 }) {
   const searchCta = externalSearchCtaState(isAccountUser, productCredits);
+  /**
+   * Bei offener Projektuebersicht zeigen die Karten nur noch Kopf und
+   * Aktionen. Aufgeklappt ist immer hoechstens eine: zwei ausgeklappte Karten
+   * nebeneinander in der schmalen Spalte waeren genau der Zustand, den das
+   * Einklappen vermeiden soll.
+   */
+  const [expandedProfileId, setExpandedProfileId] = useState<string | null>(null);
+  // Im Vergleich sind beide Leisten eingeklappt und der Platz ist gerade der
+  // Zweck — dort waere ein zusaetzlich zusammengefaltetes Profil widersinnig.
+  const cardsCollapsible = detailsOpen && !profileFocus;
   const resultHeading =
     matchingStatus === "needs_clarification"
       ? "Bitte konkretisieren Sie die Anforderung"
@@ -256,13 +407,16 @@ export function ResultSection({
           <span className="result-count is-warning">Keine Empfehlung</span>
         ) : null}
       </div>
+      {brief ? <BriefSummaryLine brief={brief} onOpenDetails={onOpenDetails} /> : null}
       {profiles.length ? (
         <>
           <p className="matching-disclosure">Die Reihenfolge folgt dokumentierten Kriterien wie Pflichtkompetenzen, Sprache, Arbeitsmodus und Verfügbarkeit. Die KI trifft keine Einstellungsentscheidung.</p>
-          <div className="profile-list">
-            {profiles.slice(0, 3).map((profile, index) => (
+          <ProfileStack
+            profiles={profiles.slice(0, 3)}
+            focused={profileFocus}
+            onToggleFocus={onToggleProfileFocus}
+            renderCard={(profile, index) => (
               <ProfileCard
-                key={profile.id}
                 profile={profile}
                 position={index + 1}
                 isAccountUser={isAccountUser}
@@ -273,9 +427,18 @@ export function ResultSection({
                 onRequestBooking={() => onRequestBooking(profile)}
                 saved={savedFreelancerIds.includes(profile.id)}
                 onToggleSave={() => onToggleSave(profile)}
+                collapsed={cardsCollapsible && expandedProfileId !== profile.id}
+                onToggleCollapsed={
+                  cardsCollapsible
+                    ? () =>
+                        setExpandedProfileId((current) =>
+                          current === profile.id ? null : profile.id,
+                        )
+                    : undefined
+                }
               />
-            ))}
-          </div>
+            )}
+          />
         </>
       ) : (
         <>
@@ -383,19 +546,13 @@ export function ResultSection({
           ) : null}
         </>
       )}
-      {brief || analysis ? (
-        <div className="result-supporting-context">
-          <p className="eyebrow">Anfrage &amp; Arbeitsprozess</p>
-          {brief ? <BriefCard brief={brief} onOpenDetails={onOpenDetails} /> : null}
-          {analysis ? (
-            <AnalysisTrace
-              trace={analysis}
-              profileCount={profiles.length}
-              partialProfileCount={partialProfiles.length}
-            />
-          ) : null}
-        </div>
-      ) : null}
+      {/* Der Arbeitsprozess stand hier als aufklappbarer Block unter jedem
+          Ergebnis und war fuer die meisten nur eine Zeile, die man wegliest.
+          Er steht jetzt in der Projektuebersicht, wo die uebrigen Angaben zur
+          Arbeitsweise schon stehen — samt der Offenlegung, ob die Anfrage mit
+          einer bestaetigten KI-Antwort oder mit der Basisanalyse strukturiert
+          wurde. Die darf nicht verschwinden, sie sagt je nach Lauf etwas
+          anderes. */}
     </section>
   );
 }
@@ -703,21 +860,6 @@ function ExternalSearchResults({
 /** Basis points are the matcher's unit; the reader wants a percentage. */
 const RECOMMENDATION_THRESHOLD_PERCENT = MINIMUM_CORE_COVERAGE_BASIS_POINTS / 100;
 
-function groupedRequirements(
-  brief: StructuredBrief,
-  priority: StructuredRequirementGroup["priority"],
-): string | null {
-  const groups = brief.requirementGroups.filter(
-    (group) => group.priority === priority,
-  );
-  if (!groups.length) return null;
-  return groups
-    .map((group) =>
-      group.values.join(group.operator === "any_of" ? " oder " : " und "),
-    )
-    .join(" · ");
-}
-
 function requirementCount(
   brief: StructuredBrief,
   priority: StructuredRequirementGroup["priority"],
@@ -727,11 +869,15 @@ function requirementCount(
 }
 
 /**
- * The chat carries the narrative, the detail panel carries the state. This card
- * used to repeat all ten fields the panel already showed, so the same brief was
- * rendered twice on one screen. It now says what was understood and hands off.
+ * Was aus der Anfrage verstanden wurde — in einer Zeile ueber dem Ergebnis.
+ *
+ * Das war eine Karte mit Ueberschrift, Zusammenfassung und eigenem Knopf, und
+ * sie stand unter den Profilen. Beides war verkehrt herum: der Steckbrief ist
+ * die Voraussetzung des Ergebnisses, nicht sein Anhang, und alles darin steht
+ * ohnehin ausfuehrlich in der rechten Leiste. Bleibt der Titel, die Zaehlung
+ * und der Weg dorthin.
  */
-export function BriefCard({
+export function BriefSummaryLine({
   brief,
   onOpenDetails,
 }: {
@@ -749,22 +895,18 @@ export function BriefCard({
   ].filter(Boolean);
 
   return (
-    <article className="brief-card">
-      <div className="brief-header">
-        <div>
-          <p className="eyebrow">Strukturierte Projektanalyse</p>
-          <h2>{brief.projectTitle}</h2>
-        </div>
-        <span className="brief-status"><span aria-hidden="true"><IconCheck size={12} /></span> Strukturiert</span>
-      </div>
-      {brief.summary ? <p className="brief-summary">{brief.summary}</p> : null}
-      {counts.length ? <p className="brief-counts">{counts.join(" · ")}</p> : null}
+    <div className="brief-line">
+      <span className="brief-line-mark" aria-hidden="true"><IconCheck size={12} /></span>
+      <p className="brief-line-text">
+        <strong>{brief.projectTitle}</strong>
+        {counts.length ? <span>{counts.join(" · ")}</span> : null}
+      </p>
       {onOpenDetails ? (
-        <button className="brief-open-details" type="button" onClick={onOpenDetails}>
-          Anforderungen ansehen <IconArrowRight size={13} />
+        <button className="brief-line-action" type="button" onClick={onOpenDetails}>
+          Anforderungen <IconArrowRight size={12} />
         </button>
       ) : null}
-    </article>
+    </div>
   );
 }
 
@@ -778,14 +920,6 @@ function DetailTerm({ label, value, hint }: { label: string; value: string | nul
       </dd>
     </div>
   );
-}
-
-/**
- * A required language filters profiles; a detected one only reflects how the
- * request was written. Without this hint the second reads as the first.
- */
-function languageHint(brief: StructuredBrief): string | undefined {
-  return brief.languageSource === "detected" ? "aus der Anfrage abgeleitet" : undefined;
 }
 
 export type CvActionState = {
@@ -927,6 +1061,8 @@ export function ProfileCard({
   onRequestBooking,
   saved,
   onToggleSave,
+  collapsed = false,
+  onToggleCollapsed,
 }: {
   profile: FreelancerProfileResult;
   position: number;
@@ -938,6 +1074,9 @@ export function ProfileCard({
   onRequestBooking: () => void;
   saved: boolean;
   onToggleSave: () => void;
+  /** Nur Kopf und Aktionen zeigen — der Text bleibt zu. */
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 }) {
   const verifiedFacts = profile.facts.filter((fact) => fact.verification === "verified");
   const selfReportedFacts = profile.facts.filter((fact) => fact.verification === "self-reported");
@@ -947,6 +1086,12 @@ export function ProfileCard({
   const [cvDownloadState, setCvDownloadState] = useState<"idle" | "loading" | "error">("idle");
   const [cvDownloadError, setCvDownloadError] = useState<string | null>(null);
   const cardRef = useProfileImpression(profile, projectId);
+  // Einmal, nicht dauernd: eine Karte, die weiterpulsiert, liest sich als
+  // Aufforderung statt als Hinweis und zieht den Blick von den Karten daneben
+  // ab, die man gerade vergleichen will.
+  const [pulseDone, setPulseDone] = useState(false);
+  const highlight =
+    !pulseDone && shouldHighlightProfile(profile, RECOMMENDATION_THRESHOLD_PERCENT);
 
   const downloadCv = async () => {
     if (cvAction.disabled || !projectId || cvDownloadState === "loading") return;
@@ -966,7 +1111,15 @@ export function ProfileCard({
     }
   };
   return (
-    <article ref={cardRef} className={`profile-card ${profile.recommendationRole === "primary" ? "is-primary" : ""} ${isPartial ? "is-partial" : ""} ${selected ? "is-selected" : ""}`}>
+    <article
+      ref={cardRef}
+      className={`profile-card ${profile.recommendationRole === "primary" ? "is-primary" : ""} ${isPartial ? "is-partial" : ""} ${selected ? "is-selected" : ""}${highlight ? " is-highlight" : ""}`}
+      // Nur die Animation der Karte selbst beendet den Puls — `animationend`
+      // steigt aus dem ganzen Teilbaum auf.
+      onAnimationEnd={(event) => {
+        if (event.target === event.currentTarget) setPulseDone(true);
+      }}
+    >
       <div className="profile-rank" aria-label={`${isPartial ? "Teiltreffer" : "Ergebnis"} ${position}`}>{position.toString().padStart(2, "0")}</div>
       <div className="profile-main">
         <header className="profile-header">
@@ -987,57 +1140,37 @@ export function ProfileCard({
                     : "Alternative"}
               </span>
             ) : null}
-            {profile.coreCoverage !== null ? (
-              <span className="match-score">Kernanforderungen {profile.coreCoverage} % belegt</span>
-            ) : null}
-            {profile.knownGaps.length ? (
-              <span className="match-gaps">{profile.knownGaps.length} {profile.knownGaps.length === 1 ? "Punkt" : "Punkte"} offen</span>
-            ) : null}
             <span className={`availability ${profile.availabilityStatus}`}>{availabilityLabel(profile.availabilityStatus)}</span>
           </div>
         </header>
 
-        {profile.experienceSummary ? <p className="experience-summary">{profile.experienceSummary}</p> : null}
-
-        {isPartial ? (
-          <div className="partial-reason">
-            <p className="partial-reason-headline">
-              <span aria-hidden="true"><IconAlertCircle size={13} /></span>
-              Was für eine Empfehlung fehlt
-            </p>
-            {profile.coreCoverage !== null ? (
-              <p className="partial-reason-coverage">
-                Kernabdeckung {profile.coreCoverage} % · empfohlen ab{" "}
-                {RECOMMENDATION_THRESHOLD_PERCENT} %
-              </p>
-            ) : null}
-            {profile.knownGaps.length ? (
-              <>
-                <ul>{profile.knownGaps.slice(0, 3).map((gap) => <li key={gap}>{gap}</li>)}</ul>
-                {profile.knownGaps.length > 3 ? (
-                  <details className="profile-more"><summary>{profile.knownGaps.length - 3} weitere offene Punkte</summary><ul>{profile.knownGaps.slice(3).map((gap) => <li key={gap}>{gap}</li>)}</ul></details>
-                ) : null}
-              </>
-            ) : (
-              <p className="unknown-text">
-                Die Muss-Kriterien der Anfrage sind nicht vollständig belegt.
-              </p>
-            )}
-          </div>
-        ) : profile.coreCoverage !== null ? (
-          <p className="matching-score-note">
-            Kernabdeckung: {profile.coreCoverage} % · regelbasierter Kriterienwert, keine Erfolgswahrscheinlichkeit
-          </p>
-        ) : null}
-
+        {/* Eingeklappt bleiben Kopf, Schlagworte und Aktionen stehen — genug,
+            um die Karte wiederzuerkennen und zu handeln. Alles, was gelesen
+            werden will, kommt erst beim Ausklappen. */}
         <div className="profile-tags">
           {profile.skillTags.slice(0, 5).map((skill) => <span key={skill}>{skill}</span>)}
           {profile.skillTags.length > 5 ? <span className="profile-tags-more">+{profile.skillTags.length - 5}</span> : null}
         </div>
 
+        {onToggleCollapsed ? (
+          <button
+            className="profile-collapse-toggle"
+            type="button"
+            onClick={onToggleCollapsed}
+            aria-expanded={!collapsed}
+          >
+            <span aria-hidden="true"><IconChevronDown size={14} /></span>
+            {collapsed ? "Profil ausklappen" : "Profil einklappen"}
+          </button>
+        ) : null}
+
+        {collapsed ? null : (
+        <>
+        {profile.experienceSummary ? <p className="experience-summary">{profile.experienceSummary}</p> : null}
+
         <div className="match-columns">
           <div className="match-column reasons">
-            <h4><span aria-hidden="true"><IconCheck size={13} /></span> Warum passend</h4>
+            <h4><span aria-hidden="true"><IconCheck size={13} /></span> Das ist belegt</h4>
             {profile.matchReasons.length ? (
               <>
                 <ul>{profile.matchReasons.slice(0, 3).map((reason) => <li key={reason}>{reason}</li>)}</ul>
@@ -1047,19 +1180,22 @@ export function ProfileCard({
               </>
             ) : <p className="unknown-text">Keine Begründung übermittelt</p>}
           </div>
-          {isPartial ? null : (
-            <div className="match-column gaps">
-              <h4><span aria-hidden="true"><IconAlertCircle size={13} /></span> Bekannte Lücken</h4>
-              {profile.knownGaps.length ? (
-                <>
-                  <ul>{profile.knownGaps.slice(0, 3).map((gap) => <li key={gap}>{gap}</li>)}</ul>
-                  {profile.knownGaps.length > 3 ? (
-                    <details className="profile-more"><summary>{profile.knownGaps.length - 3} weitere offene Punkte</summary><ul>{profile.knownGaps.slice(3).map((gap) => <li key={gap}>{gap}</li>)}</ul></details>
-                  ) : null}
-                </>
-              ) : <p>Keine bekannten Lücken im Abgleich</p>}
-            </div>
-          )}
+          <div className="match-column gaps">
+            <h4>
+              <span aria-hidden="true"><IconAlertCircle size={13} /></span>
+              {isPartial ? "Das fehlt für eine Empfehlung" : "Das ist noch offen"}
+            </h4>
+            {profile.knownGaps.length ? (
+              <>
+                <ul>{profile.knownGaps.slice(0, 3).map((gap) => <li key={gap}>{gap}</li>)}</ul>
+                {profile.knownGaps.length > 3 ? (
+                  <details className="profile-more"><summary>{profile.knownGaps.length - 3} weitere offene Punkte</summary><ul>{profile.knownGaps.slice(3).map((gap) => <li key={gap}>{gap}</li>)}</ul></details>
+                ) : null}
+              </>
+            ) : (
+              <p>{isPartial ? "Die Muss-Kriterien sind nicht vollständig belegt." : "Nichts offen im Abgleich"}</p>
+            )}
+          </div>
         </div>
 
         <div className="fact-row">
@@ -1081,12 +1217,22 @@ export function ProfileCard({
             <span aria-hidden="true">{profile.referenceStatus === "Verifiziert" ? <IconCheck size={12} /> : <IconInfo size={12} />}</span> Referenzstatus: {profile.referenceStatus}
           </p>
         ) : null}
+        </>
+        )}
 
+        {/* Bei einem Teiltreffer bleibt der Hinweis stehen: dass hier auf eigene
+            Entscheidung gehandelt wird, muss neben den Knoepfen stehen und
+            nicht nur weiter oben in der Begruendung. Der Gegenpart fuer einen
+            empfohlenen Treffer ist entfallen — "Bereit fuer den naechsten
+            Schritt" ueber einem Knopf, der genau das sagt, war eine Zeile, die
+            nur den Knopf wiederholte. */}
         <footer className="profile-footer">
-          <div>
-            <strong>{isPartial ? "Nicht empfohlen · Kontakt auf eigene Entscheidung" : profile.bookingUrl ? "Bereit für den nächsten Schritt" : "Derzeit nicht direkt buchbar"}</strong>
-            <span>{isPartial ? "Offene Muss-Kriterien bleiben sichtbar. Sie entscheiden, ob Sie dennoch Kontakt aufnehmen." : bookingAction.hint}</span>
-          </div>
+          {isPartial ? (
+            <p className="profile-footer-caution">
+              <span aria-hidden="true"><IconAlertCircle size={13} /></span>
+              Nicht empfohlen — Kontakt auf eigene Entscheidung. Offene Muss-Kriterien bleiben sichtbar.
+            </p>
+          ) : null}
           <div className="profile-actions">
               <div className="cv-action-group">
                 {cvAction.kind === "available" ? (
@@ -1162,15 +1308,21 @@ export function ProfileCard({
   );
 }
 
+
 function FactGroup({ label, facts, verified = false }: { label: string; facts: string[]; verified?: boolean }) {
-  const visibleFacts = facts.slice(0, 5);
-  const remaining = facts.length - visibleFacts.length;
+  const [open, setOpen] = useState(false);
+  const { preview, full, truncated } = factPreview(facts);
+
   return (
     <div className="fact-group">
       <span className={verified ? "verified-label" : "reported-label"}>{verified ? <IconCheck size={12} /> : <IconInfo size={12} />} {label}</span>
       <p>
-        {visibleFacts.length ? visibleFacts.join(" · ") : "Keine Angaben"}
-        {remaining > 0 ? ` · +${remaining} weitere Angaben` : ""}
+        {full ? (open || !truncated ? full : preview) : "Keine Angaben"}
+        {truncated ? (
+          <button className="fact-more" type="button" onClick={() => setOpen(!open)} aria-expanded={open}>
+            {open ? "weniger anzeigen" : "mehr anzeigen"}
+          </button>
+        ) : null}
       </p>
     </div>
   );
@@ -1182,44 +1334,142 @@ function FactGroup({ label, facts, verified = false }: { label: string; facts: s
  * missing. The priorities come straight from the matcher, so the panel shows
  * the same distinction the ranking actually uses.
  */
+/**
+ * Die Projektdaten als Formular.
+ *
+ * Gespeichert wird beim Verlassen eines Feldes — die Eingabe geht also nicht
+ * verloren, wenn jemand zurueck in den Chat klickt. Gesucht wird dagegen erst
+ * auf ausdrueckliche Anweisung: Enter, Strg+S oder der Knopf unten. Eine Suche
+ * kostet Guthaben, sie darf nicht als Nebenwirkung eines Klicks entstehen.
+ */
+function BriefEditor({
+  brief,
+  busy,
+  onUpdate,
+}: {
+  brief: StructuredBrief;
+  busy: boolean;
+  onUpdate: (message: string) => void;
+}) {
+  const base = useMemo(() => briefToDraft(brief), [brief]);
+  const [draft, setDraft] = useState<BriefDraft>(base);
+  const [seededFrom, setSeededFrom] = useState<BriefDraft>(base);
+
+  // Kommt ein neuer Steckbrief aus einer Suche, gilt er. Die eigenen Eingaben
+  // sind zu diesem Zeitpunkt bereits in die Suche eingeflossen. Der Abgleich
+  // steht im Rendern und nicht in einem Effekt, sonst zeigt die Leiste fuer
+  // einen Durchgang noch den alten Stand.
+  if (seededFrom !== base) {
+    setSeededFrom(base);
+    setDraft(base);
+  }
+
+  const changes = draftChanges(base, draft);
+  const dirty = changes.length > 0;
+
+  const apply = () => {
+    if (!dirty || busy) return;
+    onUpdate(composeBriefUpdateMessage(changes));
+  };
+
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const isSaveChord = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s";
+    // Enter in einem mehrzeiligen Feld gehoert dem Zeilenumbruch.
+    const isPlainEnter =
+      event.key === "Enter" && !event.shiftKey && event.target instanceof HTMLInputElement;
+    if (!isSaveChord && !isPlainEnter) return;
+    event.preventDefault();
+    apply();
+  };
+
+  return (
+    <div className="brief-editor" onKeyDown={onKeyDown}>
+      <div className="brief-editor-fields">
+        {BRIEF_FIELDS.map(({ field, label, hint, multiline, placeholder }) => {
+          const id = `brief-field-${field}`;
+          const changed = changes.some((change) => change.field === field);
+          return (
+            <div className={`brief-field${changed ? " is-changed" : ""}`} key={field}>
+              <label htmlFor={id}>
+                {label}
+                {changed ? <span className="brief-field-flag">geändert</span> : null}
+              </label>
+              {field === "mode" ? (
+                <select
+                  id={id}
+                  value={draft.mode}
+                  onChange={(event) => setDraft({ ...draft, mode: event.target.value })}
+                >
+                  {MODE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              ) : multiline ? (
+                <textarea
+                  id={id}
+                  rows={2}
+                  value={draft[field]}
+                  placeholder={placeholder}
+                  onChange={(event) => setDraft({ ...draft, [field]: event.target.value })}
+                />
+              ) : (
+                <input
+                  id={id}
+                  type="text"
+                  value={draft[field]}
+                  placeholder={placeholder}
+                  onChange={(event) => setDraft({ ...draft, [field]: event.target.value })}
+                />
+              )}
+              {hint ? <small>{hint}</small> : null}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className={`brief-editor-actions${dirty ? " is-dirty" : ""}`}>
+        {dirty ? (
+          <>
+            <p role="status">
+              {changes.length === 1 ? "1 Feld geändert" : `${changes.length} Felder geändert`} ·
+              noch nicht gesucht
+            </p>
+            <button className="primary-action" type="button" onClick={apply} disabled={busy}>
+              {busy ? "Suche läuft …" : "Übernehmen und neu suchen"}
+            </button>
+            <small>Auch mit Enter im Feld oder Strg + S</small>
+          </>
+        ) : (
+          <p className="brief-editor-rest">
+            Änderungen an diesen Feldern starten eine neue Suche.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function ProjectDetails({
   brief,
   selectedProfile,
+  busy,
+  analysis,
+  profileCount,
+  partialProfileCount,
   onContact,
+  onUpdateBrief,
 }: {
   brief: StructuredBrief | null;
   selectedProfile: FreelancerProfileResult | null;
+  /** Waehrend eine Antwort laeuft, darf keine zweite Suche daneben starten. */
+  busy: boolean;
+  analysis: AiAnalysisTrace | null;
+  profileCount: number;
+  partialProfileCount: number;
   onContact: () => void;
+  onUpdateBrief: (message: string) => void;
 }) {
   const openFields = brief ? presentUnknownFields(brief.unknownFields) : [];
-  const frame = brief
-    ? [
-        {
-          label: "Modus / Ort",
-          value:
-            [brief.mode === "unknown" ? null : modeLabel(brief.mode), brief.location]
-              .filter(Boolean)
-              .join(" · ") || null,
-        },
-        {
-          label: "Start & Dauer",
-          value: [brief.startWindow, brief.duration].filter(Boolean).join(" · ") || null,
-        },
-        { label: "Budget / Satz", value: brief.budgetOrRate },
-        { label: "Verfügbarkeit", value: brief.availabilityRequirement },
-        {
-          label: "Sprache",
-          value: brief.languages.length ? brief.languages.join(", ") : null,
-          hint: languageHint(brief),
-        },
-        {
-          label: "Vertrag",
-          value: brief.contractualRequirements.length
-            ? brief.contractualRequirements.join(", ")
-            : null,
-        },
-      ]
-    : [];
 
   return (
     <div className="details-inner">
@@ -1229,40 +1479,13 @@ export function ProjectDetails({
       </div>
       {brief ? (
         <>
-          <div className="project-status-line"><span aria-hidden="true"><IconCheck size={11} /></span><div><strong>{brief.projectTitle || "Anfrage strukturiert"}</strong><small>Angaben können jederzeit ergänzt werden</small></div></div>
-
-          <p className="details-section-label">Anforderungen</p>
-          <dl className="side-details">
-            <DetailTerm
-              label="Muss"
-              value={groupedRequirements(brief, "hard")}
-              hint="blockiert ohne Beleg"
-            />
-            <DetailTerm
-              label="Kern"
-              value={groupedRequirements(brief, "core")}
-              hint="bestimmt die Reihenfolge"
-            />
-            <DetailTerm label="Optional" value={groupedRequirements(brief, "optional")} />
-          </dl>
-
-          <p className="details-section-label">Rahmen</p>
-          <dl className="side-details">
-            {frame.map((entry) => (
-              <DetailTerm
-                key={entry.label}
-                label={entry.label}
-                value={entry.value}
-                hint={entry.hint}
-              />
-            ))}
-          </dl>
+          <BriefEditor brief={brief} busy={busy} onUpdate={onUpdateBrief} />
 
           {openFields.length ? (
             <div className="details-open-fields">
               <p className="details-section-label">Noch offen</p>
               <p>{openFields.join(" · ")}</p>
-              <small>Ergänzen Sie diese Punkte im Chat, um die Auswahl zu schärfen.</small>
+              <small>Tragen Sie diese Punkte oben ein oder ergänzen Sie sie im Chat.</small>
             </div>
           ) : null}
         </>
@@ -1270,7 +1493,7 @@ export function ProjectDetails({
         <div className="details-empty">
           <span aria-hidden="true"><IconDocument size={22} /></span>
           <strong>Noch keine Projektdaten</strong>
-          <p>Schreiben Sie frei in den Chat. Die Übersicht entsteht aus Ihren Angaben.</p>
+          <p>Schreiben Sie frei in den Chat. Die Übersicht entsteht aus Ihren Angaben und lässt sich hier danach Feld für Feld nachschärfen.</p>
         </div>
       )}
 
@@ -1281,6 +1504,14 @@ export function ProjectDetails({
           <button type="button" onClick={onContact}>Termin oder Kontakt <IconArrowRight size={13} /></button>
           <small>Sie können vorher weiter im Chat ergänzen.</small>
         </div>
+      ) : null}
+
+      {analysis ? (
+        <AnalysisTrace
+          trace={analysis}
+          profileCount={profileCount}
+          partialProfileCount={partialProfileCount}
+        />
       ) : null}
 
       <div className="ai-note"><span aria-hidden="true"><IconInfo size={11} /></span><p><strong>Transparente Unterstützung</strong>Die KI strukturiert Ihre Anfrage. Profile werden nach festen, überprüfbaren Regeln gefiltert.</p></div>

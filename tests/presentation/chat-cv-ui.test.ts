@@ -130,10 +130,25 @@ describe("recommended profile CV affordance", () => {
     expect(markup).toContain("Kontaktwege anzeigen");
   });
 
-  it("labels coverage as evidence rather than an outcome probability", () => {
+  // Die Karte nennt keine Abdeckungszahl mehr — die Eignung zeigt sich am
+  // Puls und an der Rolle. Damit faellt auch der Vorbehalt weg, der nur diese
+  // Zahl einordnete. Was bleiben muss: keine Prozentzahl neben dem Namen, die
+  // sich als Erfolgsaussicht lesen laesst.
+  it("states no score that could read as an outcome probability", () => {
     const markup = renderProfile(profile("available"), true);
-    expect(markup).toContain("Kernanforderungen 100 % belegt");
+
     expect(markup).not.toContain("Passung 90 %");
+    expect(markup).not.toContain("der Kernanforderungen belegt");
+    expect(markup).not.toMatch(/\d+\s*%/u);
+  });
+
+  it("marks a strong match for the eye instead of in words", () => {
+    const strong = renderProfile(profile("available"), true);
+    expect(strong).toContain("is-highlight");
+
+    // Ein Teiltreffer steht ausdruecklich als "nicht empfohlen" da; ein
+    // gruener Puls daneben saegte genau das wieder ab.
+    expect(renderProfile(profile("available", "partial"), true)).not.toContain("is-highlight");
   });
 });
 

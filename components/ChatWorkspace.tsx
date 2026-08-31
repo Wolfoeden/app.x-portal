@@ -19,6 +19,7 @@ import {
   creditPlan,
 } from "@/lib/ai/credit-policy";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
+import { BrandMark } from "@/components/BrandMark";
 import { openCookieSettings } from "@/components/CookieConsent";
 import { LegalFooter } from "@/components/LegalFooter";
 import {
@@ -109,10 +110,10 @@ export function sidebarAccountButtonClassName(isAccountUser: boolean): string {
  * consulting — and four narrow labels made it look like the platform only
  * covered those four.
  */
-const SIDEBAR_MIN_WIDTH = 208;
+const SIDEBAR_MIN_WIDTH = 224;
 const SIDEBAR_MAX_WIDTH = 480;
-const SIDEBAR_DEFAULT_WIDTH = 264;
-const SIDEBAR_WIDTH_STORAGE_KEY = "xportal.sidebar-width.v1";
+const SIDEBAR_DEFAULT_WIDTH = 288;
+const SIDEBAR_WIDTH_STORAGE_KEY = "xportal.sidebar-width.v2";
 
 function clampSidebarWidth(value: number): number {
   return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, Math.round(value)));
@@ -1233,6 +1234,8 @@ export function ChatWorkspace({
   // three. It opens itself once there is a result to show, unless the reader
   // has already expressed a preference by using the toggle.
   const [detailsOpen, setDetailsOpen] = useState(false);
+  /* Beide Leisten eingeklappt, damit die Profile nebeneinander Platz haben. */
+  const [profileFocus, setProfileFocus] = useState(false);
   const detailsTouchedRef = useRef(false);
   /**
    * True until the first workspace load resolves.
@@ -2429,10 +2432,11 @@ export function ChatWorkspace({
         visibleProjects.some((project) => project.collectionId === collection.id),
       )
     : projectCollections;
+  const emptyChat = !isTeamView && !isAgentView && messages.length === 0 && !pendingAssistant;
 
   return (
     <div
-      className={`app-shell ${detailsOpen ? "" : "details-hidden"}${isAgentView ? " is-agent-view" : ""}${isResizingSidebar ? " is-resizing-sidebar" : ""}`}
+      className={`app-shell ${detailsOpen ? "" : "details-hidden"}${isAgentView ? " is-agent-view" : ""}${emptyChat ? " is-empty-chat" : ""}${profileFocus ? " is-profile-focus" : ""}${isResizingSidebar ? " is-resizing-sidebar" : ""}`}
       style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
     >
       <a className="skip-link" href={isAgentView ? "#agent-directory-title" : "#chat-composer"}>
@@ -2440,10 +2444,11 @@ export function ChatWorkspace({
       </a>
 
       <aside className={`project-sidebar ${sidebarOpen ? "is-open" : ""}`} aria-label="Projekte">
+        <div className="sidebar-scroll">
         <div className="sidebar-top">
-          <div className="product-mark" aria-label="XPORTAL Freelancer">
-            <span className="mark-glyph" aria-hidden="true">X</span>
-            <span>XPORTAL / Freelancer</span>
+          <div className="product-mark" aria-label="XPORTAL">
+            <BrandMark className="mark-glyph" height={26} />
+            <span>PORTAL</span>
           </div>
           <button className="icon-button sidebar-close" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schließen"><IconClose size={18} /></button>
         </div>
@@ -2548,7 +2553,7 @@ export function ChatWorkspace({
           )}
         </nav>
 
-        <div className="sidebar-footer">
+        <div className="sidebar-secondary-nav">
           {/* Freelancers are the other half of the marketplace, but not the
               audience this workspace is built for. A quiet, permanent row keeps
               the entry findable without competing with the search flow. */}
@@ -2568,7 +2573,10 @@ export function ChatWorkspace({
               <IconChevronRight size={15} />
             </span>
           </a>
+        </div>
+        </div>
 
+        <div className="sidebar-footer">
           <div className="account-menu-wrap sidebar-account-menu-wrap">
             {accountMenuOpen ? (
               <div className="account-popover sidebar-account-popover" role="dialog" aria-label="Konto und Einstellungen">
@@ -2591,10 +2599,23 @@ export function ChatWorkspace({
                     void loadPlanTeam();
                   }}
                 />
+                <p className="account-menu-section-label">Einstellungen</p>
+                {/* Derselbe Weg wie in der Seitenleiste. Wer sich gerade
+                    anmeldet, hat das Menue offen und die Leiste im Ruecken —
+                    dort ist die Bewerbung sonst nicht erreichbar, ohne das
+                    Menue wieder zu schliessen. */}
+                <a
+                  className="account-menu-item"
+                  href="/freelancer/apply"
+                  onClick={() => { setAccountMenuOpen(false); setSidebarOpen(false); }}
+                >
+                  Als Freelancer bewerben
+                </a>
                 {isAccountUser ? (
                   <>
                     {auth.admin && apiPaths.adminUsage ? (
                       <button
+                        className="account-menu-item"
                         type="button"
                         onClick={() => window.location.assign(apiPaths.adminUsage!)}
                       >
@@ -2603,6 +2624,7 @@ export function ChatWorkspace({
                     ) : null}
                     {auth.admin && apiPaths.adminFreelancers ? (
                       <button
+                        className="account-menu-item"
                         type="button"
                         onClick={() =>
                           window.location.assign(apiPaths.adminFreelancers!)
@@ -2611,16 +2633,16 @@ export function ChatWorkspace({
                         Freelancer-Bewerbungen prüfen
                       </button>
                     ) : null}
-                    <button type="button" onClick={() => void exportData()} disabled={dataAction === "export"}>Daten exportieren</button>
-                    <button type="button" onClick={() => { setAccountMenuOpen(false); openCookieSettings(); }}>Cookie-Einstellungen verwalten</button>
-                    <button type="button" onClick={() => { setAccountMenuOpen(false); setDeleteOpen(true); }}>Daten & Konto löschen</button>
+                    <button className="account-menu-item" type="button" onClick={() => void exportData()} disabled={dataAction === "export"}>Daten exportieren</button>
+                    <button className="account-menu-item" type="button" onClick={() => { setAccountMenuOpen(false); openCookieSettings(); }}>Cookie-Einstellungen verwalten</button>
+                    <button className="account-menu-item is-danger" type="button" onClick={() => { setAccountMenuOpen(false); setDeleteOpen(true); }}>Daten & Konto löschen</button>
                     <div className="menu-divider" />
-                    <button type="button" onClick={() => void signOut()}>Abmelden</button>
+                    <button className="account-menu-item" type="button" onClick={() => void signOut()}>Abmelden</button>
                   </>
                 ) : (
                   <>
-                    <button type="button" onClick={() => { setAccountMenuOpen(false); setSidebarOpen(false); setAuthInitialMode("login"); setAuthOpen(true); }}>Anmelden oder Konto erstellen</button>
-                    <button type="button" onClick={() => { setAccountMenuOpen(false); openCookieSettings(); }}>Cookie-Einstellungen verwalten</button>
+                    <button className="account-menu-item" type="button" onClick={() => { setAccountMenuOpen(false); setSidebarOpen(false); setAuthInitialMode("login"); setAuthOpen(true); }}>Anmelden oder Konto erstellen</button>
+                    <button className="account-menu-item" type="button" onClick={() => { setAccountMenuOpen(false); openCookieSettings(); }}>Cookie-Einstellungen verwalten</button>
                   </>
                 )}
                 <p className="account-privacy-note">Projekte werden nur Ihrem aktuellen Zugang zugeordnet.</p>
@@ -2695,21 +2717,18 @@ export function ChatWorkspace({
 
       {sidebarOpen ? <button className="sidebar-scrim" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schließen" /> : null}
 
-      <main className="chat-panel">
-        <header className="topbar">
+      <main className={`chat-panel${emptyChat ? " is-empty-chat" : ""}`}>
+        {/* Der Projekttitel stand hier und wiederholte, was in der Seitenleiste
+            als ausgewaehlter Chat ohnehin markiert ist. Der Platz gehoert jetzt
+            der Unterhaltung, damit die Profilkarten ihre Breite bekommen.
+            Merkliste und Agenten behalten ihre Beschriftung: das sind eigene
+            Ansichten, und sie haben in der Leiste keine Entsprechung. */}
+        <header className={`topbar${isTeamView || isAgentView ? "" : " is-bare"}`}>
           <div className="topbar-left">
             <button className="icon-button mobile-menu" type="button" onClick={() => setSidebarOpen(true)} aria-label="Projekte öffnen"><IconMenu size={18} /></button>
             <div>
-              {/* No placeholder title: an untitled conversation shows nothing
-                  rather than a label that repeats what the page already is. */}
-              {isTeamView || isAgentView || activeProject?.title ? (
-                <p className="topbar-title">
-                  {isTeamView
-                    ? "Merkliste"
-                    : isAgentView
-                      ? "KI-Agenten"
-                      : activeProject?.title}
-                </p>
+              {isTeamView || isAgentView ? (
+                <p className="topbar-title">{isTeamView ? "Merkliste" : "KI-Agenten"}</p>
               ) : null}
             </div>
           </div>
@@ -2818,7 +2837,7 @@ export function ChatWorkspace({
           <div className="chat-scroll" aria-live="polite">
           <div className="conversation">
             {messages.length === 0 && !pendingAssistant ? (
-              <WelcomeState onSuggestion={startGuidedRequest} />
+              <WelcomeState />
             ) : (
               <div className="message-list">
                 {messages.map((message) => (
@@ -2855,7 +2874,13 @@ export function ChatWorkspace({
                       setAuthOpen(true);
                     }}
                     selectedProfileId={selectedProfileId}
-                    onOpenDetails={() => setDetailsOpen(true)}
+                    onOpenDetails={() => {
+                      setProfileFocus(false);
+                      setDetailsOpen(true);
+                    }}
+                    profileFocus={profileFocus}
+                    onToggleProfileFocus={() => setProfileFocus((current) => !current)}
+                    detailsOpen={detailsOpen}
                     savedFreelancerIds={
                       isAccountUser ? team.map((member) => member.profile.id) : []
                     }
@@ -2894,18 +2919,35 @@ export function ChatWorkspace({
           ) : null}
           <form className={`composer ${freeUsageExhausted ? "is-quota-exhausted" : ""}`} onSubmit={handleSubmit}>
             <label className="sr-only" htmlFor="chat-composer">Projekt oder Ergänzung beschreiben</label>
-            <textarea
-              id="chat-composer"
-              ref={composerRef}
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              onKeyDown={handleComposerKeyDown}
-              placeholder={messages.length ? "Projektbeschreibung einfügen oder weitere Informationen ergänzen …" : "Welchen Freelancer suchen Sie?"}
-              rows={1}
-              maxLength={12_000}
-            />
+            {/* Der Platzhalter wird selbst gezeichnet, statt dem Attribut
+                ueberlassen zu werden. Wird das Feld schmal — etwa weil die
+                Projektuebersicht aufgeht — soll er in derselben Zeile mit "…"
+                enden statt umzubrechen. `text-overflow: ellipsis` wirkt auf
+                `::placeholder` eines Textfeldes nicht: der Text wird dort hart
+                abgeschnitten. Das Feld behaelt seine Beschriftung ueber das
+                `sr-only`-Label darueber, es geht also nichts verloren. */}
+            <div className="composer-field">
+              <textarea
+                id="chat-composer"
+                ref={composerRef}
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                onKeyDown={handleComposerKeyDown}
+                rows={1}
+                maxLength={12_000}
+              />
+              {draft ? null : (
+                <span className="composer-placeholder" aria-hidden="true">
+                  {messages.length
+                    ? "Projektbeschreibung einfügen oder weitere Informationen ergänzen …"
+                    : "Welchen Freelancer suchen Sie?"}
+                </span>
+              )}
+            </div>
+            {/* Der Hinweis "Details jederzeit frei ergänzen" stand unter dem
+                Feld und sagte, was ein Freitextfeld ohnehin anbietet. Der
+                Sendeknopf rueckt an seine Stelle nach rechts. */}
             <div className="composer-bottom">
-              <div className="composer-hint"><span aria-hidden="true"><IconPlus size={14} /></span> Details jederzeit frei ergänzen</div>
               <button
                 className="send-button"
                 type="submit"
@@ -2916,6 +2958,7 @@ export function ChatWorkspace({
               </button>
             </div>
           </form>
+          {emptyChat ? <SuggestionGrid onSuggestion={startGuidedRequest} /> : null}
           {/* Der laufende Zählerstand stand hier früher bei jeder Anfrage und
               lenkte vom Schreiben ab. Gemeldet wird nur noch der Moment, in dem
               das Guthaben aufgebraucht ist — und für einen Gast ist das der
@@ -2983,7 +3026,12 @@ export function ChatWorkspace({
           <ProjectDetails
             brief={brief}
             selectedProfile={selectedProfile}
+            busy={Boolean(pendingAssistant)}
+            analysis={analysisTrace}
+            profileCount={profiles.length}
+            partialProfileCount={partialProfiles.length}
             onContact={() => setContactOpen(true)}
+            onUpdateBrief={(message) => void sendMessage(message)}
           />
         )}
       </aside>
@@ -3068,21 +3116,26 @@ function SidebarSkeleton({ rows }: { rows: number }) {
   );
 }
 
-function WelcomeState({ onSuggestion }: { onSuggestion: (suggestion: Suggestion) => void }) {
+function WelcomeState() {
   return (
     <section className="welcome-state" aria-labelledby="welcome-title">
       <div className="assistant-emblem" aria-hidden="true"><span><IconSpark size={22} /></span></div>
       <h1 id="welcome-title">Welchen Freelancer suchen Sie?</h1>
-      <div className="suggestion-grid" aria-label="Beispielanfragen">
-        {suggestions.map((suggestion) => (
-          <button key={suggestion.label} type="button" onClick={() => onSuggestion(suggestion)}>
-            <span className="suggestion-label">{suggestion.label}</span>
-            <span className="suggestion-description">{suggestion.description}</span>
-            <span className="suggestion-arrow" aria-hidden="true"><IconArrowRight size={17} /></span>
-          </button>
-        ))}
-      </div>
     </section>
+  );
+}
+
+function SuggestionGrid({ onSuggestion }: { onSuggestion: (suggestion: Suggestion) => void }) {
+  return (
+    <div className="suggestion-grid" aria-label="Beispielanfragen">
+      {suggestions.map((suggestion) => (
+        <button key={suggestion.label} type="button" onClick={() => onSuggestion(suggestion)}>
+          <span className="suggestion-label">{suggestion.label}</span>
+          <span className="suggestion-description">{suggestion.description}</span>
+          <span className="suggestion-arrow" aria-hidden="true"><IconArrowRight size={17} /></span>
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -3271,4 +3324,3 @@ function SidebarChatList({
     </div>
   );
 }
-
