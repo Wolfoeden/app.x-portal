@@ -1515,7 +1515,7 @@ a {
 .suggestion-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  width: min(100%, 640px);
+  width: min(100%, 1000px);
   gap: 10px;
   margin: 14px auto 0;
 }
@@ -2625,7 +2625,7 @@ dd.is-unknown,
 .composer,
 .selection-strip,
 .composer-credit-status {
-  width: min(100%, 600px);
+  width: min(100%, 1000px);
   margin-right: auto;
   margin-left: auto;
 }
@@ -2635,7 +2635,7 @@ dd.is-unknown,
    in zwei. Auf schmalen Fenstern greift die min()-Grenze und er bricht wie
    zuvor. */
 .composer-disclosure {
-  width: min(100%, 980px);
+  width: min(100%, 940px);
   margin-right: auto;
   margin-left: auto;
 }
@@ -2858,10 +2858,17 @@ dd.is-unknown,
   color: var(--danger);
 }
 
-.composer textarea {
-  display: block;
+.composer-field {
+  position: relative;
+  display: flex;
   min-width: 0;
   flex: 1;
+}
+
+.composer textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
   min-height: 50px;
   max-height: 180px;
   resize: none;
@@ -5919,6 +5926,64 @@ dd.is-unknown,
 @media (min-width: 861px) {
   .chat-panel:has(.topbar.is-bare) {
     --topbar-height: 44px;
+  }
+}
+
+/* Platzhalter im Eingabefeld -------------------------------------------- */
+
+.composer-placeholder {
+  position: absolute;
+  top: 14px;
+  right: 4px;
+  left: 20px;
+  overflow: hidden;
+  color: var(--placeholder);
+  font-size: var(--fs-base);
+  line-height: 1.45;
+  pointer-events: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Profil ein- und ausklappen -------------------------------------------- */
+
+/* Erscheint nur, wenn die Projektuebersicht offen ist und die Spalte schmal
+   wird. Der Pfeil dreht sich mit dem Zustand, damit man ohne Lesen sieht,
+   wohin der Klick fuehrt. */
+.profile-collapse-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 12px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-soft);
+  padding: 5px 12px 5px 9px;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--fs-2xs);
+  font-weight: 650;
+}
+
+.profile-collapse-toggle:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+  color: var(--ink);
+}
+
+.profile-collapse-toggle > span {
+  display: inline-flex;
+  transition: transform 140ms ease;
+}
+
+.profile-collapse-toggle[aria-expanded="false"] > span {
+  transform: rotate(-90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-collapse-toggle > span {
+    transition: none;
   }
 }
 

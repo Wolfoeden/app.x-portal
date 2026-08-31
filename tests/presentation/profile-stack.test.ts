@@ -32,6 +32,7 @@ function render(profiles: FreelancerProfileResult[], profileFocus = false) {
       onToggleSave: () => undefined,
       profileFocus,
       onToggleProfileFocus: () => undefined,
+      detailsOpen: false,
     }),
   );
 }
@@ -85,3 +86,104 @@ describe("result section", () => {
     expect(render(previewProfiles.slice(0, 1))).not.toContain("Nebeneinander vergleichen");
   });
 });
+
+describe("collapsing profiles beside the open panel", () => {
+  function renderWithPanel(profileFocus = false) {
+    return renderToStaticMarkup(
+      createElement(ResultSection, {
+        brief: previewBrief,
+        projectId: "project/test",
+        profiles: previewProfiles,
+        partialProfiles: [],
+        matchingStatus: "ranked" as const,
+        analysis: null,
+        analysisMode: "ai" as const,
+        externalSearch: null,
+        externalSearchState: "idle" as const,
+        onExternalSearch: () => undefined,
+        isAccountUser: true,
+        productCredits: null,
+        onRequireLogin: () => undefined,
+        selectedProfileId: null,
+        onSelect: () => undefined,
+        onContact: () => undefined,
+        onRequestBooking: () => undefined,
+        expandedProfileUrl: null,
+        onToggleExpand: () => undefined,
+        savedFreelancerIds: [],
+        onToggleSave: () => undefined,
+        profileFocus,
+        onToggleProfileFocus: () => undefined,
+        detailsOpen: true,
+      }),
+    );
+  }
+
+  // Steht die Projektuebersicht offen, bleibt fuer die Karten wenig Breite.
+  it("collapses the text and offers a way to open it", () => {
+    const markup = renderWithPanel();
+
+    expect(markup).toContain("Profil ausklappen");
+    expect(markup).toContain('aria-expanded="false"');
+    // Der Kopf bleibt lesbar, der Text ist zu.
+    expect(markup).toContain(previewProfiles[0].displayName);
+    expect(markup).not.toContain("Das ist belegt");
+  });
+
+  it("keeps the actions reachable while collapsed", () => {
+    const markup = renderWithPanel();
+
+    expect(markup).toContain("Zur Merkliste");
+    expect(markup).toContain("Kontaktwege anzeigen");
+  });
+
+  it("leaves the card open when the panel is closed", () => {
+    const markup = render(previewProfiles);
+
+    expect(markup).not.toContain("Profil ausklappen");
+    expect(markup).toContain("Das ist belegt");
+  });
+});
+
+describe("comparing side by side", () => {
+  // Nebeneinander ist der Platz gerade der Zweck — dort waere ein zusaetzlich
+  // zusammengefaltetes Profil widersinnig.
+  it("shows every profile in full, even with the panel open", () => {
+    const markup = renderWithPanelSideBySide();
+
+    expect(markup).toContain("profile-compare-grid");
+    expect(markup).not.toContain("Profil ausklappen");
+    expect(markup).toContain("Das ist belegt");
+  });
+});
+
+function renderWithPanelSideBySide() {
+  return renderToStaticMarkup(
+    createElement(ResultSection, {
+      brief: previewBrief,
+      projectId: "project/test",
+      profiles: previewProfiles,
+      partialProfiles: [],
+      matchingStatus: "ranked" as const,
+      analysis: null,
+      analysisMode: "ai" as const,
+      externalSearch: null,
+      externalSearchState: "idle" as const,
+      onExternalSearch: () => undefined,
+      isAccountUser: true,
+      productCredits: null,
+      onRequireLogin: () => undefined,
+      selectedProfileId: null,
+      onSelect: () => undefined,
+      onContact: () => undefined,
+      onRequestBooking: () => undefined,
+      expandedProfileUrl: null,
+      onToggleExpand: () => undefined,
+      savedFreelancerIds: [],
+      onToggleSave: () => undefined,
+      profileFocus: true,
+      onToggleProfileFocus: () => undefined,
+      detailsOpen: true,
+    }),
+  );
+}

@@ -2880,6 +2880,7 @@ export function ChatWorkspace({
                     }}
                     profileFocus={profileFocus}
                     onToggleProfileFocus={() => setProfileFocus((current) => !current)}
+                    detailsOpen={detailsOpen}
                     savedFreelancerIds={
                       isAccountUser ? team.map((member) => member.profile.id) : []
                     }
@@ -2918,16 +2919,31 @@ export function ChatWorkspace({
           ) : null}
           <form className={`composer ${freeUsageExhausted ? "is-quota-exhausted" : ""}`} onSubmit={handleSubmit}>
             <label className="sr-only" htmlFor="chat-composer">Projekt oder Ergänzung beschreiben</label>
-            <textarea
-              id="chat-composer"
-              ref={composerRef}
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              onKeyDown={handleComposerKeyDown}
-              placeholder={messages.length ? "Projektbeschreibung einfügen oder weitere Informationen ergänzen …" : "Welchen Freelancer suchen Sie?"}
-              rows={1}
-              maxLength={12_000}
-            />
+            {/* Der Platzhalter wird selbst gezeichnet, statt dem Attribut
+                ueberlassen zu werden. Wird das Feld schmal — etwa weil die
+                Projektuebersicht aufgeht — soll er in derselben Zeile mit "…"
+                enden statt umzubrechen. `text-overflow: ellipsis` wirkt auf
+                `::placeholder` eines Textfeldes nicht: der Text wird dort hart
+                abgeschnitten. Das Feld behaelt seine Beschriftung ueber das
+                `sr-only`-Label darueber, es geht also nichts verloren. */}
+            <div className="composer-field">
+              <textarea
+                id="chat-composer"
+                ref={composerRef}
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                onKeyDown={handleComposerKeyDown}
+                rows={1}
+                maxLength={12_000}
+              />
+              {draft ? null : (
+                <span className="composer-placeholder" aria-hidden="true">
+                  {messages.length
+                    ? "Projektbeschreibung einfügen oder weitere Informationen ergänzen …"
+                    : "Welchen Freelancer suchen Sie?"}
+                </span>
+              )}
+            </div>
             {/* Der Hinweis "Details jederzeit frei ergänzen" stand unter dem
                 Feld und sagte, was ein Freitextfeld ohnehin anbietet. Der
                 Sendeknopf rueckt an seine Stelle nach rechts. */}

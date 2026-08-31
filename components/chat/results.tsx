@@ -343,6 +343,7 @@ export function ResultSection({
   onOpenDetails,
   profileFocus,
   onToggleProfileFocus,
+  detailsOpen,
 }: {
   brief: StructuredBrief | null;
   projectId: string | null;
@@ -369,8 +370,20 @@ export function ResultSection({
   /** Beide Leisten eingeklappt, Profile nebeneinander. */
   profileFocus: boolean;
   onToggleProfileFocus: () => void;
+  /** Steht die Projektuebersicht offen, bleibt fuer die Karten wenig Breite. */
+  detailsOpen: boolean;
 }) {
   const searchCta = externalSearchCtaState(isAccountUser, productCredits);
+  /**
+   * Bei offener Projektuebersicht zeigen die Karten nur noch Kopf und
+   * Aktionen. Aufgeklappt ist immer hoechstens eine: zwei ausgeklappte Karten
+   * nebeneinander in der schmalen Spalte waeren genau der Zustand, den das
+   * Einklappen vermeiden soll.
+   */
+  const [expandedProfileId, setExpandedProfileId] = useState<string | null>(null);
+  // Im Vergleich sind beide Leisten eingeklappt und der Platz ist gerade der
+  // Zweck — dort waere ein zusaetzlich zusammengefaltetes Profil widersinnig.
+  const cardsCollapsible = detailsOpen && !profileFocus;
   const resultHeading =
     matchingStatus === "needs_clarification"
       ? "Bitte konkretisieren Sie die Anforderung"
@@ -414,6 +427,15 @@ export function ResultSection({
                 onRequestBooking={() => onRequestBooking(profile)}
                 saved={savedFreelancerIds.includes(profile.id)}
                 onToggleSave={() => onToggleSave(profile)}
+                collapsed={cardsCollapsible && expandedProfileId !== profile.id}
+                onToggleCollapsed={
+                  cardsCollapsible
+                    ? () =>
+                        setExpandedProfileId((current) =>
+                          current === profile.id ? null : profile.id,
+                        )
+                    : undefined
+                }
               />
             )}
           />
@@ -1039,6 +1061,8 @@ export function ProfileCard({
   onRequestBooking,
   saved,
   onToggleSave,
+  collapsed = false,
+  onToggleCollapsed,
 }: {
   profile: FreelancerProfileResult;
   position: number;
@@ -1050,6 +1074,9 @@ export function ProfileCard({
   onRequestBooking: () => void;
   saved: boolean;
   onToggleSave: () => void;
+  /** Nur Kopf und Aktionen zeigen — der Text bleibt zu. */
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 }) {
   const verifiedFacts = profile.facts.filter((fact) => fact.verification === "verified");
   const selfReportedFacts = profile.facts.filter((fact) => fact.verification === "self-reported");
@@ -1117,12 +1144,29 @@ export function ProfileCard({
           </div>
         </header>
 
-        {profile.experienceSummary ? <p className="experience-summary">{profile.experienceSummary}</p> : null}
-
+        {/* Eingeklappt bleiben Kopf, Schlagworte und Aktionen stehen — genug,
+            um die Karte wiederzuerkennen und zu handeln. Alles, was gelesen
+            werden will, kommt erst beim Ausklappen. */}
         <div className="profile-tags">
           {profile.skillTags.slice(0, 5).map((skill) => <span key={skill}>{skill}</span>)}
           {profile.skillTags.length > 5 ? <span className="profile-tags-more">+{profile.skillTags.length - 5}</span> : null}
         </div>
+
+        {onToggleCollapsed ? (
+          <button
+            className="profile-collapse-toggle"
+            type="button"
+            onClick={onToggleCollapsed}
+            aria-expanded={!collapsed}
+          >
+            <span aria-hidden="true"><IconChevronDown size={14} /></span>
+            {collapsed ? "Profil ausklappen" : "Profil einklappen"}
+          </button>
+        ) : null}
+
+        {collapsed ? null : (
+        <>
+        {profile.experienceSummary ? <p className="experience-summary">{profile.experienceSummary}</p> : null}
 
         <div className="match-columns">
           <div className="match-column reasons">
@@ -1173,6 +1217,8 @@ export function ProfileCard({
             <span aria-hidden="true">{profile.referenceStatus === "Verifiziert" ? <IconCheck size={12} /> : <IconInfo size={12} />}</span> Referenzstatus: {profile.referenceStatus}
           </p>
         ) : null}
+        </>
+        )}
 
         {/* Bei einem Teiltreffer bleibt der Hinweis stehen: dass hier auf eigene
             Entscheidung gehandelt wird, muss neben den Knoepfen stehen und
