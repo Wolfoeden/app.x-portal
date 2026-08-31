@@ -1,5 +1,7 @@
 import { ImageResponse } from "next/og";
 
+import { BRAND_MARK_PATHS } from "@/components/BrandMark";
+
 /**
  * Der Browser-Tab hatte bisher kein Zeichen — es gab kein `public/` und keine
  * Icon-Datei. Erzeugt statt als Binärdatei abgelegt, damit die Marke an einer
@@ -20,13 +22,13 @@ export default function Icon() {
           width: "100%",
           height: "100%",
           background: "#090909",
-          color: "#f1f1ec",
-          fontSize: 22,
-          fontWeight: 700,
-          letterSpacing: "-0.05em",
         }}
       >
-        X
+        <svg width={21} height={21} viewBox="0 0 24 24" fill="#f1f1ec">
+          {BRAND_MARK_PATHS.map((d) => (
+            <path key={d} d={d} />
+          ))}
+        </svg>
       </div>
     ),
     size,

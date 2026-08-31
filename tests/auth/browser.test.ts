@@ -165,7 +165,10 @@ describe("browser authentication journeys", () => {
   });
 
   it("creates an email account with an explicit password and confirmation callback", async () => {
-    const result = await registerEmailAccount("user@example.com", "secure-password");
+    const result = await registerEmailAccount("user@example.com", "secure-password", {
+      termsAcceptedAt: "2026-08-31T10:00:00.000Z",
+      marketingEmails: false,
+    });
 
     expect(result).toEqual({ confirmationRequired: true });
     expect(auth.signUp).toHaveBeenCalledWith({
@@ -173,8 +176,30 @@ describe("browser authentication journeys", () => {
       password: "secure-password",
       options: {
         emailRedirectTo: "https://x-portal.eu/auth/complete?next=%2Fchat&state=email-state",
+        data: {
+          terms_accepted_at: "2026-08-31T10:00:00.000Z",
+          marketing_emails: false,
+        },
       },
     });
+  });
+
+  it("records an opt-in for optional email on the new account", async () => {
+    await registerEmailAccount("user@example.com", "secure-password", {
+      termsAcceptedAt: "2026-08-31T10:00:00.000Z",
+      marketingEmails: true,
+    });
+
+    expect(auth.signUp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: expect.objectContaining({
+          data: {
+            terms_accepted_at: "2026-08-31T10:00:00.000Z",
+            marketing_emails: true,
+          },
+        }),
+      }),
+    );
   });
 
   it("returns a confirmed email account to the freelancer portal", async () => {
@@ -186,14 +211,17 @@ describe("browser authentication journeys", () => {
       },
     });
 
-    await registerEmailAccount("freelancer@example.com", "secure-password");
+    await registerEmailAccount("freelancer@example.com", "secure-password", {
+      termsAcceptedAt: "2026-08-31T10:00:00.000Z",
+      marketingEmails: false,
+    });
 
     expect(auth.signUp).toHaveBeenCalledWith(
       expect.objectContaining({
-        options: {
+        options: expect.objectContaining({
           emailRedirectTo:
             "https://x-portal.eu/auth/complete?next=%2Ffreelancer%2Fapply&state=email-state",
-        },
+        }),
       }),
     );
   });
@@ -205,7 +233,12 @@ describe("browser authentication journeys", () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({ state: "email-state" }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ claimed: true }), { status: 200 }));
 
-    await expect(registerEmailAccount("user@example.com", "secure-password")).resolves.toEqual({
+    await expect(
+      registerEmailAccount("user@example.com", "secure-password", {
+        termsAcceptedAt: "2026-08-31T10:00:00.000Z",
+        marketingEmails: false,
+      }),
+    ).resolves.toEqual({
       confirmationRequired: false,
     });
     expect(fetch).toHaveBeenLastCalledWith("/api/auth/claim", expect.objectContaining({ method: "POST" }));

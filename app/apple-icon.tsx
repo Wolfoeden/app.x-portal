@@ -1,5 +1,7 @@
 import { ImageResponse } from "next/og";
 
+import { BRAND_MARK_PATHS } from "@/components/BrandMark";
+
 /** Dasselbe Zeichen in der Größe, die iOS für den Startbildschirm erwartet. */
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
@@ -15,13 +17,13 @@ export default function AppleIcon() {
           width: "100%",
           height: "100%",
           background: "#090909",
-          color: "#f1f1ec",
-          fontSize: 120,
-          fontWeight: 700,
-          letterSpacing: "-0.05em",
         }}
       >
-        X
+        <svg width={116} height={116} viewBox="0 0 24 24" fill="#f1f1ec">
+          {BRAND_MARK_PATHS.map((d) => (
+            <path key={d} d={d} />
+          ))}
+        </svg>
       </div>
     ),
     size,
