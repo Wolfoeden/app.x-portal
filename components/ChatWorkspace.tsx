@@ -2598,6 +2598,17 @@ export function ChatWorkspace({
                   }}
                 />
                 <p className="account-menu-section-label">Einstellungen</p>
+                {/* Derselbe Weg wie in der Seitenleiste. Wer sich gerade
+                    anmeldet, hat das Menue offen und die Leiste im Ruecken —
+                    dort ist die Bewerbung sonst nicht erreichbar, ohne das
+                    Menue wieder zu schliessen. */}
+                <a
+                  className="account-menu-item"
+                  href="/freelancer/apply"
+                  onClick={() => { setAccountMenuOpen(false); setSidebarOpen(false); }}
+                >
+                  Als Freelancer bewerben
+                </a>
                 {isAccountUser ? (
                   <>
                     {auth.admin && apiPaths.adminUsage ? (

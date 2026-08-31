@@ -1336,7 +1336,8 @@ a {
   text-overflow: ellipsis;
 }
 
-.account-popover > button {
+.account-popover > button,
+.account-popover > a.account-menu-item {
   min-height: 42px;
   cursor: pointer;
   border-radius: 10px;
@@ -1347,7 +1348,16 @@ a {
   text-align: left;
 }
 
-.account-popover > button:hover {
+/* Der Eintrag ist ein Link und kein Knopf; die Zeilenhoehe der Nachbarn
+   entsteht bei ihm nicht von selbst. */
+.account-popover > a.account-menu-item {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.account-popover > button:hover,
+.account-popover > a.account-menu-item:hover {
   background: #f1f1ef;
 }
 
