@@ -2445,7 +2445,7 @@ export function ChatWorkspace({
         <div className="sidebar-scroll">
         <div className="sidebar-top">
           <div className="product-mark" aria-label="XPORTAL Freelancer">
-            <BrandMark className="mark-glyph" size={27} />
+            <BrandMark className="mark-glyph" height={26} />
             <span>PORTAL / Freelancer</span>
           </div>
           <button className="icon-button sidebar-close" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schließen"><IconClose size={18} /></button>

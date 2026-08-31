@@ -342,12 +342,13 @@ a {
   letter-spacing: -0.035em;
 }
 
+/* Die Marke ist breiter als hoch (133x101). Die Hoehe gibt das Mass vor, die
+   Breite folgt — eine feste Breite wuerde sie stauchen. */
 .mark-glyph {
   display: block;
-  width: 27px;
-  height: 27px;
+  width: auto;
+  height: 26px;
   flex: none;
-  color: var(--ink);
 }
 
 .icon-button {
