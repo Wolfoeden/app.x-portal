@@ -1712,17 +1712,6 @@ a {
   margin-left: 41px;
 }
 
-.result-supporting-context {
-  display: grid;
-  gap: 10px;
-  margin-top: 6px;
-  border-top: 1px solid var(--border);
-  padding-top: 18px;
-}
-
-.result-supporting-context > .eyebrow { margin-bottom: 0; }
-
-.brief-card,
 .profile-card,
 .no-match-card {
   border: 1px solid var(--border);
@@ -1730,19 +1719,6 @@ a {
   background: var(--surface);
 }
 
-.brief-card {
-  overflow: hidden;
-  padding: 18px 19px 0;
-}
-
-.brief-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.brief-header h2,
 .shortlist-heading h2,
 .details-heading h2 {
   margin: 0;
@@ -1750,28 +1726,6 @@ a {
   font-size: var(--fs-lg);
   font-weight: 400;
   letter-spacing: -0.025em;
-}
-
-.brief-status {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 5px;
-  border-radius: var(--radius-pill);
-  background: var(--green-soft);
-  color: var(--green);
-  padding: 5px 8px;
-  font-size: var(--fs-2xs);
-  font-weight: 750;
-  letter-spacing: 0.035em;
-  text-transform: uppercase;
-}
-
-.brief-summary {
-  margin: 10px 0 15px;
-  color: var(--muted);
-  font-size: var(--fs-sm);
-  line-height: 1.6;
 }
 
 .profile-meta-grid > div,
@@ -2094,33 +2048,6 @@ dd.is-unknown,
   color: var(--muted);
   font-size: var(--fs-xs);
   line-height: 1.55;
-}
-
-/* The chat card states what was understood and hands off to the panel. */
-.brief-counts {
-  margin: 10px 0 0;
-  color: var(--muted);
-  font-size: var(--fs-xs);
-  font-weight: 560;
-}
-
-.brief-open-details {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 12px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--ink);
-  font: inherit;
-  font-size: var(--fs-xs);
-  font-weight: 650;
-  cursor: pointer;
-}
-
-.brief-open-details:hover {
-  text-decoration: underline;
 }
 
 .details-section-label {
@@ -4080,7 +4007,6 @@ dd.is-unknown,
 .suggestion-arrow,
 .analysis-trace-toggle,
 .composer-hint span,
-.brief-status > span,
 .match-column h4 span,
 .reference-note > span,
 .continue-note > span,
@@ -4106,7 +4032,6 @@ dd.is-unknown,
 .calendar-consent button,
 .external-links a,
 .reference-note,
-.brief-status,
 .match-column h4 {
   display: inline-flex;
   align-items: center;
@@ -5702,6 +5627,237 @@ dd.is-unknown,
 .agent-locked .composer-signup {
   justify-self: center;
   margin-top: 4px;
+}
+
+/* Steckbrief-Zeile ------------------------------------------------------- */
+
+/* Der Steckbrief ist die Voraussetzung des Ergebnisses, nicht sein Anhang —
+   deshalb eine Zeile darueber statt einer Karte darunter. Ausfuehrlich steht
+   ohnehin alles in der rechten Leiste. */
+.brief-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  padding: 7px 8px 7px 13px;
+}
+
+.brief-line-mark {
+  display: inline-flex;
+  flex: none;
+  color: var(--green);
+}
+
+.brief-line-text {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 0;
+  font-size: var(--fs-xs);
+}
+
+.brief-line-text strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brief-line-text span {
+  color: var(--muted-light);
+  white-space: nowrap;
+}
+
+.brief-line-action {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-soft);
+  padding: 5px 11px;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--fs-2xs);
+  font-weight: 650;
+}
+
+.brief-line-action:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+}
+
+/* Profil-Stapel ---------------------------------------------------------- */
+
+.profile-stack-bar,
+.profile-compare-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-bottom: 10px;
+}
+
+.profile-stack-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.profile-stack-nav button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink-soft);
+}
+
+.profile-stack-nav button:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+}
+
+.profile-stack-nav button:disabled {
+  cursor: default;
+  color: var(--muted-light);
+  opacity: 0.5;
+}
+
+.profile-stack-nav span {
+  min-width: 62px;
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+  font-weight: 650;
+  text-align: center;
+}
+
+/* Die verdeckten Karten bleiben im Baum, damit ein Wechsel den Zustand der
+   Karte nicht jedes Mal neu aufbaut. Sie duerfen aber keinen Platz belegen. */
+.profile-stack-deck {
+  position: relative;
+}
+
+.profile-stack-item {
+  display: none;
+}
+
+.profile-stack-item.is-active {
+  display: block;
+}
+
+/* Zwei angedeutete Kanten unter der Karte zeigen, dass noch etwas dahinter
+   liegt — ohne die haette der Stapel keine Tiefe und der Pfeil kaeme
+   unmotiviert. */
+.profile-stack-shadow {
+  pointer-events: none;
+}
+
+.profile-stack-shadow[data-remaining='0'] {
+  display: none;
+}
+
+.profile-stack-shadow::before,
+.profile-stack-shadow::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  left: 8px;
+  height: 10px;
+  border: 1px solid var(--border);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  background: var(--surface);
+}
+
+.profile-stack-shadow::before {
+  top: 100%;
+}
+
+.profile-stack-shadow::after {
+  top: calc(100% + 5px);
+  right: 16px;
+  left: 16px;
+  opacity: 0.6;
+}
+
+.profile-stack-shadow[data-remaining='1']::after {
+  display: none;
+}
+
+/* Vergleich nebeneinander ------------------------------------------------ */
+
+.profile-compare-bar p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+  font-weight: 650;
+}
+
+.profile-compare-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  align-items: start;
+}
+
+.profile-compare-cell {
+  min-width: 0;
+}
+
+/* Nebeneinander ist wenig Platz je Karte. Die Fussleiste der Karte legt ihre
+   Knoepfe deshalb untereinander, statt sie in eine Zeile zu quetschen. */
+.profile-compare-cell .profile-footer {
+  display: grid;
+  gap: 10px;
+}
+
+.profile-compare-cell .profile-actions {
+  display: grid;
+  gap: 6px;
+}
+
+.profile-compare-cell .match-columns {
+  grid-template-columns: 1fr;
+}
+
+/* Fokus: beide Leisten eingeklappt --------------------------------------- */
+
+.app-shell.is-profile-focus {
+  grid-template-columns: 1fr;
+}
+
+.app-shell.is-profile-focus .project-sidebar,
+.app-shell.is-profile-focus .details-panel,
+.app-shell.is-profile-focus .details-toggle {
+  display: none;
+}
+
+/* Der Lesestreifen der Unterhaltung ist auf 940 px begrenzt — die Breite, in
+   der sich Fliesstext gut liest, aber zu schmal fuer zwei Karten nebeneinander.
+   Gesetzt ist dort `width`, nicht `max-width`: eine Regel gegen `max-width`
+   liefe hier ins Leere. */
+.app-shell.is-profile-focus .conversation {
+  width: min(100%, 1600px);
+}
+
+@media (max-width: 860px) {
+  .profile-compare-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Anzeigedichte ---------------------------------------------------------- */

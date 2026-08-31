@@ -87,6 +87,32 @@ export function IconChevronRight(props: IconProps) {
   );
 }
 
+export function IconChevronLeft(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M14.5 6l-6 6 6 6" />
+    </Glyph>
+  );
+}
+
+/** Vier Ecken, die nach aussen zeigen: die Ansicht macht sich breit. */
+export function IconMaximize(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M9 4H4v5M15 4h5v5M15 20h5v-5M9 20H4v-5" />
+    </Glyph>
+  );
+}
+
+/** Dieselben Ecken nach innen: die Ansicht gibt den Platz wieder her. */
+export function IconMinimize(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M4 9h5V4M20 9h-5V4M20 15h-5v5M4 15h5v5" />
+    </Glyph>
+  );
+}
+
 export function IconArrowRight(props: IconProps) {
   return (
     <Glyph {...props}>

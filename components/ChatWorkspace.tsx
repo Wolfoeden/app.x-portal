@@ -1234,6 +1234,8 @@ export function ChatWorkspace({
   // three. It opens itself once there is a result to show, unless the reader
   // has already expressed a preference by using the toggle.
   const [detailsOpen, setDetailsOpen] = useState(false);
+  /* Beide Leisten eingeklappt, damit die Profile nebeneinander Platz haben. */
+  const [profileFocus, setProfileFocus] = useState(false);
   const detailsTouchedRef = useRef(false);
   /**
    * True until the first workspace load resolves.
@@ -2434,7 +2436,7 @@ export function ChatWorkspace({
 
   return (
     <div
-      className={`app-shell ${detailsOpen ? "" : "details-hidden"}${isAgentView ? " is-agent-view" : ""}${emptyChat ? " is-empty-chat" : ""}${isResizingSidebar ? " is-resizing-sidebar" : ""}`}
+      className={`app-shell ${detailsOpen ? "" : "details-hidden"}${isAgentView ? " is-agent-view" : ""}${emptyChat ? " is-empty-chat" : ""}${profileFocus ? " is-profile-focus" : ""}${isResizingSidebar ? " is-resizing-sidebar" : ""}`}
       style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
     >
       <a className="skip-link" href={isAgentView ? "#agent-directory-title" : "#chat-composer"}>
@@ -2875,7 +2877,12 @@ export function ChatWorkspace({
                       setAuthOpen(true);
                     }}
                     selectedProfileId={selectedProfileId}
-                    onOpenDetails={() => setDetailsOpen(true)}
+                    onOpenDetails={() => {
+                      setProfileFocus(false);
+                      setDetailsOpen(true);
+                    }}
+                    profileFocus={profileFocus}
+                    onToggleProfileFocus={() => setProfileFocus((current) => !current)}
                     savedFreelancerIds={
                       isAccountUser ? team.map((member) => member.profile.id) : []
                     }

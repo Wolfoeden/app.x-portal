@@ -8,7 +8,14 @@
  * actually reads a recommendation from, and it had no boundary of its own.
  */
 
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 
 import { appPath } from "@/lib/app-path";
 import { MINIMUM_CORE_COVERAGE_BASIS_POINTS } from "@/lib/domain/matching";
@@ -42,8 +49,12 @@ import {
   IconArrowUpRight,
   IconCheck,
   IconChevronDown,
+  IconChevronLeft,
+  IconChevronRight,
   IconDocument,
   IconInfo,
+  IconMaximize,
+  IconMinimize,
   IconSearch,
   IconSpark,
 } from "../icons";
@@ -195,6 +206,103 @@ function presentUnknownFields(fields: string[]) {
   return fields.map((field) => unknownFieldLabels[field] ?? field);
 }
 
+/**
+ * Mehrere Treffer als Stapel statt untereinander.
+ *
+ * Drei volle Profilkarten hintereinander sind laenger als der Bildschirm hoch
+ * ist: wer den zweiten mit dem ersten vergleichen will, muss scrollen und aus
+ * dem Gedaechtnis vergleichen. Der Stapel zeigt einen und laesst durchblaettern,
+ * der vergroesserte Zustand klappt beide Leisten ein und stellt sie
+ * nebeneinander — dann liegt der Vergleich nebeneinander statt untereinander.
+ */
+function ProfileStack({
+  profiles,
+  renderCard,
+  focused,
+  onToggleFocus,
+}: {
+  profiles: FreelancerProfileResult[];
+  renderCard: (profile: FreelancerProfileResult, index: number) => ReactNode;
+  focused: boolean;
+  onToggleFocus: () => void;
+}) {
+  const [active, setActive] = useState(0);
+  // Kommt ein neues Ergebnis mit weniger Treffern, zeigt der Zeiger sonst ins
+  // Leere und der Stapel bliebe blank.
+  const current = Math.min(active, Math.max(0, profiles.length - 1));
+
+  if (profiles.length === 1) {
+    return <div className="profile-list">{renderCard(profiles[0], 0)}</div>;
+  }
+
+  if (focused) {
+    return (
+      <div className="profile-compare">
+        <div className="profile-compare-bar">
+          <p>{profiles.length} Profile nebeneinander</p>
+          <button className="text-button" type="button" onClick={onToggleFocus}>
+            <IconMinimize size={13} /> Ansicht verkleinern
+          </button>
+        </div>
+        <div className="profile-compare-grid" data-count={profiles.length}>
+          {profiles.map((profile, index) => (
+            <div className="profile-compare-cell" key={profile.id}>
+              {renderCard(profile, index)}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="profile-stack">
+      <div className="profile-stack-bar">
+        <div className="profile-stack-nav">
+          <button
+            type="button"
+            aria-label="Vorheriges Profil"
+            disabled={current === 0}
+            onClick={() => setActive(current - 1)}
+          >
+            <IconChevronLeft size={15} />
+          </button>
+          <span aria-live="polite">
+            {current + 1} von {profiles.length}
+          </span>
+          <button
+            type="button"
+            aria-label="Nächstes Profil"
+            disabled={current === profiles.length - 1}
+            onClick={() => setActive(current + 1)}
+          >
+            <IconChevronRight size={15} />
+          </button>
+        </div>
+        <button className="text-button" type="button" onClick={onToggleFocus}>
+          <IconMaximize size={13} /> Nebeneinander vergleichen
+        </button>
+      </div>
+
+      {/* Die verdeckten Karten bleiben im Baum, damit ein Wechsel nicht jedes
+          Mal Zustand und Sichtbarkeitsmeldung der Karte neu aufbaut. */}
+      <div className="profile-stack-deck">
+        {profiles.map((profile, index) => (
+          <div
+            className={`profile-stack-item${index === current ? " is-active" : ""}`}
+            key={profile.id}
+            aria-hidden={index === current ? undefined : true}
+            inert={index !== current}
+          >
+            {renderCard(profile, index)}
+          </div>
+        ))}
+        <div className="profile-stack-shadow" aria-hidden="true" data-remaining={profiles.length - current - 1} />
+      </div>
+    </div>
+  );
+}
+
 export function ResultSection({
   brief,
   projectId,
@@ -218,6 +326,8 @@ export function ResultSection({
   savedFreelancerIds,
   onToggleSave,
   onOpenDetails,
+  profileFocus,
+  onToggleProfileFocus,
 }: {
   brief: StructuredBrief | null;
   projectId: string | null;
@@ -241,6 +351,9 @@ export function ResultSection({
   savedFreelancerIds: readonly string[];
   onToggleSave: (profile: FreelancerProfileResult) => void;
   onOpenDetails?: () => void;
+  /** Beide Leisten eingeklappt, Profile nebeneinander. */
+  profileFocus: boolean;
+  onToggleProfileFocus: () => void;
 }) {
   const searchCta = externalSearchCtaState(isAccountUser, productCredits);
   const resultHeading =
@@ -266,13 +379,16 @@ export function ResultSection({
           <span className="result-count is-warning">Keine Empfehlung</span>
         ) : null}
       </div>
+      {brief ? <BriefSummaryLine brief={brief} onOpenDetails={onOpenDetails} /> : null}
       {profiles.length ? (
         <>
           <p className="matching-disclosure">Die Reihenfolge folgt dokumentierten Kriterien wie Pflichtkompetenzen, Sprache, Arbeitsmodus und Verfügbarkeit. Die KI trifft keine Einstellungsentscheidung.</p>
-          <div className="profile-list">
-            {profiles.slice(0, 3).map((profile, index) => (
+          <ProfileStack
+            profiles={profiles.slice(0, 3)}
+            focused={profileFocus}
+            onToggleFocus={onToggleProfileFocus}
+            renderCard={(profile, index) => (
               <ProfileCard
-                key={profile.id}
                 profile={profile}
                 position={index + 1}
                 isAccountUser={isAccountUser}
@@ -284,8 +400,8 @@ export function ResultSection({
                 saved={savedFreelancerIds.includes(profile.id)}
                 onToggleSave={() => onToggleSave(profile)}
               />
-            ))}
-          </div>
+            )}
+          />
         </>
       ) : (
         <>
@@ -393,18 +509,12 @@ export function ResultSection({
           ) : null}
         </>
       )}
-      {brief || analysis ? (
-        <div className="result-supporting-context">
-          <p className="eyebrow">Anfrage &amp; Arbeitsprozess</p>
-          {brief ? <BriefCard brief={brief} onOpenDetails={onOpenDetails} /> : null}
-          {analysis ? (
-            <AnalysisTrace
-              trace={analysis}
-              profileCount={profiles.length}
-              partialProfileCount={partialProfiles.length}
-            />
-          ) : null}
-        </div>
+      {analysis ? (
+        <AnalysisTrace
+          trace={analysis}
+          profileCount={profiles.length}
+          partialProfileCount={partialProfiles.length}
+        />
       ) : null}
     </section>
   );
@@ -722,11 +832,15 @@ function requirementCount(
 }
 
 /**
- * The chat carries the narrative, the detail panel carries the state. This card
- * used to repeat all ten fields the panel already showed, so the same brief was
- * rendered twice on one screen. It now says what was understood and hands off.
+ * Was aus der Anfrage verstanden wurde — in einer Zeile ueber dem Ergebnis.
+ *
+ * Das war eine Karte mit Ueberschrift, Zusammenfassung und eigenem Knopf, und
+ * sie stand unter den Profilen. Beides war verkehrt herum: der Steckbrief ist
+ * die Voraussetzung des Ergebnisses, nicht sein Anhang, und alles darin steht
+ * ohnehin ausfuehrlich in der rechten Leiste. Bleibt der Titel, die Zaehlung
+ * und der Weg dorthin.
  */
-export function BriefCard({
+export function BriefSummaryLine({
   brief,
   onOpenDetails,
 }: {
@@ -744,22 +858,18 @@ export function BriefCard({
   ].filter(Boolean);
 
   return (
-    <article className="brief-card">
-      <div className="brief-header">
-        <div>
-          <p className="eyebrow">Strukturierte Projektanalyse</p>
-          <h2>{brief.projectTitle}</h2>
-        </div>
-        <span className="brief-status"><span aria-hidden="true"><IconCheck size={12} /></span> Strukturiert</span>
-      </div>
-      {brief.summary ? <p className="brief-summary">{brief.summary}</p> : null}
-      {counts.length ? <p className="brief-counts">{counts.join(" · ")}</p> : null}
+    <div className="brief-line">
+      <span className="brief-line-mark" aria-hidden="true"><IconCheck size={12} /></span>
+      <p className="brief-line-text">
+        <strong>{brief.projectTitle}</strong>
+        {counts.length ? <span>{counts.join(" · ")}</span> : null}
+      </p>
       {onOpenDetails ? (
-        <button className="brief-open-details" type="button" onClick={onOpenDetails}>
-          Anforderungen ansehen <IconArrowRight size={13} />
+        <button className="brief-line-action" type="button" onClick={onOpenDetails}>
+          Anforderungen <IconArrowRight size={12} />
         </button>
       ) : null}
-    </article>
+    </div>
   );
 }
 
