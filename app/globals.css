@@ -1393,10 +1393,14 @@ a {
   scrollbar-width: thin;
 }
 
+/* 940 px ist die Breite, in der sich Fliesstext gut liest — aber hier steht
+   nicht nur Fliesstext, sondern die Profilkarten, und die waren darin zu
+   gedraengt. Die Karten geben das Mass vor; die Nachrichtenblasen begrenzen
+   sich weiter unten selbst. */
 .conversation {
   display: flex;
   flex-direction: column;
-  width: min(100%, 940px);
+  width: min(100%, 1240px);
   min-height: 100%;
   margin: 0 auto;
   padding: 36px 40px 48px;
@@ -2613,11 +2617,13 @@ dd.is-unknown,
   padding: 18px 40px 18px;
 }
 
+/* Das Eingabefeld waechst nicht mit: eine Zeile Text ueber die volle Breite
+   ist schlechter zu schreiben und zu lesen als ueber eine ruhige Spalte. */
 .composer,
 .selection-strip,
 .composer-credit-status,
 .composer-disclosure {
-  width: min(100%, 880px);
+  width: min(100%, 720px);
   margin-right: auto;
   margin-left: auto;
 }
@@ -5874,6 +5880,40 @@ dd.is-unknown,
 @media (prefers-reduced-motion: reduce) {
   .profile-card.is-highlight {
     animation: none;
+  }
+}
+
+/* Breite der Unterhaltung ------------------------------------------------ */
+
+/* Die Spalte ist fuer die Karten breiter geworden. Fliesstext darin darf das
+   nicht mitmachen — ueber 1240 px laufende Zeilen verliert das Auge beim
+   Ruecksprung an den Zeilenanfang. */
+.message-row,
+.matching-disclosure,
+.brief-line {
+  max-width: 940px;
+}
+
+/* Die Nutzerblase sitzt am rechten Rand der Unterhaltung. Ohne das haenge sie
+   am rechten Rand ihrer 940er-Box und damit mitten im Bild. */
+.message-row.user-message {
+  margin-left: auto;
+}
+
+/* Nebeneinander verglichen gilt die Begrenzung nicht: dort ist die Breite
+   genau der Zweck. */
+.app-shell.is-profile-focus .matching-disclosure,
+.app-shell.is-profile-focus .brief-line {
+  max-width: none;
+}
+
+/* Ohne Titel traegt die Kopfleiste auf dem Desktop nichts mehr — nur der
+   Menue-Knopf fuer schmale Fenster steckt darin. Sie darf dann keine volle
+   Zeilenhoehe mehr belegen. Ganz auf null geht sie nicht: der Knopf fuer die
+   Projektuebersicht liegt fest in dieser Ecke und braucht seinen Platz. */
+@media (min-width: 861px) {
+  .chat-panel:has(.topbar.is-bare) {
+    --topbar-height: 44px;
   }
 }
 

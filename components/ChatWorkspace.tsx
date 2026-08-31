@@ -2718,20 +2718,17 @@ export function ChatWorkspace({
       {sidebarOpen ? <button className="sidebar-scrim" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schließen" /> : null}
 
       <main className={`chat-panel${emptyChat ? " is-empty-chat" : ""}`}>
-        <header className="topbar">
+        {/* Der Projekttitel stand hier und wiederholte, was in der Seitenleiste
+            als ausgewaehlter Chat ohnehin markiert ist. Der Platz gehoert jetzt
+            der Unterhaltung, damit die Profilkarten ihre Breite bekommen.
+            Merkliste und Agenten behalten ihre Beschriftung: das sind eigene
+            Ansichten, und sie haben in der Leiste keine Entsprechung. */}
+        <header className={`topbar${isTeamView || isAgentView ? "" : " is-bare"}`}>
           <div className="topbar-left">
             <button className="icon-button mobile-menu" type="button" onClick={() => setSidebarOpen(true)} aria-label="Projekte öffnen"><IconMenu size={18} /></button>
             <div>
-              {/* No placeholder title: an untitled conversation shows nothing
-                  rather than a label that repeats what the page already is. */}
-              {isTeamView || isAgentView || activeProject?.title ? (
-                <p className="topbar-title">
-                  {isTeamView
-                    ? "Merkliste"
-                    : isAgentView
-                      ? "KI-Agenten"
-                      : activeProject?.title}
-                </p>
+              {isTeamView || isAgentView ? (
+                <p className="topbar-title">{isTeamView ? "Merkliste" : "KI-Agenten"}</p>
               ) : null}
             </div>
           </div>
@@ -3012,6 +3009,9 @@ export function ChatWorkspace({
             brief={brief}
             selectedProfile={selectedProfile}
             busy={Boolean(pendingAssistant)}
+            analysis={analysisTrace}
+            profileCount={profiles.length}
+            partialProfileCount={partialProfiles.length}
             onContact={() => setContactOpen(true)}
             onUpdateBrief={(message) => void sendMessage(message)}
           />

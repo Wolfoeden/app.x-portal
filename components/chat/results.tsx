@@ -524,13 +524,13 @@ export function ResultSection({
           ) : null}
         </>
       )}
-      {analysis ? (
-        <AnalysisTrace
-          trace={analysis}
-          profileCount={profiles.length}
-          partialProfileCount={partialProfiles.length}
-        />
-      ) : null}
+      {/* Der Arbeitsprozess stand hier als aufklappbarer Block unter jedem
+          Ergebnis und war fuer die meisten nur eine Zeile, die man wegliest.
+          Er steht jetzt in der Projektuebersicht, wo die uebrigen Angaben zur
+          Arbeitsweise schon stehen — samt der Offenlegung, ob die Anfrage mit
+          einer bestaetigten KI-Antwort oder mit der Basisanalyse strukturiert
+          wurde. Die darf nicht verschwinden, sie sagt je nach Lauf etwas
+          anderes. */}
     </section>
   );
 }
@@ -1407,6 +1407,9 @@ export function ProjectDetails({
   brief,
   selectedProfile,
   busy,
+  analysis,
+  profileCount,
+  partialProfileCount,
   onContact,
   onUpdateBrief,
 }: {
@@ -1414,6 +1417,9 @@ export function ProjectDetails({
   selectedProfile: FreelancerProfileResult | null;
   /** Waehrend eine Antwort laeuft, darf keine zweite Suche daneben starten. */
   busy: boolean;
+  analysis: AiAnalysisTrace | null;
+  profileCount: number;
+  partialProfileCount: number;
   onContact: () => void;
   onUpdateBrief: (message: string) => void;
 }) {
@@ -1452,6 +1458,14 @@ export function ProjectDetails({
           <button type="button" onClick={onContact}>Termin oder Kontakt <IconArrowRight size={13} /></button>
           <small>Sie können vorher weiter im Chat ergänzen.</small>
         </div>
+      ) : null}
+
+      {analysis ? (
+        <AnalysisTrace
+          trace={analysis}
+          profileCount={profileCount}
+          partialProfileCount={partialProfileCount}
+        />
       ) : null}
 
       <div className="ai-note"><span aria-hidden="true"><IconInfo size={11} /></span><p><strong>Transparente Unterstützung</strong>Die KI strukturiert Ihre Anfrage. Profile werden nach festen, überprüfbaren Regeln gefiltert.</p></div>
