@@ -1,89 +1,41 @@
 import { describe, expect, it } from "vitest";
 
-import { profileFitSummary } from "@/components/chat/profile-fit";
+import { shouldHighlightProfile } from "@/components/chat/profile-fit";
 
-const THRESHOLD = 60;
+const THRESHOLD = 70;
 
-function profile(overrides: Partial<Parameters<typeof profileFitSummary>[0]> = {}) {
-  return {
-    recommendationRole: "primary" as const,
-    coreCoverage: 100,
-    knownGaps: [] as string[],
-    matchReasons: ["React belegt", "Deutsch belegt"],
-    ...overrides,
-  };
-}
-
-describe("profile fit summary", () => {
-  it("says plainly when every core requirement is covered", () => {
-    const fit = profileFitSummary(profile(), THRESHOLD);
-
-    expect(fit.tone).toBe("strong");
-    expect(fit.headline).toBe("Erfüllt alle Kernanforderungen");
-    expect(fit.detail).toContain("2 Belege");
-    expect(fit.detail).toContain("nichts offen");
+describe("profile highlight", () => {
+  it("highlights a profile above the recommendation threshold", () => {
+    expect(
+      shouldHighlightProfile({ coreCoverage: 100, recommendationRole: "primary" }, THRESHOLD),
+    ).toBe(true);
+    expect(
+      shouldHighlightProfile({ coreCoverage: 71, recommendationRole: "alternative" }, THRESHOLD),
+    ).toBe(true);
   });
 
-  it("does not claim completeness below full coverage", () => {
-    const fit = profileFitSummary(profile({ coreCoverage: 80 }), THRESHOLD);
-
-    expect(fit.tone).toBe("strong");
-    expect(fit.headline).not.toContain("alle");
-    expect(fit.coverage).toBe(80);
+  // Genau auf der Schwelle ist ein Profil gerade noch empfehlbar, aber kein
+  // Fund, den man jemandem entgegenleuchten laesst.
+  it("stays quiet at or below the threshold", () => {
+    expect(
+      shouldHighlightProfile({ coreCoverage: THRESHOLD, recommendationRole: "primary" }, THRESHOLD),
+    ).toBe(false);
+    expect(
+      shouldHighlightProfile({ coreCoverage: 40, recommendationRole: "primary" }, THRESHOLD),
+    ).toBe(false);
   });
 
-  it("marks an alternative without overselling it", () => {
-    const fit = profileFitSummary(
-      profile({ recommendationRole: "alternative", coreCoverage: 70, knownGaps: ["Tagessatz offen"] }),
-      THRESHOLD,
-    );
-
-    expect(fit.tone).toBe("ok");
-    expect(fit.headline).toBe("Kommt als Alternative infrage");
-    expect(fit.detail).toContain("1 offener Punkt");
+  // Ein Teiltreffer steht ausdruecklich als "nicht empfohlen" da. Ein gruener
+  // Puls daneben wuerde genau das Gegenteil sagen.
+  it("never highlights a profile that is not recommended", () => {
+    expect(
+      shouldHighlightProfile({ coreCoverage: 100, recommendationRole: "partial" }, THRESHOLD),
+    ).toBe(false);
   });
 
-  // Der Grund, warum jemand nicht empfohlen wird, ist die wichtigste Aussage
-  // auf so einer Karte — er darf nicht hinter einer Prozentzahl verschwinden.
-  it("leads a partial match with what is missing and names the threshold", () => {
-    const fit = profileFitSummary(
-      profile({
-        recommendationRole: "partial",
-        coreCoverage: 40,
-        knownGaps: ["SAP FI/CO fehlt", "Deutsch nicht belegt"],
-      }),
-      THRESHOLD,
-    );
-
-    expect(fit.tone).toBe("warning");
-    expect(fit.headline).toBe("2 Muss-Kriterien ohne Beleg");
-    expect(fit.detail).toContain("60 %");
-    expect(fit.detail).toContain("40 %");
-  });
-
-  it("keeps singular and plural apart", () => {
-    const one = profileFitSummary(
-      profile({ recommendationRole: "partial", knownGaps: ["Deutsch nicht belegt"] }),
-      THRESHOLD,
-    );
-
-    expect(one.headline).toBe("1 Muss-Kriterium ohne Beleg");
-  });
-
-  it("stays truthful when nothing was scored", () => {
-    const fit = profileFitSummary(
-      profile({ recommendationRole: "partial", coreCoverage: null, knownGaps: [] }),
-      THRESHOLD,
-    );
-
-    expect(fit.coverage).toBeNull();
-    expect(fit.headline).toBe("Muss-Kriterien nicht vollständig belegt");
-    expect(fit.detail).not.toContain("%");
-  });
-
-  it("does not invent evidence when none was supplied", () => {
-    const fit = profileFitSummary(profile({ matchReasons: [] }), THRESHOLD);
-
-    expect(fit.detail).toContain("keine Belege übermittelt");
+  it("stays quiet when nothing was scored", () => {
+    expect(
+      shouldHighlightProfile({ coreCoverage: null, recommendationRole: "primary" }, THRESHOLD),
+    ).toBe(false);
   });
 });

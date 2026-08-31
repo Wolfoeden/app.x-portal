@@ -28,7 +28,8 @@ import {
   MODE_OPTIONS,
   type BriefDraft,
 } from "./brief-editor";
-import { profileFitSummary, type FitSummary } from "./profile-fit";
+import { factPreview } from "./fact-preview";
+import { shouldHighlightProfile } from "./profile-fit";
 
 import type {
   AiAnalysisTrace,
@@ -231,6 +232,15 @@ function ProfileStack({
   // Leere und der Stapel bliebe blank.
   const current = Math.min(active, Math.max(0, profiles.length - 1));
 
+  useEffect(() => {
+    if (!focused) return;
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") onToggleFocus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [focused, onToggleFocus]);
+
   if (profiles.length === 1) {
     return <div className="profile-list">{renderCard(profiles[0], 0)}</div>;
   }
@@ -238,9 +248,14 @@ function ProfileStack({
   if (focused) {
     return (
       <div className="profile-compare">
+        {/* Die Leiste bleibt beim Scrollen stehen: der Weg zurueck darf nicht
+            davon abhaengen, wie weit jemand in die Karten hineingescrollt ist.
+            Escape tut dasselbe — im vergroesserten Zustand sind beide
+            Seitenleisten weg, und das erwartet man dann zurueckdrehen zu
+            koennen, ohne den Knopf zu suchen. */}
         <div className="profile-compare-bar">
           <p>{profiles.length} Profile nebeneinander</p>
-          <button className="text-button" type="button" onClick={onToggleFocus}>
+          <button className="primary-action profile-compare-close" type="button" onClick={onToggleFocus}>
             <IconMinimize size={13} /> Ansicht verkleinern
           </button>
         </div>
@@ -1044,7 +1059,12 @@ export function ProfileCard({
   const [cvDownloadState, setCvDownloadState] = useState<"idle" | "loading" | "error">("idle");
   const [cvDownloadError, setCvDownloadError] = useState<string | null>(null);
   const cardRef = useProfileImpression(profile, projectId);
-  const fit = profileFitSummary(profile, RECOMMENDATION_THRESHOLD_PERCENT);
+  // Einmal, nicht dauernd: eine Karte, die weiterpulsiert, liest sich als
+  // Aufforderung statt als Hinweis und zieht den Blick von den Karten daneben
+  // ab, die man gerade vergleichen will.
+  const [pulseDone, setPulseDone] = useState(false);
+  const highlight =
+    !pulseDone && shouldHighlightProfile(profile, RECOMMENDATION_THRESHOLD_PERCENT);
 
   const downloadCv = async () => {
     if (cvAction.disabled || !projectId || cvDownloadState === "loading") return;
@@ -1064,7 +1084,15 @@ export function ProfileCard({
     }
   };
   return (
-    <article ref={cardRef} className={`profile-card ${profile.recommendationRole === "primary" ? "is-primary" : ""} ${isPartial ? "is-partial" : ""} ${selected ? "is-selected" : ""}`}>
+    <article
+      ref={cardRef}
+      className={`profile-card ${profile.recommendationRole === "primary" ? "is-primary" : ""} ${isPartial ? "is-partial" : ""} ${selected ? "is-selected" : ""}${highlight ? " is-highlight" : ""}`}
+      // Nur die Animation der Karte selbst beendet den Puls — `animationend`
+      // steigt aus dem ganzen Teilbaum auf.
+      onAnimationEnd={(event) => {
+        if (event.target === event.currentTarget) setPulseDone(true);
+      }}
+    >
       <div className="profile-rank" aria-label={`${isPartial ? "Teiltreffer" : "Ergebnis"} ${position}`}>{position.toString().padStart(2, "0")}</div>
       <div className="profile-main">
         <header className="profile-header">
@@ -1088,8 +1116,6 @@ export function ProfileCard({
             <span className={`availability ${profile.availabilityStatus}`}>{availabilityLabel(profile.availabilityStatus)}</span>
           </div>
         </header>
-
-        <FitSummaryBlock fit={fit} />
 
         {profile.experienceSummary ? <p className="experience-summary">{profile.experienceSummary}</p> : null}
 
@@ -1148,11 +1174,19 @@ export function ProfileCard({
           </p>
         ) : null}
 
+        {/* Bei einem Teiltreffer bleibt der Hinweis stehen: dass hier auf eigene
+            Entscheidung gehandelt wird, muss neben den Knoepfen stehen und
+            nicht nur weiter oben in der Begruendung. Der Gegenpart fuer einen
+            empfohlenen Treffer ist entfallen — "Bereit fuer den naechsten
+            Schritt" ueber einem Knopf, der genau das sagt, war eine Zeile, die
+            nur den Knopf wiederholte. */}
         <footer className="profile-footer">
-          <div>
-            <strong>{isPartial ? "Nicht empfohlen · Kontakt auf eigene Entscheidung" : profile.bookingUrl ? "Bereit für den nächsten Schritt" : "Derzeit nicht direkt buchbar"}</strong>
-            <span>{isPartial ? "Offene Muss-Kriterien bleiben sichtbar. Sie entscheiden, ob Sie dennoch Kontakt aufnehmen." : bookingAction.hint}</span>
-          </div>
+          {isPartial ? (
+            <p className="profile-footer-caution">
+              <span aria-hidden="true"><IconAlertCircle size={13} /></span>
+              Nicht empfohlen — Kontakt auf eigene Entscheidung. Offene Muss-Kriterien bleiben sichtbar.
+            </p>
+          ) : null}
           <div className="profile-actions">
               <div className="cv-action-group">
                 {cvAction.kind === "available" ? (
@@ -1228,57 +1262,21 @@ export function ProfileCard({
   );
 }
 
-/**
- * Der Eignungsblock steht ganz oben in der Karte und beantwortet die eine
- * Frage, wegen der jemand die Liste ueberfliegt: passt der oder nicht.
- *
- * Der Balken ist absichtlich mit einer Erlaeuterung versehen. Eine Prozentzahl
- * neben einem Namen liest sich sonst wie eine Erfolgsaussicht — sie ist aber
- * nur der Anteil der Kriterien, fuer die ein Beleg vorliegt.
- */
-function FitSummaryBlock({ fit }: { fit: FitSummary }) {
-  return (
-    <div className={`profile-fit is-${fit.tone}`}>
-      <div className="profile-fit-verdict">
-        <span aria-hidden="true">
-          {fit.tone === "warning" ? <IconAlertCircle size={14} /> : <IconCheck size={14} />}
-        </span>
-        <div>
-          <strong>{fit.headline}</strong>
-          <small>{fit.detail}</small>
-        </div>
-      </div>
-      {fit.coverage !== null ? (
-        <div className="profile-fit-meter">
-          <div
-            className="profile-fit-bar"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={fit.coverage}
-            aria-label="Anteil belegter Kernanforderungen"
-          >
-            <span style={{ width: `${Math.max(0, Math.min(100, fit.coverage))}%` }} />
-          </div>
-          <p>
-            <strong>{fit.coverage} %</strong> der Kernanforderungen belegt
-            <small>Regelbasiert geprüft — keine Aussage über den Projekterfolg.</small>
-          </p>
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 function FactGroup({ label, facts, verified = false }: { label: string; facts: string[]; verified?: boolean }) {
-  const visibleFacts = facts.slice(0, 5);
-  const remaining = facts.length - visibleFacts.length;
+  const [open, setOpen] = useState(false);
+  const { preview, full, truncated } = factPreview(facts);
+
   return (
     <div className="fact-group">
       <span className={verified ? "verified-label" : "reported-label"}>{verified ? <IconCheck size={12} /> : <IconInfo size={12} />} {label}</span>
       <p>
-        {visibleFacts.length ? visibleFacts.join(" · ") : "Keine Angaben"}
-        {remaining > 0 ? ` · +${remaining} weitere Angaben` : ""}
+        {full ? (open || !truncated ? full : preview) : "Keine Angaben"}
+        {truncated ? (
+          <button className="fact-more" type="button" onClick={() => setOpen(!open)} aria-expanded={open}>
+            {open ? "weniger anzeigen" : "mehr anzeigen"}
+          </button>
+        ) : null}
       </p>
     </div>
   );
