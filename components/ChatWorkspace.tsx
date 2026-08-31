@@ -2928,8 +2928,10 @@ export function ChatWorkspace({
               rows={1}
               maxLength={12_000}
             />
+            {/* Der Hinweis "Details jederzeit frei ergänzen" stand unter dem
+                Feld und sagte, was ein Freitextfeld ohnehin anbietet. Der
+                Sendeknopf rueckt an seine Stelle nach rechts. */}
             <div className="composer-bottom">
-              <div className="composer-hint"><span aria-hidden="true"><IconPlus size={14} /></span> Details jederzeit frei ergänzen</div>
               <button
                 className="send-button"
                 type="submit"

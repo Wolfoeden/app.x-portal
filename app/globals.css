@@ -1509,10 +1509,13 @@ a {
   background: var(--border-strong);
 }
 
+/* Die Vorschlaege haengen unter dem Eingabefeld und muessen dessen Breite
+   teilen. Blieben sie bei 880 px, ragten sie beidseitig darueber hinaus und
+   saehen aus, als gehoerten sie zu etwas anderem. */
 .suggestion-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  width: min(100%, 880px);
+  width: min(100%, 640px);
   gap: 10px;
   margin: 14px auto 0;
 }
@@ -2621,9 +2624,18 @@ dd.is-unknown,
    ist schlechter zu schreiben und zu lesen als ueber eine ruhige Spalte. */
 .composer,
 .selection-strip,
-.composer-credit-status,
+.composer-credit-status {
+  width: min(100%, 640px);
+  margin-right: auto;
+  margin-left: auto;
+}
+
+/* Der Hinweis darunter haengt nicht an der Breite des Feldes. Er ist ein Satz
+   plus vier Links und soll in eine Zeile passen; an 640 px gebunden braeche er
+   in zwei. Auf schmalen Fenstern greift die min()-Grenze und er bricht wie
+   zuvor. */
 .composer-disclosure {
-  width: min(100%, 720px);
+  width: min(100%, 980px);
   margin-right: auto;
   margin-left: auto;
 }
@@ -2856,24 +2868,14 @@ dd.is-unknown,
   color: var(--placeholder);
 }
 
+/* Nur noch der Sendeknopf steht hier. Mit space-between waere er nach links
+   gerutscht — er gehoert an das Ende der Zeile. */
 .composer-bottom {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   min-height: 42px;
   padding: 2px 10px 9px 18px;
-}
-
-.composer-hint {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--muted-light);
-  font-size: var(--fs-2xs);
-}
-
-.composer-hint span {
-  font-size: var(--fs-base);
 }
 
 .send-button {
@@ -3912,7 +3914,6 @@ dd.is-unknown,
 .sidebar-primary-chevron,
 .suggestion-arrow,
 .analysis-trace-toggle,
-.composer-hint span,
 .match-column h4 span,
 .reference-note > span,
 .continue-note > span,
@@ -4632,10 +4633,6 @@ dd.is-unknown,
 
   .composer-disclosure {
     display: none;
-  }
-
-  .composer-hint {
-    font-size: var(--fs-2xs);
   }
 
   .user-message .message-content {
