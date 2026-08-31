@@ -2625,7 +2625,7 @@ dd.is-unknown,
 .composer,
 .selection-strip,
 .composer-credit-status {
-  width: min(100%, 640px);
+  width: min(100%, 600px);
   margin-right: auto;
   margin-left: auto;
 }
@@ -2679,7 +2679,16 @@ dd.is-unknown,
   text-underline-offset: 2px;
 }
 
+/* Eine Zeile, kein Kasten. Das Feld und der Sendeknopf standen untereinander,
+   was den Rahmen auf rund 100 px Hoehe brachte — fuer eine Zeile Text. Sie
+   stehen jetzt nebeneinander.
+
+   Ausgerichtet wird am unteren Rand: das Feld waechst beim Tippen bis 180 px,
+   und der Knopf soll dabei unten bleiben und nicht in der Mitte mitwandern. */
 .composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
   overflow: hidden;
   border: 1px solid var(--border-strong);
   border-radius: 26px;
@@ -2851,15 +2860,16 @@ dd.is-unknown,
 
 .composer textarea {
   display: block;
-  width: 100%;
-  min-height: 48px;
+  min-width: 0;
+  flex: 1;
+  min-height: 50px;
   max-height: 180px;
   resize: none;
   overflow-y: auto;
   border: 0;
   outline: 0;
   background: transparent;
-  padding: 17px 20px 3px;
+  padding: 14px 4px 14px 20px;
   font-size: var(--fs-base);
   line-height: 1.45;
 }
@@ -2868,14 +2878,12 @@ dd.is-unknown,
   color: var(--placeholder);
 }
 
-/* Nur noch der Sendeknopf steht hier. Mit space-between waere er nach links
-   gerutscht — er gehoert an das Ende der Zeile. */
+/* Nur noch der Sendeknopf steht hier, jetzt neben dem Feld statt darunter. */
 .composer-bottom {
   display: flex;
+  flex: none;
   align-items: center;
-  justify-content: flex-end;
-  min-height: 42px;
-  padding: 2px 10px 9px 18px;
+  padding: 0 6px 5px 0;
 }
 
 .send-button {
