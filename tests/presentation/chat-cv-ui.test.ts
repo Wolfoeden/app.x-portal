@@ -132,7 +132,10 @@ describe("recommended profile CV affordance", () => {
 
   it("labels coverage as evidence rather than an outcome probability", () => {
     const markup = renderProfile(profile("available"), true);
-    expect(markup).toContain("Kernanforderungen 100 % belegt");
+    expect(markup).toContain("der Kernanforderungen belegt");
+    // Die Zahl steht direkt neben einem Namen und wuerde sonst als Prognose
+    // gelesen. Der Vorbehalt muss auf derselben Karte stehen.
+    expect(markup).toContain("keine Aussage über den Projekterfolg");
     expect(markup).not.toContain("Passung 90 %");
   });
 });

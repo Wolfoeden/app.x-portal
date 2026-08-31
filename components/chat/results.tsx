@@ -8,10 +8,20 @@
  * actually reads a recommendation from, and it had no boundary of its own.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { appPath } from "@/lib/app-path";
 import { MINIMUM_CORE_COVERAGE_BASIS_POINTS } from "@/lib/domain/matching";
+
+import {
+  BRIEF_FIELDS,
+  briefToDraft,
+  composeBriefUpdateMessage,
+  draftChanges,
+  MODE_OPTIONS,
+  type BriefDraft,
+} from "./brief-editor";
+import { profileFitSummary, type FitSummary } from "./profile-fit";
 
 import type {
   AiAnalysisTrace,
@@ -703,21 +713,6 @@ function ExternalSearchResults({
 /** Basis points are the matcher's unit; the reader wants a percentage. */
 const RECOMMENDATION_THRESHOLD_PERCENT = MINIMUM_CORE_COVERAGE_BASIS_POINTS / 100;
 
-function groupedRequirements(
-  brief: StructuredBrief,
-  priority: StructuredRequirementGroup["priority"],
-): string | null {
-  const groups = brief.requirementGroups.filter(
-    (group) => group.priority === priority,
-  );
-  if (!groups.length) return null;
-  return groups
-    .map((group) =>
-      group.values.join(group.operator === "any_of" ? " oder " : " und "),
-    )
-    .join(" · ");
-}
-
 function requirementCount(
   brief: StructuredBrief,
   priority: StructuredRequirementGroup["priority"],
@@ -778,14 +773,6 @@ function DetailTerm({ label, value, hint }: { label: string; value: string | nul
       </dd>
     </div>
   );
-}
-
-/**
- * A required language filters profiles; a detected one only reflects how the
- * request was written. Without this hint the second reads as the first.
- */
-function languageHint(brief: StructuredBrief): string | undefined {
-  return brief.languageSource === "detected" ? "aus der Anfrage abgeleitet" : undefined;
 }
 
 export type CvActionState = {
@@ -947,6 +934,7 @@ export function ProfileCard({
   const [cvDownloadState, setCvDownloadState] = useState<"idle" | "loading" | "error">("idle");
   const [cvDownloadError, setCvDownloadError] = useState<string | null>(null);
   const cardRef = useProfileImpression(profile, projectId);
+  const fit = profileFitSummary(profile, RECOMMENDATION_THRESHOLD_PERCENT);
 
   const downloadCv = async () => {
     if (cvAction.disabled || !projectId || cvDownloadState === "loading") return;
@@ -987,48 +975,13 @@ export function ProfileCard({
                     : "Alternative"}
               </span>
             ) : null}
-            {profile.coreCoverage !== null ? (
-              <span className="match-score">Kernanforderungen {profile.coreCoverage} % belegt</span>
-            ) : null}
-            {profile.knownGaps.length ? (
-              <span className="match-gaps">{profile.knownGaps.length} {profile.knownGaps.length === 1 ? "Punkt" : "Punkte"} offen</span>
-            ) : null}
             <span className={`availability ${profile.availabilityStatus}`}>{availabilityLabel(profile.availabilityStatus)}</span>
           </div>
         </header>
 
-        {profile.experienceSummary ? <p className="experience-summary">{profile.experienceSummary}</p> : null}
+        <FitSummaryBlock fit={fit} />
 
-        {isPartial ? (
-          <div className="partial-reason">
-            <p className="partial-reason-headline">
-              <span aria-hidden="true"><IconAlertCircle size={13} /></span>
-              Was für eine Empfehlung fehlt
-            </p>
-            {profile.coreCoverage !== null ? (
-              <p className="partial-reason-coverage">
-                Kernabdeckung {profile.coreCoverage} % · empfohlen ab{" "}
-                {RECOMMENDATION_THRESHOLD_PERCENT} %
-              </p>
-            ) : null}
-            {profile.knownGaps.length ? (
-              <>
-                <ul>{profile.knownGaps.slice(0, 3).map((gap) => <li key={gap}>{gap}</li>)}</ul>
-                {profile.knownGaps.length > 3 ? (
-                  <details className="profile-more"><summary>{profile.knownGaps.length - 3} weitere offene Punkte</summary><ul>{profile.knownGaps.slice(3).map((gap) => <li key={gap}>{gap}</li>)}</ul></details>
-                ) : null}
-              </>
-            ) : (
-              <p className="unknown-text">
-                Die Muss-Kriterien der Anfrage sind nicht vollständig belegt.
-              </p>
-            )}
-          </div>
-        ) : profile.coreCoverage !== null ? (
-          <p className="matching-score-note">
-            Kernabdeckung: {profile.coreCoverage} % · regelbasierter Kriterienwert, keine Erfolgswahrscheinlichkeit
-          </p>
-        ) : null}
+        {profile.experienceSummary ? <p className="experience-summary">{profile.experienceSummary}</p> : null}
 
         <div className="profile-tags">
           {profile.skillTags.slice(0, 5).map((skill) => <span key={skill}>{skill}</span>)}
@@ -1037,7 +990,7 @@ export function ProfileCard({
 
         <div className="match-columns">
           <div className="match-column reasons">
-            <h4><span aria-hidden="true"><IconCheck size={13} /></span> Warum passend</h4>
+            <h4><span aria-hidden="true"><IconCheck size={13} /></span> Das ist belegt</h4>
             {profile.matchReasons.length ? (
               <>
                 <ul>{profile.matchReasons.slice(0, 3).map((reason) => <li key={reason}>{reason}</li>)}</ul>
@@ -1047,19 +1000,22 @@ export function ProfileCard({
               </>
             ) : <p className="unknown-text">Keine Begründung übermittelt</p>}
           </div>
-          {isPartial ? null : (
-            <div className="match-column gaps">
-              <h4><span aria-hidden="true"><IconAlertCircle size={13} /></span> Bekannte Lücken</h4>
-              {profile.knownGaps.length ? (
-                <>
-                  <ul>{profile.knownGaps.slice(0, 3).map((gap) => <li key={gap}>{gap}</li>)}</ul>
-                  {profile.knownGaps.length > 3 ? (
-                    <details className="profile-more"><summary>{profile.knownGaps.length - 3} weitere offene Punkte</summary><ul>{profile.knownGaps.slice(3).map((gap) => <li key={gap}>{gap}</li>)}</ul></details>
-                  ) : null}
-                </>
-              ) : <p>Keine bekannten Lücken im Abgleich</p>}
-            </div>
-          )}
+          <div className="match-column gaps">
+            <h4>
+              <span aria-hidden="true"><IconAlertCircle size={13} /></span>
+              {isPartial ? "Das fehlt für eine Empfehlung" : "Das ist noch offen"}
+            </h4>
+            {profile.knownGaps.length ? (
+              <>
+                <ul>{profile.knownGaps.slice(0, 3).map((gap) => <li key={gap}>{gap}</li>)}</ul>
+                {profile.knownGaps.length > 3 ? (
+                  <details className="profile-more"><summary>{profile.knownGaps.length - 3} weitere offene Punkte</summary><ul>{profile.knownGaps.slice(3).map((gap) => <li key={gap}>{gap}</li>)}</ul></details>
+                ) : null}
+              </>
+            ) : (
+              <p>{isPartial ? "Die Muss-Kriterien sind nicht vollständig belegt." : "Nichts offen im Abgleich"}</p>
+            )}
+          </div>
         </div>
 
         <div className="fact-row">
@@ -1162,6 +1118,48 @@ export function ProfileCard({
   );
 }
 
+/**
+ * Der Eignungsblock steht ganz oben in der Karte und beantwortet die eine
+ * Frage, wegen der jemand die Liste ueberfliegt: passt der oder nicht.
+ *
+ * Der Balken ist absichtlich mit einer Erlaeuterung versehen. Eine Prozentzahl
+ * neben einem Namen liest sich sonst wie eine Erfolgsaussicht — sie ist aber
+ * nur der Anteil der Kriterien, fuer die ein Beleg vorliegt.
+ */
+function FitSummaryBlock({ fit }: { fit: FitSummary }) {
+  return (
+    <div className={`profile-fit is-${fit.tone}`}>
+      <div className="profile-fit-verdict">
+        <span aria-hidden="true">
+          {fit.tone === "warning" ? <IconAlertCircle size={14} /> : <IconCheck size={14} />}
+        </span>
+        <div>
+          <strong>{fit.headline}</strong>
+          <small>{fit.detail}</small>
+        </div>
+      </div>
+      {fit.coverage !== null ? (
+        <div className="profile-fit-meter">
+          <div
+            className="profile-fit-bar"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={fit.coverage}
+            aria-label="Anteil belegter Kernanforderungen"
+          >
+            <span style={{ width: `${Math.max(0, Math.min(100, fit.coverage))}%` }} />
+          </div>
+          <p>
+            <strong>{fit.coverage} %</strong> der Kernanforderungen belegt
+            <small>Regelbasiert geprüft — keine Aussage über den Projekterfolg.</small>
+          </p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function FactGroup({ label, facts, verified = false }: { label: string; facts: string[]; verified?: boolean }) {
   const visibleFacts = facts.slice(0, 5);
   const remaining = facts.length - visibleFacts.length;
@@ -1182,44 +1180,136 @@ function FactGroup({ label, facts, verified = false }: { label: string; facts: s
  * missing. The priorities come straight from the matcher, so the panel shows
  * the same distinction the ranking actually uses.
  */
+/**
+ * Die Projektdaten als Formular.
+ *
+ * Gespeichert wird beim Verlassen eines Feldes — die Eingabe geht also nicht
+ * verloren, wenn jemand zurueck in den Chat klickt. Gesucht wird dagegen erst
+ * auf ausdrueckliche Anweisung: Enter, Strg+S oder der Knopf unten. Eine Suche
+ * kostet Guthaben, sie darf nicht als Nebenwirkung eines Klicks entstehen.
+ */
+function BriefEditor({
+  brief,
+  busy,
+  onUpdate,
+}: {
+  brief: StructuredBrief;
+  busy: boolean;
+  onUpdate: (message: string) => void;
+}) {
+  const base = useMemo(() => briefToDraft(brief), [brief]);
+  const [draft, setDraft] = useState<BriefDraft>(base);
+  const [seededFrom, setSeededFrom] = useState<BriefDraft>(base);
+
+  // Kommt ein neuer Steckbrief aus einer Suche, gilt er. Die eigenen Eingaben
+  // sind zu diesem Zeitpunkt bereits in die Suche eingeflossen. Der Abgleich
+  // steht im Rendern und nicht in einem Effekt, sonst zeigt die Leiste fuer
+  // einen Durchgang noch den alten Stand.
+  if (seededFrom !== base) {
+    setSeededFrom(base);
+    setDraft(base);
+  }
+
+  const changes = draftChanges(base, draft);
+  const dirty = changes.length > 0;
+
+  const apply = () => {
+    if (!dirty || busy) return;
+    onUpdate(composeBriefUpdateMessage(changes));
+  };
+
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const isSaveChord = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s";
+    // Enter in einem mehrzeiligen Feld gehoert dem Zeilenumbruch.
+    const isPlainEnter =
+      event.key === "Enter" && !event.shiftKey && event.target instanceof HTMLInputElement;
+    if (!isSaveChord && !isPlainEnter) return;
+    event.preventDefault();
+    apply();
+  };
+
+  return (
+    <div className="brief-editor" onKeyDown={onKeyDown}>
+      <div className="brief-editor-fields">
+        {BRIEF_FIELDS.map(({ field, label, hint, multiline, placeholder }) => {
+          const id = `brief-field-${field}`;
+          const changed = changes.some((change) => change.field === field);
+          return (
+            <div className={`brief-field${changed ? " is-changed" : ""}`} key={field}>
+              <label htmlFor={id}>
+                {label}
+                {changed ? <span className="brief-field-flag">geändert</span> : null}
+              </label>
+              {field === "mode" ? (
+                <select
+                  id={id}
+                  value={draft.mode}
+                  onChange={(event) => setDraft({ ...draft, mode: event.target.value })}
+                >
+                  {MODE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              ) : multiline ? (
+                <textarea
+                  id={id}
+                  rows={2}
+                  value={draft[field]}
+                  placeholder={placeholder}
+                  onChange={(event) => setDraft({ ...draft, [field]: event.target.value })}
+                />
+              ) : (
+                <input
+                  id={id}
+                  type="text"
+                  value={draft[field]}
+                  placeholder={placeholder}
+                  onChange={(event) => setDraft({ ...draft, [field]: event.target.value })}
+                />
+              )}
+              {hint ? <small>{hint}</small> : null}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className={`brief-editor-actions${dirty ? " is-dirty" : ""}`}>
+        {dirty ? (
+          <>
+            <p role="status">
+              {changes.length === 1 ? "1 Feld geändert" : `${changes.length} Felder geändert`} ·
+              noch nicht gesucht
+            </p>
+            <button className="primary-action" type="button" onClick={apply} disabled={busy}>
+              {busy ? "Suche läuft …" : "Übernehmen und neu suchen"}
+            </button>
+            <small>Auch mit Enter im Feld oder Strg + S</small>
+          </>
+        ) : (
+          <p className="brief-editor-rest">
+            Änderungen an diesen Feldern starten eine neue Suche.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function ProjectDetails({
   brief,
   selectedProfile,
+  busy,
   onContact,
+  onUpdateBrief,
 }: {
   brief: StructuredBrief | null;
   selectedProfile: FreelancerProfileResult | null;
+  /** Waehrend eine Antwort laeuft, darf keine zweite Suche daneben starten. */
+  busy: boolean;
   onContact: () => void;
+  onUpdateBrief: (message: string) => void;
 }) {
   const openFields = brief ? presentUnknownFields(brief.unknownFields) : [];
-  const frame = brief
-    ? [
-        {
-          label: "Modus / Ort",
-          value:
-            [brief.mode === "unknown" ? null : modeLabel(brief.mode), brief.location]
-              .filter(Boolean)
-              .join(" · ") || null,
-        },
-        {
-          label: "Start & Dauer",
-          value: [brief.startWindow, brief.duration].filter(Boolean).join(" · ") || null,
-        },
-        { label: "Budget / Satz", value: brief.budgetOrRate },
-        { label: "Verfügbarkeit", value: brief.availabilityRequirement },
-        {
-          label: "Sprache",
-          value: brief.languages.length ? brief.languages.join(", ") : null,
-          hint: languageHint(brief),
-        },
-        {
-          label: "Vertrag",
-          value: brief.contractualRequirements.length
-            ? brief.contractualRequirements.join(", ")
-            : null,
-        },
-      ]
-    : [];
 
   return (
     <div className="details-inner">
@@ -1229,40 +1319,13 @@ export function ProjectDetails({
       </div>
       {brief ? (
         <>
-          <div className="project-status-line"><span aria-hidden="true"><IconCheck size={11} /></span><div><strong>{brief.projectTitle || "Anfrage strukturiert"}</strong><small>Angaben können jederzeit ergänzt werden</small></div></div>
-
-          <p className="details-section-label">Anforderungen</p>
-          <dl className="side-details">
-            <DetailTerm
-              label="Muss"
-              value={groupedRequirements(brief, "hard")}
-              hint="blockiert ohne Beleg"
-            />
-            <DetailTerm
-              label="Kern"
-              value={groupedRequirements(brief, "core")}
-              hint="bestimmt die Reihenfolge"
-            />
-            <DetailTerm label="Optional" value={groupedRequirements(brief, "optional")} />
-          </dl>
-
-          <p className="details-section-label">Rahmen</p>
-          <dl className="side-details">
-            {frame.map((entry) => (
-              <DetailTerm
-                key={entry.label}
-                label={entry.label}
-                value={entry.value}
-                hint={entry.hint}
-              />
-            ))}
-          </dl>
+          <BriefEditor brief={brief} busy={busy} onUpdate={onUpdateBrief} />
 
           {openFields.length ? (
             <div className="details-open-fields">
               <p className="details-section-label">Noch offen</p>
               <p>{openFields.join(" · ")}</p>
-              <small>Ergänzen Sie diese Punkte im Chat, um die Auswahl zu schärfen.</small>
+              <small>Tragen Sie diese Punkte oben ein oder ergänzen Sie sie im Chat.</small>
             </div>
           ) : null}
         </>
@@ -1270,7 +1333,7 @@ export function ProjectDetails({
         <div className="details-empty">
           <span aria-hidden="true"><IconDocument size={22} /></span>
           <strong>Noch keine Projektdaten</strong>
-          <p>Schreiben Sie frei in den Chat. Die Übersicht entsteht aus Ihren Angaben.</p>
+          <p>Schreiben Sie frei in den Chat. Die Übersicht entsteht aus Ihren Angaben und lässt sich hier danach Feld für Feld nachschärfen.</p>
         </div>
       )}
 

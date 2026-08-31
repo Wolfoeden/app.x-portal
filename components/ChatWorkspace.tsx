@@ -2444,9 +2444,9 @@ export function ChatWorkspace({
       <aside className={`project-sidebar ${sidebarOpen ? "is-open" : ""}`} aria-label="Projekte">
         <div className="sidebar-scroll">
         <div className="sidebar-top">
-          <div className="product-mark" aria-label="XPORTAL Freelancer">
+          <div className="product-mark" aria-label="XPORTAL">
             <BrandMark className="mark-glyph" height={26} />
-            <span>PORTAL / Freelancer</span>
+            <span>PORTAL</span>
           </div>
           <button className="icon-button sidebar-close" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schließen"><IconClose size={18} /></button>
         </div>
@@ -3004,7 +3004,9 @@ export function ChatWorkspace({
           <ProjectDetails
             brief={brief}
             selectedProfile={selectedProfile}
+            busy={Boolean(pendingAssistant)}
             onContact={() => setContactOpen(true)}
+            onUpdateBrief={(message) => void sendMessage(message)}
           />
         )}
       </aside>

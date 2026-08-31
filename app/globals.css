@@ -2132,6 +2132,138 @@ dd.is-unknown,
   text-transform: uppercase;
 }
 
+/* Die Projektdaten sind ein Formular, sehen aber wie eine Liste aus: solange
+   niemand hineinschreibt, soll die Leiste ruhig wirken und nicht wie ein
+   Antrag. Die Rahmen erscheinen deshalb erst beim Zeigen und beim Schreiben. */
+.brief-editor-fields {
+  display: grid;
+  gap: 2px;
+}
+
+.brief-field {
+  display: grid;
+  gap: 2px;
+  border-radius: 10px;
+  padding: 7px 8px;
+}
+
+.brief-field label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted-light);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.brief-field-flag {
+  color: var(--accent, var(--ink));
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: none;
+}
+
+.brief-field input,
+.brief-field select,
+.brief-field textarea {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  outline: 0;
+  padding: 5px 7px;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+
+.brief-field textarea {
+  min-height: 46px;
+  resize: vertical;
+}
+
+.brief-field input::placeholder,
+.brief-field textarea::placeholder {
+  color: var(--muted-light);
+}
+
+.brief-field:hover input,
+.brief-field:hover select,
+.brief-field:hover textarea {
+  border-color: var(--border);
+  background: var(--surface);
+}
+
+.brief-field input:focus,
+.brief-field select:focus,
+.brief-field textarea:focus {
+  border-color: #93938d;
+  background: var(--surface);
+  box-shadow: 0 0 0 3px #efefeb;
+}
+
+.brief-field.is-changed input,
+.brief-field.is-changed select,
+.brief-field.is-changed textarea {
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+
+.brief-field small {
+  color: var(--muted-light);
+  font-size: 11px;
+  padding: 0 7px;
+}
+
+/* Der Knopf bleibt beim Scrollen sichtbar: die Felder darueber sind laenger
+   als die Leiste hoch ist, und ohne das steht die Aufforderung ausserhalb des
+   Bildes, sobald jemand unten schreibt. */
+.brief-editor-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  background: var(--surface-soft);
+  padding: 10px 8px 12px;
+}
+
+.brief-editor-actions.is-dirty {
+  border-top: 1px solid var(--border);
+  margin-top: 14px;
+}
+
+.brief-editor-actions p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--fs-2xs);
+  font-weight: 620;
+}
+
+.brief-editor-actions .brief-editor-rest {
+  color: var(--muted-light);
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.brief-editor-actions button {
+  min-height: 40px;
+  cursor: pointer;
+  border-radius: 10px;
+  font-size: var(--fs-xs);
+}
+
+.brief-editor-actions small {
+  color: var(--muted-light);
+  font-size: 11px;
+}
+
 .details-open-fields {
   margin-top: 18px;
   padding: 12px 14px;
@@ -2159,49 +2291,119 @@ dd.is-unknown,
   font-size: var(--fs-2xs);
 }
 
-/* A partial result leads with what blocks it, not with what it happens to
-   match. Without this the reader had to hunt for the reason. */
-.partial-reason {
-  margin: 12px 0 4px;
-  padding: 12px 14px;
-  border: 1px solid var(--amber-border);
+/* Die Eignung steht ganz oben und in einem Block, nicht verteilt auf vier
+   gleich laute Abzeichen. Der farbige Rand links traegt die Aussage schon
+   beim Ueberfliegen, bevor irgendein Wort gelesen ist. */
+.profile-fit {
+  display: grid;
+  gap: 9px;
+  margin: 12px 0 14px;
+  border: 1px solid var(--border);
+  border-left-width: 3px;
   border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  padding: 11px 13px;
+}
+
+.profile-fit.is-strong {
+  border-color: var(--green-border);
+  border-left-color: var(--green);
+  background: var(--green-soft);
+}
+
+.profile-fit.is-ok {
+  border-left-color: var(--border-strong);
+}
+
+.profile-fit.is-warning {
+  border-color: var(--amber-border);
+  border-left-color: var(--amber);
   background: var(--amber-soft);
 }
 
-.partial-reason-headline {
+.profile-fit-verdict {
   display: flex;
-  align-items: center;
-  gap: 7px;
-  margin: 0;
+  align-items: start;
+  gap: 9px;
+}
+
+.profile-fit-verdict > span {
+  display: grid;
+  place-items: center;
+  margin-top: 1px;
+  color: var(--muted);
+}
+
+.profile-fit.is-strong .profile-fit-verdict > span {
+  color: var(--green);
+}
+
+.profile-fit.is-warning .profile-fit-verdict > span {
   color: var(--amber);
-  font-size: var(--fs-xs);
-  font-weight: 700;
 }
 
-.partial-reason-coverage {
-  margin: 6px 0 0;
-  color: var(--ink-soft);
-  font-size: var(--fs-2xs);
-  font-weight: 560;
+.profile-fit-verdict strong {
+  display: block;
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  font-weight: 680;
+  letter-spacing: -0.01em;
 }
 
-.partial-reason ul {
-  margin: 8px 0 0;
-  padding-left: 17px;
-  color: var(--ink-soft);
-  font-size: var(--fs-xs);
-}
-
-.partial-reason li + li {
-  margin-top: 3px;
-}
-
-.matching-score-note {
-  margin: -5px 0 12px;
-  color: var(--muted-light);
+.profile-fit-verdict small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
   font-size: var(--fs-2xs);
   line-height: 1.45;
+}
+
+.profile-fit-meter {
+  display: grid;
+  gap: 5px;
+}
+
+.profile-fit-bar {
+  overflow: hidden;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(20, 20, 18, 0.1);
+}
+
+.profile-fit-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ink);
+}
+
+.profile-fit.is-strong .profile-fit-bar > span {
+  background: var(--green);
+}
+
+.profile-fit.is-warning .profile-fit-bar > span {
+  background: var(--amber);
+}
+
+.profile-fit-meter p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+}
+
+.profile-fit-meter p strong {
+  color: var(--ink);
+  font-weight: 680;
+}
+
+/* Der Vorbehalt gehoert an die Zahl, nicht ans Ende der Karte: eine Prozentzahl
+   neben einem Namen liest sich sonst als Erfolgsaussicht. */
+.profile-fit-meter small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted-light);
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .profile-tags {
