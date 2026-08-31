@@ -39,6 +39,7 @@ import {
   IconClose,
   IconPlus,
 } from "../icons";
+import { authErrorMessage, isServiceSideAuthFailure } from "./auth-errors";
 import {
   GOOGLE_AUTH_ENABLED,
   initials,
@@ -118,7 +119,13 @@ export function AuthDialog({
     try {
       await startOauthUpgrade(provider);
     } catch (providerError) {
-      setError(providerError instanceof Error ? providerError.message : "Anmeldung konnte nicht gestartet werden.");
+      setError(
+        isServiceSideAuthFailure(providerError)
+          ? authErrorMessage(providerError, mode)
+          : providerError instanceof Error
+            ? providerError.message
+            : "Anmeldung konnte nicht gestartet werden.",
+      );
       setBusy(null);
     }
   };
@@ -161,19 +168,7 @@ export function AuthDialog({
         onAuthenticated();
       }
     } catch (emailError) {
-      const fallback = mode === "login"
-        ? "E-Mail oder Passwort ist nicht korrekt. Nutzen Sie bei Bedarf ‚Passwort vergessen?‘."
-        : mode === "recover"
-          ? "Der Wiederherstellungslink konnte gerade nicht versendet werden."
-          : mode === "register"
-            ? "Das Konto konnte gerade nicht erstellt werden. Prüfen Sie E-Mail und Passwort."
-            : "Das neue Passwort konnte gerade nicht gespeichert werden.";
-      const message = emailError instanceof Error ? emailError.message.toLowerCase() : "";
-      setError(
-        mode === "login" && (message.includes("invalid login") || message.includes("invalid credentials"))
-          ? "E-Mail oder Passwort ist nicht korrekt. Nutzen Sie bei Bedarf ‚Passwort vergessen?‘."
-          : fallback,
-      );
+      setError(authErrorMessage(emailError, mode));
       setBusy(null);
     }
   };

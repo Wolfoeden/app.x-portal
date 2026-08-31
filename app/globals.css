@@ -5703,3 +5703,40 @@ dd.is-unknown,
   justify-self: center;
   margin-top: 4px;
 }
+
+/* Anzeigedichte ---------------------------------------------------------- */
+
+/* Die Oberflaeche war auf grossen Bildschirmen zu grosszuegig gesetzt — sie
+   liest sich deutlich besser, wenn man sie im Browser auf 80 % stellt. Statt
+   das jedem Nutzer zu ueberlassen, steht es hier.
+
+   `zoom` und nicht `transform: scale()`: zoom laesst den Text neu umbrechen und
+   scharf rendern, eine Transformation wuerde ihn vergroessert-verkleinert
+   weichzeichnen und den Platzbedarf unveraendert lassen.
+
+   Erst ab 1220 px, dem groessten Umbruchpunkt dieser Datei. Darunter greifen die
+   eigens abgestimmten Layouts fuer Tablet und Telefon, und die sollen von der
+   Dichte hier unberuehrt bleiben. Weil `zoom` auch den Bezug der Media Queries
+   streckt, liegt der gezoomte Bereich vollstaendig oberhalb aller Umbruchpunkte
+   — es gibt also keine Breite, in der sich zwei Layouts widersprechen. */
+@media (min-width: 1220px) {
+  :root {
+    --ui-zoom: 0.8;
+    zoom: var(--ui-zoom);
+  }
+
+  /* Sichtfeld-Hoehen zaehlen nach dem Zoom mit, `100dvh` fuellt den Bildschirm
+     sonst nur noch zu 80 % und unten bliebe ein leerer Streifen stehen. */
+  .app-shell {
+    height: calc(100dvh / var(--ui-zoom));
+    min-height: calc(620px / var(--ui-zoom));
+  }
+
+  .sidebar-account-popover {
+    max-height: calc((100dvh - 94px) / var(--ui-zoom));
+  }
+
+  .modal-card {
+    max-height: calc((100dvh - 48px) / var(--ui-zoom));
+  }
+}
