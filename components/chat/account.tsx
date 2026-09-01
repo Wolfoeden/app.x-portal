@@ -17,25 +17,39 @@ import {
 import { BUSINESS_ONLY_NOTICE } from "@/lib/legal/policy";
 
 import type { AiUsageSnapshot, PlanTeamSnapshot } from "../chat-contract";
+import {
+  ENTERPRISE_CONTACT,
+  enterprisePaymentLink,
+} from "@/lib/billing/payment-links";
+
 import { IconArrowUpRight, IconCheck, IconSpark } from "../icons";
+import { CreditLimitSetting } from "./credit-limit";
 import { TeamMembersPanel } from "./team-members";
 
 /**
- * Der Plan, der aktuell verkauft wird. Er hebt das monatliche Kontingent —
- * er legt kein zweites, unbefristetes Guthaben daneben. Deshalb steht hier
- * "pro Monat" und nicht "einmalig".
+ * Der einzige bezahlte Plan. Neben der Gratisstufe gibt es nichts weiter —
+ * eine dritte Karte waere ein Angebot, das es nicht gibt.
+ *
+ * Die Zahlung ist zweigeteilt: ein Euro beim Buchen, die tatsaechliche Nutzung
+ * am Monatsende auf Rechnung. Deshalb steht beim Preis "zum Start" und nicht
+ * "pro Monat" — ein Monatspreis waere hier schlicht falsch.
+ *
+ * `credits` bleibt an der Guthabenregel haengen und nicht an einer Zahl von
+ * Hand: was die Karte verspricht, muss das sein, was das System danach auch
+ * freischaltet.
  */
-export const STARTER_PLAN = {
+export const ENTERPRISE_PLAN = {
   id: CREDIT_PLANS.enterprise.id,
   name: CREDIT_PLANS.enterprise.label,
-  audience: "Für Teams, die gemeinsam suchen.",
-  euro: CREDIT_PLANS.enterprise.euro,
+  audience: "Für Unternehmen, die nach Verbrauch abrechnen.",
+  startEuro: 1,
   credits: CREDIT_PLANS.enterprise.monthlyCredits,
   features: [
     "Voller Zugang zur Freelancer-Suche",
     "Websuche nach externen Profilen",
     "KI-Agenten für Recherche und Planung",
     "Teammitglieder teilen sich das Guthaben",
+    "Abrechnung nach Verbrauch, auf Wunsch mit Obergrenze",
   ],
 } as const;
 
@@ -156,12 +170,18 @@ export function CreditPlansDialog({
   team,
   teamBusy,
   teamNotice,
+  selfLimit,
+  selfLimitMaxEuro,
+  onSelfLimitSaved,
   onInviteTeamMember,
   onRemoveTeamMember,
   onClose,
 }: {
   usage: AiUsageSnapshot | null;
   customerReference: string | null;
+  selfLimit: number | null;
+  selfLimitMaxEuro: number;
+  onSelfLimitSaved: (limit: number | null) => void;
   team: PlanTeamSnapshot | null;
   teamBusy: boolean;
   teamNotice: { tone: "error" | "success"; message: string } | null;
@@ -186,8 +206,9 @@ export function CreditPlansDialog({
       </header>
 
       <p className="plans-note">
-        Die Zahlungsabwicklung wird noch angebunden. Ein Plan lässt sich hier
-        ansehen, aber noch nicht kaufen.
+        Die Buchung läuft über Stripe: ein Euro beim Abschluss, die tatsächliche
+        Nutzung folgt am Monatsende auf Rechnung. Das Guthaben wird nach
+        bestätigter Zahlung automatisch freigeschaltet.
       </p>
 
       <p className="plans-note">
@@ -227,27 +248,54 @@ export function CreditPlansDialog({
         </article>
 
         <article className="plan-card">
-          <h3>{STARTER_PLAN.name}</h3>
-          <p className="plan-audience">{STARTER_PLAN.audience}</p>
+          <h3>{ENTERPRISE_PLAN.name}</h3>
+          <p className="plan-audience">{ENTERPRISE_PLAN.audience}</p>
           <p className="plan-price">
-            {STARTER_PLAN.euro} €
-            <span>{planPriceSuffix(STARTER_PLAN.euro)}</span>
+            {ENTERPRISE_PLAN.startEuro} €<span>zum Start, zzgl. USt.</span>
           </p>
           <p className="plan-credits">
-            {formatCreditAmount(STARTER_PLAN.credits)} Credits monatlich
+            {formatCreditAmount(ENTERPRISE_PLAN.credits)} Credits monatlich
           </p>
           <ul className="plan-features">
-            {STARTER_PLAN.features.map((feature) => (
+            {ENTERPRISE_PLAN.features.map((feature) => (
               <li key={feature}>
                 <IconCheck size={12} /> {feature}
               </li>
             ))}
           </ul>
-          <button type="button" disabled title="Zahlung wird noch angebunden">
-            Plan auswählen <IconArrowUpRight size={12} />
-          </button>
+          {/* Die Kontokennung reist als `client_reference_id` mit. Ohne sie
+              kommt bei Stripe eine Zahlung an, die sich keinem Konto zuordnen
+              laesst. */}
+          <a
+            className="plan-action"
+            href={enterprisePaymentLink(customerReference)}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Plan buchen <IconArrowUpRight size={12} />
+          </a>
+          {/* Ueber die Abrechnung nach Verbrauch entstehen Rueckfragen, die ein
+              Formular nicht beantwortet. Deshalb steht der Ansprechpartner
+              neben dem Knopf und nicht auf einer Unterseite. */}
+          <p className="plan-contact-note">
+            Fragen zur Abrechnung oder eine Obergrenze vereinbaren:{" "}
+            <a href={`mailto:${ENTERPRISE_CONTACT.email}`}>{ENTERPRISE_CONTACT.email}</a>
+            {" · "}
+            <a href={`tel:${ENTERPRISE_CONTACT.phone}`}>{ENTERPRISE_CONTACT.phoneDisplay}</a>
+            {" · "}
+            {ENTERPRISE_CONTACT.person}
+          </p>
         </article>
       </div>
+
+      {plan.purchasable ? (
+        <CreditLimitSetting
+          limit={selfLimit}
+          maxCredits={ENTERPRISE_PLAN.credits}
+          maxEuro={selfLimitMaxEuro}
+          onSaved={onSelfLimitSaved}
+        />
+      ) : null}
 
       <TeamMembersPanel
         team={team}

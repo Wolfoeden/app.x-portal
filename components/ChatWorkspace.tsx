@@ -342,11 +342,39 @@ export function buildVersionsDiffer(
   );
 }
 
+/** Zaehlt hoch, wenn es gar keinen Zufall gibt. Siehe `makeId`. */
+let fallbackIdCounter = 0;
+
+/**
+ * Erzeugt eine Kennung fuer Nachrichten und Entwuerfe.
+ *
+ * Die `clientMessageId` daraus dient serverseitig als Idempotenz-Schluessel.
+ * Der frueher hier stehende Rueckfall auf `Math.random()` sah zufaellig aus,
+ * war es aber nicht — der Generator ist vorhersagbar. Statt einer schwachen
+ * Zufallszahl gibt es jetzt eine zaehlende Kennung: die verspricht keine
+ * Unvorhersagbarkeit, die sie nicht halten kann.
+ *
+ * Der Rueckfall greift ohnehin nur ohne `crypto`, also ausserhalb eines
+ * sicheren Kontexts — dort funktioniert auch die Anmeldung nicht.
+ */
 function makeId(prefix: string) {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `${prefix}-${crypto.randomUUID()}`;
+  // `Partial`, weil die Typen beide Methoden als vorhanden fuehren — ohne das
+  // verengt TypeScript den zweiten Zweig auf `never`, obwohl aeltere Browser
+  // genau dort landen.
+  const source: Partial<Crypto> | null =
+    typeof crypto === "undefined" ? null : crypto;
+
+  if (source?.randomUUID) {
+    return `${prefix}-${source.randomUUID()}`;
   }
-  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  if (source?.getRandomValues) {
+    const bytes = source.getRandomValues(new Uint8Array(16));
+    const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+    return `${prefix}-${hex}`;
+  }
+
+  fallbackIdCounter += 1;
+  return `${prefix}-${Date.now()}-${fallbackIdCounter}`;
 }
 
 
@@ -1215,6 +1243,10 @@ export function ChatWorkspace({
     { tone: "error" | "success"; message: string } | null
   >(null);
   const [usage, setUsage] = useState<AiUsageSnapshot | null>(previewData?.usage ?? null);
+  /* Das selbst gesetzte Limit kommt neben der Momentaufnahme mit, damit die
+     Einstellung nach einem Neuladen den gespeicherten Wert zeigt. */
+  const [selfLimit, setSelfLimit] = useState<number | null>(null);
+  const [selfLimitMaxEuro, setSelfLimitMaxEuro] = useState(50);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [team, setTeam] = useState<SavedFreelancer[]>([]);
@@ -1324,8 +1356,18 @@ export function ChatWorkspace({
         }
         return null;
       }
-      const snapshot = normalizeUsageSnapshot(await response.json());
+      const payload: unknown = await response.json();
+      const snapshot = normalizeUsageSnapshot(payload);
       if (snapshot) setUsage(snapshot);
+      // Das Limit reist neben der Momentaufnahme mit. Es ist ausdruecklich
+      // nullbar: "kein Limit" ist ein gueltiger Zustand, kein fehlender Wert.
+      if (isRecord(payload)) {
+        const stored = payload.selfLimit;
+        setSelfLimit(typeof stored === "number" && Number.isSafeInteger(stored) ? stored : null);
+        if (typeof payload.selfLimitMaxEuro === "number") {
+          setSelfLimitMaxEuro(payload.selfLimitMaxEuro);
+        }
+      }
       return snapshot;
     } catch {
       // Usage information is supplementary and never blocks the chat shell.
@@ -3040,6 +3082,9 @@ export function ChatWorkspace({
         <CreditPlansDialog
           usage={usage}
           customerReference={auth.user?.id ?? null}
+          selfLimit={selfLimit}
+          selfLimitMaxEuro={selfLimitMaxEuro}
+          onSelfLimitSaved={setSelfLimit}
           team={planTeam}
           teamBusy={planTeamBusy}
           teamNotice={planTeamNotice}

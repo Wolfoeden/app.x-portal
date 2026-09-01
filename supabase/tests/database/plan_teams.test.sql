@@ -46,9 +46,9 @@ insert into auth.users (
 -- verlangt bei einer Gastsitzung 'guest'. Ohne den normalisierenden Trigger
 -- bekam damit keine neue Gastsitzung mehr ein Guthabenkonto.
 select lives_ok(
-  $insert into public.user_ai_credit_accounts (
+  $$insert into public.user_ai_credit_accounts (
       user_id, is_anonymous, credits_total, credits_used, credits_reserved
-    ) values ('b2000000-0000-4000-8000-000000000004', true, 100, 0, 0)$,
+    ) values ('b2000000-0000-4000-8000-000000000004', true, 100, 0, 0)$$,
   'ein neues Gastkonto entsteht ohne ausdrueckliche Stufe'
 );
 
@@ -88,8 +88,8 @@ select throws_ok(
 -- Der Trigger normalisiert, statt die Zeile abzulehnen: eine Gastsitzung
 -- bleibt auf der Gaststufe, egal was geschrieben wird.
 select lives_ok(
-  $update public.user_ai_credit_accounts set plan_id = 'enterprise'
-     where user_id = 'b2000000-0000-4000-8000-000000000004'$,
+  $$update public.user_ai_credit_accounts set plan_id = 'enterprise'
+     where user_id = 'b2000000-0000-4000-8000-000000000004'$$,
   'ein Schreibversuch auf eine Gastsitzung laeuft nicht in einen Fehler'
 );
 

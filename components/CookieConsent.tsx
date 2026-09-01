@@ -108,7 +108,10 @@ export function CookieConsent() {
           </h2>
           <p>
             XPORTAL verwendet ausschließlich technisch notwendige Cookies und
-            Sitzungsspeicher für Anmeldung, Sicherheit und Ihre Auswahl.
+            Sitzungsspeicher für Anmeldung, Sicherheit und Ihre Auswahl. Auf dem
+            Kontakt- und dem Whitelist-Formular prüft hCaptcha, ob ein Mensch
+            absendet; dabei wird Ihre IP-Adresse an Intuition Machines, Inc.
+            (USA) übertragen.
             {OPTIONAL_SERVICES_AVAILABLE
               ? " Optionale Dienste werden erst nach Ihrer Zustimmung geladen."
               : " Analyse- und Marketingdienste setzen wir nicht ein — hier gibt es nichts zu entscheiden. Sollte sich das ändern, fragen wir vorher."}

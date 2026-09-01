@@ -18,6 +18,7 @@ import {
   getClientIp,
   pseudonymizeIp,
 } from "@/lib/security/request";
+import { CAPTCHA_FIELD, verifyCaptcha } from "@/lib/security/captcha";
 import { consumeRateLimit } from "@/lib/security/shared-rate-limit";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -68,6 +69,16 @@ export async function POST(request: NextRequest) {
 
     if (parsed.data.website) {
       return NextResponse.redirect(landingUrl(request, "joined"), 303);
+    }
+
+    // Nach dem Honeypot und vor dem Rate-Limit: ein Bot, der den Honeypot
+    // gefuellt hat, soll gar nicht erst eine Anfrage an hCaptcha ausloesen.
+    const captchaResult = await verifyCaptcha(
+      String(formData.get(CAPTCHA_FIELD) ?? ""),
+      getClientIp(request),
+    );
+    if (!captchaResult.ok) {
+      return NextResponse.redirect(landingUrl(request, "error"), 303);
     }
 
     const ipHash = pseudonymizeIp(getClientIp(request));

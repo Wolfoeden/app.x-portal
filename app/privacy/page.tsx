@@ -289,7 +289,9 @@ export default function PrivacyPage() {
               <li>OpenAI Ireland Ltd. und verbundene API-Unterauftragsverarbeiter für die angeforderten KI-Funktionen;</li>
               <li>Google erst nach Wahl der Google-Anmeldung;</li>
               <li>der jeweils angezeigte Buchungsanbieter erst nach Ihrem Klick;</li>
-              <li>1&amp;1 IONOS SE, Montabaur, für den Versand von Transaktions-E-Mails wie Bestätigung, Anmeldung oder Wiederherstellung; die Verarbeitung findet innerhalb der EU statt.</li>
+              <li>Stripe Payments Europe, Ltd., Dublin, erst nach Ihrem Klick auf „Plan buchen“; dabei wird Ihre XPORTAL-Kontokennung übergeben, damit die Zahlung Ihrem Konto zugeordnet werden kann. Stripe leitet Daten an Stripe, Inc. in den USA weiter;</li>
+              <li>1&amp;1 IONOS SE, Montabaur, für den Versand von Transaktions-E-Mails wie Bestätigung, Anmeldung oder Wiederherstellung; die Verarbeitung findet innerhalb der EU statt;</li>
+              <li>Intuition Machines, Inc. (hCaptcha), San Francisco, USA, zur Abwehr automatisierter Eingaben auf dem Kontakt- und dem Whitelist-Formular. Das Prüf-Widget wird beim Aufruf dieser beiden Seiten geladen und erhält dabei Ihre IP-Adresse, Angaben zu Browser und Gerät sowie Ihr Verhalten im Widget. Dies ist eine Übermittlung in ein Drittland.</li>
             </ul>
             <p>
               Soweit Anbieter als Auftragsverarbeiter tätig sind, erfolgt die

@@ -5359,15 +5359,37 @@ dd.is-unknown,
 .plan-features { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .plan-features li { display: flex; align-items: flex-start; gap: 7px; color: var(--muted); font-size: var(--fs-2xs); line-height: 1.45; }
 .plan-features svg { flex: 0 0 auto; margin-top: 2px; color: var(--green, #1f7a4d); }
-.plan-card > button {
+/* Knopf und Link sehen gleich aus: fuer den Leser ist beides "hier geht es
+   weiter", nur fuehrt das eine zu Stripe und das andere ins Mailprogramm. */
+.plan-card > button,
+.plan-card .plan-action {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   margin-top: auto;
   border: 1px solid var(--ink); border-radius: var(--radius-sm);
   background: var(--ink); padding: 11px 14px;
   color: #fff; font: inherit; font-size: var(--fs-2xs); font-weight: 700;
-  cursor: pointer;
+  cursor: pointer; text-decoration: none;
+  transition: background-color 120ms ease, border-color 120ms ease;
 }
+.plan-card > button:hover:not(:disabled),
+.plan-card .plan-action:not(.is-quiet):hover { border-color: #000; background: #000; }
 .plan-card > button:disabled { border-color: var(--border); background: var(--surface-soft); color: var(--muted); cursor: not-allowed; }
+
+/* Der Ansprechpartner steht unter dem Knopf, nicht daneben: die Abrechnung
+   nach Verbrauch wirft Fragen auf, die ein Formular nicht beantwortet. */
+.plan-contact-note {
+  margin: 8px 0 0;
+  color: var(--muted-light);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.plan-contact-note a { color: var(--muted); text-underline-offset: 2px; }
+.plan-contact-note a:hover { color: var(--ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-card > button,
+  .plan-card .plan-action { transition: none; }
+}
 
 .plans-close {
   align-self: flex-start;
@@ -5986,6 +6008,102 @@ dd.is-unknown,
     transition: none;
   }
 }
+
+/* hCaptcha-Kaestchen ----------------------------------------------------- */
+
+.captcha-field {
+  display: grid;
+  gap: 7px;
+  margin: 4px 0 2px;
+}
+
+/* Das Widget bringt eine feste Breite von 303 px mit. Auf schmalen Fenstern
+   ragt es damit aus dem Formular; ein Skalieren waere unscharf, ein Scrollen
+   im Formular unsinnig — also darf der Rahmen selbst schieben. */
+.captcha-field .h-captcha {
+  overflow-x: auto;
+}
+
+.captcha-note {
+  margin: 0;
+  color: var(--muted-light);
+  font-size: var(--fs-2xs);
+  line-height: 1.45;
+}
+
+.captcha-note a {
+  color: var(--muted);
+  text-underline-offset: 2px;
+}
+
+/* Selbst gesetztes Limit ------------------------------------------------- */
+
+.credit-limit {
+  display: grid;
+  gap: 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  padding: 16px 18px;
+}
+
+.credit-limit > label {
+  color: var(--muted-light);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+
+.credit-limit-row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.credit-limit-row input {
+  min-width: 0;
+  flex: 1 1 160px;
+  height: 40px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  outline: 0;
+  padding: 0 12px;
+  font: inherit;
+  font-size: var(--fs-xs);
+}
+
+.credit-limit-row input:focus { border-color: #93938d; box-shadow: 0 0 0 3px #efefeb; }
+
+.credit-limit-row button {
+  flex: none;
+  min-height: 40px;
+  cursor: pointer;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  padding: 0 16px;
+  color: #fff;
+  font: inherit;
+  font-size: var(--fs-2xs);
+  font-weight: 680;
+}
+
+.credit-limit-row button:disabled { cursor: wait; opacity: .6; }
+
+/* Die Zahl allein sagt niemandem, was sie kostet. */
+.credit-limit-hint {
+  display: flex;
+  align-items: start;
+  gap: 6px;
+  margin: 0;
+  color: var(--muted-light);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.credit-limit-hint > span { display: inline-flex; flex: none; margin-top: 2px; }
+
+.credit-limit-status { display: flex; align-items: center; gap: 5px; margin: 0; font-size: 11px; font-weight: 650; }
+.credit-limit-status.is-ok { color: var(--green); }
+.credit-limit-status.is-error { color: var(--danger); }
 
 /* Anzeigedichte ---------------------------------------------------------- */
 
