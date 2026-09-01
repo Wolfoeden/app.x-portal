@@ -5359,15 +5359,37 @@ dd.is-unknown,
 .plan-features { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .plan-features li { display: flex; align-items: flex-start; gap: 7px; color: var(--muted); font-size: var(--fs-2xs); line-height: 1.45; }
 .plan-features svg { flex: 0 0 auto; margin-top: 2px; color: var(--green, #1f7a4d); }
-.plan-card > button {
+/* Knopf und Link sehen gleich aus: fuer den Leser ist beides "hier geht es
+   weiter", nur fuehrt das eine zu Stripe und das andere ins Mailprogramm. */
+.plan-card > button,
+.plan-card .plan-action {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   margin-top: auto;
   border: 1px solid var(--ink); border-radius: var(--radius-sm);
   background: var(--ink); padding: 11px 14px;
   color: #fff; font: inherit; font-size: var(--fs-2xs); font-weight: 700;
-  cursor: pointer;
+  cursor: pointer; text-decoration: none;
+  transition: background-color 120ms ease, border-color 120ms ease;
 }
+.plan-card > button:hover:not(:disabled),
+.plan-card .plan-action:not(.is-quiet):hover { border-color: #000; background: #000; }
 .plan-card > button:disabled { border-color: var(--border); background: var(--surface-soft); color: var(--muted); cursor: not-allowed; }
+
+/* Der Ansprechpartner steht unter dem Knopf, nicht daneben: die Abrechnung
+   nach Verbrauch wirft Fragen auf, die ein Formular nicht beantwortet. */
+.plan-contact-note {
+  margin: 8px 0 0;
+  color: var(--muted-light);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.plan-contact-note a { color: var(--muted); text-underline-offset: 2px; }
+.plan-contact-note a:hover { color: var(--ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-card > button,
+  .plan-card .plan-action { transition: none; }
+}
 
 .plans-close {
   align-self: flex-start;
