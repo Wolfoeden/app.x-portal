@@ -10,8 +10,11 @@ import {
   removeTeamMember,
   type InviteFailure,
 } from "@/lib/data/plan-teams";
+import { deliverEmail } from "@/lib/email/deliver";
 import { assertSameOrigin, readJsonWithLimit } from "@/lib/security/request";
+import { teamInvitationMessage } from "@/lib/team/messages";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const EmailSchema = z
@@ -109,6 +112,17 @@ export async function POST(request: Request) {
       );
     }
 
+    // Der Zugang besteht ab hier. Die Nachricht sagt der Person, dass es ihn
+    // gibt — bisher bekam sie Zugriff auf fremdes Guthaben, ohne davon zu
+    // erfahren. Ein gescheiterter Versand nimmt die Aufnahme nicht zurueck:
+    // Sie steht bereits in der Datenbank, und eine Fehlerantwort brächte den
+    // Einladenden dazu, es noch einmal zu versuchen. Was passiert ist, steht
+    // im Audit-Eintrag.
+    const invitation = await deliverEmail({
+      to: result.member.email ?? input.email,
+      ...teamInvitationMessage({ ownerEmail: user.email }),
+    });
+
     await writeAuditEvent({
       actorUserId: user.id,
       action: "plan_team_member_added",
@@ -116,6 +130,7 @@ export async function POST(request: Request) {
       targetId: result.member.userId,
       outcome: "success",
       required: true,
+      metadata: { invited: invitation.delivered },
     });
 
     return NextResponse.json(
