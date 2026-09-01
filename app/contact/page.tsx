@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { CaptchaField } from "@/components/CaptchaField";
 import { CONTACT_RESPONSE_PROMISE } from "@/lib/legal/policy";
 
 export const metadata: Metadata = {
@@ -113,6 +114,7 @@ export default async function ContactPage({
             </label>
           </div>
 
+          <CaptchaField />
           <button type="submit" className="contact-submit">
             Nachricht senden
           </button>

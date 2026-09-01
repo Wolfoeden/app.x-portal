@@ -15,11 +15,20 @@ function directive(policy: string, name: string): string | undefined {
 
 describe("content security policy", () => {
   it("keeps the enforced policy on 'unsafe-inline' until the nonce rollout flips", () => {
-    const policy = buildContentSecurityPolicy({ isProduction: true });
+    const scriptSrc =
+      directive(buildContentSecurityPolicy({ isProduction: true }), "script-src") ?? "";
 
-    expect(directive(policy, "script-src")).toBe(
-      "script-src 'self' 'unsafe-inline'",
-    );
+    expect(scriptSrc).toContain("'unsafe-inline'");
+    expect(scriptSrc).toContain("'self'");
+    // Ausser hCaptcha kommt keine fremde Herkunft dazu.
+    expect(scriptSrc).not.toContain("'strict-dynamic'");
+    expect(
+      scriptSrc
+        .replace("script-src ", "")
+        .split(" ")
+        .filter((source) => source.startsWith("https://"))
+        .every((source) => source.endsWith("hcaptcha.com")),
+    ).toBe(true);
   });
 
   it("replaces 'unsafe-inline' with the nonce instead of adding to it", () => {
@@ -45,11 +54,39 @@ describe("content security policy", () => {
     ).not.toContain("'unsafe-eval'");
   });
 
-  it("embeds nothing, matching section 7 of the privacy notice", () => {
+  /**
+   * Frueher stand hier `frame-src 'none'`. Eingebettet wird jetzt hCaptcha —
+   * und ausschliesslich das. Abschnitt 7 der Datenschutzhinweise sagt zu, dass
+   * Buchungsseiten erst nach einem Klick und in einem eigenen Aufruf geladen
+   * werden; diese Zusage haelt der Test weiter fest.
+   */
+  it("embeds hCaptcha and nothing else", () => {
     const policy = buildContentSecurityPolicy({ isProduction: true });
+    const frameSrc = directive(policy, "frame-src") ?? "";
 
-    expect(directive(policy, "frame-src")).toBe("frame-src 'none'");
+    expect(frameSrc).toContain("hcaptcha.com");
+    expect(frameSrc).not.toContain("calendly");
     expect(policy).not.toContain("calendly");
+
+    // Keine stillschweigende Oeffnung fuer alles Uebrige: jede genannte
+    // Herkunft muss auf hcaptcha.com enden, ein blosses "*" waere keine.
+    expect(frameSrc).not.toContain("'self'");
+    expect(
+      frameSrc
+        .replace("frame-src ", "")
+        .split(" ")
+        .every((source) => source.endsWith("hcaptcha.com")),
+    ).toBe(true);
+  });
+
+  it("reaches hCaptcha for the script, the frame and the answer", () => {
+    const enforced = buildContentSecurityPolicy({ isProduction: true });
+
+    // Die durchgesetzte Fassung kennt kein `strict-dynamic` und braucht die
+    // Herkunft ausgeschrieben, sonst wird das Widget-Skript blockiert.
+    expect(directive(enforced, "script-src")).toContain("hcaptcha.com");
+    expect(directive(enforced, "connect-src")).toContain("hcaptcha.com");
+    expect(directive(enforced, "frame-src")).toContain("hcaptcha.com");
   });
 
   it("keeps the hard boundaries in every variant", () => {

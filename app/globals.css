@@ -5987,6 +5987,33 @@ dd.is-unknown,
   }
 }
 
+/* hCaptcha-Kaestchen ----------------------------------------------------- */
+
+.captcha-field {
+  display: grid;
+  gap: 7px;
+  margin: 4px 0 2px;
+}
+
+/* Das Widget bringt eine feste Breite von 303 px mit. Auf schmalen Fenstern
+   ragt es damit aus dem Formular; ein Skalieren waere unscharf, ein Scrollen
+   im Formular unsinnig — also darf der Rahmen selbst schieben. */
+.captcha-field .h-captcha {
+  overflow-x: auto;
+}
+
+.captcha-note {
+  margin: 0;
+  color: var(--muted-light);
+  font-size: var(--fs-2xs);
+  line-height: 1.45;
+}
+
+.captcha-note a {
+  color: var(--muted);
+  text-underline-offset: 2px;
+}
+
 /* Anzeigedichte ---------------------------------------------------------- */
 
 /* Die Oberflaeche war auf grossen Bildschirmen zu grosszuegig gesetzt — sie

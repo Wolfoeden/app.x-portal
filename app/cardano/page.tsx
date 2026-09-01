@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { CaptchaField } from "@/components/CaptchaField";
 import { CookieSettingsButton } from "@/components/CookieConsent";
 
 type HomeProps = {
@@ -122,6 +123,7 @@ export default async function XPortalHome({ searchParams }: HomeProps) {
                     <Link href="/privacy">privacy notice</Link>.
                   </span>
                 </label>
+                <CaptchaField />
                 <button type="submit" className="xhome-submit">
                   <span>Request early access</span><span aria-hidden="true">→</span>
                 </button>
