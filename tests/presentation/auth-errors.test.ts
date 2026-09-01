@@ -25,7 +25,24 @@ describe("auth error messages", () => {
     );
 
     expect(message).not.toContain("Prüfen Sie E-Mail und Passwort");
-    expect(message).toContain("nicht an Ihren Angaben");
+    expect(message).toContain("nicht an Ihrem Passwort");
+  });
+
+  /**
+   * Supabase meldet jeden gescheiterten Versand als `unexpected_failure`, egal
+   * woran er lag. Am 01.09.2026 war es `550 mailbox unavailable — invalid DNS
+   * MX or A/AAAA resource record`: Die Empfaengerdomain gab es nicht. Eine
+   * Meldung, die nur vom eigenen Dienst spricht, schickt so jemanden weg,
+   * dessen Adresse keine Post annimmt.
+   */
+  it("names the unreachable address as the other possible cause", () => {
+    const message = authErrorMessage(
+      authError({ status: 500, code: "unexpected_failure", message: "Error sending confirmation email" }),
+      "register",
+    );
+
+    expect(message).toContain("Adresse");
+    expect(message).toContain("Schreibweise");
   });
 
   it("recognises a service-side failure by status, code or message", () => {

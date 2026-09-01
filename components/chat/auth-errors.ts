@@ -57,8 +57,23 @@ export function isServiceSideAuthFailure(error: unknown): boolean {
   );
 }
 
+/**
+ * Warum hier zwei Ursachen stehen und nicht nur eine.
+ *
+ * Supabase meldet einen gescheiterten Versand immer als `unexpected_failure`,
+ * unabhaengig davon, woran er scheiterte — der Grund des Mailservers kommt im
+ * Browser nicht an. Am 01.09.2026 stand im Auth-Log:
+ *
+ *     550 "mailbox unavailable — invalid DNS MX or A/AAAA resource record"
+ *
+ * Die Empfaengerdomain existierte nicht. Die Meldung sagte trotzdem "unser
+ * Dienst ist gestoert" und schickte jemanden weg, dessen Adresse schlicht
+ * keine Post annimmt. Umgekehrt darf sie nicht auf das Passwort zeigen: Daran
+ * liegt es in keinem der beiden Faelle. Genannt werden deshalb beide, und die
+ * einzige Pruefung, die der Nutzer selbst machen kann, steht dabei.
+ */
 const SERVICE_SIDE_MESSAGE =
-  "Das liegt gerade nicht an Ihren Angaben, sondern an unserem Dienst — der Bestätigungsversand ist vorübergehend gestört. Bitte versuchen Sie es später erneut oder wenden Sie sich an Roman Dering.";
+  "Die Bestätigungsmail konnte nicht zugestellt werden. Das liegt nicht an Ihrem Passwort — entweder ist unser Versand gerade gestört, oder die angegebene Adresse nimmt keine Nachrichten an. Prüfen Sie bitte die Schreibweise; stimmt sie, versuchen Sie es später erneut oder wenden Sie sich an Roman Dering.";
 
 export function authErrorMessage(error: unknown, mode: AuthAttemptMode): string {
   if (isServiceSideAuthFailure(error)) return SERVICE_SIDE_MESSAGE;
