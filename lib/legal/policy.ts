@@ -27,3 +27,14 @@ export const TERMS_EFFECTIVE_DATE = "28. August 2026";
  */
 export const BUSINESS_ONLY_NOTICE =
   "Angebot ausschließlich für Unternehmer im Sinne des § 14 BGB.";
+
+/**
+ * Die Adresse aus dem Impressum.
+ *
+ * Sie steht hier, weil inzwischen mehrere Stellen sie brauchen — der Fuß jeder
+ * Transaktionsmail, die Kündigungsanschrift in der Vertragsbestätigung und der
+ * Eingang des Kontaktformulars. Eine Mail, die eine andere Adresse nennt als
+ * das Impressum, wäre keine Kleinigkeit: Sie verspräche einen Kontaktweg, den
+ * es so nicht gibt.
+ */
+export const IMPRINT_EMAIL = "info@x-portal.eu";

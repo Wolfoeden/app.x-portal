@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 
 import { CREDIT_PLANS } from "@/lib/ai/credit-policy";
+import { orderConfirmationMessage } from "@/lib/billing/order-confirmation";
 import { verifyStripeSignature } from "@/lib/billing/stripe-signature";
+import { deliverEmail } from "@/lib/email/deliver";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { logEvent } from "@/lib/security/request";
 
@@ -31,6 +33,50 @@ type StripeEvent = {
   type?: unknown;
   data?: { object?: { client_reference_id?: unknown } } | null;
 };
+
+/**
+ * Die Vertragsbestätigung in Textform, nach der Freischaltung.
+ *
+ * Sie läuft getrennt von der Freischaltung und kann sie nicht umstoßen: Der
+ * Vertrag steht, sobald `activate_paid_plan` durch ist. Würde ein Fehler beim
+ * Versand die Antwort auf 5xx setzen, stellte Stripe dasselbe Ereignis erneut
+ * zu — und der Kunde bekäme je nach Ursache entweder mehrere Bestätigungen
+ * oder weiterhin keine. Ein Fehler wird deshalb protokolliert und nicht
+ * weitergereicht.
+ *
+ * Die Adresse kommt aus dem Konto und nicht aus dem Stripe-Ereignis. Bei einem
+ * Unternehmen zahlt oft die Buchhaltung; geschuldet ist die Bestätigung dem
+ * Konto, das freigeschaltet wurde.
+ */
+async function sendOrderConfirmation(
+  admin: ReturnType<typeof createAdminSupabaseClient>,
+  userId: string,
+  eventId: string,
+): Promise<void> {
+  try {
+    const { data, error } = await admin.auth.admin.getUserById(userId);
+    const email = data?.user?.email?.trim();
+    if (error || !email) {
+      logEvent("order_confirmation_skipped", { eventId, reason: "no_email" });
+      return;
+    }
+
+    const result = await deliverEmail({
+      to: email,
+      ...orderConfirmationMessage(),
+    });
+    if (!result.delivered) {
+      // `docs/checkout-compliance.md` schuldet diese Bestätigung unverzüglich.
+      // Bleibt sie aus, muss das im Protokoll stehen und von Hand nachgeholt
+      // werden — still bliebe eine offene Pflicht unbemerkt.
+      logEvent("order_confirmation_failed", { eventId, reason: result.reason });
+      return;
+    }
+    logEvent("order_confirmation_sent", { eventId });
+  } catch {
+    logEvent("order_confirmation_failed", { eventId, reason: "unexpected" });
+  }
+}
 
 export async function POST(request: Request) {
   const rawBody = await request.text();
@@ -98,10 +144,19 @@ export async function POST(request: Request) {
   }
 
   const row = (Array.isArray(data) ? data[0] : data) as { activated?: unknown } | null;
+  const activated = row?.activated === true;
   logEvent("stripe_webhook_activated", {
     eventId,
     repeated: row?.activated === false,
   });
 
-  return NextResponse.json({ received: true, activated: row?.activated === true });
+  // Nur beim ersten Mal. Stripe stellt dasselbe Ereignis mehrfach zu, und
+  // `activate_paid_plan` meldet die Wiederholung mit `activated: false`. Eine
+  // zweite Bestätigung zu demselben Vertrag wäre keine Dopplung, sondern die
+  // Auskunft über einen Abschluss, den es nicht gegeben hat.
+  if (activated) {
+    await sendOrderConfirmation(admin, reference, eventId);
+  }
+
+  return NextResponse.json({ received: true, activated });
 }

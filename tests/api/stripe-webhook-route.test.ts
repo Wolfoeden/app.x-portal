@@ -1,11 +1,19 @@
 import { createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ rpc: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  rpc: vi.fn(),
+  getUserById: vi.fn(),
+  deliver: vi.fn(),
+}));
 
 vi.mock("server-only", () => ({}));
+vi.mock("@/lib/email/deliver", () => ({ deliverEmail: mocks.deliver }));
 vi.mock("@/lib/supabase/admin", () => ({
-  createAdminSupabaseClient: () => ({ rpc: mocks.rpc }),
+  createAdminSupabaseClient: () => ({
+    rpc: mocks.rpc,
+    auth: { admin: { getUserById: mocks.getUserById } },
+  }),
 }));
 
 import { POST } from "@/app/api/stripe/webhook/route";
@@ -43,6 +51,11 @@ beforeEach(() => {
   process.env.STRIPE_WEBHOOK_SECRET = SECRET;
   process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-test-key";
   mocks.rpc.mockResolvedValue({ data: [{ activated: true, credits_total: 3_000 }], error: null });
+  mocks.getUserById.mockResolvedValue({
+    data: { user: { email: "buchhaltung@example.com" } },
+    error: null,
+  });
+  mocks.deliver.mockResolvedValue({ delivered: true });
   vi.spyOn(console, "info").mockImplementation(() => undefined);
 });
 
@@ -145,5 +158,57 @@ describe("POST /api/stripe/webhook", () => {
     const payload = (await response.json()) as { error?: string };
 
     expect(payload.error).not.toMatch(/mismatch|secret|too_old|malformed/iu);
+  });
+
+  /**
+   * Hier nur die Verdrahtung: an welche Adresse und aus welcher Quelle. Ob die
+   * Bestätigung inhaltlich vollständig ist, prüft
+   * `tests/presentation/order-confirmation.test.ts`.
+   */
+  it("schickt die Vertragsbestätigung an das freigeschaltete Konto", async () => {
+    await POST(request(body()));
+
+    expect(mocks.getUserById).toHaveBeenCalledWith(ACCOUNT);
+    const message = mocks.deliver.mock.calls[0][0] as {
+      to: string;
+      subject: string;
+    };
+
+    expect(message.to).toBe("buchhaltung@example.com");
+    expect(message.subject).toContain("Textform");
+  });
+
+  /**
+   * Stripe stellt dasselbe Ereignis mehrfach zu. Eine zweite Bestätigung wäre
+   * die Auskunft über einen Abschluss, den es nicht gegeben hat.
+   */
+  it("schickt bei einer Wiederholung keine zweite Bestätigung", async () => {
+    mocks.rpc.mockResolvedValue({ data: [{ activated: false }], error: null });
+
+    await POST(request(body()));
+
+    expect(mocks.deliver).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Der Vertrag steht, sobald freigeschaltet ist. Ein 5xx würde Stripe zur
+   * Wiederholung bewegen und das Kontingent erneut anfassen.
+   */
+  it("bestätigt Stripe auch dann, wenn die Mail nicht rausgeht", async () => {
+    mocks.deliver.mockResolvedValue({ delivered: false, reason: "send_failed" });
+
+    const response = await POST(request(body()));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ activated: true });
+  });
+
+  it("scheitert nicht an einem Konto ohne hinterlegte Adresse", async () => {
+    mocks.getUserById.mockResolvedValue({ data: { user: {} }, error: null });
+
+    const response = await POST(request(body()));
+
+    expect(response.status).toBe(200);
+    expect(mocks.deliver).not.toHaveBeenCalled();
   });
 });

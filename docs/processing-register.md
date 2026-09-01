@@ -122,11 +122,12 @@ Retention-Policies überprüfbar.
   Einwilligungszeitpunkt.
 - **Fristen:** unbestätigte Einträge 30 Tage
   (`run_whitelist_pending_cleanup()`); bestätigte Prüfung nach 365 Tagen.
-- **Offen:** Das Doppelbestätigungsverfahren ist in der Datenbank vorbereitet
-  (Status, Token-Hash, Bestätigungszeitpunkt), aber noch nicht in Betrieb — es
-  fehlt der E-Mail-Anbieter. Bis dahin bleibt jeder Eintrag unbestätigt und
-  darf nicht angeschrieben werden; der Aufräum-Job löscht ihn nach 30 Tagen.
-  **Solange das gilt, ist die Whitelist faktisch kein Verteiler.**
+- **Empfänger:** 1&1 IONOS SE als Auftragsverarbeiter für den Versand der
+  Bestätigungsmail; Verarbeitung innerhalb der EU.
+- **Stand:** Das Doppelbestätigungsverfahren ist seit dem 01.09.2026 in
+  Betrieb — die Bestätigungsmail geht raus, `confirmation_sent_at` hält den
+  Versand fest. Ein Eintrag ohne Bestätigung darf weiterhin nicht
+  angeschrieben werden; der Aufräum-Job löscht ihn nach 30 Tagen.
 
 ### 8. Kontaktanfragen
 
@@ -135,6 +136,12 @@ Retention-Policies überprüfbar.
   sonst lit. f.
 - **Datenkategorien:** Name, E-Mail-Adresse, Betreff, Nachrichtentext.
   **Ausdrücklich nicht:** IP-Adresse, Browserkennung, Referrer.
+- **Empfänger:** 1&1 IONOS SE als Auftragsverarbeiter. Seit dem 01.09.2026
+  gehen zwei Nachrichten raus: eine Benachrichtigung an das eigene Postfach mit
+  dem vollständigen Anliegen und eine Eingangsbestätigung an den Absender. Die
+  Bestätigung enthält **nichts, was der Absender eingegeben hat** — die Adresse
+  im Formular ist ungeprüft, und zurückgespiegelter Text machte das Formular zu
+  einem Weg, fremden Postfächern beliebigen Inhalt zuzustellen.
 - **Fristen:** Löschung nach Erledigung, Prüfung spätestens nach 365 Tagen;
   bei vertraglichem Bezug ggf. handelsrechtliche Aufbewahrung.
 

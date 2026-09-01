@@ -16,6 +16,7 @@ import {
 import {
   assertSameOrigin,
   getClientIp,
+  logEvent,
   pseudonymizeIp,
 } from "@/lib/security/request";
 import { CAPTCHA_FIELD, verifyCaptcha } from "@/lib/security/captcha";
@@ -64,6 +65,11 @@ export async function POST(request: NextRequest) {
       website: String(formData.get("website") ?? ""),
     });
     if (!parsed.success) {
+      // Nur der Grund, keine Eingaben: Diese Zweige schreiben kein Audit, und
+      // ohne eine Spur ist von außen nicht zu unterscheiden, ob jemand am
+      // Formular scheitert oder am Captcha. Genau das war beim Ausfall am
+      // 01.09.2026 die Lücke.
+      logEvent("whitelist_rejected", { reason: "invalid_form" });
       return NextResponse.redirect(landingUrl(request, "error"), 303);
     }
 
@@ -78,12 +84,14 @@ export async function POST(request: NextRequest) {
       getClientIp(request),
     );
     if (!captchaResult.ok) {
+      logEvent("whitelist_rejected", { reason: `captcha_${captchaResult.reason}` });
       return NextResponse.redirect(landingUrl(request, "error"), 303);
     }
 
     const ipHash = pseudonymizeIp(getClientIp(request));
     const limit = await consumeRateLimit(`whitelist:${ipHash}`, 5, 15 * 60_000);
     if (!limit.allowed) {
+      logEvent("whitelist_rejected", { reason: "rate_limited" });
       return NextResponse.redirect(landingUrl(request, "error"), {
         status: 303,
         headers: { "Retry-After": String(limit.retryAfterSeconds) },
