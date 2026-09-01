@@ -26,7 +26,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 
 import { POST } from "@/app/api/contact/route";
-import { CONTACT_INBOX } from "@/lib/contact/messages";
+import { contactInbox } from "@/lib/contact/messages";
 
 function request(fields: Record<string, string>, origin = "https://x-portal.eu") {
   const body = new FormData();
@@ -145,12 +145,12 @@ describe("POST /api/contact", () => {
     const recipients = mocks.deliver.mock.calls.map(
       (call) => (call[0] as { to: string }).to,
     );
-    expect(recipients).toContain(CONTACT_INBOX);
+    expect(recipients).toContain(contactInbox());
     expect(recipients).toContain("erika@example.com");
 
     const notification = mocks.deliver.mock.calls
       .map((call) => call[0] as { to: string; text: string })
-      .find((message) => message.to === CONTACT_INBOX);
+      .find((message) => message.to === contactInbox());
     expect(notification?.text).toContain(validFields.message);
     expect(notification?.text).toContain("erika@example.com");
 
@@ -163,24 +163,39 @@ describe("POST /api/contact", () => {
   });
 
   /**
-   * Die Adresse im Formular ist ungeprüft. Spiegelte die Bestätigung den
-   * eingegebenen Text zurück, wäre das Formular ein Weg, fremden Postfächern
-   * beliebigen Inhalt unter unserer Absenderadresse zuzustellen.
+   * Der Absender soll einen Beleg dessen behalten, was er geschickt hat.
+   * Zitiert wird als Zitat erkennbar, damit die Nachricht nicht wie eine
+   * Aussage von XPORTAL wirkt — die Adresse im Formular ist ungeprüft.
    */
-  it("keeps every submitted word out of the mail to the unverified address", async () => {
+  it("quotes the message back to the sender, marked as a quotation", async () => {
     await POST(request(validFields));
 
     const acknowledgement = mocks.deliver.mock.calls
       .map((call) => call[0] as { to: string; subject: string; text: string })
       .find((message) => message.to === "erika@example.com");
 
-    for (const submitted of [
-      validFields.fullName,
-      validFields.subject,
-      validFields.message,
-    ]) {
-      expect(acknowledgement?.text).not.toContain(submitted);
-      expect(acknowledgement?.subject).not.toContain(submitted);
+    expect(acknowledgement?.subject).toContain(validFields.subject);
+    expect(acknowledgement?.text).toContain(`> ${validFields.message}`);
+    expect(acknowledgement?.text).toContain(`> Betreff: ${validFields.subject}`);
+    expect(acknowledgement?.text).toContain(validFields.fullName);
+  });
+
+  /**
+   * "Im Impressum genannt" und "wird gelesen" sind zwei Dinge. Landet die
+   * Benachrichtigung in einem Postfach, in das niemand schaut, ist die Anfrage
+   * so gut wie nicht angekommen.
+   */
+  it("sends the notification wherever the operator points it", async () => {
+    process.env.CONTACT_NOTIFICATION_EMAIL = "wirklich-gelesen@example.com";
+    try {
+      await POST(request(validFields));
+
+      const recipients = mocks.deliver.mock.calls.map(
+        (call) => (call[0] as { to: string }).to,
+      );
+      expect(recipients).toContain("wirklich-gelesen@example.com");
+    } finally {
+      delete process.env.CONTACT_NOTIFICATION_EMAIL;
     }
   });
 
