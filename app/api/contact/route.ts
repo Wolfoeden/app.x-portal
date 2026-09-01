@@ -6,8 +6,8 @@ import { z } from "zod";
 import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
 import {
-  CONTACT_INBOX,
   contactAcknowledgementMessage,
+  contactInbox,
   contactNotificationMessage,
 } from "@/lib/contact/messages";
 import { deliverEmail } from "@/lib/email/deliver";
@@ -133,12 +133,12 @@ export async function POST(request: NextRequest) {
     // Nacheinander wartete der Absender des Formulars zweimal darauf.
     const [notification, acknowledgement] = await Promise.all([
       deliverEmail({
-        to: CONTACT_INBOX,
+        to: contactInbox(),
         ...contactNotificationMessage(parsed.data),
       }),
       deliverEmail({
         to: parsed.data.email,
-        ...contactAcknowledgementMessage(),
+        ...contactAcknowledgementMessage(parsed.data),
       }),
     ]);
 

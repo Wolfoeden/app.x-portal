@@ -137,11 +137,12 @@ Retention-Policies überprüfbar.
 - **Datenkategorien:** Name, E-Mail-Adresse, Betreff, Nachrichtentext.
   **Ausdrücklich nicht:** IP-Adresse, Browserkennung, Referrer.
 - **Empfänger:** 1&1 IONOS SE als Auftragsverarbeiter. Seit dem 01.09.2026
-  gehen zwei Nachrichten raus: eine Benachrichtigung an das eigene Postfach mit
-  dem vollständigen Anliegen und eine Eingangsbestätigung an den Absender. Die
-  Bestätigung enthält **nichts, was der Absender eingegeben hat** — die Adresse
-  im Formular ist ungeprüft, und zurückgespiegelter Text machte das Formular zu
-  einem Weg, fremden Postfächern beliebigen Inhalt zuzustellen.
+  gehen zwei Nachrichten raus: eine Benachrichtigung an das Betreiberpostfach
+  (`CONTACT_NOTIFICATION_EMAIL`, ersatzweise die Impressumsadresse) mit dem
+  vollständigen Anliegen, und eine Eingangsbestätigung an den Absender, die
+  seine eigene Nachricht als Zitat wiedergibt. Die Adresse im Formular ist
+  ungeprüft; das Zitat ist als Zitat gekennzeichnet, und hCaptcha sowie fünf
+  Anfragen je Stunde und IP begrenzen, wie oft dieser Weg begangen werden kann.
 - **Fristen:** Löschung nach Erledigung, Prüfung spätestens nach 365 Tagen;
   bei vertraglichem Bezug ggf. handelsrechtliche Aufbewahrung.
 
