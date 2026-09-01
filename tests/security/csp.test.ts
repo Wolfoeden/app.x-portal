@@ -13,6 +13,14 @@ function directive(policy: string, name: string): string | undefined {
     .find((part) => part === name || part.startsWith(`${name} `));
 }
 
+/**
+ * Genau diese beiden Herkuenfte darf hCaptcha bekommen — nicht "irgendetwas,
+ * das auf hcaptcha.com endet". Der Unterschied ist der zwischen einer
+ * Erlaubnis und einer Einladung an jeden, der sich eine passende Domain
+ * registriert.
+ */
+const HCAPTCHA_SOURCES = ["https://hcaptcha.com", "https://*.hcaptcha.com"];
+
 describe("content security policy", () => {
   it("keeps the enforced policy on 'unsafe-inline' until the nonce rollout flips", () => {
     const scriptSrc =
@@ -26,9 +34,8 @@ describe("content security policy", () => {
       scriptSrc
         .replace("script-src ", "")
         .split(" ")
-        .filter((source) => source.startsWith("https://"))
-        .every((source) => source.endsWith("hcaptcha.com")),
-    ).toBe(true);
+        .filter((source) => source.startsWith("https://")),
+    ).toEqual(HCAPTCHA_SOURCES);
   });
 
   it("replaces 'unsafe-inline' with the nonce instead of adding to it", () => {
@@ -68,15 +75,11 @@ describe("content security policy", () => {
     expect(frameSrc).not.toContain("calendly");
     expect(policy).not.toContain("calendly");
 
-    // Keine stillschweigende Oeffnung fuer alles Uebrige: jede genannte
-    // Herkunft muss auf hcaptcha.com enden, ein blosses "*" waere keine.
+    // Keine stillschweigende Oeffnung fuer alles Uebrige. Verglichen wird
+    // gegen eine feste Liste und nicht gegen eine Endung: "endet auf
+    // hcaptcha.com" traefe auch auf "evil-hcaptcha.com" zu.
     expect(frameSrc).not.toContain("'self'");
-    expect(
-      frameSrc
-        .replace("frame-src ", "")
-        .split(" ")
-        .every((source) => source.endsWith("hcaptcha.com")),
-    ).toBe(true);
+    expect(frameSrc.replace("frame-src ", "").split(" ")).toEqual(HCAPTCHA_SOURCES);
   });
 
   it("reaches hCaptcha for the script, the frame and the answer", () => {
