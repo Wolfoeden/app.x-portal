@@ -207,9 +207,8 @@ export function CreditPlansDialog({
 
       <p className="plans-note">
         Die Buchung läuft über Stripe: ein Euro beim Abschluss, die tatsächliche
-        Nutzung folgt am Monatsende auf Rechnung. Das Guthaben schalten wir nach
-        Zahlungseingang frei, in der Regel am nächsten Werktag — es steht nicht
-        unmittelbar nach dem Bezahlen bereit.
+        Nutzung folgt am Monatsende auf Rechnung. Das Guthaben wird nach
+        bestätigter Zahlung automatisch freigeschaltet.
       </p>
 
       <p className="plans-note">
