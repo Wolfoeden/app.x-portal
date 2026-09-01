@@ -82,7 +82,7 @@ export const CREDIT_PLANS = {
   enterprise: {
     id: "enterprise",
     label: "Enterprise",
-    monthlyCredits: 1_500,
+    monthlyCredits: 3_000,
     agents: true,
     purchasable: true,
     euro: 25,

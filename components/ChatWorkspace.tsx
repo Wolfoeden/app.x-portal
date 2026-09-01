@@ -1215,6 +1215,10 @@ export function ChatWorkspace({
     { tone: "error" | "success"; message: string } | null
   >(null);
   const [usage, setUsage] = useState<AiUsageSnapshot | null>(previewData?.usage ?? null);
+  /* Das selbst gesetzte Limit kommt neben der Momentaufnahme mit, damit die
+     Einstellung nach einem Neuladen den gespeicherten Wert zeigt. */
+  const [selfLimit, setSelfLimit] = useState<number | null>(null);
+  const [selfLimitMaxEuro, setSelfLimitMaxEuro] = useState(50);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [team, setTeam] = useState<SavedFreelancer[]>([]);
@@ -1324,8 +1328,18 @@ export function ChatWorkspace({
         }
         return null;
       }
-      const snapshot = normalizeUsageSnapshot(await response.json());
+      const payload: unknown = await response.json();
+      const snapshot = normalizeUsageSnapshot(payload);
       if (snapshot) setUsage(snapshot);
+      // Das Limit reist neben der Momentaufnahme mit. Es ist ausdruecklich
+      // nullbar: "kein Limit" ist ein gueltiger Zustand, kein fehlender Wert.
+      if (isRecord(payload)) {
+        const stored = payload.selfLimit;
+        setSelfLimit(typeof stored === "number" && Number.isSafeInteger(stored) ? stored : null);
+        if (typeof payload.selfLimitMaxEuro === "number") {
+          setSelfLimitMaxEuro(payload.selfLimitMaxEuro);
+        }
+      }
       return snapshot;
     } catch {
       // Usage information is supplementary and never blocks the chat shell.
@@ -3040,6 +3054,9 @@ export function ChatWorkspace({
         <CreditPlansDialog
           usage={usage}
           customerReference={auth.user?.id ?? null}
+          selfLimit={selfLimit}
+          selfLimitMaxEuro={selfLimitMaxEuro}
+          onSelfLimitSaved={setSelfLimit}
           team={planTeam}
           teamBusy={planTeamBusy}
           teamNotice={planTeamNotice}

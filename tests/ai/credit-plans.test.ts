@@ -13,7 +13,7 @@ describe("Stufenmodell", () => {
   it("gibt jeder Stufe das zugesagte Monatskontingent", () => {
     expect(CREDIT_PLANS.guest.monthlyCredits).toBe(100);
     expect(CREDIT_PLANS.free.monthlyCredits).toBe(300);
-    expect(CREDIT_PLANS.enterprise.monthlyCredits).toBe(1_500);
+    expect(CREDIT_PLANS.enterprise.monthlyCredits).toBe(3_000);
     expect(GUEST_MONTHLY_CREDITS).toBe(100);
     expect(ACCOUNT_MONTHLY_CREDITS).toBe(300);
   });
@@ -29,7 +29,7 @@ describe("Stufenmodell", () => {
       Math.floor(credits / BRIEF_ANALYSIS_CREDITS);
     expect(searches(CREDIT_PLANS.guest.monthlyCredits)).toBe(33);
     expect(searches(CREDIT_PLANS.free.monthlyCredits)).toBe(100);
-    expect(searches(CREDIT_PLANS.enterprise.monthlyCredits)).toBe(500);
+    expect(searches(CREDIT_PLANS.enterprise.monthlyCredits)).toBe(1_000);
   });
 
   it("fällt bei unbekannter Stufe auf die richtige Gratisstufe zurück", () => {

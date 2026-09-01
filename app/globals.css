@@ -6036,6 +6036,75 @@ dd.is-unknown,
   text-underline-offset: 2px;
 }
 
+/* Selbst gesetztes Limit ------------------------------------------------- */
+
+.credit-limit {
+  display: grid;
+  gap: 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  padding: 16px 18px;
+}
+
+.credit-limit > label {
+  color: var(--muted-light);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+
+.credit-limit-row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.credit-limit-row input {
+  min-width: 0;
+  flex: 1 1 160px;
+  height: 40px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  outline: 0;
+  padding: 0 12px;
+  font: inherit;
+  font-size: var(--fs-xs);
+}
+
+.credit-limit-row input:focus { border-color: #93938d; box-shadow: 0 0 0 3px #efefeb; }
+
+.credit-limit-row button {
+  flex: none;
+  min-height: 40px;
+  cursor: pointer;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  padding: 0 16px;
+  color: #fff;
+  font: inherit;
+  font-size: var(--fs-2xs);
+  font-weight: 680;
+}
+
+.credit-limit-row button:disabled { cursor: wait; opacity: .6; }
+
+/* Die Zahl allein sagt niemandem, was sie kostet. */
+.credit-limit-hint {
+  display: flex;
+  align-items: start;
+  gap: 6px;
+  margin: 0;
+  color: var(--muted-light);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.credit-limit-hint > span { display: inline-flex; flex: none; margin-top: 2px; }
+
+.credit-limit-status { display: flex; align-items: center; gap: 5px; margin: 0; font-size: 11px; font-weight: 650; }
+.credit-limit-status.is-ok { color: var(--green); }
+.credit-limit-status.is-error { color: var(--danger); }
+
 /* Anzeigedichte ---------------------------------------------------------- */
 
 /* Die Oberflaeche war auf grossen Bildschirmen zu grosszuegig gesetzt — sie

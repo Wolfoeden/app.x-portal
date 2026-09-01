@@ -23,6 +23,7 @@ import {
 } from "@/lib/billing/payment-links";
 
 import { IconArrowUpRight, IconCheck, IconSpark } from "../icons";
+import { CreditLimitSetting } from "./credit-limit";
 import { TeamMembersPanel } from "./team-members";
 
 /**
@@ -169,12 +170,18 @@ export function CreditPlansDialog({
   team,
   teamBusy,
   teamNotice,
+  selfLimit,
+  selfLimitMaxEuro,
+  onSelfLimitSaved,
   onInviteTeamMember,
   onRemoveTeamMember,
   onClose,
 }: {
   usage: AiUsageSnapshot | null;
   customerReference: string | null;
+  selfLimit: number | null;
+  selfLimitMaxEuro: number;
+  onSelfLimitSaved: (limit: number | null) => void;
   team: PlanTeamSnapshot | null;
   teamBusy: boolean;
   teamNotice: { tone: "error" | "success"; message: string } | null;
@@ -281,6 +288,15 @@ export function CreditPlansDialog({
           </p>
         </article>
       </div>
+
+      {plan.purchasable ? (
+        <CreditLimitSetting
+          limit={selfLimit}
+          maxCredits={ENTERPRISE_PLAN.credits}
+          maxEuro={selfLimitMaxEuro}
+          onSaved={onSelfLimitSaved}
+        />
+      ) : null}
 
       <TeamMembersPanel
         team={team}
