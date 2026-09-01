@@ -342,11 +342,39 @@ export function buildVersionsDiffer(
   );
 }
 
+/** Zaehlt hoch, wenn es gar keinen Zufall gibt. Siehe `makeId`. */
+let fallbackIdCounter = 0;
+
+/**
+ * Erzeugt eine Kennung fuer Nachrichten und Entwuerfe.
+ *
+ * Die `clientMessageId` daraus dient serverseitig als Idempotenz-Schluessel.
+ * Der frueher hier stehende Rueckfall auf `Math.random()` sah zufaellig aus,
+ * war es aber nicht — der Generator ist vorhersagbar. Statt einer schwachen
+ * Zufallszahl gibt es jetzt eine zaehlende Kennung: die verspricht keine
+ * Unvorhersagbarkeit, die sie nicht halten kann.
+ *
+ * Der Rueckfall greift ohnehin nur ohne `crypto`, also ausserhalb eines
+ * sicheren Kontexts — dort funktioniert auch die Anmeldung nicht.
+ */
 function makeId(prefix: string) {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `${prefix}-${crypto.randomUUID()}`;
+  // `Partial`, weil die Typen beide Methoden als vorhanden fuehren — ohne das
+  // verengt TypeScript den zweiten Zweig auf `never`, obwohl aeltere Browser
+  // genau dort landen.
+  const source: Partial<Crypto> | null =
+    typeof crypto === "undefined" ? null : crypto;
+
+  if (source?.randomUUID) {
+    return `${prefix}-${source.randomUUID()}`;
   }
-  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  if (source?.getRandomValues) {
+    const bytes = source.getRandomValues(new Uint8Array(16));
+    const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+    return `${prefix}-${hex}`;
+  }
+
+  fallbackIdCounter += 1;
+  return `${prefix}-${Date.now()}-${fallbackIdCounter}`;
 }
 
 

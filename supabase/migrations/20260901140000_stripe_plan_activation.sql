@@ -16,6 +16,11 @@ create table if not exists public.stripe_webhook_events (
   received_at timestamptz not null default now()
 );
 
+-- Jeder Fremdschluessel braucht einen Index auf seiner fuehrenden Spalte;
+-- `query_plan_evidence.sql` prueft das fuer alle Tabellen im Schema.
+create index if not exists stripe_webhook_events_user_id_idx
+  on public.stripe_webhook_events (user_id);
+
 alter table public.stripe_webhook_events enable row level security;
 alter table public.stripe_webhook_events force row level security;
 
