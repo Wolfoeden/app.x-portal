@@ -12,6 +12,17 @@
 /** Der Stripe Payment Link fuer Enterprise. Oeffentlich, kein Geheimnis. */
 export const ENTERPRISE_PAYMENT_LINK = "https://buy.stripe.com/4gMcN4bF7b9DcySfFya3u01";
 
+/**
+ * Was beim Buchen sofort faellig wird, in Euro und netto.
+ *
+ * Steht hier und nicht mehr in der Kontokarte, weil inzwischen zwei Stellen
+ * denselben Betrag nennen muessen: die Karte, auf der jemand bucht, und die
+ * Vertragsbestaetigung, die danach rausgeht. Zwei Zahlen von Hand waeren keine
+ * Doppelung, sondern ein Widerspruch zwischen dem, was angezeigt wurde, und
+ * dem, was bestaetigt wird.
+ */
+export const ENTERPRISE_START_EURO = 1;
+
 /** Wer bei Fragen zur Abrechnung antwortet. */
 export const ENTERPRISE_CONTACT = {
   email: "info@x-portal.eu",

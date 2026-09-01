@@ -19,6 +19,7 @@ import { BUSINESS_ONLY_NOTICE } from "@/lib/legal/policy";
 import type { AiUsageSnapshot, PlanTeamSnapshot } from "../chat-contract";
 import {
   ENTERPRISE_CONTACT,
+  ENTERPRISE_START_EURO,
   enterprisePaymentLink,
 } from "@/lib/billing/payment-links";
 
@@ -42,7 +43,7 @@ export const ENTERPRISE_PLAN = {
   id: CREDIT_PLANS.enterprise.id,
   name: CREDIT_PLANS.enterprise.label,
   audience: "Für Unternehmen, die nach Verbrauch abrechnen.",
-  startEuro: 1,
+  startEuro: ENTERPRISE_START_EURO,
   credits: CREDIT_PLANS.enterprise.monthlyCredits,
   features: [
     "Voller Zugang zur Freelancer-Suche",

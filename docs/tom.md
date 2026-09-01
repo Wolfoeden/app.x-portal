@@ -144,10 +144,10 @@ dokumentierten Zwecks erfolgt nicht.
 
 Offen und in dieser Reihenfolge zu schließen:
 
-1. **Kein E-Mail-Anbieter.** Der Double-Opt-in der Whitelist erzeugt Token und
-   speichert sie, kann die Bestätigungsmail aber nicht versenden. Auch
-   Vertragsbestätigungen in Textform sind damit nicht möglich. Blockiert den
-   Verkaufsstart.
+1. **Kein DKIM für x-portal.eu.** SPF und DMARC (`p=none`) stehen seit dem
+   01.09.2026 in der Netlify-DNS-Zone, DKIM fehlt noch — der Selektor kommt
+   aus dem IONOS-Panel. Ohne ihn ist der Absender bei Gmail und Outlook nur
+   halb authentifiziert, was die Zustellung der Bestätigungen gefährdet.
 2. **Durchgesetzte CSP erlaubt weiterhin `script-src 'unsafe-inline'`.** Die
    Nonce-Fassung läuft im Report-Only-Modus; vor dem Umschalten müssen die
    statisch vorgerenderten Seiten geklärt sein.
@@ -160,3 +160,9 @@ Offen und in dieser Reihenfolge zu schließen:
 6. **Keine Schadcode-Prüfung hochgeladener Dateien.** Vertretbar, solange
    Uploads aus einem kuratierten Kreis stammen und nur Betreiber sie öffnen;
    neu zu bewerten, sobald das nicht mehr gilt.
+
+Geschlossen am 01.09.2026: **Kein E-Mail-Anbieter.** IONOS ist über
+`lib/email/deliver.ts` angebunden, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`,
+`SMTP_PASSWORD` und `EMAIL_FROM` sind in der Produktionsumgebung gesetzt. In
+Betrieb sind der Double-Opt-in der Whitelist, die Vertragsbestätigung in
+Textform und die beiden Nachrichten zum Kontaktformular.

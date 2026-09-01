@@ -116,9 +116,16 @@ Behandlung.
 
 Nach Abschluss unverzüglich eine Bestätigung in Textform mit
 Leistungsbeschreibung, Preis, Laufzeit, Kündigungsmöglichkeit und der
-angewendeten AGB-Fassung. Das setzt einen E-Mail-Versandweg voraus — der ist
-laut `docs/processor-register.md` noch offen und damit ein harter
-Vorläufer des Verkaufsstarts.
+angewendeten AGB-Fassung.
+
+**Umgesetzt seit dem 01.09.2026.** Der Text steht in
+`lib/billing/order-confirmation.ts` und geht aus dem Stripe-Webhook raus,
+sobald `activate_paid_plan` freigeschaltet hat — an die Adresse des Kontos, das
+freigeschaltet wurde, und nur beim ersten Zustellversuch eines Ereignisses.
+`tests/presentation/order-confirmation.test.ts` weist die fünf Angaben einzeln
+nach. Ein gescheiterter Versand steht als `order_confirmation_failed` im
+Protokoll und ist von Hand nachzuholen; er stößt die Freischaltung nicht um.
+Diese Bestätigung ist **nicht** die Rechnung — die bleibt offen.
 
 ## Datenschutz und Auftragsverarbeitung
 
@@ -144,8 +151,8 @@ Vorläufer des Verkaufsstarts.
 2. AGB-Fassung am Vertrag gespeichert und im Bestellweg abrufbar.
 3. Bestellübersicht mit Netto, Steuer, Brutto, Laufzeit und Kündigungsfrist.
 4. Eingabefehler vor Abgabe korrigierbar.
-5. Bestellbestätigung in Textform verschickt — E-Mail-Anbieter ausgewählt und
-   im Verarbeitungsregister eingetragen.
+5. ~~Bestellbestätigung in Textform verschickt — E-Mail-Anbieter ausgewählt und
+   im Verarbeitungsregister eingetragen.~~ Erledigt am 01.09.2026.
 6. Rechnung mit allen Angaben nach § 14 UStG, E-Rechnung geklärt.
 7. VIES-Prüfung und Reverse-Charge-Hinweis für EU-Ausland.
 8. Zahlungsdienstleister im Verarbeitungsregister, AV-Vertrag angenommen.

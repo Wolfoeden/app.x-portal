@@ -6,8 +6,15 @@ import { z } from "zod";
 import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
 import {
+  CONTACT_INBOX,
+  contactAcknowledgementMessage,
+  contactNotificationMessage,
+} from "@/lib/contact/messages";
+import { deliverEmail } from "@/lib/email/deliver";
+import {
   assertSameOrigin,
   getClientIp,
+  logEvent,
   pseudonymizeIp,
 } from "@/lib/security/request";
 import { CAPTCHA_FIELD, verifyCaptcha } from "@/lib/security/captcha";
@@ -64,6 +71,10 @@ export async function POST(request: NextRequest) {
       website: String(formData.get("website") ?? ""),
     });
     if (!parsed.success) {
+      // Nur der Grund, keine Eingaben. Diese Zweige schreiben kein Audit;
+      // ohne eine Spur lässt sich später nicht sagen, ob jemand am Formular
+      // scheiterte oder am Captcha.
+      logEvent("contact_rejected", { reason: "invalid_form" });
       return NextResponse.redirect(contactUrl(request, "invalid"), 303);
     }
 
@@ -80,12 +91,14 @@ export async function POST(request: NextRequest) {
       getClientIp(request),
     );
     if (!captchaResult.ok) {
+      logEvent("contact_rejected", { reason: `captcha_${captchaResult.reason}` });
       return NextResponse.redirect(contactUrl(request, "error"), 303);
     }
 
     const ipHash = pseudonymizeIp(getClientIp(request));
     const limit = await consumeRateLimit(`contact:${ipHash}`, 5, 60 * 60_000);
     if (!limit.allowed) {
+      logEvent("contact_rejected", { reason: "rate_limited" });
       return NextResponse.redirect(contactUrl(request, "error"), {
         status: 303,
         headers: { "Retry-After": String(limit.retryAfterSeconds) },
@@ -110,6 +123,25 @@ export async function POST(request: NextRequest) {
       .single();
     if (error) throw error;
 
+    // Erst gespeichert, dann verschickt — und ein gescheiterter Versand macht
+    // die Anfrage nicht ungültig. Sie steht bereits in der Tabelle; eine
+    // Fehlerseite würde jemanden dazu bringen, dieselbe Nachricht noch einmal
+    // zu schicken, obwohl sie längst da ist. Was schiefging, steht im
+    // Audit-Eintrag, damit es nicht stillschweigend verschwindet.
+    // Nebenläufig, nicht nacheinander: Der Versandweg hält keinen
+    // Verbindungspool, jede Nachricht baut ihre eigene SMTP-Verbindung auf.
+    // Nacheinander wartete der Absender des Formulars zweimal darauf.
+    const [notification, acknowledgement] = await Promise.all([
+      deliverEmail({
+        to: CONTACT_INBOX,
+        ...contactNotificationMessage(parsed.data),
+      }),
+      deliverEmail({
+        to: parsed.data.email,
+        ...contactAcknowledgementMessage(),
+      }),
+    ]);
+
     await writeAuditEvent({
       actorUserId: null,
       action: "contact_request_saved",
@@ -117,6 +149,10 @@ export async function POST(request: NextRequest) {
       targetId: data.id,
       outcome: "success",
       traceId,
+      metadata: {
+        notified: notification.delivered,
+        acknowledged: acknowledgement.delivered,
+      },
     });
 
     return NextResponse.redirect(contactUrl(request, "sent"), 303);

@@ -4,10 +4,12 @@ const mocks = vi.hoisted(() => ({
   audit: vi.fn(),
   insert: vi.fn(),
   consume: vi.fn(),
+  deliver: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/audit/write", () => ({ writeAuditEvent: mocks.audit }));
+vi.mock("@/lib/email/deliver", () => ({ deliverEmail: mocks.deliver }));
 vi.mock("@/lib/security/shared-rate-limit", () => ({
   consumeRateLimit: mocks.consume,
 }));
@@ -24,6 +26,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 
 import { POST } from "@/app/api/contact/route";
+import { CONTACT_INBOX } from "@/lib/contact/messages";
 
 function request(fields: Record<string, string>, origin = "https://x-portal.eu") {
   const body = new FormData();
@@ -55,6 +58,7 @@ beforeEach(() => {
     data: { id: "11111111-2222-4333-8444-555555555555" },
     error: null,
   });
+  mocks.deliver.mockResolvedValue({ delivered: true });
 });
 
 describe("POST /api/contact", () => {
@@ -133,6 +137,72 @@ describe("POST /api/contact", () => {
     expect(response.headers.get("location")).toContain("status=error");
     expect(response.headers.get("retry-after")).toBe("900");
     expect(mocks.insert).not.toHaveBeenCalled();
+  });
+
+  it("tells the operator and confirms receipt to the sender", async () => {
+    await POST(request(validFields));
+
+    const recipients = mocks.deliver.mock.calls.map(
+      (call) => (call[0] as { to: string }).to,
+    );
+    expect(recipients).toContain(CONTACT_INBOX);
+    expect(recipients).toContain("erika@example.com");
+
+    const notification = mocks.deliver.mock.calls
+      .map((call) => call[0] as { to: string; text: string })
+      .find((message) => message.to === CONTACT_INBOX);
+    expect(notification?.text).toContain(validFields.message);
+    expect(notification?.text).toContain("erika@example.com");
+
+    expect(mocks.audit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "contact_request_saved",
+        metadata: { notified: true, acknowledged: true },
+      }),
+    );
+  });
+
+  /**
+   * Die Adresse im Formular ist ungeprüft. Spiegelte die Bestätigung den
+   * eingegebenen Text zurück, wäre das Formular ein Weg, fremden Postfächern
+   * beliebigen Inhalt unter unserer Absenderadresse zuzustellen.
+   */
+  it("keeps every submitted word out of the mail to the unverified address", async () => {
+    await POST(request(validFields));
+
+    const acknowledgement = mocks.deliver.mock.calls
+      .map((call) => call[0] as { to: string; subject: string; text: string })
+      .find((message) => message.to === "erika@example.com");
+
+    for (const submitted of [
+      validFields.fullName,
+      validFields.subject,
+      validFields.message,
+    ]) {
+      expect(acknowledgement?.text).not.toContain(submitted);
+      expect(acknowledgement?.subject).not.toContain(submitted);
+    }
+  });
+
+  /**
+   * Die Anfrage steht bereits in der Tabelle. Eine Fehlerseite brächte
+   * jemanden dazu, dieselbe Nachricht erneut zu schicken.
+   */
+  it("still confirms the form when the mail cannot go out, and records it", async () => {
+    mocks.deliver.mockResolvedValue({
+      delivered: false,
+      reason: "provider_not_configured",
+    });
+
+    const response = await POST(request(validFields));
+
+    expect(response.headers.get("location")).toContain("status=sent");
+    expect(mocks.audit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "contact_request_saved",
+        metadata: { notified: false, acknowledged: false },
+      }),
+    );
   });
 
   it("reports a database failure instead of pretending success", async () => {
