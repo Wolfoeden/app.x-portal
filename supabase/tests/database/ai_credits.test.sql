@@ -582,7 +582,10 @@ select is(
   'a quota denial releases the tentative guest credit reservation'
 );
 
-select like(
+-- alike(), nicht like(): pgTAP hat keine Funktion dieses Namens, und `like`
+-- ist ein SQL-Schluesselwort. Der Aufruf brach die ganze Datei ab, noch bevor
+-- eine einzige Zusicherung dieser Sektion lief.
+select alike(
   public.prepare_user_deletion(
     'c1111111-1111-4111-8111-111111111111'
   ),
@@ -619,7 +622,7 @@ select ok(
   'aggregate settled usage remains available without a user association'
 );
 
-select like(
+select alike(
   public.prepare_user_deletion(
     'c2222222-2222-4222-8222-222222222222'
   ),

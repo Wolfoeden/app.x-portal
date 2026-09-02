@@ -136,13 +136,32 @@ select throws_ok(
   'ein Mitglied kann nicht selbst Inhaber werden'
 );
 
+-- Zwei Waechter verbieten die Selbsteinladung, und welcher greift, haengt
+-- davon ab, ob das Konto schon ein Team hat.
+--
+-- Konto 3 hat keines: der BEFORE-Trigger findet nichts zu beanstanden, laesst
+-- die Zeile durch, und erst die Check-Bedingung plan_team_members_not_self
+-- schlaegt zu (23514). Das ist der Fall, der die Bedingung selbst belegt.
+select throws_ok(
+  $$insert into public.plan_team_members (owner_user_id, member_user_id)
+    values ('b2000000-0000-4000-8000-000000000003',
+            'b2000000-0000-4000-8000-000000000003')$$,
+  '23514',
+  null,
+  'niemand laedt sich selbst ein'
+);
+
+-- Konto 1 ist bereits Inhaber. Der Trigger laeuft vor der Check-Bedingung und
+-- verwirft die Zeile schon deshalb (42501) — die Bedingung wird nie erreicht.
+-- Frueher stand hier nur dieser Fall mit der Erwartung 23514; der Test war
+-- damit dauerhaft rot, obwohl beide Waechter taten, was sie sollen.
 select throws_ok(
   $$insert into public.plan_team_members (owner_user_id, member_user_id)
     values ('b2000000-0000-4000-8000-000000000001',
             'b2000000-0000-4000-8000-000000000001')$$,
-  '23514',
+  '42501',
   null,
-  'niemand laedt sich selbst ein'
+  'ein Inhaber laedt auch sich selbst nicht ein'
 );
 
 -- ------------------------------------------------------------------- RLS ---
