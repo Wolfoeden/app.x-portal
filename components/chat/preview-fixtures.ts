@@ -194,10 +194,4 @@ export const previewUsage: AiUsageSnapshot = {
     planId: "free",
     lastRequestCost: 22,
   },
-  productCredits: {
-    balance: 90,
-    reserved: 0,
-    available: 90,
-    euroPerCredit: "0.0166666667",
-  },
 };

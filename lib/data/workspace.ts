@@ -1,9 +1,5 @@
 import "server-only";
 
-import {
-  getProductCreditSnapshot,
-  PRODUCT_CREDIT_EURO_PER_UNIT,
-} from "@/lib/ai/product-entitlements";
 import { BRIEF_ANALYSIS_CREDITS } from "@/lib/ai/credit-policy";
 import { currentPeriodEndIso, getAiCreditSnapshot } from "@/lib/ai/quota";
 import { getCurrentUser, type CurrentUser } from "@/lib/auth/current-user";
@@ -42,11 +38,6 @@ export type WorkspaceUsage = {
     creditsPerRequest: number;
     lastRequestCost: number | null;
   };
-  productCredits:
-    | (NonNullable<Awaited<ReturnType<typeof getProductCreditSnapshot>>> & {
-        euroPerCredit: typeof PRODUCT_CREDIT_EURO_PER_UNIT;
-      })
-    | null;
 };
 
 export type WorkspaceBootstrap = {
@@ -70,13 +61,12 @@ export function presentWorkspaceAuth(user: CurrentUser | null): WorkspaceAuth {
 export async function loadWorkspaceUsage(
   user: CurrentUser,
 ): Promise<WorkspaceUsage> {
-  const [credits, productCredits] = await Promise.all([
-    getAiCreditSnapshot({
-      userId: user.id,
-      isAnonymous: user.isAnonymous,
-    }),
-    user.isAnonymous ? Promise.resolve(null) : getProductCreditSnapshot(user.id),
-  ]);
+  // Ein Guthaben, ein Aufruf. Bis September 2026 wurde hier ein zweites Konto
+  // für die Websuche danebengeladen; das ist zusammengelegt.
+  const credits = await getAiCreditSnapshot({
+    userId: user.id,
+    isAnonymous: user.isAnonymous,
+  });
 
   return {
     credits: {
@@ -87,9 +77,6 @@ export async function loadWorkspaceUsage(
       // Nothing was spent by loading the workspace.
       lastRequestCost: null,
     },
-    productCredits: productCredits
-      ? { ...productCredits, euroPerCredit: PRODUCT_CREDIT_EURO_PER_UNIT }
-      : null,
   };
 }
 

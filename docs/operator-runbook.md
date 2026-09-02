@@ -323,49 +323,51 @@ Table Editor during normal operation. Settled usage is intentionally immutable.
   server-only `ADMIN_USER_IDS` variable. Never grant admin through user-editable
   metadata.
 - The dashboard is read-only and separates confirmed/estimated provider usage,
-  the 10/100 monthly Nano allowance, purchased product credits and historical
-  token-weighted technical values. Historical values are not money and must
-  never be converted into the new product-credit balance.
+  the monthly allowance and historical token-weighted technical values.
+  Historical values are not money and must never be converted into a balance.
 - A successful dashboard response requires its database audit event. An audit
   storage failure blocks the sensitive view instead of silently serving it.
 - Free Nano usage lives in `ai_free_usage_accounts` and resets by UTC calendar
   month: 10 successful analyses for a guest, 100 for an account. A guest also
   receives the HMAC-IP provider safety boundary; raw IPs are never stored.
-- Purchased/search credits live only in `product_credit_accounts`. Never edit
-  this table, its reservations or the ledger directly. V1 grants are made only
-  through the audited `grant_product_credits` RPC.
+- Search credits no longer exist as a separate balance. Since 2026-09-01 a web
+  search costs 30 credits from the same monthly allowance as everything else,
+  so an account that can chat can also search. `product_credit_accounts` and
+  its ledger are retired: they keep the history of what was already paid, and
+  nothing writes to them any more. Do not grant into them — a grant there is
+  now invisible to the customer and to the search route.
 
-### Grant product credits in Supabase V1
+### Raise a monthly allowance in Supabase
 
-Obtain the authenticated user's Supabase UUID, the approved amount/reason and a
-unique non-secret support reference. In **SQL Editor**, run exactly one grant:
+The allowance follows the plan and is set by `activate_stripe_plan`. Change it
+by hand only to correct a specific account, and only through the plan path:
 
 ```sql
 select *
-from public.grant_product_credits(
+from public.activate_stripe_plan(
   'USER_UUID'::uuid,
-  'support-grant-UNIQUE_REFERENCE',
-  30,
-  'Approved pilot external-search credit',
-  'operator:roman@dering.info'
+  'enterprise',
+  3000,
+  'support-correction-UNIQUE_REFERENCE'
 );
 ```
 
-Use `operator:paul@dering.info` when Paul performs the grant. Expected first
-result: `recorded=true`, `reason=granted`. A safe replay returns
-`recorded=false`, `reason=already_recorded`; it must not increase the balance.
-Any `idempotency_conflict`, wrong user or unexpected amount is a stop condition.
-Verify the balance in `/chat/admin/ai-usage`, then reconcile the exact entries
-in Supabase Studio:
+Expected result: `activated=true` and the new `credits_total`. A replay with the
+same reference must not raise the total a second time. A wrong user or an
+unexpected plan id is a stop condition. Verify in `/chat/admin/ai-usage`, then
+reconcile in Supabase Studio:
 
-- `product_credit_ledger`: immutable grant/debit and balance-after evidence;
-- `product_credit_reservations`: reserved/charged/released search attempts;
+- `user_ai_credit_accounts`: the effective allowance and what is reserved;
+- `ai_usage_records`: every reservation and settlement, including the purpose;
 - `external_freelancer_search_results`: the bounded paid result snapshot;
-- `audit_events`: redacted grant/search business event.
+- `audit_events`: the redacted business event.
+
+The retired tables `product_credit_ledger` and `product_credit_reservations`
+still hold the searches paid before 2026-09-01. They are evidence, not a
+balance.
 
 Do not paste bank data, API keys, chat text or customer documents into reason,
-actor or idempotency fields. See `docs/product-entitlement-rpcs.md` for every
-RPC outcome and the retry rules.
+actor or idempotency fields.
 
 See `docs/ai-usage-and-credits.md` for the versioned policy, environment values,
 reporting fields and incident reconciliation checklist.

@@ -60,32 +60,55 @@ requirements are hard filters; absent profile facts remain visible gaps.
    reserve or settle operation.
 
 The lower-left account area displays this as `remaining / limit`. Guests never
-see a label such as "Guest credits". Account users see this allowance and their
-separate product-credit balance.
+see a label such as "Guest credits".
 
-## Product credits and external research
+## One balance (since 2026-09-01)
 
-The commercial definition is fixed for this release:
+There is exactly one customer-facing balance: the monthly allowance in
+`user_ai_credit_accounts`. Every priced feature draws from it.
 
-- 1 credit = EUR 25 / 1,500 = EUR 0.0166666667;
-- one external freelancer search = 30 credits = EUR 0.50.
+Until September 2026 external research was paid from a second ledger
+(`product_credit_accounts`) with its own currency. The interface then showed
+two numbers, both called "Credits", and nothing told the customer which one
+applied to what. Worse, nothing in the application ever granted the second
+balance, so a fresh account — including a paying one — saw a disabled button
+reading "0 verfügbar". The two ledgers are merged; the old tables are retired
+in place and keep their history.
+
+Every price lives in `CREDIT_PRICES` in `lib/ai/credit-policy.ts` and nowhere
+else:
+
+| Feature | `purpose` | Credits |
+|---|---|---:|
+| Project analysis | `project_brief` | 3 |
+| Freelancer web search | `research` | 30 |
+
+A new priced feature is one entry in that table. It does not get its own
+allowance, its own counter or its own unit. The interface counts in features
+("reicht für 9 Recherchen"), not in units, because a customer cannot divide a
+balance by a price in their head.
+
+At the Enterprise tier (3,000 credits for EUR 50 net per month) one credit is
+worth EUR 0.0166666667, so a search is worth EUR 0.50 and an analysis EUR 0.05.
+Those are derived figures, not a second price list.
+
+## External research
 
 External research is account-only and starts only after an explicit button
 confirmation. The server rechecks that the current curated shortlist is empty,
-reserves 30 credits atomically and performs at most one provider request. A
-completed search is charged even when no sufficiently evidenced candidate is
-found. Technical failure, timeout or invalid response releases the 30 credits.
-The request key is idempotent, and the paid result snapshot is stored so a lost
-HTTP response can be recovered without a second charge.
+then runs through `executeTrackedAiRequest` like every other AI request: the
+flat price is held before the provider call and settled afterwards. A run that
+produces no attributable provider response is released in full — the customer
+is not charged for a failed search, even when the provider charges us. The
+request key is idempotent, and the result snapshot is stored so a lost HTTP
+response can be recovered without a second charge.
 
-Every external candidate must be supported by public source evidence, a public
-profile URL and a direct HTTPS booking URL tied to the same identity. At most
-three candidates are returned, separately labelled `external_unverified`.
+Every external candidate must be supported by public source evidence and a
+public profile URL. At most three candidates are returned, separately labelled
+`external_unverified`.
 
-V1 has no Stripe, bank-transfer or self-service credit purchase. A named
-operator may grant credits only through the service-only
-`grant_product_credits` RPC with an idempotency key, amount, reason and actor
-reference. The append-only product-credit ledger records every grant and debit.
+There is no self-service credit purchase. The Enterprise allowance is raised by
+`activate_stripe_plan` from the Stripe webhook.
 
 ## Provider usage and cost reporting
 

@@ -14,9 +14,12 @@ import {
 } from "react";
 import {
   ACCOUNT_MONTHLY_CREDITS,
+  affordableCount,
   BRIEF_ANALYSIS_CREDITS,
+  countLabel,
   CREDIT_PLANS,
   creditPlan,
+  EXTERNAL_SEARCH_CREDITS,
 } from "@/lib/ai/credit-policy";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { BrandMark } from "@/components/BrandMark";
@@ -308,6 +311,14 @@ interface ChatWorkspaceProps {
     profiles: FreelancerProfileResult[];
     analysis: AiAnalysisTrace;
     usage: AiUsageSnapshot;
+    /**
+     * Welcher Ergebniszustand gezeigt wird. Ohne Angabe die Trefferliste.
+     *
+     * Der leere Fall ist die Stelle mit der hoechsten Absprungrate und laesst
+     * sich sonst nur herstellen, indem man ein echtes Projekt anlegt, fuer das
+     * der Katalog nichts hergibt. Er gehoert deshalb in die Vorschau.
+     */
+    resultState?: "ranked" | "no_match" | "searching";
   };
 }
 
@@ -443,17 +454,10 @@ export function normalizeUsageUpdate(value: unknown): AiUsageUpdate | null {
   const source = isRecord(envelope.usage) ? envelope.usage : envelope;
   const hasCreditsField = Object.prototype.hasOwnProperty.call(source, "credits");
   const creditsSource = isRecord(source.credits) ? source.credits : null;
-  const hasProductCreditField = Object.prototype.hasOwnProperty.call(source, "productCredits") ||
-    Object.prototype.hasOwnProperty.call(source, "product_credits");
-  const productCreditsSource = isRecord(source.productCredits)
-    ? source.productCredits
-    : isRecord(source.product_credits)
-      ? source.product_credits
-      : null;
-  if (!hasCreditsField && !hasProductCreditField) return null;
+  if (!hasCreditsField) return null;
 
   const update: AiUsageUpdate = {};
-  if (hasCreditsField) {
+  {
     if (!creditsSource) return null;
     const total = nonNegativeNumber(creditsSource.total);
     const used = nonNegativeNumber(creditsSource.used);
@@ -487,37 +491,13 @@ export function normalizeUsageUpdate(value: unknown): AiUsageUpdate | null {
     };
   }
 
-  if (hasProductCreditField) {
-    if (!productCreditsSource) {
-      update.productCredits = null;
-      return update;
-    }
-    const balance = nonNegativeNumber(productCreditsSource.balance);
-    const reserved = nonNegativeNumber(productCreditsSource.reserved);
-    const available = nonNegativeNumber(productCreditsSource.available);
-    const euroPerCredit = nullableString(
-      productCreditsSource.euroPerCredit ?? productCreditsSource.euro_per_credit,
-    );
-    if (balance === null || reserved === null || available === null || !euroPerCredit) {
-      return null;
-    }
-    update.productCredits = {
-      balance,
-      reserved,
-      available,
-      euroPerCredit,
-    };
-  }
   return update;
 }
 
 export function normalizeUsageSnapshot(value: unknown): AiUsageSnapshot | null {
   const update = normalizeUsageUpdate(value);
-  if (!update?.credits || !("productCredits" in update)) return null;
-  return {
-    credits: update.credits,
-    productCredits: update.productCredits ?? null,
-  };
+  if (!update?.credits) return null;
+  return { credits: update.credits };
 }
 
 export function mergeUsageSnapshot(
@@ -527,10 +507,7 @@ export function mergeUsageSnapshot(
   if (!update) return current;
   const credits = update.credits ?? current?.credits;
   if (!credits) return current;
-  const productCredits = Object.prototype.hasOwnProperty.call(update, "productCredits")
-    ? update.productCredits ?? null
-    : current?.productCredits ?? null;
-  return { credits, productCredits };
+  return { credits };
 }
 
 function secureBookingUrl(value: unknown): string | null {
@@ -1046,11 +1023,15 @@ export function usageSummary(
   authenticated: boolean,
 ): string {
   const left = estimatedRequestsLeft(usage.credits);
-  const balance = `KI-Guthaben: ${formatCredits(usage.credits.remaining)} Credits · ${formatCredits(left)} ${
+  const balance = `Guthaben: ${formatCredits(usage.credits.remaining)} Credits · ${formatCredits(left)} ${
     left === 1 ? "Anfrage" : "Anfragen"
   }`;
-  return authenticated && usage.productCredits
-    ? `${balance} · Recherche-Guthaben: ${formatCredits(usage.productCredits.available)} Credits`
+  // Für ein angemeldetes Konto ist die zweite Zahl die interessantere: eine
+  // Recherche kostet ein Vielfaches einer Anfrage, und wie oft sie noch geht,
+  // rechnet sonst niemand im Kopf aus.
+  const searches = affordableCount(usage.credits.remaining, "research");
+  return authenticated
+    ? `${balance} · ${countLabel(searches, "research")}`
     : balance;
 }
 
@@ -1222,14 +1203,22 @@ export function ChatWorkspace({
   const [activeProject, setActiveProject] = useState<ProjectListItem | null>(previewData?.projects[0] ?? null);
   const [messages, setMessages] = useState<ConversationMessage[]>(previewData?.messages ?? []);
   const [brief, setBrief] = useState<StructuredBrief | null>(previewData?.brief ?? null);
-  const [profiles, setProfiles] = useState<FreelancerProfileResult[]>(previewData?.profiles ?? []);
+  const previewResultState = previewData?.resultState ?? "ranked";
+  const previewNoMatch = preview && previewResultState !== "ranked";
+  const [profiles, setProfiles] = useState<FreelancerProfileResult[]>(
+    previewNoMatch ? [] : previewData?.profiles ?? [],
+  );
   const [partialProfiles, setPartialProfiles] = useState<FreelancerProfileResult[]>([]);
-  const [matchingStatus, setMatchingStatus] = useState<MatchingStatus | null>(preview ? "ranked" : null);
+  const [matchingStatus, setMatchingStatus] = useState<MatchingStatus | null>(
+    preview ? (previewNoMatch ? "no_reliable_match" : "ranked") : null,
+  );
   const [hasResult, setHasResult] = useState(preview);
   const [analysisMode, setAnalysisMode] = useState<"ai" | "fallback" | null>(preview ? "ai" : null);
   const [analysisTrace, setAnalysisTrace] = useState<AiAnalysisTrace | null>(previewData?.analysis ?? null);
   const [externalSearch, setExternalSearch] = useState<ExternalFreelancerSearchResponse | null>(null);
-  const [externalSearchState, setExternalSearchState] = useState<"idle" | "searching" | "error">("idle");
+  const [externalSearchState, setExternalSearchState] = useState<"idle" | "searching" | "error">(
+    previewResultState === "searching" ? "searching" : "idle",
+  );
   const [draft, setDraft] = useState("");
   const [pendingAssistant, setPendingAssistant] = useState<PendingAssistant | null>(null);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
@@ -1967,8 +1956,11 @@ export function ChatWorkspace({
       setAuthOpen(true);
       return;
     }
-    if (!usage?.productCredits || usage.productCredits.available < 30) {
-      showToast("Für die externe Recherche sind 30 Recherche-Credits erforderlich.", "error");
+    if ((usage?.credits.remaining ?? 0) < EXTERNAL_SEARCH_CREDITS) {
+      showToast(
+        `Für die Recherche sind ${EXTERNAL_SEARCH_CREDITS} Credits nötig.`,
+        "error",
+      );
       void refreshUsage();
       return;
     }
@@ -2910,10 +2902,14 @@ export function ChatWorkspace({
                     externalSearchState={externalSearchState}
                     onExternalSearch={() => void runExternalFreelancerSearch()}
                     isAccountUser={isAccountUser}
-                    productCredits={usage?.productCredits ?? null}
+                    creditsRemaining={usage?.credits.remaining ?? null}
                     onRequireLogin={() => {
                       setAuthInitialMode("login");
                       setAuthOpen(true);
+                    }}
+                    onNeedCredits={() => {
+                      setPlansOpen(true);
+                      void loadPlanTeam();
                     }}
                     selectedProfileId={selectedProfileId}
                     onOpenDetails={() => {

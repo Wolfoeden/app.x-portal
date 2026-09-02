@@ -3,18 +3,14 @@ import { createHash, randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { executeTrackedAiRequest } from "@/lib/ai/gateway";
-import { actualSearchCost } from "@/lib/ai/search-cost";
+import { EXTERNAL_SEARCH_CREDITS } from "@/lib/ai/credit-policy";
 import {
-  EXTERNAL_FREELANCER_SEARCH_CREDITS,
-  PRODUCT_CREDIT_EURO_PER_UNIT,
-  completeExternalSearch,
   getExternalSearchResult,
-  getProductCreditSnapshot,
-  reserveProductCredits,
-  settleProductCredits,
-  type ProductCreditSnapshot,
-} from "@/lib/ai/product-entitlements";
+  storeExternalSearchResult,
+} from "@/lib/ai/external-search-store";
+import { executeTrackedAiRequest } from "@/lib/ai/gateway";
+import { getAiCreditSnapshot, type AiCreditSnapshot } from "@/lib/ai/quota";
+import { actualSearchCost } from "@/lib/ai/search-cost";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { fetchActiveBookableRealProfiles } from "@/lib/data/freelancers";
@@ -64,7 +60,7 @@ const EXTERNAL_RESULT_DISCLOSURE =
 function completedSearchResponse(input: {
   projectId: string;
   candidates: ExternalFreelancerCandidate[];
-  productCredits: ProductCreditSnapshot;
+  credits: AiCreditSnapshot;
   replayed?: boolean;
   retryAfterSeconds?: number | null;
 }): Response {
@@ -78,7 +74,7 @@ function completedSearchResponse(input: {
       disclosure: EXTERNAL_RESULT_DISCLOSURE,
       mode: "openai",
       notice: input.replayed
-        ? "Die bereits mit 30 Credits bezahlte Recherche wurde ohne neue Belastung wiederhergestellt."
+        ? `Die bereits mit ${EXTERNAL_SEARCH_CREDITS} Credits bezahlte Recherche wurde ohne neue Belastung wiederhergestellt.`
         : undefined,
       searchTrace: {
         queries: [],
@@ -86,15 +82,8 @@ function completedSearchResponse(input: {
         returnedCandidateCount: input.candidates.length,
       },
       quota: { retryAfterSeconds: input.retryAfterSeconds ?? null },
-      price: {
-        credits: EXTERNAL_FREELANCER_SEARCH_CREDITS,
-        eur: "0.50",
-        charged: true,
-      },
-      productCredits: {
-        ...input.productCredits,
-        euroPerCredit: PRODUCT_CREDIT_EURO_PER_UNIT,
-      },
+      price: { credits: EXTERNAL_SEARCH_CREDITS, charged: true },
+      credits: input.credits,
     },
     { headers: { "Cache-Control": "no-store" } },
   );
@@ -154,8 +143,7 @@ export async function POST(request: Request) {
     if (user.isAnonymous) {
       return NextResponse.json(
         {
-          error:
-            "Bitte melden Sie sich an, bevor Sie die externe Recherche für 30 Credits starten.",
+          error: `Bitte melden Sie sich an, bevor Sie die externe Recherche für ${EXTERNAL_SEARCH_CREDITS} Credits starten.`,
           code: "account_required",
           traceId,
         },
@@ -181,7 +169,10 @@ export async function POST(request: Request) {
       requestKey,
     });
     if (existingResult) {
-      const currentCredits = await getProductCreditSnapshot(user.id);
+      const currentCredits = await getAiCreditSnapshot({
+        userId: user.id,
+        isAnonymous: user.isAnonymous,
+      });
       await writeAuditEvent({
         actorUserId: user.id,
         action: "external_freelancer_search_result_replayed",
@@ -193,7 +184,7 @@ export async function POST(request: Request) {
       return completedSearchResponse({
         projectId: input.projectId,
         candidates: existingResult.candidates,
-        productCredits: currentCredits,
+        credits: currentCredits,
         replayed: true,
       });
     }
@@ -258,58 +249,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const productReservation = await reserveProductCredits({
-      userId: user.id,
-      requestKey,
-      purpose: "external_freelancer_search",
-      amount: EXTERNAL_FREELANCER_SEARCH_CREDITS,
-    });
-    if (!productReservation.allowed) {
-      const racedResult = await getExternalSearchResult({
-        userId: user.id,
-        projectId: project.id,
-        requestKey,
-      });
-      if (racedResult) {
-        const currentCredits = await getProductCreditSnapshot(user.id);
-        return completedSearchResponse({
-          projectId: project.id,
-          candidates: racedResult.candidates,
-          productCredits: currentCredits,
-          replayed: true,
-        });
-      }
-      const duplicate = /already_(?:reserved|charged|released|settled|completed)/u.test(
-        productReservation.reason,
-      );
-      return NextResponse.json(
-        {
-          error: duplicate
-            ? "Diese Internetsuche wurde bereits gestartet oder abgeschlossen."
-            : "Für diese externe Recherche sind 30 Recherche-Credits erforderlich.",
-          code: duplicate
-            ? productReservation.reason === "already_released"
-              ? "search_previous_attempt_released"
-              : "search_already_processed"
-            : "insufficient_product_credits",
-          price: {
-            credits: EXTERNAL_FREELANCER_SEARCH_CREDITS,
-            eur: "0.50",
-          },
-          productCredits: {
-            balance: productReservation.balance,
-            reserved: productReservation.reserved,
-            available: productReservation.available,
-            euroPerCredit: PRODUCT_CREDIT_EURO_PER_UNIT,
-          },
-          traceId,
-        },
-        {
-          status: duplicate ? 409 : 402,
-          headers: { "Cache-Control": "no-store" },
-        },
-      );
-    }
+    // Kein eigener Reservierungsschritt mehr: executeTrackedAiRequest hält die
+    // Credits, ruft den Anbieter nur bei bewilligtem Halt auf und gibt sie im
+    // Fehlerfall wieder frei. Eine Vorprüfung auf dem eigenen Konto wäre hier
+    // sogar falsch — ein eingeladenes Teammitglied zahlt aus dem Topf des
+    // Plan-Inhabers, und das entscheidet erst die Reservierung.
     const estimate = estimateExternalSearchTokenCeiling({ brief });
     let tracked;
     try {
@@ -331,42 +275,49 @@ export async function POST(request: Request) {
           safetyIdentifier: userHash,
           allowProvider: providerAllowed,
         });
+        // Verwertbar heißt: der Anbieter hat geantwortet und die Antwort ist
+        // zuordenbar. Ohne Antwort-Kennung und Modell lässt sich das Ergebnis
+        // weder ablegen noch später belegen — dann ist der Lauf für den
+        // Kunden nichts wert und wird ihm nicht berechnet.
+        const usable =
+          result.mode === "openai" &&
+          Boolean(result.provider?.responseId?.trim()) &&
+          Boolean(result.provider?.model?.trim()) &&
+          Number.isSafeInteger(result.provider?.inputTokens) &&
+          Number.isSafeInteger(result.provider?.outputTokens);
         return {
           value: result,
           providerAttempted: result.providerAttempted,
-          outcome:
-            result.mode === "openai"
-              ? ("succeeded" as const)
-              : result.fallbackReason === "provider_timeout"
-                ? ("timeout" as const)
-                : ("provider_error" as const),
-          usage:
-            result.provider &&
-            Number.isSafeInteger(result.provider.inputTokens) &&
-            Number.isSafeInteger(result.provider.outputTokens)
-              ? {
-                  requestedModel: result.provider.requestedModel,
-                  actualModel: result.provider.model,
-                  providerResponseId: result.provider.responseId,
-                  inputTokens: result.provider.inputTokens!,
-                  cachedInputTokens: result.provider.cachedInputTokens ?? 0,
-                  cacheWriteTokens: result.provider.cacheWriteTokens ?? 0,
-                  outputTokens: result.provider.outputTokens!,
-                  totalTokens: result.provider.totalTokens,
-                }
-              : undefined,
+          // Ohne `usage` gibt der Gateway die Reservierung vollständig frei.
+          providerUsageDefinitelyZero: !usable,
+          outcome: usable
+            ? ("succeeded" as const)
+            : result.fallbackReason === "provider_timeout"
+              ? ("timeout" as const)
+              : ("provider_error" as const),
+          usage: usable
+            ? {
+                requestedModel: result.provider!.requestedModel,
+                actualModel: result.provider!.model,
+                providerResponseId: result.provider!.responseId,
+                inputTokens: result.provider!.inputTokens!,
+                cachedInputTokens: result.provider!.cachedInputTokens ?? 0,
+                cacheWriteTokens: result.provider!.cacheWriteTokens ?? 0,
+                outputTokens: result.provider!.outputTokens!,
+                totalTokens: result.provider!.totalTokens,
+              }
+            : undefined,
         };
       },
       });
     } catch {
-      await settleProductCredits({
-        userId: user.id,
-        requestKey,
-        outcome: "technical_error",
-      }).catch(() => undefined);
+      // Der Gateway hält die Reservierung, wenn er selbst wirft. Der
+      // Abstimmungslauf gibt sie frei; hier wird nichts behauptet, was nicht
+      // sicher ist.
       throw NextResponse.json(
         {
-          error: "Die Internetsuche ist technisch fehlgeschlagen. Die 30 Credits wurden freigegeben.",
+          error:
+            "Die Internetsuche ist technisch fehlgeschlagen. Es wurde nichts belastet.",
           code: "search_technical_error_refunded",
           traceId,
         },
@@ -374,58 +325,65 @@ export async function POST(request: Request) {
       );
     }
 
-    let productCredits: ProductCreditSnapshot;
+    // Das Guthaben war zu klein oder ein Limit hat gegriffen. Der Anbieter
+    // wurde in diesem Fall gar nicht erst gefragt.
+    if (!tracked.quota.allowed) {
+      await writeAuditEvent({
+        actorUserId: user.id,
+        action: "external_freelancer_search_denied_quota",
+        targetType: "project",
+        targetId: project.id,
+        outcome: "denied",
+        traceId,
+        metadata: { reason: tracked.quota.reason },
+      });
+      const rateLimited = tracked.quota.retryAfterSeconds !== null;
+      return NextResponse.json(
+        {
+          error: rateLimited
+            ? "Das Suchlimit ist kurzzeitig erreicht. Bitte in einem Moment erneut versuchen."
+            : `Für diese Recherche sind ${EXTERNAL_SEARCH_CREDITS} Credits nötig. Ihr Guthaben reicht dafür nicht aus; es wurde nichts belastet.`,
+          code: rateLimited ? "search_rate_limited" : "insufficient_credits",
+          price: { credits: EXTERNAL_SEARCH_CREDITS },
+          credits: tracked.credits,
+          quota: { retryAfterSeconds: tracked.quota.retryAfterSeconds },
+          traceId,
+        },
+        {
+          status: rateLimited ? 429 : 402,
+          headers: { "Cache-Control": "no-store" },
+        },
+      );
+    }
+
+    const charged = tracked.creditsCharged !== 0;
     let responseCandidates = tracked.value.candidates;
-    let charged = false;
-    if (tracked.value.mode === "openai") {
+    if (charged) {
       const providerResponseId = tracked.value.provider?.responseId?.trim();
       const actualModel = tracked.value.provider?.model?.trim();
-      if (!providerResponseId || !actualModel) {
-        productCredits = await settleProductCredits({
+      try {
+        const stored = await storeExternalSearchResult({
           userId: user.id,
+          projectId: project.id,
           requestKey,
-          outcome: "invalid_response",
+          candidates: tracked.value.candidates,
+          providerResponseId: providerResponseId!,
+          actualModel: actualModel!,
         });
-      } else {
-        try {
-          const completed = await completeExternalSearch({
-            userId: user.id,
-            projectId: project.id,
-            requestKey,
-            candidates: tracked.value.candidates,
-            providerResponseId,
-            actualModel,
-          });
-          productCredits = completed;
-          responseCandidates = completed.candidates;
-          charged = true;
-        } catch {
-          await settleProductCredits({
-            userId: user.id,
-            requestKey,
-            outcome: "technical_error",
-          }).catch(() => undefined);
-          throw NextResponse.json(
-            {
-              error: "Das Suchergebnis konnte nicht sicher gespeichert werden. Die 30 Credits wurden freigegeben.",
-              code: "search_technical_error_refunded",
-              traceId,
-            },
-            { status: 503, headers: { "Cache-Control": "no-store" } },
-          );
-        }
+        responseCandidates = stored.candidates;
+      } catch {
+        // Das Ergebnis geht trotzdem an den Kunden — er hat es bezahlt und
+        // bekommt es. Verloren ist nur die Wiederherstellbarkeit bei einer
+        // abgerissenen Verbindung, und das gehört ins Protokoll.
+        await writeAuditEvent({
+          actorUserId: user.id,
+          action: "external_freelancer_search_result_not_stored",
+          targetType: "project",
+          targetId: project.id,
+          outcome: "failed",
+          traceId,
+        }).catch(() => undefined);
       }
-    } else {
-      productCredits = await settleProductCredits({
-        userId: user.id,
-        requestKey,
-        outcome:
-          tracked.value.fallbackReason === "provider_timeout"
-            ? "timeout"
-            : tracked.value.fallbackReason === "invalid_output"
-              ? "invalid_response"
-              : "technical_error",
-      });
     }
 
     await writeAuditEvent({
@@ -470,15 +428,8 @@ export async function POST(request: Request) {
         quota: {
           retryAfterSeconds: tracked.quota.retryAfterSeconds,
         },
-        price: {
-          credits: EXTERNAL_FREELANCER_SEARCH_CREDITS,
-          eur: "0.50",
-          charged,
-        },
-        productCredits: {
-          ...productCredits,
-          euroPerCredit: PRODUCT_CREDIT_EURO_PER_UNIT,
-        },
+        price: { credits: EXTERNAL_SEARCH_CREDITS, charged },
+        credits: tracked.credits,
       },
       { headers: { "Cache-Control": "no-store" } },
     );

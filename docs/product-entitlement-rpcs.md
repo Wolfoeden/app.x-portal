@@ -1,14 +1,24 @@
 # Monthly AI usage and product-credit RPC contracts
 
+> **Retired on 2026-09-01.** The product-credit ledger described below is no
+> longer part of any live path. Web search is billed from the single monthly
+> allowance in `user_ai_credit_accounts` at the flat price in `CREDIT_PRICES`
+> (`lib/ai/credit-policy.ts`), through the same reserve/settle RPCs as every
+> other AI request. `reserve_product_credits`, `settle_product_credit_reservation`,
+> `complete_external_search` and `grant_product_credits` still exist in the
+> database but are called by nothing; the result snapshot is written by
+> `store_external_search_result` instead. This file is kept because the
+> retired tables still hold the searches that were paid under it.
+> See `docs/ai-usage-and-credits.md` for the model in force.
+
 This contract separates three concepts:
 
 - `ai_free_usage_accounts`: successful normal Nano analyses per UTC calendar
   month (guest: 10, permanent account: 100).
-- `product_credit_accounts`: purchased product-credit balance. One credit has
-  the commercial list value configured by the application; the database stores
+- `product_credit_accounts`: the retired second balance. The database stores
   integer credits, never euros or card/bank data.
-- `user_ai_credit_accounts`: the pre-existing technical/provider ledger. It is
-  historical and must not be converted into either of the balances above.
+- `user_ai_credit_accounts`: the monthly allowance. Since the merge this is the
+  only balance a customer has.
 
 All functions below are executable only by `service_role`. The server must use
 the Supabase user ID established by the authenticated or anonymous session; it

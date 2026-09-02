@@ -166,24 +166,19 @@ export interface PlanTeamSnapshot {
   isOwner: boolean;
 }
 
-/** Purchased product credits. These never replace the monthly free allowance. */
-export interface ProductCreditSnapshot {
-  balance: number;
-  reserved: number;
-  available: number;
-  euroPerCredit: string;
-}
-
+/**
+ * Das Guthaben. Ein einziges — Analyse, Websuche und jede weitere
+ * kostenpflichtige Funktion gehen davon ab. Bis September 2026 stand hier ein
+ * zweites Konto daneben, was in der Oberfläche zwei Zahlen ergab, die beide
+ * „Credits" hießen.
+ */
 export interface AiUsageSnapshot {
   credits: CreditBalanceSnapshot;
-  /** Null for guest sessions because paid searches require an account. */
-  productCredits: ProductCreditSnapshot | null;
 }
 
 /** Routes may return only the balance they changed; the client merges safely. */
 export interface AiUsageUpdate {
   credits?: CreditBalanceSnapshot;
-  productCredits?: ProductCreditSnapshot | null;
 }
 
 export type AiProviderTransport =
