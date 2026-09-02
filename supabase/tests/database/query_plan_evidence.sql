@@ -8,6 +8,17 @@
 --
 -- The script creates only session-local pg_temp functions. It does not create,
 -- update, or delete persistent schema objects.
+--
+-- `supabase test db` fuehrt jede Datei in diesem Verzeichnis ueber pg_prove
+-- aus, und pg_prove liest TAP. Dieses Skript war als eigenstaendiger Nachweis
+-- fuer die Freigabe geschrieben und gab eine JSON-Zeile aus — fuer den Laeufer
+-- war das seit jeher ein Parse-Fehler ("No plan found in TAP output"), der den
+-- gesamten Lauf rot faerbte, unabhaengig davon, ob die Pruefung selbst bestand.
+-- Deshalb dieselbe Pruefung, nur als eine TAP-Zusicherung verpackt.
+
+begin;
+create extension if not exists pgtap with schema extensions;
+set local search_path = public, extensions, pg_temp;
 
 create or replace function pg_temp.assert_indexes_ready(p_index_names text[])
 returns void
@@ -502,6 +513,17 @@ begin
 end;
 $$;
 
--- One JSON result is the release evidence. If an assertion fails, this SELECT
--- raises a QUERY PLAN FAIL exception and returns no PASS object.
-select jsonb_pretty(pg_temp.run_query_plan_evidence()) as query_plan_acceptance;
+-- Eine Zusicherung, und darin steckt der gesamte Nachweis. Faellt eine der
+-- Pruefungen, wirft run_query_plan_evidence() mit Meldung und Detail — die
+-- Ausgabe endet dann an dieser Stelle, und im Protokoll steht, welcher Plan
+-- oder welcher Fremdschluessel es war.
+select plan(1);
+
+select is(
+  pg_temp.run_query_plan_evidence() ->> 'status',
+  'PASS',
+  'die heissen Lesepfade laufen ueber Indizes, und jeder Fremdschluessel hat einen fuehrenden'
+);
+
+select * from finish();
+rollback;

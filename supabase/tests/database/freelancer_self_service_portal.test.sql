@@ -70,10 +70,15 @@ select ok(
   'the trusted service can maintain profile analytics'
 );
 
+-- Der Bucket war oeffentlich, bis private_freelancer_avatars.sql ihn am
+-- 28.08.2026 geschlossen hat: ein Portraitfoto ist ein personenbezogenes
+-- Datum, und ein nicht erratbarer Pfad ist Auffindbarkeit, kein Zugriffs-
+-- schutz. Abgerufen wird seitdem ueber /api/freelancer/avatar-image/… mit
+-- einer kurzlebigen signierten URL, wie beim Lebenslauf nebenan.
 select is(
   (select public from storage.buckets where id = 'freelancer-avatars'),
-  true,
-  'published freelancer avatars are publicly readable'
+  false,
+  'freelancer avatars are private and reached through a signed URL'
 );
 
 select is(
