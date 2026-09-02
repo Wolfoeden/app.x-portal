@@ -13,13 +13,13 @@ const mocks = vi.hoisted(() => ({
     }),
   ),
   execute: vi.fn(),
-  completeExternalSearch: vi.fn(),
+  storeExternalSearchResult: vi.fn(),
   fetchProfiles: vi.fn().mockResolvedValue([]),
   getExternalSearchResult: vi.fn(),
-  getProductCreditSnapshot: vi.fn(),
+  getAiCreditSnapshot: vi.fn(),
   search: vi.fn(),
-  reserveProductCredits: vi.fn(),
-  settleProductCredits: vi.fn(),
+  /** Steuert, ob die Reservierung im Gateway bewilligt wird. */
+  quotaAllowed: true,
   eqCalls: [] as Array<[string, unknown]>,
   project: null as Record<string, unknown> | null,
   user: {
@@ -54,14 +54,12 @@ vi.mock("@/lib/openai/external-freelancer-search", () => ({
 vi.mock("@/lib/ai/gateway", () => ({
   executeTrackedAiRequest: mocks.execute,
 }));
-vi.mock("@/lib/ai/product-entitlements", () => ({
-  EXTERNAL_FREELANCER_SEARCH_CREDITS: 30,
-  PRODUCT_CREDIT_EURO_PER_UNIT: "0.0166666667",
-  completeExternalSearch: mocks.completeExternalSearch,
+vi.mock("@/lib/ai/external-search-store", () => ({
   getExternalSearchResult: mocks.getExternalSearchResult,
-  getProductCreditSnapshot: mocks.getProductCreditSnapshot,
-  reserveProductCredits: mocks.reserveProductCredits,
-  settleProductCredits: mocks.settleProductCredits,
+  storeExternalSearchResult: mocks.storeExternalSearchResult,
+}));
+vi.mock("@/lib/ai/quota", () => ({
+  getAiCreditSnapshot: mocks.getAiCreditSnapshot,
 }));
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminSupabaseClient: () => ({
@@ -86,6 +84,9 @@ import { POST } from "@/app/api/freelancer-search/route";
 import { resetRateLimitsForTests } from "@/lib/security/rate-limit";
 
 const PROJECT_ID = "00000000-0000-4000-8000-000000000010";
+
+/** Ein Guthaben — dasselbe, aus dem auch Analyse und Chat bezahlt werden. */
+const CREDITS = { total: 300, used: 30, reserved: 0, remaining: 270 };
 
 function project() {
   return {
@@ -134,50 +135,42 @@ beforeEach(() => {
   });
   mocks.search.mockReset();
   mocks.execute.mockReset();
-  mocks.completeExternalSearch.mockReset();
+  mocks.storeExternalSearchResult.mockReset();
   mocks.getExternalSearchResult.mockReset();
-  mocks.getProductCreditSnapshot.mockReset();
-  mocks.reserveProductCredits.mockReset();
-  mocks.settleProductCredits.mockReset();
-  mocks.reserveProductCredits.mockResolvedValue({
-    allowed: true,
-    reason: "reserved",
-    reservationId: "00000000-0000-4000-8000-000000000030",
-    balance: 100,
-    reserved: 30,
-    available: 70,
-  });
-  mocks.settleProductCredits.mockResolvedValue({
-    balance: 70,
-    reserved: 0,
-    available: 70,
-  });
+  mocks.getAiCreditSnapshot.mockReset();
+  mocks.quotaAllowed = true;
   mocks.getExternalSearchResult.mockResolvedValue(null);
-  mocks.getProductCreditSnapshot.mockResolvedValue({
-    balance: 70,
-    reserved: 0,
-    available: 70,
-  });
-  mocks.completeExternalSearch.mockImplementation(async (input) => ({
+  mocks.getAiCreditSnapshot.mockResolvedValue(CREDITS);
+  mocks.storeExternalSearchResult.mockImplementation(async (input) => ({
     recorded: true,
-    reason: "charged",
+    reason: "stored",
     candidates: input.candidates,
-    balance: 70,
-    reserved: 0,
-    available: 70,
   }));
+  // Bildet nach, was der echte Gateway tut: reservieren, den Anbieter nur bei
+  // bewilligtem Halt aufrufen und einen Lauf ohne verwertbare Nutzung wieder
+  // freigeben. Ohne diese Nachbildung würde der Test die Zusage „ein
+  // Fehlschlag kostet nichts" gar nicht prüfen können.
   mocks.execute.mockImplementation(async (input) => {
-    const operation = await input.operation(true);
+    const operation = await input.operation(mocks.quotaAllowed);
+    const charged =
+      mocks.quotaAllowed &&
+      operation.usage !== undefined &&
+      operation.providerUsageDefinitelyZero !== true
+        ? 30
+        : 0;
     return {
       value: operation.value,
       quota: {
-        allowed: true,
-        reason: "reserved",
+        allowed: mocks.quotaAllowed,
+        reason: mocks.quotaAllowed ? "reserved" : "insufficient_credits",
         retryAfterSeconds: null,
-        reservationId: "00000000-0000-4000-8000-000000000020",
-        credits: null,
+        reservationId: mocks.quotaAllowed
+          ? "00000000-0000-4000-8000-000000000020"
+          : null,
+        credits: CREDITS,
       },
-      credits: null,
+      credits: CREDITS,
+      creditsCharged: charged,
     };
   });
   mocks.search.mockResolvedValue({
@@ -269,7 +262,6 @@ describe("POST /api/freelancer-search", () => {
 
     expect(response.status).toBe(409);
     expect(body.error).toContain("keine Credits belastet");
-    expect(mocks.reserveProductCredits).not.toHaveBeenCalled();
     expect(mocks.execute).not.toHaveBeenCalled();
   });
 
@@ -323,11 +315,32 @@ describe("POST /api/freelancer-search", () => {
     expect(mocks.search).toHaveBeenCalledWith(
       expect.objectContaining({ allowProvider: true }),
     );
-    expect(mocks.completeExternalSearch).toHaveBeenCalledWith(
+    expect(body.price).toEqual({ credits: 30, charged: true });
+    expect(body.credits).toEqual(CREDITS);
+    expect(mocks.storeExternalSearchResult).toHaveBeenCalledWith(
       expect.objectContaining({
         projectId: PROJECT_ID,
         providerResponseId: "resp_search_one",
         actualModel: "gpt-5.4-nano-2026-03-17",
+      }),
+    );
+  });
+
+  it("liefert das bezahlte Ergebnis auch dann, wenn das Ablegen scheitert", async () => {
+    // Der Kunde hat den Lauf bezahlt und bekommt sein Ergebnis. Verloren ist
+    // nur die Wiederherstellbarkeit — und die gehoert ins Protokoll, nicht in
+    // eine Fehlermeldung.
+    mocks.storeExternalSearchResult.mockRejectedValue(new Error("db down"));
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.price.charged).toBe(true);
+    expect(mocks.audit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "external_freelancer_search_result_not_stored",
+        outcome: "failed",
       }),
     );
   });
@@ -361,29 +374,26 @@ describe("POST /api/freelancer-search", () => {
     expect(response.status).toBe(200);
     expect(body.notice).toContain("ohne neue Belastung");
     expect(body.candidates).toHaveLength(1);
-    expect(mocks.reserveProductCredits).not.toHaveBeenCalled();
     expect(mocks.execute).not.toHaveBeenCalled();
   });
 
-  it("does not call the provider when purchased credits are insufficient", async () => {
-    mocks.reserveProductCredits.mockResolvedValue({
-      allowed: false,
-      reason: "insufficient_credits",
-      reservationId: null,
-      balance: 29,
-      reserved: 0,
-      available: 29,
-    });
+  it("fragt den Anbieter nicht, wenn das Guthaben nicht reicht", async () => {
+    mocks.quotaAllowed = false;
 
     const response = await POST(request());
     const body = await response.json();
 
     expect(response.status).toBe(402);
-    expect(body.code).toBe("insufficient_product_credits");
-    expect(mocks.execute).not.toHaveBeenCalled();
+    expect(body.code).toBe("insufficient_credits");
+    expect(body.price).toEqual({ credits: 30 });
+    // Der Gateway laeuft, ruft den Anbieter aber ausdruecklich nicht auf.
+    expect(mocks.search).toHaveBeenCalledWith(
+      expect.objectContaining({ allowProvider: false }),
+    );
+    expect(mocks.storeExternalSearchResult).not.toHaveBeenCalled();
   });
 
-  it("releases the reservation when the provider result is not usable", async () => {
+  it("belastet nichts, wenn der Lauf kein verwertbares Ergebnis liefert", async () => {
     mocks.search.mockResolvedValue({
       candidates: [],
       mode: "unavailable",
@@ -401,18 +411,43 @@ describe("POST /api/freelancer-search", () => {
 
     expect(response.status).toBe(200);
     expect(body.price.charged).toBe(false);
-    expect(mocks.settleProductCredits).toHaveBeenCalledWith(
-      expect.objectContaining({ outcome: "timeout" }),
-    );
-    expect(mocks.completeExternalSearch).not.toHaveBeenCalled();
+    expect(mocks.storeExternalSearchResult).not.toHaveBeenCalled();
   });
 
-  it("requires an account before checking or reserving product credits", async () => {
+  it("belastet nichts, wenn die Anbieterantwort nicht zuordenbar ist", async () => {
+    // Ohne Antwort-Kennung laesst sich das Ergebnis weder ablegen noch spaeter
+    // belegen. Berechnet wird es deshalb nicht.
+    mocks.search.mockResolvedValue({
+      candidates: [],
+      mode: "openai",
+      providerAttempted: true,
+      provider: {
+        requestedModel: "gpt-5.4-nano-2026-03-17",
+        model: "gpt-5.4-nano-2026-03-17",
+        inputTokens: 100,
+        outputTokens: 20,
+        totalTokens: 120,
+      },
+      searchTrace: {
+        queries: [],
+        consultedSourceCount: 0,
+        returnedCandidateCount: 0,
+      },
+    });
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.price.charged).toBe(false);
+    expect(mocks.storeExternalSearchResult).not.toHaveBeenCalled();
+  });
+
+  it("requires an account before any credit is held", async () => {
     mocks.user.isAnonymous = true;
     try {
       const response = await POST(request());
       expect(response.status).toBe(401);
-      expect(mocks.reserveProductCredits).not.toHaveBeenCalled();
       expect(mocks.execute).not.toHaveBeenCalled();
     } finally {
       mocks.user.isAnonymous = false;

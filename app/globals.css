@@ -2702,38 +2702,66 @@ dd.is-unknown,
   box-shadow: 0 10px 34px rgba(20, 20, 18, 0.1);
 }
 
-.external-search-button {
-  display: block;
-  width: min(100%, 580px);
-  cursor: pointer;
-  border: 1px solid var(--ink);
-  border-radius: var(--radius-sm);
-  background: var(--ink);
-  color: #fff;
-  margin: 11px 0 9px;
-  padding: 9px 12px;
-  text-align: left;
-  font-size: var(--fs-xs);
-  font-weight: 650;
-  line-height: 1.4;
+/* Recherche-Agent ------------------------------------------------------------
+   Der Einstieg in die Websuche, wenn der Katalog nichts hergibt. Eine Pille in
+   derselben Formensprache wie die uebrigen Vorschlaege im Ergebnisbereich —
+   vorher stand hier erst ein grauer gesperrter Knopf, dann eine ganze Karte
+   mit Ueberschrift und vier Schrittkacheln. Beides war falsch: die eine sagte
+   „hier ist Schluss“, die andere nahm dem Ergebnis die Ruhe. */
+.agent-launch {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 12px;
 }
 
-.external-search-button:hover { background: #2b2b29; }
-.external-search-button:disabled { cursor: wait; opacity: .65; }
-.external-search-progress {
-  overflow: hidden;
-  margin-top: 9px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+.agent-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  max-width: 100%;
+  margin: 0;
+  cursor: pointer;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
   background: var(--surface);
+  padding: 9px 17px;
+  color: var(--ink);
+  font-size: var(--fs-xs);
+  font-weight: 620;
+  line-height: 1.35;
+  text-align: left;
+  box-shadow: 0 1px 2px rgba(24, 24, 23, 0.05);
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
-.external-search-progress summary { display: flex; cursor: pointer; list-style: none; align-items: center; gap: 8px; padding: 9px 10px; color: var(--muted); font-size: var(--fs-xs); }
-.external-search-progress summary::-webkit-details-marker { display: none; }
-.external-search-progress summary .analysis-trace-toggle { margin-left: auto; }
-.external-search-progress ol { display: grid; gap: 5px; margin: 0; border-top: 1px solid var(--border); padding: 10px 13px 11px 28px; color: var(--muted); font-size: var(--fs-2xs); line-height: 1.45; }
-.external-search-progress[open] .analysis-trace-toggle { transform: rotate(180deg); }
-.external-search-cost-note { margin: -3px 0 10px; color: var(--muted); font-size: var(--fs-2xs); line-height: 1.45; }
-.external-search-cost-note.is-warning { color: var(--danger); }
+
+.agent-pill:hover {
+  border-color: var(--border-hover);
+  background: var(--surface-soft);
+}
+
+.agent-pill:disabled {
+  cursor: default;
+  color: var(--muted);
+}
+
+/* Waehrend des Laufs traegt dieselbe Pille den aktuellen Arbeitsschritt. Kein
+   Knopf mehr, deshalb ohne Zeiger und ohne Schwebezustand. */
+.agent-pill.is-running {
+  cursor: default;
+  color: var(--muted);
+  font-weight: 560;
+  box-shadow: none;
+}
+
+.agent-pill-note {
+  margin: 0;
+  padding-left: 3px;
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+  line-height: 1.45;
+}
 
 .external-results {
   display: grid;

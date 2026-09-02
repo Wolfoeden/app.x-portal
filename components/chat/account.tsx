@@ -81,8 +81,13 @@ export function renewalLabel(periodEnd: string, now = new Date()): string {
   return `Credits werden in ${days} Tagen erneuert`;
 }
 
+/**
+ * Der Kontostand. Eine Zahl, seit Analyse und Recherche aus demselben Topf
+ * bezahlt werden — vorher wurden hier zwei Guthaben addiert, was die Summe
+ * richtig und jede einzelne Zahl unverständlich machte.
+ */
 export function totalBalance(usage: AiUsageSnapshot): number {
-  return usage.credits.remaining + (usage.productCredits?.available ?? 0);
+  return usage.credits.remaining;
 }
 
 export function AccountSummary({

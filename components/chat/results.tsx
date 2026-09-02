@@ -38,7 +38,6 @@ import type {
   ExternalFreelancerSearchResponse,
   FreelancerProfileResult,
   MatchingStatus,
-  ProductCreditSnapshot,
   ProjectMode,
   SavedFreelancer,
   StructuredBrief,
@@ -60,12 +59,6 @@ import {
   IconSpark,
 } from "../icons";
 
-export type ExternalSearchCtaState = {
-  kind: "login" | "loading" | "insufficient" | "ready";
-  label: string;
-  disabled: boolean;
-};
-
 const unknownFieldLabels: Readonly<Record<string, string>> = {
   projectTitle: "Projektname",
   requiredSkills: "Pflichtkompetenzen",
@@ -82,12 +75,10 @@ const unknownFieldLabels: Readonly<Record<string, string>> = {
   availabilityRequirement: "Verfügbarkeit",
   contractualRequirements: "Vertragsanforderungen",
 };
-import {
-  formatCredits,
-  initials,
-  isRecord,
-  nullableString,
-} from "./shared";
+import { EXTERNAL_SEARCH_CREDITS } from "@/lib/ai/credit-policy";
+
+import { AgentLaunchPanel, agentLaunchState } from "./agent-launch";
+import { initials, isRecord, nullableString } from "./shared";
 
 const observedProfileCards = new Set<string>();
 
@@ -142,38 +133,6 @@ function useProfileImpression(
     };
   }, [profile.demoStatus, profile.id, projectId]);
   return ref;
-}
-
-export function externalSearchCtaState(
-  authenticated: boolean,
-  productCredits: ProductCreditSnapshot | null,
-): ExternalSearchCtaState {
-  if (!authenticated) {
-    return {
-      kind: "login",
-      label: "Anmelden und externe Profile suchen",
-      disabled: false,
-    };
-  }
-  if (!productCredits) {
-    return {
-      kind: "loading",
-      label: "Creditstand wird geladen …",
-      disabled: true,
-    };
-  }
-  if (productCredits.available < 30) {
-    return {
-      kind: "insufficient",
-      label: `30 Recherche-Credits erforderlich · ${formatCredits(productCredits.available)} verfügbar`,
-      disabled: true,
-    };
-  }
-  return {
-    kind: "ready",
-    label: "Externe Profile suchen · 30 Credits",
-    disabled: false,
-  };
 }
 
 function formatDateTime(value: string | null) {
@@ -330,8 +289,9 @@ export function ResultSection({
   externalSearchState,
   onExternalSearch,
   isAccountUser,
-  productCredits,
+  creditsRemaining,
   onRequireLogin,
+  onNeedCredits,
   selectedProfileId,
   onSelect,
   onContact,
@@ -356,8 +316,10 @@ export function ResultSection({
   externalSearchState: "idle" | "searching" | "error";
   onExternalSearch: () => void;
   isAccountUser: boolean;
-  productCredits: ProductCreditSnapshot | null;
+  /** Der eine Kontostand. Null, solange er noch geladen wird. */
+  creditsRemaining: number | null;
   onRequireLogin: () => void;
+  onNeedCredits: () => void;
   selectedProfileId: string | null;
   onSelect: (profile: FreelancerProfileResult) => void;
   onContact: (profile: FreelancerProfileResult) => void;
@@ -373,7 +335,23 @@ export function ResultSection({
   /** Steht die Projektuebersicht offen, bleibt fuer die Karten wenig Breite. */
   detailsOpen: boolean;
 }) {
-  const searchCta = externalSearchCtaState(isAccountUser, productCredits);
+  const launchState = agentLaunchState(isAccountUser, creditsRemaining);
+  /**
+   * Die Karte erscheint nur, wenn sie etwas sagt, das nicht schon oben steht.
+   *
+   * Im Normalfall stand dort „Kein aktives und direkt buchbares Profil
+   * erreicht derzeit die Empfehlungsschwelle“ — direkt unter der Überschrift
+   * „Kein ausreichend passendes internes Profil“. Dieselbe Aussage zweimal
+   * hintereinander, dazu die Erklaerung der Schwelle, die in der
+   * Ergebnisoffenlegung ohnehin steht. Uebrig bleiben die Faelle mit eigenem
+   * Inhalt: eine unklare Anfrage, vorhandene Teiltreffer, die Basisanalyse und
+   * ein Altergebnis ohne Einstufung.
+   */
+  const showNoMatchCard =
+    matchingStatus === "needs_clarification" ||
+    partialProfiles.length > 0 ||
+    analysisMode === "fallback" ||
+    matchingStatus !== "no_reliable_match";
   /**
    * Bei offener Projektuebersicht zeigen die Karten nur noch Kopf und
    * Aktionen. Aufgeklappt ist immer hoechstens eine: zwei ausgeklappte Karten
@@ -466,77 +444,46 @@ export function ResultSection({
               </div>
             </>
           ) : null}
-          <div className="no-match-card">
-            <div className="no-match-icon" aria-hidden="true"><IconSearch size={19} /></div>
-            <div>
-              <strong>
-                {matchingStatus === "needs_clarification"
-                  ? "Nennen Sie bitte mindestens die gewünschte Rolle oder eine benötigte Kernkompetenz."
-                  : partialProfiles.length
-                    ? "Keiner der internen Teiltreffer erreicht die Empfehlungsschwelle."
-                  : analysisMode === "fallback"
-                    ? "Die sichere Basisanalyse hat keinen zuverlässigen internen Match gefunden."
-                    : "Kein aktives und direkt buchbares Profil erreicht derzeit die Empfehlungsschwelle."}
-              </strong>
-              <p>
-                {matchingStatus === "needs_clarification"
-                  ? "Ohne prüfbare Kompetenzanforderung wird kein Profil geraten und keine kostenpflichtige Websuche angeboten."
-                  : matchingStatus === "no_reliable_match"
-                    ? partialProfiles.length
-                      ? "Prüfen Sie zuerst die offengelegten Lücken oder präzisieren Sie ein Kriterium im Chat. Reicht das interne Ergebnis nicht aus, steht darunter als getrennte Option die externe Recherche bereit."
-                      : "Wir empfehlen nur Profile, die alle Muss-Kriterien und mindestens 70 % der Kernkompetenzgruppen erfüllen. Sie können ein Kriterium im Chat präzisieren oder lockern."
-                    : "Für dieses historische Ergebnis ist keine Qualitätsklassifikation gespeichert."}
-              </p>
-              {matchingStatus === "no_reliable_match" &&
-              (analysis?.externalSearchAvailable ?? true) &&
-              externalSearch?.mode !== "openai" ? (
-                <>
-                  <button
-                    className="external-search-button"
-                    type="button"
-                    onClick={searchCta.kind === "login" ? onRequireLogin : onExternalSearch}
-                    disabled={externalSearchState === "searching" || searchCta.disabled}
-                  >
-                    {externalSearchState === "searching"
-                      ? "KI sucht öffentlich zugängliche Profile …"
-                      : searchCta.label}
-                  </button>
-                  {searchCta.kind === "ready" && externalSearchState !== "searching" ? (
-                    <p className="external-search-cost-note">
-                      Einmalige Belastung: 30 Recherche-Credits. Bei einem technischen Fehler werden sie automatisch wieder freigegeben.
-                    </p>
-                  ) : null}
-                  {searchCta.kind === "insufficient" ? (
-                    <p className="external-search-cost-note is-warning" role="status">
-                      Ihr Credit-Guthaben reicht nicht aus. Es wird keine Internetsuche gestartet und nichts belastet.
-                    </p>
-                  ) : null}
-                  {searchCta.kind === "login" ? (
-                    <p className="external-search-cost-note">
-                      Die kostenpflichtige Internetsuche ist nur mit einem angemeldeten Konto verfügbar.
-                    </p>
-                  ) : null}
-                  {externalSearchState === "searching" ? (
-                    <details className="external-search-progress" role="status">
-                      <summary>
-                        <span className="thinking-dots" aria-hidden="true"><i /><i /><i /></span>
-                        Recherche läuft · Arbeitsschritte anzeigen
-                        <span className="analysis-trace-toggle" aria-hidden="true"><IconChevronDown size={14} /></span>
-                      </summary>
-                      <ol>
-                        <li>Öffentliche Profile werden anhand der Muss-Kriterien gesucht.</li>
-                        <li>Quellen, Verfügbarkeit und Terminlinks werden auf Plausibilität geprüft.</li>
-                        <li>Nur belegbare Treffer werden getrennt vom internen Ergebnis angezeigt.</li>
-                      </ol>
-                    </details>
-                  ) : null}
-                  {externalSearchState === "error" ? (
-                    <button className="text-button" type="button" onClick={onExternalSearch}>Websuche erneut versuchen</button>
-                  ) : null}
-                </>
-              ) : null}
+          {showNoMatchCard ? (
+            <div className="no-match-card">
+              <div className="no-match-icon" aria-hidden="true"><IconSearch size={19} /></div>
+              <div>
+                <strong>
+                  {matchingStatus === "needs_clarification"
+                    ? "Nennen Sie bitte mindestens die gewünschte Rolle oder eine benötigte Kernkompetenz."
+                    : partialProfiles.length
+                      ? "Keiner der internen Teiltreffer erreicht die Empfehlungsschwelle."
+                      : analysisMode === "fallback"
+                        ? "Strukturiert wurde mit der sicheren Basisanalyse, nicht mit der KI."
+                        : "Für dieses historische Ergebnis ist keine Qualitätsklassifikation gespeichert."}
+                </strong>
+                <p>
+                  {matchingStatus === "needs_clarification"
+                    ? "Ohne prüfbare Kompetenzanforderung wird kein Profil geraten und keine kostenpflichtige Recherche angeboten."
+                    : partialProfiles.length
+                      ? "Prüfen Sie die offengelegten Lücken oder lockern Sie ein Kriterium im Chat."
+                      : analysisMode === "fallback"
+                        ? "Die Anforderungen können dadurch gröber gefasst sein als beschrieben."
+                        : "Ältere Ergebnisse führen die Einstufung nicht mit."}
+                </p>
+              </div>
             </div>
-          </div>
+          ) : null}
+          {/* Der Agent steht bewusst neben der Absage und nicht darin: er ist
+              nicht die Fußnote eines leeren Ergebnisses, sondern der nächste
+              Schritt. */}
+          {matchingStatus === "no_reliable_match" &&
+          (analysis?.externalSearchAvailable ?? true) &&
+          externalSearch?.mode !== "openai" ? (
+            <AgentLaunchPanel
+              state={launchState}
+              searching={externalSearchState === "searching"}
+              failed={externalSearchState === "error"}
+              onStart={onExternalSearch}
+              onRequireLogin={onRequireLogin}
+              onNeedCredits={onNeedCredits}
+            />
+          ) : null}
           {externalSearch ? (
             <ExternalSearchResults
               result={externalSearch}
@@ -729,7 +676,7 @@ function ExternalSearchResults({
   return (
     <section className="external-results" aria-label="Externe, nicht verifizierte Suchergebnisse">
       <div className="external-results-heading">
-        <div><p className="eyebrow">Externe Recherche · 30 Credits</p><h3>Öffentlich gefundene Profile</h3></div>
+        <div><p className="eyebrow">Recherche-Agent · {EXTERNAL_SEARCH_CREDITS} Credits</p><h3>Öffentlich gefundene Profile</h3></div>
         <span>Nicht verifiziert</span>
       </div>
       {result.completedAt ? (
@@ -848,7 +795,8 @@ function ExternalSearchResults({
         <p>{result.searchTrace.consultedSourceCount} öffentlich zugängliche Quellen wurden berücksichtigt; {result.searchTrace.returnedCandidateCount} Ergebnis(se) erfüllten die Ausgaberegeln.</p>
         {result.searchTrace.toolCallCount ? (
           <p>
-            {result.searchTrace.toolCallCount} Suchanfrage(n) ausgeführt · 30 Recherche-Credits belastet
+            {result.searchTrace.toolCallCount} Suchanfrage(n) ausgeführt ·{" "}
+            {EXTERNAL_SEARCH_CREDITS} Credits belastet
           </p>
         ) : null}
         {result.searchTrace.queries.length ? <ul>{result.searchTrace.queries.map((query) => <li key={query}>{query}</li>)}</ul> : null}

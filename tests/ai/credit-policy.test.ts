@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   BRIEF_ANALYSIS_CREDITS,
   calculateCreditsConsumed,
+  EXTERNAL_SEARCH_CREDITS,
   type AiCreditPolicy,
   XPORTAL_AI_CREDIT_POLICY,
 } from "@/lib/ai/credit-policy";
@@ -64,7 +65,7 @@ describe("XPORTAL AI credit policy", () => {
 
     expect(result.creditsConsumed).toBe(1);
     expect(result.unitLabel).toBe("XPORTAL_AI_CREDIT");
-    expect(result.policyVersion).toBe("xportal-ai-credits-2026-08-26-v5");
+    expect(result.policyVersion).toBe("xportal-ai-credits-2026-09-01-v6");
   });
 
   it("rounds half-up instead of always rounding up", () => {
@@ -156,18 +157,18 @@ describe("XPORTAL AI credit policy", () => {
   });
 
   it("leaves metered purposes untouched by the flat-price table", () => {
-    const research = calculateCreditsConsumed({
+    const chat = calculateCreditsConsumed({
       requestedModel: "gpt-5.4-nano",
-      purpose: "research",
+      purpose: "chat",
       inputTokens: 920,
       outputTokens: 147,
     });
 
-    expect(research.flatPriceCredits).toBeNull();
-    expect(research.creditsConsumed).toBe(research.meteredCredits);
+    expect(chat.flatPriceCredits).toBeNull();
+    expect(chat.creditsConsumed).toBe(chat.meteredCredits);
   });
 
-  it("keeps external research on its own discounted multiplier", () => {
+  it("berechnet die Recherche zum Festpreis aus der Preisliste", () => {
     const research = calculateCreditsConsumed({
       requestedModel: "gpt-5.4-nano",
       purpose: "research",
@@ -175,8 +176,24 @@ describe("XPORTAL AI credit policy", () => {
       outputTokens: 147,
     });
 
+    // Ein Lauf kostet, was der Knopf angesagt hat — unabhaengig davon, wie
+    // viele Tokens die Suche gebraucht hat.
+    expect(research.flatPriceCredits).toBe(EXTERNAL_SEARCH_CREDITS);
+    expect(research.creditsConsumed).toBe(EXTERNAL_SEARCH_CREDITS);
+    // Die Messung laeuft weiter mit und bleibt vergleichbar.
+    expect(research.meteredCredits).toBe(2);
     expect(research.purposeMultiplierBasisPoints).toBe(1_000);
-    expect(research.creditsConsumed).toBe(2);
+  });
+
+  it("berechnet einen Lauf ohne Anbieterkontakt auch zum Festpreis mit null", () => {
+    const untouched = calculateCreditsConsumed({
+      requestedModel: "gpt-5.4-nano",
+      purpose: "research",
+      inputTokens: 0,
+      outputTokens: 0,
+    });
+
+    expect(untouched.creditsConsumed).toBe(0);
   });
 
   it("meters the higher-cost Terra model with an explicit multiplier", () => {

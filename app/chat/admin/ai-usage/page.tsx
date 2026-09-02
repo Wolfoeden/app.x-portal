@@ -15,7 +15,7 @@ import {
   creditPlan,
   GUEST_MONTHLY_CREDITS,
 } from "@/lib/ai/credit-policy";
-import { EXTERNAL_FREELANCER_SEARCH_CREDITS } from "@/lib/ai/product-entitlements";
+import { EXTERNAL_SEARCH_CREDITS } from "@/lib/ai/credit-policy";
 import { resolveOpenAiConnection } from "@/lib/openai/provider";
 import { DEFAULT_OPENAI_DIAGNOSTIC_MODEL } from "@/lib/openai/diagnostics";
 import { ProviderDiagnosticPanel } from "./ProviderDiagnosticPanel";
@@ -245,7 +245,7 @@ export default async function AiUsageAdminPage({
           <p className={styles.eyebrow}>XPORTAL · ADMIN</p>
           <h1>AI Usage, Kontingente & Credits</h1>
           <p>
-            Provider-Nutzung, wirksame Monats-Credits, gekaufte Produkt-Credits
+            Provider-Nutzung, wirksame Monats-Credits, stillgelegte Restbestände
             und das stillgelegte Freikontingent werden getrennt ausgewiesen.
           </p>
         </div>
@@ -422,10 +422,10 @@ Bei den Konten stehen zwei
           </small>
         </article>
         <article>
-          <span>Gekaufte Produkt-Credits</span>
+          <span>Produkt-Credits (stillgelegt)</span>
           <strong>{numberFormat.format(dashboard.accountTotals.product.available)}</strong>
           <small>
-            verfügbar · {numberFormat.format(dashboard.accountTotals.product.reserved)} reserviert
+            Restbestand aus dem zweiten Guthaben · gates nichts
           </small>
         </article>
         <article>
@@ -557,11 +557,13 @@ Bei den Konten stehen zwei
               kostet {BRIEF_ANALYSIS_CREDITS} Credits
             </span>
           </div>
-          <div>
-            <strong>Produkt-Credits</strong>
+          <div className={styles.legacyLegend}>
+            <strong>Stillgelegte Produkt-Credits</strong>
             <span>
-              Gekauftes Guthaben · externe Recherche{" "}
-              {numberFormat.format(EXTERNAL_FREELANCER_SEARCH_CREDITS)} Credits
+              <code>product_credit_accounts</code> — das zweite Guthaben der
+              Websuche, seit dem Zusammenlegen ohne Wirkung. Eine Recherche
+              kostet {numberFormat.format(EXTERNAL_SEARCH_CREDITS)} Credits aus
+              dem Monatskontingent.
             </span>
           </div>
           <div className={styles.legacyLegend}>
@@ -579,7 +581,7 @@ Bei den Konten stehen zwei
                 <th>User</th>
                 <th>Stufe</th>
                 <th>Monats-Credits (wirksam)</th>
-                <th>Produkt-Credits</th>
+                <th>Produkt-Credits (stillgelegt)</th>
                 <th>Bestätigte Tokens</th>
                 <th>Text-Token-Kosten</th>
                 <th>Geschätzte Tokens</th>
@@ -681,7 +683,7 @@ Bei den Konten stehen zwei
               </small>
             </div>
             <div>
-              <dt>Gekaufte Produkt-Credits</dt>
+              <dt>Produkt-Credits (stillgelegt)</dt>
               <dd>{selectedUser.productCredits ? numberFormat.format(selectedUser.productCredits.available) : "–"}</dd>
               <small>
                 {selectedUser.productCredits

@@ -2,11 +2,8 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import {
-  AnalysisTrace,
-  externalSearchCtaState,
-  visibleAnalysisSteps,
-} from "@/components/chat/results";
+import { AnalysisTrace, visibleAnalysisSteps } from "@/components/chat/results";
+import { agentLaunchState } from "@/components/chat/agent-launch";
 import {
   estimatedRequestsLeft,
   mergeUsageSnapshot,
@@ -27,12 +24,6 @@ const usage: AiUsageSnapshot = {
     creditsPerRequest: 21,
     planId: "free",
     lastRequestCost: 24,
-  },
-  productCredits: {
-    balance: 42,
-    reserved: 0,
-    available: 42,
-    euroPerCredit: "0.0166666667",
   },
 };
 
@@ -59,61 +50,62 @@ const nanoTrace: AiAnalysisTrace = {
 };
 
 describe("chat usage presentation contract", () => {
-  it("normalizes the credit balance and purchased credits as separate ledgers", () => {
+  it("normalizes the one balance and rejects a partial one", () => {
     expect(normalizeUsageSnapshot({ usage })).toEqual(usage);
-    expect(normalizeUsageSnapshot({
+    expect(normalizeUsageSnapshot({ credits: usage.credits })).toEqual({
       credits: usage.credits,
-      productCredits: null,
-    })).toEqual({ credits: usage.credits, productCredits: null });
+    });
     // A partial balance is rejected rather than rendered as a wrong number.
     expect(normalizeUsageSnapshot({ credits: { total: 500, used: 10, remaining: 490 } })).toBeNull();
+    // Das zweite Guthaben ist abgeschafft. Eine Antwort, die es noch mitsendet,
+    // darf die Normalisierung nicht aus dem Tritt bringen.
+    expect(
+      normalizeUsageSnapshot({
+        credits: usage.credits,
+        productCredits: { balance: 42, reserved: 0, available: 42 },
+      }),
+    ).toEqual({ credits: usage.credits });
   });
 
-  it("merges a partial chat usage update without erasing purchased credits", () => {
+  it("merges a partial chat usage update", () => {
     const spent = { ...usage.credits, used: 48, remaining: 1_002, lastRequestCost: 24 };
-    expect(mergeUsageSnapshot(usage, { credits: spent })).toEqual({
-      credits: spent,
-      productCredits: usage.productCredits,
-    });
+    expect(mergeUsageSnapshot(usage, { credits: spent })).toEqual({ credits: spent });
   });
 
   it("reports the balance and an exact floored request count", () => {
     // 1,026 remaining at 21 credits per request floors to 48, never rounds up
     // into a request the balance cannot pay for.
     expect(estimatedRequestsLeft(usage.credits)).toBe(48);
-    expect(usageSummary(usage, false)).toBe("KI-Guthaben: 1.026 Credits · 48 Anfragen");
+    expect(usageSummary(usage, false)).toBe("Guthaben: 1.026 Credits · 48 Anfragen");
   });
 
-  it("keeps the research credits distinct from the monthly balance", () => {
+  it("zählt einem angemeldeten Konto die Recherchen aus demselben Guthaben vor", () => {
+    // 1.026 Credits, 30 je Recherche: 34 — abgerundet, nie aufgerundet in eine
+    // Recherche hinein, die das Guthaben nicht mehr trägt.
     expect(usageSummary(usage, true)).toBe(
-      "KI-Guthaben: 1.026 Credits · 48 Anfragen · Recherche-Guthaben: 42 Credits",
+      "Guthaben: 1.026 Credits · 48 Anfragen · 34 Recherchen",
     );
   });
 
   it("uses the singular when exactly one request remains", () => {
     const almostEmpty = { ...usage.credits, remaining: 30, used: 1_020 };
-    expect(usageSummary({ ...usage, productCredits: null }, false)).toContain("Anfragen");
-    expect(usageSummary({ credits: almostEmpty, productCredits: null }, false)).toBe(
-      "KI-Guthaben: 30 Credits · 1 Anfrage",
+    expect(usageSummary(usage, false)).toContain("Anfragen");
+    expect(usageSummary({ credits: almostEmpty }, false)).toBe(
+      "Guthaben: 30 Credits · 1 Anfrage",
+    );
+    expect(usageSummary({ credits: almostEmpty }, true)).toBe(
+      "Guthaben: 30 Credits · 1 Anfrage · 1 Recherche",
     );
   });
 
-  it("requires login and 30 product credits before the explicit search confirmation", () => {
-    const productCredits = usage.productCredits!;
-    expect(externalSearchCtaState(false, productCredits)).toMatchObject({
-      kind: "login",
-      disabled: false,
-    });
-    expect(externalSearchCtaState(true, { ...productCredits, available: 29 })).toEqual({
+  it("verlangt Anmeldung und 30 Credits, bevor der Agent startbar ist", () => {
+    expect(agentLaunchState(false, 1_026)).toEqual({ kind: "login" });
+    expect(agentLaunchState(true, null)).toEqual({ kind: "loading" });
+    expect(agentLaunchState(true, 29)).toEqual({
       kind: "insufficient",
-      label: "30 Recherche-Credits erforderlich · 29 verfügbar",
-      disabled: true,
+      remaining: 29,
     });
-    expect(externalSearchCtaState(true, productCredits)).toEqual({
-      kind: "ready",
-      label: "Externe Profile suchen · 30 Credits",
-      disabled: false,
-    });
+    expect(agentLaunchState(true, 30)).toEqual({ kind: "ready", remaining: 30 });
   });
 
   it("maps provider progress to public milestones instead of exposing arbitrary details", () => {

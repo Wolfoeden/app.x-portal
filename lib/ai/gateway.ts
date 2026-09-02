@@ -31,7 +31,16 @@ export type AiOperationResult<T> = {
   outcome: AiUsageOutcome;
   /** Explicitly false only when the provider was definitely never called. */
   providerAttempted?: boolean;
-  /** True only for a provider rejection known to have consumed zero tokens. */
+  /**
+   * Wahr, wenn diese Anfrage nicht berechnet werden darf: der Anbieter hat
+   * sie abgelehnt, ist in die Zeitüberschreitung gelaufen oder hat nichts
+   * Verwertbares geliefert. Die Reservierung wird dann vollständig
+   * freigegeben, statt in die Abstimmung zu laufen und dort mit dem
+   * vorsichtigen Voranschlag belastet zu werden.
+   *
+   * Das ist eine Zusage an den Kunden, keine Messung: ein fehlgeschlagener
+   * Lauf kostet ihn nichts, auch wenn der Anbieter ihn uns berechnet.
+   */
   providerUsageDefinitelyZero?: boolean;
   usage?: AiProviderUsage;
 };
