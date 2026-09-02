@@ -78,12 +78,7 @@ const unknownFieldLabels: Readonly<Record<string, string>> = {
 import { EXTERNAL_SEARCH_CREDITS } from "@/lib/ai/credit-policy";
 
 import { AgentLaunchPanel, agentLaunchState } from "./agent-launch";
-import {
-  formatCredits,
-  initials,
-  isRecord,
-  nullableString,
-} from "./shared";
+import { initials, isRecord, nullableString } from "./shared";
 
 const observedProfileCards = new Set<string>();
 
