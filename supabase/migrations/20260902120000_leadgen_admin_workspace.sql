@@ -26,6 +26,43 @@
 
 begin;
 
+-- 0. Die Tabelle, die es in der Produktion schon gibt ----------------------
+--
+-- `leadgen_queue` wurde vom Importwerkzeug direkt angelegt, nicht über eine
+-- Migration. In der Produktion steht sie also längst; eine frische Umgebung —
+-- der pgTAP-Lauf in der fortlaufenden Integration etwa — kennt sie dagegen
+-- nicht, und alles Folgende liefe dort ins Leere.
+--
+-- Deshalb steht die Form hier, so wie sie in der Produktion vorliegt. Wo die
+-- Tabelle existiert, ändert `if not exists` nichts; wo sie fehlt, entsteht
+-- dieselbe Tabelle. Ab hier ist der Zustand der Datenbank wieder aus dem
+-- Repository herleitbar — die Voraussetzung dafür, dass ein Test überhaupt
+-- etwas beweisen kann.
+
+create table if not exists public.leadgen_queue (
+  id bigint generated always as identity primary key,
+  recipient_email text not null,
+  recipient_name text,
+  company text,
+  stellenanzeige text not null,
+  status text not null default 'new',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+comment on table public.leadgen_queue is
+  'Leads aus öffentlichen Projektausschreibungen. Befüllt von einem Werkzeug '
+  'außerhalb dieser Anwendung, gelesen und bearbeitet nur im Admin-Bereich.';
+
+-- Dieselbe Ausschreibung soll nicht zweimal als Lead auftauchen.
+create unique index if not exists leadgen_queue_stellenanzeige_key
+  on public.leadgen_queue (stellenanzeige);
+
+create index if not exists leadgen_queue_status_created_idx
+  on public.leadgen_queue (status, created_at);
+
+alter table public.leadgen_queue enable row level security;
+
 -- 1. Was die Arbeitsliste braucht ------------------------------------------
 
 alter table public.leadgen_queue

@@ -21,9 +21,12 @@ insert into auth.users (
   now(), now(), now()
 );
 
+-- `id` ist `generated always as identity`; feste Kennungen brauchen deshalb
+-- die ausdrückliche Übersteuerung. Sie sind hier praktisch, weil die
+-- Zusicherungen weiter unten auf dieselben Zeilen zeigen müssen.
 insert into public.leadgen_queue (
   id, recipient_email, recipient_name, company, stellenanzeige, status
-) values (
+) overriding system value values (
   9000001,
   'kontakt@example.invalid',
   'Test Person',
