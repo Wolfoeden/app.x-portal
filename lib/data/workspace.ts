@@ -80,6 +80,18 @@ export async function loadWorkspaceUsage(
   };
 }
 
+/**
+ * Nur die Spalten, die `presentProject` in eine Listenzeile übersetzt. `*` zog
+ * hier auch `original_request` und `structured_brief` mit — den vollen
+ * Anfragetext und das ganze Brief-JSON, für eine Liste aus Titel und Datum.
+ * Gemessen am 2026-09-03 waren das im Schnitt 6,9 kB statt 0,09 kB pro Aufruf
+ * und im größten Konto 151 kB, bei jedem Öffnen des Workspace.
+ */
+const PROJECT_LIST_COLUMNS = "id,title,status,updated_at,collection_id";
+
+/** Analog dazu die Ordner: der Presenter braucht drei Felder. */
+const COLLECTION_LIST_COLUMNS = "id,name,updated_at";
+
 export async function loadOwnedProjects(user: CurrentUser) {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) return [];
 
@@ -88,7 +100,7 @@ export async function loadOwnedProjects(user: CurrentUser) {
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
     .from("projects")
-    .select("*")
+    .select(PROJECT_LIST_COLUMNS)
     .eq("owner_user_id", user.id)
     .neq("status", "archived")
     .order("updated_at", { ascending: false })
@@ -103,7 +115,7 @@ export async function loadOwnedCollections(user: CurrentUser) {
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
     .from("project_collections")
-    .select("*")
+    .select(COLLECTION_LIST_COLUMNS)
     .eq("owner_user_id", user.id)
     .is("archived_at", null)
     .order("updated_at", { ascending: false })

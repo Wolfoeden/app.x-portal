@@ -186,18 +186,23 @@ export async function getAiCreditSnapshot(input: {
     throw new Error("quota_service_not_configured");
   }
   const admin = createAdminSupabaseClient();
-  const { data, error } = await admin.rpc("get_ai_credit_snapshot", {
-    p_user_id: input.userId,
-    p_is_anonymous: input.isAnonymous,
-    p_initial_credit_total: configuredInitialCredits(input.isAnonymous),
-  });
-  if (error) throw error;
-  const credits = creditSnapshot(firstRow(data));
+  // Beide Fahrten gehen gleichzeitig raus statt nacheinander. Die Stufe hängt
+  // nicht am Ergebnis der RPC: legt diese das Konto gerade erst an, findet der
+  // Nebenlauf keine Zeile und `readPlanId` fällt auf genau die Stufe zurück,
+  // die ein frisches Konto ohnehin bekommt. Das spart auf jedem Workspace-Aufruf
+  // eine volle Wartezeit zur Datenbank.
+  const [snapshot, planId] = await Promise.all([
+    admin.rpc("get_ai_credit_snapshot", {
+      p_user_id: input.userId,
+      p_is_anonymous: input.isAnonymous,
+      p_initial_credit_total: configuredInitialCredits(input.isAnonymous),
+    }),
+    readPlanId(admin, input.userId, input.isAnonymous),
+  ]);
+  if (snapshot.error) throw snapshot.error;
+  const credits = creditSnapshot(firstRow(snapshot.data));
   if (!credits) throw new Error("invalid_credit_snapshot");
-  return {
-    ...credits,
-    planId: await readPlanId(admin, input.userId, input.isAnonymous),
-  };
+  return { ...credits, planId };
 }
 
 /**

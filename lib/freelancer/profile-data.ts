@@ -88,40 +88,47 @@ function mapEditableProfile(row: ProfileRow): EditableFreelancerProfile {
   };
 }
 
-async function countEvents(
-  profileId: string,
-  eventType: "profile_view" | "booking_click",
-  since?: string,
-): Promise<number> {
-  const admin = createAdminSupabaseClient();
-  let query = admin
-    .from("freelancer_profile_events")
-    .select("id", { count: "exact", head: true })
-    .eq("profile_id", profileId)
-    .eq("event_type", eventType);
-  if (since) query = query.gte("occurred_at", since);
-  const { count, error } = await query;
-  if (error) throw error;
-  return count ?? 0;
-}
+/** Obergrenze der gelesenen Ereignisse, damit ein vielbesuchtes Profil die
+ *  Portalseite nicht mit einer unbegrenzten Liste aufhält. Wird sie erreicht,
+ *  zählt die Kennzahl ab dort nicht weiter — dann gehört die Auswertung in eine
+ *  Aggregat-Funktion in der Datenbank. */
+const METRICS_EVENT_LIMIT = 20_000;
 
 export async function loadFreelancerMetrics(
   profileId: string,
 ): Promise<FreelancerMetrics> {
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1_000).toISOString();
-  const [profileViewsTotal, profileViews30Days, bookingClicksTotal, bookingClicks30Days] =
-    await Promise.all([
-      countEvents(profileId, "profile_view"),
-      countEvents(profileId, "profile_view", since),
-      countEvents(profileId, "booking_click"),
-      countEvents(profileId, "booking_click", since),
-    ]);
-  return {
-    profileViewsTotal,
-    profileViews30Days,
-    bookingClicksTotal,
-    bookingClicks30Days,
+  const admin = createAdminSupabaseClient();
+  // Vier `count exact`-Abfragen ergaben vier Fahrten zur Datenbank für vier
+  // Zahlen über derselben Zeilenmenge. Eine Fahrt reicht: der Index
+  // (profile_id, event_type, occurred_at) liefert genau diese Zeilen, gezählt
+  // wird hier.
+  const { data, error } = await admin
+    .from("freelancer_profile_events")
+    .select("event_type,occurred_at")
+    .eq("profile_id", profileId)
+    .in("event_type", ["profile_view", "booking_click"])
+    .limit(METRICS_EVENT_LIMIT);
+  if (error) throw error;
+
+  const rows = (data ?? []) as { event_type: string; occurred_at: string }[];
+  const metrics: FreelancerMetrics = {
+    profileViewsTotal: 0,
+    profileViews30Days: 0,
+    bookingClicksTotal: 0,
+    bookingClicks30Days: 0,
   };
+  for (const row of rows) {
+    const recent = row.occurred_at >= since;
+    if (row.event_type === "profile_view") {
+      metrics.profileViewsTotal += 1;
+      if (recent) metrics.profileViews30Days += 1;
+    } else if (row.event_type === "booking_click") {
+      metrics.bookingClicksTotal += 1;
+      if (recent) metrics.bookingClicks30Days += 1;
+    }
+  }
+  return metrics;
 }
 
 export async function loadFreelancerPortalState(

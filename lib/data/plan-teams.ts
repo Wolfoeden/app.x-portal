@@ -108,20 +108,21 @@ export async function loadTeam(ownerUserId: string): Promise<PlanTeam> {
     member_user_id: string;
     invited_at: string;
   }[];
-  const members: PlanTeamMember[] = [];
-  for (const row of rows) {
-    const { data: user } = await admin.auth.admin.getUserById(row.member_user_id);
-    members.push({
-      userId: row.member_user_id,
-      email: user?.user?.email ?? null,
-      invitedAt: row.invited_at,
-    });
-  }
+  // Die Adressen hängen nicht voneinander ab, also werden sie zusammen geholt
+  // statt eine nach der anderen. Der Inhaber fährt gleich mit.
+  const [owner, ...lookups] = await Promise.all([
+    admin.auth.admin.getUserById(ownerUserId),
+    ...rows.map((row) => admin.auth.admin.getUserById(row.member_user_id)),
+  ]);
+  const members: PlanTeamMember[] = rows.map((row, index) => ({
+    userId: row.member_user_id,
+    email: lookups[index]?.data?.user?.email ?? null,
+    invitedAt: row.invited_at,
+  }));
 
-  const { data: owner } = await admin.auth.admin.getUserById(ownerUserId);
   return {
     ownerUserId,
-    ownerEmail: owner?.user?.email ?? null,
+    ownerEmail: owner.data?.user?.email ?? null,
     members,
   };
 }
