@@ -169,6 +169,35 @@ Retention-Policies überprüfbar.
 - **Fristen:** Audit-Nachweise bis zu 730 Tage, danach Löschung oder
   Pseudonymisierung.
 
+### 11. Akquise gegenüber Auftraggebern (Leads)
+
+- **Zweck:** Ansprache von Unternehmen, die eine Projekt- oder
+  Stellenausschreibung veröffentlicht haben, mit dem Angebot der Vermittlung.
+- **Rechtsgrundlage:** Art. 6 Abs. 1 lit. f DSGVO (Direktwerbung gegenüber
+  Unternehmen als berechtigtes Interesse, Erwägungsgrund 47). Die Zulässigkeit
+  der Ansprache selbst richtet sich zusätzlich nach § 7 UWG.
+- **Betroffene:** Ansprechpartner der ausschreibenden Unternehmen.
+- **Datenkategorien:** Firmenname, Name des Ansprechpartners,
+  Kontaktadresse, Text und Adresse der Ausschreibung, interne Kategorie und
+  Notiz (`leadgen_queue`); Betreff und Wortlaut der verschickten Nachricht,
+  Zeitpunkt, Absender, verwendetes Modell (`leadgen_outreach`).
+- **Herkunft:** nicht bei der betroffenen Person erhoben, sondern aus der
+  von ihr veröffentlichten Ausschreibung und dem dort verlinkten
+  Firmenprofil. Die Information nach Art. 14 DSGVO steht deshalb im Fuß
+  jeder Nachricht (`lib/leadgen/outreach-message.ts`) und geht mit der
+  ersten Ansprache raus, nicht später.
+- **Empfänger:** 1&1 IONOS SE als Mailversender; OpenAI für den Entwurf des
+  Anschreibens. Dem Modell werden Firmenname, Ansprechpartner und
+  Ausschreibungstext übergeben, nicht die Kontaktadresse.
+- **Drittland:** siehe Auftragsverarbeiter-Register.
+- **Fristen:** nie angeschriebene Leads 90 Tage ab Import, angeschriebene
+  Leads mitsamt Versandprotokoll 365 Tage ab dem Versand
+  (`retention_policies`, `run_leadgen_cleanup()`, täglich um 02:55 UTC).
+  Ein Widerspruch beendet die Frist sofort.
+- **Entscheidung eines Menschen:** Jede Nachricht wird durch einen Klick des
+  Betreibers ausgelöst, im Einzelfall oder als ausdrücklich bestätigter
+  Stapel von höchstens 20 Nachrichten. Es gibt keinen Zeitplan und keinen
+  Automatismus, der ohne diesen Klick verschickt.
 ## Schwellenwertprüfung zur Datenschutz-Folgenabschätzung
 
 Art. 35 DSGVO verlangt eine DSFA, wenn eine Verarbeitung voraussichtlich ein

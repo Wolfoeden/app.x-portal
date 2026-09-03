@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/chat/admin/users", label: "Nutzer" },
   { href: "/chat/admin/profiles", label: "Freelancer-Leistung" },
   { href: "/chat/admin/freelancers", label: "Bewerbungen" },
+  { href: "/chat/admin/leads", label: "Leads" },
   { href: "/chat/admin/outreach", label: "Informationspflicht" },
   { href: "/chat/admin/ai-usage", label: "AI-Kosten" },
 ] as const;

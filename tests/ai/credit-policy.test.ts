@@ -65,7 +65,7 @@ describe("XPORTAL AI credit policy", () => {
 
     expect(result.creditsConsumed).toBe(1);
     expect(result.unitLabel).toBe("XPORTAL_AI_CREDIT");
-    expect(result.policyVersion).toBe("xportal-ai-credits-2026-09-01-v6");
+    expect(result.policyVersion).toBe("xportal-ai-credits-2026-09-02-v7");
   });
 
   it("rounds half-up instead of always rounding up", () => {
