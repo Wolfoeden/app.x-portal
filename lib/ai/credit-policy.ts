@@ -41,7 +41,7 @@ export type AiCreditPolicy = {
 };
 
 export const XPORTAL_AI_CREDIT_POLICY_VERSION =
-  "xportal-ai-credits-2026-09-01-v6";
+  "xportal-ai-credits-2026-09-02-v7";
 
 /**
  * Die Preisliste. Eine Zeile je kostenpflichtiger Funktion, und zwar die
@@ -70,12 +70,19 @@ export const CREDIT_PRICES = {
     singular: "Recherche",
     plural: "Recherchen",
   },
+  leadgen_outreach: {
+    credits: 2,
+    label: "Akquise-Anschreiben",
+    singular: "Anschreiben",
+    plural: "Anschreiben",
+  },
 } as const;
 
 export type CreditPriceId = keyof typeof CREDIT_PRICES;
 
 export const BRIEF_ANALYSIS_CREDITS = CREDIT_PRICES.project_brief.credits;
 export const EXTERNAL_SEARCH_CREDITS = CREDIT_PRICES.research.credits;
+export const LEADGEN_OUTREACH_CREDITS = CREDIT_PRICES.leadgen_outreach.credits;
 
 /**
  * Wie oft ein Guthaben für diese Funktion noch reicht. Abgerundet, denn eine
@@ -201,6 +208,7 @@ export const XPORTAL_AI_CREDIT_POLICY = {
     analysis: 10_000,
     mesh_agent: 10_000,
     final_synthesis: 10_000,
+    leadgen_outreach: 10_000,
   },
   defaultModelMultiplierBasisPoints: 10_000,
   // Aus der Preisliste abgeleitet, damit ein Preis nicht an zwei Stellen
@@ -208,6 +216,7 @@ export const XPORTAL_AI_CREDIT_POLICY = {
   flatPriceCredits: {
     project_brief: CREDIT_PRICES.project_brief.credits,
     research: CREDIT_PRICES.research.credits,
+    leadgen_outreach: CREDIT_PRICES.leadgen_outreach.credits,
   },
   modelMultiplierBasisPoints: {
     "gpt-5.4-nano": 10_000,
