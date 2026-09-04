@@ -26,7 +26,7 @@ export default function PrivacyPage() {
         </p>
 
         <section>
-          <h2>1. Verantwortlicher</h2>
+          <h2>1. Verantwortlicher und Begriffe</h2>
           <div>
             <p>
               300 – Inhaber Roman Dering<br />
@@ -38,6 +38,24 @@ export default function PrivacyPage() {
             <p>
               E-Mail: <a href="mailto:info@x-portal.eu">info@x-portal.eu</a>
             </p>
+            <p>
+              <strong>XPORTAL</strong> bezeichnet in dieser Erklärung die unter
+              x-portal.eu erreichbare Website samt Anwendung und zugleich den
+              oben genannten Verantwortlichen, der sie betreibt.{" "}
+              <strong>Nutzer</strong> bezeichnet jede natürliche Person, die
+              XPORTAL aufruft oder verwendet — als Gast, mit einem Konto oder
+              als Freelancer mit einem Profil. <strong>Dienstleister</strong>{" "}
+              bezeichnet ein Unternehmen, das für XPORTAL einen abgegrenzten
+              technischen Beitrag erbringt; welche Arten das sind und wo sie
+              verarbeiten, steht in Abschnitt 10.
+            </p>
+            <p>
+              Dienstleister werden hier nach Aufgabe und Verarbeitungsort
+              benannt, nicht mit Firmennamen. Auf formlose Anfrage an die oben
+              genannte Adresse teilen wir Ihnen die konkreten Unternehmen
+              jederzeit mit — ebenso, welche davon Ihre Daten im Einzelfall
+              erhalten haben.
+            </p>
           </div>
         </section>
 
@@ -48,8 +66,10 @@ export default function PrivacyPage() {
               Beim Aufruf von XPORTAL werden technisch erforderliche
               Verbindungsdaten verarbeitet. Dazu können IP-Adresse, Datum und
               Uhrzeit, aufgerufene URL, Referrer, Browser- und Geräteangaben
-              sowie Antwort- und Fehlerstatus gehören. Die Anwendung wird über
-              Netlify bereitgestellt.
+              sowie Antwort- und Fehlerstatus gehören. Die Auslieferung
+              übernimmt ein Dienstleister für Hosting und Auslieferungsnetz mit
+              Sitz in den USA; die Auslieferung selbst erfolgt über Standorte
+              innerhalb der Europäischen Union.
             </p>
             <p>
               Die Verarbeitung dient der sicheren Auslieferung, Fehleranalyse
@@ -71,21 +91,24 @@ export default function PrivacyPage() {
           <h2>3. Gastzugang und Konto</h2>
           <div>
             <p>
-              Für die Nutzung des Chats erzeugt Supabase Auth zunächst eine
-              anonyme Benutzerkennung. Sie ordnet Projekte und Nachrichten
-              einem Zugriff zu. Bei einem dauerhaften Konto verarbeiten wir
-              zusätzlich die E-Mail-Adresse, den gewählten Anmeldeanbieter,
+              Für die Nutzung des Chats erzeugt der eingesetzte
+              Authentifizierungs- und Datenbankdienst zunächst eine anonyme
+              Benutzerkennung. Sie ordnet Projekte und Nachrichten einem
+              Zugriff zu. Bei einem dauerhaften Konto verarbeitet XPORTAL
+              zusätzlich die E-Mail-Adresse, den gewählten Anmeldeweg,
               Authentifizierungsmetadaten und Sitzungsinformationen.
             </p>
             <p>
-              Wenn Sie „Mit Google fortfahren“ wählen, wird erst nach Ihrem
-              Klick eine Verbindung zu Google hergestellt. Google führt die
-              Anmeldung durch. XPORTAL erhält über Supabase Auth die dafür
-              freigegebenen Kontodaten, insbesondere eine Anbieterkennung und –
-              abhängig von der im Google-Dialog angezeigten Freigabe – E-Mail-
-              und Profildaten. Die Google-Anmeldung ist freiwillig; alternativ
-              steht die E-Mail-Anmeldung zur Verfügung. Weitere Informationen
-              enthält die <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">Datenschutzerklärung von Google</a>.
+              Sie können sich auch über einen externen Anmeldeanbieter
+              anmelden. Die Verbindung dorthin entsteht erst nach Ihrem Klick
+              auf die entsprechende Schaltfläche, die den Anbieter benennt.
+              Dieser führt die Anmeldung durch; XPORTAL erhält die dafür
+              freigegebenen Kontodaten, insbesondere eine Anbieterkennung und —
+              abhängig von der im Dialog des Anbieters angezeigten Freigabe —
+              E-Mail- und Profildaten. Dieser Weg ist freiwillig; alternativ
+              steht die Anmeldung per E-Mail zur Verfügung. Für die
+              Verarbeitung beim Anmeldeanbieter gilt dessen eigene
+              Datenschutzerklärung, die im Anmeldedialog verlinkt ist.
             </p>
             <p>
               Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO, soweit die
@@ -98,35 +121,37 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>4. Chat, Matching und OpenAI</h2>
+          <h2>4. Chat, Matching und KI-Verarbeitung</h2>
           <div>
             <p>
               XPORTAL speichert Ihre Projektbeschreibung, Nachrichten,
               strukturierte Anforderungen, ausgewählte Profile,
-              Matching-Ergebnisse und zugehörige Zeitstempel in Supabase. Bitte
-              geben Sie keine besonderen Kategorien personenbezogener Daten
-              oder vertrauliche Daten Dritter ein, sofern dies nicht notwendig
-              und rechtlich zulässig ist.
+              Matching-Ergebnisse und zugehörige Zeitstempel in der
+              Anwendungsdatenbank. Bitte geben Sie keine besonderen Kategorien
+              personenbezogener Daten oder vertrauliche Daten Dritter ein,
+              sofern dies nicht notwendig und rechtlich zulässig ist.
             </p>
             <p>
               Zur Strukturierung der Projektbeschreibung übermittelt XPORTAL
               den erforderlichen Text und eine pseudonyme Sicherheitskennung an
-              die OpenAI API. API-Anfragen werden mit <code>store: false</code>
-              gesendet; XPORTAL legt damit keinen OpenAI-Konversationszustand
-              an. Das schließt eigenständige Sicherheits- und
-              Missbrauchsprotokolle des Anbieters nicht aus. Nach den
-              veröffentlichten API-Datenkontrollen können solche Protokolle im
-              Standardbetrieb bis zu 30 Tage aufbewahrt werden. Details finden
-              Sie in den <a href="https://platform.openai.com/docs/models/default-usage-policies-by-endpoint" target="_blank" rel="noreferrer">OpenAI API-Datenkontrollen</a>.
+              die Schnittstelle eines KI-Dienstleisters mit Sitz in Irland.
+              Anfragen werden so gestellt, dass dort kein Gesprächsverlauf
+              gespeichert wird (<code>store: false</code>). Das schließt
+              eigenständige Sicherheits- und Missbrauchsprotokolle des
+              Dienstleisters nicht aus; nach dessen veröffentlichten
+              Datenkontrollen können solche Protokolle im Standardbetrieb bis
+              zu 30 Tage aufbewahrt werden. Inhalte aus XPORTAL werden dort
+              nicht zum Training von Modellen verwendet.
             </p>
             <p>
               Bei einer von Ihnen ausdrücklich gestarteten externen
               Freelancer-Suche wird der strukturierte Projektbrief für eine
-              Websuche an OpenAI übermittelt. Quellen, Ergebnis-Snapshots,
-              URLs, Zeitstempel und technische Providerkennungen können zur
-              Nachvollziehbarkeit gespeichert werden. Rechtsgrundlage ist Art.
-              6 Abs. 1 lit. b DSGVO für die angeforderte Leistung; Sicherheits-
-              und Kostenkontrollen beruhen auf Art. 6 Abs. 1 lit. f DSGVO.
+              Websuche an denselben KI-Dienstleister übermittelt. Quellen,
+              Ergebnisstände, URLs, Zeitstempel und technische Kennungen können
+              zur Nachvollziehbarkeit gespeichert werden. Rechtsgrundlage ist
+              Art. 6 Abs. 1 lit. b DSGVO für die angeforderte Leistung;
+              Sicherheits- und Kostenkontrollen beruhen auf Art. 6 Abs. 1
+              lit. f DSGVO.
             </p>
           </div>
         </section>
@@ -163,8 +188,8 @@ export default function PrivacyPage() {
             </p>
             <p>
               Ein Lebenslauf wird nur mit dokumentierter Berechtigung des
-              betroffenen Freelancers in einem privaten Supabase-Speicher
-              hinterlegt. Gäste erhalten weder den Lebenslauf noch einen
+              betroffenen Freelancers in einem privaten, nicht öffentlich
+              erreichbaren Dokumentenspeicher hinterlegt. Gäste erhalten weder den Lebenslauf noch einen
               Hinweis darauf, ob ein Dokument vorhanden ist. Angemeldete
               Nutzer können einen Lebenslauf nur zu einem Profil abrufen, das
               im neuesten gespeicherten Ergebnis ihres eigenen Projekts als
@@ -210,8 +235,8 @@ export default function PrivacyPage() {
           <h2>7. Externe Buchungslinks</h2>
           <div>
             <p>
-              Eine Buchungsseite, beispielsweise Calendly, wird nicht
-              eingebettet und nicht automatisch aufgerufen. Erst wenn Sie den
+              Die Buchungsseite eines Freelancers wird nicht eingebettet und
+              nicht automatisch aufgerufen. Erst wenn Sie den
               gekennzeichneten Link anklicken, entsteht eine direkte Verbindung
               zum jeweiligen Anbieter. Dieser verarbeitet technische
               Verbindungsdaten und die Angaben, die Sie dort selbst eingeben.
@@ -260,7 +285,7 @@ export default function PrivacyPage() {
             </p>
             <ul>
               <li><code>xportal_cookie_consent</code>: speichert Ihre Auswahl für 180 Tage.</li>
-              <li><code>sb-…</code>: Supabase-Auth-Cookies für Gast- oder Kontositzungen; Laufzeit entsprechend der jeweiligen Sitzung.</li>
+              <li><code>sb-…</code>: Cookies des Authentifizierungsdienstes für Gast- oder Kontositzungen; Laufzeit entsprechend der jeweiligen Sitzung.</li>
               <li><code>xportal_guest_claim</code>: einmaliger, HTTP-only geschützter Übertragungsnachweis für maximal 30 Minuten.</li>
               <li><code>xportal_email_auth_state</code>: HTTP-only Sicherheitsstatus für E-Mail-Links, maximal eine Stunde.</li>
               <li><code>sessionStorage</code>: vorübergehende Projekt-, Profil-, Anfrage- und Wiederherstellungsdaten bis zum Schließen des Browser-Tabs oder früherer programmgesteuerter Löschung.</li>
@@ -282,16 +307,59 @@ export default function PrivacyPage() {
         <section>
           <h2>10. Empfänger und Drittländer</h2>
           <div>
-            <p>Je nach genutzter Funktion erhalten folgende Empfänger Daten:</p>
+            <p>
+              Je nach genutzter Funktion erhalten folgende Kategorien von
+              Empfängern Daten. Die Namen der Unternehmen nennen wir Ihnen auf
+              formlose Anfrage; die Angaben zu Aufgabe, Sitz und
+              Verarbeitungsort stehen hier, weil Sie danach entscheiden können,
+              ob Sie eine Funktion nutzen wollen.
+            </p>
             <ul>
-              <li>Netlify, Inc. für Hosting, CDN, Serverfunktionen und technische Protokolle;</li>
-              <li>Supabase für Authentifizierung, Datenbank, privaten Dokumentenspeicher und Backups; das primäre Projekt ist in <code>eu-west-1</code> (Irland) eingerichtet;</li>
-              <li>OpenAI Ireland Ltd. und verbundene API-Unterauftragsverarbeiter für die angeforderten KI-Funktionen;</li>
-              <li>Google erst nach Wahl der Google-Anmeldung;</li>
-              <li>der jeweils angezeigte Buchungsanbieter erst nach Ihrem Klick;</li>
-              <li>Stripe Payments Europe, Ltd., Dublin, erst nach Ihrem Klick auf „Plan buchen“; dabei wird Ihre XPORTAL-Kontokennung übergeben, damit die Zahlung Ihrem Konto zugeordnet werden kann. Stripe leitet Daten an Stripe, Inc. in den USA weiter;</li>
-              <li>1&amp;1 IONOS SE, Montabaur, für den Versand von Transaktions-E-Mails wie Bestätigung, Anmeldung oder Wiederherstellung; die Verarbeitung findet innerhalb der EU statt;</li>
-              <li>Intuition Machines, Inc. (hCaptcha), San Francisco, USA, zur Abwehr automatisierter Eingaben auf dem Kontakt- und dem Whitelist-Formular. Das Prüf-Widget wird beim Aufruf dieser beiden Seiten geladen und erhält dabei Ihre IP-Adresse, Angaben zu Browser und Gerät sowie Ihr Verhalten im Widget. Dies ist eine Übermittlung in ein Drittland.</li>
+              <li>
+                ein Dienstleister für <strong>Hosting und Auslieferungsnetz</strong>{" "}
+                (Serverfunktionen, technische Protokolle); Sitz in den USA,
+                Auslieferung über Standorte in der EU;
+              </li>
+              <li>
+                ein Dienstleister für <strong>Authentifizierung, Datenbank,
+                privaten Dokumentenspeicher und Sicherungen</strong>; das
+                genutzte Projekt ist in Irland (<code>eu-west-1</code>)
+                eingerichtet;
+              </li>
+              <li>
+                ein <strong>KI-Dienstleister</strong> mit Sitz in Irland samt
+                dessen Unterauftragsverarbeitern, für die von Ihnen
+                angeforderten KI-Funktionen;
+              </li>
+              <li>
+                ein <strong>Anmeldeanbieter</strong>, und zwar erst, wenn Sie
+                die Anmeldung über ihn wählen;
+              </li>
+              <li>
+                der jeweils angezeigte <strong>Buchungsanbieter</strong> eines
+                Freelancers, erst nach Ihrem Klick auf dessen Link;
+              </li>
+              <li>
+                ein <strong>Zahlungsdienstleister</strong> mit Sitz in Irland,
+                erst nach Ihrem Klick auf „Plan buchen“; dabei wird Ihre
+                XPORTAL-Kontokennung übergeben, damit die Zahlung Ihrem Konto
+                zugeordnet werden kann. Dieser Dienstleister leitet Daten an
+                sein Mutterunternehmen in den USA weiter;
+              </li>
+              <li>
+                ein <strong>E-Mail-Versanddienstleister</strong> mit Sitz in
+                Deutschland für Transaktionsnachrichten wie Bestätigung,
+                Anmeldung oder Wiederherstellung; die Verarbeitung findet
+                innerhalb der EU statt;
+              </li>
+              <li>
+                ein <strong>Dienstleister zur Abwehr automatisierter
+                Eingaben</strong> mit Sitz in den USA, auf dem Kontakt- und dem
+                Whitelist-Formular. Das Prüf-Widget wird beim Aufruf dieser
+                beiden Seiten geladen und erhält dabei Ihre IP-Adresse, Angaben
+                zu Browser und Gerät sowie Ihr Verhalten im Widget. Dies ist
+                eine Übermittlung in ein Drittland.
+              </li>
             </ul>
             <p>
               Soweit Anbieter als Auftragsverarbeiter tätig sind, erfolgt die
@@ -374,7 +442,8 @@ export default function PrivacyPage() {
           <h2>14. Datenbereitstellung und Automatisierung</h2>
           <div>
             <p>
-              Whitelist und Google-Anmeldung sind freiwillig. Ohne die für eine
+              Whitelist und die Anmeldung über einen externen Anbieter sind
+              freiwillig. Ohne die für eine
               Sitzung, ein Konto oder eine Projektanfrage erforderlichen Daten
               kann die jeweilige Funktion nicht bereitgestellt werden.
             </p>

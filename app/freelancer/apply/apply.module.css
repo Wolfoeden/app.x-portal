@@ -317,6 +317,20 @@
   color: #2c2c29;
 }
 
+/* Die Auskunft unter dem Häkchen: was mit den Angaben geschieht. Bewusst
+   ruhiger gesetzt als die Zustimmung darüber — sie ist zu lesen, aber nicht
+   anzukreuzen. */
+.consentNote {
+  margin: 8px 0 0 26px;
+  color: #7b7b73;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.consentNote a {
+  color: #56564f;
+}
+
 .upload {
   display: flex;
   flex-wrap: wrap;

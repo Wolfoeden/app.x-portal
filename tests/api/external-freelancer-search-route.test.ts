@@ -50,6 +50,15 @@ vi.mock("@/lib/openai/external-freelancer-search", () => ({
     model: "gpt-5.4-nano-2026-03-17",
   }),
   searchExternalFreelancers: mocks.search,
+  // Nicht durch eine Attrappe ersetzt: Dass die Kontaktadresse die Route nicht
+  // verlässt, ist genau die Zusage, die hier geprüft werden soll. Ein
+  // Platzhalter würde sie stillschweigend durchlassen.
+  withoutContactEmail: (candidates: readonly Record<string, unknown>[]) =>
+    candidates.map((candidate) => {
+      const copy = { ...candidate };
+      delete copy.contactEmail;
+      return copy;
+    }),
 }));
 vi.mock("@/lib/ai/gateway", () => ({
   executeTrackedAiRequest: mocks.execute,

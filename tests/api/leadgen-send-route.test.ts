@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   release: vi.fn(),
   rejectDraft: vi.fn(),
   createDraft: vi.fn(),
+  updateLead: vi.fn(),
+  suppressed: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -21,7 +23,11 @@ vi.mock("@/lib/auth/current-user", () => ({
 }));
 vi.mock("@/lib/email/deliver", () => ({
   deliverEmail: mocks.deliver,
-  emailDeliveryConfigured: mocks.configured,
+  promotionalDeliveryConfigured: mocks.configured,
+  publicMailOrigin: () => "https://x-portal.eu",
+}));
+vi.mock("@/lib/email/suppression", () => ({
+  checkEmailSuppression: mocks.suppressed,
 }));
 vi.mock("@/lib/leadgen/leads-data", () => ({
   getLead: mocks.getLead,
@@ -30,10 +36,13 @@ vi.mock("@/lib/leadgen/leads-data", () => ({
   recordOutreachSent: mocks.recordSent,
   releaseOutreachClaim: mocks.release,
   rejectOutreachDraft: mocks.rejectDraft,
+  updateLead: mocks.updateLead,
 }));
 vi.mock("@/lib/leadgen/draft-service", () => ({
   createDraftForLead: mocks.createDraft,
 }));
+
+import { readUnsubscribeToken } from "@/lib/email/unsubscribe";
 
 import { POST } from "@/app/api/admin/leads/[id]/send/route";
 
@@ -75,9 +84,12 @@ const CONTEXT = { params: Promise.resolve({ id: "42" }) };
 beforeEach(() => {
   vi.clearAllMocks();
   process.env.EMAIL_FROM = "info@x-portal.eu";
+  process.env.EMAIL_UNSUBSCRIBE_SECRET = "s".repeat(48);
   mocks.requireAdmin.mockResolvedValue(ADMIN);
   mocks.audit.mockResolvedValue("audit-id");
   mocks.configured.mockReturnValue(true);
+  mocks.suppressed.mockResolvedValue("clear");
+  mocks.updateLead.mockResolvedValue(null);
   mocks.getLead.mockResolvedValue(LEAD);
   mocks.getDraft.mockResolvedValue({
     id: "aaaaaaaa-0000-4000-8000-000000000001",
@@ -150,7 +162,63 @@ describe("Versandroute für Leads", () => {
     await POST(sendRequest({ requestId: "abcdefgh" }), CONTEXT);
 
     const [message] = mocks.deliver.mock.calls[0] as [{ text: string }];
-    expect(message.text).toContain("Eine formlose Antwort an info@x-portal.eu");
+    expect(message.text).toContain("formlose Antwort an info@x-portal.eu");
+    // Absender- und Impressumsadresse sind dieselbe; zweimal hintereinander
+    // sah nach einem Fehler aus und war einer.
+    expect(message.text).not.toContain(
+      "info@x-portal.eu · info@x-portal.eu",
+    );
+  });
+
+  it("setzt einen einlösbaren Abmeldelink in den Fuß", async () => {
+    // Die Zusage im Fuß muss eingelöst werden können: der Link führt auf die
+    // eigene Domain und trägt einen Token, aus dem die Route genau diesen
+    // Empfänger zurücklesen kann.
+    await POST(sendRequest({ requestId: "abcdefgh" }), CONTEXT);
+
+    const [message] = mocks.deliver.mock.calls[0] as [{ text: string }];
+    const treffer = message.text.match(
+      /https:\/\/x-portal\.eu\/unsubscribe\?t=(\S+)/u,
+    );
+    expect(treffer).not.toBeNull();
+    expect(readUnsubscribeToken(treffer?.[1])).toBe(LEAD.recipient_email);
+  });
+
+  it("verwirft einen Lead, dessen Adresse der Werbung widersprochen hat", async () => {
+    mocks.suppressed.mockResolvedValue("suppressed");
+
+    const response = await POST(sendRequest({ requestId: "abcdefgh" }), CONTEXT);
+    const payload = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(payload.reason).toBe("suppressed");
+    // Weder Entwurf noch Versand: Die Prüfung steht vor dem Modellaufruf,
+    // damit der Stapelversand keine Credits für eine Nachricht ausgibt, die
+    // niemand je zu sehen bekommt.
+    expect(mocks.createDraft).not.toHaveBeenCalled();
+    expect(mocks.deliver).not.toHaveBeenCalled();
+    // Und der Lead verschwindet aus der Arbeitsliste, statt morgen wieder
+    // dieselbe Absage zu erzeugen.
+    expect(mocks.updateLead).toHaveBeenCalledWith({
+      id: 42,
+      status: "dismissed",
+      archived: true,
+    });
+  });
+
+  it("behält den Lead, wenn die Sperrliste nicht erreichbar ist", async () => {
+    // Der Unterschied, der zählt: Ein Aussetzer der Datenbank ist kein
+    // Widerspruch. Würde er als solcher gelesen, verlöre ein Netzproblem
+    // brauchbare Leads dauerhaft.
+    mocks.suppressed.mockResolvedValue("unavailable");
+
+    const response = await POST(sendRequest({ requestId: "abcdefgh" }), CONTEXT);
+    const payload = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(payload.reason).toBe("suppression_check_failed");
+    expect(mocks.deliver).not.toHaveBeenCalled();
+    expect(mocks.updateLead).not.toHaveBeenCalled();
   });
 
   it("schreibt weder Adresse noch Text ins Protokoll der Ereignisse", async () => {

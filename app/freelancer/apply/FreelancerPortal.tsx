@@ -61,8 +61,8 @@ export function FreelancerAuthGate() {
         <p className={styles.eyebrow}>Geschützter Freelancer-Bereich</p>
         <h2>Anmelden, Profil verwalten und Zahlen sehen.</h2>
         <p>
-          Für eine Bewerbung und das spätere Dashboard brauchst du ein
-          dauerhaftes Konto. So können nur du und XPORTAL deine Profildaten
+          Für eine Bewerbung und das spätere Dashboard brauchen Sie ein
+          dauerhaftes Konto. So können nur Sie und XPORTAL Ihre Profildaten
           ändern.
         </p>
         {notice ? (
@@ -97,20 +97,20 @@ export function FreelancerAuthGate() {
 
 const applicationCopy = {
   submitted: {
-    title: "Deine Bewerbung ist eingegangen.",
-    text: "XPORTAL prüft deine Angaben und deinen Lebenslauf. Du musst aktuell nichts weiter tun.",
+    title: "Ihre Bewerbung ist eingegangen.",
+    text: "XPORTAL prüft Ihre Angaben und Ihren Lebenslauf. Sie müssen aktuell nichts weiter tun.",
   },
   in_review: {
-    title: "Deine Bewerbung wird geprüft.",
-    text: "Das Team sichtet dein Profil. Bei Rückfragen melden wir uns über deine Konto-E-Mail.",
+    title: "Ihre Bewerbung wird geprüft.",
+    text: "Das Team sichtet Ihr Profil. Bei Rückfragen melden wir uns über Ihre Konto-E-Mail.",
   },
   approved: {
-    title: "Deine Bewerbung ist freigegeben.",
-    text: "Das veröffentlichte Profil wird vorbereitet. Lade die Seite in Kürze erneut, um dein Dashboard zu öffnen.",
+    title: "Ihre Bewerbung ist freigegeben.",
+    text: "Das veröffentlichte Profil wird vorbereitet. Laden Sie die Seite in Kürze erneut, um Ihr Dashboard zu öffnen.",
   },
   rejected: {
-    title: "Deine Bewerbung wurde noch nicht freigegeben.",
-    text: "Du kannst deine Angaben überarbeiten und eine neue Bewerbung einreichen.",
+    title: "Ihre Bewerbung wurde noch nicht freigegeben.",
+    text: "Sie können Ihre Angaben überarbeiten und eine neue Bewerbung einreichen.",
   },
 } as const;
 
@@ -388,7 +388,7 @@ export function FreelancerDashboard({
     return (
       <section className={styles.success}>
         <p className={styles.eyebrow}>Profil gelöscht</p>
-        <h2>Dein Freelancer-Profil ist nicht mehr sichtbar.</h2>
+        <h2>Ihr Freelancer-Profil ist nicht mehr sichtbar.</h2>
         <p>
           Profildaten, zugehörige Dateien und die verknüpften Analytics wurden
           entfernt.

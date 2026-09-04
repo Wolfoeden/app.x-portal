@@ -19,6 +19,7 @@ import { buildShortlist, ProjectBriefSchema } from "@/lib/domain";
 import {
   estimateExternalSearchTokenCeiling,
   searchExternalFreelancers,
+  withoutContactEmail,
   type ExternalFreelancerCandidate,
 } from "@/lib/openai/external-freelancer-search";
 import {
@@ -70,7 +71,7 @@ function completedSearchResponse(input: {
   return NextResponse.json(
     {
       projectId: input.projectId,
-      candidates: input.candidates,
+      candidates: withoutContactEmail(input.candidates),
       disclosure: EXTERNAL_RESULT_DISCLOSURE,
       mode: "openai",
       notice: input.replayed
@@ -410,7 +411,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         projectId: project.id,
-        candidates: responseCandidates,
+        candidates: withoutContactEmail(responseCandidates),
         disclosure: EXTERNAL_RESULT_DISCLOSURE,
         mode: charged ? "openai" : "unavailable",
         notice:

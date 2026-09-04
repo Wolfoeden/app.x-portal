@@ -64,6 +64,9 @@ async function sendOrderConfirmation(
     const result = await deliverEmail({
       to: email,
       ...orderConfirmationMessage(),
+      // Geschuldet in Textform. Ein Widerspruch gegen Werbung darf sie
+      // nicht aufhalten — wer bestellt hat, bekommt seine Bestaetigung.
+      kind: "transactional",
     });
     if (!result.delivered) {
       // `docs/checkout-compliance.md` schuldet diese Bestätigung unverzüglich.

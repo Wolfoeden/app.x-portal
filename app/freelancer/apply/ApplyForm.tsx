@@ -201,7 +201,7 @@ export function ApplyForm({ accountEmail = "" }: { accountEmail?: string }) {
     if (!isUsableBookingUrl(bookingUrl)) {
       setBookingUrlTouched(true);
       setFormError(
-        "Ohne Terminlink können wir dich nicht aufnehmen. Bitte eine vollständige HTTPS-Adresse angeben, zum Beispiel https://calendly.com/dein-name/30min",
+        "Ohne Terminlink können wir Sie nicht aufnehmen. Bitte geben Sie eine vollständige HTTPS-Adresse an, zum Beispiel https://calendly.com/ihr-name/30min",
       );
       return;
     }
@@ -263,16 +263,16 @@ export function ApplyForm({ accountEmail = "" }: { accountEmail?: string }) {
     return (
       <div className={styles.success} role="status">
         <p className={styles.eyebrow}>Eingegangen</p>
-        <h2>Danke — wir prüfen dein Profil.</h2>
+        <h2>Danke — wir prüfen Ihr Profil.</h2>
         <p>
-          Deine Angaben liegen jetzt zur Prüfung vor. Erst nach der Freigabe
-          durch unser Team wird dein Profil im Portal sichtbar und kann für
+          Ihre Angaben liegen jetzt zur Prüfung vor. Erst nach der Freigabe
+          durch unser Team wird Ihr Profil im Portal sichtbar und kann für
           Projekte vorgeschlagen werden.
         </p>
         <ol>
           <li>Wir prüfen Angaben, Lebenslauf und Referenzen.</li>
           <li>Bei Rückfragen melden wir uns unter {contactEmail}.</li>
-          <li>Nach der Freigabe ist dein Profil im Matching auffindbar.</li>
+          <li>Nach der Freigabe ist Ihr Profil im Matching auffindbar.</li>
         </ol>
       </div>
     );
@@ -286,7 +286,7 @@ export function ApplyForm({ accountEmail = "" }: { accountEmail?: string }) {
         <p className={styles.eyebrow}>01 · Kontakt</p>
         <h2>Wer bist du?</h2>
         <p className={styles.sectionHint}>
-          Diese Angaben sehen nur wir. Öffentlich sichtbar wird später nur dein
+          Diese Angaben sehen nur wir. Öffentlich sichtbar wird später nur Ihr
           freigegebenes Profil.
         </p>
 
@@ -314,7 +314,7 @@ export function ApplyForm({ accountEmail = "" }: { accountEmail?: string }) {
               required
             />
             {accountEmail ? (
-              <span className={styles.hint}>Mit deinem Konto verknüpft</span>
+              <span className={styles.hint}>Mit Ihrem Konto verknüpft</span>
             ) : null}
           </label>
           <label className={styles.field}>
@@ -431,7 +431,7 @@ export function ApplyForm({ accountEmail = "" }: { accountEmail?: string }) {
             <textarea
               value={experienceSummary}
               onChange={(event) => setExperienceSummary(event.target.value)}
-              placeholder="Was machst du, seit wann, und woran hast du zuletzt gearbeitet? Mindestens 40 Zeichen."
+              placeholder="Was machen Sie, seit wann, und woran haben Sie zuletzt gearbeitet? Mindestens 40 Zeichen."
               minLength={40}
               maxLength={MAX_SUMMARY_LENGTH}
               required
@@ -550,7 +550,7 @@ export function ApplyForm({ accountEmail = "" }: { accountEmail?: string }) {
               onBlur={() => setBookingUrlTouched(true)}
               type="url"
               inputMode="url"
-              placeholder="https://calendly.com/dein-name/30min"
+              placeholder="https://calendly.com/ihr-name/30min"
               maxLength={1000}
               required
               aria-invalid={bookingUrlInvalid}
@@ -558,7 +558,7 @@ export function ApplyForm({ accountEmail = "" }: { accountEmail?: string }) {
             {bookingUrlInvalid ? (
               <span className={styles.error}>
                 Bitte eine vollständige HTTPS-Adresse angeben, zum Beispiel
-                https://calendly.com/dein-name/30min
+                https://calendly.com/ihr-name/30min
               </span>
             ) : null}
           </label>
@@ -568,7 +568,7 @@ export function ApplyForm({ accountEmail = "" }: { accountEmail?: string }) {
             <span>
               Kunden buchen das Erstgespräch direkt über diesen Link — ein
               Profil ohne funktionierenden Terminlink wird bei uns niemandem
-              vorgeschlagen. Wenn du noch keinen hast: Calendly, Cal.com und
+              vorgeschlagen. Wenn Sie noch keinen haben: Calendly, Cal.com und
               TidyCal sind in wenigen Minuten eingerichtet und kostenlos.
               Bitte prüfe den Link vor dem Absenden einmal selbst im Browser.
             </span>
@@ -656,6 +656,18 @@ export function ApplyForm({ accountEmail = "" }: { accountEmail?: string }) {
           </label>
         </div>
 
+        {/*
+          Ein Pflichthäkchen, und darin steht genau eine Erklärung.
+
+          Vorher hing hier alles zusammen: der Wunsch, aufgenommen zu werden,
+          die Speicherung von Angaben und Lebenslauf, die Kontaktaufnahme, die
+          spätere Veröffentlichung und die AGB. Wer das ankreuzte, gab fünf
+          Erklärungen auf einmal ab und konnte keine davon einzeln ablehnen.
+
+          Was mit den Angaben geschieht, ist keine Einwilligung, sondern eine
+          Auskunft: Es ist die Erfüllung genau dessen, wofür das Formular da
+          ist. Deshalb steht es als Text daneben und nicht in einem Kästchen.
+        */}
         <label className={styles.consent}>
           <input
             type="checkbox"
@@ -664,15 +676,17 @@ export function ApplyForm({ accountEmail = "" }: { accountEmail?: string }) {
             required
           />
           <span>
-            Ich möchte als Freelancer aufgenommen werden und bin damit
-            einverstanden, dass XPORTAL meine Angaben und den Lebenslauf zur
-            Prüfung speichert und mich dazu kontaktiert. Nach der Freigabe wird
-            mein Profil im Portal sichtbar; der Lebenslauf wird Kunden nur
-            gezeigt, wenn XPORTAL ihn zusätzlich dafür freigibt. Es gelten die{" "}
-            <Link href="/terms">AGB</Link>; weitere Informationen im{" "}
-            <Link href="/privacy">Datenschutzhinweis</Link>.
+            Ich stimme den <Link href="/terms">AGB</Link> zu.
           </span>
         </label>
+
+        <p className={styles.consentNote}>
+          XPORTAL speichert Ihre Angaben und den Lebenslauf, um die Bewerbung
+          zu prüfen, und meldet sich dazu bei Ihnen. Nach der Freigabe wird Ihr
+          Profil im Portal sichtbar; der Lebenslauf wird Auftraggebern nur
+          gezeigt, wenn XPORTAL ihn zusätzlich dafür freigibt. Näheres im{" "}
+          <Link href="/privacy">Datenschutzhinweis</Link>.
+        </p>
 
         {formError ? (
           <div className={styles.formError} role="alert" style={{ marginTop: 16 }}>

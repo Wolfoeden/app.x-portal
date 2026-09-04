@@ -25,6 +25,7 @@ import {
   startOauthUpgrade,
 } from "@/lib/auth/browser";
 import { appPath } from "@/lib/app-path";
+import { BUSINESS_ONLY_NOTICE } from "@/lib/legal/policy";
 
 import type {
   FreelancerProfileResult,
@@ -259,6 +260,22 @@ export function AuthDialog({
                 Zurück zur Anmeldung
               </button>
             ) : null}
+            {/*
+              Ein Pflichthäkchen, eines freiwillig — und die beiden erklären
+              verschiedene Dinge.
+
+              Vorher stand die Unternehmereigenschaft, die AGB und die
+              Datenschutzhinweise zusammen in einem einzigen Kästchen. Das war
+              aus drei Gründen falsch: Datenschutzhinweise sind eine
+              Information und nichts, wozu man zustimmt; eine Einwilligung, die
+              an eine Vertragszustimmung gekoppelt ist, ist nach Art. 7 Abs. 2
+              DSGVO angreifbar; und ein Kästchen, das drei Erklärungen auf
+              einmal abgibt, kann niemand mehr überblicken.
+
+              Die Unternehmereigenschaft wird deshalb dort abgefragt, wo sie
+              zählt: beim Abschluss einer kostenpflichtigen Leistung. Hier
+              steht sie nur noch als Hinweis.
+            */}
             {mode === "register" ? (
               <div className="auth-consent">
                 <label>
@@ -269,10 +286,8 @@ export function AuthDialog({
                     required
                   />
                   <span>
-                    Ich handle als Unternehmer im Sinne des § 14 BGB und
-                    akzeptiere die{" "}
-                    <a href="/terms">Allgemeinen Geschäftsbedingungen</a> sowie
-                    die <a href="/privacy">Datenschutzhinweise</a>.
+                    Ich stimme den{" "}
+                    <a href="/terms">Allgemeinen Geschäftsbedingungen</a> zu.
                   </span>
                 </label>
                 <label>
@@ -282,9 +297,9 @@ export function AuthDialog({
                     onChange={(event) => setMarketingEmails(event.target.checked)}
                   />
                   <span>
-                    Optional: XPORTAL darf mir E-Mails zu neuen Funktionen und
-                    passenden Freelancern senden. Sie können dem jederzeit
-                    widersprechen.
+                    Newsletter: Neue Funktionen und passende Freelancer per
+                    E-Mail. Freiwillig, jederzeit über den Abmeldelink in jeder
+                    Nachricht kündbar.
                   </span>
                 </label>
               </div>
@@ -315,11 +330,15 @@ export function AuthDialog({
             deshalb bleibt der Hinweis für alle anderen Wege stehen. */}
         {mode !== "register" ? (
           <p className="auth-privacy">
-            Mit dem Anlegen eines Kontos bestätigen Sie, dass Sie als Unternehmer
-            im Sinne des § 14 BGB handeln, und akzeptieren die{" "}
+            Mit dem Anlegen eines Kontos akzeptieren Sie die{" "}
             <a href="/terms">Allgemeinen Geschäftsbedingungen</a>.
           </p>
-        ) : null}
+        ) : (
+          <p className="auth-privacy">
+            {BUSINESS_ONLY_NOTICE} Wie XPORTAL Ihre Daten verarbeitet, steht in
+            den <a href="/privacy">Datenschutzhinweisen</a>.
+          </p>
+        )}
       </div>
     </Modal>
   );

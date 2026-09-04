@@ -36,6 +36,7 @@ function candidate(name: string, profileUrl: string, extra: Record<string, unkno
     linkedinUrl: null,
     websiteUrl: null,
     portfolioUrl: null,
+    contactEmail: null,
     skills: ["Helpdesk"],
     activities: [],
     projects: [],

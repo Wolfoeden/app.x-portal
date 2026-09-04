@@ -10,6 +10,7 @@ import {
 import {
   calculateProviderCostCents,
   configuredDailyTokenLimit,
+  ALLOWED_MONTHLY_CREDIT_TOTALS,
   configuredInitialCredits,
   configuredMonthlyProviderBudgetCents,
   configuredUnknownModelEstimatedCostCents,
@@ -73,5 +74,46 @@ describe("provider cost reconciliation", () => {
     expect(configuredDailyTokenLimit(true)).toBe(0);
     expect(configuredMonthlyProviderBudgetCents()).toBe(0);
     expect(configuredUnknownModelEstimatedCostCents()).toBe(0);
+  });
+});
+
+/**
+ * Am 04.09.2026 standen in der Produktion 1050 und 105. Beide Zahlen lehnt
+ * `ai_free_usage_accounts_limit_check` ab, also ließ sich keine neue
+ * Monatsperiode mehr anlegen — und weil alle Perioden am 1. September
+ * abgelaufen waren, stand jede KI-Funktion still. Diese Tests halten die
+ * Sicherung fest, die daraus folgt.
+ */
+describe("Kontingente, die die Datenbank auch annimmt", () => {
+  afterEach(() => {
+    delete process.env.AI_CREDITS_GUEST_TOTAL;
+    delete process.env.AI_CREDITS_USER_TOTAL;
+  });
+
+  it("jede erlaubte Zahl ist auch in der Datenbank erlaubt", () => {
+    // Die Aufzählung ist die Kopie einer Prüfregel im Schema. Ändert sie sich
+    // dort, muss sie sich hier mitändern — dieser Test ist die Erinnerung.
+    expect(ALLOWED_MONTHLY_CREDIT_TOTALS).toEqual([0, 10, 63, 100, 300]);
+    expect(ALLOWED_MONTHLY_CREDIT_TOTALS).toContain(ACCOUNT_MONTHLY_CREDITS);
+    expect(ALLOWED_MONTHLY_CREDIT_TOTALS).toContain(GUEST_MONTHLY_CREDITS);
+  });
+
+  it("verwirft einen Wert, den die Datenbank ablehnen würde", () => {
+    process.env.AI_CREDITS_USER_TOTAL = "1050";
+    process.env.AI_CREDITS_GUEST_TOTAL = "105";
+
+    expect(configuredInitialCredits(false)).toBe(ACCOUNT_MONTHLY_CREDITS);
+    expect(configuredInitialCredits(true)).toBe(GUEST_MONTHLY_CREDITS);
+  });
+
+  it("lässt einen zulässigen Wert weiterhin durch", () => {
+    process.env.AI_CREDITS_USER_TOTAL = "300";
+    expect(configuredInitialCredits(false)).toBe(300);
+  });
+
+  it("gibt angemeldeten Konten 300 Credits, auch ohne Umgebungsvariable", () => {
+    // Das eine Guthaben trägt alles: Analyse zu 3, Websuche zu 30 Credits.
+    expect(configuredInitialCredits(false)).toBe(300);
+    expect(ACCOUNT_MONTHLY_CREDITS).toBe(300);
   });
 });

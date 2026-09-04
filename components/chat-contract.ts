@@ -337,6 +337,13 @@ export interface SessionResponse {
   authenticated: boolean;
   anonymous: boolean;
   admin?: boolean;
+  /**
+   * Whether this account also exists on the freelancer side of the
+   * marketplace. Drives the sidebar entry: "apply" is the wrong word once
+   * somebody has applied — from then on they are looking for their profile,
+   * not for the form that created it.
+   */
+  freelancer?: "none" | "application" | "profile";
   user: null | {
     id: string;
     displayName: string | null;

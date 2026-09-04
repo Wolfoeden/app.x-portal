@@ -6,7 +6,7 @@ import { LEADGEN_OUTREACH_CREDITS } from "@/lib/ai/credit-policy";
 import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { emailDeliveryConfigured } from "@/lib/email/deliver";
+import { promotionalDeliveryConfigured } from "@/lib/email/deliver";
 import { leadSummary, listLeads } from "@/lib/leadgen/leads-data";
 import {
   LEAD_SCOPES,
@@ -99,7 +99,7 @@ export default async function LeadsPage({
   });
 
   const pageCount = Math.max(Math.ceil(list.total / list.pageSize), 1);
-  const mailReady = emailDeliveryConfigured();
+  const mailReady = promotionalDeliveryConfigured();
 
   return (
     <main className={styles.shell}>

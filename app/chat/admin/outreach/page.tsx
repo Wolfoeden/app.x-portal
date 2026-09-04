@@ -11,11 +11,13 @@ import {
   OUTREACH_STATE_LABELS,
   type OutreachState,
 } from "@/lib/freelancer/outreach-deadline";
+import { listSearchRuns } from "@/lib/freelancer/sourced-candidate-import";
 import {
   listSourcedCandidates,
   summarizeOutreach,
 } from "@/lib/freelancer/sourced-candidates-data";
 
+import { SearchRunsPanel } from "./SearchRunsPanel";
 import styles from "./outreach.module.css";
 
 export const metadata: Metadata = {
@@ -66,7 +68,13 @@ export default async function OutreachDeadlinesPage() {
   }
   if (!currentUser.isAdmin) notFound();
 
-  const candidates = await listSourcedCandidates();
+  // Nebenlaeufig: Zwei Listen, die nichts voneinander wissen.
+  const [candidates, searchRuns] = await Promise.all([
+    listSourcedCandidates(),
+    // Ein Fehler beim Lesen der Suchlaeufe darf die Fristenliste
+    // nicht mitnehmen — die ist die rechtlich wichtigere.
+    listSearchRuns().catch(() => []),
+  ]);
   const summary = summarizeOutreach(candidates);
 
   await writeAuditEvent({
@@ -131,6 +139,14 @@ export default async function OutreachDeadlinesPage() {
           die eigentliche Pflicht, die Löschung nur die Obergrenze des Schadens.
         </p>
 
+        {/* Zuerst die Quelle, dann die Frist: Aus einem Suchlauf werden
+            Kandidaten, und erst dadurch beginnt die Liste darunter zu laufen. */}
+        <h2 className={styles.sectionTitle}>Bezahlte Suchläufe</h2>
+        <div className={styles.panel}>
+          <SearchRunsPanel runs={searchRuns} />
+        </div>
+
+        <h2 className={styles.sectionTitle}>Offene Fristen</h2>
         <div className={styles.panel}>
           {candidates.length ? (
             <div className={styles.tableScroll}>

@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   sendMail: vi.fn(),
   createTransport: vi.fn(),
   logEvent: vi.fn(),
+  checkEmailSuppression: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -11,10 +12,14 @@ vi.mock("nodemailer", () => ({
   default: { createTransport: mocks.createTransport },
 }));
 vi.mock("@/lib/security/request", () => ({ logEvent: mocks.logEvent }));
+vi.mock("@/lib/email/suppression", () => ({
+  checkEmailSuppression: mocks.checkEmailSuppression,
+}));
 
 import {
   deliverEmail,
   emailDeliveryConfigured,
+  promotionalDeliveryConfigured,
   resetEmailTransportForTests,
 } from "@/lib/email/deliver";
 
@@ -22,7 +27,14 @@ const MESSAGE = {
   to: "erika@example.com",
   subject: "Bitte bestätigen",
   text: "Hallo Erika, bitte bestätigen Sie Ihre Adresse.",
-};
+  kind: "transactional",
+} as const;
+
+/** Dieselbe Nachricht, nur als Werbung eingestuft. */
+const WERBUNG = { ...MESSAGE, kind: "cold_outreach" } as const;
+
+/** Lang genug, dass `unsubscribeConfigured()` es gelten lässt. */
+const UNSUBSCRIBE_SECRET = "x".repeat(48);
 
 function configure(overrides: Record<string, string> = {}) {
   const values: Record<string, string> = {
@@ -31,6 +43,8 @@ function configure(overrides: Record<string, string> = {}) {
     SMTP_USER: "post@x-portal.eu",
     SMTP_PASSWORD: "geheim",
     EMAIL_FROM: "post@x-portal.eu",
+    EMAIL_UNSUBSCRIBE_SECRET: UNSUBSCRIBE_SECRET,
+    NEXT_PUBLIC_SITE_URL: "https://x-portal.eu",
     ...overrides,
   };
   for (const [key, value] of Object.entries(values)) vi.stubEnv(key, value);
@@ -42,6 +56,7 @@ beforeEach(() => {
   resetEmailTransportForTests();
   mocks.sendMail.mockResolvedValue({ messageId: "1" });
   mocks.createTransport.mockReturnValue({ sendMail: mocks.sendMail });
+  mocks.checkEmailSuppression.mockResolvedValue("clear");
 });
 
 describe("transactional email delivery", () => {
@@ -173,5 +188,116 @@ describe("transactional email delivery", () => {
     await deliverEmail(MESSAGE);
 
     expect(mocks.createTransport).toHaveBeenCalledTimes(2);
+  });
+
+  it("never asks the suppression list about a transactional message", async () => {
+    configure();
+    mocks.checkEmailSuppression.mockResolvedValue("suppressed");
+
+    // Der Kern der Unterscheidung: Wer der Werbung widersprochen hat und sich
+    // später selbst anmeldet, bekommt die Bestätigung seiner Anmeldung. Die
+    // Liste wird dafür nicht einmal befragt.
+    expect(await deliverEmail(MESSAGE)).toEqual({ delivered: true });
+    expect(mocks.checkEmailSuppression).not.toHaveBeenCalled();
+  });
+
+  it("sends no unsubscribe header on a transactional message", async () => {
+    configure();
+
+    await deliverEmail(MESSAGE);
+
+    const options = mocks.sendMail.mock.calls[0][0];
+    expect(options.headers).toBeUndefined();
+  });
+});
+
+describe("promotional email delivery", () => {
+  it("stops at the suppression list", async () => {
+    configure();
+    mocks.checkEmailSuppression.mockResolvedValue("suppressed");
+
+    expect(await deliverEmail(WERBUNG)).toEqual({
+      delivered: false,
+      reason: "suppressed",
+    });
+    expect(mocks.sendMail).not.toHaveBeenCalled();
+  });
+
+  it("stops when the list cannot be reached — with a different reason", async () => {
+    configure();
+    mocks.checkEmailSuppression.mockResolvedValue("unavailable");
+
+    // Nicht senden ist in beiden Fällen richtig. Die Gründe zu verwechseln
+    // wäre es nicht: Der Aufrufer verwirft bei „suppressed" den Vorgang
+    // dauerhaft, und ein Datenbankaussetzer darf das nicht auslösen.
+    expect(await deliverEmail(WERBUNG)).toEqual({
+      delivered: false,
+      reason: "suppression_check_failed",
+    });
+    expect(mocks.sendMail).not.toHaveBeenCalled();
+  });
+
+  it("refuses to send when no unsubscribe link can be built", async () => {
+    configure({ EMAIL_UNSUBSCRIBE_SECRET: "" });
+
+    // Lieber gar nicht schreiben als ohne funktionierenden Widerspruch
+    // schreiben: Die Zusage im Fuß der Nachricht muss einlösbar sein.
+    expect(await deliverEmail(WERBUNG)).toEqual({
+      delivered: false,
+      reason: "unsubscribe_not_configured",
+    });
+    expect(mocks.sendMail).not.toHaveBeenCalled();
+    expect(promotionalDeliveryConfigured()).toBe(false);
+    // Der Transaktionsweg bleibt davon unberührt.
+    expect(emailDeliveryConfigured()).toBe(true);
+  });
+
+  it("sets the one-click headers from RFC 8058", async () => {
+    configure();
+
+    expect(await deliverEmail(WERBUNG)).toEqual({ delivered: true });
+
+    const options = mocks.sendMail.mock.calls[0][0];
+    expect(options.headers["List-Unsubscribe-Post"]).toBe(
+      "List-Unsubscribe=One-Click",
+    );
+    expect(options.headers["List-Unsubscribe"]).toContain(
+      "https://x-portal.eu/unsubscribe?t=",
+    );
+    // Ohne HTTP-Unterstützung im Mailprogramm bleibt der Postweg.
+    expect(options.headers["List-Unsubscribe"]).toContain("mailto:");
+  });
+
+  it("checks the list against the normalised address", async () => {
+    configure();
+
+    await deliverEmail({ ...WERBUNG, to: "  Erika@Example.COM  " });
+
+    expect(mocks.checkEmailSuppression).toHaveBeenCalledWith("erika@example.com");
+    expect(mocks.sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "erika@example.com" }),
+    );
+  });
+
+  it("keeps the recipient out of the log when suppressed", async () => {
+    configure();
+    mocks.checkEmailSuppression.mockResolvedValue("suppressed");
+
+    await deliverEmail(WERBUNG);
+
+    expect(JSON.stringify(mocks.logEvent.mock.calls)).not.toContain(
+      "erika@example.com",
+    );
+  });
+
+  it("refuses an unusable recipient before anything else happens", async () => {
+    configure();
+
+    expect(await deliverEmail({ ...WERBUNG, to: "kein-postfach" })).toEqual({
+      delivered: false,
+      reason: "invalid_recipient",
+    });
+    expect(mocks.checkEmailSuppression).not.toHaveBeenCalled();
+    expect(mocks.sendMail).not.toHaveBeenCalled();
   });
 });

@@ -9,6 +9,7 @@ import {
   type ProjectCollectionRow,
   type ProjectRow,
 } from "@/lib/data/projects";
+import { loadFreelancerPresence } from "@/lib/freelancer/profile-data";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 /**
@@ -28,6 +29,14 @@ export type WorkspaceAuth = {
   authenticated: boolean;
   anonymous: boolean;
   admin: boolean;
+  /**
+   * Ob dieses Konto auch auf der Freelancer-Seite des Marktplatzes steht.
+   *
+   * Die Arbeitsfläche beschriftet damit den Einstieg: „Als Freelancer
+   * bewerben" ist falsch, sobald jemand sich beworben hat — er sucht dann
+   * sein Profil, nicht das Formular, mit dem er es angelegt hat.
+   */
+  freelancer: "none" | "application" | "profile";
   user: { id: string; displayName: string | null; email: string | null } | null;
 };
 
@@ -47,15 +56,43 @@ export type WorkspaceBootstrap = {
   collections: ReturnType<typeof presentProjectCollection>[];
 };
 
-export function presentWorkspaceAuth(user: CurrentUser | null): WorkspaceAuth {
+export function presentWorkspaceAuth(
+  user: CurrentUser | null,
+  /**
+   * Getrennt übergeben statt hier nachgeladen: Diese Funktion ist synchron und
+   * wird an mehreren Stellen aufgerufen, von denen nicht jede eine
+   * Datenbankabfrage rechtfertigt. Wer die Beschriftung braucht, reicht den
+   * Wert herein; alle anderen bekommen „none" und zeigen den Einstieg.
+   */
+  freelancer: WorkspaceAuth["freelancer"] = "none",
+): WorkspaceAuth {
   return {
     authenticated: user !== null,
     anonymous: user?.isAnonymous ?? true,
     admin: user?.isAdmin ?? false,
+    freelancer,
     user: user
       ? { id: user.id, displayName: null, email: user.email }
       : null,
   };
+}
+
+/**
+ * Der Freelancer-Zustand für ein angemeldetes Konto, ausfallsicher.
+ *
+ * Scheitert die Abfrage, bleibt es bei „none". Die Folge ist eine
+ * Beschriftung, die einen Schritt zu früh steht — deutlich besser als eine
+ * Arbeitsfläche, die deswegen gar nicht lädt.
+ */
+async function freelancerPresenceFor(
+  user: CurrentUser | null,
+): Promise<WorkspaceAuth["freelancer"]> {
+  if (!user || user.isAnonymous) return "none";
+  try {
+    return await loadFreelancerPresence(user.id);
+  } catch {
+    return "none";
+  }
 }
 
 export async function loadWorkspaceUsage(
@@ -126,7 +163,7 @@ export async function loadOwnedCollections(user: CurrentUser) {
 
 export async function loadWorkspaceBootstrap(): Promise<WorkspaceBootstrap> {
   const user = await getCurrentUser();
-  const auth = presentWorkspaceAuth(user);
+  const auth = presentWorkspaceAuth(user, await freelancerPresenceFor(user));
 
   if (!user) {
     return { auth, usage: null, projects: [], collections: [] };

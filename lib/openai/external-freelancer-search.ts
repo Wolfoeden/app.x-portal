@@ -55,6 +55,18 @@ export const ExternalFreelancerCandidateSchema = z
     linkedinUrl: HttpsUrlSchema.nullable(),
     websiteUrl: HttpsUrlSchema.nullable(),
     portfolioUrl: HttpsUrlSchema.nullable(),
+    /**
+     * Eine Geschäftsadresse, die die Person auf einer eigenen Seite selbst
+     * veröffentlicht hat.
+     *
+     * Sie erreicht den Auftraggeber nie — `withoutContactEmail()` entfernt sie
+     * an jedem Ausgang zur Oberfläche. Gespeichert wird sie nur, damit XPORTAL
+     * die Person selbst ansprechen und um ihre Einwilligung bitten kann. Gäbe
+     * man sie dem Auftraggeber, hätte man die Kontaktdaten eines Menschen
+     * weitergereicht, der von alldem nichts weiß — und nebenbei die eigene
+     * Vermittlung überflüssig gemacht.
+     */
+    contactEmail: z.string().trim().max(254).nullable(),
     skills: z.array(z.string().trim().min(1).max(80)).max(24),
     activities: z.array(z.string().trim().min(1).max(200)).max(12),
     projects: z.array(z.string().trim().min(1).max(300)).max(12),
@@ -208,7 +220,8 @@ Rules:
 - sourceUrls must contain the exact HTTPS pages used for that candidate. profileUrl must also be one of those source URLs, and so must every other URL you set.
 - Return no candidate when no supporting public source can be established.
 - Do not claim that any external candidate was vetted, verified, available, affordable, or recommended by XPORTAL.
-- Do not include phone numbers, email addresses, private data, or sensitive personal data.
+- contactEmail is optional and must be an address the person publishes on a page of their own — their website, portfolio or personal profile — as a way for clients to reach them. Copy it exactly as printed. Set null when you did not see such an address, and never build one from a name and a domain: a wrong address means a stranger receives our mail. Do not take an address from a marketplace listing, from a contact form, from an agency or employer page, or from a network's messaging feature.
+- Apart from that one address, do not include phone numbers, further email addresses, private data, or sensitive personal data.
 - Keep summaries factual and concise.`;
 
 function canonicalHttpsUrl(raw: string): string | null {
@@ -377,6 +390,91 @@ function matchesNameToken(urlToken: string, nameToken: string): boolean {
   return /^\d{1,8}$/u.test(urlToken.slice(nameToken.length));
 }
 
+/**
+ * Die Domain einer Adresse, ohne führendes `www.`.
+ *
+ * Kein Public-Suffix-Abgleich: Für den Vergleich „steht die Adresse auf der
+ * eigenen Seite dieser Person" genügt der Hostname, und eine unvollständige
+ * Suffixliste würde stillschweigend falsch trennen.
+ */
+function bareHost(raw: string): string | null {
+  try {
+    return new URL(raw).hostname.toLowerCase().replace(/^www\./u, "");
+  } catch {
+    return null;
+  }
+}
+
+function hostsBelongTogether(left: string, right: string): boolean {
+  return (
+    left === right || left.endsWith(`.${right}`) || right.endsWith(`.${left}`)
+  );
+}
+
+/**
+ * Ob eine vom Modell gemeldete Adresse angeschrieben werden darf.
+ *
+ * Das Modell kann eine Adresse erfinden, die syntaktisch tadellos ist. Die
+ * Folge wäre eine Werbemail an einen unbeteiligten Dritten — der teuerste
+ * Fehler, den diese Funktion machen kann. Deshalb muss die Adresse eine von
+ * zwei Bindungen an die Person vorweisen, und beide sind aus Belegen prüfbar:
+ *
+ *   1. Die Domain gehört zu einer *eigenen* Seite der Person, die die Suche
+ *      tatsächlich geöffnet hat — `kontakt@maxmustermann.de` neben
+ *      `https://maxmustermann.de`.
+ *   2. Der lokale Teil trägt ihren Namen — `max.mustermann@gmail.com`. Nötig,
+ *      weil viele Freelancer eine Freemail-Adresse auf der eigenen Seite
+ *      angeben; ohne diesen Zweig wäre die Erfassung in der Praxis wertlos.
+ *
+ * Ausgeschlossen bleiben Adressen auf Marktplatz- und Netzwerkdomains: Was
+ * dort steht, ist eine Weiterleitung der Plattform, keine Adresse der Person,
+ * und das Anschreiben verstieße gegen deren Nutzungsbedingungen.
+ */
+export function acceptableContactEmail(input: {
+  raw: string | null;
+  displayName: string;
+  ownPageUrls: readonly (string | null)[];
+}): string | null {
+  const value = input.raw?.trim().toLowerCase();
+  if (!value) return null;
+  // Dieselbe Formprüfung wie im Versandweg, damit eine Adresse, die hier
+  // durchgeht, dort nicht als unbrauchbar abgewiesen wird.
+  if (!/^[^\s@]{1,64}@[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/u.test(value)) {
+    return null;
+  }
+
+  const domain = value.slice(value.lastIndexOf("@") + 1);
+  const asUrl = `https://${domain}/`;
+  if (hostMatches(asUrl, MARKETPLACE_HOSTS) || hostMatches(asUrl, NETWORK_HOSTS)) {
+    return null;
+  }
+
+  const ownHosts = input.ownPageUrls
+    .filter((url): url is string => Boolean(url))
+    .filter(
+      (url) =>
+        !hostMatches(url, MARKETPLACE_HOSTS) && !hostMatches(url, NETWORK_HOSTS),
+    )
+    .map(bareHost)
+    .filter((host): host is string => Boolean(host));
+
+  if (ownHosts.some((host) => hostsBelongTogether(domain, host))) return value;
+
+  const local = value.slice(0, value.lastIndexOf("@"));
+  const localTokens = local.split(/[^\p{Letter}\p{Number}]+/u).filter(Boolean);
+  const nameTokens = identityTokens(input.displayName);
+  if (nameTokens.length === 0) return null;
+
+  // Der Nachname genügt, der Vorname allein nicht: "max@…" träfe zu viele.
+  const surname = nameTokens[nameTokens.length - 1]!;
+  const compact = nameTokens.join("");
+  const matchesName =
+    localTokens.some((token) => matchesNameToken(token, surname)) ||
+    matchesNameToken(local.replace(/[^\p{Letter}\p{Number}]+/gu, ""), compact);
+
+  return matchesName ? value : null;
+}
+
 export function urlMatchesCandidateIdentity(
   raw: string,
   displayName: string,
@@ -485,6 +583,72 @@ export function extractSearchEvidence(output: unknown): SearchEvidence {
   return { urls, queries: [...queries].slice(0, 20), toolCalls };
 }
 
+/**
+ * Was der Auftraggeber zu sehen bekommt.
+ *
+ * Die Kontaktadresse wird entfernt, und zwar hier und nicht in jeder Route
+ * einzeln: Sie gehört zu einem Menschen, der von XPORTAL nichts weiß und in
+ * nichts eingewilligt hat. Sie an den Auftraggeber zu geben wäre eine
+ * Übermittlung ohne Grundlage — und würde die Vermittlung, für die er gerade
+ * bezahlt hat, im selben Zug überflüssig machen.
+ *
+ * Entfernt wird aus einer Kopie, nicht aus dem Original: Der gespeicherte
+ * Schnappschuss trägt die Adresse weiter, sonst wäre die spätere Ansprache
+ * unmöglich. Und gestrichen wird genau ein benanntes Feld statt einer
+ * Positivliste — eine Liste würde ein später ergänztes Feld stillschweigend
+ * aus der Antwort werfen, und das fiele erst in der Oberfläche auf.
+ */
+export type PublicExternalFreelancerCandidate = Omit<
+  ExternalFreelancerCandidate,
+  "contactEmail"
+>;
+
+/**
+ * Ein Kandidat, wie er im gespeicherten Suchergebnis liegt.
+ *
+ * Ältere Läufe kannten die getrennten Links, die Detailfelder und die
+ * Kontaktadresse noch nicht. Diese Suchen waren bezahlt und identitätsgeprüft;
+ * sie deshalb beim Wiederherstellen zu verwerfen, hieße dem Kunden ein
+ * Ergebnis wegzunehmen, für das er gezahlt hat. Die fehlenden Felder werden
+ * mit ihrem leeren Wert ergänzt — nicht geraten, nur ergänzt.
+ *
+ * Steht hier und nicht in der Route, weil inzwischen zwei Stellen dieselben
+ * Schnappschüsse lesen: die Wiederherstellung eines Chats und die Übernahme
+ * in die Kandidatenliste. Zwei Kopien dieser Vorgeschichte würden auseinander
+ * laufen.
+ */
+export const StoredExternalCandidateSchema = z.preprocess(
+  (value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+    return {
+      linkedinUrl: null,
+      websiteUrl: null,
+      portfolioUrl: null,
+      contactEmail: null,
+      skills: [],
+      activities: [],
+      projects: [],
+      verificationStatus: "external_unverified",
+      nameVerified: true,
+      ...value,
+    };
+  },
+  ExternalFreelancerCandidateSchema.extend({
+    verificationStatus: z.literal("external_unverified"),
+    nameVerified: z.boolean(),
+  }),
+);
+
+export function withoutContactEmail(
+  candidates: readonly ExternalFreelancerCandidate[],
+): PublicExternalFreelancerCandidate[] {
+  return candidates.map((candidate) => {
+    const copy: Partial<ExternalFreelancerCandidate> = { ...candidate };
+    delete copy.contactEmail;
+    return copy as PublicExternalFreelancerCandidate;
+  });
+}
+
 export function reconcileExternalCandidates(
   candidateOutput: unknown,
   output: unknown,
@@ -561,6 +725,14 @@ export function reconcileExternalCandidates(
       linkedinUrl,
       websiteUrl,
       portfolioUrl,
+      // Nur eine Adresse, die an eine eigene Seite oder an den Namen gebunden
+      // ist. Alles andere wird verworfen, nicht übernommen — eine erfundene
+      // Adresse führt sonst zu einer Werbemail an einen Unbeteiligten.
+      contactEmail: acceptableContactEmail({
+        raw: candidate.contactEmail,
+        displayName: candidate.displayName,
+        ownPageUrls: [websiteUrl, portfolioUrl, profileUrl],
+      }),
       skills: cleanList(candidate.skills, 24),
       activities: cleanList(candidate.activities, 12),
       projects: cleanList(candidate.projects, 12),
