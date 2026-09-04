@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import {
+  AdminDisclosure,
+  AdminPageHeader,
+} from "@/components/admin/AdminDataPrimitives";
 import { writeAuditEvent } from "@/lib/audit/write";
 import {
   getAdminUsageDashboard,
@@ -16,6 +20,8 @@ import {
   GUEST_MONTHLY_CREDITS,
 } from "@/lib/ai/credit-policy";
 import { EXTERNAL_SEARCH_CREDITS } from "@/lib/ai/credit-policy";
+import { formatNanoUsdAsUsd } from "@/lib/ai/model-pricing";
+import { WEB_SEARCH_CALL_NANO_USD } from "@/lib/ai/search-cost";
 import { resolveOpenAiConnection } from "@/lib/openai/provider";
 import { DEFAULT_OPENAI_DIAGNOSTIC_MODEL } from "@/lib/openai/diagnostics";
 import { ProviderDiagnosticPanel } from "./ProviderDiagnosticPanel";
@@ -97,9 +103,11 @@ function isUserSort(value: string | undefined): value is UserSort {
 function totalCostNanoUsd(user: {
   confirmedProvider: { costNanoUsd: string };
   estimatedOrReconciled: { costNanoUsd: string };
+  searchToolCalls: number;
 }): bigint {
   return BigInt(user.confirmedProvider.costNanoUsd) +
-    BigInt(user.estimatedOrReconciled.costNanoUsd);
+    BigInt(user.estimatedOrReconciled.costNanoUsd) +
+    BigInt(user.searchToolCalls * WEB_SEARCH_CALL_NANO_USD);
 }
 
 function hasUsage(user: {
@@ -120,7 +128,8 @@ function sortUsers<
   T extends {
     confirmedProvider: { costNanoUsd: string; totalTokens: number };
     estimatedOrReconciled: { costNanoUsd: string; totalTokens: number };
-    freeMonthlyUsage: { used: number } | null;
+    legacyTechnicalCreditsConsumed: number;
+    searchToolCalls: number;
     lastUsedAt: string | null;
   },
 >(users: readonly T[], sort: UserSort): T[] {
@@ -138,7 +147,8 @@ function sortUsers<
   }
   if (sort === "credits") {
     return rows.sort(
-      (a, b) => (b.freeMonthlyUsage?.used ?? 0) - (a.freeMonthlyUsage?.used ?? 0),
+      (a, b) =>
+        b.legacyTechnicalCreditsConsumed - a.legacyTechnicalCreditsConsumed,
     );
   }
   return rows.sort((a, b) => {
@@ -158,6 +168,26 @@ function usageBasisLabel(
   return usageBasis === "confirmed_provider"
     ? "Provider bestätigt"
     : "Schätzung / Abgleich";
+}
+
+function outcomeLabel(outcome: string): string {
+  const labels: Record<string, string> = {
+    succeeded: "Erfolgreich",
+    timeout: "Zeitüberschreitung",
+    cancelled: "Abgebrochen",
+    failed: "Fehlgeschlagen",
+  };
+  return labels[outcome] ?? outcome;
+}
+
+function purposeLabel(purpose: string): string {
+  const labels: Record<string, string> = {
+    freelancer_match: "Freelancer-Matching",
+    brief_analysis: "Briefing-Analyse",
+    external_search: "Externe Recherche",
+    lead_outreach: "Lead-Anschreiben",
+  };
+  return labels[purpose] ?? purpose.replaceAll("_", " ");
 }
 
 export default async function AiUsageAdminPage({
@@ -215,8 +245,10 @@ export default async function AiUsageAdminPage({
     zeige: next.zeige ?? (showAllUsers ? "alle" : undefined),
   });
   const exportQuery = new URLSearchParams();
-  if (params.from) exportQuery.set("von", params.from);
-  if (params.to) exportQuery.set("bis", params.to);
+  const exportFrom = dateRange(params.from);
+  const exportTo = dateRange(params.to, true);
+  if (exportFrom) exportQuery.set("von", exportFrom);
+  if (exportTo) exportQuery.set("bis", exportTo);
   const exportSuffix = exportQuery.toString()
     ? `&${exportQuery.toString()}`
     : "";
@@ -240,19 +272,17 @@ export default async function AiUsageAdminPage({
 
   return (
     <main className={styles.shell}>
-      <header className={styles.header}>
-        <div>
-          <p className={styles.eyebrow}>XPORTAL · ADMIN</p>
-          <h1>AI Usage, Kontingente & Credits</h1>
+      <AdminPageHeader
+        eyebrow="Admin / Betrieb"
+        title="AI-Kosten & Kontingente"
+        description={
           <p>
-            Provider-Nutzung, wirksame Monats-Credits, stillgelegte Restbestände
-            und das stillgelegte Freikontingent werden getrennt ausgewiesen.
+            Externe Kundennutzung und ihre zuordenbaren Kosten zuerst, danach
+            Modelle, Nutzer und einzelne Requests. Interne Testnutzung bleibt
+            für den Kostenabgleich separat nachvollziehbar.
           </p>
-        </div>
-        <Link className={styles.backLink} href="/chat">
-          Zurück zum Chat
-        </Link>
-      </header>
+        }
+      />
 
       <form className={styles.filters} method="get">
         <label>
@@ -275,7 +305,11 @@ export default async function AiUsageAdminPage({
         </p>
       ) : null}
 
-      <p className={styles.basisNotice}>
+      <AdminDisclosure
+        title="Messgrundlage und Kontenlogik"
+        summary="Provider-bestätigte Werte, Schätzungen und historische Guthaben"
+      >
+        <p>
         <strong>Messgrundlage:</strong> „Provider bestätigt“ erfordert eine
         Provider-Response-ID, das tatsächliche Modell sowie konsistente
         Tokenfelder. Die ausgewiesenen Text-Token-Kosten wurden beim jeweiligen
@@ -296,11 +330,12 @@ Bei den Konten stehen zwei
         Nutzer tatsächlich noch tun kann. Der Zeitraumfilter gilt für
         Provider-Requests; Konto- und Kontingentwerte zeigen immer den
         aktuellen Stand.
-      </p>
+        </p>
+      </AdminDisclosure>
 
       <section className={styles.headline} aria-label="Kosten im Zeitraum">
         <article className={styles.primary}>
-          <span>Gesamtkosten im Zeitraum</span>
+          <span>Externe Plattformkosten</span>
           <strong>{formatUsd(dashboard.combinedCostUsd)}</strong>
           <small>
             Token und Websuchen zusammen · {confirmedShare} der Antworten
@@ -378,6 +413,11 @@ Bei den Konten stehen zwei
         </span>
       </div>
 
+      <ProviderDiagnosticPanel
+        initialTransport={providerConnection.transport}
+        requestedModel={requestedModel}
+      />
+
       <section className={styles.kpis} aria-label="Gesamtnutzung">
         <article>
           <span>Errechnete Text-Token-Kosten</span>
@@ -410,24 +450,6 @@ Bei den Konten stehen zwei
             {numberFormat.format(dashboard.totals.reconciledEstimates)} automatische Abgleiche
           </small>
         </article>
-        <article className={styles.legacyKpi}>
-          <span>Stillgelegtes Freikontingent</span>
-          <strong>
-            {numberFormat.format(dashboard.accountTotals.freeMonthly.remaining)} /{" "}
-            {numberFormat.format(dashboard.accountTotals.freeMonthly.limit)}
-          </strong>
-          <small>
-            aus <code>ai_free_usage_accounts</code> · gates nichts, wird von
-            keinem Request fortgeschrieben
-          </small>
-        </article>
-        <article>
-          <span>Produkt-Credits (stillgelegt)</span>
-          <strong>{numberFormat.format(dashboard.accountTotals.product.available)}</strong>
-          <small>
-            Restbestand aus dem zweiten Guthaben · gates nichts
-          </small>
-        </article>
         <article>
           <span>Usage-Versuche</span>
           <strong>{numberFormat.format(dashboard.totals.settlements)}</strong>
@@ -442,10 +464,57 @@ Bei den Konten stehen zwei
         </article>
       </section>
 
+      {dashboard.excludedInternal.accounts > 0 ? (
+        <AdminDisclosure
+          title="Interne Testnutzung ausgeschlossen"
+          summary={`${numberFormat.format(dashboard.excludedInternal.accounts)} Konto · ${formatUsd(dashboard.excludedInternal.combinedCostUsd)} separat`}
+        >
+          <p>
+            Dieses Konto zählt weder in Plattform-KPIs, Nutzerlisten,
+            Modellstatistik, Credits noch Exporten. Seine bekannten Kosten von{" "}
+            <strong>
+              {formatUsd(dashboard.excludedInternal.combinedCostUsd)}
+            </strong>{" "}
+            ({numberFormat.format(dashboard.excludedInternal.totals.settlements)}
+            {" "}AI-Abrechnungen und{" "}
+            {numberFormat.format(dashboard.excludedInternal.searchUsage.runs)}
+            {" "}Webrecherchen) bleiben nur für den Provider-Abgleich sichtbar.
+            Externe plus interne bekannte Kosten ergeben{" "}
+            <strong>{formatUsd(dashboard.reconciledCostUsd)}</strong>.
+          </p>
+        </AdminDisclosure>
+      ) : null}
+
+      <AdminDisclosure
+        title="Historische Guthabenkonten"
+        summary="Nur zur Nachvollziehbarkeit · ohne Wirkung auf neue Requests"
+      >
+        <div className={styles.legacyMetrics}>
+          <div>
+            <span>Stillgelegtes Freikontingent</span>
+            <strong>
+              {numberFormat.format(dashboard.accountTotals.freeMonthly.remaining)} /{" "}
+              {numberFormat.format(dashboard.accountTotals.freeMonthly.limit)}
+            </strong>
+            <small>
+              <code>ai_free_usage_accounts</code> · wird von keinem Request
+              fortgeschrieben
+            </small>
+          </div>
+          <div>
+            <span>Produkt-Credits</span>
+            <strong>
+              {numberFormat.format(dashboard.accountTotals.product.available)}
+            </strong>
+            <small>Restbestand · sperrt und bezahlt keine neue Anfrage</small>
+          </div>
+        </div>
+      </AdminDisclosure>
+
       <section className={styles.panel}>
         <div className={styles.panelHeading}>
           <div>
-            <p>USAGE BY MODEL</p>
+            <p>NUTZUNG NACH MODELL</p>
             <h2>Modelle</h2>
           </div>
           <span>Stand {when(dashboard.generatedAt)}</span>
@@ -455,12 +524,9 @@ Bei den Konten stehen zwei
             <thead>
               <tr>
                 <th>Modell</th>
-                <th>Settlements</th>
-                <th>Bestätigte Tokens</th>
-                <th>Text-Token-Kosten</th>
-                <th>Schätzungen / Abgleiche</th>
-                <th>Geschätzte Tokens</th>
-                <th>Geschätzte Text-Token-Kosten</th>
+                <th>Antworten</th>
+                <th>Provider bestätigt</th>
+                <th>Schätzung / Abgleich</th>
                 <th>Fehler</th>
               </tr>
             </thead>
@@ -468,18 +534,36 @@ Bei den Konten stehen zwei
               {dashboard.byModel.length ? (
                 dashboard.byModel.map((model) => (
                   <tr key={model.key}>
-                    <td><code>{model.key}</code></td>
-                    <td>{numberFormat.format(model.settlements)}</td>
-                    <td>{numberFormat.format(model.confirmedProvider.totalTokens)}</td>
-                    <td>{formatUsageCost(model.confirmedProvider)}</td>
-                    <td>{numberFormat.format(model.estimatedOrReconciled.requests)}</td>
-                    <td>{numberFormat.format(model.estimatedOrReconciled.totalTokens)}</td>
-                    <td>{formatUsageCost(model.estimatedOrReconciled)}</td>
-                    <td>{numberFormat.format(model.failedAttempts)}</td>
+                    <td data-label="Modell"><code>{model.key}</code></td>
+                    <td data-label="Antworten">
+                      {numberFormat.format(model.settlements)}
+                    </td>
+                    <td data-label="Provider bestätigt">
+                      <span className={styles.usageStack}>
+                        <strong>
+                          {numberFormat.format(model.confirmedProvider.totalTokens)} Tokens
+                        </strong>
+                        <small>{formatUsageCost(model.confirmedProvider)}</small>
+                      </span>
+                    </td>
+                    <td data-label="Schätzung / Abgleich">
+                      <span className={styles.usageStack}>
+                        <strong>
+                          {numberFormat.format(model.estimatedOrReconciled.totalTokens)} Tokens
+                        </strong>
+                        <small>
+                          {numberFormat.format(model.estimatedOrReconciled.requests)} Antworten ·{" "}
+                          {formatUsageCost(model.estimatedOrReconciled)}
+                        </small>
+                      </span>
+                    </td>
+                    <td data-label="Fehler">
+                      {numberFormat.format(model.failedAttempts)}
+                    </td>
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan={8}>Noch keine abgerechnete AI-Nutzung.</td></tr>
+                <tr><td colSpan={5}>Noch keine abgerechnete AI-Nutzung.</td></tr>
               )}
             </tbody>
           </table>
@@ -489,8 +573,8 @@ Bei den Konten stehen zwei
       <section className={styles.panel}>
         <div className={styles.panelHeading}>
           <div>
-            <p>USAGE BY USER</p>
-            <h2>Nutzer, Monatskontingente und Guthaben</h2>
+            <p>NUTZUNG NACH NUTZER</p>
+            <h2>Nutzer &amp; wirksame Kontingente</h2>
           </div>
           {selectedUser ? (
             <Link href={{ pathname: "/chat/admin/ai-usage", query: { from: params.from, to: params.to } }}>
@@ -546,33 +630,34 @@ Bei den Konten stehen zwei
             Modelle als CSV
           </a>
         </div>
-        <div className={styles.accountLegend} aria-label="Kontotypen">
-          <div>
-            <strong>Monats-Credits (wirksam)</strong>
-            <span>
-              Das Guthaben, das der Chat anzeigt und das jede Anfrage sperrt.
-              Neue Konten starten mit{" "}
-              {numberFormat.format(ACCOUNT_MONTHLY_CREDITS)}, Gäste mit{" "}
-              {numberFormat.format(GUEST_MONTHLY_CREDITS)} · eine normale Suche
-              kostet {BRIEF_ANALYSIS_CREDITS} Credits
-            </span>
-          </div>
-          <div className={styles.legacyLegend}>
-            <strong>Stillgelegte Produkt-Credits</strong>
-            <span>
-              <code>product_credit_accounts</code> — das zweite Guthaben der
-              Websuche, seit dem Zusammenlegen ohne Wirkung. Eine Recherche
-              kostet {numberFormat.format(EXTERNAL_SEARCH_CREDITS)} Credits aus
-              dem Monatskontingent.
-            </span>
-          </div>
-          <div className={styles.legacyLegend}>
-            <strong>Stillgelegtes Freikontingent</strong>
-            <span>
-              <code>ai_free_usage_accounts</code> — wird nur hier und im
-              DSGVO-Export gelesen, gates nichts
-            </span>
-          </div>
+        <div className={styles.accountDisclosure}>
+          <AdminDisclosure
+            title="Wie die Kontingente zu lesen sind"
+            summary="Wirksame Monats-Credits versus historische Restbestände"
+          >
+            <div className={styles.accountLegend} aria-label="Kontotypen">
+              <div>
+                <strong>Monats-Credits (wirksam)</strong>
+                <span>
+                  Das Guthaben, das der Chat anzeigt und das jede Anfrage sperrt.
+                  Neue Konten starten mit{" "}
+                  {numberFormat.format(ACCOUNT_MONTHLY_CREDITS)}, Gäste mit{" "}
+                  {numberFormat.format(GUEST_MONTHLY_CREDITS)} · eine normale
+                  Suche kostet {BRIEF_ANALYSIS_CREDITS} Credits.
+                </span>
+              </div>
+              <div className={styles.legacyLegend}>
+                <strong>Historische Bestände</strong>
+                <span>
+                  <code>product_credit_accounts</code> und{" "}
+                  <code>ai_free_usage_accounts</code> bleiben nachvollziehbar,
+                  haben aber keine Wirkung auf neue Anfragen. Eine Recherche
+                  kostet {numberFormat.format(EXTERNAL_SEARCH_CREDITS)} Credits
+                  aus dem Monatskontingent.
+                </span>
+              </div>
+            </div>
+          </AdminDisclosure>
         </div>
         <div className={styles.tableScroll}>
           <table>
@@ -581,25 +666,22 @@ Bei den Konten stehen zwei
                 <th>User</th>
                 <th>Stufe</th>
                 <th>Monats-Credits (wirksam)</th>
-                <th>Produkt-Credits (stillgelegt)</th>
-                <th>Bestätigte Tokens</th>
-                <th>Text-Token-Kosten</th>
-                <th>Geschätzte Tokens</th>
-                <th>Geschätzte Text-Token-Kosten</th>
-                <th>Stillgelegtes Freikontingent</th>
+                <th>Nutzung</th>
+                <th>Gesamtkosten</th>
+                <th>Credits belastet</th>
                 <th>Letzte Nutzung</th>
               </tr>
             </thead>
             <tbody>
               {visibleUsers.map((user) => (
                 <tr key={user.userId} className={selectedUser?.userId === user.userId ? styles.selected : undefined}>
-                  <td>
+                  <td data-label="User">
                     <Link href={{ pathname: "/chat/admin/ai-usage", query: { from: params.from, to: params.to, user: user.userId } }}>
                       {user.email ?? (user.anonymous ? "Anonymer Gast" : user.userId)}
                     </Link>
                     <small>{user.anonymous ? "Gast" : user.userId}</small>
                   </td>
-                  <td>
+                  <td data-label="Stufe">
                     <span
                       className={styles.planBadge}
                       data-plan={user.planId}
@@ -616,7 +698,7 @@ Bei den Konten stehen zwei
                       lt. Stufe
                     </small>
                   </td>
-                  <td>
+                  <td data-label="Monats-Credits">
                     {user.legacyTechnicalCredits ? (
                       <span className={styles.accountBalance}>
                         <strong>
@@ -630,30 +712,37 @@ Bei den Konten stehen zwei
                       </span>
                     ) : "–"}
                   </td>
-                  <td>
-                    {user.productCredits ? (
-                      <span className={styles.accountBalance}>
-                        <strong>{numberFormat.format(user.productCredits.available)} verfügbar</strong>
-                        <small>{numberFormat.format(user.productCredits.reserved)} reserviert</small>
-                      </span>
-                    ) : "–"}
+                  <td data-label="Nutzung">
+                    <span className={styles.usageStack}>
+                      <strong>
+                        {numberFormat.format(
+                          user.confirmedProvider.totalTokens +
+                            user.estimatedOrReconciled.totalTokens,
+                        )}{" "}
+                        Tokens
+                      </strong>
+                      <small>
+                        {numberFormat.format(user.confirmedProvider.totalTokens)} bestätigt ·{" "}
+                        {numberFormat.format(user.estimatedOrReconciled.totalTokens)} geschätzt
+                      </small>
+                      <small>
+                        {numberFormat.format(user.searchRuns)} Recherchen ·{" "}
+                        {numberFormat.format(user.searchToolCalls)} Suchaufrufe
+                      </small>
+                    </span>
                   </td>
-                  <td>{numberFormat.format(user.confirmedProvider.totalTokens)}</td>
-                  <td>{formatUsageCost(user.confirmedProvider)}</td>
-                  <td>{numberFormat.format(user.estimatedOrReconciled.totalTokens)}</td>
-                  <td>{formatUsageCost(user.estimatedOrReconciled)}</td>
-                  <td>
-                    {user.freeMonthlyUsage ? (
-                      <span className={`${styles.accountBalance} ${styles.legacyBalance}`}>
-                        <strong>
-                          {numberFormat.format(user.freeMonthlyUsage.remaining)} /{" "}
-                          {numberFormat.format(user.freeMonthlyUsage.limit)}
-                        </strong>
-                        <small>stillgelegt · gates nichts</small>
-                      </span>
-                    ) : "–"}
+                  <td data-label="Gesamtkosten">
+                    <span className={styles.costStack}>
+                      <strong>
+                        {formatUsd(formatNanoUsdAsUsd(totalCostNanoUsd(user)))}
+                      </strong>
+                      <small>Text-Tokens + Websuchen</small>
+                    </span>
                   </td>
-                  <td>{when(user.lastUsedAt)}</td>
+                  <td data-label="Credits belastet">
+                    {numberFormat.format(user.legacyTechnicalCreditsConsumed)}
+                  </td>
+                  <td data-label="Letzte Nutzung">{when(user.lastUsedAt)}</td>
                 </tr>
               ))}
             </tbody>
@@ -715,50 +804,58 @@ Bei den Konten stehen zwei
       <section className={styles.panel}>
         <div className={styles.panelHeading}>
           <div>
-            <p>REQUESTS / INTERACTIONS</p>
+            <p>REQUESTS / INTERAKTIONEN</p>
             <h2>{selectedUser ? "Nutzeraktivität" : "Neueste Aktivität"}</h2>
           </div>
         </div>
         <div className={styles.tableScroll}>
           <table>
             <thead>
-              <tr><th>Zeit</th><th>User</th><th>Modell</th><th>Zweck</th><th>Messbasis</th><th>Tokens</th><th>Kosten</th><th>Credits belastet</th><th>Status</th></tr>
+              <tr><th>Zeit &amp; User</th><th>Modell &amp; Zweck</th><th>Messbasis</th><th>Nutzung</th><th>Credits belastet</th><th>Status</th></tr>
             </thead>
             <tbody>
               {selectedInteractions.length ? selectedInteractions.map((item, index) => (
                 <tr key={`${item.id}-${index}`}>
-                  <td>{when(item.settledAt)}</td>
-                  <td>{item.email ?? item.userId ?? "Gelöscht"}</td>
-                  <td><code>{item.model}</code></td>
-                  <td>{item.purpose}</td>
-                  <td>
+                  <td data-label="Zeit & User">
+                    <span className={styles.usageStack}>
+                      <strong>{when(item.settledAt)}</strong>
+                      <small>{item.email ?? item.userId ?? "Gelöscht"}</small>
+                    </span>
+                  </td>
+                  <td data-label="Modell & Zweck">
+                    <span className={styles.usageStack}>
+                      <code>{item.model}</code>
+                      <small>{purposeLabel(item.purpose)}</small>
+                    </span>
+                  </td>
+                  <td data-label="Messbasis">
                     <span className={`${styles.usageBasis} ${item.usageBasis === "confirmed_provider" ? styles.usageConfirmed : styles.usageEstimated}`}>
                       {usageBasisLabel(item.usageBasis)}
                     </span>
                   </td>
-                  <td>{numberFormat.format(item.tokens)}</td>
-                  <td>{item.costUsd === null ? "Unbekannt" : formatUsd(item.costUsd)}</td>
-                  <td>
+                  <td data-label="Nutzung">
+                    <span className={styles.usageStack}>
+                      <strong>{numberFormat.format(item.tokens)} Tokens</strong>
+                      <small>{item.costUsd === null ? "Kosten unbekannt" : formatUsd(item.costUsd)}</small>
+                    </span>
+                  </td>
+                  <td data-label="Credits belastet">
                     <span className={styles.legacyInline}>
                       {numberFormat.format(item.legacyTechnicalCredits)}
                     </span>
                   </td>
-                  <td>
+                  <td data-label="Status">
                     <span className={`${styles.status} ${outcomeClass(item.outcome)}`}>
-                      {item.outcome}
+                      {outcomeLabel(item.outcome)}
                     </span>
                   </td>
                 </tr>
-              )) : <tr><td colSpan={9}>Keine Requests im gewählten Zeitraum.</td></tr>}
+              )) : <tr><td colSpan={6}>Keine Requests im gewählten Zeitraum.</td></tr>}
             </tbody>
           </table>
         </div>
       </section>
 
-      <ProviderDiagnosticPanel
-        initialTransport={providerConnection.transport}
-        requestedModel={requestedModel}
-      />
     </main>
   );
 }

@@ -246,6 +246,21 @@ describe("POST /api/freelancer-search", () => {
     expect(mocks.execute).not.toHaveBeenCalled();
   });
 
+  it("keeps the authenticated actor on unexpected failure audit events", async () => {
+    mocks.getExternalSearchResult.mockRejectedValue(new Error("database down"));
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(503);
+    expect(mocks.audit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorUserId: "00000000-0000-4000-8000-000000000001",
+        targetId: PROJECT_ID,
+        action: "external_freelancer_search_failed",
+      }),
+    );
+  });
+
   it("does not spend on web search when an internal match now exists", async () => {
     mocks.buildShortlist.mockReturnValue({ status: "ranked", matches: [{}] });
     const response = await POST(request());

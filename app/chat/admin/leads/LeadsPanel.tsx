@@ -293,7 +293,7 @@ export function LeadsPanel({
                 )
               }
             />
-            Alle offenen auswählen
+            Alle {selectable.length} sichtbaren offenen auswählen
           </label>
           <span className={styles.muted}>
             {selected.size} ausgewählt
@@ -309,7 +309,7 @@ export function LeadsPanel({
           >
             {bulk?.running
               ? `Verschickt … ${bulk.done}/${bulk.total}`
-              : "Ausgewählte anschreiben"}
+              : "Auswahl automatisch anschreiben"}
           </button>
           {bulk && !bulk.running ? (
             <span className={styles.muted}>
@@ -346,8 +346,8 @@ export function LeadsPanel({
 
               return (
                 <Fragment key={row.id}>
-                  <tr>
-                    <td>
+                  <tr data-status={row.status}>
+                    <td data-label="Auswahl">
                       {sendable && !row.archived_at ? (
                         <input
                           type="checkbox"
@@ -357,14 +357,14 @@ export function LeadsPanel({
                         />
                       ) : null}
                     </td>
-                    <td>
+                    <td data-label="Firma">
                       <strong>{row.company ?? "–"}</strong>
                       <div className={styles.muted}>
                         {row.recipient_name ? `${row.recipient_name} · ` : ""}
                         {row.recipient_email}
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Ausschreibung">
                       {url ? (
                         <a href={url} target="_blank" rel="noreferrer noopener">
                           {leadHeadline(row.stellenanzeige)}
@@ -376,7 +376,7 @@ export function LeadsPanel({
                         <div className={styles.hint}>Entwurf liegt bereit</div>
                       ) : null}
                     </td>
-                    <td>
+                    <td data-label="Kategorie">
                       <input
                         className={styles.categoryInput}
                         list="lead-categories"
@@ -390,7 +390,7 @@ export function LeadsPanel({
                         }}
                       />
                     </td>
-                    <td>
+                    <td data-label="Status">
                       <span
                         className={`${styles.badge} ${badgeClass[row.status]}`}
                       >
@@ -402,10 +402,10 @@ export function LeadsPanel({
                         </div>
                       ) : null}
                     </td>
-                    <td className={styles.muted}>
+                    <td className={styles.muted} data-label="Eingegangen">
                       {formatDateTime(row.created_at)}
                     </td>
-                    <td>
+                    <td data-label="Aktionen">
                       {current.error && !expanded ? (
                         <p className={styles.error}>{current.error}</p>
                       ) : null}

@@ -6,6 +6,11 @@ import {
   readSearchUsageRows,
   type SearchUsageTotals,
 } from "@/lib/ai/admin-search-usage";
+import {
+  isPlatformAnalyticsExcludedEmail,
+  platformAnalyticsExcludedUserIds,
+} from "@/lib/admin/analytics-exclusions";
+import { readAdminAuthEmails } from "@/lib/admin/auth-emails";
 import { creditPlan, type CreditPlanId } from "@/lib/ai/credit-policy";
 import { formatNanoUsdAsUsd } from "@/lib/ai/model-pricing";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -160,6 +165,20 @@ export type AdminUsageDashboard = {
   /** Token- und Suchkosten zusammen. */
   combinedCostNanoUsd: string;
   combinedCostUsd: string;
+  /**
+   * Internal/test usage is absent from every customer-facing aggregate above,
+   * but remains visible here so known provider spend can still be reconciled.
+   */
+  excludedInternal: {
+    accounts: number;
+    totals: AdminUsageTotals;
+    searchUsage: SearchUsageTotals & { costUsd: string };
+    combinedCostNanoUsd: string;
+    combinedCostUsd: string;
+  };
+  /** Known external plus internal/test spend; still not a provider invoice. */
+  reconciledCostNanoUsd: string;
+  reconciledCostUsd: string;
   segments: { guests: AdminUsageSegment; registered: AdminUsageSegment };
 };
 
@@ -558,21 +577,6 @@ async function readProductCreditRows() {
   return { rows, truncated: true };
 }
 
-async function readAuthEmails(): Promise<Map<string, string | null>> {
-  const admin = createAdminSupabaseClient();
-  const emails = new Map<string, string | null>();
-  for (let page = 1; page <= 20; page += 1) {
-    const { data, error } = await admin.auth.admin.listUsers({
-      page,
-      perPage: 1_000,
-    });
-    if (error) throw error;
-    for (const user of data.users) emails.set(user.id, user.email ?? null);
-    if (data.users.length < 1_000) break;
-  }
-  return emails;
-}
-
 export async function getAdminUsageDashboard(input: {
   from?: string;
   to?: string;
@@ -580,22 +584,43 @@ export async function getAdminUsageDashboard(input: {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
     throw new Error("Admin usage service is not configured");
   }
-  const [usageResult, legacyResult, freeUsageResult, productResult, emails, searchResult] =
+  const [usageResult, legacyResult, freeUsageResult, productResult, auth, searchResult] =
     await Promise.all([
       readUsageRows(input),
       readLegacyCreditRows(),
       readCurrentFreeUsageRows(),
       readProductCreditRows(),
-      readAuthEmails(),
+      readAdminAuthEmails(),
       readSearchUsageRows(input),
     ]);
-  const searchTotals = aggregateSearchUsage(searchResult.rows);
-  const searchByUser = groupSearchUsageByUser(searchResult.rows);
-  const { rows, truncated: usageTruncated } = usageResult;
+  const emails = auth.emails;
+  const excludedUserIds = platformAnalyticsExcludedUserIds(emails);
+  const externalUsageRows = usageResult.rows.filter(
+    (row) => !row.user_id || !excludedUserIds.has(row.user_id),
+  );
+  const internalUsageRows = usageResult.rows.filter(
+    (row) => Boolean(row.user_id && excludedUserIds.has(row.user_id)),
+  );
+  const externalSearchRows = searchResult.rows.filter(
+    (row) => !row.userId || !excludedUserIds.has(row.userId),
+  );
+  const internalSearchRows = searchResult.rows.filter(
+    (row) => Boolean(row.userId && excludedUserIds.has(row.userId)),
+  );
+  const searchTotals = aggregateSearchUsage(externalSearchRows);
+  const searchByUser = groupSearchUsageByUser(externalSearchRows);
+  const rows = externalUsageRows;
+  const { truncated: usageTruncated } = usageResult;
   const accountData = aggregateAdminAccountRows({
-    legacy: legacyResult.rows,
-    freeMonthly: freeUsageResult.rows,
-    product: productResult.rows,
+    legacy: legacyResult.rows.filter(
+      (row) => !excludedUserIds.has(row.user_id),
+    ),
+    freeMonthly: freeUsageResult.rows.filter(
+      (row) => !excludedUserIds.has(row.user_id),
+    ),
+    product: productResult.rows.filter(
+      (row) => !excludedUserIds.has(row.user_id),
+    ),
   });
 
   const totals = emptyTotals();
@@ -705,6 +730,14 @@ export async function getAdminUsageDashboard(input: {
     BigInt(finalizedTotals.confirmedProvider.costNanoUsd) +
     BigInt(finalizedTotals.estimatedOrReconciled.costNanoUsd);
   const combined = tokenCostNanoUsd + BigInt(searchTotals.costNanoUsd);
+  const internalTotals = aggregateAdminUsageRows(internalUsageRows);
+  const internalSearchTotals = aggregateSearchUsage(internalSearchRows);
+  const internalTokenCostNanoUsd =
+    BigInt(internalTotals.confirmedProvider.costNanoUsd) +
+    BigInt(internalTotals.estimatedOrReconciled.costNanoUsd);
+  const internalCombined =
+    internalTokenCostNanoUsd + BigInt(internalSearchTotals.costNanoUsd);
+  const reconciledCombined = combined + internalCombined;
 
   return {
     generatedAt: new Date().toISOString(),
@@ -712,7 +745,7 @@ export async function getAdminUsageDashboard(input: {
     to: input.to ?? null,
     truncated:
       usageTruncated || legacyResult.truncated || freeUsageResult.truncated ||
-      productResult.truncated || searchResult.truncated,
+      productResult.truncated || searchResult.truncated || auth.truncated,
     totals: finalizedTotals,
     accountTotals: accountData.totals,
     byModel: modelRows,
@@ -731,6 +764,18 @@ export async function getAdminUsageDashboard(input: {
     },
     combinedCostNanoUsd: combined.toString(),
     combinedCostUsd: formatNanoUsdAsUsd(combined.toString()),
+    excludedInternal: {
+      accounts: excludedUserIds.size,
+      totals: internalTotals,
+      searchUsage: {
+        ...internalSearchTotals,
+        costUsd: formatNanoUsdAsUsd(String(internalSearchTotals.costNanoUsd)),
+      },
+      combinedCostNanoUsd: internalCombined.toString(),
+      combinedCostUsd: formatNanoUsdAsUsd(internalCombined.toString()),
+    },
+    reconciledCostNanoUsd: reconciledCombined.toString(),
+    reconciledCostUsd: formatNanoUsdAsUsd(reconciledCombined.toString()),
     segments,
   };
 }
@@ -745,6 +790,7 @@ export async function getAdminUserUsageInteractions(input: {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
     throw new Error("Admin usage service is not configured");
   }
+  if (isPlatformAnalyticsExcludedEmail(input.email)) return [];
   const limit = Math.min(200, Math.max(1, input.limit ?? 100));
   const admin = createAdminSupabaseClient();
   let query = admin

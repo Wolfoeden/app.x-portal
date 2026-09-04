@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 import { buildContentSecurityPolicy } from "./lib/security/csp";
 
 const isProduction = process.env.NODE_ENV === "production";
+const isLocalPreviewBuild = process.env.CODEX_LOCAL_PREVIEW === "1";
 const configuredBasePath = process.env.NEXT_PUBLIC_APP_BASE_PATH
   ?.trim()
   .replace(/^\/+|\/+$/gu, "");
@@ -19,6 +20,15 @@ const buildVersion =
 
 const nextConfig: NextConfig = {
   basePath,
+  ...(isLocalPreviewBuild
+    ? {
+        experimental: { cpus: 1, workerThreads: true },
+        // The constrained desktop sandbox blocks Next's separate type-check
+        // worker. `npm run typecheck` remains the explicit gate immediately
+        // before this local-only build.
+        typescript: { ignoreBuildErrors: true },
+      }
+    : {}),
   env: {
     NEXT_PUBLIC_BUILD_VERSION: buildVersion,
   },

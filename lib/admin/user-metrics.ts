@@ -1,5 +1,6 @@
 import "server-only";
 
+import { isPlatformAnalyticsExcludedEmail } from "@/lib/admin/analytics-exclusions";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export type AdminAccountKind = "registered" | "guest";
@@ -27,6 +28,8 @@ export type AdminActivityWindow = {
 export type AdminUserMetrics = {
   generatedAt: string;
   activityWindowDays: number;
+  /** Internal/test accounts removed before every aggregate is calculated. */
+  excludedAccounts: number;
   totals: {
     accounts: number;
     registered: number;
@@ -184,8 +187,13 @@ export function buildUserMetrics(input: {
   let registered = 0;
   let guests = 0;
   let registeredNeverWrote = 0;
+  let excludedAccounts = 0;
 
   for (const account of input.accounts) {
+    if (isPlatformAnalyticsExcludedEmail(account.email)) {
+      excludedAccounts += 1;
+      continue;
+    }
     const kind: AdminAccountKind = account.anonymous ? "guest" : "registered";
     const projectActivity = input.projects.get(account.id);
     const messageActivity = input.messages.get(account.id);
@@ -234,8 +242,9 @@ export function buildUserMetrics(input: {
   return {
     generatedAt: input.now.toISOString(),
     activityWindowDays: ACTIVITY_WINDOW_DAYS,
+    excludedAccounts,
     totals: {
-      accounts: input.accounts.length,
+      accounts: input.accounts.length - excludedAccounts,
       registered,
       guests,
       registeredNeverWrote,

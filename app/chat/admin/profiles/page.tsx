@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import {
+  AdminDisclosure,
+  AdminPageHeader,
+  AdminSectionHeader,
+} from "@/components/admin/AdminDataPrimitives";
 import { getProfilePerformance } from "@/lib/admin/profile-performance";
 import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
@@ -33,12 +37,13 @@ function rate(part: number, base: number): string {
   return `${Math.round((part / base) * 100)} % davon`;
 }
 
-function Cell({ value }: { value: number }) {
-  return (
-    <td className={`${styles.num} ${styles.right} ${value === 0 ? styles.zero : ""}`}>
-      {numberFormat.format(value)}
-    </td>
-  );
+function availabilityLabel(value: string): string {
+  const labels: Record<string, string> = {
+    available: "verfügbar",
+    limited: "eingeschränkt",
+    unavailable: "nicht verfügbar",
+  };
+  return labels[value] ?? value;
 }
 
 export default async function AdminProfilePerformancePage() {
@@ -108,21 +113,17 @@ export default async function AdminProfilePerformancePage() {
   return (
     <main className={styles.shell}>
       <div className={styles.inner}>
-        <header className={styles.header}>
-          <div>
-            <p className={styles.eyebrow}>Admin / Freelancer-Leistung</p>
-            <h1>Welche Profile funktionieren</h1>
+        <AdminPageHeader
+          eyebrow="Admin / Analyse"
+          title="Profil-Performance"
+          description={
             <p>
-              Für jedes Profil die volle Kette von der Einblendung bis zur
-              Kontaktanfrage. Einblendungen, CV-Downloads und Kontakte reichen bis
-              zum Start zurück; Kartenaufrufe und Terminklicks erst ab dem Tag, an
-              dem ihre Aufzeichnung eingebaut wurde.
+              Reichweite, Interesse und Kontaktabsicht je Freelancer-Profil —
+              verdichtet auf die Signale, die Profilqualität und Nachfrage
+              tatsächlich unterscheiden.
             </p>
-          </div>
-          <Link href="/chat" className={styles.backLink}>
-            Zurück zum Chat
-          </Link>
-        </header>
+          }
+        />
 
         {report.truncated ? (
           <p className={styles.warning}>
@@ -132,14 +133,32 @@ export default async function AdminProfilePerformancePage() {
         ) : null}
 
         {eventBasisDiffers ? (
-          <p className={styles.warning}>
-            Kartenaufrufe und Terminklicks werden erst seit{" "}
-            {formatDateTime(report.eventTrackingSince)} aufgezeichnet,
-            Einblendungen dagegen seit Beginn. Die beiden Spalten lassen sich
-            deshalb nicht ins Verhältnis setzen — ein Profil kann mehr
-            Kartenaufrufe als Einblendungen haben, ohne dass eine Zahl falsch
-            ist.
-          </p>
+          <AdminDisclosure
+            title="Messzeiträume unterscheiden sich"
+            summary={`Karten- und Terminsignale seit ${formatDateTime(report.eventTrackingSince)}`}
+          >
+            <p>
+              Kartenaufrufe und Terminklicks werden erst seit{" "}
+              {formatDateTime(report.eventTrackingSince)} aufgezeichnet,
+              Einblendungen dagegen seit Beginn. Deshalb werden diese Werte als
+              Signale nebeneinander gezeigt, nicht als vermeintlich exakte
+              Conversion-Quote.
+            </p>
+          </AdminDisclosure>
+        ) : null}
+
+        {report.excludedAccounts > 0 ? (
+          <AdminDisclosure
+            title="Interne Nutzung ausgeschlossen"
+            summary={`${numberFormat.format(report.excludedAccounts)} Konto · soweit technisch zuordenbar`}
+          >
+            <p>
+              Einblendungen, gespeicherte Profile, CV-Zugriffe und Kontakte des
+              internen Kontos zählen hier nicht. Kartenaufrufe und Terminklicks
+              besitzen im aktuellen Ereignisschema noch keine Nutzer-ID und
+              lassen sich deshalb rückwirkend nicht sicher zuordnen.
+            </p>
+          </AdminDisclosure>
         ) : null}
 
         {totals.bookingClicks === 0 && totals.impressions > 0 ? (
@@ -153,31 +172,34 @@ export default async function AdminProfilePerformancePage() {
           </p>
         ) : null}
 
-        <div className={styles.funnel}>
-          {steps.map((step) => (
-            <div
-              className={`${styles.step} ${step.value === 0 ? styles.stepZero : ""}`}
-              key={step.label}
-            >
-              <p className={styles.stepLabel}>{step.label}</p>
-              <p className={styles.stepValue}>{numberFormat.format(step.value)}</p>
-              <p className={styles.stepRate}>{step.hint}</p>
-            </div>
+        <div className={styles.signalBoard} aria-label="Performance-Signalweg">
+          {[
+            { label: "Reichweite", items: steps.slice(0, 2) },
+            { label: "Interesse", items: steps.slice(2, 4) },
+            { label: "Konversion", items: steps.slice(4, 6) },
+          ].map((group) => (
+            <section className={styles.signalGroup} key={group.label}>
+              <h2>{group.label}</h2>
+              <div>
+                {group.items.map((step) => (
+                  <dl className={step.value === 0 ? styles.stepZero : undefined} key={step.label}>
+                    <dt>{step.label}</dt>
+                    <dd>{numberFormat.format(step.value)}</dd>
+                    <small>{step.hint}</small>
+                  </dl>
+                ))}
+              </div>
+            </section>
           ))}
         </div>
 
         {neverShown.length > 0 ? (
           <>
-            <h2 className={styles.sectionTitle}>
-              Nie eingeblendet ({numberFormat.format(neverShown.length)} von{" "}
-              {numberFormat.format(totals.profiles)})
-            </h2>
-            <p className={styles.sectionNote}>
-              Diese Profile hat das Matching noch kein einziges Mal
-              vorgeschlagen. Das ist eine Arbeitsliste: Skills, Rollenbezeichnung
-              oder Verfügbarkeit passen zu keiner bisher gestellten Anfrage. Ein
-              Hinweis auf die Profildaten, nicht auf die Person.
-            </p>
+            <AdminSectionHeader
+              title={`Aufmerksamkeit: nie eingeblendet (${numberFormat.format(neverShown.length)})`}
+              description="Skills, Rollenbezeichnung oder Verfügbarkeit passen zu keiner bisherigen Anfrage — ein Hinweis auf die Profildaten, nicht auf die Person."
+              aside={`${numberFormat.format(neverShown.length)} von ${numberFormat.format(totals.profiles)} Profilen`}
+            />
             <ul className={styles.neverShown}>
               {neverShown.map((row) => (
                 <li key={row.profileId}>
@@ -189,14 +211,11 @@ export default async function AdminProfilePerformancePage() {
           </>
         ) : null}
 
-        <h2 className={styles.sectionTitle}>
-          Eingeblendete Profile ({numberFormat.format(shown.length)} von{" "}
-          {numberFormat.format(totals.profiles)})
-        </h2>
-        <p className={styles.sectionNote}>
-          Nach Einblendungen sortiert. {numberFormat.format(totals.activeProfiles)}{" "}
-          der {numberFormat.format(totals.profiles)} Profile stehen auf aktiv.
-        </p>
+        <AdminSectionHeader
+          title={`Profilvergleich (${numberFormat.format(shown.length)})`}
+          description="Nach Einblendungen sortiert; fachlich verwandte Signale stehen zusammen."
+          aside={`${numberFormat.format(totals.activeProfiles)} von ${numberFormat.format(totals.profiles)} aktiv`}
+        />
 
         {shown.length === 0 ? (
           <p className={styles.empty}>Es gibt noch keine Freelancer-Profile.</p>
@@ -206,51 +225,62 @@ export default async function AdminProfilePerformancePage() {
               <thead>
                 <tr>
                   <th>Profil</th>
-                  <th>Status</th>
-                  <th className={styles.right}>Eingebl.</th>
-                  <th className={styles.right}>Karte</th>
-                  <th className={styles.right}>Gemerkt</th>
-                  <th className={styles.right}>CV</th>
-                  <th className={styles.right}>CV abgel.</th>
-                  <th className={styles.right}>Termin</th>
-                  <th className={styles.right}>Kontakt</th>
+                  <th>Bereitschaft</th>
+                  <th>Reichweite</th>
+                  <th>Interesse</th>
+                  <th>Konversion</th>
                   <th>Letzte Aktivität</th>
                 </tr>
               </thead>
               <tbody>
                 {shown.map((row) => (
-                  <tr key={row.profileId}>
-                    <td>
+                  <tr key={row.profileId} data-status={row.profileStatus}>
+                    <td data-label="Profil">
                       <div className={styles.name}>{row.displayName}</div>
                       <div className={styles.role}>{row.roleTitle}</div>
                     </td>
-                    <td>
-                      <span
-                        className={`${styles.badge} ${
-                          row.profileStatus === "active"
-                            ? styles.badgeActive
-                            : styles.badgePaused
-                        }`}
-                      >
-                        {row.profileStatus === "active" ? "aktiv" : row.profileStatus}
-                      </span>
-                      {row.hasBookingUrl ? null : (
-                        <>
-                          {" "}
+                    <td data-label="Bereitschaft">
+                      <div className={styles.readiness}>
+                        <span
+                          className={`${styles.badge} ${
+                            row.profileStatus === "active"
+                              ? styles.badgeActive
+                              : styles.badgePaused
+                          }`}
+                        >
+                          {row.profileStatus === "active" ? "aktiv" : row.profileStatus}
+                        </span>
+                        <span className={styles.availability}>
+                          {availabilityLabel(row.availabilityStatus)}
+                        </span>
+                        {row.hasBookingUrl ? null : (
                           <span className={`${styles.badge} ${styles.badgeNoLink}`}>
-                            kein Terminlink
+                            Terminlink fehlt
                           </span>
-                        </>
-                      )}
+                        )}
+                      </div>
                     </td>
-                    <Cell value={row.impressions} />
-                    <Cell value={row.profileViews} />
-                    <Cell value={row.saves} />
-                    <Cell value={row.cvDownloads} />
-                    <Cell value={row.cvDenied} />
-                    <Cell value={row.bookingClicks} />
-                    <Cell value={row.introductions} />
-                    <td className={styles.num}>{formatDateTime(row.lastActivityAt)}</td>
+                    <td className={styles.metricCell} data-label="Reichweite">
+                      <strong>{numberFormat.format(row.impressions)}</strong>
+                      <span>Einblendungen</span>
+                      <small>{numberFormat.format(row.profileViews)} Kartenaufrufe</small>
+                    </td>
+                    <td className={styles.metricCell} data-label="Interesse">
+                      <strong>{numberFormat.format(row.saves)}</strong>
+                      <span>gemerkt</span>
+                      <small>
+                        {numberFormat.format(row.cvDownloads)} CV geladen ·{" "}
+                        {numberFormat.format(row.cvDenied)} abgelehnt
+                      </small>
+                    </td>
+                    <td className={styles.metricCell} data-label="Konversion">
+                      <strong>{numberFormat.format(row.introductions)}</strong>
+                      <span>Kontakte</span>
+                      <small>{numberFormat.format(row.bookingClicks)} Terminklicks</small>
+                    </td>
+                    <td className={styles.num} data-label="Letzte Aktivität">
+                      {formatDateTime(row.lastActivityAt)}
+                    </td>
                   </tr>
                 ))}
               </tbody>

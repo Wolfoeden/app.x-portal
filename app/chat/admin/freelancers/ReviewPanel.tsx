@@ -270,6 +270,10 @@ export function ReviewPanel({
       </p>
 
       <div className={styles.grid} style={{ marginTop: 16 }}>
+        <div className={`${styles.full} ${styles.formSectionHeading}`}>
+          <strong>Öffentliche Identität</strong>
+          <span>Name, Rolle und Profiladresse</span>
+        </div>
         <label className={styles.field}>
           <span>Anzeigename</span>
           <input
@@ -304,6 +308,10 @@ export function ReviewPanel({
           />
         </label>
 
+        <div className={`${styles.full} ${styles.formSectionHeading}`}>
+          <strong>Kompetenzprofil</strong>
+          <span>Such- und matchbare Merkmale</span>
+        </div>
         <div className={styles.full}>
           <TagInput
             classes={tagClasses}
@@ -358,6 +366,10 @@ export function ReviewPanel({
           />
         </label>
 
+        <div className={`${styles.full} ${styles.formSectionHeading}`}>
+          <strong>Einsatz &amp; Konditionen</strong>
+          <span>Verfügbarkeit, Arbeitsform und Honorar</span>
+        </div>
         <div className={`${styles.field} ${styles.full}`}>
           <span>Arbeitsform</span>
           <div className={styles.checks}>
@@ -436,6 +448,10 @@ export function ReviewPanel({
           </select>
         </label>
 
+        <div className={`${styles.full} ${styles.formSectionHeading}`}>
+          <strong>Freigabe &amp; Sichtbarkeit</strong>
+          <span>Terminbuchung, Prüfstatus und Kundenzugriff</span>
+        </div>
         <label className={`${styles.field} ${styles.full}`}>
           <span>Terminlink (Pflicht für die Freigabe)</span>
           <input

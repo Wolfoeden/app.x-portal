@@ -615,3 +615,337 @@
   padding: 2px 6px;
   font-size: 12px;
 }
+
+/* Operator-Dichte: weniger Spalten, klare Bereitschaftssignale und ein
+   eigenständiges Kartenlayout auf kleinen Screens. */
+.shell {
+  padding: 30px clamp(18px, 4vw, 52px) 64px;
+}
+
+.inner {
+  max-width: 1320px;
+}
+
+.tabs {
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.tab {
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 0 13px;
+  font-size: 12px;
+}
+
+.table {
+  font-size: 13px;
+}
+
+.table th {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  background: #f8f8f5;
+  font-size: 12px;
+}
+
+.table th:first-child {
+  left: 0;
+  z-index: 3;
+}
+
+.table td:first-child {
+  position: sticky;
+  z-index: 1;
+  left: 0;
+  min-width: 220px;
+  background: #fff;
+}
+
+.table tbody tr:hover td,
+.table tbody tr:hover td:first-child {
+  background: #fafaf7;
+}
+
+.table tbody tr[data-status="submitted"] td:first-child {
+  box-shadow: inset 3px 0 #718b96;
+}
+
+.table tbody tr[data-status="in_review"] td:first-child {
+  box-shadow: inset 3px 0 #b7791f;
+}
+
+.muted,
+.chip,
+.badge,
+.rowAction,
+.field > span:first-child,
+.field > label:first-child,
+.hint,
+.factCategory,
+.callout {
+  font-size: 12px;
+}
+
+.candidateRole {
+  margin-top: 7px;
+  color: #343530;
+  font-weight: 650;
+}
+
+.stack {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.stack strong {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.readiness {
+  display: grid;
+  gap: 5px;
+  min-width: 150px;
+}
+
+.readiness span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #8a5147;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.readiness span::before {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 999px;
+  background: #b75b4c;
+  content: "";
+}
+
+.readiness span[data-ready="true"] {
+  color: #49634f;
+}
+
+.readiness span[data-ready="true"]::before {
+  background: #4e8060;
+}
+
+.rowAction {
+  min-height: 38px;
+  box-sizing: border-box;
+}
+
+.detailGrid {
+  gap: 20px;
+}
+
+.card {
+  padding: 22px 24px 24px;
+}
+
+.card h2 {
+  font-size: 19px;
+}
+
+.card h3 {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid #ecece7;
+  font-size: 14px;
+}
+
+.dl dt {
+  font-size: 11px;
+}
+
+.formSectionHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  border-bottom: 1px solid #e7e8e2;
+  padding: 8px 0 9px;
+}
+
+.formSectionHeading:first-child {
+  margin-top: 0;
+}
+
+.formSectionHeading strong {
+  color: #2b2c27;
+  font-size: 14px;
+}
+
+.formSectionHeading span {
+  color: #777870;
+  font-size: 12px;
+}
+
+.field input,
+.field select,
+.field textarea,
+.tagBox {
+  border-color: #cfd1c9;
+}
+
+.field input:focus-visible,
+.field select:focus-visible,
+.field textarea:focus-visible,
+.tagBox:focus-within,
+.check:focus-within,
+.rowAction:focus-visible,
+.tab:focus-visible,
+.cvLink:focus-visible {
+  outline: 2px solid #1d6b5f;
+  outline-offset: 2px;
+}
+
+.actions {
+  position: sticky;
+  z-index: 4;
+  bottom: -1px;
+  margin: 24px -24px -24px;
+  border-top: 1px solid #dfe0d9;
+  border-radius: 0 0 14px 14px;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 14px 24px;
+  box-shadow: 0 -10px 24px rgba(31, 32, 29, 0.06);
+  backdrop-filter: blur(10px);
+}
+
+@media (min-width: 1080px) {
+  .detailGrid {
+    grid-template-columns: minmax(360px, 410px) minmax(0, 1fr);
+  }
+
+  .detailGrid > .card:first-child {
+    position: sticky;
+    top: 18px;
+    max-height: calc(100vh - 36px);
+    overflow: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .shell {
+    padding: 22px 14px 48px;
+  }
+
+  .tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 7px;
+    scrollbar-width: thin;
+  }
+
+  .tab {
+    flex: none;
+  }
+
+  .panel {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .tableScroll {
+    overflow: visible;
+  }
+
+  .table,
+  .table tbody,
+  .table tr,
+  .table td {
+    display: block;
+    width: 100%;
+  }
+
+  .table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .table tbody {
+    display: grid;
+    gap: 11px;
+  }
+
+  .table tbody tr {
+    overflow: hidden;
+    border: 1px solid #dfe0d9;
+    border-radius: 12px;
+    background: #fff;
+  }
+
+  .table td,
+  .table td:first-child {
+    position: static;
+    display: grid;
+    grid-template-columns: minmax(105px, 0.38fr) minmax(0, 1fr);
+    gap: 12px;
+    min-width: 0;
+    border-bottom: 1px solid #ecece7;
+    background: transparent;
+    padding: 11px 12px;
+    box-shadow: none;
+  }
+
+  .table td[data-label]::before {
+    color: #777870;
+    content: attr(data-label);
+    font-size: 11px;
+    font-weight: 720;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
+  }
+
+  .table td:first-child {
+    border-left: 3px solid #b9bbb3;
+  }
+
+  .table tr[data-status="submitted"] td:first-child {
+    border-left-color: #718b96;
+  }
+
+  .table tr[data-status="in_review"] td:first-child {
+    border-left-color: #b7791f;
+  }
+
+  .rowAction {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .card {
+    padding: 18px 16px 20px;
+  }
+
+  .formSectionHeading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .actions {
+    margin: 22px -16px -20px;
+    padding: 12px 16px;
+  }
+
+  .primary,
+  .secondary,
+  .danger {
+    flex: 1 1 150px;
+  }
+}

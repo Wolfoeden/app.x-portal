@@ -180,6 +180,162 @@
   text-align: center;
 }
 
+/* Die Frist ist die Primärinformation; Status und Quellen folgen kompakt. */
+.shell {
+  padding: 30px clamp(20px, 5vw, 72px) 72px;
+}
+
+.inner {
+  max-width: 1320px;
+}
+
+.panel {
+  border-radius: 12px;
+  box-shadow: 0 8px 26px rgba(31, 32, 29, 0.03);
+}
+
+.table {
+  min-width: 860px;
+  font-size: 13px;
+}
+
+.table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 11px 14px;
+  background: #fbfbf8;
+  color: #666860;
+  font-size: 12px;
+  letter-spacing: 0.055em;
+}
+
+.table td {
+  padding: 12px 14px;
+  color: #4f514a;
+  vertical-align: middle;
+}
+
+.table tbody tr[data-state="overdue"] td:first-child {
+  box-shadow: inset 3px 0 0 #b34735;
+}
+
+.table tbody tr[data-state="warning"] td:first-child {
+  box-shadow: inset 3px 0 0 #b7791f;
+}
+
+.table tbody tr:hover td {
+  background: #f8faf8;
+}
+
+.name {
+  font-size: 13px;
+  font-weight: 680;
+}
+
+.role {
+  color: #696b64;
+  font-size: 12px;
+}
+
+.badge {
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.sources {
+  display: flex;
+  max-width: 260px;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.sources a {
+  max-width: 180px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #eef2f3;
+  padding: 3px 7px;
+  color: #476579;
+  font-size: 12px;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sources a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 760px) {
+  .shell {
+    padding: 24px 16px 56px;
+  }
+
+  .panel {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .tableScroll {
+    overflow: visible;
+  }
+
+  .table,
+  .table tbody,
+  .table tr,
+  .table td {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .table tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  .table tbody tr {
+    overflow: hidden;
+    border: 1px solid #dfe0d9;
+    border-radius: 11px;
+    background: #fff;
+  }
+
+  .table td {
+    display: grid;
+    grid-template-columns: 105px minmax(0, 1fr);
+    gap: 10px;
+    border-bottom: 1px solid #efefe9;
+    padding: 10px 12px;
+  }
+
+  .table td::before {
+    color: #71736b;
+    content: attr(data-label);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .table td:last-child {
+    border-bottom: 0;
+  }
+
+  .table tbody tr[data-state="overdue"] td:first-child,
+  .table tbody tr[data-state="warning"] td:first-child {
+    box-shadow: none;
+  }
+
 /* Der Knopf in der Zeile eines Suchlaufs. Dieselbe Form wie die uebrigen
    Bedienelemente im Admin — dies ist eine Arbeitsliste, keine Werbeflaeche. */
 .action {

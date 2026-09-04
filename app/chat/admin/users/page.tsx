@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import {
+  AdminMetricStrip,
+  AdminPageHeader,
+  AdminSectionHeader,
+} from "@/components/admin/AdminDataPrimitives";
 import {
   getAdminUserMetrics,
   type AdminAccountRow,
@@ -87,7 +91,6 @@ function AccountTable({
         <thead>
           <tr>
             <th>Konto</th>
-            <th>Art</th>
             <th>Registriert</th>
             <th>Zuletzt aktiv</th>
             <th className={styles.num}>Chats</th>
@@ -96,31 +99,26 @@ function AccountTable({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.userId}>
-              <td>
+            <tr key={row.userId} data-idle={row.messages === 0}>
+              <td data-label="Konto">
                 {row.email ?? "ohne E-Mail"}
                 <div className={styles.mono}>{row.userId.slice(0, 8)}…</div>
               </td>
-              <td>
-                <span
-                  className={`${styles.badge} ${
-                    row.kind === "registered"
-                      ? styles.badgeRegistered
-                      : styles.badgeGuest
-                  }`}
-                >
-                  {row.kind === "registered" ? "angemeldet" : "Gast"}
-                </span>
+              <td className={styles.num} data-label="Registriert">
+                {formatDateTime(row.createdAt)}
               </td>
-              <td className={styles.num}>{formatDateTime(row.createdAt)}</td>
-              <td className={styles.num}>
+              <td className={styles.num} data-label="Zuletzt aktiv">
                 {relativeDays(row.lastActiveAt, now)}
                 <div className={styles.mono}>
                   {formatDateTime(row.lastActiveAt)}
                 </div>
               </td>
-              <td className={styles.num}>{numberFormat.format(row.projects)}</td>
-              <td className={styles.num}>{numberFormat.format(row.messages)}</td>
+              <td className={styles.num} data-label="Chats">
+                {numberFormat.format(row.projects)}
+              </td>
+              <td className={styles.num} data-label="Nachrichten">
+                {numberFormat.format(row.messages)}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -159,20 +157,17 @@ export default async function AdminUsersPage() {
   return (
     <main className={styles.shell}>
       <div className={styles.inner}>
-        <header className={styles.header}>
-          <div>
-            <p className={styles.eyebrow}>Admin / Nutzer</p>
-            <h1>Wer nutzt XPORTAL</h1>
+        <AdminPageHeader
+          eyebrow="Admin / Nutzer"
+          title="Nutzeraktivität"
+          description={
             <p>
-              Jedes Konto aus Supabase Auth, aufgeteilt in angemeldete Nutzer und
-              Gastsitzungen. <strong>„Aktiv“ heißt: hat in diesem Zeitraum selbst
-              eine Nachricht geschrieben.</strong> Eine bloße Anmeldung zählt nicht.
+              Konten, Aktivierung und Nutzung auf einen Blick. Aktiv bedeutet:
+              Das Konto hat selbst eine Nachricht geschrieben — eine Anmeldung
+              allein zählt nicht.
             </p>
-          </div>
-          <Link href="/chat" className={styles.backLink}>
-            Zurück zum Chat
-          </Link>
-        </header>
+          }
+        />
 
         {metrics.truncated ? (
           <p className={styles.warning}>
@@ -181,81 +176,67 @@ export default async function AdminUsersPage() {
           </p>
         ) : null}
 
-        <div className={styles.statGrid}>
-          <div className={`${styles.stat} ${styles.statAccent}`}>
-            <p className={styles.statLabel}>Angemeldet</p>
-            <p className={styles.statValue}>
-              {numberFormat.format(metrics.totals.registered)}
-            </p>
-            <p className={styles.statHint}>
-              dauerhafte Konten mit E-Mail oder Anbieter-Login
-            </p>
-          </div>
-          <div className={styles.stat}>
-            <p className={styles.statLabel}>Konten gesamt</p>
-            <p className={styles.statValue}>
-              {numberFormat.format(metrics.totals.accounts)}
-            </p>
-            <p className={styles.statHint}>
-              {percent(metrics.totals.registered, metrics.totals.accounts)} davon
-              angemeldet
-            </p>
-          </div>
-          <div className={`${styles.stat} ${styles.statMuted}`}>
-            <p className={styles.statLabel}>Gastsitzungen</p>
-            <p className={styles.statValue}>
-              {numberFormat.format(metrics.totals.guests)}
-            </p>
-            <p className={styles.statHint}>
-              anonyme Konten — das Umwandlungspotenzial
-            </p>
-          </div>
-          <div className={styles.stat}>
-            <p className={styles.statLabel}>Nie geschrieben</p>
-            <p className={styles.statValue}>
-              {numberFormat.format(metrics.totals.registeredNeverWrote)}
-            </p>
-            <p className={styles.statHint}>
-              angemeldete Konten ohne eine einzige eigene Nachricht
-            </p>
-          </div>
-        </div>
+        {metrics.excludedAccounts > 0 ? (
+          <p className={styles.measurementNote}>
+            Externe Plattformnutzung · {numberFormat.format(metrics.excludedAccounts)}
+            {" "}internes Konto vor allen Kennzahlen ausgeschlossen.
+          </p>
+        ) : null}
 
-        <h2 className={styles.sectionTitle}>Aktive Nutzer</h2>
-        <p className={styles.sectionNote}>
-          Gezählt wird jedes Konto, das im Zeitraum mindestens eine eigene
-          Nachricht geschrieben hat — Antworten des Assistenten zählen nicht.
-          Gelesen wird ein Fenster von {metrics.activityWindowDays} Tagen; alles
-          Ältere zählt als inaktiv.
-        </p>
-        <div className={styles.windowGrid}>
-          {[
+        <AdminMetricStrip
+          label="Kontenübersicht"
+          items={[
+            {
+              label: "Angemeldet",
+              value: numberFormat.format(metrics.totals.registered),
+              detail: "dauerhafte Konten",
+              tone: "accent",
+            },
+            {
+              label: "Konten gesamt",
+              value: numberFormat.format(metrics.totals.accounts),
+              detail: `${percent(metrics.totals.registered, metrics.totals.accounts)} angemeldet`,
+            },
+            {
+              label: "Gastsitzungen",
+              value: numberFormat.format(metrics.totals.guests),
+              detail: "Potenzial zur Registrierung",
+              tone: "muted",
+            },
+            {
+              label: "Nie geschrieben",
+              value: numberFormat.format(metrics.totals.registeredNeverWrote),
+              detail: "registriert, aber nicht aktiviert",
+              tone:
+                metrics.totals.registeredNeverWrote > 0 ? "warning" : "default",
+            },
+          ]}
+        />
+
+        <AdminSectionHeader
+          title="Aktive Nutzer"
+          description={`Konten mit mindestens einer eigenen Nachricht; Messfenster ${metrics.activityWindowDays} Tage.`}
+        />
+        <AdminMetricStrip
+          label="Aktive Nutzer nach Zeitraum"
+          items={[
             { label: "Letzte 24 Stunden", data: metrics.activity.day },
             { label: "Letzte 7 Tage", data: metrics.activity.week },
             {
               label: `Letzte ${metrics.activityWindowDays} Tage`,
               data: metrics.activity.month,
             },
-          ].map((entry) => (
-            <div className={styles.window} key={entry.label}>
-              <p className={styles.statLabel}>{entry.label}</p>
-              <p className={styles.statValue}>
-                {numberFormat.format(entry.data.active)}
-              </p>
-              <ul className={styles.windowSplit}>
-                <li>
-                  <span>{numberFormat.format(entry.data.registeredActive)}</span>{" "}
-                  angemeldet
-                </li>
-                <li>
-                  <span>{numberFormat.format(entry.data.guestActive)}</span> Gäste
-                </li>
-              </ul>
-            </div>
-          ))}
-        </div>
+          ].map((entry) => ({
+            label: entry.label,
+            value: numberFormat.format(entry.data.active),
+            detail: `${numberFormat.format(entry.data.registeredActive)} angemeldet · ${numberFormat.format(entry.data.guestActive)} Gäste`,
+          }))}
+        />
 
-        <h2 className={styles.sectionTitle}>Neue Konten pro Tag</h2>
+        <AdminSectionHeader
+          title="Neue Konten pro Tag"
+          description="Angemeldete Konten im Verhältnis zu allen neu angelegten Sitzungen."
+        />
         {metrics.registrationsByDay.length === 0 ? (
           <p className={styles.empty}>Noch keine Konten angelegt.</p>
         ) : (
@@ -308,23 +289,20 @@ export default async function AdminUsersPage() {
           </div>
         )}
 
-        <h2 className={styles.sectionTitle}>
-          Angemeldete Konten ({numberFormat.format(metrics.registeredAccounts.length)})
-        </h2>
+        <AdminSectionHeader
+          title={`Angemeldete Konten (${numberFormat.format(metrics.registeredAccounts.length)})`}
+          description="Nach letzter Aktivität sortiert; Konten ohne Nutzung bleiben sichtbar."
+        />
         <AccountTable
           rows={metrics.registeredAccounts}
           now={now}
           emptyLabel="Noch hat sich niemand dauerhaft angemeldet."
         />
 
-        <h2 className={styles.sectionTitle}>
-          Gäste mit Aktivität ({numberFormat.format(metrics.activeGuests.length)})
-        </h2>
-        <p className={styles.sectionNote}>
-          Gastsitzungen, die tatsächlich selbst geschrieben haben. Genau diese
-          Nutzer lohnt es zur Anmeldung zu führen — sie sind höchstens 50 Einträge
-          lang und nach letzter Aktivität sortiert.
-        </p>
+        <AdminSectionHeader
+          title={`Gäste mit Aktivität (${numberFormat.format(metrics.activeGuests.length)})`}
+          description="Aktive Gastsitzungen mit Conversion-Potenzial; maximal 50, nach letzter Aktivität sortiert."
+        />
         <AccountTable
           rows={metrics.activeGuests}
           now={now}
