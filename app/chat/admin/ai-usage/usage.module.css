@@ -629,3 +629,326 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Verdichtete Operator-Ansicht: gleiche Lesebreite, klare Primärdaten und
+   keine 8–10px-Metadaten mehr. */
+.shell {
+  padding: 30px clamp(18px, 4vw, 52px) 64px;
+}
+
+.shell > * {
+  width: 100%;
+  max-width: 1320px;
+  margin-right: auto;
+  margin-left: auto;
+  box-sizing: border-box;
+}
+
+.filters,
+.notice,
+.providerPanel,
+.headline,
+.health,
+.kpis,
+.panel,
+.detail {
+  max-width: 1320px;
+}
+
+.filters label,
+.providerPanel > div > p:last-child,
+.providerError,
+.providerPanel dt,
+.providerPanel dd,
+.providerPanel code,
+.providerPanel button,
+.kpis span,
+.kpis small,
+.panel th,
+.panel td,
+.panel td small,
+.panel code,
+.status,
+.usageBasis,
+.detail dt,
+.detail dl small,
+.tableTools {
+  font-size: 12px;
+}
+
+.filters label {
+  font-weight: 650;
+}
+
+.filters input,
+.filters button {
+  min-height: 40px;
+}
+
+.headline,
+.kpis {
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid #dfe0d9;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 8px 26px rgba(31, 32, 29, 0.035);
+}
+
+.headline article,
+.kpis article {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.headline article + article,
+.kpis article + article {
+  border-left: 1px solid #e7e8e2;
+}
+
+.headline strong {
+  font-size: clamp(24px, 2.7vw, 35px);
+}
+
+.kpis strong {
+  font-size: 21px;
+}
+
+.legacyMetrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid #e5dfd2;
+  border-radius: 9px;
+  background: #e5dfd2;
+}
+
+.legacyMetrics > div {
+  display: grid;
+  gap: 4px;
+  background: #fdfbf6;
+  padding: 12px 14px;
+}
+
+.legacyMetrics span,
+.legacyMetrics small {
+  color: #746d60;
+  font-size: 12px;
+}
+
+.legacyMetrics strong {
+  color: #4e493f;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.accountDisclosure {
+  padding: 0 18px 2px;
+}
+
+.accountDisclosure > details {
+  margin-bottom: 14px;
+  box-shadow: none;
+}
+
+.accountLegend {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 0;
+}
+
+.accountLegend > div,
+.accountLegend > div:nth-child(2) {
+  border: 0;
+  background: transparent;
+  padding: 4px 8px 4px 0;
+}
+
+.accountLegend span,
+.accountLegend strong {
+  font-size: 12px;
+}
+
+.panelHeading {
+  padding: 17px 18px 12px;
+}
+
+.panelHeading p,
+.detail p {
+  font-size: 11px;
+}
+
+.panel table {
+  font-size: 13px;
+}
+
+.panel th {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  background: #f8f8f5;
+}
+
+.panel th:first-child {
+  left: 0;
+  z-index: 3;
+}
+
+.panel td:first-child {
+  position: sticky;
+  z-index: 1;
+  left: 0;
+  background: #fff;
+}
+
+.panel tbody tr:hover td:first-child,
+.panel tr.selected td:first-child {
+  background: #fafaf7;
+}
+
+.usageStack,
+.costStack {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.usageStack strong,
+.costStack strong {
+  color: #292a26;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.usageStack small,
+.costStack small {
+  margin: 0;
+  color: #777870;
+  line-height: 1.35;
+}
+
+.panel td .usageStack small,
+.panel td .costStack small {
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.panel a:focus-visible,
+.filters a:focus-visible,
+.filters button:focus-visible,
+.filters input:focus-visible {
+  outline: 2px solid #1d6b5f;
+  outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .headline,
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .headline article:nth-child(3),
+  .kpis article:nth-child(n + 3) {
+    border-top: 1px solid #e7e8e2;
+  }
+
+  .headline article:nth-child(3),
+  .kpis article:nth-child(odd) {
+    border-left: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .shell {
+    padding: 22px 14px 48px;
+  }
+
+  .filters {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .filters a {
+    padding: 6px 2px;
+  }
+
+  .providerPanel dl,
+  .legacyMetrics,
+  .accountLegend,
+  .detail dl {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .panelHeading,
+  .tableTools,
+  .accountDisclosure {
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .tableScroll {
+    overflow: visible;
+  }
+
+  .panel table,
+  .panel tbody,
+  .panel tr,
+  .panel td {
+    display: block;
+    width: 100%;
+  }
+
+  .panel thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .panel tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  .panel tbody tr {
+    overflow: hidden;
+    border: 1px solid #dfe0d9;
+    border-radius: 11px;
+    background: #fff;
+  }
+
+  .panel td,
+  .panel td:first-child {
+    position: static;
+    display: grid;
+    grid-template-columns: minmax(105px, 0.42fr) minmax(0, 1fr);
+    gap: 12px;
+    border-bottom: 1px solid #ecece7;
+    background: transparent;
+    padding: 10px 12px;
+  }
+
+  .panel td[data-label]::before {
+    align-self: start;
+    color: #777870;
+    content: attr(data-label);
+    font-size: 11px;
+    font-weight: 720;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
+  }
+
+  .panel td:not([data-label]) {
+    display: block;
+  }
+}

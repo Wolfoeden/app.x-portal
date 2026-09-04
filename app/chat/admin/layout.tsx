@@ -20,9 +20,9 @@ export default async function AdminLayout({
   if (!currentUser.isAdmin) notFound();
 
   return (
-    <>
+    <div data-admin-surface>
       <AdminNav />
       {children}
-    </>
+    </div>
   );
 }

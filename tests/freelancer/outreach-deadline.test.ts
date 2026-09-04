@@ -112,4 +112,19 @@ describe("Art. 14 outreach deadline", () => {
 
     expect([fresh, overdue].sort(byUrgency)[0]).toBe(overdue);
   });
+
+  it("sorts informed cases behind open deadlines regardless of age", () => {
+    const informed = outreachDeadline({
+      sourcedAt: sourcedDaysAgo(90),
+      outreachSentAt: sourcedDaysAgo(80),
+      now: NOW,
+    });
+    const fresh = outreachDeadline({
+      sourcedAt: sourcedDaysAgo(1),
+      outreachSentAt: null,
+      now: NOW,
+    });
+
+    expect([informed, fresh].sort(byUrgency)).toEqual([fresh, informed]);
+  });
 });

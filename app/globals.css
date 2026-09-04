@@ -6154,6 +6154,12 @@ dd.is-unknown,
     zoom: var(--ui-zoom);
   }
 
+  /* Datenreiche Admin-Oberflächen brauchen echte 12–13px Leseschrift. Der
+     allgemeine Chat-Zoom würde sie auf effektiv 9,6–10,4px verkleinern. */
+  :root:has([data-admin-surface]) {
+    --ui-zoom: 1;
+  }
+
   /* Sichtfeld-Hoehen zaehlen nach dem Zoom mit, `100dvh` fuellt den Bildschirm
      sonst nur noch zu 80 % und unten bliebe ein leerer Streifen stehen. */
   .app-shell {

@@ -7,30 +7,70 @@
 .inner {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 6px 18px;
+  gap: 12px 22px;
   max-width: 1240px;
   margin: 0 auto;
-  padding: 14px 0 12px;
+  padding: 11px 0;
 }
 
 .brand {
   margin: 0 8px 0 0;
-  color: #8b8b84;
-  font-size: 10px;
+  color: #62645d;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
+.groups,
 .links {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.groups {
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 18px;
+}
+
+.group {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+.group + .group {
+  position: relative;
+  padding-left: 18px;
+}
+
+.group + .group::before {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 0;
+  width: 1px;
+  background: #d9dad3;
+  content: "";
+}
+
+.groupLabel {
+  color: #777970;
+  font-size: 10px;
+  font-weight: 720;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.links {
+  gap: 4px;
 }
 
 .link[data-active="true"] {
@@ -41,12 +81,15 @@
 
 .link {
   display: inline-flex;
+  min-height: 34px;
+  align-items: center;
   border: 1px solid #dfdfda;
-  border-radius: 999px;
+  border-radius: 8px;
   background: #fff;
-  padding: 7px 14px;
-  color: #56564f;
+  padding: 0 11px;
+  color: #4f514a;
   font-size: 12px;
+  font-weight: 590;
   text-decoration: none;
   white-space: nowrap;
 }
@@ -59,4 +102,43 @@
 .link:focus-visible {
   outline: 2px solid #1d6b5f;
   outline-offset: 2px;
+}
+
+@media (max-width: 1120px) {
+  .inner {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .groups {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+  }
+
+  .group {
+    flex: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .bar {
+    padding: 0 16px;
+  }
+
+  .brand {
+    margin: 0;
+  }
+
+  .groups {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 3px;
+    scrollbar-width: thin;
+  }
+
+  .groupLabel {
+    font-size: 10px;
+  }
 }

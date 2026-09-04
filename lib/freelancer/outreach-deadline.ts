@@ -86,11 +86,19 @@ export function outreachDeadline(input: {
   return { state: "open", ageDays, remainingDays, dueAt };
 }
 
-/** Verstrichene Fristen zuerst, danach die knappsten. */
+/** Offene Fristen nach Dringlichkeit; bereits informierte Fälle immer zuletzt. */
 export function byUrgency(
   left: OutreachDeadline,
   right: OutreachDeadline,
 ): number {
+  const rank: Record<OutreachState, number> = {
+    overdue: 0,
+    warning: 1,
+    open: 2,
+    informed: 3,
+  };
+  const stateDifference = rank[left.state] - rank[right.state];
+  if (stateDifference !== 0) return stateDifference;
   return left.remainingDays - right.remainingDays;
 }
 

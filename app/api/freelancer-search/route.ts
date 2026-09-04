@@ -136,10 +136,14 @@ async function ownedProjectWithBrief(
 
 export async function POST(request: Request) {
   const traceId = randomUUID();
+  let auditActorUserId: string | null = null;
+  let auditProjectId: string | null = null;
   try {
     assertSameOrigin(request);
     const input = InputSchema.parse(await readJsonWithLimit(request, 2_000));
+    auditProjectId = input.projectId;
     const user = await requireCurrentUser();
+    auditActorUserId = user.id;
     if (user.isAnonymous) {
       return NextResponse.json(
         {
@@ -435,9 +439,10 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     await writeAuditEvent({
-      actorUserId: null,
+      actorUserId: auditActorUserId,
       action: "external_freelancer_search_failed",
       targetType: "project",
+      targetId: auditProjectId,
       outcome: "failed",
       traceId,
     }).catch(() => undefined);

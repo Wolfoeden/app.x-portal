@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import {
+  AdminMetricStrip,
+  AdminPageHeader,
+  AdminSectionHeader,
+} from "@/components/admin/AdminDataPrimitives";
 import { LEADGEN_OUTREACH_CREDITS } from "@/lib/ai/credit-policy";
 import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
@@ -104,20 +109,46 @@ export default async function LeadsPage({
   return (
     <main className={styles.shell}>
       <div className={styles.inner}>
-        <header className={styles.header}>
-          <div>
-            <p className={styles.eyebrow}>Admin / Akquise</p>
-            <h1>Leads</h1>
+        <AdminPageHeader
+          eyebrow="Admin / Arbeit"
+          title="Sales-Pipeline"
+          description={
             <p>
-              {summary.open} offen, {summary.archived} bearbeitet. Ein
-              Anschreiben kostet {LEADGEN_OUTREACH_CREDITS} Credits; verschickt
-              wird erst, wenn Sie den Text gesehen haben.
+              Leads nach Bearbeitungsstand und nächstem Schritt. Einzelne Mails
+              werden im Detail geprüft; die Stapelaktion erzeugt fehlende
+              Entwürfe automatisch und verschickt sie direkt.
             </p>
-          </div>
-          <Link href="/chat" className={styles.backLink}>
-            Zurück zum Chat
-          </Link>
-        </header>
+          }
+        />
+
+        <AdminMetricStrip
+          label="Lead-Pipeline"
+          items={[
+            {
+              label: "Offen",
+              value: summary.open,
+              detail: "in Bearbeitung",
+              tone: summary.open ? "accent" : "default",
+            },
+            {
+              label: "Neu",
+              value: summary.byStatus.new ?? 0,
+              detail: "noch nicht kontaktiert",
+              tone: (summary.byStatus.new ?? 0) ? "warning" : "default",
+            },
+            {
+              label: "Angeschrieben",
+              value: summary.byStatus.contacted ?? 0,
+              detail: "wartet auf Reaktion",
+            },
+            {
+              label: "Archiv",
+              value: summary.archived,
+              detail: `${summary.total} insgesamt`,
+              tone: "muted",
+            },
+          ]}
+        />
 
         {mailReady ? null : (
           <p className={styles.warning}>
@@ -127,30 +158,32 @@ export default async function LeadsPage({
           </p>
         )}
 
-        <form className={styles.filters} action="/chat/admin/leads">
-          <input type="hidden" name="ansicht" value={scope} />
-          <input
-            className={styles.search}
-            type="search"
-            name="suche"
-            defaultValue={search ?? ""}
-            placeholder="Firma, Name, Adresse oder Ausschreibung"
-            aria-label="Leads durchsuchen"
-          />
-          <button className={styles.searchButton} type="submit">
-            Suchen
-          </button>
-          {search ? (
-            <Link
-              className={styles.clearSearch}
-              href={buildHref({ ansicht: scope, status: status ?? undefined })}
-            >
-              Suche aufheben
-            </Link>
-          ) : null}
-        </form>
+        <section className={styles.filterDeck} aria-label="Lead-Filter">
+          <form className={styles.filters} action="/chat/admin/leads">
+            <input type="hidden" name="ansicht" value={scope} />
+            <input
+              className={styles.search}
+              type="search"
+              name="suche"
+              defaultValue={search ?? ""}
+              placeholder="Firma, Name, Adresse oder Ausschreibung"
+              aria-label="Leads durchsuchen"
+            />
+            <button className={styles.searchButton} type="submit">
+              Suchen
+            </button>
+            {search ? (
+              <Link
+                className={styles.clearSearch}
+                href={buildHref({ ansicht: scope, status: status ?? undefined })}
+              >
+                Zurücksetzen
+              </Link>
+            ) : null}
+          </form>
 
-        <nav className={styles.tabs} aria-label="Ansicht">
+          <nav className={styles.tabs} aria-label="Ansicht">
+            <span className={styles.filterLabel}>Ansicht</span>
           {LEAD_SCOPES.map((value) => (
             <Link
               key={value}
@@ -167,9 +200,10 @@ export default async function LeadsPage({
               </b>
             </Link>
           ))}
-        </nav>
+          </nav>
 
-        <nav className={styles.tabs} aria-label="Status-Filter">
+          <nav className={styles.tabs} aria-label="Status-Filter">
+            <span className={styles.filterLabel}>Status</span>
           <Link
             href={buildHref({
               ansicht: scope,
@@ -195,10 +229,11 @@ export default async function LeadsPage({
               <b>{summary.byStatus[value] ?? 0}</b>
             </Link>
           ))}
-        </nav>
+          </nav>
 
         {summary.categories.length ? (
           <nav className={styles.tabs} aria-label="Kategorie-Filter">
+            <span className={styles.filterLabel}>Kategorie</span>
             <Link
               href={buildHref({
                 ansicht: scope,
@@ -225,6 +260,13 @@ export default async function LeadsPage({
             ))}
           </nav>
         ) : null}
+        </section>
+
+        <AdminSectionHeader
+          title={scope === "open" ? "Offene Leads" : scope === "archived" ? "Archivierte Leads" : "Alle Leads"}
+          description="Primärdaten und Status bleiben in der Zeile; Ausschreibung, Notizen und Mailentwurf öffnen sich darunter."
+          aside={`${list.total} Treffer · Seite ${page}/${pageCount}`}
+        />
 
         <LeadsPanel
           rows={list.rows}

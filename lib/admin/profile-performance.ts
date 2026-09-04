@@ -1,5 +1,7 @@
 import "server-only";
 
+import { platformAnalyticsExcludedUserIds } from "@/lib/admin/analytics-exclusions";
+import { readAdminAuthEmails } from "@/lib/admin/auth-emails";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export type ProfilePerformanceRow = {
@@ -36,6 +38,9 @@ export type ProfilePerformanceTotals = {
 
 export type ProfilePerformanceReport = {
   generatedAt: string;
+  excludedAccounts: number;
+  /** View/click events predate actor attribution and cannot be filtered. */
+  hasUnattributedInteractionEvents: boolean;
   /** When click and view recording started — earlier rows cannot exist. */
   eventTrackingSince: string | null;
   totals: ProfilePerformanceTotals;
@@ -72,13 +77,21 @@ async function countBy(
   keyColumn: string,
   timeColumn: string,
   equals: Readonly<Record<string, string>> = {},
+  exclusion?: {
+    userColumn: string;
+    userIds: ReadonlySet<string>;
+  },
 ): Promise<{ counter: Counter; truncated: boolean }> {
   const admin = createAdminSupabaseClient();
   const counter: Counter = new Map();
   for (let offset = 0; offset < MAX_ROWS; offset += PAGE_SIZE) {
     let query = admin
       .from(table)
-      .select(`${keyColumn},${timeColumn}`)
+      .select(
+        [keyColumn, timeColumn, exclusion?.userColumn]
+          .filter(Boolean)
+          .join(","),
+      )
       .order(timeColumn, { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1);
     for (const [column, value] of Object.entries(equals)) {
@@ -88,6 +101,13 @@ async function countBy(
     if (error) throw error;
     const rows = (data ?? []) as unknown as Record<string, unknown>[];
     for (const row of rows) {
+      if (
+        exclusion &&
+        typeof row[exclusion.userColumn] === "string" &&
+        exclusion.userIds.has(row[exclusion.userColumn] as string)
+      ) {
+        continue;
+      }
       const key = row[keyColumn];
       const at = row[timeColumn];
       bump(
@@ -119,6 +139,12 @@ export async function getProfilePerformance(): Promise<ProfilePerformanceReport>
     throw new Error("Admin profile service is not configured");
   }
   const admin = createAdminSupabaseClient();
+  const auth = await readAdminAuthEmails();
+  const excludedUserIds = platformAnalyticsExcludedUserIds(auth.emails);
+  const owned = (userColumn: string) => ({
+    userColumn,
+    userIds: excludedUserIds,
+  });
 
   const [
     profilesResult,
@@ -138,23 +164,53 @@ export async function getProfilePerformance(): Promise<ProfilePerformanceReport>
       )
       .order("display_name", { ascending: true })
       .range(0, MAX_ROWS - 1),
-    countBy("matches", "freelancer_profile_id", "created_at"),
+    countBy(
+      "matches",
+      "freelancer_profile_id",
+      "created_at",
+      {},
+      owned("owner_user_id"),
+    ),
     countBy("freelancer_profile_events", "profile_id", "occurred_at", {
       event_type: "profile_view",
     }),
     countBy("freelancer_profile_events", "profile_id", "occurred_at", {
       event_type: "booking_click",
     }),
-    countBy("saved_freelancers", "freelancer_id", "created_at"),
-    countBy("intro_bookings", "freelancer_profile_id", "requested_at"),
-    countBy("audit_events", "target_id", "occurred_at", {
-      target_type: "freelancer_profile",
-      action: "freelancer_cv_download_authorized",
-    }),
-    countBy("audit_events", "target_id", "occurred_at", {
-      target_type: "freelancer_profile",
-      action: "freelancer_cv_download_denied",
-    }),
+    countBy(
+      "saved_freelancers",
+      "freelancer_id",
+      "created_at",
+      {},
+      owned("owner_user_id"),
+    ),
+    countBy(
+      "intro_bookings",
+      "freelancer_profile_id",
+      "requested_at",
+      {},
+      owned("owner_user_id"),
+    ),
+    countBy(
+      "audit_events",
+      "target_id",
+      "occurred_at",
+      {
+        target_type: "freelancer_profile",
+        action: "freelancer_cv_download_authorized",
+      },
+      owned("actor_user_id"),
+    ),
+    countBy(
+      "audit_events",
+      "target_id",
+      "occurred_at",
+      {
+        target_type: "freelancer_profile",
+        action: "freelancer_cv_download_denied",
+      },
+      owned("actor_user_id"),
+    ),
     readEventTrackingStart(),
   ]);
 
@@ -226,6 +282,8 @@ export async function getProfilePerformance(): Promise<ProfilePerformanceReport>
 
   return {
     generatedAt: new Date().toISOString(),
+    excludedAccounts: excludedUserIds.size,
+    hasUnattributedInteractionEvents: true,
     eventTrackingSince: trackingSince,
     totals,
     rows,
@@ -236,6 +294,7 @@ export async function getProfilePerformance(): Promise<ProfilePerformanceReport>
       saves.truncated ||
       introductions.truncated ||
       cvAuthorized.truncated ||
-      cvDenied.truncated,
+      cvDenied.truncated ||
+      auth.truncated,
   };
 }

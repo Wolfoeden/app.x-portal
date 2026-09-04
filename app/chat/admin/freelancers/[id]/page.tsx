@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { AdminPageHeader } from "@/components/admin/AdminDataPrimitives";
 import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
@@ -83,25 +83,25 @@ export default async function FreelancerApplicationDetailPage({
   return (
     <main className={styles.shell}>
       <div className={styles.inner}>
-        <header className={styles.header}>
-          <div>
-            <p className={styles.eyebrow}>Admin / Freelancer</p>
-            <h1>{application.full_name}</h1>
+        <AdminPageHeader
+          eyebrow="Admin / Bewerbung prüfen"
+          title={application.full_name}
+          titleMeta={
+            <span
+              className={`${styles.badge} ${badgeClass[application.status]}`}
+            >
+              {APPLICATION_STATUS_LABELS[application.status]}
+            </span>
+          }
+          description={
             <p>
               {application.role_title}
-              {application.location_text ? ` · ${application.location_text}` : ""}{" "}
-              ·{" "}
-              <span
-                className={`${styles.badge} ${badgeClass[application.status]}`}
-              >
-                {APPLICATION_STATUS_LABELS[application.status]}
-              </span>
+              {application.location_text ? ` · ${application.location_text}` : ""}
             </p>
-          </div>
-          <Link href="/chat/admin/freelancers" className={styles.backLink}>
-            Zur Übersicht
-          </Link>
-        </header>
+          }
+          backHref="/chat/admin/freelancers"
+          backLabel="Zur Übersicht"
+        />
 
         <div className={styles.detailGrid}>
           <section className={styles.card}>

@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import {
+  AdminMetricStrip,
+  AdminPageHeader,
+  AdminSectionHeader,
+} from "@/components/admin/AdminDataPrimitives";
 import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
@@ -100,20 +105,45 @@ export default async function FreelancerApplicationsPage({
   return (
     <main className={styles.shell}>
       <div className={styles.inner}>
-        <header className={styles.header}>
-          <div>
-            <p className={styles.eyebrow}>Admin / Freelancer</p>
-            <h1>Bewerbungen prüfen</h1>
+        <AdminPageHeader
+          eyebrow="Admin / Arbeit"
+          title="Bewerbungen"
+          description={
             <p>
-              Jede Bewerbung liegt hier, bis Sie sie freigeben. Erst mit der
-              Freigabe entsteht ein Profil in <code>freelancer_profiles</code>{" "}
-              und wird im Matching gefunden.
+              Offene Entscheidungen zuerst: prüfen, vervollständigen und erst
+              dann als sichtbares Profil für das Matching freigeben.
             </p>
-          </div>
-          <Link href="/chat" className={styles.backLink}>
-            Zurück zum Chat
-          </Link>
-        </header>
+          }
+        />
+
+        <AdminMetricStrip
+          label="Bewerbungsstatus"
+          items={[
+            {
+              label: "Neu eingegangen",
+              value: counts.submitted,
+              detail: "noch nicht geprüft",
+              tone: counts.submitted ? "warning" : "muted",
+            },
+            {
+              label: "In Prüfung",
+              value: counts.in_review,
+              detail: "aktive Entscheidungen",
+              tone: counts.in_review ? "accent" : "muted",
+            },
+            {
+              label: "Freigegeben",
+              value: counts.approved,
+              detail: "im Matching sichtbar",
+            },
+            {
+              label: "Abgelehnt",
+              value: counts.rejected,
+              detail: "abgeschlossene Fälle",
+              tone: "muted",
+            },
+          ]}
+        />
 
         <nav className={styles.tabs} aria-label="Status-Filter">
           <Link
@@ -135,20 +165,23 @@ export default async function FreelancerApplicationsPage({
           ))}
         </nav>
 
+        <AdminSectionHeader
+          title={activeStatus ? APPLICATION_STATUS_LABELS[activeStatus] : "Alle Bewerbungen"}
+          description="Kandidatenprofil, Einsatzdaten und fehlende Unterlagen in einer Zeile."
+          aside={`${applications.length} Treffer`}
+        />
+
         <div className={styles.panel}>
           {applications.length ? (
             <div className={styles.tableScroll}>
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th scope="col">Name</th>
-                    <th scope="col">Rolle</th>
-                    <th scope="col">Skills</th>
-                    <th scope="col">Honorar</th>
-                    <th scope="col">Verfügbarkeit</th>
-                    <th scope="col">Unterlagen</th>
-                    <th scope="col">Eingegangen</th>
-                    <th scope="col">Status</th>
+                    <th scope="col">Kandidat</th>
+                    <th scope="col">Kompetenzen</th>
+                    <th scope="col">Einsatz</th>
+                    <th scope="col">Profilstand</th>
+                    <th scope="col">Eingang &amp; Status</th>
                     <th scope="col">
                       <span className={styles.srOnly}>Aktion</span>
                     </th>
@@ -156,58 +189,75 @@ export default async function FreelancerApplicationsPage({
                 </thead>
                 <tbody>
                   {applications.map((row) => (
-                    <tr key={row.id}>
-                      <td>
+                    <tr key={row.id} data-status={row.status}>
+                      <td data-label="Kandidat">
                         <Link href={`/chat/admin/freelancers/${row.id}`}>
                           {row.full_name}
                         </Link>
                         <div className={styles.muted}>{row.contact_email}</div>
-                      </td>
-                      <td>
-                        {row.role_title}
+                        <div className={styles.candidateRole}>{row.role_title}</div>
                         {row.location_text ? (
                           <div className={styles.muted}>{row.location_text}</div>
                         ) : null}
                       </td>
-                      <td>
+                      <td data-label="Kompetenzen">
                         <div className={styles.chips}>
-                          {row.skills.slice(0, 6).map((skill) => (
+                          {row.skills.slice(0, 3).map((skill) => (
                             <span key={skill} className={styles.chip}>
                               {skill}
                             </span>
                           ))}
-                          {row.skills.length > 6 ? (
+                          {row.skills.length > 3 ? (
                             <span className={styles.chip}>
-                              +{row.skills.length - 6}
+                              +{row.skills.length - 3}
                             </span>
                           ) : null}
                         </div>
                       </td>
-                      <td>{rateSummary(row)}</td>
-                      <td>
-                        {
-                          AVAILABILITY_LABELS[
-                            row.availability_status as AvailabilityStatus
-                          ]
-                        }
-                      </td>
-                      <td>
-                        <div>{row.cv_storage_path ? "Lebenslauf" : "–"}</div>
-                        <div className={styles.muted}>
-                          {row.booking_url ? "Terminlink" : "kein Terminlink"}
+                      <td data-label="Einsatz">
+                        <div className={styles.stack}>
+                          <strong>{rateSummary(row)}</strong>
+                          <span>
+                            {
+                              AVAILABILITY_LABELS[
+                                row.availability_status as AvailabilityStatus
+                              ]
+                            }
+                          </span>
                         </div>
                       </td>
-                      <td className={styles.muted}>
-                        {dateFormat.format(new Date(row.created_at))}
+                      <td data-label="Profilstand">
+                        <div className={styles.readiness}>
+                          <span data-ready={Boolean(row.cv_storage_path)}>
+                            {row.cv_storage_path ? "CV vorhanden" : "CV fehlt"}
+                          </span>
+                          <span data-ready={Boolean(row.booking_url)}>
+                            {row.booking_url ? "Terminlink" : "Terminlink fehlt"}
+                          </span>
+                          <span
+                            data-ready={Boolean(
+                              row.hourly_rate_minor || row.day_rate_minor,
+                            )}
+                          >
+                            {row.hourly_rate_minor || row.day_rate_minor
+                              ? "Honorar gesetzt"
+                              : "Honorar fehlt"}
+                          </span>
+                        </div>
                       </td>
-                      <td>
-                        <span
-                          className={`${styles.badge} ${badgeClass[row.status]}`}
-                        >
-                          {APPLICATION_STATUS_LABELS[row.status]}
-                        </span>
+                      <td data-label="Eingang & Status">
+                        <div className={styles.stack}>
+                          <span
+                            className={`${styles.badge} ${badgeClass[row.status]}`}
+                          >
+                            {APPLICATION_STATUS_LABELS[row.status]}
+                          </span>
+                          <span className={styles.muted}>
+                            {dateFormat.format(new Date(row.created_at))}
+                          </span>
+                        </div>
                       </td>
-                      <td>
+                      <td data-label="Aktion">
                         <Link
                           href={`/chat/admin/freelancers/${row.id}`}
                           className={styles.rowAction}

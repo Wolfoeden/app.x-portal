@@ -252,3 +252,315 @@
   font-size: 11px;
   line-height: 1.7;
 }
+
+/* Verdichtete Operations-Ansicht: fachliche Signalgruppen statt Kartenwand. */
+.shell {
+  padding: 30px clamp(20px, 5vw, 72px) 72px;
+}
+
+.inner {
+  max-width: 1320px;
+}
+
+.signalBoard {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0 0 22px;
+  overflow: hidden;
+  border: 1px solid #dfe0d9;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 8px 26px rgba(31, 32, 29, 0.035);
+}
+
+.signalGroup {
+  position: relative;
+  padding: 13px 15px 14px;
+}
+
+.signalGroup::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 3px;
+  background: #1d6b5f;
+  content: "";
+}
+
+.signalGroup:nth-child(2)::before {
+  background: #718b96;
+}
+
+.signalGroup:nth-child(3)::before {
+  background: #b7791f;
+}
+
+.signalGroup + .signalGroup {
+  border-left: 1px solid #e6e7e1;
+}
+
+.signalGroup h2 {
+  margin: 0 0 10px;
+  color: #666860;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.signalGroup > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.signalGroup dl {
+  min-width: 0;
+  margin: 0;
+}
+
+.signalGroup dt {
+  overflow: hidden;
+  color: #686a62;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.signalGroup dd {
+  margin: 3px 0;
+  color: #20211e;
+  font-size: clamp(23px, 2.4vw, 31px);
+  font-variant-numeric: tabular-nums;
+  font-weight: 680;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.signalGroup small {
+  display: block;
+  color: #74766e;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.signalGroup .stepZero dd {
+  color: #a34231;
+}
+
+.neverShown li {
+  border-radius: 9px;
+  border-left: 3px solid #b7791f;
+  background: #fff;
+}
+
+.tableWrap {
+  border-radius: 12px;
+  box-shadow: 0 8px 26px rgba(31, 32, 29, 0.03);
+}
+
+.table {
+  min-width: 980px;
+  font-size: 13px;
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 11px 13px;
+  color: #666860;
+  font-size: 12px;
+  letter-spacing: 0.055em;
+}
+
+.table tbody td {
+  padding: 12px 13px;
+  color: #4f514a;
+  vertical-align: middle;
+}
+
+.table tbody tr:hover td {
+  background: #f8faf8;
+}
+
+.table thead th:first-child,
+.table tbody td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 210px;
+  background: #fff;
+}
+
+.table thead th:first-child {
+  z-index: 3;
+  background: #fbfbf8;
+}
+
+.name {
+  font-size: 13px;
+  font-weight: 680;
+}
+
+.role,
+.footNote {
+  color: #6c6e67;
+  font-size: 12px;
+}
+
+.badge {
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.readiness {
+  display: flex;
+  max-width: 190px;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.availability {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #f0f1ec;
+  padding: 3px 9px;
+  color: #5f615a;
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.metricCell {
+  min-width: 130px;
+}
+
+.metricCell strong,
+.metricCell span,
+.metricCell small {
+  display: block;
+}
+
+.metricCell strong {
+  color: #20211e;
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.metricCell span {
+  margin-top: 2px;
+  color: #55574f;
+  font-size: 12px;
+}
+
+.metricCell small {
+  margin-top: 4px;
+  color: #74766e;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+@media (max-width: 900px) {
+  .signalBoard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .signalGroup + .signalGroup {
+    border-top: 1px solid #e6e7e1;
+    border-left: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .shell {
+    padding: 24px 16px 56px;
+  }
+
+  .neverShown {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tableWrap {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .table,
+  .table tbody,
+  .table tr,
+  .table td {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .table tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  .table tbody tr {
+    overflow: hidden;
+    border: 1px solid #dfe0d9;
+    border-radius: 11px;
+    background: #fff;
+  }
+
+  .table tbody tr[data-status="active"] {
+    border-left: 3px solid #1d6b5f;
+  }
+
+  .table tbody td,
+  .table tbody td:first-child {
+    position: static;
+    display: grid;
+    grid-template-columns: minmax(105px, 0.4fr) minmax(0, 1fr);
+    gap: 10px;
+    border-bottom: 1px solid #ecece7;
+    background: transparent;
+    padding: 10px 12px;
+    white-space: normal;
+  }
+
+  .table tbody td::before {
+    color: #71736b;
+    content: attr(data-label);
+    font-size: 11px;
+    font-weight: 720;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
+  }
+
+  .table tbody td > * {
+    grid-column: 2;
+  }
+
+  .table tbody td:last-child {
+    border-bottom: 0;
+  }
+
+  .readiness {
+    max-width: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .signalGroup > div {
+    gap: 10px;
+  }
+}
