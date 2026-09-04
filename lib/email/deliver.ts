@@ -5,37 +5,87 @@ import nodemailer, { type Transporter } from "nodemailer";
 // von createTransport und kennt `host` nicht.
 import type SMTPTransport from "nodemailer/lib/smtp-transport";
 
+import { IMPRINT_EMAIL } from "@/lib/legal/policy";
 import { logEvent } from "@/lib/security/request";
 
+import { normalizeEmail } from "./address";
+import { checkEmailSuppression } from "./suppression";
+import {
+  unsubscribeConfigured,
+  unsubscribeHeaders,
+  unsubscribeUrl,
+} from "./unsubscribe";
+
 /**
- * Der Versandweg für Transaktionsmails.
- *
- * XPORTAL verschickt keine Werbung, sondern genau zwei Arten von Nachrichten:
- * die Bestätigung einer Whitelist-Anmeldung und — sobald es Zahlungen gibt —
- * die Vertragsbestätigung in Textform. Beides sind Nachrichten, die ankommen
- * müssen; deshalb wertet der Aufrufer das Ergebnis aus, statt anzunehmen, die
- * Mail sei unterwegs.
+ * Der Versandweg für jede E-Mail, die XPORTAL verschickt.
  *
  * Angebunden ist IONOS über SMTP. Der Anbieter sitzt in Deutschland
  * (1&1 IONOS SE, Montabaur) und verarbeitet innerhalb der EU — es entsteht
  * also keine Drittlandübermittlung, die gesondert abzusichern wäre. Der
- * Eintrag im Auftragsverarbeiter-Register hält das fest.
+ * Eintrag im Auftragsverarbeiter-Register hält das fest. SMTP statt HTTP-API,
+ * weil IONOS keine Transaktions-API anbietet.
  *
- * SMTP statt HTTP-API, weil IONOS keine Transaktions-API anbietet. Das kostet
- * pro Nachricht einen Verbindungsaufbau; für die Menge, um die es hier geht,
- * ist das unerheblich.
+ * Hier — und nur hier — wird die Sperrliste durchgesetzt. Das ist die engste
+ * Stelle, durch die jeder Versand läuft: die Akquise, der Newsletter, jede
+ * Bestätigung und jeder künftige Kanal. Eine Prüfung in der Leadgen-Route
+ * hätte den nächsten Kanal wieder durchgelassen, und der Widerspruch nach
+ * Art. 21 DSGVO gilt dem Verantwortlichen, nicht einer Tabelle.
+ *
+ * Die Unterscheidung, die dabei zählt, steht in `kind`:
+ *
+ *   * `cold_outreach` und `newsletter` sind Werbung. Wer widersprochen hat,
+ *     bekommt sie nicht mehr — dauerhaft, unabhängig davon, aus welchem Teil
+ *     der Anwendung sie kommt.
+ *   * `transactional` ist alles, was zu einem Vorgang gehört, den die Person
+ *     selbst ausgelöst hat: Anmeldebestätigung, Einladung, Buchung, Rechnung,
+ *     Vertragsbestätigung in Textform. Diese Nachrichten gehen auch an eine
+ *     gesperrte Adresse raus. Wer der Werbung widersprochen hat und sich
+ *     später anmeldet, will die Bestätigung seiner Anmeldung sehen — sie ihm
+ *     vorzuenthalten wäre keine Rücksicht, sondern ein Fehler.
+ *
+ * `kind` ist Pflicht und hat keinen Vorgabewert. Ein optionales Feld wäre die
+ * Falle: der nächste Aufrufer vergisst es, der Vorgabewert entscheidet
+ * stillschweigend, und niemand merkt etwas, weil die Mail ja rausgeht.
  */
+
+/** Die Arten von Nachricht, die es gibt. */
+export type EmailKind = "cold_outreach" | "newsletter" | "transactional";
+
+/** Welche davon ein Widerspruch aufhält. */
+const WERBLICH: ReadonlySet<EmailKind> = new Set<EmailKind>([
+  "cold_outreach",
+  "newsletter",
+]);
+
+export function isPromotional(kind: EmailKind): boolean {
+  return WERBLICH.has(kind);
+}
 
 export type EmailMessage = {
   to: string;
   subject: string;
   /** Reiner Text. Für eine Bestätigungsmail braucht es kein HTML. */
   text: string;
+  kind: EmailKind;
 };
+
+export type DeliveryFailure =
+  | "provider_not_configured"
+  | "unsubscribe_not_configured"
+  | "invalid_recipient"
+  /** Der Empfänger hat der Werbung widersprochen. */
+  | "suppressed"
+  /**
+   * Die Sperrliste war nicht erreichbar. Es wird ebenfalls nicht versendet —
+   * aber der Aufrufer darf das nicht als Widerspruch verbuchen und den
+   * Vorgang deshalb dauerhaft verwerfen.
+   */
+  | "suppression_check_failed"
+  | "send_failed";
 
 export type DeliveryResult =
   | { delivered: true }
-  | { delivered: false; reason: "provider_not_configured" | "send_failed" };
+  | { delivered: false; reason: DeliveryFailure };
 
 type SmtpConfig = {
   host: string;
@@ -65,6 +115,38 @@ function smtpConfig(): SmtpConfig | null {
 
 export function emailDeliveryConfigured(): boolean {
   return smtpConfig() !== null;
+}
+
+/**
+ * Ob werblich versendet werden darf.
+ *
+ * Strenger als `emailDeliveryConfigured()`, weil eine Werbenachricht ohne
+ * funktionierenden Abmeldelink nicht rausgehen darf. Die Oberfläche fragt
+ * das, bevor sie den Versandknopf freigibt — sonst erführe der Betreiber es
+ * erst an einer Fehlermeldung mitten im Stapel.
+ */
+export function promotionalDeliveryConfigured(): boolean {
+  return emailDeliveryConfigured() && unsubscribeConfigured();
+}
+
+/**
+ * Die Adresse, unter der die Anwendung öffentlich erreichbar ist.
+ *
+ * Für einen Abmeldelink zählt nur die Produktionsadresse: die Nachricht wird
+ * archiviert und Monate später geöffnet, und ein Link auf eine Vorschau-URL
+ * wäre bis dahin längst tot.
+ */
+export function publicMailOrigin(): string {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (configured) {
+    try {
+      const url = new URL(configured);
+      if (url.protocol === "https:") return url.origin;
+    } catch {
+      // Fällt auf die feste Adresse zurück.
+    }
+  }
+  return "https://x-portal.eu";
 }
 
 let cachedTransport: Transporter | null = null;
@@ -105,14 +187,57 @@ export async function deliverEmail(
     return { delivered: false, reason: "provider_not_configured" };
   }
 
+  const recipient = normalizeEmail(message.to);
+  if (!recipient) {
+    logEvent("email_delivery_skipped", { reason: "invalid_recipient" });
+    return { delivered: false, reason: "invalid_recipient" };
+  }
+
+  let headers: Record<string, string> | undefined;
+
+  if (isPromotional(message.kind)) {
+    // Der Abmeldelink entsteht hier, nicht im Aufrufer. Eine Werbenachricht
+    // ohne funktionierenden Widerspruch darf es nicht geben, und die einzige
+    // verlässliche Art, das sicherzustellen, ist, den Versand daran zu
+    // hindern.
+    const url = unsubscribeUrl(publicMailOrigin(), recipient);
+    if (!url) {
+      logEvent("email_delivery_skipped", {
+        reason: "unsubscribe_not_configured",
+        kind: message.kind,
+      });
+      return { delivered: false, reason: "unsubscribe_not_configured" };
+    }
+
+    const suppression = await checkEmailSuppression(recipient);
+    if (suppression !== "clear") {
+      // Der Widerspruch ist kein Fehler, sondern der Normalfall, für den die
+      // Sperrliste gebaut wurde. Ein Ausfall der Prüfung ist einer.
+      logEvent(
+        suppression === "suppressed"
+          ? "email_delivery_suppressed"
+          : "email_delivery_skipped",
+        { kind: message.kind, reason: suppression },
+      );
+      return {
+        delivered: false,
+        reason:
+          suppression === "suppressed" ? "suppressed" : "suppression_check_failed",
+      };
+    }
+
+    headers = unsubscribeHeaders({ url, mailto: IMPRINT_EMAIL });
+  }
+
   try {
     await transportFor(config).sendMail({
       from: config.from,
-      to: message.to,
+      to: recipient,
       subject: message.subject,
       text: message.text,
+      headers,
     });
-    logEvent("email_delivered", { host: config.host });
+    logEvent("email_delivered", { host: config.host, kind: message.kind });
     return { delivered: true };
   } catch (error) {
     // Die Fehlermeldung eines SMTP-Servers nennt regelmäßig die
@@ -120,6 +245,7 @@ export async function deliverEmail(
     const code = (error as { code?: unknown })?.code;
     logEvent("email_delivery_failed", {
       host: config.host,
+      kind: message.kind,
       code: typeof code === "string" ? code.slice(0, 40) : "unknown",
     });
     return { delivered: false, reason: "send_failed" };

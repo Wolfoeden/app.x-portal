@@ -135,10 +135,14 @@ export async function POST(request: NextRequest) {
       deliverEmail({
         to: contactInbox(),
         ...contactNotificationMessage(parsed.data),
+        // Keine Werbung, sondern die Weitergabe einer Anfrage, die jemand
+        // gerade selbst abgeschickt hat. Die Sperrliste haelt sie nicht auf.
+        kind: "transactional",
       }),
       deliverEmail({
         to: parsed.data.email,
         ...contactAcknowledgementMessage(parsed.data),
+        kind: "transactional",
       }),
     ]);
 

@@ -3,6 +3,7 @@
 import type { Provider } from "@supabase/supabase-js";
 
 import { appPath } from "@/lib/app-path";
+import { TERMS_VERSION } from "@/lib/legal/policy";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 const supportedOauthProviders = {
@@ -184,6 +185,11 @@ export async function registerEmailAccount(
       // existiert — anders als bei einem nachgelagerten zweiten Aufruf.
       data: {
         terms_accepted_at: consent.termsAcceptedAt,
+        // Ohne die Fassung ist der Zeitstempel wenig wert: Er belegt, dass
+        // jemand zugestimmt hat, aber nicht, wozu. Sobald sich die AGB
+        // ändern, ist das der Unterschied zwischen einem Nachweis und einer
+        // Behauptung.
+        terms_version: TERMS_VERSION,
         marketing_emails: consent.marketingEmails,
       },
     },
@@ -196,6 +202,27 @@ export async function registerEmailAccount(
   }
 
   return { confirmationRequired: true } as const;
+}
+
+/**
+ * Hält fest, dass jemand vor einer kostenpflichtigen Buchung bestätigt hat,
+ * als Unternehmer zu handeln.
+ *
+ * Das ist keine Förmlichkeit. Die Beschränkung auf Unternehmer nach § 14 BGB
+ * trägt nur, wenn der Bestellweg sie tatsächlich abfragt und das Ergebnis
+ * festhält — steht sie allein in den AGB und bestellt jemand als Verbraucher,
+ * gilt Verbraucherrecht mitsamt Widerrufsbelehrung, Kündigungsknopf und
+ * Bruttopreisen, ganz gleich, was im Text steht.
+ *
+ * Abgelegt in denselben Metadaten wie die AGB-Zustimmung, weil es dieselbe
+ * Art von Nachweis ist: eine Erklärung des Kontoinhabers mit Zeitpunkt.
+ */
+export async function confirmBusinessCustomer(): Promise<void> {
+  const supabase = getBrowserSupabaseClient();
+  const { error } = await supabase.auth.updateUser({
+    data: { business_confirmed_at: new Date().toISOString() },
+  });
+  if (error) throw error;
 }
 
 export async function signInExistingAccount(email: string, password: string) {

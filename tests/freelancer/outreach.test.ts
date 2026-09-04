@@ -43,7 +43,29 @@ describe("Art.-14-Pflichtangaben", () => {
   it("bittet um den Lebenslauf und verlangt ausdrückliche Zustimmung", () => {
     const body = draft().body;
     expect(body).toContain("Lebenslauf");
-    expect(body).toContain("Ohne Ihre ausdrückliche Zustimmung");
+    expect(body).toMatch(/ohne Ihre ausdrückliche Zustimmung/iu);
+  });
+
+  it("beschreibt XPORTAL als Portal, nicht als vermittelnde Person", () => {
+    // Auf der Auftraggeberseite hat dieser Satz gefehlt, und ein Empfänger
+    // hielt daraufhin den Suchassistenten für den Betreiber persönlich.
+    const body = draft().body;
+    expect(body).toContain("Suchportal");
+    expect(body).not.toContain("Ich betreibe XPORTAL");
+    expect(body).toContain("— XPORTAL");
+  });
+
+  it("setzt den Abmeldelink, sobald einer übergeben wird", () => {
+    const body = draft({
+      unsubscribeUrl: "https://x-portal.eu/unsubscribe?t=abc.def",
+    }).body;
+    expect(body).toContain("https://x-portal.eu/unsubscribe?t=abc.def");
+  });
+
+  it("kommt ohne Abmeldelink aus, ohne einen leeren Satz zu hinterlassen", () => {
+    // Der Baustein muss für sich prüfbar bleiben; im Versand fehlt der Link
+    // nie, weil deliverEmail() werbliche Post ohne ihn gar nicht durchlässt.
+    expect(draft().body).not.toContain("Ein Klick:");
   });
 
   it("übernimmt eine abweichende Frist in den Text", () => {

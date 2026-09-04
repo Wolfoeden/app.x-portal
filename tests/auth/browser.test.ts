@@ -24,6 +24,7 @@ import {
   requestPasswordRecovery,
   startOauthUpgrade,
 } from "@/lib/auth/browser";
+import { TERMS_VERSION } from "@/lib/legal/policy";
 
 const originalSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
@@ -178,6 +179,9 @@ describe("browser authentication journeys", () => {
         emailRedirectTo: "https://x-portal.eu/auth/complete?next=%2Fchat&state=email-state",
         data: {
           terms_accepted_at: "2026-08-31T10:00:00.000Z",
+          // Ohne die Fassung belegt der Zeitstempel nur, DASS zugestimmt
+          // wurde, nicht wozu.
+          terms_version: TERMS_VERSION,
           marketing_emails: false,
         },
       },
@@ -195,6 +199,7 @@ describe("browser authentication journeys", () => {
         options: expect.objectContaining({
           data: {
             terms_accepted_at: "2026-08-31T10:00:00.000Z",
+            terms_version: TERMS_VERSION,
             marketing_emails: true,
           },
         }),

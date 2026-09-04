@@ -1298,6 +1298,24 @@ export function ChatWorkspace({
   const isAgentView = workspaceView === "agents";
   const isTeamView = workspaceView === "team";
   const isAccountUser = auth.authenticated && !auth.anonymous;
+  /**
+   * Wie der Einstieg auf die Freelancer-Seite beschriftet ist.
+   *
+   * „Als Freelancer bewerben" stimmt genau einmal — beim ersten Mal. Wer sich
+   * beworben hat, sucht danach seinen Stand und sein Profil, und ein Link, der
+   * weiter zum Bewerben auffordert, sieht aus, als sei die Bewerbung nie
+   * angekommen. Das Ziel bleibt dieselbe Seite; sie entscheidet ohnehin selbst,
+   * ob sie Formular, Status oder Dashboard zeigt.
+   */
+  const freelancerEntry =
+    auth.freelancer === "profile"
+      ? { label: "Freelancer-Profil", hint: "Profil, Verfügbarkeit und Zahlen" }
+      : auth.freelancer === "application"
+        ? { label: "Freelancer-Profil", hint: "Ihre Bewerbung wird geprüft" }
+        : {
+            label: "Als Freelancer bewerben",
+            hint: "Profil einreichen und prüfen lassen",
+          };
   // Nur die Gaststufe hat keinen Agentenzugang; jeder Plan darüber schon.
   const agentsAllowed = creditPlan(usage?.credits.planId, !isAccountUser).agents;
   const freeUsageExhausted = Boolean(
@@ -1590,6 +1608,25 @@ export function ChatWorkspace({
         if (requestedProjectId) {
           await loadProject(requestedProjectId);
           searchParams.delete("project");
+          const cleanUrl = `${window.location.pathname}${
+            searchParams.size ? `?${searchParams.toString()}` : ""
+          }${window.location.hash}`;
+          window.history.replaceState({}, "", cleanUrl);
+        }
+        /**
+         * Eine vorausgefüllte Suche aus einem Link, etwa aus der Akquise-Mail.
+         *
+         * Nur eingetragen, nicht abgeschickt: Der Text ist ein Vorschlag von
+         * uns, und wer über einen Link kommt, soll ihn erst lesen und ändern
+         * können, bevor Guthaben dafür ausgegeben wird. Der Parameter
+         * verschwindet danach aus der Adresse, damit ein Neuladen nicht den
+         * inzwischen bearbeiteten Text überschreibt.
+         */
+        const prefill =
+          workspaceView === "chat" ? searchParams.get("q") : null;
+        if (prefill?.trim()) {
+          setDraft(prefill.slice(0, 12_000));
+          searchParams.delete("q");
           const cleanUrl = `${window.location.pathname}${
             searchParams.size ? `?${searchParams.toString()}` : ""
           }${window.location.hash}`;
@@ -2600,8 +2637,8 @@ export function ChatWorkspace({
               <IconPlus size={15} />
             </span>
             <span className="sidebar-apply-copy">
-              <strong>Als Freelancer bewerben</strong>
-              <small>Profil einreichen und prüfen lassen</small>
+              <strong>{freelancerEntry.label}</strong>
+              <small>{freelancerEntry.hint}</small>
             </span>
             <span className="sidebar-apply-chevron" aria-hidden="true">
               <IconChevronRight size={15} />
@@ -2643,7 +2680,7 @@ export function ChatWorkspace({
                   href="/freelancer/apply"
                   onClick={() => { setAccountMenuOpen(false); setSidebarOpen(false); }}
                 >
-                  Als Freelancer bewerben
+                  {freelancerEntry.label}
                 </a>
                 {isAccountUser ? (
                   <>

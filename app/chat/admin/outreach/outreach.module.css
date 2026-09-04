@@ -335,4 +335,39 @@
   .table tbody tr[data-state="warning"] td:first-child {
     box-shadow: none;
   }
+
+/* Der Knopf in der Zeile eines Suchlaufs. Dieselbe Form wie die uebrigen
+   Bedienelemente im Admin — dies ist eine Arbeitsliste, keine Werbeflaeche. */
+.action {
+  border: 1px solid #d8d6cf;
+  border-radius: 6px;
+  background: #fff;
+  padding: 6px 10px;
+  color: #20201e;
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.action:hover:not(:disabled) { border-color: #20201e; }
+
+.action:disabled {
+  color: #8b8b84;
+  cursor: default;
+}
+
+.rowError {
+  margin-top: 4px;
+  color: #9e2717;
+  font-size: 11.5px;
+}
+
+.sectionTitle {
+  margin: 28px 0 10px;
+  color: #6d6d67;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }

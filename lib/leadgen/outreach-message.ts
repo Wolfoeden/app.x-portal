@@ -37,6 +37,18 @@ export type LeadMessageInput = {
   senderEmail: string;
   /** Die Ausschreibung, auf die sich die Nachricht bezieht. */
   sourceUrl: string | null;
+  /** Der Abmeldelink für diesen Empfänger. Siehe `legalFooter`. */
+  unsubscribeUrl?: string | null;
+  /**
+   * Der Link ins Portal, mit der ausgeschriebenen Rolle vorausgefüllt.
+   *
+   * Er entsteht hier und nicht im Modell — aus demselben Grund wie der Fuß:
+   * Der Ausschreibungstext ist Fremdmaterial, und ein Modell, das daraus einen
+   * Link übernimmt, setzt eine fremde Adresse in eine Nachricht, die unter
+   * unserem Namen rausgeht. Die Modellanweisung verbietet Links deshalb
+   * ausdrücklich; dieser eine wird angebaut.
+   */
+  ctaUrl?: string | null;
   /**
    * Ob Anrede und Grußformel aus dem Text entfernt werden sollen.
    *
@@ -86,6 +98,17 @@ export function salutation(
 export function legalFooter(input: {
   senderEmail: string;
   sourceUrl: string | null;
+  /**
+   * Der Abmeldelink. Er steht als erste Zeile des Fußes, noch vor der
+   * Anschrift: Wer bis hierher liest, sucht meistens genau ihn, und ein
+   * Widerspruch, den man erst hinter drei Absätzen Fließtext findet, ist
+   * keiner, den jemand ausübt.
+   *
+   * Optional, damit die Textbausteine für sich prüfbar bleiben. Im Versand
+   * fehlt er nie: `deliverEmail()` lässt eine werbliche Nachricht ohne
+   * funktionierenden Abmeldeweg gar nicht erst durch.
+   */
+  unsubscribeUrl?: string | null;
   retentionDays?: number;
 }): string[] {
   const tage = input.retentionDays ?? LEAD_RETENTION_DAYS;
@@ -93,14 +116,27 @@ export function legalFooter(input: {
     ? `aus der von Ihnen veröffentlichten Ausschreibung (${input.sourceUrl}) beziehungsweise dem dort verlinkten Firmenprofil`
     : "aus einer von Ihnen veröffentlichten Projektausschreibung beziehungsweise dem dort verlinkten Firmenprofil";
 
+  // Ohne Link bleibt die formlose Antwort der einzige Weg. Der Satz ändert
+  // sich dann mit, statt auf etwas zu verweisen, was nicht dasteht.
+  const widerspruch = input.unsubscribeUrl
+    ? `Sie können der Verarbeitung jederzeit widersprechen und Auskunft, Berichtigung oder Löschung verlangen — der Abmeldelink oben genügt, eine formlose Antwort an ${input.senderEmail} ebenso. Näheres unter ${PRIVACY_URL}.`
+    : `Sie können der Verarbeitung jederzeit widersprechen und Auskunft, Berichtigung oder Löschung verlangen. Eine formlose Antwort an ${input.senderEmail} genügt — danach erhalten Sie keine weitere Nachricht von mir und der Eintrag wird gelöscht. Näheres unter ${PRIVACY_URL}.`;
+
   return [
     "—",
+    ...(input.unsubscribeUrl
+      ? [`Keine Werbung mehr von XPORTAL? Ein Klick: ${input.unsubscribeUrl}`, ""]
+      : []),
     SENDER_PERSON,
     SENDER_IMPRINT_LINE,
-    `${input.senderEmail} · ${IMPRINT_EMAIL} · ${IMPRINT_URL}`,
+    // Absender- und Impressumsadresse sind zurzeit dieselbe. Zweimal
+    // hintereinander sah nach einem Fehler aus, und das war es auch.
+    input.senderEmail.trim().toLowerCase() === IMPRINT_EMAIL.toLowerCase()
+      ? `${IMPRINT_EMAIL} · ${IMPRINT_URL}`
+      : `${input.senderEmail} · ${IMPRINT_EMAIL} · ${IMPRINT_URL}`,
     "",
     `Woher ich Ihre Daten habe: Firmenname, Ansprechpartner und Kontaktadresse stammen ${herkunft}. Gespeichert habe ich sie zu dem Zweck, Ihnen dieses eine Angebot zu schreiben; die Grundlage dafür ist mein berechtigtes Interesse an der Anbahnung eines Geschäfts (Art. 6 Abs. 1 lit. f DSGVO). Ohne Antwort lösche ich den Eintrag nach ${tage} Tagen automatisch.`,
-    `Sie können der Verarbeitung jederzeit widersprechen und Auskunft, Berichtigung oder Löschung verlangen. Eine formlose Antwort an ${input.senderEmail} genügt — danach erhalten Sie keine weitere Nachricht von mir und der Eintrag wird gelöscht. Näheres unter ${PRIVACY_URL}.`,
+    widerspruch,
   ];
 }
 
@@ -164,10 +200,17 @@ export function unattendedBodyIssue(
 }
 
 /**
- * Setzt Anrede, Text und Fuß zusammen.
+ * Setzt Anrede, Text, Handlungsaufforderung und Fuß zusammen.
  *
  * Der Modelltext wird dabei entschärft: eine Anrede oder Grußformel, die es
  * trotz Anweisung mitgeliefert hat, stünde sonst doppelt.
+ *
+ * Die Grußformel nennt neben dem Namen das Portal. Aus den ersten hundert
+ * Nachrichten kam die Rückmeldung, dass mindestens ein Empfänger den
+ * Suchassistenten für den Absender persönlich hielt und ihn im Chat mit Namen
+ * ansprach. Das ist kein Einzelfehler, sondern eine Folge des Aufbaus: Wenn
+ * eine Nachricht durchgehend „ich" sagt und nirgends erklärt, dass dahinter
+ * ein Werkzeug steht, ist die Verwechslung die naheliegende Lesart.
  */
 export function buildLeadEmail(input: LeadMessageInput): string {
   const body =
@@ -178,15 +221,50 @@ export function buildLeadEmail(input: LeadMessageInput): string {
     salutation(input.recipientName, input.company),
     "",
     body,
+    ...(input.ctaUrl
+      ? [
+          "",
+          "Ihre Rolle ist im Portal schon eingetragen — Profile ansehen:",
+          input.ctaUrl,
+        ]
+      : []),
     "",
     "Viele Grüße",
-    SENDER_PERSON,
+    `${SENDER_PERSON} — XPORTAL`,
     "",
     ...legalFooter({
       senderEmail: input.senderEmail,
       sourceUrl: input.sourceUrl,
+      unsubscribeUrl: input.unsubscribeUrl,
     }),
   ].join("\n");
+}
+
+/**
+ * Der Link ins Portal, mit der ausgeschriebenen Rolle als Suchbegriff.
+ *
+ * Der bisherige Abschluss war eine Frage („Darf ich Ihnen ein Profil
+ * schicken?"). Sie verlangt eine Antwort und danach Warten — bei sieben
+ * Antworten auf hundert Nachrichten ist das der Engpass, nicht der Wortlaut
+ * davor. Ein Link kostet einen Klick und zeigt sofort etwas.
+ *
+ * Nur die Überschrift der Ausschreibung wandert hinein, nicht der ganze Text:
+ * Sie ist der Teil, den der Empfänger selbst formuliert hat, und alles Weitere
+ * würde die Adresse unlesbar lang machen.
+ */
+export function leadSearchUrl(input: {
+  origin: string;
+  headline: string;
+}): string | null {
+  const rolle = input.headline.trim().slice(0, 120);
+  if (!rolle) return null;
+  try {
+    const url = new URL("/chat", input.origin);
+    url.searchParams.set("q", rolle);
+    return url.toString();
+  } catch {
+    return null;
+  }
 }
 
 const SALUTATION_PATTERN =

@@ -9,11 +9,14 @@
  * sich wieder auf, gekaufte Credits nicht.
  */
 
+import { useState } from "react";
+
 import {
   BRIEF_ANALYSIS_CREDITS,
   CREDIT_PLANS,
   creditPlan,
 } from "@/lib/ai/credit-policy";
+import { confirmBusinessCustomer } from "@/lib/auth/browser";
 import { BUSINESS_ONLY_NOTICE } from "@/lib/legal/policy";
 
 import type { AiUsageSnapshot, PlanTeamSnapshot } from "../chat-contract";
@@ -196,12 +199,13 @@ export function CreditPlansDialog({
   onClose: () => void;
 }) {
   const plan = creditPlan(usage?.credits.planId);
+  const [businessConfirmed, setBusinessConfirmed] = useState(false);
   return (
     <div className="plans-dialog" role="dialog" aria-label="Credits und Pläne">
       <header className="plans-balance">
         <div>
           <h2>Guthaben</h2>
-          <p>Deine aktuellen Credits im persönlichen Account.</p>
+          <p>Ihre aktuellen Credits in Ihrem Konto.</p>
         </div>
         <div className="plans-balance-figure">
           <strong>
@@ -269,6 +273,35 @@ export function CreditPlansDialog({
               </li>
             ))}
           </ul>
+          {/*
+            Die Unternehmereigenschaft wird hier abgefragt und nicht mehr bei
+            der Anmeldung.
+
+            Das ist der Ort, an dem sie zählt: Die Beschränkung auf Unternehmer
+            nach § 14 BGB trägt nur, wenn der *Bestellweg* sie abfragt und das
+            Ergebnis festhält. Ein Satz in den AGB genügt nicht — bestellt
+            jemand als Verbraucher, ohne dass es je abgefragt wurde, gilt
+            Verbraucherrecht mitsamt Widerruf, Kündigungsknopf und
+            Bruttopreisen.
+
+            Deshalb ist der Knopf bis zum Häkchen nicht benutzbar, und der
+            Zeitpunkt wird beim Klick am Konto vermerkt. Scheitert das
+            Vermerken, wird trotzdem geöffnet: Die Erklärung ist abgegeben,
+            und eine Bestellung an einem Netzwerkfehler scheitern zu lassen
+            wäre die schlechtere Antwort.
+          */}
+          <label className="plan-business-confirm">
+            <input
+              type="checkbox"
+              checked={businessConfirmed}
+              onChange={(event) => setBusinessConfirmed(event.target.checked)}
+            />
+            <span>
+              Ich bestätige, dass ich als Unternehmer im Sinne des § 14 BGB
+              handle und diese Leistung für meine gewerbliche oder selbständige
+              berufliche Tätigkeit buche.
+            </span>
+          </label>
           {/* Die Kontokennung reist als `client_reference_id` mit. Ohne sie
               kommt bei Stripe eine Zahlung an, die sich keinem Konto zuordnen
               laesst. */}
@@ -277,9 +310,24 @@ export function CreditPlansDialog({
             href={enterprisePaymentLink(customerReference)}
             target="_blank"
             rel="noopener noreferrer"
+            aria-disabled={!businessConfirmed}
+            tabIndex={businessConfirmed ? undefined : -1}
+            onClick={(event) => {
+              if (!businessConfirmed) {
+                event.preventDefault();
+                return;
+              }
+              void confirmBusinessCustomer().catch(() => undefined);
+            }}
           >
             Plan buchen <IconArrowUpRight size={12} />
           </a>
+          {!businessConfirmed ? (
+            <p className="plan-contact-note">
+              Setzen Sie zuerst das Häkchen — XPORTAL schließt Verträge
+              ausschließlich mit Unternehmern.
+            </p>
+          ) : null}
           {/* Ueber die Abrechnung nach Verbrauch entstehen Rueckfragen, die ein
               Formular nicht beantwortet. Deshalb steht der Ansprechpartner
               neben dem Knopf und nicht auf einer Unterseite. */}

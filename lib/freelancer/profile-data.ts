@@ -131,6 +131,42 @@ export async function loadFreelancerMetrics(
   return metrics;
 }
 
+/**
+ * Ob dieses Konto auf der Freelancer-Seite des Marktplatzes schon etwas hat.
+ *
+ * Nur für die Beschriftung im Arbeitsbereich gedacht und deshalb absichtlich
+ * schmal: zwei Abfragen auf je eine Kennung, kein Profil, keine Kennzahlen.
+ * `loadFreelancerPortalState` täte dasselbe und viel mehr — das wäre bei jedem
+ * Aufruf der Arbeitsfläche eine Rechnung für eine Zeile Text.
+ *
+ * Zwischen „beworben" und „freigeschaltet" wird unterschieden, weil die
+ * Unterzeile beides erklären soll. Der Hauptbegriff bleibt in beiden Fällen
+ * derselbe: Wer sich einmal beworben hat, sucht später nicht die Bewerbung,
+ * sondern sein Profil.
+ */
+export async function loadFreelancerPresence(
+  userId: string,
+): Promise<"none" | "application" | "profile"> {
+  const admin = createAdminSupabaseClient();
+
+  const { data: profile, error: profileError } = await admin
+    .from("freelancer_profiles")
+    .select("id")
+    .eq("owner_user_id", userId)
+    .maybeSingle();
+  if (profileError) throw profileError;
+  if (profile) return "profile";
+
+  const { data: application, error: applicationError } = await admin
+    .from("freelancer_applications")
+    .select("id")
+    .eq("submitted_by_user_id", userId)
+    .limit(1)
+    .maybeSingle();
+  if (applicationError) throw applicationError;
+  return application ? "application" : "none";
+}
+
 export async function loadFreelancerPortalState(
   userId: string,
 ): Promise<FreelancerPortalState> {

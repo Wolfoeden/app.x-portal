@@ -48,6 +48,7 @@ function candidate(overrides: Record<string, unknown> = {}) {
     linkedinUrl: null,
     websiteUrl: null,
     portfolioUrl: null,
+    contactEmail: null,
     skills: [],
     activities: [],
     projects: [],
@@ -314,6 +315,7 @@ describe("Rangfolge der Quellen", () => {
     linkedinUrl: null,
     websiteUrl: null,
     portfolioUrl: null,
+    contactEmail: null,
   };
 
   it("stuft eine eigene Website am höchsten ein", () => {

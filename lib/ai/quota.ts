@@ -7,6 +7,7 @@ import {
   type CreditPlanId,
 } from "@/lib/ai/credit-policy";
 import { findOwnerForMember } from "@/lib/data/plan-teams";
+import { logEvent } from "@/lib/security/request";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export type AiCreditSnapshot = {
@@ -107,11 +108,43 @@ export function currentPeriodEndIso(now: Date = new Date()): string {
   ).toISOString();
 }
 
+/**
+ * Die Kontingente, die `ai_free_usage_accounts_limit_check` in der Datenbank
+ * zulässt — dieselbe Aufzählung, hier als zweite Sicherung.
+ *
+ * Sie steht bewusst doppelt. Am 04.09.2026 standen in der Produktion
+ * `AI_CREDITS_USER_TOTAL=1050` und `AI_CREDITS_GUEST_TOTAL=105`. Beide Zahlen
+ * sind in der Datenbank verboten, also scheiterte jeder Versuch, eine neue
+ * Monatsperiode anzulegen — und weil alle Perioden am 1. September abgelaufen
+ * waren, hieß das: keine Analyse, keine Recherche, für niemanden. Ein
+ * Tippfehler in einer Umgebungsvariablen hatte die KI-Funktionen still
+ * abgeschaltet, und nichts in der Anwendung hat es gemeldet.
+ *
+ * `10`, `63` und `100` stammen aus früheren Stufen. Sie bleiben zulässig, weil
+ * abgelaufene Perioden Historie sind und nicht rückwirkend geändert werden.
+ */
+export const ALLOWED_MONTHLY_CREDIT_TOTALS: readonly number[] = [
+  0, 10, 63, 100, 300,
+];
+
+/**
+ * Das monatliche Kontingent einer Stufe.
+ *
+ * Ein Wert aus der Umgebung gilt nur, wenn die Datenbank ihn auch annimmt.
+ * Sonst zählt die Stufe aus `CREDIT_PLANS`, und der abgelehnte Name steht im
+ * Protokoll. Ein Kontingent, das nicht dem entspricht, was jemand in die
+ * Umgebung getippt hat, ist deutlich besser als gar keines.
+ */
 export function configuredInitialCredits(isAnonymous: boolean): number {
-  return nonNegativeInteger(
-    isAnonymous ? "AI_CREDITS_GUEST_TOTAL" : "AI_CREDITS_USER_TOTAL",
-    isAnonymous ? GUEST_MONTHLY_CREDITS : ACCOUNT_MONTHLY_CREDITS,
-  );
+  const fallback = isAnonymous ? GUEST_MONTHLY_CREDITS : ACCOUNT_MONTHLY_CREDITS;
+  const name = isAnonymous ? "AI_CREDITS_GUEST_TOTAL" : "AI_CREDITS_USER_TOTAL";
+  const configured = nonNegativeInteger(name, fallback);
+
+  if (!ALLOWED_MONTHLY_CREDIT_TOTALS.includes(configured)) {
+    logEvent("ai_credit_total_rejected", { name, fallback });
+    return fallback;
+  }
+  return configured;
 }
 
 export function configuredDailyTokenLimit(

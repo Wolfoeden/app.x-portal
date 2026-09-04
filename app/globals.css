@@ -5414,6 +5414,37 @@ dd.is-unknown,
 .plan-contact-note a { color: var(--muted); text-underline-offset: 2px; }
 .plan-contact-note a:hover { color: var(--ink); }
 
+/* Die Bestätigung der Unternehmereigenschaft vor der Buchung. Dieselbe
+   Formensprache wie das Häkchen im Anmeldedialog — es ist dieselbe Art von
+   Erklärung, nur an der Stelle, an der sie rechtlich zählt. */
+.plan-business-confirm {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 9px;
+  margin: 12px 0 10px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.plan-business-confirm input {
+  width: 15px;
+  height: 15px;
+  margin-top: 1px;
+  cursor: pointer;
+  accent-color: var(--ink);
+}
+
+/* Nicht ausgegraut, sondern erkennbar gesperrt: Der Knopf bleibt lesbar,
+   nimmt aber keinen Klick an, solange die Erklärung fehlt. */
+.plan-card .plan-action[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .plan-card > button,
   .plan-card .plan-action { transition: none; }

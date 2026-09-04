@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
+import { revokeEmailSuppression } from "@/lib/email/suppression";
 import {
   assertSameOrigin,
   getClientIp,
@@ -75,7 +76,7 @@ export async function POST(request: NextRequest) {
     const admin = createAdminSupabaseClient();
     const { data: lead, error } = await admin
       .from("whitelist_leads")
-      .select("id,status,confirmation_expires_at")
+      .select("id,email,status,confirmation_expires_at")
       .eq("confirmation_token_hash", hashConfirmationToken(token))
       .maybeSingle();
     if (error) throw error;
@@ -117,6 +118,26 @@ export async function POST(request: NextRequest) {
       .eq("status", "pending");
     if (updateError) throw updateError;
 
+    /**
+     * Der einzige Anlass, eine Sperre wieder aufzuheben.
+     *
+     * Wer der Werbung einmal widersprochen hat und sich später selbst mit
+     * derselben Adresse einträgt und das über den Double-Opt-in bestätigt,
+     * hat eine neue, belegbare Einwilligung erteilt — und die ist stärker als
+     * der frühere Widerspruch. Ohne diesen Schritt bliebe er eingetragen und
+     * hielte die Nachrichten auf, um die er gerade gebeten hat.
+     *
+     * Der Eintrag wird dabei als widerrufen markiert, nicht gelöscht: Wer
+     * später fragt, warum wieder geschrieben wurde, soll beides sehen.
+     *
+     * Ein Fehlschlag darf die Bestätigung nicht zurücknehmen — sie steht
+     * bereits in der Datenbank. Er bleibt im Protokoll stehen.
+     */
+    const revoked = await revokeEmailSuppression({
+      email: String(lead.email ?? ""),
+      reason: "whitelist_double_opt_in",
+    });
+
     await writeAuditEvent({
       actorUserId: null,
       action: "whitelist_confirmed",
@@ -124,6 +145,7 @@ export async function POST(request: NextRequest) {
       targetId: lead.id as string,
       outcome: "success",
       traceId,
+      metadata: { suppressionRevoked: revoked },
     });
 
     return NextResponse.redirect(resultUrl(request, "confirmed"), 303);

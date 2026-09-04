@@ -21,7 +21,11 @@ import {
 } from "@/lib/domain";
 import { presentBrief, presentMatch } from "@/lib/presentation/chat";
 import { writeAuditEvent } from "@/lib/audit/write";
-import { ExternalFreelancerCandidateSchema } from "@/lib/openai/external-freelancer-search";
+import {
+  StoredExternalCandidateSchema,
+  withoutContactEmail,
+  type PublicExternalFreelancerCandidate,
+} from "@/lib/openai/external-freelancer-search";
 import { assertSameOrigin, readJsonWithLimit } from "@/lib/security/request";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -63,29 +67,6 @@ type StoredShortlistRow = {
 };
 
 const StoredPartialMatchesSchema = z.array(ShortlistMatchSchema).max(2);
-const StoredExternalCandidateSchema = z.preprocess(
-  (value) => {
-    if (!value || typeof value !== "object" || Array.isArray(value)) return value;
-    // Snapshots written before sourced-candidate enrichment did not include
-    // the split public links or detail arrays. Those searches were already
-    // identity-checked, so they can be upgraded without losing a paid result.
-    return {
-      linkedinUrl: null,
-      websiteUrl: null,
-      portfolioUrl: null,
-      skills: [],
-      activities: [],
-      projects: [],
-      verificationStatus: "external_unverified",
-      nameVerified: true,
-      ...value,
-    };
-  },
-  ExternalFreelancerCandidateSchema.extend({
-    verificationStatus: z.literal("external_unverified"),
-    nameVerified: z.boolean(),
-  }),
-);
 const StoredExternalSearchRowSchema = z.object({
   result_snapshot: z.array(StoredExternalCandidateSchema).max(3),
   created_at: z.string().min(1),
@@ -405,7 +386,7 @@ export async function GET(
     // chat does not make a paid result appear to have vanished.
     let externalSearch: {
       projectId: string;
-      candidates: z.infer<typeof StoredExternalCandidateSchema>[];
+      candidates: PublicExternalFreelancerCandidate[];
       disclosure: string;
       mode: "openai";
       completedAt: string;
@@ -437,7 +418,12 @@ export async function GET(
           );
           externalSearch = {
             projectId: project.id,
-            candidates: storedExternalSearch.data.result_snapshot,
+            // Die Kontaktadresse bleibt im Snapshot und verlässt ihn nicht:
+            // Der Auftraggeber hat eine Vermittlung bezahlt, nicht die
+            // Adressdaten eines Menschen, der von XPORTAL nichts weiß.
+            candidates: withoutContactEmail(
+              storedExternalSearch.data.result_snapshot,
+            ),
             disclosure:
               "Diese Profile stammen aus einer früheren externen Recherche und sind nicht durch XPORTAL verifiziert. Angaben, Verfügbarkeit und Terminlinks bitte erneut prüfen.",
             mode: "openai",

@@ -150,7 +150,14 @@ export async function POST(request: NextRequest) {
       fullName: parsed.data.fullName,
       confirmUrl: confirmationUrl(applicationOrigin(request), token),
     });
-    const delivery = await deliverEmail({ to: parsed.data.email, ...message });
+    const delivery = await deliverEmail({
+      to: parsed.data.email,
+      ...message,
+      // Die Bestaetigungsmail des Double-Opt-in. Sie geht auch an eine
+      // gesperrte Adresse: Wer sich gerade selbst eingetragen hat, fordert
+      // sie an, und ohne sie kaeme die Anmeldung nie zustande.
+      kind: "transactional",
+    });
 
     if (delivery.delivered) {
       await admin

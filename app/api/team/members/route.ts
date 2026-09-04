@@ -121,6 +121,8 @@ export async function POST(request: Request) {
     const invitation = await deliverEmail({
       to: result.member.email ?? input.email,
       ...teamInvitationMessage({ ownerEmail: user.email }),
+      // Folge einer Handlung im Konto des Einladenden, keine Werbung.
+      kind: "transactional",
     });
 
     await writeAuditEvent({

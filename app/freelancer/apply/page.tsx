@@ -94,13 +94,13 @@ export default async function FreelancerApplyPage({
           <p className={styles.eyebrow}>Profilverwaltung</p>
           <h1>
             {portalState?.kind === "profile" || preview
-              ? "Dein Freelancer-Profil."
+              ? "Ihr Freelancer-Profil."
               : "Werde Teil des geprüften Netzwerks."}
           </h1>
           <p>
             {portalState?.kind === "profile" || preview
-              ? "Hier aktualisierst du deine Angaben, steuerst die Sichtbarkeit und siehst, wie Kunden mit deinem Profil interagieren."
-              : "Wir schlagen Kundinnen und Kunden nur Profile vor, die wir vorher selbst gesichtet haben. Nach unserer Freigabe wird dein Profil im Portal sichtbar."}
+              ? "Hier aktualisieren Sie Ihre Angaben, steuern die Sichtbarkeit und sehen, wie Kunden mit Ihrem Profil interagieren."
+              : "Wir schlagen Kundinnen und Kunden nur Profile vor, die wir vorher selbst gesichtet haben. Nach unserer Freigabe wird Ihr Profil im Portal sichtbar."}
           </p>
         </header>
 
@@ -145,7 +145,7 @@ export default async function FreelancerApplyPage({
 
         <p className={styles.footer}>
           Fragen? Schreib uns über das{" "}
-          <Link href="/contact">Kontaktformular</Link>. Deine Daten verarbeiten
+          <Link href="/contact">Kontaktformular</Link>. Ihre Daten verarbeiten
           wir nach dem <Link href="/privacy">Datenschutzhinweis</Link>; es
           gelten die <Link href="/terms">AGB</Link> und das{" "}
           <Link href="/imprint">Impressum</Link>.

@@ -38,14 +38,30 @@ export default function TermsPage() {
         </div>
 
         <section>
-          <h2>1. Anbieter und Geltungsbereich</h2>
+          <h2>1. Anbieter, Begriffe und Geltungsbereich</h2>
           <div>
             <p>
               Anbieter ist 300 – Inhaber Roman Dering, Einzelunternehmen,
-              Heilig-Kreuz-Straße 18, 87600 Kaufbeuren, Deutschland
-              (nachfolgend „XPORTAL“). Kontakt: {""}
+              Heilig-Kreuz-Straße 18, 87600 Kaufbeuren, Deutschland. Kontakt: {""}
               <a href="mailto:info@x-portal.eu">info@x-portal.eu</a> oder über
               das <Link href="/contact">Kontaktformular</Link>.
+            </p>
+            <p>
+              In diesen Bedingungen bezeichnet <strong>XPORTAL</strong> den
+              vorgenannten Anbieter und zugleich die unter x-portal.eu
+              erreichbare Website samt Anwendung.{" "}
+              <strong>Nutzer</strong> ist, wer XPORTAL verwendet — als Gast,
+              mit einem Konto oder mit einem kostenpflichtigen Plan; er ist der
+              Vertragspartner dieser Bedingungen.{" "}
+              <strong>Freelancer</strong> ist eine selbständig tätige Person,
+              deren Profil über XPORTAL auffindbar ist. Ein Freelancer wird
+              durch diese Bedingungen nicht Vertragspartner des Nutzers; ein
+              Vertrag zwischen beiden kommt allein zwischen ihnen zustande
+              (Abschnitt 10).{" "}
+              <strong>Dienstleister</strong> ist ein Unternehmen, das für
+              XPORTAL einen abgegrenzten technischen Beitrag erbringt; welche
+              Arten das sind, steht in den{" "}
+              <Link href="/privacy">Datenschutzhinweisen</Link>.
             </p>
             <p>
               Diese Bedingungen gelten für die Nutzung der Website, des

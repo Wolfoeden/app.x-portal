@@ -5,7 +5,13 @@ import { z } from "zod";
 
 import { writeAuditEvent } from "@/lib/audit/write";
 import { requireAdminUser } from "@/lib/auth/current-user";
-import { deliverEmail, emailDeliveryConfigured } from "@/lib/email/deliver";
+import {
+  deliverEmail,
+  promotionalDeliveryConfigured,
+  publicMailOrigin,
+} from "@/lib/email/deliver";
+import { checkEmailSuppression } from "@/lib/email/suppression";
+import { unsubscribeUrl } from "@/lib/email/unsubscribe";
 import { createDraftForLead } from "@/lib/leadgen/draft-service";
 import {
   claimOutreach,
@@ -14,14 +20,17 @@ import {
   recordOutreachSent,
   rejectOutreachDraft,
   releaseOutreachClaim,
+  updateLead,
 } from "@/lib/leadgen/leads-data";
 import {
   LEAD_BODY_MAX_LENGTH,
   LEAD_SUBJECT_MAX_LENGTH,
+  leadHeadline,
   leadSourceUrl,
 } from "@/lib/leadgen/limits";
 import {
   buildLeadEmail,
+  leadSearchUrl,
   unattendedBodyIssue,
 } from "@/lib/leadgen/outreach-message";
 import { quotaRefusal } from "@/lib/leadgen/quota-response";
@@ -101,11 +110,14 @@ export async function POST(
     const input = InputSchema.parse(await readJsonWithLimit(request, 32_000));
 
     const from = senderAddress();
-    if (!emailDeliveryConfigured() || !from) {
+    // Strenger als der reine SMTP-Zugang: eine Akquise-Mail ohne
+    // funktionierenden Abmeldelink darf nicht rausgehen, und das soll der
+    // Betreiber hier erfahren statt an einer Fehlermeldung mitten im Stapel.
+    if (!promotionalDeliveryConfigured() || !from) {
       return NextResponse.json(
         {
           error:
-            "Der Mailversand ist nicht eingerichtet. Ohne SMTP-Zugang wird nichts verschickt.",
+            "Der Mailversand ist nicht eingerichtet. Ohne SMTP-Zugang und ohne EMAIL_UNSUBSCRIBE_SECRET wird nichts verschickt.",
           reason: "provider_not_configured",
           traceId,
         },
@@ -124,6 +136,66 @@ export async function POST(
       return NextResponse.json(
         { error: "Dieser Lead wurde bereits angeschrieben.", reason: "already_sent", traceId },
         { status: 409, headers: { "Cache-Control": "private, no-store" } },
+      );
+    }
+
+    /**
+     * Die Sperrliste, hier vorgezogen.
+     *
+     * Durchgesetzt wird sie in `deliverEmail()` — das ist die Zusage, und die
+     * bleibt bestehen. Diese Prüfung steht davor, weil dazwischen ein
+     * Modellaufruf liegt: ohne sie würde der Stapelversand für jede gesperrte
+     * Adresse erst Credits für einen Entwurf ausgeben, den niemand je zu
+     * sehen bekommt.
+     *
+     * Der Lead wird gleich mit verworfen und archiviert. Bliebe er offen,
+     * stünde er morgen wieder in der Arbeitsliste, und der Betreiber liefe
+     * jeden Tag erneut in dieselbe Absage.
+     */
+    const suppression = await checkEmailSuppression(lead.recipient_email);
+
+    if (suppression === "suppressed") {
+      await updateLead({ id: leadId, status: "dismissed", archived: true });
+      await writeAuditEvent({
+        actorUserId: admin.id,
+        action: "leadgen_outreach_suppressed",
+        targetType: "leadgen_queue",
+        outcome: "denied",
+        traceId,
+        metadata: { leadId },
+      });
+      return NextResponse.json(
+        {
+          error:
+            "Diese Adresse hat der Werbung widersprochen. Der Lead wurde verworfen.",
+          reason: "suppressed",
+          traceId,
+        },
+        { status: 409, headers: { "Cache-Control": "private, no-store" } },
+      );
+    }
+
+    // Der andere Fall: Die Sperrliste war nicht erreichbar. Auch dann geht
+    // nichts raus — aber der Lead bleibt unangetastet. Ihn hier zu verwerfen
+    // hieße, einen Aussetzer der Datenbank als Widerspruch zu lesen und einen
+    // brauchbaren Lead dauerhaft wegzuwerfen.
+    if (suppression === "unavailable") {
+      await writeAuditEvent({
+        actorUserId: admin.id,
+        action: "leadgen_outreach_suppression_unavailable",
+        targetType: "leadgen_queue",
+        outcome: "failed",
+        traceId,
+        metadata: { leadId },
+      });
+      return NextResponse.json(
+        {
+          error:
+            "Die Sperrliste ist gerade nicht erreichbar. Der Lead bleibt offen — bitte später erneut versuchen.",
+          reason: "suppression_check_failed",
+          traceId,
+        },
+        { status: 503, headers: { "Cache-Control": "private, no-store" } },
       );
     }
 
@@ -233,6 +305,16 @@ export async function POST(
       company: lead.company,
       senderEmail: from,
       sourceUrl: leadSourceUrl(lead.stellenanzeige),
+      // Derselbe Link, den `deliverEmail()` gleich als Kopfzeile nach RFC 8058
+      // setzt — hier sichtbar im Fuß, damit ihn auch findet, wessen
+      // Mailprogramm keinen eigenen Abbestellen-Knopf einblendet.
+      unsubscribeUrl: unsubscribeUrl(publicMailOrigin(), lead.recipient_email),
+      // Die Handlungsaufforderung. Sie ersetzt die Frage am Textende: ein
+      // Klick zeigt sofort Profile, eine Frage verlangt erst eine Antwort.
+      ctaUrl: leadSearchUrl({
+        origin: publicMailOrigin(),
+        headline: leadHeadline(lead.stellenanzeige),
+      }),
       // Anrede und Grußformel entfernt der Zusammenbau nur aus einem
       // Modelltext. Was der Betreiber selbst getippt hat, bleibt Wort für
       // Wort stehen — eine Wendung wie „beste Grüße nach München" mitten im
@@ -273,6 +355,10 @@ export async function POST(
       to: lead.recipient_email,
       subject,
       text,
+      // Werbung. Der Versandweg setzt daraufhin die Kopfzeilen nach RFC 8058
+      // und prüft die Sperrliste ein zweites Mal — die Prüfung oben spart
+      // Credits, diese hier ist die Zusage.
+      kind: "cold_outreach",
     });
 
     if (!delivery.delivered) {
