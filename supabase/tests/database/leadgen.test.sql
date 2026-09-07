@@ -222,9 +222,9 @@ select is(
 );
 
 select throws_ok(
-  $update public.leadgen_outreach
+  $$update public.leadgen_outreach
        set origin = 'irgendwer'
-     where lead_id = 9000001$,
+     where lead_id = 9000001$$,
   '23514',
   null,
   'eine erfundene Herkunft verletzt leadgen_outreach_origin_check'
