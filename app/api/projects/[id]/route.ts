@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireCurrentUser } from "@/lib/auth/current-user";
@@ -239,37 +239,69 @@ export async function GET(
       throw new Response("Serverkonfiguration unvollständig.", { status: 503 });
     }
     const admin = createAdminSupabaseClient();
-    const { data: projectData, error: projectError } = await admin
-      .from("projects")
-      .select("*")
-      .eq("id", id)
-      .eq("owner_user_id", user.id)
-      .maybeSingle();
-    if (projectError) throw projectError;
-    if (!projectData) throw new Response("Projekt nicht gefunden.", { status: 404 });
-    const project = projectData as ProjectRow;
 
-    const { data: messages, error: messagesError } = await admin
-      .from("messages")
-      .select("id,role,content,created_at")
-      .eq("project_id", project.id)
-      .eq("owner_user_id", user.id)
-      .order("created_at", { ascending: true })
-      .limit(200);
-    if (messagesError) throw messagesError;
+    // Diese vier Lesevorgänge hängen nicht voneinander ab: jeder ist durch
+    // dieselbe Projekt-Kennung aus dem Pfad und dieselbe Eigentümerprüfung
+    // begrenzt. Nacheinander ausgeführt kostete der Chatwechsel vier volle
+    // Wartezeiten zur Datenbank für zusammen unter vier Millisekunden Arbeit.
+    // Die Eigentümerbedingung steht bewusst auf jeder einzelnen Abfrage, nicht
+    // nur auf dem Projekt: so bleibt die Grenze auch dann gewahrt, wenn das
+    // Projekt gar nicht dem Aufrufer gehört und die anderen Ergebnisse
+    // verworfen werden.
+    const [projectResult, messagesResult, shortlistResult, externalSearchResult] =
+      await Promise.all([
+        admin
+          .from("projects")
+          .select("*")
+          .eq("id", id)
+          .eq("owner_user_id", user.id)
+          .maybeSingle(),
+        admin
+          .from("messages")
+          .select("id,role,content,created_at")
+          .eq("project_id", id)
+          .eq("owner_user_id", user.id)
+          .order("created_at", { ascending: true })
+          .limit(200),
+        admin
+          .from("shortlists")
+          .select(
+            "id,result_count,result_status,decision_snapshot,partial_matches_snapshot,matching_rule_version",
+          )
+          .eq("project_id", id)
+          .eq("owner_user_id", user.id)
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        // Die Recherche-Historie ist eine Ergänzung. Ihr Ausfall darf den
+        // Chat nicht unerreichbar machen, deshalb fängt sie hier für sich ab
+        // statt den ganzen Verbund scheitern zu lassen.
+        admin
+          .from("external_freelancer_search_results")
+          .select("result_snapshot,created_at")
+          .eq("project_id", id)
+          .eq("owner_user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+          .then(
+            (result) => result,
+            () => ({ data: null, error: null }) as const,
+          ),
+      ]);
 
-    const { data: shortlist, error: shortlistError } = await admin
-      .from("shortlists")
-      .select(
-        "id,result_count,result_status,decision_snapshot,partial_matches_snapshot,matching_rule_version",
-      )
-      .eq("project_id", project.id)
-      .eq("owner_user_id", user.id)
-      .order("created_at", { ascending: false })
-      .order("id", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (shortlistError) throw shortlistError;
+    if (projectResult.error) throw projectResult.error;
+    if (!projectResult.data) {
+      throw new Response("Projekt nicht gefunden.", { status: 404 });
+    }
+    const project = projectResult.data as ProjectRow;
+
+    if (messagesResult.error) throw messagesResult.error;
+    const messages = messagesResult.data;
+
+    if (shortlistResult.error) throw shortlistResult.error;
+    const shortlist = shortlistResult.data;
 
     const brief = ProjectBriefSchema.safeParse(project.structured_brief);
     const storedShortlist = shortlist as StoredShortlistRow | null;
@@ -354,13 +386,27 @@ export async function GET(
         .map(presentMatch);
     }
 
-    await writeAuditEvent({
-      actorUserId: user.id,
-      action: "project_accessed",
-      targetType: "project",
-      targetId: project.id,
-      outcome: "success",
-    });
+    // Der Zugriffsnachweis wird geschrieben, nachdem die Antwort raus ist.
+    // `after` hält die Funktion dafür am Leben, das Protokoll bleibt also
+    // vollständig — nur wartet der Leser nicht mehr auf einen Schreibvorgang,
+    // dessen Ergebnis er nie sieht. Das war bisher die teuerste Einzelfahrt
+    // des Chatwechsels.
+    const recordProjectAccess = () =>
+      writeAuditEvent({
+        actorUserId: user.id,
+        action: "project_accessed",
+        targetType: "project",
+        targetId: project.id,
+        outcome: "success",
+      });
+    try {
+      after(recordProjectAccess);
+    } catch {
+      // Ohne Anfragekontext gibt es kein "danach" -- etwa wenn die Funktion
+      // direkt aufgerufen wird. Der Nachweis ist Pflicht und entfällt deshalb
+      // nicht, er wird dann eben noch vor der Antwort geschrieben.
+      await recordProjectAccess();
+    }
 
     const hasActionableCvShortlist =
       !projectStillProcessing &&
@@ -398,14 +444,9 @@ export async function GET(
       };
     } | null = null;
     try {
-      const { data: externalSearchData, error: externalSearchError } = await admin
-        .from("external_freelancer_search_results")
-        .select("result_snapshot,created_at")
-        .eq("project_id", project.id)
-        .eq("owner_user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // Bereits oben zusammen mit Projekt, Nachrichten und Shortlist geholt.
+      const { data: externalSearchData, error: externalSearchError } =
+        externalSearchResult;
       if (!externalSearchError) {
         const storedExternalSearch = StoredExternalSearchRowSchema.safeParse(
           externalSearchData,

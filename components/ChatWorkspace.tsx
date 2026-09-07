@@ -1477,40 +1477,108 @@ export function ChatWorkspace({
     refreshUsage,
   ]);
 
+  /**
+   * Bereits geöffnete Chats bleiben für die Dauer dieses Tabs im Speicher.
+   * Ein Rückwechsel zeigt sie sofort und erneuert sie im Hintergrund, statt
+   * den Leser auf eine Antwort warten zu lassen, deren Inhalt er gerade eben
+   * noch vor sich hatte. Bewusst nur im Arbeitsspeicher: hier stehen fremde
+   * Profildaten und der eigene Anfragetext, die nichts im Browserspeicher
+   * verloren haben.
+   */
+  const projectDetailCache = useRef(new Map<string, ProjectDetailResponse>());
+  /** Läuft ein Vorladen schon, wird es nicht ein zweites Mal angestoßen. */
+  const prefetchInFlight = useRef(new Set<string>());
+  /**
+   * Der zuletzt angeforderte Chat. Wer schnell weiterklickt, darf nicht von
+   * einer verspäteten Antwort auf den vorigen Chat zurückgeworfen werden.
+   */
+  const requestedProjectRef = useRef<string | null>(null);
+
+  const forgetProjectDetail = useCallback((projectId: string | null | undefined) => {
+    if (projectId) projectDetailCache.current.delete(projectId);
+  }, []);
+
+  const applyProjectDetail = useCallback((detail: ProjectDetailResponse) => {
+    setActiveProject(detail.project);
+    setMessages(detail.messages);
+    setBrief(detail.brief);
+    setProfiles(detail.profiles.slice(0, 3));
+    setPartialProfiles(detail.partialProfiles.slice(0, 2));
+    setMatchingStatus(detail.matchingStatus ?? null);
+    setHasResult(Boolean(detail.brief));
+    setAnalysisMode(detail.analysisMode ?? null);
+    setAnalysisTrace(null);
+    setExternalSearch(detail.externalSearch ?? null);
+    setExternalSearchState("idle");
+    setSelectedProfileId(null);
+  }, []);
+
+  const fetchProjectDetail = useCallback(
+    async (projectId: string) => {
+      const response = await fetch(`${apiPaths.projects}/${encodeURIComponent(projectId)}`, {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("Projekt konnte nicht geladen werden.");
+      const detail = normalizeProjectDetail(await response.json());
+      projectDetailCache.current.set(projectId, detail);
+      return detail;
+    },
+    [apiPaths.projects],
+  );
+
+  /**
+   * Holt einen Chat, ohne die Anzeige anzufassen — für das Überfahren eines
+   * Eintrags in der Seitenleiste. Ein Fehlschlag bleibt still: Vorladen ist
+   * eine Beschleunigung, kein Vorgang. Der Klick versucht es dann erneut und
+   * zeigt die Meldung, wenn es wirklich nicht geht.
+   */
+  const prefetchProject = useCallback(
+    (project: ProjectListItem | string) => {
+      const projectId = typeof project === "string" ? project : project.id;
+      if (projectDetailCache.current.has(projectId)) return;
+      if (prefetchInFlight.current.has(projectId)) return;
+      prefetchInFlight.current.add(projectId);
+      void fetchProjectDetail(projectId)
+        .catch(() => undefined)
+        .finally(() => prefetchInFlight.current.delete(projectId));
+    },
+    [fetchProjectDetail],
+  );
+
   const loadProject = useCallback(
     async (project: ProjectListItem | string) => {
       const projectId = typeof project === "string" ? project : project.id;
-      setLoadingProjectId(projectId);
+      requestedProjectRef.current = projectId;
       setSidebarOpen(false);
+      // Liegt der Chat schon vor, steht er sofort auf dem Schirm und wird im
+      // Hintergrund erneuert. Erst ohne Zwischenspeicher wird gewartet.
+      const cached = projectDetailCache.current.get(projectId);
+      if (cached) applyProjectDetail(cached);
+      else setLoadingProjectId(projectId);
       try {
-        const response = await fetch(`${apiPaths.projects}/${encodeURIComponent(projectId)}`, {
-          credentials: "same-origin",
-          headers: { Accept: "application/json" },
-          cache: "no-store",
-        });
-        if (!response.ok) throw new Error("Projekt konnte nicht geladen werden.");
-        const detail = normalizeProjectDetail(await response.json());
-        setActiveProject(detail.project);
-        setMessages(detail.messages);
-        setBrief(detail.brief);
-        setProfiles(detail.profiles.slice(0, 3));
-        setPartialProfiles(detail.partialProfiles.slice(0, 2));
-        setMatchingStatus(detail.matchingStatus ?? null);
-        setHasResult(Boolean(detail.brief));
-        setAnalysisMode(detail.analysisMode ?? null);
-        setAnalysisTrace(null);
-        setExternalSearch(detail.externalSearch ?? null);
-        setExternalSearchState("idle");
-        setSelectedProfileId(null);
+        const detail = await fetchProjectDetail(projectId);
+        // Wer zwischenzeitlich weitergeklickt hat, soll nicht zurückgeworfen
+        // werden: die verspätete Antwort landet nur im Zwischenspeicher.
+        if (requestedProjectRef.current !== projectId) return detail;
+        // Hat sich seit dem Zwischenspeicher nichts geändert, bleibt die
+        // Anzeige unangetastet. Sonst würde ein Profil, das der Leser in der
+        // Zwischenzeit angetippt hat, von der Erneuerung wieder abgewählt.
+        if (cached && JSON.stringify(cached) === JSON.stringify(detail)) return detail;
+        applyProjectDetail(detail);
         return detail;
       } catch (error) {
+        // Steht schon etwas Gültiges auf dem Schirm, bleibt es stehen statt
+        // durch eine Fehlermeldung ersetzt zu werden.
+        if (cached) return cached;
         showToast(error instanceof Error ? error.message : "Projekt konnte nicht geladen werden.", "error");
         return null;
       } finally {
-        setLoadingProjectId(null);
+        if (requestedProjectRef.current === projectId) setLoadingProjectId(null);
       }
     },
-    [apiPaths.projects, showToast],
+    [applyProjectDetail, fetchProjectDetail, showToast],
   );
 
   useEffect(() => {
@@ -1804,6 +1872,9 @@ export function ChatWorkspace({
         result.matches.some((profile) => profile.id === current) ? current : null,
       );
       setActiveProject(result.project);
+      // Der Chat hat sich gerade geändert. Der zwischengespeicherte Stand ist
+      // damit überholt und darf beim nächsten Öffnen nicht mehr erscheinen.
+      forgetProjectDetail(result.project.id);
       setProjects((current) => {
         const withoutCurrent = current.filter((project) => project.id !== result.project.id);
         return [result.project, ...withoutCurrent];
@@ -1812,7 +1883,7 @@ export function ChatWorkspace({
       void refreshUsage();
       if (result.notice) showToast(result.notice);
     },
-    [refreshUsage, showToast],
+    [forgetProjectDetail, refreshUsage, showToast],
   );
 
   const sendMessage = useCallback(
@@ -2316,6 +2387,7 @@ export function ChatWorkspace({
       throw new Error(isRecord(body) ? stringValue(body.error, "Chat konnte nicht verschoben werden.") : "Chat konnte nicht verschoben werden.");
     }
     const updated = normalizeProject(body.project, chat.title);
+    forgetProjectDetail(updated.id);
     setProjects((current) => current.map((item) => item.id === updated.id ? updated : item));
     setActiveProject((current) => current?.id === updated.id ? updated : current);
     setManageChat(null);
@@ -2332,6 +2404,7 @@ export function ChatWorkspace({
       const body: unknown = await response.json().catch(() => ({}));
       throw new Error(isRecord(body) ? stringValue(body.error, "Chat konnte nicht gelöscht werden.") : "Chat konnte nicht gelöscht werden.");
     }
+    forgetProjectDetail(chat.id);
     setProjects((current) => current.filter((item) => item.id !== chat.id));
     if (activeProject?.id === chat.id) startNewProject();
     setManageChat(null);
@@ -2589,6 +2662,7 @@ export function ChatWorkspace({
               activeProjectId={activeProject?.id ?? null}
               loadingProjectId={loadingProjectId}
               onOpen={openProjectFromSidebar}
+              onPrefetch={prefetchProject}
               onManage={setManageChat}
             />
           )}
@@ -2614,6 +2688,7 @@ export function ChatWorkspace({
                         activeProjectId={activeProject?.id ?? null}
                         loadingProjectId={loadingProjectId}
                         onOpen={openProjectFromSidebar}
+                        onPrefetch={prefetchProject}
                         onManage={setManageChat}
                       />
                     ) : <p className="collection-empty">Noch keine Chats</p>}
@@ -3354,12 +3429,15 @@ function SidebarChatList({
   activeProjectId,
   loadingProjectId,
   onOpen,
+  onPrefetch,
   onManage,
 }: {
   chats: ProjectListItem[];
   activeProjectId: string | null;
   loadingProjectId: string | null;
   onOpen: (chat: ProjectListItem) => void;
+  /** Holt den Chat schon beim Überfahren, damit der Klick ihn vorfindet. */
+  onPrefetch: (chat: ProjectListItem) => void;
   onManage: (chat: ProjectListItem) => void;
 }) {
   if (!chats.length) return <p className="sidebar-section-empty">Keine unzugeordneten Chats</p>;
@@ -3377,6 +3455,10 @@ function SidebarChatList({
                     type="button"
                     className={`sidebar-chat-open${activeProjectId === chat.id ? " active" : ""}`}
                     onClick={() => onOpen(chat)}
+                    // Zeigefinger und Tastatur kündigen den Klick an, lange
+                    // bevor er kommt. Bis dahin ist der Chat meistens da.
+                    onPointerEnter={() => onPrefetch(chat)}
+                    onFocus={() => onPrefetch(chat)}
                     aria-current={activeProjectId === chat.id ? "page" : undefined}
                   >
                     <span className="project-title">{chat.title}</span>
