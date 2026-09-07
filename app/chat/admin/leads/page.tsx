@@ -36,6 +36,7 @@ import {
 } from "@/lib/leadgen/limits";
 
 import { LeadsPanel } from "./LeadsPanel";
+import { PrepareAllButton } from "./PrepareAllButton";
 import styles from "./leads.module.css";
 
 export const metadata: Metadata = {
@@ -216,6 +217,13 @@ export default async function LeadsPage({
               tone: summary.pipeline.beantwortet ? "accent" : "muted",
             },
           ]}
+        />
+
+        <PrepareAllButton
+          offen={Math.max(
+            summary.pipeline.offen - summary.pipeline.vorbereitet,
+            0,
+          )}
         />
 
         {runs.length ? (

@@ -11,7 +11,10 @@ import {
   runLeadSendPass,
 } from "@/lib/leadgen/match-run";
 import { LEAD_BULK_SEND_LIMIT } from "@/lib/leadgen/limits";
-import { readJsonWithLimit } from "@/lib/security/request";
+import {
+  assertSameOrigin,
+  readJsonWithLimit,
+} from "@/lib/security/request";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,10 +29,12 @@ export const maxDuration = 300;
  * keine Sitzung, keinen Browser und kein Cookie. Für ihn zählt ein
  * gemeinsames Geheimnis im Kopf der Anfrage.
  *
- * Kein `assertSameOrigin()`: Der geplante Lauf hat keinen Ursprung, den er
- * mitschicken könnte. Die Prüfung, die hier trägt, ist die Anmeldung
- * beziehungsweise das Geheimnis — und beide sind stärker als ein Kopf, den
- * ein Aufrufer selbst setzt.
+ * `assertSameOrigin()` gilt nur für den angemeldeten Weg. Der geplante Lauf
+ * hat keinen Ursprung, den er mitschicken könnte — für ihn trägt das
+ * Geheimnis, und das ist stärker als ein Kopf, den ein Aufrufer selbst
+ * setzt. Der Betreiber dagegen ruft aus einem Browser, und dort ist eine
+ * Sitzung allein keine Absicht: Seit ein Knopf in der Arbeitsfläche diese
+ * Route aufruft, könnte es auch eine fremde Seite tun.
  */
 
 const InputSchema = z
@@ -88,6 +93,11 @@ export async function POST(request: Request) {
     if (!auth.ok) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
+
+    // Nur für den Browser-Weg. Der Zeitgeber schickt keinen Ursprung mit,
+    // und ihn dafür abzuweisen hieße, die Prüfung gegen den einzigen
+    // Aufrufer zu richten, der sie nicht erfüllen kann.
+    if (auth.actor !== "scheduler") assertSameOrigin(request);
 
     const raw = await readJsonWithLimit(request, 2_000).catch(() => ({}));
     const input = InputSchema.parse(raw ?? {});
