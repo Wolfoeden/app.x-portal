@@ -13,6 +13,7 @@ import {
   claimOutreach,
   recordOutreachSent,
   releaseOutreachClaim,
+  sentSince,
   updateLead,
 } from "@/lib/leadgen/leads-data";
 import { LEAD_BULK_SEND_LIMIT, leadHeadline, leadSourceUrl } from "@/lib/leadgen/limits";
@@ -57,8 +58,12 @@ export type MatchRunResult = {
   archived: number;
   skipped: number;
   outcomes: LeadOutcome[];
-  /** Wie viele offene Leads der Deckel stehen ließ. */
+  /** Wie viele offene Leads dieser Durchgang stehen ließ. */
   remaining: number;
+  /** Was heute noch übrig ist, nachdem dieser Durchgang fertig war. */
+  dailyBudgetLeft: number;
+  /** Warum der Durchgang aufgehört hat. */
+  stoppedBy: "queue_empty" | "time" | "examined" | "daily_limit";
 };
 
 type OpenLead = {
@@ -105,12 +110,70 @@ function factsFor(profile: {
  *   Versand, nicht dem Abgleich — er ist die Tagesmenge, die ein Postfach bei
  *   IONOS unauffällig verschickt.
  */
+/**
+ * Wie lange ein Aufruf höchstens arbeitet.
+ *
+ * Nicht frei gewählt: Die Funktion läuft hinter einem Gateway, das eine
+ * synchrone Antwort nach gut dreißig Sekunden abbricht. Ein Durchgang, der
+ * die Warteschlange in einem Rutsch leeren wollte, lief genau da hinein —
+ * 247 offene Leads, und jeder Versand kostet zusätzlich eine SMTP-Runde.
+ *
+ * Also arbeitet ein Aufruf ein Stück ab und sagt im Ergebnis, was liegen
+ * blieb. Der Zeitgeber ruft mehrmals am Morgen; was er nicht schafft,
+ * schafft der nächste Tag.
+ */
+const TIME_BUDGET_MS = 20_000;
+
+/**
+ * Wie viele Leads ein Aufruf höchstens ansieht.
+ *
+ * Die Zeitgrenze allein genügt nicht: Sie greift erst, wenn die Zeit weg
+ * ist, und ein Aufruf, der 200 unbrauchbare Ausschreibungen durchrechnet,
+ * hätte sie dann auch verbraucht. Diese Grenze hält die Antwortzeit im
+ * Rahmen, auch wenn nichts zu verschicken ist.
+ */
+const EXAMINE_BUDGET = 60;
+
+export type MatchRunOptions = {
+  senderEmail: string;
+  /** Deckel für den ganzen Tag, nicht für diesen Aufruf. */
+  dailyLimit?: number;
+  /** Wie viele Leads dieser Aufruf ansieht. */
+  examineBudget?: number;
+  timeBudgetMs?: number;
+  dryRun?: boolean;
+  now?: Date;
+};
+
 export async function runLeadMatchPass(
-  options: { limit?: number; senderEmail: string; dryRun?: boolean } = {
-    senderEmail: "",
-  },
+  options: MatchRunOptions,
 ): Promise<MatchRunResult> {
-  const limit = Math.min(Math.max(options.limit ?? LEAD_BULK_SEND_LIMIT, 1), 200);
+  const dailyLimit = Math.min(
+    Math.max(options.dailyLimit ?? LEAD_BULK_SEND_LIMIT, 1),
+    200,
+  );
+  const examineBudget = Math.min(
+    Math.max(options.examineBudget ?? EXAMINE_BUDGET, 1),
+    500,
+  );
+  const timeBudgetMs = Math.max(options.timeBudgetMs ?? TIME_BUDGET_MS, 1_000);
+  const startedAt = Date.now();
+  const now = options.now ?? new Date();
+
+  // Mitternacht in der Zeitzone, in der der Betrieb stattfindet. UTC wäre
+  // im Sommer zwei Stunden daneben und würde den Tag mitten im Vormittag
+  // umschalten.
+  const tagesbeginn = new Date(
+    new Date(now.toLocaleString("en-US", { timeZone: "Europe/Berlin" })).setHours(
+      0,
+      0,
+      0,
+      0,
+    ),
+  );
+  const heuteVersandt = options.dryRun ? 0 : await sentSince(tagesbeginn);
+  const budgetHeute = Math.max(dailyLimit - heuteVersandt, 0);
+
   const admin = createAdminSupabaseClient();
 
   const profiles = await fetchActiveBookableRealProfiles(admin);
@@ -132,11 +195,24 @@ export async function runLeadMatchPass(
   let skipped = 0;
   let examined = 0;
 
+  let stoppedBy: MatchRunResult["stoppedBy"] = "queue_empty";
+
   for (const lead of leads) {
-    // Der Deckel zählt Versendetes, nicht Betrachtetes: Ein Lauf, den zwanzig
-    // unlesbare Ausschreibungen aufbrauchen, hätte keine einzige Mail
-    // verschickt und trotzdem behauptet, fertig zu sein.
-    if (sent >= limit) break;
+    // Drei Gründe aufzuhören, und alle drei gehören ins Ergebnis: Sonst
+    // sieht ein Durchgang, der nach zwanzig Sekunden abbricht, genauso aus
+    // wie einer, der fertig geworden ist.
+    if (sent >= budgetHeute) {
+      stoppedBy = "daily_limit";
+      break;
+    }
+    if (examined >= examineBudget) {
+      stoppedBy = "examined";
+      break;
+    }
+    if (Date.now() - startedAt > timeBudgetMs) {
+      stoppedBy = "time";
+      break;
+    }
     examined += 1;
 
     // Nur das Lesen der Ausschreibung wird aufgefangen. Ein Fremdtext von
@@ -264,5 +340,7 @@ export async function runLeadMatchPass(
     skipped,
     outcomes,
     remaining: Math.max(leads.length - examined, 0),
+    dailyBudgetLeft: Math.max(budgetHeute - sent, 0),
+    stoppedBy,
   };
 }

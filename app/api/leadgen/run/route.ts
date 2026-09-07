@@ -31,8 +31,10 @@ export const maxDuration = 300;
 
 const InputSchema = z
   .object({
-    /** Wie viele Nachrichten dieser Durchgang höchstens verschickt. */
-    limit: z.number().int().min(1).max(200).optional(),
+    /** Deckel für den ganzen Tag, über alle Aufrufe hinweg. */
+    dailyLimit: z.number().int().min(1).max(200).optional(),
+    /** Wie viele Leads dieser Aufruf ansieht. */
+    examineBudget: z.number().int().min(1).max(500).optional(),
     /** Rechnet durch, ohne zu verschicken und ohne etwas zu speichern. */
     dryRun: z.boolean().optional(),
   })
@@ -94,7 +96,8 @@ export async function POST(request: Request) {
     }
 
     const result = await runLeadMatchPass({
-      limit: input.limit ?? LEAD_BULK_SEND_LIMIT,
+      dailyLimit: input.dailyLimit ?? LEAD_BULK_SEND_LIMIT,
+      examineBudget: input.examineBudget,
       senderEmail: from ?? "",
       dryRun: input.dryRun ?? false,
     });
@@ -117,6 +120,7 @@ export async function POST(request: Request) {
         archived: result.archived,
         skipped: result.skipped,
         remaining: result.remaining,
+        stoppedBy: result.stoppedBy,
       },
     });
 
@@ -126,6 +130,8 @@ export async function POST(request: Request) {
       archived: result.archived,
       skipped: result.skipped,
       remaining: result.remaining,
+      dailyBudgetLeft: result.dailyBudgetLeft,
+      stoppedBy: result.stoppedBy,
       outcomes: result.outcomes,
     });
   } catch (error) {

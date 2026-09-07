@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   updateLead: vi.fn(),
   recordDemand: vi.fn(),
   leads: vi.fn(),
+  sentSince: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -27,6 +28,7 @@ vi.mock("@/lib/leadgen/leads-data", () => ({
   claimOutreach: mocks.claim,
   recordOutreachSent: mocks.recordSent,
   releaseOutreachClaim: mocks.release,
+  sentSince: mocks.sentSince,
   updateLead: mocks.updateLead,
 }));
 vi.mock("@/lib/leadgen/demand", () => ({
@@ -113,6 +115,7 @@ beforeEach(() => {
   mocks.recordSent.mockResolvedValue({ recorded: true, outreachId: "outreach-1" });
   mocks.updateLead.mockResolvedValue(null);
   mocks.recordDemand.mockResolvedValue({ recorded: true });
+  mocks.sentSince.mockResolvedValue(0);
 });
 
 describe("Tageslauf der Akquise", () => {
@@ -231,7 +234,7 @@ describe("Tageslauf der Akquise", () => {
   });
 
   /**
-   * Der Deckel zählt Versendetes, nicht Betrachtetes: Ein Lauf, den zwanzig
+   * Der Deckel zählt Versendetes, nicht Betrachtetes: Ein Lauf, den zwei
    * unbrauchbare Ausschreibungen aufbrauchen, hätte keine einzige Mail
    * verschickt und trotzdem behauptet, fertig zu sein.
    */
@@ -245,10 +248,101 @@ describe("Tageslauf der Akquise", () => {
       error: null,
     });
 
-    const result = await runLeadMatchPass({ senderEmail: "info@x-portal.eu", limit: 1 });
+    const result = await runLeadMatchPass({
+      senderEmail: "info@x-portal.eu",
+      dailyLimit: 1,
+    });
 
     expect(result.archived).toBe(2);
     expect(result.sent).toBe(1);
+  });
+
+  /**
+   * Das Tageslimit gehört dem Tag und nicht dem Aufruf. Seit der Durchgang
+   * mehrmals am Morgen läuft, wäre ein Deckel je Aufruf die Summe aller
+   * Aufrufe — und die hätte das Postfach überschritten, um das es geht.
+   */
+  it("rechnet an, was heute schon rausgegangen ist", async () => {
+    mocks.sentSince.mockResolvedValue(20);
+    mocks.leads.mockResolvedValue({
+      data: [lead({ id: 1, text: TREFFER })],
+      error: null,
+    });
+
+    const result = await runLeadMatchPass({
+      senderEmail: "info@x-portal.eu",
+      dailyLimit: 20,
+    });
+
+    expect(result.sent).toBe(0);
+    expect(result.stoppedBy).toBe("daily_limit");
+    expect(result.dailyBudgetLeft).toBe(0);
+    expect(mocks.deliver).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Der Grund, warum es diese Grenze gibt: Die Funktion läuft hinter einem
+   * Gateway, das nach gut dreißig Sekunden abbricht. Ein Durchgang über 247
+   * offene Leads lief genau da hinein.
+   */
+  it("hört nach dem Ansehbudget auf und meldet den Rest", async () => {
+    mocks.leads.mockResolvedValue({
+      data: [1, 2, 3, 4, 5].map((id) => lead({ id, text: OHNE_TREFFER })),
+      error: null,
+    });
+
+    const result = await runLeadMatchPass({
+      senderEmail: "info@x-portal.eu",
+      examineBudget: 2,
+    });
+
+    expect(result.examined).toBe(2);
+    expect(result.remaining).toBe(3);
+    expect(result.stoppedBy).toBe("examined");
+  });
+
+  /**
+   * Die Uhr wird gestellt, nicht abgewartet. Ein Test, der eine Sekunde
+   * schläft, hält einen Arbeiter besetzt und treibt fremde Tests in
+   * parallelen Läufen über ihre eigene Zeitgrenze.
+   */
+  it("hört auf, wenn die Zeit weg ist", async () => {
+    mocks.leads.mockResolvedValue({
+      data: [1, 2, 3].map((id) => lead({ id, text: OHNE_TREFFER })),
+      error: null,
+    });
+
+    const start = Date.now();
+    let verstrichen = 0;
+    const uhr = vi.spyOn(Date, "now").mockImplementation(() => start + verstrichen);
+    mocks.recordDemand.mockImplementation(async () => {
+      verstrichen += 800;
+      return { recorded: true };
+    });
+
+    try {
+      const result = await runLeadMatchPass({
+        senderEmail: "info@x-portal.eu",
+        timeBudgetMs: 1_000,
+      });
+      expect(result.stoppedBy).toBe("time");
+      expect(result.examined).toBe(2);
+      expect(result.remaining).toBe(1);
+    } finally {
+      uhr.mockRestore();
+    }
+  });
+
+  it("meldet einen fertigen Durchgang als leere Warteschlange", async () => {
+    mocks.leads.mockResolvedValue({
+      data: [lead({ id: 1, text: OHNE_TREFFER })],
+      error: null,
+    });
+
+    const result = await runLeadMatchPass({ senderEmail: "info@x-portal.eu" });
+
+    expect(result.stoppedBy).toBe("queue_empty");
+    expect(result.remaining).toBe(0);
   });
 
   it("verschickt und speichert im Probelauf nichts", async () => {
