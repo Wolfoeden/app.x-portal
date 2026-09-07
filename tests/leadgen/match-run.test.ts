@@ -364,3 +364,64 @@ describe("Tageslauf der Akquise", () => {
     expect(mocks.recordDemand).not.toHaveBeenCalled();
   });
 });
+
+describe("Versandfenster des Tageslaufs", () => {
+  it("tut außerhalb des Fensters nichts und fragt die Datenbank nicht", async () => {
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
+
+    const result = await runLeadMatchPass({
+      senderEmail: "info@x-portal.eu",
+      enforceWindow: true,
+      // Montag, 7. September 2026, 5:00 UTC — 7 Uhr Ortszeit, eine Stunde
+      // zu früh. Genau der Aufruf, den der Zeitgeber im Winter zusätzlich
+      // macht.
+      now: new Date("2026-09-07T05:00:00Z"),
+    });
+
+    expect(result.stoppedBy).toBe("outside_window");
+    expect(result.examined).toBe(0);
+    expect(result.sent).toBe(0);
+    expect(mocks.sentSince).not.toHaveBeenCalled();
+    expect(mocks.profiles).not.toHaveBeenCalled();
+    expect(mocks.deliver).not.toHaveBeenCalled();
+  });
+
+  it("arbeitet innerhalb des Fensters wie gewohnt", async () => {
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
+
+    const result = await runLeadMatchPass({
+      senderEmail: "info@x-portal.eu",
+      enforceWindow: true,
+      // 8 Uhr Ortszeit.
+      now: new Date("2026-09-07T06:00:00Z"),
+    });
+
+    expect(result.stoppedBy).not.toBe("outside_window");
+    expect(result.sent).toBe(1);
+    expect(mocks.deliver).toHaveBeenCalledTimes(1);
+  });
+
+  it("bindet einen Lauf ohne die Vorgabe nicht an die Uhrzeit", async () => {
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
+
+    const result = await runLeadMatchPass({
+      senderEmail: "info@x-portal.eu",
+      now: new Date("2026-09-07T22:00:00Z"),
+    });
+
+    expect(result.sent).toBe(1);
+  });
+
+  it("zählt das Tagesbudget ab Mitternacht Ortszeit", async () => {
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
+    mocks.sentSince.mockResolvedValue(0);
+
+    await runLeadMatchPass({
+      senderEmail: "info@x-portal.eu",
+      now: new Date("2026-09-07T06:00:00Z"),
+    });
+
+    // 22 Uhr UTC des Vortags ist Mitternacht in Berlin.
+    expect(mocks.sentSince).toHaveBeenCalledWith(new Date("2026-09-06T22:00:00Z"));
+  });
+});

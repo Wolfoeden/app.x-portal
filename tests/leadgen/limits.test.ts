@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   LEAD_BULK_SEND_LIMIT,
+  LEAD_SEND_WINDOW,
   isLeadScope,
   isLeadStatus,
+  isWithinLeadSendWindow,
+  leadDayStart,
   leadHeadline,
   leadSourceUrl,
 } from "@/lib/leadgen/limits";
@@ -112,5 +115,62 @@ describe("leadSourceUrl", () => {
 
   it("gibt null zurück, wenn keine Adresse enthalten ist", () => {
     expect(leadSourceUrl("Rolle — Beschreibung ohne Link")).toBeNull();
+  });
+});
+
+describe("Versandfenster", () => {
+  it("steht auf 8 bis 12 Uhr an Werktagen", () => {
+    expect(LEAD_SEND_WINDOW.startHour).toBe(8);
+    expect(LEAD_SEND_WINDOW.endHour).toBe(12);
+    expect([...LEAD_SEND_WINDOW.weekdays]).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  // Sommerzeit: Berlin liegt zwei Stunden vor UTC.
+  it("öffnet im Sommer um 6 Uhr UTC und schließt um 10 Uhr UTC", () => {
+    // Montag, 7. September 2026.
+    expect(isWithinLeadSendWindow(new Date("2026-09-07T05:59:00Z"))).toBe(false);
+    expect(isWithinLeadSendWindow(new Date("2026-09-07T06:00:00Z"))).toBe(true);
+    expect(isWithinLeadSendWindow(new Date("2026-09-07T09:59:00Z"))).toBe(true);
+    expect(isWithinLeadSendWindow(new Date("2026-09-07T10:00:00Z"))).toBe(false);
+  });
+
+  // Winterzeit: eine Stunde vor UTC. Dieselben Ortszeiten, andere UTC-Zeiten —
+  // genau der Grund, warum die Grenze nicht im Zeitplan der Datenbank steht.
+  it("verschiebt sich im Winter um eine Stunde", () => {
+    // Montag, 7. Dezember 2026.
+    expect(isWithinLeadSendWindow(new Date("2026-12-07T06:59:00Z"))).toBe(false);
+    expect(isWithinLeadSendWindow(new Date("2026-12-07T07:00:00Z"))).toBe(true);
+    expect(isWithinLeadSendWindow(new Date("2026-12-07T10:59:00Z"))).toBe(true);
+    expect(isWithinLeadSendWindow(new Date("2026-12-07T11:00:00Z"))).toBe(false);
+  });
+
+  it("bleibt am Wochenende zu", () => {
+    // Samstag und Sonntag, mitten im Fenster.
+    expect(isWithinLeadSendWindow(new Date("2026-09-05T08:00:00Z"))).toBe(false);
+    expect(isWithinLeadSendWindow(new Date("2026-09-06T08:00:00Z"))).toBe(false);
+  });
+});
+
+describe("leadDayStart", () => {
+  it("liefert Mitternacht der Ortszeit und nicht Mitternacht UTC", () => {
+    // 7. September 2026, 9 Uhr Ortszeit. Der Tag begann um 22 Uhr UTC am 6.
+    expect(leadDayStart(new Date("2026-09-07T07:00:00Z")).toISOString()).toBe(
+      "2026-09-06T22:00:00.000Z",
+    );
+  });
+
+  it("rechnet im Winter mit dem anderen Abstand", () => {
+    expect(leadDayStart(new Date("2026-12-07T07:00:00Z")).toISOString()).toBe(
+      "2026-12-06T23:00:00.000Z",
+    );
+  });
+
+  it("zählt eine Nachricht kurz nach Mitternacht zum neuen Tag", () => {
+    // 00:30 Ortszeit ist 22:30 UTC des Vortags — vor der Korrektur fiel
+    // dieser Zeitpunkt aus der Tageszählung heraus.
+    const kurzNachMitternacht = new Date("2026-09-06T22:30:00Z");
+    expect(leadDayStart(kurzNachMitternacht).toISOString()).toBe(
+      "2026-09-06T22:00:00.000Z",
+    );
   });
 });
