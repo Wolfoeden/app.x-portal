@@ -88,6 +88,7 @@ async function authorize(request: Request): Promise<
 
 export async function POST(request: Request) {
   const traceId = randomUUID();
+  let modus: "prepare" | "send" | null = null;
   try {
     const auth = await authorize(request);
     if (!auth.ok) {
@@ -103,6 +104,7 @@ export async function POST(request: Request) {
     const input = InputSchema.parse(raw ?? {});
 
     const mode = input.mode ?? "send";
+    modus = mode;
     const from =
       process.env.EMAIL_FROM?.trim() || process.env.SMTP_USER?.trim() || null;
     // Strenger als der reine SMTP-Zugang, wie im Einzelversand: Ohne
@@ -193,7 +195,24 @@ export async function POST(request: Request) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Ungültige Eingabe." }, { status: 400 });
     }
-    console.error(JSON.stringify({ event: "leadgen_run_failed", traceId }));
+    // Mit Grund, nicht nur mit Kennung. Ein Protokoll, das allein die
+    // Spur nennt, zwingt zum Nachstellen des Fehlers -- und genau daran
+    // hing die Suche, als der erste echte Lauf an einem Check der
+    // Datenbank scheiterte. Kein Stack und keine Adressen: Die Meldung
+    // von PostgREST nennt Tabelle und Regel, mehr braucht es nicht.
+    console.error(
+      JSON.stringify({
+        event: "leadgen_run_failed",
+        traceId,
+        mode: modus,
+        reason:
+          error instanceof Error
+            ? error.message
+            : typeof error === "object" && error !== null && "message" in error
+              ? String((error as { message: unknown }).message)
+              : "unknown",
+      }),
+    );
     return NextResponse.json(
       { error: "Der Lauf ist gescheitert.", traceId },
       { status: 500 },

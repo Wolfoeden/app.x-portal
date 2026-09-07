@@ -437,5 +437,91 @@ select is(
   'angeschriebene Leads bleiben ein Jahr als Nachweis'
 );
 
+-- ---------------------------------------------------------------------
+-- Eine Suche ohne Konto: die Zeile, die aus einem Lead entsteht.
+-- ---------------------------------------------------------------------
+-- Diese Faelle waren offen, als der Abgleich zum ersten Mal wirklich schrieb.
+-- Ein Probelauf legt keine Zeilen an und hat sie deshalb nicht gefunden.
+insert into public.leadgen_queue (id, recipient_email, stellenanzeige, status)
+overriding system value
+values (9000005, 'nachfrage@example.invalid', 'Rolle ohne Konto', 'new');
+
+select lives_ok(
+  $$insert into public.shortlists (
+      source, lead_id, project_id, owner_user_id, demand_actor,
+      matching_rule_version, brief_snapshot, result_count,
+      profile_catalog_version, result_status, decision_snapshot
+    ) values (
+      'lead', 9000005, null, null, 'pseudonym-fuer-den-test',
+      'freelancer-match-v14', '{"rolle": "Test"}'::jsonb, 1,
+      'katalog-abc', 'ranked', '{"schemaVersion": 2}'::jsonb
+    )$$,
+  'eine Shortlist aus einem Lead laesst sich anlegen, obwohl sie kein Konto hat'
+);
+
+-- Der Audit-Trigger haengt daran: Ohne Konto braucht das Ereignis einen
+-- Grabstein, sonst schlaegt audit_events_actor_check zu und nimmt den
+-- ganzen Insert mit.
+select is(
+  (
+    select actor_tombstone
+      from public.audit_events
+     where action = 'shortlist_created'
+       and target_id = (
+         select id from public.shortlists where lead_id = 9000005
+       )
+  ),
+  'system:leadgen-match',
+  'das Protokoll nennt den Vorgang, statt ein Konto zu erfinden'
+);
+
+select is(
+  (
+    select metadata ->> 'source'
+      from public.audit_events
+     where action = 'shortlist_created'
+       and target_id = (
+         select id from public.shortlists where lead_id = 9000005
+       )
+  ),
+  'lead',
+  'und haelt die Herkunft fest'
+);
+
+-- Der Lead muss loeschbar bleiben. `run_leadgen_cleanup()` raeumt die
+-- Warteschlange nach Ablauf der Aufbewahrungsfrist; ein Formcheck, der das
+-- verhindert, haelt die naechtliche Routine an.
+select lives_ok(
+  $$delete from public.leadgen_queue where id = 9000005$$,
+  'ein Lead mit Nachfragezeile laesst sich loeschen'
+);
+
+select is(
+  (
+    select lead_id is null
+      from public.shortlists
+     where demand_actor = 'pseudonym-fuer-den-test'
+  ),
+  true,
+  'die Nachfrage bleibt stehen, die Lead-Kennung faellt weg'
+);
+
+-- Streng bleibt sie trotzdem: Konto und Projekt gehoeren nicht in eine
+-- Zeile aus der Akquise.
+select throws_ok(
+  $$insert into public.shortlists (
+      source, lead_id, project_id, owner_user_id, demand_actor,
+      matching_rule_version, brief_snapshot, result_count,
+      profile_catalog_version, result_status, decision_snapshot
+    ) values (
+      'lead', null, null, 'e1111111-1111-4111-8111-111111111111',
+      'pseudonym-zwei', 'freelancer-match-v14', '{}'::jsonb, 0,
+      'katalog-abc', 'no_reliable_match', '{"schemaVersion": 2}'::jsonb
+    )$$,
+  '23514',
+  null,
+  'eine Lead-Zeile mit Konto verletzt shortlists_source_shape_check'
+);
+
 select finish();
 rollback;
