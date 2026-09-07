@@ -399,18 +399,18 @@ select ok(
 -- Das Laufprotokoll unterscheidet Abgleich und Versand.
 -- ---------------------------------------------------------------------
 select throws_ok(
-  $insert into public.leadgen_run (
+  $$insert into public.leadgen_run (
       started_at, trigger, kind, stopped_by
-    ) values (now(), 'scheduler', 'irgendwas', 'time')$,
+    ) values (now(), 'scheduler', 'irgendwas', 'time')$$,
   '23514',
   null,
   'eine erfundene Art des Durchgangs verletzt leadgen_run_kind_check'
 );
 
 select lives_ok(
-  $insert into public.leadgen_run (
+  $$insert into public.leadgen_run (
       started_at, trigger, kind, stopped_by
-    ) values (now(), 'scheduler', 'prepare', 'nothing_prepared')$,
+    ) values (now(), 'scheduler', 'prepare', 'nothing_prepared')$$,
   'prepare und nothing_prepared sind zulaessige Werte'
 );
 
