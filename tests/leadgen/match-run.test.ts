@@ -1,0 +1,272 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  profiles: vi.fn(),
+  deliver: vi.fn(),
+  claim: vi.fn(),
+  recordSent: vi.fn(),
+  release: vi.fn(),
+  updateLead: vi.fn(),
+  recordDemand: vi.fn(),
+  leads: vi.fn(),
+}));
+
+vi.mock("server-only", () => ({}));
+vi.mock("@/lib/data/freelancers", () => ({
+  fetchActiveBookableRealProfiles: mocks.profiles,
+}));
+vi.mock("@/lib/email/deliver", () => ({
+  deliverEmail: mocks.deliver,
+  publicMailOrigin: () => "https://x-portal.eu",
+}));
+vi.mock("@/lib/email/unsubscribe", () => ({
+  unsubscribeUrl: (origin: string, email: string) =>
+    `${origin}/unsubscribe?t=${encodeURIComponent(email)}`,
+}));
+vi.mock("@/lib/leadgen/leads-data", () => ({
+  claimOutreach: mocks.claim,
+  recordOutreachSent: mocks.recordSent,
+  releaseOutreachClaim: mocks.release,
+  updateLead: mocks.updateLead,
+}));
+vi.mock("@/lib/leadgen/demand", () => ({
+  recordLeadDemand: mocks.recordDemand,
+  catalogVersion: () => "catalog-test",
+}));
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminSupabaseClient: () => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          is: () => ({
+            order: () => mocks.leads(),
+          }),
+        }),
+      }),
+    }),
+  }),
+}));
+
+import { runLeadMatchPass } from "@/lib/leadgen/match-run";
+
+/**
+ * Ein Profil, das der Rangliste standhält: aktiv, buchbar, mit belegten
+ * Kompetenzen. Weniger geht nicht — `buildShortlist()` prüft das Profil gegen
+ * dasselbe Schema wie im Betrieb.
+ */
+const PROFIL = {
+  id: "11111111-1111-4111-8111-111111111111",
+  dataVersion: "profile-v9",
+  demoStatus: "real" as const,
+  profileStatus: "active" as const,
+  avatarUrl: null,
+  displayName: "Beispiel Person",
+  role: "Frontend-Entwicklerin",
+  skillTags: [
+    { value: "React", source: "verified" as const },
+    { value: "Next.js", source: "self_reported" as const },
+  ],
+  contextEvidence: [],
+  languages: [{ value: "German", source: "self_reported" as const }],
+  location: { value: "Deutschland", source: "self_reported" as const },
+  workModes: ["remote" as const],
+  experienceSummary: {
+    value: "Baut Oberflaechen mit React.",
+    source: "self_reported" as const,
+  },
+  qualifications: [],
+  contractualCapabilities: [],
+  referenceStatus: "verified" as const,
+  hourlyRate: { amount: 120, currency: "EUR" as const },
+  dayRate: null,
+  minimumProjectBudget: null,
+  availability: {
+    status: "available" as const,
+    availableFrom: "2026-09-01",
+    checkedAt: "2026-09-01T07:00:00.000Z",
+  },
+  introPolicy: {
+    type: "free" as const,
+    label: "Direkt buchbar",
+    bookingUrl: "https://calendly.com/beispiel",
+  },
+};
+
+function lead(input: { id: number; text: string }) {
+  return {
+    id: input.id,
+    company: "Beispiel GmbH",
+    recipient_name: "Michel Corda",
+    recipient_email: `kontakt${input.id}@example.invalid`,
+    stellenanzeige: input.text,
+  };
+}
+
+const TREFFER = "React Engineer — React gesucht, remote — https://example.invalid/p/1";
+const OHNE_TREFFER = "SAP Berater — SAP S/4HANA gesucht, remote — https://example.invalid/p/2";
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.profiles.mockResolvedValue([PROFIL]);
+  mocks.deliver.mockResolvedValue({ delivered: true });
+  mocks.claim.mockResolvedValue({ claimed: true, outreachId: "outreach-1" });
+  mocks.recordSent.mockResolvedValue({ recorded: true, outreachId: "outreach-1" });
+  mocks.updateLead.mockResolvedValue(null);
+  mocks.recordDemand.mockResolvedValue({ recorded: true });
+});
+
+describe("Tageslauf der Akquise", () => {
+  it("verschickt bei einem Treffer und archiviert den Lead als angeschrieben", async () => {
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
+
+    const result = await runLeadMatchPass({ senderEmail: "info@x-portal.eu" });
+
+    expect(result.sent).toBe(1);
+    expect(result.archived).toBe(0);
+    expect(mocks.deliver).toHaveBeenCalledTimes(1);
+    const [message] = mocks.deliver.mock.calls[0] as [
+      { subject: string; text: string; kind: string; to: string },
+    ];
+    expect(message.kind).toBe("cold_outreach");
+    expect(message.to).toBe("kontakt1@example.invalid");
+    expect(mocks.updateLead).toHaveBeenCalledWith({
+      id: 1,
+      status: "contacted",
+      archived: true,
+    });
+  });
+
+  /**
+   * Nur belegte Kompetenzen wandern in die Nachricht. Eine selbst angegebene
+   * Fähigkeit ist eine Aussage der Person über sich; sie als Zusage an einen
+   * Auftraggeber weiterzureichen wäre eine Behauptung, für die niemand einsteht.
+   */
+  it("nennt in den Eckdaten nur belegte Kompetenzen", async () => {
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
+
+    await runLeadMatchPass({ senderEmail: "info@x-portal.eu" });
+
+    const [message] = mocks.deliver.mock.calls[0] as [{ text: string }];
+    expect(message.text).toContain("React");
+    expect(message.text).not.toContain("Next.js");
+  });
+
+  /** Der Name steht auf dem öffentlichen Profil, aber nicht in dieser Mail. */
+  it("nennt den Freelancer nicht beim Namen", async () => {
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
+
+    await runLeadMatchPass({ senderEmail: "info@x-portal.eu" });
+
+    const [message] = mocks.deliver.mock.calls[0] as [{ text: string }];
+    expect(message.text).not.toContain("Beispiel Person");
+  });
+
+  it("archiviert ohne Treffer, verschickt nichts und vermerkt die Nachfrage", async () => {
+    mocks.leads.mockResolvedValue({
+      data: [lead({ id: 2, text: OHNE_TREFFER })],
+      error: null,
+    });
+
+    const result = await runLeadMatchPass({ senderEmail: "info@x-portal.eu" });
+
+    expect(result.sent).toBe(0);
+    expect(result.archived).toBe(1);
+    expect(mocks.deliver).not.toHaveBeenCalled();
+    expect(mocks.recordDemand).toHaveBeenCalledTimes(1);
+    expect(mocks.updateLead).toHaveBeenCalledWith({
+      id: 2,
+      status: "dismissed",
+      archived: true,
+    });
+  });
+
+  /**
+   * Die Reihenfolge ist die Zusage: Bricht der Lauf zwischen beidem ab, ist
+   * der Lead noch da. Andersherum wäre er aus der Liste verschwunden, ohne
+   * dass irgendwo stünde, wonach gefragt worden war.
+   */
+  it("hält die Nachfrage fest, bevor der Lead verschwindet", async () => {
+    mocks.leads.mockResolvedValue({
+      data: [lead({ id: 2, text: OHNE_TREFFER })],
+      error: null,
+    });
+    const reihenfolge: string[] = [];
+    mocks.recordDemand.mockImplementation(async () => {
+      reihenfolge.push("nachfrage");
+      return { recorded: true };
+    });
+    mocks.updateLead.mockImplementation(async () => {
+      reihenfolge.push("archiv");
+      return null;
+    });
+
+    await runLeadMatchPass({ senderEmail: "info@x-portal.eu" });
+
+    expect(reihenfolge).toEqual(["nachfrage", "archiv"]);
+  });
+
+  it("gibt den Anspruch frei, wenn die Zustellung scheitert", async () => {
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
+    mocks.deliver.mockResolvedValue({ delivered: false, reason: "suppressed" });
+
+    const result = await runLeadMatchPass({ senderEmail: "info@x-portal.eu" });
+
+    expect(result.sent).toBe(0);
+    expect(result.skipped).toBe(1);
+    expect(mocks.release).toHaveBeenCalledWith({
+      outreachId: "outreach-1",
+      reason: "suppressed",
+    });
+    expect(mocks.recordSent).not.toHaveBeenCalled();
+  });
+
+  it("überspringt einen Lead, den ein anderer Lauf schon beansprucht hat", async () => {
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
+    mocks.claim.mockResolvedValue({ claimed: false, reason: "already_sent" });
+
+    const result = await runLeadMatchPass({ senderEmail: "info@x-portal.eu" });
+
+    expect(result.skipped).toBe(1);
+    expect(mocks.deliver).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Der Deckel zählt Versendetes, nicht Betrachtetes: Ein Lauf, den zwanzig
+   * unbrauchbare Ausschreibungen aufbrauchen, hätte keine einzige Mail
+   * verschickt und trotzdem behauptet, fertig zu sein.
+   */
+  it("zählt nur Versendetes gegen den Deckel", async () => {
+    mocks.leads.mockResolvedValue({
+      data: [
+        lead({ id: 1, text: OHNE_TREFFER }),
+        lead({ id: 2, text: OHNE_TREFFER }),
+        lead({ id: 3, text: TREFFER }),
+      ],
+      error: null,
+    });
+
+    const result = await runLeadMatchPass({ senderEmail: "info@x-portal.eu", limit: 1 });
+
+    expect(result.archived).toBe(2);
+    expect(result.sent).toBe(1);
+  });
+
+  it("verschickt und speichert im Probelauf nichts", async () => {
+    mocks.leads.mockResolvedValue({
+      data: [lead({ id: 1, text: TREFFER }), lead({ id: 2, text: OHNE_TREFFER })],
+      error: null,
+    });
+
+    const result = await runLeadMatchPass({
+      senderEmail: "info@x-portal.eu",
+      dryRun: true,
+    });
+
+    expect(result.sent).toBe(1);
+    expect(result.archived).toBe(1);
+    expect(mocks.deliver).not.toHaveBeenCalled();
+    expect(mocks.claim).not.toHaveBeenCalled();
+    expect(mocks.updateLead).not.toHaveBeenCalled();
+    expect(mocks.recordDemand).not.toHaveBeenCalled();
+  });
+});

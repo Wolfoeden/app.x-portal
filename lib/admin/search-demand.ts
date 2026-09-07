@@ -29,7 +29,7 @@ async function readShortlistRows(input: {
     let query = admin
       .from("shortlists")
       .select(
-        "id,project_id,owner_user_id,brief_snapshot,decision_snapshot,result_count,result_status,created_at",
+        "id,source,project_id,owner_user_id,lead_id,demand_actor,brief_snapshot,decision_snapshot,result_count,result_status,created_at",
       )
       .lte("created_at", input.now.toISOString())
       .order("created_at", { ascending: false })

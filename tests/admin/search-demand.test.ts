@@ -37,11 +37,39 @@ function row(input: {
   const result = input.result === undefined ? "ranked" : input.result;
   return {
     id: input.id,
+    source: "user_search",
     project_id: input.project,
     owner_user_id: input.user ?? "customer-1",
+    lead_id: null,
+    demand_actor: input.user ?? "customer-1",
     brief_snapshot: brief(input.skills ?? ["React", "TypeScript"]),
     decision_snapshot: null,
     result_count: input.count ?? (result === "ranked" ? 2 : 0),
+    result_status: result,
+    created_at: input.at,
+  };
+}
+
+/** Eine Zeile, wie der Lead-Abgleich sie schreibt: kein Projekt, kein Konto. */
+function leadRow(input: {
+  id: string;
+  lead: number;
+  actor?: string;
+  at: string;
+  skills?: string[];
+  result?: SearchDemandSourceRow["result_status"];
+}): SearchDemandSourceRow {
+  const result = input.result === undefined ? "no_reliable_match" : input.result;
+  return {
+    id: input.id,
+    source: "lead",
+    project_id: null,
+    owner_user_id: null,
+    lead_id: input.lead,
+    demand_actor: input.actor ?? "pseudonym-agentur-1",
+    brief_snapshot: brief(input.skills ?? ["Kubernetes"]),
+    decision_snapshot: null,
+    result_count: result === "ranked" ? 2 : 0,
     result_status: result,
     created_at: input.at,
   };
@@ -150,3 +178,76 @@ describe("search demand analysis", () => {
     expect(report.profiles).toHaveLength(0);
   });
 });
+
+describe("Nachfrage aus Leads", () => {
+  /**
+   * Der eigentliche Zweck: Eine Ausschreibung, zu der der Katalog niemanden
+   * führt, muss in derselben Auswertung auftauchen wie eine Nutzersuche
+   * ohne Treffer. Sonst bliebe die Lücke unsichtbar, die sie beschreibt.
+   */
+  it("zählt eine Ausschreibung ohne Treffer als Nachfrage", () => {
+    const report = buildSearchDemandReport({
+      now,
+      period: 90,
+      rows: [
+        leadRow({ id: "l1", lead: 1, at: "2026-09-01T09:00:00.000Z", skills: ["Kubernetes"] }),
+      ],
+    });
+    expect(report.totals.searches).toBe(1);
+    expect(report.totals.noReliableMatch).toBe(1);
+    expect(report.totals.uniqueUsers).toBe(1);
+  });
+
+  /**
+   * Dieselbe Agentur schreibt mehrfach aus — K-Recruiting steht vierzehnmal
+   * in der Warteschlange. Das sind vierzehn Anlässe, aber ein Suchender.
+   */
+  it("zählt dieselbe Agentur als einen Akteur", () => {
+    const report = buildSearchDemandReport({
+      now,
+      period: 90,
+      rows: [
+        leadRow({ id: "l1", lead: 1, actor: "agentur", at: "2026-09-01T09:00:00.000Z" }),
+        leadRow({ id: "l2", lead: 2, actor: "agentur", at: "2026-09-02T09:00:00.000Z" }),
+        leadRow({ id: "l3", lead: 3, actor: "agentur", at: "2026-09-03T09:00:00.000Z" }),
+      ],
+    });
+    expect(report.totals.searches).toBe(3);
+    expect(report.totals.uniqueUsers).toBe(1);
+  });
+
+  /**
+   * Ohne eigenen Schlüssel fielen alle Lead-Zeilen in einen Eimer, weil ihr
+   * project_id leer ist — aus drei Ausschreibungen würde eine.
+   */
+  it("wirft Leads nicht in denselben Eimer wie ein fehlendes Projekt", () => {
+    const report = buildSearchDemandReport({
+      now,
+      period: 90,
+      rows: [
+        leadRow({ id: "l1", lead: 1, at: "2026-09-01T09:00:00.000Z", skills: ["Kubernetes"] }),
+        leadRow({ id: "l2", lead: 2, at: "2026-09-02T09:00:00.000Z", skills: ["SAP FICO"] }),
+        row({ id: "s1", project: "p1", at: "2026-09-03T09:00:00.000Z" }),
+      ],
+    });
+    expect(report.totals.searches).toBe(3);
+  });
+
+  /**
+   * Der Ausschluss eigener Konten darf einen Lead nicht treffen: Er trägt
+   * kein Konto und kann deshalb auch nicht das eigene sein.
+   */
+  it("schließt Leads nicht über die Konten-Ausschlussliste aus", () => {
+    const report = buildSearchDemandReport({
+      now,
+      period: 90,
+      excludedUserIds: new Set(["betreiber"]),
+      rows: [
+        leadRow({ id: "l1", lead: 1, at: "2026-09-01T09:00:00.000Z" }),
+        row({ id: "s1", project: "p1", user: "betreiber", at: "2026-09-02T09:00:00.000Z" }),
+      ],
+    });
+    expect(report.totals.searches).toBe(1);
+  });
+});
+
