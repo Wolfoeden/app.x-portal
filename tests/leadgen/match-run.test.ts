@@ -11,6 +11,11 @@ const mocks = vi.hoisted(() => ({
   leads: vi.fn(),
   sentSince: vi.fn(),
   recordRun: vi.fn(),
+  saveDraft: vi.fn(),
+  listDrafts: vi.fn(),
+  claimDraft: vi.fn(),
+  discardDraft: vi.fn(),
+  existingDrafts: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -32,26 +37,37 @@ vi.mock("@/lib/leadgen/leads-data", () => ({
   sentSince: mocks.sentSince,
   updateLead: mocks.updateLead,
   recordLeadRun: mocks.recordRun,
+  savePreparedDraft: mocks.saveDraft,
+  listPreparedDrafts: mocks.listDrafts,
+  claimPreparedDraft: mocks.claimDraft,
+  discardPreparedDraft: mocks.discardDraft,
 }));
 vi.mock("@/lib/leadgen/demand", () => ({
   recordLeadMatch: mocks.recordMatch,
   catalogVersion: () => "catalog-test",
 }));
+// Zwei Tabellen werden gelesen: die Warteschlange und, beim Vorbereiten, die
+// schon vorhandenen Entwürfe. Der Mock unterscheidet sie, damit ein Test nicht
+// versehentlich die Antwort der einen für die andere hält.
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminSupabaseClient: () => ({
-    from: () => ({
+    from: (tabelle: string) => ({
       select: () => ({
-        eq: () => ({
-          is: () => ({
-            order: () => mocks.leads(),
-          }),
-        }),
+        eq: () =>
+          tabelle === "leadgen_outreach"
+            ? mocks.existingDrafts()
+            : {
+                is: () => ({ order: () => mocks.leads() }),
+              },
       }),
     }),
   }),
 }));
 
-import { runLeadMatchPass } from "@/lib/leadgen/match-run";
+import {
+  runLeadPreparePass,
+  runLeadSendPass,
+} from "@/lib/leadgen/match-run";
 
 /**
  * Ein Profil, das der Rangliste standhält: aktiv, buchbar, mit belegten
@@ -109,76 +125,76 @@ function lead(input: { id: number; text: string }) {
 const TREFFER = "React Engineer — React gesucht, remote — https://example.invalid/p/1";
 const OHNE_TREFFER = "SAP Berater — SAP S/4HANA gesucht, remote — https://example.invalid/p/2";
 
+const ENTWURF = {
+  outreach_id: "11111111-1111-4111-8111-aaaaaaaaaaaa",
+  lead_id: 1,
+  recipient_email: "kontakt1@example.invalid",
+  subject: "Ein verfügbarer Freelancer für die Rolle",
+  body: "Guten Tag …",
+  cta_url: "https://x-portal.eu/chat?q=React+Engineer",
+  prepared_profile_id: PROFIL.id,
+  prepared_at: "2026-09-07T06:00:00.000Z",
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.profiles.mockResolvedValue([PROFIL]);
   mocks.deliver.mockResolvedValue({ delivered: true });
-  mocks.claim.mockResolvedValue({ claimed: true, outreachId: "outreach-1" });
   mocks.recordSent.mockResolvedValue({ recorded: true, outreachId: "outreach-1" });
   mocks.updateLead.mockResolvedValue(null);
   mocks.recordMatch.mockResolvedValue({ recorded: true });
   mocks.recordRun.mockResolvedValue(undefined);
   mocks.sentSince.mockResolvedValue(0);
+  mocks.existingDrafts.mockResolvedValue({ data: [], error: null });
+  mocks.saveDraft.mockResolvedValue(undefined);
+  mocks.claimDraft.mockResolvedValue({ claimed: true, leadId: 1 });
+  mocks.discardDraft.mockResolvedValue(true);
+  mocks.listDrafts.mockResolvedValue([ENTWURF]);
+  mocks.leads.mockResolvedValue({ data: [], error: null });
 });
 
-describe("Tageslauf der Akquise", () => {
-  it("verschickt bei einem Treffer und archiviert den Lead als angeschrieben", async () => {
+describe("Vorbereiten: der Abgleich", () => {
+  it("legt bei einem Treffer einen Entwurf an und verschickt nichts", async () => {
     mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
 
-    const result = await runLeadMatchPass({ senderEmail: "info@x-portal.eu" });
+    const result = await runLeadPreparePass({ senderEmail: "info@x-portal.eu" });
 
-    expect(result.sent).toBe(1);
-    expect(result.archived).toBe(0);
-    expect(mocks.deliver).toHaveBeenCalledTimes(1);
-    const [message] = mocks.deliver.mock.calls[0] as [
-      { subject: string; text: string; kind: string; to: string },
-    ];
-    expect(message.kind).toBe("cold_outreach");
-    expect(message.to).toBe("kontakt1@example.invalid");
-    expect(mocks.updateLead).toHaveBeenCalledWith({
-      id: 1,
-      status: "contacted",
-      archived: true,
-    });
-  });
-
-  /**
-   * Nur belegte Kompetenzen wandern in die Nachricht. Eine selbst angegebene
-   * Fähigkeit ist eine Aussage der Person über sich; sie als Zusage an einen
-   * Auftraggeber weiterzureichen wäre eine Behauptung, für die niemand einsteht.
-   */
-  it("nennt in den Eckdaten nur belegte Kompetenzen", async () => {
-    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
-
-    await runLeadMatchPass({ senderEmail: "info@x-portal.eu" });
-
-    const [message] = mocks.deliver.mock.calls[0] as [{ text: string }];
-    expect(message.text).toContain("React");
-    expect(message.text).not.toContain("Next.js");
-  });
-
-  /** Der Name steht auf dem öffentlichen Profil, aber nicht in dieser Mail. */
-  it("nennt den Freelancer nicht beim Namen", async () => {
-    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
-
-    await runLeadMatchPass({ senderEmail: "info@x-portal.eu" });
-
-    const [message] = mocks.deliver.mock.calls[0] as [{ text: string }];
-    expect(message.text).not.toContain("Beispiel Person");
-  });
-
-  it("archiviert ohne Treffer, verschickt nichts und vermerkt die Nachfrage", async () => {
-    mocks.leads.mockResolvedValue({
-      data: [lead({ id: 2, text: OHNE_TREFFER })],
-      error: null,
-    });
-
-    const result = await runLeadMatchPass({ senderEmail: "info@x-portal.eu" });
-
+    expect(result.prepared).toBe(1);
     expect(result.sent).toBe(0);
-    expect(result.archived).toBe(1);
     expect(mocks.deliver).not.toHaveBeenCalled();
-    expect(mocks.recordMatch).toHaveBeenCalledTimes(1);
+    expect(mocks.saveDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        leadId: 1,
+        profileId: PROFIL.id,
+        ctaUrl: expect.stringContaining("https://x-portal.eu/chat?q="),
+      }),
+    );
+    // Der Lead bleibt offen: Er ist vorbereitet, nicht erledigt.
+    expect(mocks.updateLead).not.toHaveBeenCalled();
+  });
+
+  it("nennt in den Eckdaten nur belegte Kompetenzen und keinen Namen", async () => {
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
+
+    await runLeadPreparePass({ senderEmail: "info@x-portal.eu" });
+
+    const body = mocks.saveDraft.mock.calls[0][0].body as string;
+    expect(body).toContain("React");
+    expect(body).not.toContain("Next.js");
+    expect(body).not.toContain(PROFIL.displayName);
+  });
+
+  it("archiviert ohne Treffer und vermerkt die Nachfrage", async () => {
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 2, text: OHNE_TREFFER })], error: null });
+
+    const result = await runLeadPreparePass({ senderEmail: "info@x-portal.eu" });
+
+    expect(result.archived).toBe(1);
+    expect(result.prepared).toBe(0);
+    expect(mocks.saveDraft).not.toHaveBeenCalled();
+    expect(mocks.recordMatch).toHaveBeenCalledWith(
+      expect.objectContaining({ leadId: 2 }),
+    );
     expect(mocks.updateLead).toHaveBeenCalledWith({
       id: 2,
       status: "dismissed",
@@ -186,240 +202,204 @@ describe("Tageslauf der Akquise", () => {
     });
   });
 
-  /**
-   * Die Reihenfolge ist die Zusage: Bricht der Lauf zwischen beidem ab, ist
-   * der Lead noch da. Andersherum wäre er aus der Liste verschwunden, ohne
-   * dass irgendwo stünde, wonach gefragt worden war.
-   */
-  it("hält die Nachfrage fest, bevor der Lead verschwindet", async () => {
+  it("hält das Ergebnis fest, bevor der Lead verschwindet", async () => {
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 2, text: OHNE_TREFFER })], error: null });
+
+    await runLeadPreparePass({ senderEmail: "info@x-portal.eu" });
+
+    const abgleich = mocks.recordMatch.mock.invocationCallOrder[0];
+    const archiviert = mocks.updateLead.mock.invocationCallOrder[0];
+    expect(abgleich).toBeLessThan(archiviert);
+  });
+
+  it("übergeht Leads, für die schon ein Entwurf bereitliegt", async () => {
+    mocks.existingDrafts.mockResolvedValue({ data: [{ lead_id: 1 }], error: null });
     mocks.leads.mockResolvedValue({
-      data: [lead({ id: 2, text: OHNE_TREFFER })],
+      data: [lead({ id: 1, text: TREFFER }), lead({ id: 3, text: TREFFER })],
       error: null,
     });
-    const reihenfolge: string[] = [];
-    mocks.recordMatch.mockImplementation(async () => {
-      reihenfolge.push("nachfrage");
-      return { recorded: true };
-    });
-    mocks.updateLead.mockImplementation(async () => {
-      reihenfolge.push("archiv");
-      return null;
+
+    const result = await runLeadPreparePass({ senderEmail: "info@x-portal.eu" });
+
+    expect(result.examined).toBe(1);
+    expect(mocks.saveDraft).toHaveBeenCalledTimes(1);
+    expect(mocks.saveDraft.mock.calls[0][0].leadId).toBe(3);
+  });
+
+  it("kennt kein Tageslimit, weil nichts das Haus verlässt", async () => {
+    const viele = Array.from({ length: 40 }, (_, i) =>
+      lead({ id: 100 + i, text: TREFFER }),
+    );
+    mocks.leads.mockResolvedValue({ data: viele, error: null });
+    mocks.sentSince.mockResolvedValue(20);
+
+    const result = await runLeadPreparePass({ senderEmail: "info@x-portal.eu" });
+
+    expect(result.prepared).toBe(40);
+    expect(mocks.sentSince).not.toHaveBeenCalled();
+  });
+
+  it("speichert im Probelauf nichts", async () => {
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
+
+    const result = await runLeadPreparePass({
+      senderEmail: "info@x-portal.eu",
+      dryRun: true,
     });
 
-    await runLeadMatchPass({ senderEmail: "info@x-portal.eu" });
+    expect(result.prepared).toBe(1);
+    expect(mocks.saveDraft).not.toHaveBeenCalled();
+    expect(mocks.recordMatch).not.toHaveBeenCalled();
+  });
 
-    expect(reihenfolge).toEqual(["nachfrage", "archiv"]);
+  it("protokolliert den Durchgang als Vorbereitung", async () => {
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
+
+    await runLeadPreparePass({ senderEmail: "info@x-portal.eu", trigger: "admin" });
+
+    expect(mocks.recordRun).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "prepare", trigger: "admin", examined: 1 }),
+    );
+  });
+});
+
+describe("Versenden: die vorbereiteten Entwürfe", () => {
+  it("stellt einen Entwurf zu und legt den Lead ab", async () => {
+    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu" });
+
+    expect(result.sent).toBe(1);
+    expect(mocks.deliver).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: ENTWURF.recipient_email,
+        subject: ENTWURF.subject,
+        text: ENTWURF.body,
+        kind: "cold_outreach",
+      }),
+    );
+    expect(mocks.recordSent).toHaveBeenCalledWith(ENTWURF.outreach_id);
+    expect(mocks.updateLead).toHaveBeenCalledWith({
+      id: 1,
+      status: "contacted",
+      archived: true,
+    });
+  });
+
+  it("gleicht nicht erneut ab, denn der Abgleich ist gelaufen", async () => {
+    await runLeadSendPass({ senderEmail: "info@x-portal.eu" });
+
+    expect(mocks.recordMatch).not.toHaveBeenCalled();
+    expect(mocks.saveDraft).not.toHaveBeenCalled();
+  });
+
+  it("verwirft den Entwurf, wenn das angebotene Profil nicht mehr buchbar ist", async () => {
+    mocks.profiles.mockResolvedValue([]);
+
+    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu" });
+
+    expect(result.discarded).toBe(1);
+    expect(result.sent).toBe(0);
+    expect(mocks.deliver).not.toHaveBeenCalled();
+    expect(mocks.discardDraft).toHaveBeenCalledWith({
+      outreachId: ENTWURF.outreach_id,
+      reason: "profile_gone",
+    });
+  });
+
+  it("verwirft einen Entwurf, der zu alt geworden ist", async () => {
+    mocks.listDrafts.mockResolvedValue([
+      { ...ENTWURF, prepared_at: "2026-08-01T06:00:00.000Z" },
+    ]);
+
+    const result = await runLeadSendPass({
+      senderEmail: "info@x-portal.eu",
+      now: new Date("2026-09-07T06:00:00Z"),
+    });
+
+    expect(result.discarded).toBe(1);
+    expect(mocks.discardDraft).toHaveBeenCalledWith({
+      outreachId: ENTWURF.outreach_id,
+      reason: "draft_expired",
+    });
   });
 
   it("gibt den Anspruch frei, wenn die Zustellung scheitert", async () => {
-    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
-    mocks.deliver.mockResolvedValue({ delivered: false, reason: "suppressed" });
+    mocks.deliver.mockResolvedValue({ delivered: false, reason: "smtp_error" });
 
-    const result = await runLeadMatchPass({ senderEmail: "info@x-portal.eu" });
+    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu" });
 
     expect(result.sent).toBe(0);
     expect(result.skipped).toBe(1);
     expect(mocks.release).toHaveBeenCalledWith({
-      outreachId: "outreach-1",
-      reason: "suppressed",
+      outreachId: ENTWURF.outreach_id,
+      reason: "smtp_error",
     });
     expect(mocks.recordSent).not.toHaveBeenCalled();
   });
 
-  it("überspringt einen Lead, den ein anderer Lauf schon beansprucht hat", async () => {
-    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
-    mocks.claim.mockResolvedValue({ claimed: false, reason: "already_sent" });
+  it("überspringt einen Entwurf, den ein anderer Lauf schon beansprucht hat", async () => {
+    mocks.claimDraft.mockResolvedValue({ claimed: false, reason: "already_sent" });
 
-    const result = await runLeadMatchPass({ senderEmail: "info@x-portal.eu" });
+    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu" });
 
+    expect(result.sent).toBe(0);
     expect(result.skipped).toBe(1);
     expect(mocks.deliver).not.toHaveBeenCalled();
   });
 
-  /**
-   * Der Deckel zählt Versendetes, nicht Betrachtetes: Ein Lauf, den zwei
-   * unbrauchbare Ausschreibungen aufbrauchen, hätte keine einzige Mail
-   * verschickt und trotzdem behauptet, fertig zu sein.
-   */
-  it("zählt nur Versendetes gegen den Deckel", async () => {
-    mocks.leads.mockResolvedValue({
-      data: [
-        lead({ id: 1, text: OHNE_TREFFER }),
-        lead({ id: 2, text: OHNE_TREFFER }),
-        lead({ id: 3, text: TREFFER }),
-      ],
-      error: null,
-    });
-
-    const result = await runLeadMatchPass({
-      senderEmail: "info@x-portal.eu",
-      dailyLimit: 1,
-    });
-
-    expect(result.archived).toBe(2);
-    expect(result.sent).toBe(1);
-  });
-
-  /**
-   * Das Tageslimit gehört dem Tag und nicht dem Aufruf. Seit der Durchgang
-   * mehrmals am Morgen läuft, wäre ein Deckel je Aufruf die Summe aller
-   * Aufrufe — und die hätte das Postfach überschritten, um das es geht.
-   */
   it("rechnet an, was heute schon rausgegangen ist", async () => {
     mocks.sentSince.mockResolvedValue(20);
-    mocks.leads.mockResolvedValue({
-      data: [lead({ id: 1, text: TREFFER })],
-      error: null,
-    });
 
-    const result = await runLeadMatchPass({
+    const result = await runLeadSendPass({
       senderEmail: "info@x-portal.eu",
       dailyLimit: 20,
     });
 
     expect(result.sent).toBe(0);
     expect(result.stoppedBy).toBe("daily_limit");
-    expect(result.dailyBudgetLeft).toBe(0);
     expect(mocks.deliver).not.toHaveBeenCalled();
   });
 
-  /**
-   * Der Grund, warum es diese Grenze gibt: Die Funktion läuft hinter einem
-   * Gateway, das nach gut dreißig Sekunden abbricht. Ein Durchgang über 247
-   * offene Leads lief genau da hinein.
-   */
-  it("hört nach dem Ansehbudget auf und meldet den Rest", async () => {
-    mocks.leads.mockResolvedValue({
-      data: [1, 2, 3, 4, 5].map((id) => lead({ id, text: OHNE_TREFFER })),
-      error: null,
-    });
+  it("hört nach der Tagesmenge auf und meldet den Rest", async () => {
+    mocks.listDrafts.mockResolvedValue([
+      ENTWURF,
+      { ...ENTWURF, outreach_id: "22222222-2222-4222-8222-bbbbbbbbbbbb", lead_id: 2 },
+      { ...ENTWURF, outreach_id: "33333333-3333-4333-8333-cccccccccccc", lead_id: 3 },
+    ]);
 
-    const result = await runLeadMatchPass({
+    const result = await runLeadSendPass({
       senderEmail: "info@x-portal.eu",
-      examineBudget: 2,
+      dailyLimit: 2,
     });
 
-    expect(result.examined).toBe(2);
-    expect(result.remaining).toBe(3);
-    expect(result.stoppedBy).toBe("examined");
+    expect(result.sent).toBe(2);
+    expect(result.remaining).toBe(1);
+    expect(result.stoppedBy).toBe("daily_limit");
+    expect(result.dailyBudgetLeft).toBe(0);
   });
 
-  /**
-   * Die Uhr wird gestellt, nicht abgewartet. Ein Test, der eine Sekunde
-   * schläft, hält einen Arbeiter besetzt und treibt fremde Tests in
-   * parallelen Läufen über ihre eigene Zeitgrenze.
-   */
-  it("hört auf, wenn die Zeit weg ist", async () => {
-    mocks.leads.mockResolvedValue({
-      data: [1, 2, 3].map((id) => lead({ id, text: OHNE_TREFFER })),
-      error: null,
-    });
+  it("meldet einen leeren Vorrat als solchen", async () => {
+    mocks.listDrafts.mockResolvedValue([]);
 
-    const start = Date.now();
-    let verstrichen = 0;
-    const uhr = vi.spyOn(Date, "now").mockImplementation(() => start + verstrichen);
-    mocks.recordMatch.mockImplementation(async () => {
-      verstrichen += 800;
-      return { recorded: true };
-    });
+    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu" });
 
-    try {
-      const result = await runLeadMatchPass({
-        senderEmail: "info@x-portal.eu",
-        timeBudgetMs: 1_000,
-      });
-      expect(result.stoppedBy).toBe("time");
-      expect(result.examined).toBe(2);
-      expect(result.remaining).toBe(1);
-    } finally {
-      uhr.mockRestore();
-    }
+    expect(result.stoppedBy).toBe("nothing_prepared");
+    expect(result.sent).toBe(0);
+    expect(mocks.recordRun).not.toHaveBeenCalled();
   });
 
-  it("meldet einen fertigen Durchgang als leere Warteschlange", async () => {
-    mocks.leads.mockResolvedValue({
-      data: [lead({ id: 1, text: OHNE_TREFFER })],
-      error: null,
-    });
-
-    const result = await runLeadMatchPass({ senderEmail: "info@x-portal.eu" });
-
-    expect(result.stoppedBy).toBe("queue_empty");
-    expect(result.remaining).toBe(0);
-  });
-
-  it("verschickt und speichert im Probelauf nichts", async () => {
-    mocks.leads.mockResolvedValue({
-      data: [lead({ id: 1, text: TREFFER }), lead({ id: 2, text: OHNE_TREFFER })],
-      error: null,
-    });
-
-    const result = await runLeadMatchPass({
+  it("verschickt im Probelauf nichts", async () => {
+    const result = await runLeadSendPass({
       senderEmail: "info@x-portal.eu",
       dryRun: true,
     });
 
     expect(result.sent).toBe(1);
-    expect(result.archived).toBe(1);
     expect(mocks.deliver).not.toHaveBeenCalled();
-    expect(mocks.claim).not.toHaveBeenCalled();
-    expect(mocks.updateLead).not.toHaveBeenCalled();
-    expect(mocks.recordMatch).not.toHaveBeenCalled();
-  });
-});
-
-describe("Versandfenster des Tageslaufs", () => {
-  it("tut außerhalb des Fensters nichts und fragt die Datenbank nicht", async () => {
-    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
-
-    const result = await runLeadMatchPass({
-      senderEmail: "info@x-portal.eu",
-      enforceWindow: true,
-      // Montag, 7. September 2026, 5:00 UTC — 7 Uhr Ortszeit, eine Stunde
-      // zu früh. Genau der Aufruf, den der Zeitgeber im Winter zusätzlich
-      // macht.
-      now: new Date("2026-09-07T05:00:00Z"),
-    });
-
-    expect(result.stoppedBy).toBe("outside_window");
-    expect(result.examined).toBe(0);
-    expect(result.sent).toBe(0);
-    expect(mocks.sentSince).not.toHaveBeenCalled();
-    expect(mocks.profiles).not.toHaveBeenCalled();
-    expect(mocks.deliver).not.toHaveBeenCalled();
-  });
-
-  it("arbeitet innerhalb des Fensters wie gewohnt", async () => {
-    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
-
-    const result = await runLeadMatchPass({
-      senderEmail: "info@x-portal.eu",
-      enforceWindow: true,
-      // 8 Uhr Ortszeit.
-      now: new Date("2026-09-07T06:00:00Z"),
-    });
-
-    expect(result.stoppedBy).not.toBe("outside_window");
-    expect(result.sent).toBe(1);
-    expect(mocks.deliver).toHaveBeenCalledTimes(1);
-  });
-
-  it("bindet einen Lauf ohne die Vorgabe nicht an die Uhrzeit", async () => {
-    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
-
-    const result = await runLeadMatchPass({
-      senderEmail: "info@x-portal.eu",
-      now: new Date("2026-09-07T22:00:00Z"),
-    });
-
-    expect(result.sent).toBe(1);
+    expect(mocks.claimDraft).not.toHaveBeenCalled();
   });
 
   it("zählt das Tagesbudget ab Mitternacht Ortszeit", async () => {
-    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
-    mocks.sentSince.mockResolvedValue(0);
-
-    await runLeadMatchPass({
+    await runLeadSendPass({
       senderEmail: "info@x-portal.eu",
       now: new Date("2026-09-07T06:00:00Z"),
     });
@@ -429,61 +409,41 @@ describe("Versandfenster des Tageslaufs", () => {
   });
 });
 
-describe("Was ein Lauf hinterlässt", () => {
-  it("hält auch einen Treffer fest, und zwar bevor die Nachricht rausgeht", async () => {
-    mocks.leads.mockResolvedValue({ data: [lead({ id: 7, text: TREFFER })], error: null });
-
-    await runLeadMatchPass({ senderEmail: "info@x-portal.eu" });
-
-    expect(mocks.recordMatch).toHaveBeenCalledWith(
-      expect.objectContaining({ leadId: 7, profileCatalogVersion: "catalog-test" }),
-    );
-    // Die Reihenfolge trägt die Aussage: Steht der Abgleich erst nach dem
-    // Versand fest, weiß nach einem Abbruch niemand mehr, warum verschickt
-    // wurde.
-    const abgleichAufruf = mocks.recordMatch.mock.invocationCallOrder[0];
-    const versandAufruf = mocks.deliver.mock.invocationCallOrder[0];
-    expect(abgleichAufruf).toBeLessThan(versandAufruf);
-  });
-
-  it("legt den Portal-Link und die Herkunft in den Beleg", async () => {
-    mocks.leads.mockResolvedValue({ data: [lead({ id: 8, text: TREFFER })], error: null });
-
-    await runLeadMatchPass({ senderEmail: "info@x-portal.eu", trigger: "scheduler" });
-
-    expect(mocks.claim).toHaveBeenCalledWith(
-      expect.objectContaining({
-        origin: "scheduler",
-        ctaUrl: expect.stringContaining("https://x-portal.eu/chat?q="),
-      }),
-    );
-  });
-
-  it("protokolliert den Durchgang mit seinem Abbruchgrund", async () => {
-    mocks.leads.mockResolvedValue({ data: [lead({ id: 9, text: OHNE_TREFFER })], error: null });
-
-    await runLeadMatchPass({ senderEmail: "info@x-portal.eu", trigger: "admin" });
-
-    expect(mocks.recordRun).toHaveBeenCalledWith(
-      expect.objectContaining({
-        trigger: "admin",
-        examined: 1,
-        sent: 0,
-        archived: 1,
-        stopped_by: "queue_empty",
-      }),
-    );
-  });
-
-  it("protokolliert einen übergangenen Aufruf nicht", async () => {
-    mocks.leads.mockResolvedValue({ data: [lead({ id: 10, text: TREFFER })], error: null });
-
-    await runLeadMatchPass({
+describe("Das Versandfenster gilt nur für den Versand", () => {
+  it("tut außerhalb des Fensters nichts und fragt die Datenbank nicht", async () => {
+    const result = await runLeadSendPass({
       senderEmail: "info@x-portal.eu",
       enforceWindow: true,
+      // Montag, 7. September 2026, 5:00 UTC — 7 Uhr Ortszeit, eine Stunde zu
+      // früh. Genau der Aufruf, den der Zeitgeber im Winter zusätzlich macht.
       now: new Date("2026-09-07T05:00:00Z"),
     });
 
+    expect(result.stoppedBy).toBe("outside_window");
+    expect(mocks.sentSince).not.toHaveBeenCalled();
+    expect(mocks.listDrafts).not.toHaveBeenCalled();
     expect(mocks.recordRun).not.toHaveBeenCalled();
+  });
+
+  it("arbeitet innerhalb des Fensters wie gewohnt", async () => {
+    const result = await runLeadSendPass({
+      senderEmail: "info@x-portal.eu",
+      enforceWindow: true,
+      now: new Date("2026-09-07T06:00:00Z"),
+    });
+
+    expect(result.stoppedBy).not.toBe("outside_window");
+    expect(result.sent).toBe(1);
+  });
+
+  it("hält den Abgleich nicht auf, auch nachts nicht", async () => {
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
+
+    const result = await runLeadPreparePass({
+      senderEmail: "info@x-portal.eu",
+      now: new Date("2026-09-07T23:00:00Z"),
+    });
+
+    expect(result.prepared).toBe(1);
   });
 });

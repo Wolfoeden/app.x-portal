@@ -139,8 +139,24 @@ export function LeadsPanel({
     [rows],
   );
 
-  function rowState(id: number): RowState {
-    return state[id] ?? LEERER_ZUSTAND;
+  /**
+   * Der Bearbeitungsstand einer Zeile.
+   *
+   * Solange niemand getippt hat, gilt der gespeicherte Entwurf. Vorher stand
+   * hier ein leeres Feld, obwohl der Tageslauf laengst einen Text vorbereitet
+   * hatte — wer die Zeile aufklappte, sah nicht, was rausgehen wuerde.
+   */
+  function rowState(row: LeadRow): RowState {
+    const eigener = state[row.id];
+    if (eigener) return eigener;
+    if (row.outreach_state === "draft" && row.outreach_body) {
+      return {
+        ...LEERER_ZUSTAND,
+        subject: row.outreach_subject ?? "",
+        body: row.outreach_body,
+      };
+    }
+    return LEERER_ZUSTAND;
   }
 
   /**
@@ -209,7 +225,7 @@ export function LeadsPanel({
     row: LeadRow,
     options: { autoDraft?: boolean; silent?: boolean } = {},
   ): Promise<boolean> {
-    const current = rowState(row.id);
+    const current = rowState(row);
     if (!options.silent) patchRowState(row.id, { busy: "send", error: null });
     try {
       const response = await fetch(appPath(`/api/admin/leads/${row.id}/send`), {
@@ -382,7 +398,7 @@ export function LeadsPanel({
           </thead>
           <tbody>
             {rows.map((row) => {
-              const current = rowState(row.id);
+              const current = rowState(row);
               const expanded = open === row.id;
               const url = leadSourceUrl(row.stellenanzeige);
               const sendable = !row.last_contacted_at;
@@ -420,7 +436,11 @@ export function LeadsPanel({
                         leadHeadline(row.stellenanzeige)
                       )}
                       {row.outreach_state === "draft" ? (
-                        <div className={styles.hint}>Entwurf liegt bereit</div>
+                        <div className={styles.hint}>
+                          {row.outreach_origin === "scheduler"
+                            ? "Vorbereitet, wartet auf Versand"
+                            : "Entwurf liegt bereit"}
+                        </div>
                       ) : null}
                       {row.outreach_cta_url ? (
                         <div className={styles.hint}>
