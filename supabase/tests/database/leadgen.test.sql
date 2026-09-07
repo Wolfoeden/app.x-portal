@@ -278,6 +278,143 @@ select throws_ok(
 );
 
 -- ---------------------------------------------------------------------
+-- Vorbereiten und Versenden sind zwei Vorgaenge.
+-- ---------------------------------------------------------------------
+insert into public.leadgen_queue (id, recipient_email, stellenanzeige, status)
+overriding system value
+values (9000003, 'vorbereitet@example.invalid', 'React Engineer gesucht', 'new');
+
+-- Ein Entwurf, wie ihn der Abgleich hinterlaesst: mit Portal-Link, dem
+-- angebotenen Profil und dem Zeitpunkt, an dem er entstand.
+insert into public.leadgen_outreach (
+  lead_id, state, subject, body, cta_url, origin,
+  prepared_profile_id, prepared_at
+)
+values (
+  9000003, 'draft', 'Vorbereitet', 'Rumpf des Entwurfs',
+  'https://x-portal.eu/chat?q=React', 'scheduler',
+  '22222222-2222-4222-8222-222222222222', now() - interval '1 hour'
+);
+
+select is(
+  (
+    select count(*)::int
+      from public.list_leadgen_prepared_drafts(50)
+     where lead_id = 9000003
+  ),
+  1,
+  'ein vorbereiteter Entwurf steht in der Liste fuer den Versand'
+);
+
+-- Ein von Hand erzeugter Entwurf wartet auf den Betreiber, nicht auf den
+-- Zeitgeber. Er darf nicht im Stapel des Tageslaufs auftauchen.
+select is(
+  (
+    select count(*)::int
+      from public.list_leadgen_prepared_drafts(50)
+     where lead_id = 9000002
+  ),
+  0,
+  'ein Entwurf ohne Herkunft scheduler bleibt dem Tageslauf verborgen'
+);
+
+select is(
+  (
+    select claimed
+      from public.claim_leadgen_draft(
+        (select id from public.leadgen_outreach where lead_id = 9000003)
+      )
+  ),
+  true,
+  'der Versand beansprucht den Entwurf und macht daraus sending'
+);
+
+select is(
+  (select state from public.leadgen_outreach where lead_id = 9000003),
+  'sending',
+  'und der Zustand steht danach auf sending'
+);
+
+select is(
+  (
+    select count(*)::int
+      from public.list_leadgen_prepared_drafts(50)
+     where lead_id = 9000003
+  ),
+  0,
+  'ein beanspruchter Entwurf wird kein zweites Mal ausgegeben'
+);
+
+-- ---------------------------------------------------------------------
+-- Ein Entwurf, der nicht mehr traegt, gibt den Lead zurueck.
+-- ---------------------------------------------------------------------
+insert into public.leadgen_queue (id, recipient_email, stellenanzeige, status)
+overriding system value
+values (9000004, 'verworfen@example.invalid', 'Verfallener Entwurf', 'new');
+
+insert into public.leadgen_outreach (
+  lead_id, state, subject, body, origin, prepared_at
+)
+values (
+  9000004, 'draft', 'Zu alt', 'Rumpf', 'scheduler',
+  now() - interval '30 days'
+);
+
+select is(
+  (
+    select public.discard_leadgen_draft(
+      (select id from public.leadgen_outreach where lead_id = 9000004),
+      'draft_expired'
+    )
+  ),
+  true,
+  'ein verfallener Entwurf laesst sich verwerfen'
+);
+
+select is(
+  (select count(*)::int from public.leadgen_outreach where lead_id = 9000004),
+  0,
+  'und hinterlaesst keine Zeile'
+);
+
+select is(
+  (
+    select status || ':' || coalesce(archived_at::text, 'offen')
+      from public.leadgen_queue
+     where id = 9000004
+  ),
+  'new:offen',
+  'der Lead steht danach wieder offen in der Warteschlange'
+);
+
+-- ---------------------------------------------------------------------
+-- Der Trichter zaehlt das Vorbereitete getrennt.
+-- ---------------------------------------------------------------------
+select ok(
+  (public.admin_leadgen_pipeline_summary() ? 'vorbereitet'),
+  'der Trichter nennt die vorbereiteten Entwuerfe'
+);
+
+-- ---------------------------------------------------------------------
+-- Das Laufprotokoll unterscheidet Abgleich und Versand.
+-- ---------------------------------------------------------------------
+select throws_ok(
+  $$insert into public.leadgen_run (
+      started_at, trigger, kind, stopped_by
+    ) values (now(), 'scheduler', 'irgendwas', 'time')$$,
+  '23514',
+  null,
+  'eine erfundene Art des Durchgangs verletzt leadgen_run_kind_check'
+);
+
+select lives_ok(
+  $$insert into public.leadgen_run (
+      started_at, trigger, kind, stopped_by
+    ) values (now(), 'scheduler', 'prepare', 'nothing_prepared')$$,
+  'prepare und nothing_prepared sind zulaessige Werte'
+);
+
+-- ---------------------------------------------------------------------
 -- Die Löschregeln stehen in der Datenbank, nicht nur in der Mail.
 -- ---------------------------------------------------------------------
 select is(

@@ -85,6 +85,20 @@ export const LEAD_PAGE_SIZE = 50;
  */
 export const LEAD_BULK_SEND_LIMIT = 20;
 
+/**
+ * Wie lange ein vorbereiteter Entwurf gilt.
+ *
+ * Der Entwurf nennt ein bestimmtes Profil mit Verfügbarkeit und
+ * Stundensatz. Beides veraltet, und eine Ausschreibung, die vor drei
+ * Wochen lief, ist meistens besetzt. Vierzehn Tage sind großzügig genug,
+ * dass ein Rückstau aufgeholt werden kann, und kurz genug, dass niemand
+ * ein Angebot bekommt, das es nicht mehr gibt.
+ *
+ * Ein abgelaufener Entwurf wird nicht verschickt, sondern verworfen; der
+ * Lead geht zurück in die Warteschlange und wird neu abgeglichen.
+ */
+export const LEAD_DRAFT_MAX_AGE_DAYS = 14;
+
 export function isLeadStatus(value: unknown): value is LeadStatus {
   return (
     typeof value === "string" &&

@@ -6,9 +6,15 @@ import { z } from "zod";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { promotionalDeliveryConfigured } from "@/lib/email/deliver";
-import { runLeadMatchPass } from "@/lib/leadgen/match-run";
+import {
+  runLeadPreparePass,
+  runLeadSendPass,
+} from "@/lib/leadgen/match-run";
 import { LEAD_BULK_SEND_LIMIT } from "@/lib/leadgen/limits";
-import { readJsonWithLimit } from "@/lib/security/request";
+import {
+  assertSameOrigin,
+  readJsonWithLimit,
+} from "@/lib/security/request";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,17 +29,28 @@ export const maxDuration = 300;
  * keine Sitzung, keinen Browser und kein Cookie. Für ihn zählt ein
  * gemeinsames Geheimnis im Kopf der Anfrage.
  *
- * Kein `assertSameOrigin()`: Der geplante Lauf hat keinen Ursprung, den er
- * mitschicken könnte. Die Prüfung, die hier trägt, ist die Anmeldung
- * beziehungsweise das Geheimnis — und beide sind stärker als ein Kopf, den
- * ein Aufrufer selbst setzt.
+ * `assertSameOrigin()` gilt nur für den angemeldeten Weg. Der geplante Lauf
+ * hat keinen Ursprung, den er mitschicken könnte — für ihn trägt das
+ * Geheimnis, und das ist stärker als ein Kopf, den ein Aufrufer selbst
+ * setzt. Der Betreiber dagegen ruft aus einem Browser, und dort ist eine
+ * Sitzung allein keine Absicht: Seit ein Knopf in der Arbeitsfläche diese
+ * Route aufruft, könnte es auch eine fremde Seite tun.
  */
 
 const InputSchema = z
   .object({
-    /** Deckel für den ganzen Tag, über alle Aufrufe hinweg. */
+    /**
+     * Was der Aufruf tun soll.
+     *
+     * `prepare` gleicht ab und legt Entwürfe an, `send` stellt sie zu. Der
+     * Standard ist `send`: Ein Aufruf ohne Angabe kommt aus einer Zeit, in
+     * der der Durchgang beides tat, und verschicken ist davon der Teil, den
+     * ein alter Aufrufer erwartet hätte.
+     */
+    mode: z.enum(["prepare", "send"]).optional(),
+    /** Deckel für den ganzen Tag, über alle Aufrufe hinweg. Nur beim Versand. */
     dailyLimit: z.number().int().min(1).max(200).optional(),
-    /** Wie viele Leads dieser Aufruf ansieht. */
+    /** Wie viele Fälle dieser Aufruf ansieht. */
     examineBudget: z.number().int().min(1).max(500).optional(),
     /** Rechnet durch, ohne zu verschicken und ohne etwas zu speichern. */
     dryRun: z.boolean().optional(),
@@ -77,35 +94,61 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
+    // Nur für den Browser-Weg. Der Zeitgeber schickt keinen Ursprung mit,
+    // und ihn dafür abzuweisen hieße, die Prüfung gegen den einzigen
+    // Aufrufer zu richten, der sie nicht erfüllen kann.
+    if (auth.actor !== "scheduler") assertSameOrigin(request);
+
     const raw = await readJsonWithLimit(request, 2_000).catch(() => ({}));
     const input = InputSchema.parse(raw ?? {});
 
+    const mode = input.mode ?? "send";
     const from =
       process.env.EMAIL_FROM?.trim() || process.env.SMTP_USER?.trim() || null;
     // Strenger als der reine SMTP-Zugang, wie im Einzelversand: Ohne
     // funktionierenden Abmeldelink darf keine Werbung raus, und das soll hier
     // stehen statt mitten im Lauf aufzutreten.
-    if (!input.dryRun && (!promotionalDeliveryConfigured() || !from)) {
-      return NextResponse.json(
-        {
-          error:
-            "Der Mailversand ist nicht eingerichtet. Ohne SMTP-Zugang und ohne EMAIL_UNSUBSCRIBE_SECRET wird nichts verschickt.",
-        },
-        { status: 503 },
-      );
+    //
+    // Nur für den Versand. Ein Abgleich ohne eingerichteten Mailserver ist
+    // sinnvoll: Er füllt die Nachfrageauswertung und legt Entwürfe an, die
+    // warten können.
+    if (mode === "send" && !input.dryRun) {
+      if (!promotionalDeliveryConfigured() || !from) {
+        return NextResponse.json(
+          {
+            error:
+              "Der Mailversand ist nicht eingerichtet. Ohne SMTP-Zugang und ohne EMAIL_UNSUBSCRIBE_SECRET wird nichts verschickt.",
+          },
+          { status: 503 },
+        );
+      }
     }
 
-    const result = await runLeadMatchPass({
-      dailyLimit: input.dailyLimit ?? LEAD_BULK_SEND_LIMIT,
+    // Der Absender steht auch im vorbereiteten Entwurf — im Fuß, als
+    // Widerspruchsadresse. Fehlt er beim Abgleich, ist das kein Grund
+    // abzubrechen, aber der Entwurf trüge eine leere Stelle.
+    const senderEmail = from ?? "";
+
+    const gemeinsam = {
       examineBudget: input.examineBudget,
-      senderEmail: from ?? "",
+      senderEmail,
       dryRun: input.dryRun ?? false,
-      // Nur der Zeitplan ist an das Fenster gebunden. Der Betreiber
-      // ruft die Route bewusst auf und soll das auch um vier Uhr
-      // nachmittags können.
-      enforceWindow: auth.actor === "scheduler",
-      trigger: auth.actor === "scheduler" ? "scheduler" : "admin",
-    });
+      trigger: (auth.actor === "scheduler" ? "scheduler" : "admin") as
+        | "scheduler"
+        | "admin",
+    };
+
+    const result =
+      mode === "prepare"
+        ? await runLeadPreparePass(gemeinsam)
+        : await runLeadSendPass({
+            ...gemeinsam,
+            dailyLimit: input.dailyLimit ?? LEAD_BULK_SEND_LIMIT,
+            // Nur der Zeitplan ist an das Fenster gebunden. Der Betreiber
+            // ruft die Route bewusst auf und soll das auch um vier Uhr
+            // nachmittags können.
+            enforceWindow: auth.actor === "scheduler",
+          });
 
     await writeAuditEvent({
       // Der geplante Lauf hat kein Konto. Null ist hier die richtige Angabe:
@@ -119,10 +162,13 @@ export async function POST(request: Request) {
       // was der Lauf getan hat, nicht mit wem.
       metadata: {
         trigger: auth.actor === "scheduler" ? "scheduler" : "admin",
+        mode,
         dryRun: input.dryRun ?? false,
         examined: result.examined,
+        prepared: result.prepared,
         sent: result.sent,
         archived: result.archived,
+        discarded: result.discarded,
         skipped: result.skipped,
         remaining: result.remaining,
         stoppedBy: result.stoppedBy,
@@ -130,9 +176,12 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({
+      mode,
       examined: result.examined,
+      prepared: result.prepared,
       sent: result.sent,
       archived: result.archived,
+      discarded: result.discarded,
       skipped: result.skipped,
       remaining: result.remaining,
       dailyBudgetLeft: result.dailyBudgetLeft,

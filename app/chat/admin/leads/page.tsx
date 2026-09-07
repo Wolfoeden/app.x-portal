@@ -36,6 +36,7 @@ import {
 } from "@/lib/leadgen/limits";
 
 import { LeadsPanel } from "./LeadsPanel";
+import { PrepareAllButton } from "./PrepareAllButton";
 import styles from "./leads.module.css";
 
 export const metadata: Metadata = {
@@ -88,6 +89,7 @@ const STOP_LABELS: Readonly<Record<LeadRun["stopped_by"], string>> = {
   examined: "Stapel voll",
   daily_limit: "Tagesmenge erreicht",
   outside_window: "außerhalb des Fensters",
+  nothing_prepared: "nichts vorbereitet",
 };
 
 const runTime = new Intl.DateTimeFormat("de-DE", {
@@ -192,6 +194,12 @@ export default async function LeadsPage({
               tone: summary.pipeline.treffer ? "accent" : "default",
             },
             {
+              label: "Vorbereitet",
+              value: summary.pipeline.vorbereitet,
+              detail: "wartet auf Versand",
+              tone: summary.pipeline.vorbereitet ? "accent" : "muted",
+            },
+            {
               label: "Verschickt",
               value: summary.pipeline.verschickt,
               detail: `heute ${summary.pipeline.verschicktHeute} von ${LEAD_BULK_SEND_LIMIT}`,
@@ -211,14 +219,30 @@ export default async function LeadsPage({
           ]}
         />
 
+        <PrepareAllButton
+          offen={Math.max(
+            summary.pipeline.offen - summary.pipeline.vorbereitet,
+            0,
+          )}
+        />
+
         {runs.length ? (
           <p className={styles.runs}>
             <span className={styles.filterLabel}>Letzte Läufe</span>
             {runs.map((run) => (
               <span className={styles.run} key={run.id}>
                 {laufZeit(run.started_at)}
-                {run.dry_run ? " (Probe)" : ""}: <b>{run.examined}</b> geprüft,{" "}
-                <b>{run.sent}</b> verschickt, <b>{run.archived}</b> archiviert
+                {run.dry_run ? " (Probe)" : ""}:{" "}
+                {run.kind === "prepare" ? "Abgleich" : "Versand"}{", "}
+                <b>{run.examined}</b> geprüft,{" "}
+                <b>{run.sent}</b>{" "}
+                {run.kind === "prepare" ? "vorbereitet" : "verschickt"}
+                {run.archived ? (
+                  <>
+                    {", "}
+                    <b>{run.archived}</b> archiviert
+                  </>
+                ) : null}
                 {run.remaining ? `, ${run.remaining} offen` : ""}
                 <span className={styles.runStopped}>
                   {" · "}

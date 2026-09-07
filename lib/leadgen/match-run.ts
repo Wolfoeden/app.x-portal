@@ -10,15 +10,19 @@ import { deliverEmail, publicMailOrigin } from "@/lib/email/deliver";
 import { unsubscribeUrl } from "@/lib/email/unsubscribe";
 import { catalogVersion, recordLeadMatch } from "@/lib/leadgen/demand";
 import {
-  claimOutreach,
-  recordOutreachSent,
+  claimPreparedDraft,
+  discardPreparedDraft,
+  listPreparedDrafts,
   recordLeadRun,
+  recordOutreachSent,
   releaseOutreachClaim,
+  savePreparedDraft,
   sentSince,
   updateLead,
 } from "@/lib/leadgen/leads-data";
 import {
   LEAD_BULK_SEND_LIMIT,
+  LEAD_DRAFT_MAX_AGE_DAYS,
   isWithinLeadSendWindow,
   leadDayStart,
   leadHeadline,
@@ -33,39 +37,54 @@ import {
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 /**
- * Der Tageslauf: jeden offenen Lead gegen den Katalog halten und danach
- * entscheiden, was mit ihm geschieht.
+ * Der Lead-Abgleich, in zwei Vorgängen.
  *
- * Zwei Ausgänge, und der zweite ist der wichtigere. Führt der Katalog ein
- * passendes Profil, geht die Nachricht mit dessen Eckdaten raus. Führt er
- * keins, wird nichts verschickt — der Lead wandert ins Archiv, und die
- * Ausschreibung bleibt als unerfüllte Nachfrage stehen. Ein Lead, den niemand
- * bedienen kann, ist keine verlorene Zeile, sondern die Auskunft darüber,
- * welches Profil im Katalog fehlt.
+ * **Vorbereiten** hält jeden offenen Lead gegen den Katalog. Führt dieser ein
+ * passendes Profil, entsteht ein fertiger Entwurf; führt er keins, wandert der
+ * Lead ins Archiv und die Ausschreibung bleibt als unerfüllte Nachfrage
+ * stehen. Ein Lead, den niemand bedienen kann, ist keine verlorene Zeile,
+ * sondern die Auskunft darüber, welches Profil im Katalog fehlt.
  *
- * Kein Sprachmodell. Der Brief entsteht deterministisch aus dem
+ * **Versenden** stellt die vorbereiteten Entwürfe zu, zwanzig am Tag.
+ *
+ * Getrennt, weil die beiden nichts gemeinsam haben außer der Reihenfolge. Der
+ * Abgleich kostet nichts: kein Modell, kein Netz, nur Rechenzeit gegen
+ * zweiundsiebzig Profile. Der Versand kostet eine SMTP-Runde je Nachricht und
+ * ist gedeckelt, weil ein Postfach bei IONOS sonst im Spamfilter landet.
+ * Zusammen in einem Durchgang richtete sich der Abgleich nach dem Deckel des
+ * Versands — von 251 offenen Leads sah ein Durchgang fünfundfünfzig, und die
+ * Nachfrageauskunft entstand nur so schnell, wie Werbemails rausgingen.
+ *
+ * Kein Sprachmodell in beiden. Der Brief entsteht deterministisch aus dem
  * Ausschreibungstext, die Rangliste ist ohnehin Code, und der Mailtext besteht
- * aus Profilangaben. Damit kostet ein Durchlauf über alle offenen Leads nichts
- * und lässt sich beliebig oft wiederholen.
+ * aus Profilangaben.
  */
 
 export type LeadOutcome =
+  /** Abgeglichen, Entwurf liegt bereit. */
+  | { leadId: number; outcome: "prepared"; matchCount: number }
   /** Treffer, Nachricht zugestellt. */
   | { leadId: number; outcome: "sent"; matchCount: number }
   /** Kein Treffer: archiviert, Nachfrage vermerkt. */
   | { leadId: number; outcome: "no_match"; status: Shortlist["status"] }
   /** Der Ausschreibungstext gab keine Anforderung her. */
   | { leadId: number; outcome: "unreadable" }
+  /** Der Entwurf trug nicht mehr und wurde zurückgestellt. */
+  | { leadId: number; outcome: "discarded"; reason: string }
   /** Schon angeschrieben, Adresse gesperrt, Versand gescheitert. */
   | { leadId: number; outcome: "skipped"; reason: string };
 
 export type MatchRunResult = {
   examined: number;
+  /** Entwürfe, die dieser Durchgang angelegt hat. */
+  prepared: number;
   sent: number;
   archived: number;
   skipped: number;
+  /** Entwürfe, die nicht mehr trugen und zurückgestellt wurden. */
+  discarded: number;
   outcomes: LeadOutcome[];
-  /** Wie viele offene Leads dieser Durchgang stehen ließ. */
+  /** Wie viele Fälle dieser Durchgang stehen ließ. */
   remaining: number;
   /** Was heute noch übrig ist, nachdem dieser Durchgang fertig war. */
   dailyBudgetLeft: number;
@@ -75,7 +94,8 @@ export type MatchRunResult = {
     | "time"
     | "examined"
     | "daily_limit"
-    | "outside_window";
+    | "outside_window"
+    | "nothing_prepared";
 };
 
 type OpenLead = {
@@ -118,39 +138,34 @@ function factsFor(profile: {
 }
 
 /**
- * @param limit Wie viele Leads ein Durchgang anfasst. Der Deckel gilt dem
- *   Versand, nicht dem Abgleich — er ist die Tagesmenge, die ein Postfach bei
- *   IONOS unauffällig verschickt.
- */
-/**
  * Wie lange ein Aufruf höchstens arbeitet.
  *
  * Nicht frei gewählt: Die Funktion läuft hinter einem Gateway, das eine
  * synchrone Antwort nach gut dreißig Sekunden abbricht. Ein Durchgang, der
- * die Warteschlange in einem Rutsch leeren wollte, lief genau da hinein —
- * 247 offene Leads, und jeder Versand kostet zusätzlich eine SMTP-Runde.
+ * die Warteschlange in einem Rutsch leeren wollte, lief genau da hinein.
  *
  * Also arbeitet ein Aufruf ein Stück ab und sagt im Ergebnis, was liegen
- * blieb. Der Zeitgeber ruft mehrmals am Morgen; was er nicht schafft,
- * schafft der nächste Tag.
+ * blieb. Der Zeitgeber ruft mehrmals; was er nicht schafft, schafft der
+ * nächste Durchgang.
  */
 const TIME_BUDGET_MS = 20_000;
 
 /**
  * Wie viele Leads ein Aufruf höchstens ansieht.
  *
- * Die Zeitgrenze allein genügt nicht: Sie greift erst, wenn die Zeit weg
- * ist, und ein Aufruf, der 200 unbrauchbare Ausschreibungen durchrechnet,
- * hätte sie dann auch verbraucht. Diese Grenze hält die Antwortzeit im
- * Rahmen, auch wenn nichts zu verschicken ist.
+ * Beim Vorbereiten großzügiger als beim Versenden: Ein Abgleich ist
+ * Rechenzeit gegen den Katalog und kostet Bruchteile einer Sekunde, während
+ * ein Versand auf den Mailserver wartet. Die Zeitgrenze bleibt in beiden
+ * Fällen die eigentliche Bremse.
  */
-const EXAMINE_BUDGET = 60;
+const EXAMINE_BUDGET_PREPARE = 300;
+const EXAMINE_BUDGET_SEND = 60;
 
 export type MatchRunOptions = {
   senderEmail: string;
   /** Deckel für den ganzen Tag, nicht für diesen Aufruf. */
   dailyLimit?: number;
-  /** Wie viele Leads dieser Aufruf ansieht. */
+  /** Wie viele Fälle dieser Aufruf ansieht. */
   examineBudget?: number;
   timeBudgetMs?: number;
   dryRun?: boolean;
@@ -161,55 +176,68 @@ export type MatchRunOptions = {
    * Der Zeitgeber setzt das, der Betreiber nicht: Ein Lauf, den jemand
    * von Hand anstößt, hat einen Menschen davor, der weiß, wie spät es
    * ist. Die Grenze schützt vor dem Zeitplan, nicht vor der Bedienung.
+   *
+   * Gilt nur für den Versand. Abgleichen darf der Zeitgeber jederzeit — es
+   * verlässt nichts das Haus dabei.
    */
   enforceWindow?: boolean;
   /** Wer den Lauf angestoßen hat. Steht im Beleg jeder Nachricht. */
   trigger?: "scheduler" | "admin";
 };
 
-export async function runLeadMatchPass(
+function leeresErgebnis(
+  stoppedBy: MatchRunResult["stoppedBy"],
+): MatchRunResult {
+  return {
+    examined: 0,
+    prepared: 0,
+    sent: 0,
+    archived: 0,
+    skipped: 0,
+    discarded: 0,
+    outcomes: [],
+    remaining: 0,
+    dailyBudgetLeft: 0,
+    stoppedBy,
+  };
+}
+
+/**
+ * Jeden offenen Lead gegen den Katalog halten.
+ *
+ * Was dabei entsteht, verlässt das Haus nicht: ein Entwurf oder ein Eintrag
+ * in der Nachfrage. Deshalb hat dieser Durchgang weder ein Tageslimit noch
+ * ein Zeitfenster — er darf laufen, sooft er will.
+ */
+export async function runLeadPreparePass(
   options: MatchRunOptions,
 ): Promise<MatchRunResult> {
-  const dailyLimit = Math.min(
-    Math.max(options.dailyLimit ?? LEAD_BULK_SEND_LIMIT, 1),
-    200,
-  );
   const examineBudget = Math.min(
-    Math.max(options.examineBudget ?? EXAMINE_BUDGET, 1),
+    Math.max(options.examineBudget ?? EXAMINE_BUDGET_PREPARE, 1),
     500,
   );
   const timeBudgetMs = Math.max(options.timeBudgetMs ?? TIME_BUDGET_MS, 1_000);
   const startedAt = Date.now();
   const now = options.now ?? new Date();
 
-  // Vor jeder Abfrage: Ein Aufruf außerhalb des Fensters soll nichts
-  // kosten. Der Zeitgeber weckt die Route großzügiger, als das Fenster
-  // ist — er plant in UTC, das Fenster gilt in Ortszeit —, und die
-  // überzähligen Aufrufe enden hier.
-  if (options.enforceWindow && !isWithinLeadSendWindow(now)) {
-    return {
-      examined: 0,
-      sent: 0,
-      archived: 0,
-      skipped: 0,
-      outcomes: [],
-      remaining: 0,
-      dailyBudgetLeft: 0,
-      stoppedBy: "outside_window",
-    };
-  }
-
-  // Mitternacht in der Zeitzone, in der der Betrieb stattfindet. UTC wäre
-  // im Sommer zwei Stunden daneben und würde den Tag mitten im Vormittag
-  // umschalten.
-  const heuteVersandt = options.dryRun ? 0 : await sentSince(leadDayStart(now));
-  const budgetHeute = Math.max(dailyLimit - heuteVersandt, 0);
-
   const admin = createAdminSupabaseClient();
 
   const profiles = await fetchActiveBookableRealProfiles(admin);
   const profileCatalogVersion = catalogVersion(profiles);
   const origin = publicMailOrigin();
+
+  // Leads, für die schon ein Entwurf bereitliegt, werden übergangen. Sie
+  // jeden Morgen neu abzugleichen hieße, einen wartenden Entwurf täglich
+  // durch einen fast gleichen zu ersetzen — und das Datum, an dem er
+  // entstand, immer wieder vorzurücken, bis er nie abläuft.
+  const { data: entwuerfe, error: entwurfFehler } = await admin
+    .from("leadgen_outreach")
+    .select("lead_id")
+    .eq("state", "draft");
+  if (entwurfFehler) throw entwurfFehler;
+  const schonVorbereitet = new Set(
+    (entwuerfe ?? []).map((zeile) => (zeile as { lead_id: number }).lead_id),
+  );
 
   const { data, error } = await admin
     .from("leadgen_queue")
@@ -219,23 +247,18 @@ export async function runLeadMatchPass(
     .order("created_at", { ascending: true });
   if (error) throw error;
 
-  const leads = (data ?? []) as OpenLead[];
+  const leads = (data ?? []).filter(
+    (lead) => !schonVorbereitet.has((lead as OpenLead).id),
+  ) as OpenLead[];
+
   const outcomes: LeadOutcome[] = [];
-  let sent = 0;
+  let prepared = 0;
   let archived = 0;
   let skipped = 0;
   let examined = 0;
-
   let stoppedBy: MatchRunResult["stoppedBy"] = "queue_empty";
 
   for (const lead of leads) {
-    // Drei Gründe aufzuhören, und alle drei gehören ins Ergebnis: Sonst
-    // sieht ein Durchgang, der nach zwanzig Sekunden abbricht, genauso aus
-    // wie einer, der fertig geworden ist.
-    if (sent >= budgetHeute) {
-      stoppedBy = "daily_limit";
-      break;
-    }
     if (examined >= examineBudget) {
       stoppedBy = "examined";
       break;
@@ -260,18 +283,21 @@ export async function runLeadMatchPass(
     }
     const shortlist: Shortlist = buildShortlist(brief, profiles);
 
+    if (!options.dryRun) {
+      // Erst das Ergebnis festhalten, dann handeln. Andersherum wäre der Lead
+      // bei einem Abbruch dazwischen aus der Liste verschwunden, ohne dass
+      // irgendwo stünde, wonach gefragt worden war.
+      await recordLeadMatch({
+        leadId: lead.id,
+        recipientEmail: lead.recipient_email,
+        brief,
+        shortlist,
+        profileCatalogVersion,
+      });
+    }
+
     if (shortlist.status !== "ranked" || !shortlist.matches.length) {
-      // Erst die Nachfrage festhalten, dann archivieren. Andersherum wäre der
-      // Lead bei einem Abbruch dazwischen aus der Liste verschwunden, ohne
-      // dass irgendwo stünde, wonach gefragt worden war.
       if (!options.dryRun) {
-        await recordLeadMatch({
-          leadId: lead.id,
-          recipientEmail: lead.recipient_email,
-          brief,
-          shortlist,
-          profileCatalogVersion,
-        });
         await updateLead({ id: lead.id, status: "dismissed", archived: true });
       }
       archived += 1;
@@ -283,24 +309,14 @@ export async function runLeadMatchPass(
       continue;
     }
 
-    // Auch ein Treffer wird festgehalten, und zwar bevor etwas rausgeht.
-    // Sonst stünde hinterher nur, dass eine Mail verschickt wurde, aber
-    // nicht, gegen welchen Katalogstand und mit wie vielen passenden
-    // Profilen — genau die Frage, die im Admin-Bereich gestellt wird.
-    if (!options.dryRun) {
-      await recordLeadMatch({
-        leadId: lead.id,
-        recipientEmail: lead.recipient_email,
-        brief,
-        shortlist,
-        profileCatalogVersion,
-      });
-    }
-
     const headline = leadHeadline(lead.stellenanzeige);
     const ctaUrl = leadSearchUrl({ origin, headline });
     if (!ctaUrl) {
-      outcomes.push({ leadId: lead.id, outcome: "skipped", reason: "no_headline" });
+      outcomes.push({
+        leadId: lead.id,
+        outcome: "skipped",
+        reason: "no_headline",
+      });
       skipped += 1;
       continue;
     }
@@ -321,48 +337,191 @@ export async function runLeadMatchPass(
       best: factsFor(shortlist.matches[0].profile),
     });
 
-    if (options.dryRun) {
-      sent += 1;
-      outcomes.push({
+    if (!options.dryRun) {
+      await savePreparedDraft({
         leadId: lead.id,
-        outcome: "sent",
-        matchCount: shortlist.matches.length,
+        subject,
+        body,
+        ctaUrl,
+        // Das angebotene Profil wandert mit in die Zeile. Der Versand prüft
+        // es später gegen den dann gültigen Katalog.
+        profileId: shortlist.matches[0].profile.id,
+        preparedAt: now,
+      });
+    }
+
+    prepared += 1;
+    outcomes.push({
+      leadId: lead.id,
+      outcome: "prepared",
+      matchCount: shortlist.matches.length,
+    });
+  }
+
+  const ergebnis: MatchRunResult = {
+    examined,
+    prepared,
+    sent: 0,
+    archived,
+    skipped,
+    discarded: 0,
+    outcomes,
+    remaining: Math.max(leads.length - examined, 0),
+    dailyBudgetLeft: 0,
+    stoppedBy,
+  };
+
+  await recordLeadRun({
+    started_at: new Date(startedAt).toISOString(),
+    trigger: options.trigger ?? "scheduler",
+    kind: "prepare",
+    dry_run: options.dryRun ?? false,
+    examined: ergebnis.examined,
+    sent: ergebnis.prepared,
+    archived: ergebnis.archived,
+    skipped: ergebnis.skipped,
+    remaining: ergebnis.remaining,
+    daily_budget_left: 0,
+    stopped_by: ergebnis.stoppedBy,
+  });
+
+  return ergebnis;
+}
+
+/**
+ * Die vorbereiteten Entwürfe zustellen.
+ *
+ * Vor jedem Versand wird geprüft, ob das angebotene Profil noch trägt.
+ * Zwischen Vorbereitung und Versand liegen Stunden bis Tage, und in dieser
+ * Zeit kann es abgelaufen, ausgebucht oder zurückgezogen sein. Eine
+ * Nachricht, die ein nicht mehr buchbares Profil anbietet, ist schlechter
+ * als keine.
+ */
+export async function runLeadSendPass(
+  options: MatchRunOptions,
+): Promise<MatchRunResult> {
+  const dailyLimit = Math.min(
+    Math.max(options.dailyLimit ?? LEAD_BULK_SEND_LIMIT, 1),
+    200,
+  );
+  const examineBudget = Math.min(
+    Math.max(options.examineBudget ?? EXAMINE_BUDGET_SEND, 1),
+    500,
+  );
+  const timeBudgetMs = Math.max(options.timeBudgetMs ?? TIME_BUDGET_MS, 1_000);
+  const startedAt = Date.now();
+  const now = options.now ?? new Date();
+
+  // Vor jeder Abfrage: Ein Aufruf außerhalb des Fensters soll nichts kosten.
+  // Der Zeitgeber weckt die Route großzügiger, als das Fenster ist — er plant
+  // in UTC, das Fenster gilt in Ortszeit —, und die überzähligen Aufrufe
+  // enden hier.
+  if (options.enforceWindow && !isWithinLeadSendWindow(now)) {
+    return leeresErgebnis("outside_window");
+  }
+
+  const heuteVersandt = options.dryRun ? 0 : await sentSince(leadDayStart(now));
+  const budgetHeute = Math.max(dailyLimit - heuteVersandt, 0);
+  if (budgetHeute <= 0) {
+    return { ...leeresErgebnis("daily_limit"), dailyBudgetLeft: 0 };
+  }
+
+  const admin = createAdminSupabaseClient();
+  const profiles = await fetchActiveBookableRealProfiles(admin);
+  const buchbar = new Set(profiles.map((profile) => profile.id));
+
+  const drafts = await listPreparedDrafts(
+    Math.min(budgetHeute + examineBudget, 200),
+  );
+  if (!drafts.length) {
+    return { ...leeresErgebnis("nothing_prepared"), dailyBudgetLeft: budgetHeute };
+  }
+
+  const hoechstalterMs = LEAD_DRAFT_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+  const outcomes: LeadOutcome[] = [];
+  let sent = 0;
+  let skipped = 0;
+  let discarded = 0;
+  let examined = 0;
+  let stoppedBy: MatchRunResult["stoppedBy"] = "queue_empty";
+
+  for (const draft of drafts) {
+    if (sent >= budgetHeute) {
+      stoppedBy = "daily_limit";
+      break;
+    }
+    if (examined >= examineBudget) {
+      stoppedBy = "examined";
+      break;
+    }
+    if (Date.now() - startedAt > timeBudgetMs) {
+      stoppedBy = "time";
+      break;
+    }
+    examined += 1;
+
+    // Zwei Gründe, einen Entwurf nicht mehr zu verschicken: Das angebotene
+    // Profil trägt nicht mehr, oder der Entwurf ist zu alt. In beiden Fällen
+    // geht der Lead zurück in die Warteschlange und wird gegen den dann
+    // gültigen Katalog neu abgeglichen.
+    const alter = draft.prepared_at
+      ? now.getTime() - new Date(draft.prepared_at).getTime()
+      : 0;
+    const grund =
+      draft.prepared_profile_id && !buchbar.has(draft.prepared_profile_id)
+        ? "profile_gone"
+        : alter > hoechstalterMs
+          ? "draft_expired"
+          : null;
+
+    if (grund) {
+      if (!options.dryRun) {
+        await discardPreparedDraft({
+          outreachId: draft.outreach_id,
+          reason: grund,
+        });
+      }
+      discarded += 1;
+      outcomes.push({
+        leadId: draft.lead_id,
+        outcome: "discarded",
+        reason: grund,
       });
       continue;
     }
 
-    // Erst beanspruchen, dann zustellen — dieselbe Reihenfolge wie im
-    // Einzelversand. Läge der Versand zwischen Prüfung und Protokoll, könnten
-    // zwei gleichzeitige Läufe beide zustellen.
-    const claim = await claimOutreach({
-      leadId: lead.id,
-      subject,
-      body,
-      model: null,
-      credits: null,
-      createdBy: null,
-      ctaUrl,
-      origin: options.trigger ?? "scheduler",
-    });
+    if (options.dryRun) {
+      sent += 1;
+      outcomes.push({ leadId: draft.lead_id, outcome: "sent", matchCount: 0 });
+      continue;
+    }
+
+    // Erst beanspruchen, dann zustellen. Läge der Versand zwischen Prüfung
+    // und Protokoll, könnten zwei gleichzeitige Läufe beide zustellen.
+    const claim = await claimPreparedDraft(draft.outreach_id);
     if (!claim.claimed) {
-      outcomes.push({ leadId: lead.id, outcome: "skipped", reason: claim.reason });
+      outcomes.push({
+        leadId: draft.lead_id,
+        outcome: "skipped",
+        reason: claim.reason,
+      });
       skipped += 1;
       continue;
     }
 
     const delivery = await deliverEmail({
-      to: lead.recipient_email,
-      subject,
-      text: body,
+      to: draft.recipient_email,
+      subject: draft.subject,
+      text: draft.body,
       kind: "cold_outreach",
     });
     if (!delivery.delivered) {
       await releaseOutreachClaim({
-        outreachId: claim.outreachId,
+        outreachId: draft.outreach_id,
         reason: delivery.reason,
       });
       outcomes.push({
-        leadId: lead.id,
+        leadId: draft.lead_id,
         outcome: "skipped",
         reason: delivery.reason,
       });
@@ -370,23 +529,25 @@ export async function runLeadMatchPass(
       continue;
     }
 
-    await recordOutreachSent(claim.outreachId);
-    await updateLead({ id: lead.id, status: "contacted", archived: true });
-    sent += 1;
-    outcomes.push({
-      leadId: lead.id,
-      outcome: "sent",
-      matchCount: shortlist.matches.length,
+    await recordOutreachSent(draft.outreach_id);
+    await updateLead({
+      id: draft.lead_id,
+      status: "contacted",
+      archived: true,
     });
+    sent += 1;
+    outcomes.push({ leadId: draft.lead_id, outcome: "sent", matchCount: 0 });
   }
 
   const ergebnis: MatchRunResult = {
     examined,
+    prepared: 0,
     sent,
-    archived,
+    archived: 0,
     skipped,
+    discarded,
     outcomes,
-    remaining: Math.max(leads.length - examined, 0),
+    remaining: Math.max(drafts.length - examined, 0),
     dailyBudgetLeft: Math.max(budgetHeute - sent, 0),
     stoppedBy,
   };
@@ -394,6 +555,7 @@ export async function runLeadMatchPass(
   await recordLeadRun({
     started_at: new Date(startedAt).toISOString(),
     trigger: options.trigger ?? "scheduler",
+    kind: "send",
     dry_run: options.dryRun ?? false,
     examined: ergebnis.examined,
     sent: ergebnis.sent,

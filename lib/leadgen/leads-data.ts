@@ -90,6 +90,8 @@ export type LeadPipeline = {
   verschickt: number;
   gescheitert: number;
   entwuerfe: number;
+  /** Vom Tageslauf vorbereitet und noch nicht zugestellt. */
+  vorbereitet: number;
   verschicktHeute: number;
   zuletztVerschickt: string | null;
 };
@@ -198,6 +200,7 @@ export async function leadSummary(): Promise<LeadSummary> {
       verschickt: zahl("verschickt"),
       gescheitert: zahl("gescheitert"),
       entwuerfe: zahl("entwuerfe"),
+      vorbereitet: zahl("vorbereitet"),
       verschicktHeute: zahl("verschickt_heute"),
       zuletztVerschickt:
         typeof trichter.zuletzt_verschickt === "string"
@@ -559,6 +562,8 @@ export type LeadRun = {
   started_at: string;
   finished_at: string;
   trigger: "scheduler" | "admin";
+  /** Was der Durchgang getan hat: abgleichen oder zustellen. */
+  kind: "prepare" | "send";
   dry_run: boolean;
   examined: number;
   sent: number;
@@ -571,11 +576,12 @@ export type LeadRun = {
     | "time"
     | "examined"
     | "daily_limit"
-    | "outside_window";
+    | "outside_window"
+    | "nothing_prepared";
 };
 
 const RUN_COLUMNS =
-  "id,started_at,finished_at,trigger,dry_run,examined,sent,archived,skipped,remaining,daily_budget_left,stopped_by";
+  "id,started_at,finished_at,trigger,kind,dry_run,examined,sent,archived,skipped,remaining,daily_budget_left,stopped_by";
 
 /**
  * Was ein Durchgang getan hat.
@@ -590,6 +596,7 @@ export async function recordLeadRun(input: Omit<LeadRun, "id" | "finished_at">):
   const { error } = await admin.from("leadgen_run").insert({
     started_at: input.started_at,
     trigger: input.trigger,
+    kind: input.kind,
     dry_run: input.dry_run,
     examined: input.examined,
     sent: input.sent,
@@ -617,4 +624,124 @@ export async function listLeadRuns(limit = 5): Promise<LeadRun[]> {
     .limit(Math.min(Math.max(limit, 1), 50));
   if (error) throw error;
   return (data ?? []) as LeadRun[];
+}
+
+/**
+ * Ein vorbereiteter Entwurf, wie ihn der Versandlauf vorfindet.
+ */
+export type PreparedDraft = {
+  outreach_id: string;
+  lead_id: number;
+  recipient_email: string;
+  subject: string;
+  body: string;
+  cta_url: string | null;
+  prepared_profile_id: string | null;
+  prepared_at: string | null;
+};
+
+/**
+ * Der Entwurf, den der Abgleich hinterlässt.
+ *
+ * Ersetzt einen vorhandenen Entwurf desselben Leads, statt danebenzuliegen:
+ * Ein zweiter Abgleich gegen einen neueren Katalog ist die bessere Auskunft,
+ * und zwei Entwürfe für einen Lead wären eine Frage, die niemand stellt.
+ */
+export async function savePreparedDraft(input: {
+  leadId: number;
+  subject: string;
+  body: string;
+  ctaUrl: string | null;
+  profileId: string | null;
+  preparedAt: Date;
+}): Promise<void> {
+  const admin = requireServiceRole();
+  const { error: deleteError } = await admin
+    .from("leadgen_outreach")
+    .delete()
+    .eq("lead_id", input.leadId)
+    .eq("state", "draft");
+  if (deleteError) throw deleteError;
+
+  const { error } = await admin.from("leadgen_outreach").insert({
+    lead_id: input.leadId,
+    state: "draft",
+    subject: input.subject,
+    body: input.body,
+    // Kein Modell und keine Credits: Der Text entsteht deterministisch aus
+    // dem Profil, nicht aus einer Anfrage an einen Anbieter.
+    model: null,
+    credits: null,
+    created_by: null,
+    cta_url: input.ctaUrl,
+    origin: "scheduler",
+    prepared_profile_id: input.profileId,
+    prepared_at: input.preparedAt.toISOString(),
+  });
+  if (error) throw error;
+}
+
+export async function listPreparedDrafts(limit = 50): Promise<PreparedDraft[]> {
+  const admin = requireServiceRole();
+  const { data, error } = await admin.rpc("list_leadgen_prepared_drafts", {
+    p_limit: limit,
+  });
+  if (error) throw error;
+  return (data ?? []) as PreparedDraft[];
+}
+
+export type DraftClaimResult =
+  | { claimed: true; leadId: number }
+  | { claimed: false; reason: "invalid_input" | "already_sent" | "not_a_draft" };
+
+/**
+ * Den Entwurf für den Versand beanspruchen: draft wird sending.
+ *
+ * Derselbe Gedanke wie beim Einzelversand — erst den Anspruch sichern, dann
+ * zustellen. Der Zustand sending belegt denselben eindeutigen Index wie ein
+ * verschickter Eintrag, deshalb kommt von zwei gleichzeitigen Läufen nur
+ * einer durch.
+ */
+export async function claimPreparedDraft(
+  outreachId: string,
+): Promise<DraftClaimResult> {
+  const admin = requireServiceRole();
+  const { data, error } = await admin
+    .rpc("claim_leadgen_draft", { p_outreach_id: outreachId })
+    .maybeSingle();
+  if (error) throw error;
+
+  const row = (data ?? null) as {
+    claimed: boolean;
+    reason: string | null;
+    lead_id: number | null;
+  } | null;
+  if (!row || !row.claimed || row.lead_id === null) {
+    const reason = row?.reason;
+    return {
+      claimed: false,
+      reason:
+        reason === "already_sent" || reason === "not_a_draft"
+          ? reason
+          : "invalid_input",
+    };
+  }
+  return { claimed: true, leadId: row.lead_id };
+}
+
+/**
+ * Einen Entwurf verwerfen, der nicht mehr trägt, und den Lead zurück in die
+ * Warteschlange stellen.
+ */
+export async function discardPreparedDraft(input: {
+  outreachId: string;
+  reason: string;
+}): Promise<boolean> {
+  const admin = requireServiceRole();
+  const { data, error } = await admin.rpc("discard_leadgen_draft", {
+    p_outreach_id: input.outreachId,
+    p_reason: input.reason,
+  });
+  if (error) throw error;
+  return Boolean(data);
 }
