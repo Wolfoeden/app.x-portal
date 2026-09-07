@@ -29,7 +29,7 @@ export default function PrivacyPage() {
           <h2>1. Verantwortlicher und Begriffe</h2>
           <div>
             <p>
-              300 – Inhaber Roman Dering<br />
+              XPORTAL — 300, Inhaber Roman Dering<br />
               Einzelunternehmen<br />
               Heilig-Kreuz-Straße 18<br />
               87600 Kaufbeuren<br />

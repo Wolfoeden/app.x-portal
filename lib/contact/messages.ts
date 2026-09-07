@@ -1,6 +1,7 @@
 import {
   CONTACT_RESPONSE_PROMISE,
   IMPRINT_EMAIL,
+  PROVIDER_IMPRINT_LINES,
 } from "@/lib/legal/policy";
 
 /**
@@ -69,7 +70,7 @@ export function contactAcknowledgementMessage(input: {
       "unser Formular eingetragen — schreiben Sie uns, wenn Sie das geklärt",
       "haben möchten.",
       "",
-      "300 – Inhaber Roman Dering, Heilig-Kreuz-Straße 18, 87600 Kaufbeuren",
+      ...PROVIDER_IMPRINT_LINES,
       `${IMPRINT_EMAIL} · https://x-portal.eu/imprint`,
     ].join("\n"),
   };
