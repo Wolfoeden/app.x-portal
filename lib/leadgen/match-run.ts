@@ -16,7 +16,13 @@ import {
   sentSince,
   updateLead,
 } from "@/lib/leadgen/leads-data";
-import { LEAD_BULK_SEND_LIMIT, leadHeadline, leadSourceUrl } from "@/lib/leadgen/limits";
+import {
+  LEAD_BULK_SEND_LIMIT,
+  isWithinLeadSendWindow,
+  leadDayStart,
+  leadHeadline,
+  leadSourceUrl,
+} from "@/lib/leadgen/limits";
 import {
   buildMatchEmail,
   buildMatchSubject,
@@ -63,7 +69,12 @@ export type MatchRunResult = {
   /** Was heute noch übrig ist, nachdem dieser Durchgang fertig war. */
   dailyBudgetLeft: number;
   /** Warum der Durchgang aufgehört hat. */
-  stoppedBy: "queue_empty" | "time" | "examined" | "daily_limit";
+  stoppedBy:
+    | "queue_empty"
+    | "time"
+    | "examined"
+    | "daily_limit"
+    | "outside_window";
 };
 
 type OpenLead = {
@@ -143,6 +154,14 @@ export type MatchRunOptions = {
   timeBudgetMs?: number;
   dryRun?: boolean;
   now?: Date;
+  /**
+   * Nur innerhalb des Versandfensters arbeiten.
+   *
+   * Der Zeitgeber setzt das, der Betreiber nicht: Ein Lauf, den jemand
+   * von Hand anstößt, hat einen Menschen davor, der weiß, wie spät es
+   * ist. Die Grenze schützt vor dem Zeitplan, nicht vor der Bedienung.
+   */
+  enforceWindow?: boolean;
 };
 
 export async function runLeadMatchPass(
@@ -160,18 +179,27 @@ export async function runLeadMatchPass(
   const startedAt = Date.now();
   const now = options.now ?? new Date();
 
+  // Vor jeder Abfrage: Ein Aufruf außerhalb des Fensters soll nichts
+  // kosten. Der Zeitgeber weckt die Route großzügiger, als das Fenster
+  // ist — er plant in UTC, das Fenster gilt in Ortszeit —, und die
+  // überzähligen Aufrufe enden hier.
+  if (options.enforceWindow && !isWithinLeadSendWindow(now)) {
+    return {
+      examined: 0,
+      sent: 0,
+      archived: 0,
+      skipped: 0,
+      outcomes: [],
+      remaining: 0,
+      dailyBudgetLeft: 0,
+      stoppedBy: "outside_window",
+    };
+  }
+
   // Mitternacht in der Zeitzone, in der der Betrieb stattfindet. UTC wäre
   // im Sommer zwei Stunden daneben und würde den Tag mitten im Vormittag
   // umschalten.
-  const tagesbeginn = new Date(
-    new Date(now.toLocaleString("en-US", { timeZone: "Europe/Berlin" })).setHours(
-      0,
-      0,
-      0,
-      0,
-    ),
-  );
-  const heuteVersandt = options.dryRun ? 0 : await sentSince(tagesbeginn);
+  const heuteVersandt = options.dryRun ? 0 : await sentSince(leadDayStart(now));
   const budgetHeute = Math.max(dailyLimit - heuteVersandt, 0);
 
   const admin = createAdminSupabaseClient();

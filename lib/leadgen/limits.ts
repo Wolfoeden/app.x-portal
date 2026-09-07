@@ -170,3 +170,115 @@ export function leadSourceUrl(stellenanzeige: string): string | null {
   // Ein Satzzeichen am Ende gehört nicht zur Adresse.
   return match[0].replace(/[),.;]+$/u, "");
 }
+
+/**
+ * Die Ortszeit, in der der Betrieb stattfindet. Alles, was mit Uhrzeiten zu
+ * tun hat — Tagesgrenze, Versandfenster —, rechnet hierin und nicht in UTC.
+ */
+export const LEAD_TIME_ZONE = "Europe/Berlin";
+
+/**
+ * Wann der Tageslauf verschicken darf: 8 bis 12 Uhr Ortszeit, Montag bis
+ * Freitag.
+ *
+ * Die Grenze steht hier und nicht im Zeitplan der Datenbank. `pg_cron` plant
+ * in UTC — `cron.timezone` steht auf GMT —, und ein fester UTC-Ausdruck
+ * verschiebt sich mit der Zeitumstellung um eine Stunde: aus 8 Uhr im Sommer
+ * würde 7 Uhr im Winter. Der Zeitgeber weckt die Route deshalb großzügiger,
+ * als das Fenster ist, und die Entscheidung fällt hier, wo die Zeitzone
+ * bekannt ist.
+ *
+ * `endHour` ist ausschließend: um 11:59 wird noch verschickt, um 12:00 nicht
+ * mehr.
+ */
+export const LEAD_SEND_WINDOW = {
+  startHour: 8,
+  endHour: 12,
+  /** Montag bis Freitag. Sonntag ist 0, wie in `Date.getDay()`. */
+  weekdays: [1, 2, 3, 4, 5] as readonly number[],
+} as const;
+
+/**
+ * Die Bestandteile der Ortszeit zu einem Zeitpunkt.
+ *
+ * Ueber Intl statt ueber toLocaleString() und new Date(): Der Umweg
+ * ueber den String liest die Berliner Wanduhrzeit anschliessend wieder als
+ * Serverzeit, und auf einem Server in UTC liegt das Ergebnis zwei Stunden
+ * daneben.
+ */
+function ortszeitteile(now: Date): {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+  weekday: number;
+} {
+  const teile = new Intl.DateTimeFormat('en-US', {
+    timeZone: LEAD_TIME_ZONE,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric',
+    hour12: false,
+    weekday: 'short',
+  }).formatToParts(now);
+
+  const zahl = (type: string): number =>
+    Number.parseInt(teile.find((teil) => teil.type === type)?.value ?? '', 10);
+
+  const kuerzel = teile.find((teil) => teil.type === 'weekday')?.value ?? '';
+  const stunde = zahl('hour');
+
+  return {
+    year: zahl('year'),
+    month: zahl('month'),
+    day: zahl('day'),
+    // 24 statt 0 kommt bei hour12: false vor. Beides meint Mitternacht.
+    hour: stunde === 24 ? 0 : stunde,
+    minute: zahl('minute'),
+    second: zahl('second'),
+    weekday: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(kuerzel),
+  };
+}
+
+/**
+ * Mitternacht des laufenden Ortstags, als echter Zeitpunkt.
+ *
+ * Der Tag gehoert der Ortszeit: Das Tageslimit soll um Mitternacht in
+ * Kaufbeuren umspringen und nicht um zwei Uhr morgens, wenn UTC einen neuen
+ * Tag beginnt.
+ *
+ * Gerechnet wird ueber den Abstand zwischen Wanduhrzeit und Zeitpunkt. In
+ * der Nacht der Zeitumstellung kann das Ergebnis um eine Stunde abweichen;
+ * um drei Uhr morgens wird nichts verschickt, und die Zaehlung eines Tages
+ * verschiebt sich dadurch nicht.
+ */
+export function leadDayStart(now: Date): Date {
+  const teile = ortszeitteile(now);
+  const alsWaereEsUtc = Date.UTC(
+    teile.year,
+    teile.month - 1,
+    teile.day,
+    teile.hour,
+    teile.minute,
+    teile.second,
+  );
+  const versatz = alsWaereEsUtc - now.getTime();
+  const tagesbeginnAlsWaereEsUtc = Date.UTC(
+    teile.year,
+    teile.month - 1,
+    teile.day,
+  );
+  return new Date(tagesbeginnAlsWaereEsUtc - versatz);
+}
+
+export function isWithinLeadSendWindow(now: Date): boolean {
+  const { hour, weekday } = ortszeitteile(now);
+  if (!Number.isFinite(hour) || weekday < 0) return false;
+  if (!LEAD_SEND_WINDOW.weekdays.includes(weekday)) return false;
+  return hour >= LEAD_SEND_WINDOW.startHour && hour < LEAD_SEND_WINDOW.endHour;
+}

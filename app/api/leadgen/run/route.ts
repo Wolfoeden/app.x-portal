@@ -100,6 +100,10 @@ export async function POST(request: Request) {
       examineBudget: input.examineBudget,
       senderEmail: from ?? "",
       dryRun: input.dryRun ?? false,
+      // Nur der Zeitplan ist an das Fenster gebunden. Der Betreiber
+      // ruft die Route bewusst auf und soll das auch um vier Uhr
+      // nachmittags können.
+      enforceWindow: auth.actor === "scheduler",
     });
 
     await writeAuditEvent({
