@@ -73,7 +73,7 @@ select is(
   (
     select count(*)::int
     from public.admin_list_leadgen_queue(
-      'Kubernetes (Remote)', null, null, 'open', 50, 0
+      'Kubernetes (Remote)', null, null, 'open', null, 50, 0
     )
     where id = 9000001
   ),
@@ -84,7 +84,7 @@ select is(
 select is(
   (
     select count(*)::int
-    from public.admin_list_leadgen_queue(null, null, null, 'open', 50, 0)
+    from public.admin_list_leadgen_queue(null, null, null, 'open', null, 50, 0)
     where id in (9000001, 9000002)
   ),
   2,
@@ -113,7 +113,8 @@ select is(
     select claimed
     from public.claim_leadgen_outreach(
       9000001, 'Betreff', 'Rumpf', 'gpt-5.4-nano', 2,
-      'e1111111-1111-4111-8111-111111111111'
+      'e1111111-1111-4111-8111-111111111111',
+      'https://x-portal.eu/chat?q=Kubernetes', 'admin'
     )
   ),
   true,
@@ -124,7 +125,7 @@ select is(
   (
     select reason
     from public.claim_leadgen_outreach(
-      9000001, 'Betreff', 'Rumpf', null, null, null
+      9000001, 'Betreff', 'Rumpf', null, null, null, null, null
     )
   ),
   'already_sent',
@@ -164,7 +165,7 @@ select isnt(
 select is(
   (
     select count(*)::int
-    from public.admin_list_leadgen_queue(null, null, null, 'open', 50, 0)
+    from public.admin_list_leadgen_queue(null, null, null, 'open', null, 50, 0)
     where id = 9000001
   ),
   0,
@@ -174,7 +175,7 @@ select is(
 select is(
   (
     select count(*)::int
-    from public.admin_list_leadgen_queue(null, null, null, 'archived', 50, 0)
+    from public.admin_list_leadgen_queue(null, null, null, 'archived', null, 50, 0)
     where id = 9000001
   ),
   1,
@@ -185,7 +186,7 @@ select is(
   (
     select reason
     from public.claim_leadgen_outreach(
-      9000001, 'Zweiter Betreff', 'Zweiter Rumpf', null, null, null
+      9000001, 'Zweiter Betreff', 'Zweiter Rumpf', null, null, null, null, null
     )
   ),
   'already_sent',
@@ -196,6 +197,61 @@ select is(
   (select count(*)::int from public.leadgen_outreach where lead_id = 9000001),
   1,
   'und hinterlässt keine zweite Zeile im Protokoll'
+);
+
+-- Der Beleg zur Nachricht ist vollstaendig: Portal-Link und Herkunft
+-- stehen in derselben Zeile wie der Wortlaut.
+select is(
+  (
+    select cta_url
+      from public.leadgen_outreach
+     where lead_id = 9000001
+  ),
+  'https://x-portal.eu/chat?q=Kubernetes',
+  'der Portal-Link aus der Mail steht im Beleg'
+);
+
+select is(
+  (
+    select origin
+      from public.leadgen_outreach
+     where lead_id = 9000001
+  ),
+  'admin',
+  'und wer den Versand angestossen hat'
+);
+
+select throws_ok(
+  $$update public.leadgen_outreach
+       set origin = 'irgendwer'
+     where lead_id = 9000001$$,
+  '23514',
+  null,
+  'eine erfundene Herkunft verletzt leadgen_outreach_origin_check'
+);
+
+-- ---------------------------------------------------------------------
+-- Das Protokoll der Laeufe gehoert dem Dienst, nicht dem Browser.
+-- ---------------------------------------------------------------------
+select ok(
+  (
+    select relrowsecurity and relforcerowsecurity
+      from pg_catalog.pg_class
+     where oid = 'public.leadgen_run'::regclass
+  ),
+  'leadgen_run steht unter Row Level Security, auch fuer den Eigentuemer'
+);
+
+select is(
+  (
+    select count(*)::int
+      from information_schema.role_table_grants
+     where table_schema = 'public'
+       and table_name = 'leadgen_run'
+       and grantee in ('anon', 'authenticated')
+  ),
+  0,
+  'weder anon noch authenticated duerfen die Laeufe lesen'
 );
 
 -- Auch am Index vorbei geht es nicht.

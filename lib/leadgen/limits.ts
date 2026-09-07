@@ -32,6 +32,31 @@ export const LEAD_SCOPE_LABELS: Readonly<Record<LeadScope, string>> = {
   all: "Alle",
 };
 
+/**
+ * Was der Abgleich aus einem Lead gemacht hat.
+ *
+ * `open` ist nicht `no_hit`: Ein Lead, der noch nie abgeglichen wurde,
+ * sagt nichts über den Katalog aus. Die beiden zusammenzuwerfen hieße, eine
+ * unbearbeitete Warteschlange als Beleg für fehlende Profile zu lesen.
+ */
+export const LEAD_MATCH_FILTERS = ["hit", "no_hit", "open"] as const;
+export type LeadMatchFilter = (typeof LEAD_MATCH_FILTERS)[number];
+
+export const LEAD_MATCH_FILTER_LABELS: Readonly<
+  Record<LeadMatchFilter, string>
+> = {
+  hit: "Treffer",
+  no_hit: "Kein Treffer",
+  open: "Nicht abgeglichen",
+};
+
+export function isLeadMatchFilter(value: unknown): value is LeadMatchFilter {
+  return (
+    typeof value === "string" &&
+    (LEAD_MATCH_FILTERS as readonly string[]).includes(value)
+  );
+}
+
 export const LEAD_CATEGORY_MAX_LENGTH = 40;
 export const LEAD_NOTES_MAX_LENGTH = 2_000;
 

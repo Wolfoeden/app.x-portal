@@ -104,6 +104,7 @@ export async function POST(request: Request) {
       // ruft die Route bewusst auf und soll das auch um vier Uhr
       // nachmittags können.
       enforceWindow: auth.actor === "scheduler",
+      trigger: auth.actor === "scheduler" ? "scheduler" : "admin",
     });
 
     await writeAuditEvent({

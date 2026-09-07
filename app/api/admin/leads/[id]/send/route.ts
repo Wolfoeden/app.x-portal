@@ -299,6 +299,14 @@ export async function POST(
       }
     }
 
+    // Einmal gebildet, zweimal verwendet: im Text und im Beleg. Zweimal
+    // gerechnet könnten die beiden auseinanderlaufen, sobald sich
+    // `leadHeadline()` ändert.
+    const ctaUrl = leadSearchUrl({
+      origin: publicMailOrigin(),
+      headline: leadHeadline(lead.stellenanzeige),
+    });
+
     const text = buildLeadEmail({
       body,
       recipientName: lead.recipient_name,
@@ -311,10 +319,7 @@ export async function POST(
       unsubscribeUrl: unsubscribeUrl(publicMailOrigin(), lead.recipient_email),
       // Die Handlungsaufforderung. Sie ersetzt die Frage am Textende: ein
       // Klick zeigt sofort Profile, eine Frage verlangt erst eine Antwort.
-      ctaUrl: leadSearchUrl({
-        origin: publicMailOrigin(),
-        headline: leadHeadline(lead.stellenanzeige),
-      }),
+      ctaUrl,
       // Anrede und Grußformel entfernt der Zusammenbau nur aus einem
       // Modelltext. Was der Betreiber selbst getippt hat, bleibt Wort für
       // Wort stehen — eine Wendung wie „beste Grüße nach München" mitten im
@@ -332,6 +337,8 @@ export async function POST(
       model,
       credits: creditsCharged,
       createdBy: admin.id,
+      ctaUrl,
+      origin: "admin",
     });
 
     if (!claim.claimed) {

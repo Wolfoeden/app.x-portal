@@ -53,18 +53,27 @@ export function catalogVersion(
     .digest("hex");
 }
 
-export type DemandRecordResult =
+export type MatchRecordResult =
   | { recorded: true }
   /** Für diesen Lead steht schon eine Zeile — ein zweiter Lauf zählt nicht doppelt. */
   | { recorded: false; reason: "already_recorded" };
 
-export async function recordLeadDemand(input: {
+/**
+ * Das Ergebnis eines Abgleichs, unabhängig davon, wie es ausging.
+ *
+ * Anfangs wurde nur der Fehlschlag festgehalten — die Ausschreibung, zu
+ * der der Katalog niemanden führte. Das war zu wenig für zwei Fragen, die
+ * gleich oft gestellt werden: Was haben wir angeboten, und wogegen wurde
+ * geprüft? Ein Treffer, der nirgends steht, lässt sich hinterher nicht mehr
+ * belegen, und der Katalog ändert sich täglich.
+ */
+export async function recordLeadMatch(input: {
   leadId: number;
   recipientEmail: string;
   brief: ProjectBrief;
   shortlist: Shortlist;
   profileCatalogVersion: string;
-}): Promise<DemandRecordResult> {
+}): Promise<MatchRecordResult> {
   const admin = createAdminSupabaseClient();
   const { error } = await admin.from("shortlists").insert({
     source: "lead",

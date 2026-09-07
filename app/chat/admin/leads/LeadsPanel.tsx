@@ -66,6 +66,48 @@ function formatDateTime(value: string | null): string {
   return Number.isNaN(parsed.getTime()) ? "–" : dateFormat.format(parsed);
 }
 
+/**
+ * Was der Abgleich ergeben hat, in einem Wort.
+ *
+ * `null` ist ein eigener Fall und nicht „kein Treffer": Ein Lead, der noch
+ * wartet, sagt nichts über den Katalog aus. Die beiden zusammenzuwerfen hieße,
+ * eine unbearbeitete Warteschlange als Beleg für fehlende Profile zu lesen.
+ */
+function matchAnzeige(row: LeadRow): {
+  label: string;
+  className: string;
+  detail: string | null;
+} {
+  if (!row.match_status) {
+    return {
+      label: "Wartet",
+      className: styles.badgeUnmatched,
+      detail: null,
+    };
+  }
+  if (row.match_status === "ranked") {
+    const anzahl = row.match_count ?? 0;
+    return {
+      label: anzahl === 1 ? "1 Treffer" : `${anzahl} Treffer`,
+      className: styles.badgeHit,
+      detail: formatDateTime(row.matched_at),
+    };
+  }
+  return {
+    label:
+      row.match_status === "needs_clarification"
+        ? "Unlesbar"
+        : "Kein Treffer",
+    className: styles.badgeNoHit,
+    detail: formatDateTime(row.matched_at),
+  };
+}
+
+const HERKUNFT: Readonly<Record<"scheduler" | "admin", string>> = {
+  scheduler: "Tageslauf",
+  admin: "von Hand",
+};
+
 async function readError(response: Response): Promise<string> {
   try {
     const payload = (await response.json()) as { error?: string };
@@ -329,6 +371,7 @@ export function LeadsPanel({
               </th>
               <th scope="col">Firma</th>
               <th scope="col">Ausschreibung</th>
+              <th scope="col">Abgleich</th>
               <th scope="col">Kategorie</th>
               <th scope="col">Status</th>
               <th scope="col">Eingegangen</th>
@@ -343,6 +386,10 @@ export function LeadsPanel({
               const expanded = open === row.id;
               const url = leadSourceUrl(row.stellenanzeige);
               const sendable = !row.last_contacted_at;
+              const abgleich = matchAnzeige(row);
+              // Was tatsächlich rausging. Ein Entwurf, der noch herumliegt,
+              // ist kein Versand und darf hier nicht so aussehen.
+              const verschickt = row.outreach_state === "sent";
 
               return (
                 <Fragment key={row.id}>
@@ -375,6 +422,25 @@ export function LeadsPanel({
                       {row.outreach_state === "draft" ? (
                         <div className={styles.hint}>Entwurf liegt bereit</div>
                       ) : null}
+                      {row.outreach_cta_url ? (
+                        <div className={styles.hint}>
+                          <a
+                            href={row.outreach_cta_url}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                          >
+                            Portal-Link aus der Mail ↗
+                          </a>
+                        </div>
+                      ) : null}
+                    </td>
+                    <td data-label="Abgleich">
+                      <span className={`${styles.badge} ${abgleich.className}`}>
+                        {abgleich.label}
+                      </span>
+                      {abgleich.detail ? (
+                        <div className={styles.muted}>{abgleich.detail}</div>
+                      ) : null}
                     </td>
                     <td data-label="Kategorie">
                       <input
@@ -399,6 +465,21 @@ export function LeadsPanel({
                       {row.last_contacted_at ? (
                         <div className={styles.muted}>
                           {formatDateTime(row.last_contacted_at)}
+                          {row.outreach_origin
+                            ? ` · ${HERKUNFT[row.outreach_origin]}`
+                            : ""}
+                        </div>
+                      ) : null}
+                      {row.outreach_state === "failed" ? (
+                        <div className={styles.hint}>
+                          <span
+                            className={`${styles.badge} ${styles.badgeFailed}`}
+                          >
+                            Nicht zugestellt
+                          </span>
+                          {row.outreach_failure_reason
+                            ? ` ${row.outreach_failure_reason}`
+                            : ""}
                         </div>
                       ) : null}
                     </td>
@@ -448,13 +529,48 @@ export function LeadsPanel({
                   </tr>
                   {expanded ? (
                     <tr className={styles.detailRow}>
-                      <td colSpan={7}>
+                      <td colSpan={8}>
                         <div className={styles.detail}>
                           <div className={styles.detailColumn}>
                             <p className={styles.detailLabel}>Ausschreibung</p>
                             <p className={styles.detailText}>
                               {row.stellenanzeige}
                             </p>
+                            {row.match_status ? (
+                              <>
+                                <p className={styles.detailLabel}>Abgleich</p>
+                                <ul className={styles.matchFacts}>
+                                  <li>
+                                    <b>Ergebnis</b>
+                                    {abgleich.label}
+                                  </li>
+                                  <li>
+                                    <b>Abgeglichen am</b>
+                                    {formatDateTime(row.matched_at)}
+                                  </li>
+                                  {row.match_primary_profile_id ? (
+                                    <li>
+                                      <b>Vorgeschlagen</b>
+                                      <a
+                                        href={appPath(
+                                          `/chat/admin/freelancers/${row.match_primary_profile_id}`,
+                                        )}
+                                        target="_blank"
+                                        rel="noreferrer noopener"
+                                      >
+                                        Profil ansehen ↗
+                                      </a>
+                                    </li>
+                                  ) : null}
+                                  {row.match_open_requirements?.length ? (
+                                    <li>
+                                      <b>Offen geblieben</b>
+                                      {row.match_open_requirements.join(", ")}
+                                    </li>
+                                  ) : null}
+                                </ul>
+                              </>
+                            ) : null}
                             <p className={styles.detailLabel}>Notiz</p>
                             <textarea
                               className={styles.notes}
@@ -485,79 +601,120 @@ export function LeadsPanel({
                           </div>
 
                           <div className={styles.detailColumn}>
-                            <p className={styles.detailLabel}>Anschreiben</p>
-                            <input
-                              className={styles.subjectInput}
-                              value={current.subject}
-                              placeholder="Betreff"
-                              aria-label="Betreff"
-                              onChange={(event) =>
-                                patchRowState(row.id, {
-                                  subject: event.target.value,
-                                })
-                              }
-                            />
-                            <textarea
-                              className={styles.bodyInput}
-                              value={current.body}
-                              rows={10}
-                              placeholder="Noch kein Entwurf. Text erzeugen oder selbst schreiben."
-                              aria-label="Text"
-                              onChange={(event) =>
-                                patchRowState(row.id, {
-                                  body: event.target.value,
-                                })
-                              }
-                            />
-                            <p className={styles.hint}>
-                              Anrede, Grußformel und die Pflichtangaben werden
-                              beim Versand angehängt.
-                            </p>
-
-                            <div className={styles.detailActions}>
-                              <button
-                                type="button"
-                                className={styles.secondaryButton}
-                                disabled={current.busy !== null}
-                                onClick={() => void createDraft(row)}
-                              >
-                                {current.busy === "draft"
-                                  ? "Schreibt …"
-                                  : `Entwurf erzeugen (${creditsPerDraft} Credits)`}
-                              </button>
-                              <button
-                                type="button"
-                                className={styles.primaryButton}
-                                disabled={
-                                  current.busy !== null ||
-                                  !mailReady ||
-                                  !sendable ||
-                                  !current.subject.trim() ||
-                                  !current.body.trim()
-                                }
-                                onClick={async () => {
-                                  if (
-                                    !window.confirm(
-                                      `Nachricht an ${row.recipient_email} verschicken?`,
-                                    )
-                                  ) {
-                                    return;
+                            {verschickt ? (
+                              <>
+                                <p className={styles.detailLabel}>
+                                  Verschickte Nachricht
+                                </p>
+                                <div className={styles.sentMeta}>
+                                  <span>
+                                    {formatDateTime(row.outreach_sent_at)}
+                                  </span>
+                                  {row.outreach_origin ? (
+                                    <span>
+                                      {HERKUNFT[row.outreach_origin]}
+                                    </span>
+                                  ) : null}
+                                  <span>an {row.recipient_email}</span>
+                                </div>
+                                <p className={styles.detailText}>
+                                  <strong>{row.outreach_subject}</strong>
+                                </p>
+                                {/* Nicht editierbar: Was raus ist, ist raus,
+                                    und diese Zeile ist der Beleg dafür. */}
+                                <pre className={styles.sentBody}>
+                                  {row.outreach_body}
+                                </pre>
+                                {row.outreach_cta_url ? (
+                                  <p className={styles.hint}>
+                                    Verlinkt auf{" "}
+                                    <a
+                                      href={row.outreach_cta_url}
+                                      target="_blank"
+                                      rel="noreferrer noopener"
+                                    >
+                                      {row.outreach_cta_url}
+                                    </a>
+                                  </p>
+                                ) : null}
+                              </>
+                            ) : (
+                              <>
+                                <p className={styles.detailLabel}>Anschreiben</p>
+                                <input
+                                  className={styles.subjectInput}
+                                  value={current.subject}
+                                  placeholder="Betreff"
+                                  aria-label="Betreff"
+                                  onChange={(event) =>
+                                    patchRowState(row.id, {
+                                      subject: event.target.value,
+                                    })
                                   }
-                                  if (await send(row)) router.refresh();
-                                }}
-                              >
-                                {current.busy === "send"
-                                  ? "Verschickt …"
-                                  : "Senden"}
-                              </button>
-                            </div>
+                                />
+                                <textarea
+                                  className={styles.bodyInput}
+                                  value={current.body}
+                                  rows={10}
+                                  placeholder="Noch kein Entwurf. Text erzeugen oder selbst schreiben."
+                                  aria-label="Text"
+                                  onChange={(event) =>
+                                    patchRowState(row.id, {
+                                      body: event.target.value,
+                                    })
+                                  }
+                                />
+                                <p className={styles.hint}>
+                                  Anrede, Grußformel und die Pflichtangaben werden
+                                  beim Versand angehängt.
+                                </p>
 
-                            {current.note ? (
-                              <p className={styles.hint}>{current.note}</p>
-                            ) : null}
-                            {current.error ? (
-                              <p className={styles.error}>{current.error}</p>
-                            ) : null}
+                                <div className={styles.detailActions}>
+                                  <button
+                                    type="button"
+                                    className={styles.secondaryButton}
+                                    disabled={current.busy !== null}
+                                    onClick={() => void createDraft(row)}
+                                  >
+                                    {current.busy === "draft"
+                                      ? "Schreibt …"
+                                      : `Entwurf erzeugen (${creditsPerDraft} Credits)`}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={styles.primaryButton}
+                                    disabled={
+                                      current.busy !== null ||
+                                      !mailReady ||
+                                      !sendable ||
+                                      !current.subject.trim() ||
+                                      !current.body.trim()
+                                    }
+                                    onClick={async () => {
+                                      if (
+                                        !window.confirm(
+                                          `Nachricht an ${row.recipient_email} verschicken?`,
+                                        )
+                                      ) {
+                                        return;
+                                      }
+                                      if (await send(row)) router.refresh();
+                                    }}
+                                  >
+                                    {current.busy === "send"
+                                      ? "Verschickt …"
+                                      : "Senden"}
+                                  </button>
+                                </div>
+
+                                {current.note ? (
+                                  <p className={styles.hint}>{current.note}</p>
+                                ) : null}
+                                {current.error ? (
+                                  <p className={styles.error}>{current.error}</p>
+                                ) : null}
+                              </>
+                            )}
                           </div>
                         </div>
                       </td>

@@ -4,6 +4,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 import {
   LEAD_PAGE_SIZE,
+  type LeadMatchFilter,
   type LeadScope,
   type LeadStatus,
 } from "./limits";
@@ -35,9 +36,24 @@ export type LeadRow = {
   last_contacted_at: string | null;
   created_at: string;
   updated_at: string;
-  outreach_state: "draft" | "sent" | "failed" | null;
+  outreach_state: "draft" | "sending" | "sent" | "failed" | null;
   outreach_subject: string | null;
+  /** Der Wortlaut, wie er rausging. Beleg bei einer Rückfrage. */
+  outreach_body: string | null;
   outreach_created_at: string | null;
+  outreach_sent_at: string | null;
+  outreach_failure_reason: string | null;
+  outreach_origin: "scheduler" | "admin" | null;
+  outreach_cta_url: string | null;
+  /**
+   * Was der Abgleich ergeben hat. `null` heißt: noch nie abgeglichen —
+   * etwas anderes als ein Abgleich ohne Treffer.
+   */
+  match_status: "ranked" | "needs_clarification" | "no_reliable_match" | null;
+  match_count: number | null;
+  match_primary_profile_id: string | null;
+  match_open_requirements: string[] | null;
+  matched_at: string | null;
 };
 
 type LeadListRow = LeadRow & { total_count: number | string };
@@ -55,6 +71,27 @@ export type LeadSummary = {
   total: number;
   byStatus: Record<string, number>;
   categories: { category: string; count: number }[];
+  /**
+   * Der Trichter über die ganze Warteschlange: was abgeglichen wurde, was
+   * dabei herauskam und was davon zugestellt ist. Die Zahlen gehören
+   * zusammen gelesen — einzeln beantworten sie nichts.
+   */
+  pipeline: LeadPipeline;
+};
+
+export type LeadPipeline = {
+  gesamt: number;
+  offen: number;
+  archiviert: number;
+  beantwortet: number;
+  abgeglichen: number;
+  treffer: number;
+  ohneTreffer: number;
+  verschickt: number;
+  gescheitert: number;
+  entwuerfe: number;
+  verschicktHeute: number;
+  zuletztVerschickt: string | null;
 };
 
 function requireServiceRole(): ReturnType<typeof createAdminSupabaseClient> {
@@ -81,6 +118,7 @@ export async function listLeads(options: {
   status?: LeadStatus | null;
   category?: string | null;
   scope?: LeadScope;
+  match?: LeadMatchFilter | null;
   page?: number;
   pageSize?: number;
 }): Promise<LeadListResult> {
@@ -93,6 +131,7 @@ export async function listLeads(options: {
     p_status: options.status ?? null,
     p_category: orNull(options.category),
     p_scope: options.scope ?? "open",
+    p_match: options.match ?? null,
     p_limit: pageSize,
     p_offset: (page - 1) * pageSize,
   });
@@ -117,8 +156,16 @@ export async function listLeads(options: {
 
 export async function leadSummary(): Promise<LeadSummary> {
   const admin = requireServiceRole();
-  const { data, error } = await admin.rpc("admin_leadgen_queue_summary");
+  // Zwei Aufrufe, weil die eine Zahlenreihe die Warteschlange zählt und
+  // die andere quer über drei Tabellen geht. Sie in eine Funktion zu
+  // pressen hieße, die Zählung der Liste an den Trichter zu binden.
+  const [queue, pipeline] = await Promise.all([
+    admin.rpc("admin_leadgen_queue_summary"),
+    admin.rpc("admin_leadgen_pipeline_summary"),
+  ]);
+  const { data, error } = queue;
   if (error) throw error;
+  if (pipeline.error) throw pipeline.error;
 
   const raw = (data ?? {}) as {
     open?: number;
@@ -128,12 +175,35 @@ export async function leadSummary(): Promise<LeadSummary> {
     categories?: { category: string; count: number }[];
   };
 
+  const trichter = (pipeline.data ?? {}) as Record<string, unknown>;
+  const zahl = (schluessel: string): number => {
+    const wert = Number(trichter[schluessel]);
+    return Number.isFinite(wert) ? wert : 0;
+  };
+
   return {
     open: raw.open ?? 0,
     archived: raw.archived ?? 0,
     total: raw.total ?? 0,
     byStatus: raw.by_status ?? {},
     categories: raw.categories ?? [],
+    pipeline: {
+      gesamt: zahl("gesamt"),
+      offen: zahl("offen"),
+      archiviert: zahl("archiviert"),
+      beantwortet: zahl("beantwortet"),
+      abgeglichen: zahl("abgeglichen"),
+      treffer: zahl("treffer"),
+      ohneTreffer: zahl("ohne_treffer"),
+      verschickt: zahl("verschickt"),
+      gescheitert: zahl("gescheitert"),
+      entwuerfe: zahl("entwuerfe"),
+      verschicktHeute: zahl("verschickt_heute"),
+      zuletztVerschickt:
+        typeof trichter.zuletzt_verschickt === "string"
+          ? trichter.zuletzt_verschickt
+          : null,
+    },
   };
 }
 
@@ -142,7 +212,19 @@ const LEAD_COLUMNS =
 
 export type Lead = Omit<
   LeadRow,
-  "outreach_state" | "outreach_subject" | "outreach_created_at"
+  | "outreach_state"
+  | "outreach_subject"
+  | "outreach_body"
+  | "outreach_created_at"
+  | "outreach_sent_at"
+  | "outreach_failure_reason"
+  | "outreach_origin"
+  | "outreach_cta_url"
+  | "match_status"
+  | "match_count"
+  | "match_primary_profile_id"
+  | "match_open_requirements"
+  | "matched_at"
 >;
 
 export async function getLead(id: number): Promise<Lead | null> {
@@ -301,6 +383,9 @@ export async function claimOutreach(input: {
   model: string | null;
   credits: number | null;
   createdBy: string | null;
+  /** Der Portal-Link, wie er in dieser Nachricht steht. */
+  ctaUrl?: string | null;
+  origin?: "scheduler" | "admin" | null;
 }): Promise<ClaimResult> {
   const admin = requireServiceRole();
   const { data, error } = await admin
@@ -311,6 +396,8 @@ export async function claimOutreach(input: {
       p_model: input.model,
       p_credits: input.credits,
       p_created_by: input.createdBy,
+      p_cta_url: input.ctaUrl ?? null,
+      p_origin: input.origin ?? null,
     })
     .maybeSingle();
   if (error) throw error;
@@ -465,4 +552,69 @@ export async function sentSince(from: Date): Promise<number> {
     .gte("sent_at", from.toISOString());
   if (error) throw error;
   return count ?? 0;
+}
+
+export type LeadRun = {
+  id: string;
+  started_at: string;
+  finished_at: string;
+  trigger: "scheduler" | "admin";
+  dry_run: boolean;
+  examined: number;
+  sent: number;
+  archived: number;
+  skipped: number;
+  remaining: number;
+  daily_budget_left: number;
+  stopped_by:
+    | "queue_empty"
+    | "time"
+    | "examined"
+    | "daily_limit"
+    | "outside_window";
+};
+
+const RUN_COLUMNS =
+  "id,started_at,finished_at,trigger,dry_run,examined,sent,archived,skipped,remaining,daily_budget_left,stopped_by";
+
+/**
+ * Was ein Durchgang getan hat.
+ *
+ * Nur Läufe, die etwas angesehen haben. Der Zeitgeber weckt die Route öfter,
+ * als das Versandfenster offen ist; diese Aufrufe als Zeilen zu führen hieße,
+ * das Protokoll mit Nichtereignissen zu füllen.
+ */
+export async function recordLeadRun(input: Omit<LeadRun, "id" | "finished_at">): Promise<void> {
+  if (input.examined <= 0) return;
+  const admin = requireServiceRole();
+  const { error } = await admin.from("leadgen_run").insert({
+    started_at: input.started_at,
+    trigger: input.trigger,
+    dry_run: input.dry_run,
+    examined: input.examined,
+    sent: input.sent,
+    archived: input.archived,
+    skipped: input.skipped,
+    remaining: input.remaining,
+    daily_budget_left: input.daily_budget_left,
+    stopped_by: input.stopped_by,
+  });
+  // Ein Protokoll, das den Lauf scheitern lässt, ist schlechter als eine
+  // fehlende Zeile: Die Nachrichten sind da schon raus.
+  if (error) {
+    console.error(
+      JSON.stringify({ event: "leadgen_run_log_failed", code: error.code }),
+    );
+  }
+}
+
+export async function listLeadRuns(limit = 5): Promise<LeadRun[]> {
+  const admin = requireServiceRole();
+  const { data, error } = await admin
+    .from("leadgen_run")
+    .select(RUN_COLUMNS)
+    .order("started_at", { ascending: false })
+    .limit(Math.min(Math.max(limit, 1), 50));
+  if (error) throw error;
+  return (data ?? []) as LeadRun[];
 }
