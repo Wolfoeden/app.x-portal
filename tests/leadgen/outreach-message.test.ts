@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { IMPRINT_EMAIL } from "@/lib/legal/policy";
 import {
-  LEAD_RETENTION_DAYS,
-  SENDER_IMPRINT_LINE,
+  IMPRINT_EMAIL,
+  PROVIDER_IMPRINT_LINES,
+} from "@/lib/legal/policy";
+import {
   buildLeadEmail,
+  firmenname,
   salutation,
   stripSalutationAndSignoff,
   unattendedBodyIssue,
@@ -35,6 +37,36 @@ describe("Anrede", () => {
     expect(salutation(null, "Krongaard GmbH")).toBe("Guten Tag Krongaard Team,");
   });
 
+  /**
+   * Die Importquelle fuehrt Doppelnennungen wie „Thryve (Thryve Consulting
+   * GmbH)“. Daraus wurde eine Anrede, die den Firmennamen zweimal enthielt.
+   */
+  it("lässt den Klammerzusatz der Firma weg", () => {
+    expect(salutation(null, "Thryve (Thryve Consulting GmbH)")).toBe(
+      "Guten Tag Thryve Team,",
+    );
+    expect(salutation(null, "RED Global (RED Commerce GmbH)")).toBe(
+      "Guten Tag RED Global Team,",
+    );
+  });
+
+  it("entfernt die Rechtsform auch hinter einem Klammerzusatz", () => {
+    expect(salutation(null, "Randstad Professional GmbH (vorm. GULP)")).toBe(
+      "Guten Tag Randstad Professional Team,",
+    );
+  });
+
+  it("gibt die Firma unverändert zurück, wenn nichts wegfällt", () => {
+    expect(firmenname("VARIUS IT Informations-Technologien")).toBe(
+      "VARIUS IT Informations-Technologien",
+    );
+  });
+
+  it("fällt nie auf einen leeren Namen zurück", () => {
+    expect(firmenname("(nur eine Klammer)")).toBe("(nur eine Klammer)");
+    expect(firmenname("GmbH")).toBe("GmbH");
+  });
+
   it("rät bei einem Kürzel keinen Namen", () => {
     expect(salutation("M.", "WestCo GmbH")).toBe("Guten Tag WestCo Team,");
   });
@@ -61,8 +93,20 @@ describe("Modelltext entschärfen", () => {
 describe("Pflichtangaben der Akquise-Mail", () => {
   const mail = buildLeadEmail(BASIS);
 
-  it("nennt die Anschrift des Anbieters wörtlich", () => {
-    expect(mail).toContain(SENDER_IMPRINT_LINE);
+  /**
+   * Die Kennzeichnung beginnt mit XPORTAL, führt aber weiterhin den
+   * eingetragenen Namen: § 5 DDG verlangt ihn, und ein Fuß, der nur die
+   * Marke nennt, erfüllt die Anbieterkennzeichnung nicht.
+   */
+  it("nennt die Anbieterkennzeichnung wörtlich", () => {
+    for (const zeile of PROVIDER_IMPRINT_LINES) {
+      expect(mail).toContain(zeile);
+    }
+  });
+
+  it("nennt das Portal vor dem eingetragenen Namen", () => {
+    expect(PROVIDER_IMPRINT_LINES[0].startsWith("XPORTAL")).toBe(true);
+    expect(PROVIDER_IMPRINT_LINES[0]).toContain("Inhaber Roman Dering");
   });
 
   it("nennt die Impressumsadresse", () => {
@@ -75,24 +119,32 @@ describe("Pflichtangaben der Akquise-Mail", () => {
 
   it("nennt die Herkunft der Adresse konkret mit Quelle", () => {
     expect(mail).toContain(BASIS.sourceUrl);
-    expect(mail).toContain("Woher ich Ihre Daten habe");
+    expect(mail).toContain("Ihre Kontaktdaten stammen aus");
   });
 
-  it("nennt die gespeicherten Datenkategorien", () => {
-    expect(mail).toContain("Firmenname, Ansprechpartner und Kontaktadresse");
+  /**
+   * Zweck, Rechtsgrundlage, Speicherdauer und Betroffenenrechte stehen seit
+   * September 2026 auf der Datenschutzseite und nicht mehr im Fuß. Der Test
+   * prüft deshalb den Verweis, nicht den ausformulierten Text — und dass er
+   * die vier Punkte benennt, damit der Link nicht ins Unbestimmte zeigt.
+   */
+  it("verweist für Zweck, Grundlage, Frist und Rechte auf die Datenschutzseite", () => {
+    expect(mail).toContain(
+      "Zweck, Rechtsgrundlage, Speicherdauer und Ihre Rechte auf Auskunft, Berichtigung, Löschung und Widerspruch: https://x-portal.eu/privacy",
+    );
   });
 
-  it("nennt die Rechtsgrundlage", () => {
-    expect(mail).toContain("Art. 6 Abs. 1 lit. f DSGVO");
+  it("bietet den Abmeldeweg mit eigener Einleitung an", () => {
+    expect(mail).toContain(
+      "Wenn Sie keine weiteren E-Mails von uns erhalten möchten,",
+    );
   });
 
-  it("nennt die Speicherdauer in Tagen", () => {
-    expect(mail).toContain(`nach ${LEAD_RETENTION_DAYS} Tagen`);
-  });
-
-  it("nennt Widerspruch, Auskunft, Berichtigung und Löschung", () => {
-    expect(mail).toContain("widersprechen");
-    expect(mail).toContain("Auskunft, Berichtigung oder Löschung");
+  it("nennt ohne Abmeldelink die Antwortadresse als Abmeldeweg", () => {
+    const ohneLink = buildLeadEmail({ ...BASIS, unsubscribeUrl: null });
+    expect(ohneLink).toContain(
+      `genügt eine formlose Antwort an ${BASIS.senderEmail}`,
+    );
   });
 
   it("sagt, an welche Adresse der Widerspruch geht", () => {

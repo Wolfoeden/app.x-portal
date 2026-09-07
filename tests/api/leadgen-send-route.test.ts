@@ -162,7 +162,11 @@ describe("Versandroute für Leads", () => {
     await POST(sendRequest({ requestId: "abcdefgh" }), CONTEXT);
 
     const [message] = mocks.deliver.mock.calls[0] as [{ text: string }];
-    expect(message.text).toContain("formlose Antwort an info@x-portal.eu");
+    // Seit der Fuß gekürzt ist, trägt die Kontaktzeile diese Zusage: dort
+        // steht die Adresse, an die eine Antwort tatsächlich zurückläuft.
+        expect(message.text).toContain(
+          "info@x-portal.eu · https://x-portal.eu/imprint",
+        );
     // Absender- und Impressumsadresse sind dieselbe; zweimal hintereinander
     // sah nach einem Fehler aus und war einer.
     expect(message.text).not.toContain(

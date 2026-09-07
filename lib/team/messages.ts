@@ -1,4 +1,7 @@
-import { IMPRINT_EMAIL } from "@/lib/legal/policy";
+import {
+  IMPRINT_EMAIL,
+  PROVIDER_IMPRINT_LINES,
+} from "@/lib/legal/policy";
 
 /**
  * Die Einladung an ein neues Teammitglied.
@@ -33,7 +36,7 @@ export function teamInvitationMessage(input: {
       "Wenn Sie damit nicht einverstanden sind, wenden Sie sich an die Person,",
       `die Sie hinzugefügt hat, oder schreiben Sie uns an ${IMPRINT_EMAIL}.`,
       "",
-      "300 – Inhaber Roman Dering, Heilig-Kreuz-Straße 18, 87600 Kaufbeuren",
+      ...PROVIDER_IMPRINT_LINES,
       `${IMPRINT_EMAIL} · https://x-portal.eu/imprint`,
     ].join("\n"),
   };

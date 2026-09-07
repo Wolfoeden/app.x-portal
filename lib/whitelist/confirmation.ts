@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { PROVIDER_IMPRINT_LINES } from "@/lib/legal/policy";
 
 /**
  * Der Bestätigungstoken für den Double-Opt-in.
@@ -78,7 +79,7 @@ export function confirmationMessage(input: {
       "eingetragen haben, ignorieren Sie diese Nachricht — ohne Bestätigung",
       "senden wir Ihnen nichts und löschen den Eintrag nach 30 Tagen.",
       "",
-      "300 – Inhaber Roman Dering, Heilig-Kreuz-Straße 18, 87600 Kaufbeuren",
+      ...PROVIDER_IMPRINT_LINES,
       "info@x-portal.eu · https://x-portal.eu/imprint",
     ].join("\n"),
   };

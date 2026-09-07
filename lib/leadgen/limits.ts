@@ -75,13 +75,93 @@ export function isLeadScope(value: unknown): value is LeadScope {
 }
 
 /**
- * Die Ausschreibung kommt als eine Zeile aus dem Importwerkzeug:
- * `Titel — Kurzbeschreibung — URL`. Für die Liste ist nur der Titel
- * interessant, für den Entwurf der ganze Text.
+ * Wie lang eine Überschrift werden darf, bevor sie gekürzt wird.
+ *
+ * Sie steht in der Betreffzeile, in der Anrede-Zeile der Treffer-Mail und als
+ * Suchbegriff im Portal-Link. Achtzig Zeichen sind das, was in einer
+ * Postfachliste noch vollständig ankommt.
+ */
+const HEADLINE_MAX_LENGTH = 80;
+
+/**
+ * Der Trenner, den das Importwerkzeug setzt: `Titel — Kurzbeschreibung — URL`.
+ */
+const PRIMARY_SEPARATOR = " — ";
+
+/**
+ * Trenner, die in freien Ausschreibungstiteln vorkommen und mal Struktur,
+ * mal Bestandteil des Titels sind. „Senior AI Engineer – LLM / Agents" ist
+ * ein Titel; „SAP CRM Lead – 6+ Monate, Remote" ist ein Titel plus Anhang.
+ * Auseinanderhalten lässt sich das nicht zuverlässig, deshalb greifen diese
+ * Trenner erst, wenn die Überschrift ohnehin zu lang ist — bei einem kurzen
+ * Titel richten sie mehr Schaden an, als sie nützen.
+ */
+const SECONDARY_SEPARATORS = [" | ", " – ", " - ", ": ", ". "];
+
+/**
+ * Die Geschlechterkennzeichnung. Sie gehört zur Stellenausschreibung, nicht
+ * zur Rolle — im Betreff ist sie Füllsel und als Suchbegriff im Portal ist
+ * sie schädlich, weil kein Profil sie trägt.
+ */
+const GENDER_MARKER =
+  /\s*[(\[]?\s*[mwfdx]\s*[\/|]\s*[mwfdx]\s*(?:[\/|]\s*[mwfdx]\s*)?[)\]]?/giu;
+
+/** Reste eines Trenners am Ende, nachdem etwas abgeschnitten wurde. */
+const TRAILING_JUNK = /[\s—–\-|:;,.]+$/u;
+
+/**
+ * Die Überschrift der Ausschreibung: der Teil, den der Auftraggeber selbst
+ * als Rolle formuliert hat.
+ *
+ * Sie wird an drei Stellen sichtbar — Arbeitsliste, Betreffzeile und
+ * Portal-Link —, und an allen dreien war der ungekürzte Text unbrauchbar:
+ * Ein Lead ohne den Trenner des Importwerkzeugs lieferte die komplette Zeile
+ * mitsamt Adresse als Betreff, 280 Zeichen lang.
  */
 export function leadHeadline(stellenanzeige: string): string {
-  const [headline] = stellenanzeige.split(" — ");
-  return (headline ?? stellenanzeige).trim() || stellenanzeige.trim();
+  const ohneAdresse = stellenanzeige.replace(/https?:\/\/\S+/giu, " ");
+  const [erster] = ohneAdresse.split(PRIMARY_SEPARATOR);
+  let headline = saeubern(erster ?? ohneAdresse);
+
+  if (headline.length > HEADLINE_MAX_LENGTH) {
+    headline = saeubern(kuerzesteTeilung(headline));
+  }
+  if (headline.length > HEADLINE_MAX_LENGTH) {
+    headline = saeubern(amWortEndeKuerzen(headline));
+  }
+
+  return headline || saeubern(stellenanzeige) || stellenanzeige.trim();
+}
+
+function saeubern(wert: string): string {
+  return wert
+    .replace(GENDER_MARKER, " ")
+    .replace(/\s+/gu, " ")
+    .replace(TRAILING_JUNK, "")
+    .trim();
+}
+
+/**
+ * Der früheste Schnitt, der noch etwas Aussagekräftiges stehen lässt. Zu
+ * kurze Bruchstücke („SAP", „Senior") werden verworfen: Sie entstehen, wenn
+ * ein Trenner mitten in einer Aufzählung steht.
+ */
+function kuerzesteTeilung(headline: string): string {
+  let bester = headline;
+  for (const trenner of SECONDARY_SEPARATORS) {
+    const index = headline.indexOf(trenner);
+    if (index < 12) continue;
+    const kandidat = headline.slice(0, index);
+    if (kandidat.length < bester.length) bester = kandidat;
+  }
+  return bester;
+}
+
+/** Letzte Stufe: harte Grenze, aber nicht mitten im Wort. */
+function amWortEndeKuerzen(headline: string): string {
+  const schnitt = headline.slice(0, HEADLINE_MAX_LENGTH);
+  const letztesLeerzeichen = schnitt.lastIndexOf(" ");
+  return letztesLeerzeichen > 20 ? schnitt.slice(0, letztesLeerzeichen) : schnitt;
 }
 
 export function leadSourceUrl(stellenanzeige: string): string | null {

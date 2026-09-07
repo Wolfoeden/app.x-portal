@@ -3,6 +3,7 @@ import { ENTERPRISE_START_EURO } from "@/lib/billing/payment-links";
 import {
   BUSINESS_ONLY_NOTICE,
   IMPRINT_EMAIL,
+  PROVIDER_IMPRINT_LINES,
   TERMS_EFFECTIVE_DATE,
   TERMS_VERSION,
 } from "@/lib/legal/policy";
@@ -74,7 +75,7 @@ export function orderConfirmationMessage(): {
       "",
       "Bei Fragen zur Abrechnung antworten Sie einfach auf diese Nachricht.",
       "",
-      "300 – Inhaber Roman Dering, Heilig-Kreuz-Straße 18, 87600 Kaufbeuren",
+      ...PROVIDER_IMPRINT_LINES,
       `${IMPRINT_EMAIL} · https://x-portal.eu/imprint`,
     ].join("\n"),
   };

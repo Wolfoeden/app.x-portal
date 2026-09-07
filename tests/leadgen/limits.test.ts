@@ -46,6 +46,57 @@ describe("leadHeadline", () => {
   });
 });
 
+describe("leadHeadline kürzt, was nicht in einen Betreff passt", () => {
+  /**
+   * Der Fall aus der Produktion: Lead 244 trennt mit senkrechten Strichen
+   * statt mit dem Gedankenstrich des Importwerkzeugs. Ungekürzt landete die
+   * ganze Zeile mitsamt Adresse im Betreff.
+   */
+  it("schneidet an einem Zweittrenner, wenn der Haupttrenner fehlt", () => {
+    expect(
+      leadHeadline(
+        "Project Manager with AI/software within Finance Industry | 100% remote, 3 Monate (verlängerbar), technisches PM für zwei fusionierte AI/Finance-Projekte | https://example.invalid/x",
+      ),
+    ).toBe("Project Manager with AI/software within Finance Industry");
+  });
+
+  it("lässt die Adresse nie stehen", () => {
+    expect(leadHeadline("Lead Architect https://example.invalid/x")).toBe(
+      "Lead Architect",
+    );
+  });
+
+  /**
+   * Die Geschlechterkennzeichnung gehört zur Ausschreibung, nicht zur Rolle.
+   * Als Suchbegriff im Portal ist sie schädlich: kein Profil trägt sie.
+   */
+  it("entfernt die Geschlechterkennzeichnung", () => {
+    expect(
+      leadHeadline("SAP FICO Senior Solution Lead/Architect (m/f/x) - Remote work within Germany or European Union"),
+    ).toBe("SAP FICO Senior Solution Lead/Architect");
+    expect(leadHeadline("Consultant (m/w/d) ISO 27001")).toBe(
+      "Consultant ISO 27001",
+    );
+  });
+
+  it("hält auch ohne jeden Trenner die Grenze ein", () => {
+    const lang = "Senior ".repeat(30) + "Engineer";
+    const headline = leadHeadline(lang);
+    expect(headline.length).toBeLessThanOrEqual(80);
+    expect(headline.endsWith(" ")).toBe(false);
+  });
+
+  /**
+   * Ein Zweittrenner darf einen kurzen Titel nicht zerlegen: der Strich in
+   * „Senior AI Engineer – LLM / Agents“ gehoert zum Titel, er trennt nichts ab.
+   */
+  it("lässt einen kurzen Titel unangetastet", () => {
+    expect(leadHeadline("Senior AI Engineer – LLM / Agents / MCP")).toBe(
+      "Senior AI Engineer – LLM / Agents / MCP",
+    );
+  });
+});
+
 describe("leadSourceUrl", () => {
   it("findet die Adresse am Ende der Zeile", () => {
     expect(

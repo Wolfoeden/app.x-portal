@@ -41,7 +41,7 @@ export default function TermsPage() {
           <h2>1. Anbieter, Begriffe und Geltungsbereich</h2>
           <div>
             <p>
-              Anbieter ist 300 – Inhaber Roman Dering, Einzelunternehmen,
+              Anbieter ist XPORTAL — 300, Inhaber Roman Dering, Einzelunternehmen,
               Heilig-Kreuz-Straße 18, 87600 Kaufbeuren, Deutschland. Kontakt: {""}
               <a href="mailto:info@x-portal.eu">info@x-portal.eu</a> oder über
               das <Link href="/contact">Kontaktformular</Link>.

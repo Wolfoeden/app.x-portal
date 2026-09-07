@@ -1,4 +1,7 @@
-import { IMPRINT_EMAIL } from "@/lib/legal/policy";
+import {
+  IMPRINT_EMAIL,
+  PROVIDER_IMPRINT_LINES,
+} from "@/lib/legal/policy";
 
 /**
  * Der Rahmen der Akquise-Mail.
@@ -18,9 +21,10 @@ import { IMPRINT_EMAIL } from "@/lib/legal/policy";
  * Zusage, die niemand einhält, wäre schlimmer als keine.
  */
 
-/** Anschrift und Kontakt des Anbieters, wortgleich zum Impressum. */
-export const SENDER_IMPRINT_LINE =
-  "300 – Inhaber Roman Dering, Heilig-Kreuz-Straße 18, 87600 Kaufbeuren";
+/**
+ * Wer unterschreibt. Die Anbieterkennzeichnung selbst steht in
+ * `lib/legal/policy.ts`, damit sie nicht von der des Impressums abweicht.
+ */
 export const SENDER_PERSON = "Roman Dering";
 export const IMPRINT_URL = "https://x-portal.eu/imprint";
 export const PRIVACY_URL = "https://x-portal.eu/privacy";
@@ -75,18 +79,34 @@ export function salutation(
     return `Guten Tag ${name},`;
   }
   const firma = company?.trim();
-  if (firma) {
-    // Die Rechtsform wegzulassen macht aus „Krongaard GmbH Team" ein
-    // „Krongaard Team", das sich lesen lässt.
-    const ohneRechtsform = firma
-      .replace(
-        /\s+(GmbH(\s*&\s*Co\.?\s*KG)?|AG|UG(\s*\(haftungsbeschränkt\))?|KG|OHG|e\.?K\.?|SE|mbH|Ltd\.?|Inc\.?|GbR)$/iu,
-        "",
-      )
-      .trim();
-    return `Guten Tag ${ohneRechtsform || firma} Team,`;
-  }
+  if (firma) return `Guten Tag ${firmenname(firma)} Team,`;
   return "Sehr geehrte Damen und Herren,";
+}
+
+/**
+ * Der Name, mit dem sich eine Firma ansprechen lässt.
+ *
+ * Zwei Dinge fallen weg. Der Klammerzusatz zuerst: Die Importquelle führt
+ * Doppelnennungen wie „Thryve (Thryve Consulting GmbH)" oder „Randstad
+ * Professional GmbH (vorm. GULP)", und daraus wurde eine Anrede, die den
+ * Firmennamen zweimal enthielt. Danach die Rechtsform, weil aus
+ * „Krongaard GmbH Team" ein „Krongaard Team" wird, das sich lesen lässt.
+ *
+ * Die Reihenfolge zählt: Bei „RED Commerce GmbH (RED Global)" steht die
+ * Rechtsform vor der Klammer und wäre am Zeilenende nicht mehr zu fassen,
+ * wenn die Klammer stehen bliebe.
+ */
+const KLAMMERZUSATZ = /\s*[(（][^)）]*[)）]\s*/gu;
+const RECHTSFORM =
+  /\s+(GmbH(\s*&\s*Co\.?\s*KG)?|AG|UG(\s*\(haftungsbeschränkt\))?|KG|OHG|e\.?K\.?|SE|mbH|Ltd\.?|Inc\.?|GbR)$/iu;
+
+export function firmenname(company: string): string {
+  const ohneKlammer = company
+    .replace(KLAMMERZUSATZ, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
+  const ohneRechtsform = ohneKlammer.replace(RECHTSFORM, "").trim();
+  return ohneRechtsform || ohneKlammer || company.trim();
 }
 
 /**
@@ -99,44 +119,45 @@ export function legalFooter(input: {
   senderEmail: string;
   sourceUrl: string | null;
   /**
-   * Der Abmeldelink. Er steht als erste Zeile des Fußes, noch vor der
-   * Anschrift: Wer bis hierher liest, sucht meistens genau ihn, und ein
-   * Widerspruch, den man erst hinter drei Absätzen Fließtext findet, ist
-   * keiner, den jemand ausübt.
+   * Der Abmeldelink. Er steht am Ende und mit eigener Einleitung: Wer ihn
+   * sucht, sucht ihn dort, und ein Halbsatz mit Fragezeichen las sich unter
+   * einer Geschäftsmail wie ein Werbebanner.
    *
    * Optional, damit die Textbausteine für sich prüfbar bleiben. Im Versand
    * fehlt er nie: `deliverEmail()` lässt eine werbliche Nachricht ohne
    * funktionierenden Abmeldeweg gar nicht erst durch.
    */
   unsubscribeUrl?: string | null;
-  retentionDays?: number;
 }): string[] {
-  const tage = input.retentionDays ?? LEAD_RETENTION_DAYS;
   const herkunft = input.sourceUrl
-    ? `aus der von Ihnen veröffentlichten Ausschreibung (${input.sourceUrl}) beziehungsweise dem dort verlinkten Firmenprofil`
-    : "aus einer von Ihnen veröffentlichten Projektausschreibung beziehungsweise dem dort verlinkten Firmenprofil";
-
-  // Ohne Link bleibt die formlose Antwort der einzige Weg. Der Satz ändert
-  // sich dann mit, statt auf etwas zu verweisen, was nicht dasteht.
-  const widerspruch = input.unsubscribeUrl
-    ? `Sie können der Verarbeitung jederzeit widersprechen und Auskunft, Berichtigung oder Löschung verlangen — der Abmeldelink oben genügt, eine formlose Antwort an ${input.senderEmail} ebenso. Näheres unter ${PRIVACY_URL}.`
-    : `Sie können der Verarbeitung jederzeit widersprechen und Auskunft, Berichtigung oder Löschung verlangen. Eine formlose Antwort an ${input.senderEmail} genügt — danach erhalten Sie keine weitere Nachricht von mir und der Eintrag wird gelöscht. Näheres unter ${PRIVACY_URL}.`;
+    ? `Ihrer öffentlichen Ausschreibung (${input.sourceUrl})`
+    : "einer von Ihnen veröffentlichten Projektausschreibung";
 
   return [
     "—",
-    ...(input.unsubscribeUrl
-      ? [`Keine Werbung mehr von XPORTAL? Ein Klick: ${input.unsubscribeUrl}`, ""]
-      : []),
-    SENDER_PERSON,
-    SENDER_IMPRINT_LINE,
+    ...PROVIDER_IMPRINT_LINES,
     // Absender- und Impressumsadresse sind zurzeit dieselbe. Zweimal
     // hintereinander sah nach einem Fehler aus, und das war es auch.
     input.senderEmail.trim().toLowerCase() === IMPRINT_EMAIL.toLowerCase()
       ? `${IMPRINT_EMAIL} · ${IMPRINT_URL}`
       : `${input.senderEmail} · ${IMPRINT_EMAIL} · ${IMPRINT_URL}`,
     "",
-    `Woher ich Ihre Daten habe: Firmenname, Ansprechpartner und Kontaktadresse stammen ${herkunft}. Gespeichert habe ich sie zu dem Zweck, Ihnen dieses eine Angebot zu schreiben; die Grundlage dafür ist mein berechtigtes Interesse an der Anbahnung eines Geschäfts (Art. 6 Abs. 1 lit. f DSGVO). Ohne Antwort lösche ich den Eintrag nach ${tage} Tagen automatisch.`,
-    widerspruch,
+    // Die konkrete Quelle bleibt in der Nachricht stehen: Sie ist der Teil
+    // der Auskunft nach Art. 14 DSGVO, den eine allgemeine Datenschutzseite
+    // gerade nicht liefern kann. Zweck, Rechtsgrundlage, Speicherdauer und
+    // Betroffenenrechte stehen dort und werden hier nur verlinkt — die
+    // gestufte Form, die die Transparenzleitlinien ausdrücklich zulassen.
+    `Ihre Kontaktdaten stammen aus ${herkunft}. Zweck, Rechtsgrundlage, Speicherdauer und Ihre Rechte auf Auskunft, Berichtigung, Löschung und Widerspruch: ${PRIVACY_URL}`,
+    ...(input.unsubscribeUrl
+      ? [
+          "",
+          "Wenn Sie keine weiteren E-Mails von uns erhalten möchten, genügt ein Klick:",
+          input.unsubscribeUrl,
+        ]
+      : [
+          "",
+          `Wenn Sie keine weiteren E-Mails von uns erhalten möchten, genügt eine formlose Antwort an ${input.senderEmail}.`,
+        ]),
   ];
 }
 
@@ -238,6 +259,129 @@ export function buildLeadEmail(input: LeadMessageInput): string {
       unsubscribeUrl: input.unsubscribeUrl,
     }),
   ].join("\n");
+}
+
+/**
+ * Die Nachricht, die den Kreis schließt: zu dieser Ausschreibung gibt es
+ * eingetragene Freelancer, und hier stehen die Eckdaten des bestpassenden.
+ *
+ * Ohne Namen. Der Name steht auf dem öffentlichen Profil, aber ihn
+ * unaufgefordert in eine Werbemail an einen Dritten zu setzen, ist etwas
+ * anderes als ihn auf einer Seite zu zeigen, die jemand selbst aufruft —
+ * und es umgeht `POST /api/introductions`, wo der Kontaktwunsch sonst
+ * bewusst an ein zuvor angezeigtes Profil gebunden ist. Rolle, belegte
+ * Kompetenzen, Arbeitsweise und Verfügbarkeit tragen die Nachricht ohnehin.
+ *
+ * Kein Modelltext: Was hier steht, kommt vollständig aus dem Profil und aus
+ * dem Ergebnis von `buildShortlist()`. Ein Modell könnte hier nichts
+ * hinzufügen, aber einiges erfinden.
+ */
+export type MatchFacts = {
+  role: string;
+  /** Nur belegte Kompetenzen — selbst angegebene tragen keine Zusage. */
+  verifiedSkills: readonly string[];
+  workModes: readonly string[];
+  location: string | null;
+  availabilityStatus: "available" | "limited" | "unavailable" | "unknown";
+  availableFrom: string | null;
+  hourlyRate: { amount: number; currency: string } | null;
+};
+
+const VERFUEGBARKEIT: Readonly<Record<MatchFacts["availabilityStatus"], string>> = {
+  available: "verfügbar",
+  limited: "eingeschränkt verfügbar",
+  unavailable: "derzeit nicht verfügbar",
+  unknown: "Verfügbarkeit auf Anfrage",
+};
+
+function datumDe(iso: string | null): string | null {
+  if (!iso) return null;
+  const [jahr, monat, tag] = iso.split("-");
+  return jahr && monat && tag ? `${tag}.${monat}.${jahr}` : null;
+}
+
+function eckdaten(fakten: MatchFacts): string[] {
+  const zeilen: [string, string][] = [["Rolle", fakten.role]];
+  if (fakten.verifiedSkills.length) {
+    zeilen.push([
+      "Kompetenzen",
+      `${fakten.verifiedSkills.slice(0, 5).join(", ")} (im Profil belegt)`,
+    ]);
+  }
+  const arbeitsweise = [
+    fakten.workModes.length ? fakten.workModes.join(", ") : null,
+    fakten.location,
+  ].filter(Boolean);
+  if (arbeitsweise.length) zeilen.push(["Arbeitsweise", arbeitsweise.join(" · ")]);
+
+  const ab = datumDe(fakten.availableFrom);
+  zeilen.push([
+    "Verfügbarkeit",
+    ab && fakten.availabilityStatus !== "unknown"
+      ? `${VERFUEGBARKEIT[fakten.availabilityStatus]} ab ${ab}`
+      : VERFUEGBARKEIT[fakten.availabilityStatus],
+  ]);
+
+  zeilen.push([
+    "Stundensatz",
+    fakten.hourlyRate
+      ? `${fakten.hourlyRate.amount} ${fakten.hourlyRate.currency}`
+      : "im Profil nicht angegeben",
+  ]);
+
+  const breite = Math.max(...zeilen.map(([k]) => k.length));
+  return zeilen.map(([k, v]) => `  ${(k + ":").padEnd(breite + 2)}${v}`);
+}
+
+export function buildMatchEmail(input: {
+  recipientName: string | null;
+  company: string | null;
+  senderEmail: string;
+  sourceUrl: string | null;
+  unsubscribeUrl?: string | null;
+  /** Die Überschrift der Ausschreibung, wie sie der Empfänger geschrieben hat. */
+  headline: string;
+  /** Wie viele Profile die Rangliste als verlässlich passend geführt hat. */
+  matchCount: number;
+  best: MatchFacts;
+  ctaUrl: string;
+}): string {
+  const weitere = input.matchCount - 1;
+  return [
+    salutation(input.recipientName, input.company),
+    "",
+    `für Ihre Ausschreibung „${input.headline}" ist auf XPORTAL ein Profil eingetragen, das die dort genannten Anforderungen abdeckt${weitere > 0 ? `, und ${weitere} weitere kommen infrage` : ""}.`,
+    "",
+    "Die Eckdaten:",
+    "",
+    ...eckdaten(input.best),
+    "",
+    weitere > 0
+      ? "Vollständige Profile ansehen und ein Erstgespräch buchen:"
+      : "Vollständiges Profil ansehen und ein Erstgespräch buchen:",
+    input.ctaUrl,
+    "",
+    "Während der Beta kostenlos.",
+    "",
+    "Viele Grüße",
+    `${SENDER_PERSON} — XPORTAL`,
+    "",
+    ...legalFooter({
+      senderEmail: input.senderEmail,
+      sourceUrl: input.sourceUrl,
+      unsubscribeUrl: input.unsubscribeUrl,
+    }),
+  ].join("\n");
+}
+
+export function buildMatchSubject(input: {
+  matchCount: number;
+  headline: string;
+}): string {
+  const rolle = input.headline.trim().slice(0, 120);
+  return input.matchCount === 1
+    ? `Ein verfügbarer Freelancer für „${rolle}"`
+    : `${input.matchCount} verfügbare Freelancer für „${rolle}"`;
 }
 
 /**
