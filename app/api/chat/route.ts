@@ -585,8 +585,12 @@ async function processChatRequest(
 
     const { error: shortlistError } = await admin.from("shortlists").insert({
       id: shortlistId,
+      source: "user_search",
       project_id: project.id,
       owner_user_id: user.id,
+      // Bei einer Nutzersuche ist der Suchende das Konto. Die Spalte
+      // trägt bei einem Lead ein Pseudonym; siehe lib/leadgen/demand.ts.
+      demand_actor: user.id,
       matching_rule_version: MATCHING_RULE_VERSION,
       brief_snapshot: extraction.brief,
       result_count: shortlist.matches.length,

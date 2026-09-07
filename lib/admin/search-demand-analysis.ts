@@ -14,8 +14,18 @@ export type SearchDemandResultStatus =
 
 export type SearchDemandSourceRow = {
   id: string;
-  project_id: string;
-  owner_user_id: string;
+  /** Woher die Suche kam. Ein Lead hat kein Projekt und kein Konto. */
+  source: "user_search" | "lead";
+  project_id: string | null;
+  owner_user_id: string | null;
+  lead_id: number | null;
+  /**
+   * Wer gesucht hat, als stabile Kennung: die Konto-Kennung bei einer
+   * Nutzersuche, ein Pseudonym der Empfängeradresse bei einem Lead.
+   * Gezählt werden Suchende, nicht Suchen — dieselbe Agentur, die
+   * vierzehnmal ausschreibt, ist ein Akteur und nicht vierzehn.
+   */
+  demand_actor: string;
   brief_snapshot: unknown;
   decision_snapshot: unknown | null;
   result_count: number | string;
@@ -186,7 +196,22 @@ function parseSearch(row: SearchDemandSourceRow): ParsedSearch | null {
   };
 }
 
-function latestPerProject(
+/**
+ * Wonach mehrfach gesucht wurde, zählt einmal.
+ *
+ * Bei einer Nutzersuche ist das Projekt der Anlass: Wer seinen Brief
+ * dreimal nachschärft, hat einen Bedarf und nicht drei. Ein Lead hat kein
+ * Projekt — dort ist die Ausschreibung der Anlass, und je Lead entsteht
+ * ohnehin nur eine Zeile.
+ *
+ * Ohne diese Unterscheidung fielen alle Lead-Zeilen in einen einzigen
+ * Eimer, weil ihr project_id leer ist.
+ */
+function demandKey(row: SearchDemandSourceRow): string {
+  return row.project_id ?? `lead:${row.lead_id ?? row.id}`;
+}
+
+function latestPerAnlass(
   rows: readonly SearchDemandSourceRow[],
   fromMs: number | null,
   toMs: number,
@@ -195,14 +220,27 @@ function latestPerProject(
   for (const row of rows) {
     const at = validDate(row.created_at);
     if (at === null || at > toMs || (fromMs !== null && at < fromMs)) continue;
-    const existing = latest.get(row.project_id);
+    const key = demandKey(row);
+    const existing = latest.get(key);
     if (!existing || at > existing.at || (at === existing.at && row.id > existing.row.id)) {
-      latest.set(row.project_id, { row, at });
+      latest.set(key, { row, at });
     }
   }
   return [...latest.values()]
     .sort((left, right) => right.at - left.at)
     .map(({ row }) => row);
+}
+
+/**
+ * Eigene Konten fallen aus der Auswertung: Ein Betreiber, der seine eigene
+ * Suche ausprobiert, ist keine Nachfrage. Ein Lead trägt kein Konto und
+ * kann deshalb auch nicht das eigene sein.
+ */
+function istAusgeschlossen(
+  row: SearchDemandSourceRow,
+  excludedUserIds: ReadonlySet<string>,
+): boolean {
+  return row.owner_user_id !== null && excludedUserIds.has(row.owner_user_id);
 }
 
 function bump(map: Map<string, DemandFacet>, value: string | null): void {
@@ -246,7 +284,7 @@ function emptyProfile(search: ParsedSearch): MutableProfile {
 
 function addSearch(profile: MutableProfile, search: ParsedSearch): void {
   profile.searches += 1;
-  profile.users.add(search.row.owner_user_id);
+  profile.users.add(search.row.demand_actor);
   if (search.row.created_at > profile.lastSearchedAt) {
     profile.lastSearchedAt = search.row.created_at;
   }
@@ -317,18 +355,18 @@ export function buildSearchDemandReport(input: {
   const fromMs = period === "all" ? null : nowMs - period * DAY_MS;
   const previousFromMs = period === "all" ? null : nowMs - period * 2 * DAY_MS;
 
-  const allCurrentRows = latestPerProject(input.rows, fromMs, nowMs);
+  const allCurrentRows = latestPerAnlass(input.rows, fromMs, nowMs);
   const excludedSearches = allCurrentRows.filter((row) =>
-    excludedUserIds.has(row.owner_user_id),
+    istAusgeschlossen(row, excludedUserIds),
   ).length;
   const currentRows = allCurrentRows.filter(
-    (row) => !excludedUserIds.has(row.owner_user_id),
+    (row) => !istAusgeschlossen(row, excludedUserIds),
   );
   const previousRows =
     period === "all" || previousFromMs === null || fromMs === null
       ? []
-      : latestPerProject(input.rows, previousFromMs, fromMs - 1).filter(
-          (row) => !excludedUserIds.has(row.owner_user_id),
+      : latestPerAnlass(input.rows, previousFromMs, fromMs - 1).filter(
+          (row) => !istAusgeschlossen(row, excludedUserIds),
         );
 
   let invalidBriefs = 0;
@@ -421,7 +459,7 @@ export function buildSearchDemandReport(input: {
       previousFromMs === null ? null : new Date(previousFromMs).toISOString(),
     totals: {
       searches: current.length,
-      uniqueUsers: new Set(current.map((search) => search.row.owner_user_id)).size,
+      uniqueUsers: new Set(current.map((search) => search.row.demand_actor)).size,
       ranked: current.filter((search) => search.row.result_status === "ranked").length,
       needsClarification: current.filter(
         (search) => search.row.result_status === "needs_clarification",
