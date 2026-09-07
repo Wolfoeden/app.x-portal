@@ -444,3 +444,25 @@ export async function rejectOutreachDraft(input: {
     .eq("state", "draft");
   if (error) throw error;
 }
+
+/**
+ * Wie viele Nachrichten seit Mitternacht zugestellt wurden.
+ *
+ * Das Tageslimit gehoert dem Tag und nicht dem einzelnen Aufruf. Seit der
+ * Durchgang mehrmals am Morgen laeuft, waere ein Deckel je Aufruf die
+ * Summe aller Aufrufe — und die haette das Postfach ueberschritten, um das
+ * es dabei geht.
+ *
+ * Gezaehlt wird im Protokoll und nicht in einem Zaehler daneben: Was
+ * tatsaechlich rausging, steht dort, und nur dort.
+ */
+export async function sentSince(from: Date): Promise<number> {
+  const admin = requireServiceRole();
+  const { count, error } = await admin
+    .from("leadgen_outreach")
+    .select("id", { count: "exact", head: true })
+    .eq("state", "sent")
+    .gte("sent_at", from.toISOString());
+  if (error) throw error;
+  return count ?? 0;
+}
