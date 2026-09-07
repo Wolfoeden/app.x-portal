@@ -12,14 +12,25 @@ import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { promotionalDeliveryConfigured } from "@/lib/email/deliver";
-import { leadSummary, listLeads } from "@/lib/leadgen/leads-data";
 import {
+  leadSummary,
+  listLeadRuns,
+  listLeads,
+  type LeadPipeline,
+  type LeadRun,
+} from "@/lib/leadgen/leads-data";
+import {
+  LEAD_BULK_SEND_LIMIT,
+  LEAD_MATCH_FILTERS,
+  LEAD_MATCH_FILTER_LABELS,
   LEAD_SCOPES,
   LEAD_SCOPE_LABELS,
   LEAD_STATUSES,
   LEAD_STATUS_LABELS,
+  isLeadMatchFilter,
   isLeadScope,
   isLeadStatus,
+  type LeadMatchFilter,
   type LeadScope,
   type LeadStatus,
 } from "@/lib/leadgen/limits";
@@ -58,6 +69,39 @@ function buildHref(
   return query ? `/chat/admin/leads?${query}` : "/chat/admin/leads";
 }
 
+/**
+ * Wie oft ein Abgleich jemanden gefunden hat.
+ *
+ * Bezogen auf das Abgeglichene und nicht auf die ganze Warteschlange: Solange
+ * zweihundert Leads unbearbeitet liegen, sagt eine Quote über alle nur, wie
+ * weit der Lauf gekommen ist.
+ */
+function trefferquote(pipeline: LeadPipeline): string {
+  if (!pipeline.abgeglichen) return "noch kein Abgleich";
+  const anteil = Math.round((pipeline.treffer / pipeline.abgeglichen) * 100);
+  return `${anteil} % der Abgleiche`;
+}
+
+const STOP_LABELS: Readonly<Record<LeadRun["stopped_by"], string>> = {
+  queue_empty: "Warteschlange leer",
+  time: "Zeit alle",
+  examined: "Stapel voll",
+  daily_limit: "Tagesmenge erreicht",
+  outside_window: "außerhalb des Fensters",
+};
+
+const runTime = new Intl.DateTimeFormat("de-DE", {
+  day: "2-digit",
+  month: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+function laufZeit(value: string): string {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? "–" : runTime.format(parsed);
+}
+
 export default async function LeadsPage({
   searchParams,
 }: {
@@ -66,6 +110,7 @@ export default async function LeadsPage({
     status?: string;
     kategorie?: string;
     ansicht?: string;
+    abgleich?: string;
     seite?: string;
   }>;
 }) {
@@ -82,11 +127,15 @@ export default async function LeadsPage({
     : null;
   const category = params.kategorie?.trim() || null;
   const search = params.suche?.trim() || null;
+  const match: LeadMatchFilter | null = isLeadMatchFilter(params.abgleich)
+    ? params.abgleich
+    : null;
   const page = Math.max(Number.parseInt(params.seite ?? "1", 10) || 1, 1);
 
-  const [list, summary] = await Promise.all([
-    listLeads({ search, status, category, scope, page }),
+  const [list, summary, runs] = await Promise.all([
+    listLeads({ search, status, category, scope, match, page }),
     leadSummary(),
+    listLeadRuns(4),
   ]);
 
   await writeAuditEvent({
@@ -97,6 +146,7 @@ export default async function LeadsPage({
     metadata: {
       scope,
       status: status ?? "all",
+      match: match ?? "all",
       listed: list.rows.length,
       searched: Boolean(search),
     },
@@ -126,29 +176,58 @@ export default async function LeadsPage({
           items={[
             {
               label: "Offen",
-              value: summary.open,
-              detail: "in Bearbeitung",
-              tone: summary.open ? "accent" : "default",
+              value: summary.pipeline.offen,
+              detail: "noch nicht abgearbeitet",
+              tone: summary.pipeline.offen ? "accent" : "default",
             },
             {
-              label: "Neu",
-              value: summary.byStatus.new ?? 0,
-              detail: "noch nicht kontaktiert",
-              tone: (summary.byStatus.new ?? 0) ? "warning" : "default",
+              label: "Abgeglichen",
+              value: summary.pipeline.abgeglichen,
+              detail: `von ${summary.pipeline.gesamt} insgesamt`,
             },
             {
-              label: "Angeschrieben",
-              value: summary.byStatus.contacted ?? 0,
-              detail: "wartet auf Reaktion",
+              label: "Treffer",
+              value: summary.pipeline.treffer,
+              detail: trefferquote(summary.pipeline),
+              tone: summary.pipeline.treffer ? "accent" : "default",
             },
             {
-              label: "Archiv",
-              value: summary.archived,
-              detail: `${summary.total} insgesamt`,
-              tone: "muted",
+              label: "Verschickt",
+              value: summary.pipeline.verschickt,
+              detail: `heute ${summary.pipeline.verschicktHeute} von ${LEAD_BULK_SEND_LIMIT}`,
+            },
+            {
+              label: "Gescheitert",
+              value: summary.pipeline.gescheitert,
+              detail: "nicht zugestellt",
+              tone: summary.pipeline.gescheitert ? "warning" : "muted",
+            },
+            {
+              label: "Antwort da",
+              value: summary.pipeline.beantwortet,
+              detail: "hat reagiert",
+              tone: summary.pipeline.beantwortet ? "accent" : "muted",
             },
           ]}
         />
+
+        {runs.length ? (
+          <p className={styles.runs}>
+            <span className={styles.filterLabel}>Letzte Läufe</span>
+            {runs.map((run) => (
+              <span className={styles.run} key={run.id}>
+                {laufZeit(run.started_at)}
+                {run.dry_run ? " (Probe)" : ""}: <b>{run.examined}</b> geprüft,{" "}
+                <b>{run.sent}</b> verschickt, <b>{run.archived}</b> archiviert
+                {run.remaining ? `, ${run.remaining} offen` : ""}
+                <span className={styles.runStopped}>
+                  {" · "}
+                  {STOP_LABELS[run.stopped_by]}
+                </span>
+              </span>
+            ))}
+          </p>
+        ) : null}
 
         {mailReady ? null : (
           <p className={styles.warning}>
@@ -187,7 +266,11 @@ export default async function LeadsPage({
           {LEAD_SCOPES.map((value) => (
             <Link
               key={value}
-              href={buildHref({ ansicht: value, suche: search ?? undefined })}
+              href={buildHref({
+                ansicht: value,
+                suche: search ?? undefined,
+                abgleich: match ?? undefined,
+              })}
               className={`${styles.tab} ${scope === value ? styles.tabActive : ""}`}
             >
               {LEAD_SCOPE_LABELS[value]}{" "}
@@ -209,6 +292,7 @@ export default async function LeadsPage({
               ansicht: scope,
               suche: search ?? undefined,
               kategorie: category ?? undefined,
+              abgleich: match ?? undefined,
             })}
             className={`${styles.tabSmall} ${status ? "" : styles.tabActive}`}
           >
@@ -222,6 +306,7 @@ export default async function LeadsPage({
                 status: value,
                 suche: search ?? undefined,
                 kategorie: category ?? undefined,
+                abgleich: match ?? undefined,
               })}
               className={`${styles.tabSmall} ${status === value ? styles.tabActive : ""}`}
             >
@@ -229,6 +314,44 @@ export default async function LeadsPage({
               <b>{summary.byStatus[value] ?? 0}</b>
             </Link>
           ))}
+          </nav>
+
+          <nav className={styles.tabs} aria-label="Abgleich-Filter">
+            <span className={styles.filterLabel}>Abgleich</span>
+            <Link
+              href={buildHref({
+                ansicht: scope,
+                status: status ?? undefined,
+                kategorie: category ?? undefined,
+                abgleich: match ?? undefined,
+                suche: search ?? undefined,
+              })}
+              className={`${styles.tabSmall} ${match ? "" : styles.tabActive}`}
+            >
+              Alle
+            </Link>
+            {LEAD_MATCH_FILTERS.map((value) => (
+              <Link
+                key={value}
+                href={buildHref({
+                  ansicht: scope,
+                  status: status ?? undefined,
+                  kategorie: category ?? undefined,
+                  abgleich: value,
+                  suche: search ?? undefined,
+                })}
+                className={`${styles.tabSmall} ${match === value ? styles.tabActive : ""}`}
+              >
+                {LEAD_MATCH_FILTER_LABELS[value]}{" "}
+                <b>
+                  {value === "hit"
+                    ? summary.pipeline.treffer
+                    : value === "no_hit"
+                      ? summary.pipeline.ohneTreffer
+                      : summary.pipeline.gesamt - summary.pipeline.abgeglichen}
+                </b>
+              </Link>
+            ))}
           </nav>
 
         {summary.categories.length ? (
@@ -283,6 +406,7 @@ export default async function LeadsPage({
                   ansicht: scope,
                   status: status ?? undefined,
                   kategorie: category ?? undefined,
+                  abgleich: match ?? undefined,
                   suche: search ?? undefined,
                   seite: page - 1,
                 })}
@@ -301,6 +425,7 @@ export default async function LeadsPage({
                   ansicht: scope,
                   status: status ?? undefined,
                   kategorie: category ?? undefined,
+                  abgleich: match ?? undefined,
                   suche: search ?? undefined,
                   seite: page + 1,
                 })}

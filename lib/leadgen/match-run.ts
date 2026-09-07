@@ -8,10 +8,11 @@ import {
 import { fetchActiveBookableRealProfiles } from "@/lib/data/freelancers";
 import { deliverEmail, publicMailOrigin } from "@/lib/email/deliver";
 import { unsubscribeUrl } from "@/lib/email/unsubscribe";
-import { catalogVersion, recordLeadDemand } from "@/lib/leadgen/demand";
+import { catalogVersion, recordLeadMatch } from "@/lib/leadgen/demand";
 import {
   claimOutreach,
   recordOutreachSent,
+  recordLeadRun,
   releaseOutreachClaim,
   sentSince,
   updateLead,
@@ -162,6 +163,8 @@ export type MatchRunOptions = {
    * ist. Die Grenze schützt vor dem Zeitplan, nicht vor der Bedienung.
    */
   enforceWindow?: boolean;
+  /** Wer den Lauf angestoßen hat. Steht im Beleg jeder Nachricht. */
+  trigger?: "scheduler" | "admin";
 };
 
 export async function runLeadMatchPass(
@@ -262,7 +265,7 @@ export async function runLeadMatchPass(
       // Lead bei einem Abbruch dazwischen aus der Liste verschwunden, ohne
       // dass irgendwo stünde, wonach gefragt worden war.
       if (!options.dryRun) {
-        await recordLeadDemand({
+        await recordLeadMatch({
           leadId: lead.id,
           recipientEmail: lead.recipient_email,
           brief,
@@ -278,6 +281,20 @@ export async function runLeadMatchPass(
         status: shortlist.status,
       });
       continue;
+    }
+
+    // Auch ein Treffer wird festgehalten, und zwar bevor etwas rausgeht.
+    // Sonst stünde hinterher nur, dass eine Mail verschickt wurde, aber
+    // nicht, gegen welchen Katalogstand und mit wie vielen passenden
+    // Profilen — genau die Frage, die im Admin-Bereich gestellt wird.
+    if (!options.dryRun) {
+      await recordLeadMatch({
+        leadId: lead.id,
+        recipientEmail: lead.recipient_email,
+        brief,
+        shortlist,
+        profileCatalogVersion,
+      });
     }
 
     const headline = leadHeadline(lead.stellenanzeige);
@@ -324,6 +341,8 @@ export async function runLeadMatchPass(
       model: null,
       credits: null,
       createdBy: null,
+      ctaUrl,
+      origin: options.trigger ?? "scheduler",
     });
     if (!claim.claimed) {
       outcomes.push({ leadId: lead.id, outcome: "skipped", reason: claim.reason });
@@ -361,7 +380,7 @@ export async function runLeadMatchPass(
     });
   }
 
-  return {
+  const ergebnis: MatchRunResult = {
     examined,
     sent,
     archived,
@@ -371,4 +390,19 @@ export async function runLeadMatchPass(
     dailyBudgetLeft: Math.max(budgetHeute - sent, 0),
     stoppedBy,
   };
+
+  await recordLeadRun({
+    started_at: new Date(startedAt).toISOString(),
+    trigger: options.trigger ?? "scheduler",
+    dry_run: options.dryRun ?? false,
+    examined: ergebnis.examined,
+    sent: ergebnis.sent,
+    archived: ergebnis.archived,
+    skipped: ergebnis.skipped,
+    remaining: ergebnis.remaining,
+    daily_budget_left: ergebnis.dailyBudgetLeft,
+    stopped_by: ergebnis.stoppedBy,
+  });
+
+  return ergebnis;
 }

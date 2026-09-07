@@ -697,3 +697,92 @@
     gap: 12px;
   }
 }
+
+/* Matching und Versand ---------------------------------------------------- */
+
+.badgeHit {
+  background: #e8f3ea;
+  color: #35633f;
+}
+
+.badgeNoHit {
+  background: #fbeeee;
+  color: #7d3b3b;
+}
+
+.badgeUnmatched {
+  background: #f2f2ee;
+  color: #6d6d67;
+}
+
+.badgeFailed {
+  background: #fbeeee;
+  color: #7d3b3b;
+}
+
+/* Der Streifen mit den letzten Laeufen. Eine Zeile je Lauf, in der
+   Formensprache der Filterreiter -- kein Kasten, keine Ueberschrift. */
+.runs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  margin: 0 0 10px;
+  color: #686a62;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.run {
+  white-space: nowrap;
+}
+
+.run b {
+  font-weight: 700;
+  color: #4a4a45;
+}
+
+.runStopped {
+  color: #8b8b84;
+}
+
+/* Der verschickte Wortlaut. Nicht editierbar -- was raus ist, ist raus. */
+.sentBody {
+  margin: 0;
+  padding: 10px 12px;
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid #e6e6df;
+  border-radius: 8px;
+  background: #fbfbf8;
+  color: #4a4a45;
+  font-size: 11.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.sentMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 12px;
+  margin: 0 0 7px;
+  color: #8b8b84;
+  font-size: 11px;
+}
+
+.matchFacts {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+  color: #4a4a45;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.matchFacts b {
+  display: inline-block;
+  min-width: 132px;
+  color: #686a62;
+  font-weight: 700;
+}

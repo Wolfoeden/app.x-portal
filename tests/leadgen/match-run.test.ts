@@ -7,9 +7,10 @@ const mocks = vi.hoisted(() => ({
   recordSent: vi.fn(),
   release: vi.fn(),
   updateLead: vi.fn(),
-  recordDemand: vi.fn(),
+  recordMatch: vi.fn(),
   leads: vi.fn(),
   sentSince: vi.fn(),
+  recordRun: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -30,9 +31,10 @@ vi.mock("@/lib/leadgen/leads-data", () => ({
   releaseOutreachClaim: mocks.release,
   sentSince: mocks.sentSince,
   updateLead: mocks.updateLead,
+  recordLeadRun: mocks.recordRun,
 }));
 vi.mock("@/lib/leadgen/demand", () => ({
-  recordLeadDemand: mocks.recordDemand,
+  recordLeadMatch: mocks.recordMatch,
   catalogVersion: () => "catalog-test",
 }));
 vi.mock("@/lib/supabase/admin", () => ({
@@ -114,7 +116,8 @@ beforeEach(() => {
   mocks.claim.mockResolvedValue({ claimed: true, outreachId: "outreach-1" });
   mocks.recordSent.mockResolvedValue({ recorded: true, outreachId: "outreach-1" });
   mocks.updateLead.mockResolvedValue(null);
-  mocks.recordDemand.mockResolvedValue({ recorded: true });
+  mocks.recordMatch.mockResolvedValue({ recorded: true });
+  mocks.recordRun.mockResolvedValue(undefined);
   mocks.sentSince.mockResolvedValue(0);
 });
 
@@ -175,7 +178,7 @@ describe("Tageslauf der Akquise", () => {
     expect(result.sent).toBe(0);
     expect(result.archived).toBe(1);
     expect(mocks.deliver).not.toHaveBeenCalled();
-    expect(mocks.recordDemand).toHaveBeenCalledTimes(1);
+    expect(mocks.recordMatch).toHaveBeenCalledTimes(1);
     expect(mocks.updateLead).toHaveBeenCalledWith({
       id: 2,
       status: "dismissed",
@@ -194,7 +197,7 @@ describe("Tageslauf der Akquise", () => {
       error: null,
     });
     const reihenfolge: string[] = [];
-    mocks.recordDemand.mockImplementation(async () => {
+    mocks.recordMatch.mockImplementation(async () => {
       reihenfolge.push("nachfrage");
       return { recorded: true };
     });
@@ -315,7 +318,7 @@ describe("Tageslauf der Akquise", () => {
     const start = Date.now();
     let verstrichen = 0;
     const uhr = vi.spyOn(Date, "now").mockImplementation(() => start + verstrichen);
-    mocks.recordDemand.mockImplementation(async () => {
+    mocks.recordMatch.mockImplementation(async () => {
       verstrichen += 800;
       return { recorded: true };
     });
@@ -361,7 +364,7 @@ describe("Tageslauf der Akquise", () => {
     expect(mocks.deliver).not.toHaveBeenCalled();
     expect(mocks.claim).not.toHaveBeenCalled();
     expect(mocks.updateLead).not.toHaveBeenCalled();
-    expect(mocks.recordDemand).not.toHaveBeenCalled();
+    expect(mocks.recordMatch).not.toHaveBeenCalled();
   });
 });
 
@@ -423,5 +426,64 @@ describe("Versandfenster des Tageslaufs", () => {
 
     // 22 Uhr UTC des Vortags ist Mitternacht in Berlin.
     expect(mocks.sentSince).toHaveBeenCalledWith(new Date("2026-09-06T22:00:00Z"));
+  });
+});
+
+describe("Was ein Lauf hinterlässt", () => {
+  it("hält auch einen Treffer fest, und zwar bevor die Nachricht rausgeht", async () => {
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 7, text: TREFFER })], error: null });
+
+    await runLeadMatchPass({ senderEmail: "info@x-portal.eu" });
+
+    expect(mocks.recordMatch).toHaveBeenCalledWith(
+      expect.objectContaining({ leadId: 7, profileCatalogVersion: "catalog-test" }),
+    );
+    // Die Reihenfolge trägt die Aussage: Steht der Abgleich erst nach dem
+    // Versand fest, weiß nach einem Abbruch niemand mehr, warum verschickt
+    // wurde.
+    const abgleichAufruf = mocks.recordMatch.mock.invocationCallOrder[0];
+    const versandAufruf = mocks.deliver.mock.invocationCallOrder[0];
+    expect(abgleichAufruf).toBeLessThan(versandAufruf);
+  });
+
+  it("legt den Portal-Link und die Herkunft in den Beleg", async () => {
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 8, text: TREFFER })], error: null });
+
+    await runLeadMatchPass({ senderEmail: "info@x-portal.eu", trigger: "scheduler" });
+
+    expect(mocks.claim).toHaveBeenCalledWith(
+      expect.objectContaining({
+        origin: "scheduler",
+        ctaUrl: expect.stringContaining("https://x-portal.eu/chat?q="),
+      }),
+    );
+  });
+
+  it("protokolliert den Durchgang mit seinem Abbruchgrund", async () => {
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 9, text: OHNE_TREFFER })], error: null });
+
+    await runLeadMatchPass({ senderEmail: "info@x-portal.eu", trigger: "admin" });
+
+    expect(mocks.recordRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        trigger: "admin",
+        examined: 1,
+        sent: 0,
+        archived: 1,
+        stopped_by: "queue_empty",
+      }),
+    );
+  });
+
+  it("protokolliert einen übergangenen Aufruf nicht", async () => {
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 10, text: TREFFER })], error: null });
+
+    await runLeadMatchPass({
+      senderEmail: "info@x-portal.eu",
+      enforceWindow: true,
+      now: new Date("2026-09-07T05:00:00Z"),
+    });
+
+    expect(mocks.recordRun).not.toHaveBeenCalled();
   });
 });
