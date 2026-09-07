@@ -640,79 +640,79 @@ export function LeadsPanel({
                               </>
                             ) : (
                               <>
-                            <p className={styles.detailLabel}>Anschreiben</p>
-                            <input
-                              className={styles.subjectInput}
-                              value={current.subject}
-                              placeholder="Betreff"
-                              aria-label="Betreff"
-                              onChange={(event) =>
-                                patchRowState(row.id, {
-                                  subject: event.target.value,
-                                })
-                              }
-                            />
-                            <textarea
-                              className={styles.bodyInput}
-                              value={current.body}
-                              rows={10}
-                              placeholder="Noch kein Entwurf. Text erzeugen oder selbst schreiben."
-                              aria-label="Text"
-                              onChange={(event) =>
-                                patchRowState(row.id, {
-                                  body: event.target.value,
-                                })
-                              }
-                            />
-                            <p className={styles.hint}>
-                              Anrede, Grußformel und die Pflichtangaben werden
-                              beim Versand angehängt.
-                            </p>
-
-                            <div className={styles.detailActions}>
-                              <button
-                                type="button"
-                                className={styles.secondaryButton}
-                                disabled={current.busy !== null}
-                                onClick={() => void createDraft(row)}
-                              >
-                                {current.busy === "draft"
-                                  ? "Schreibt …"
-                                  : `Entwurf erzeugen (${creditsPerDraft} Credits)`}
-                              </button>
-                              <button
-                                type="button"
-                                className={styles.primaryButton}
-                                disabled={
-                                  current.busy !== null ||
-                                  !mailReady ||
-                                  !sendable ||
-                                  !current.subject.trim() ||
-                                  !current.body.trim()
-                                }
-                                onClick={async () => {
-                                  if (
-                                    !window.confirm(
-                                      `Nachricht an ${row.recipient_email} verschicken?`,
-                                    )
-                                  ) {
-                                    return;
+                                <p className={styles.detailLabel}>Anschreiben</p>
+                                <input
+                                  className={styles.subjectInput}
+                                  value={current.subject}
+                                  placeholder="Betreff"
+                                  aria-label="Betreff"
+                                  onChange={(event) =>
+                                    patchRowState(row.id, {
+                                      subject: event.target.value,
+                                    })
                                   }
-                                  if (await send(row)) router.refresh();
-                                }}
-                              >
-                                {current.busy === "send"
-                                  ? "Verschickt …"
-                                  : "Senden"}
-                              </button>
-                            </div>
+                                />
+                                <textarea
+                                  className={styles.bodyInput}
+                                  value={current.body}
+                                  rows={10}
+                                  placeholder="Noch kein Entwurf. Text erzeugen oder selbst schreiben."
+                                  aria-label="Text"
+                                  onChange={(event) =>
+                                    patchRowState(row.id, {
+                                      body: event.target.value,
+                                    })
+                                  }
+                                />
+                                <p className={styles.hint}>
+                                  Anrede, Grußformel und die Pflichtangaben werden
+                                  beim Versand angehängt.
+                                </p>
 
-                            {current.note ? (
-                              <p className={styles.hint}>{current.note}</p>
-                            ) : null}
-                            {current.error ? (
-                              <p className={styles.error}>{current.error}</p>
-                            ) : null}
+                                <div className={styles.detailActions}>
+                                  <button
+                                    type="button"
+                                    className={styles.secondaryButton}
+                                    disabled={current.busy !== null}
+                                    onClick={() => void createDraft(row)}
+                                  >
+                                    {current.busy === "draft"
+                                      ? "Schreibt …"
+                                      : `Entwurf erzeugen (${creditsPerDraft} Credits)`}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={styles.primaryButton}
+                                    disabled={
+                                      current.busy !== null ||
+                                      !mailReady ||
+                                      !sendable ||
+                                      !current.subject.trim() ||
+                                      !current.body.trim()
+                                    }
+                                    onClick={async () => {
+                                      if (
+                                        !window.confirm(
+                                          `Nachricht an ${row.recipient_email} verschicken?`,
+                                        )
+                                      ) {
+                                        return;
+                                      }
+                                      if (await send(row)) router.refresh();
+                                    }}
+                                  >
+                                    {current.busy === "send"
+                                      ? "Verschickt …"
+                                      : "Senden"}
+                                  </button>
+                                </div>
+
+                                {current.note ? (
+                                  <p className={styles.hint}>{current.note}</p>
+                                ) : null}
+                                {current.error ? (
+                                  <p className={styles.error}>{current.error}</p>
+                                ) : null}
                               </>
                             )}
                           </div>
