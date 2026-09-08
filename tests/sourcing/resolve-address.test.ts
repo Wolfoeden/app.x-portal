@@ -39,6 +39,21 @@ const ARBEITGEBER_IMPRESSUM = `
     <p>E-Mail: info@grosse-software.de</p>
   </body></html>`;
 
+/**
+ * Vergleicht den Hostnamen, nicht den Anfang der Adresse.
+ *
+ * `startsWith("https://beispiel.de")` träfe auch
+ * `https://beispiel.de.angreifer.test/` — in einer Attrappe folgenlos, als
+ * Muster falsch, und CodeQL beanstandet es zu Recht.
+ */
+function istHost(url: string | URL, host: string): boolean {
+  try {
+    return new URL(String(url)).hostname === host;
+  } catch {
+    return false;
+  }
+}
+
 function seitenGeber(seiten: Record<string, string>) {
   return async (url: string | URL): Promise<Response> => {
     const schluessel = String(url);
@@ -395,7 +410,7 @@ describe("Der kostenlose Vorlauf", () => {
       },
       fetchImpl: (async (url: string | URL) => {
         gerufen.push(String(url));
-        const treffer = String(url).startsWith("https://nikolai-schankin.de");
+        const treffer = istHost(url, "nikolai-schankin.de");
         return new Response(treffer ? IMPRESSUM : "weg", {
           status: treffer ? 200 : 404,
           headers: { "content-type": "text/html" },
@@ -452,9 +467,9 @@ describe("Der kostenlose Vorlauf", () => {
       },
       fetchImpl: (async (url: string | URL) =>
         new Response(
-          String(url).startsWith("https://nikolai-schankin.de") ? fremd : "weg",
+          istHost(url, "nikolai-schankin.de") ? fremd : "weg",
           {
-            status: String(url).startsWith("https://nikolai-schankin.de") ? 200 : 404,
+            status: istHost(url, "nikolai-schankin.de") ? 200 : 404,
             headers: { "content-type": "text/html" },
           },
         )) as unknown as typeof fetch,
