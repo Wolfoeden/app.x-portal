@@ -27,6 +27,8 @@ import {
 } from "@/lib/leadgen/leads-data";
 import {
   LEAD_BULK_SEND_LIMIT,
+  LEAD_HOURLY_SEND_LIMIT,
+  sendHourStart,
   LEAD_DRAFT_MAX_AGE_DAYS,
   isWithinLeadSendWindow,
   leadDayStart,
@@ -625,6 +627,23 @@ export async function deliverPreparedDraft(draft: {
 }): Promise<DraftDeliveryResult> {
   if (!draft.recipient_email) {
     return { sent: false, reason: "no_recipient" };
+  }
+
+  // Die Stundenbremse sitzt hier, weil hier zugestellt wird.
+  //
+  // Vorher hing die Mengenprüfung am Stapellauf. Der Einzelversand aus der
+  // Arbeitsfläche ruft diese Funktion unmittelbar und ging deshalb an ihr
+  // vorbei — am 8. September gingen so fünfundzwanzig statt zwanzig
+  // Nachrichten raus. Eine Grenze, die ein zweiter Aufrufer umgehen kann, ist
+  // keine.
+  //
+  // Gezählt wird stündlich und nicht täglich, weil das die Grenze ist, die
+  // der Mailanbieter kennt: fünfzig in der Stunde verkraftet er, vierzig ist
+  // der Zielwert mit Abstand. Vor dem Anspruch auf den Entwurf, damit ein
+  // abgewiesener Versand ihn nicht blockiert.
+  const inDieserStunde = await sentSince(sendHourStart(new Date()));
+  if (inDieserStunde >= LEAD_HOURLY_SEND_LIMIT) {
+    return { sent: false, reason: "hourly_limit" };
   }
 
   const claim = await claimPreparedDraft(draft.outreach_id);

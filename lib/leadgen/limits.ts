@@ -370,3 +370,37 @@ export function viewToScope(view: LeadView): LeadScope {
   if (view === "all") return "all";
   return "open";
 }
+
+/**
+ * Wie viele Nachrichten je Stunde das Haus verlassen dürfen.
+ *
+ * Der Anbieter — IONOS, dasselbe Postfach wie für alle Transaktionsmails —
+ * verkraftet nach Romans Messung bis zu fünfzig Nachrichten in der Stunde
+ * einwandfrei. Vierzig ist die Zielgröße, die zehn Nachrichten Abstand sind
+ * der Sicherheitsabstand zur Grenze.
+ *
+ * **Warum das Tageslimit dafür nicht genügt.** Zwanzig Nachrichten in einer
+ * Minute sind für einen Mailserver etwas anderes als zwanzig über einen
+ * Vormittag verteilt — der Tageslauf hat sie gemessen im Abstand von drei
+ * Sekunden zugestellt. Ein Tageslimit begrenzt die Menge, nicht die Spitze.
+ *
+ * Und es begrenzte nicht einmal die Menge: Am 8. September gingen fünf­und­
+ * zwanzig statt zwanzig raus, weil der Einzelversand aus der Arbeitsfläche
+ * `deliverPreparedDraft()` unmittelbar rief und die Tagesprüfung des
+ * Stapellaufs damit umging. Diese Grenze hier sitzt deshalb **in** der
+ * Zustellung und nicht davor.
+ */
+export const LEAD_HOURLY_SEND_LIMIT = 40;
+
+/**
+ * Was der Anbieter noch verkraftet. Steht hier als Beleg dafür, wofür die
+ * vierzig der Abstand sind — überschritten werden darf sie nie.
+ */
+export const PROVIDER_HOURLY_CEILING = 50;
+
+/** Der Beginn der laufenden Stunde. Grundlage der Stundenbremse. */
+export function sendHourStart(now: Date): Date {
+  const beginn = new Date(now.getTime());
+  beginn.setUTCMinutes(0, 0, 0);
+  return beginn;
+}

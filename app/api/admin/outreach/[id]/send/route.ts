@@ -8,6 +8,7 @@ import { requireAdminUser } from "@/lib/auth/current-user";
 import { promotionalDeliveryConfigured } from "@/lib/email/deliver";
 import { listPreparedDrafts } from "@/lib/leadgen/leads-data";
 import { deliverPreparedDraft } from "@/lib/leadgen/match-run";
+import { LEAD_HOURLY_SEND_LIMIT } from "@/lib/leadgen/limits";
 import { assertSameOrigin } from "@/lib/security/request";
 
 export const runtime = "nodejs";
@@ -26,6 +27,14 @@ export const dynamic = "force-dynamic";
  *
  * Ohne Zeitfenster und ohne Tagesmenge: Wer hier klickt, weiß, wie spät es
  * ist und wie viel heute schon rausging — die Zahl steht im selben Bild.
+ *
+ * **Die Stundenmenge gilt trotzdem**, und zwar nicht hier, sondern in
+ * `deliverPreparedDraft()`. Am 8. September gingen fünfundzwanzig statt
+ * zwanzig Nachrichten raus, weil dieser Weg an der Mengenprüfung des
+ * Stapellaufs vorbeiführte. Der Unterschied zur Tagesmenge ist die
+ * Begründung: Die Tagesmenge schützt den Ruf des Postfachs und darf vom
+ * Betreiber überstimmt werden. Die Stundenmenge schützt den Mailserver vor
+ * einer Spitze, und dagegen hilft kein Wissen darüber, wie spät es ist.
  */
 
 const ParamsSchema = z.object({
@@ -91,7 +100,12 @@ export async function POST(
           error:
             result.reason === "already_sent"
               ? "Dieser Lead wurde bereits angeschrieben."
-              : "Der Versand ist gescheitert. Der Grund steht im Beleg.",
+              : result.reason === "hourly_limit"
+                ? // Nicht „gescheitert": Es hat nichts versagt, die
+                  // Stundenmenge ist erreicht. Wer das als Fehler liest,
+                  // sucht an der falschen Stelle.
+                  `In dieser Stunde sind bereits ${LEAD_HOURLY_SEND_LIMIT} Nachrichten raus — zur vollen Stunde geht es weiter.`
+                : "Der Versand ist gescheitert. Der Grund steht im Beleg.",
           reason: result.reason,
           traceId,
         },
