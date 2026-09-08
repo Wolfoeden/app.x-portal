@@ -4,7 +4,10 @@ import type { DemandBrief } from "@/lib/freelancer/outreach";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 import { skillOverlap } from "./match";
-import { resolveContactAddress } from "./resolve-address";
+import {
+  resolveAddressesBatch,
+  type BatchResolveResult,
+} from "./resolve-batch";
 import { inviteSourcedCandidate, runSourcingPass } from "./run";
 
 /**
@@ -14,7 +17,8 @@ import { inviteSourcedCandidate, runSourcingPass } from "./run";
  *
  *   1. **Beschaffen** — kostenlos, legt Kandidaten an. Ab hier läuft für
  *      diese Menschen die Frist aus Art. 14 DSGVO.
- *   2. **Adresse suchen** — kostet je Person eine Websuche, rund fünf Cent.
+ *   2. **Adressen suchen** — für alle Kandidaten zusammen, nicht je Person.
+ *      Ein Werkzeugaufruf kostet einen Cent, gleich für wie viele er sucht.
  *   3. **Einladen** — erreicht Menschen und ist nicht rückholbar.
  *
  * Jede Stufe kann einzeln abgewählt werden, und keine reißt die anderen mit:
@@ -45,6 +49,10 @@ export type DemandRunOutcome = {
   addressed: number;
   /** Verschickte Einladungen. */
   invited: number;
+  /** Wie viele bezahlte Suchlaeufe der Lauf gebraucht hat. */
+  searchCalls: number;
+  /** Wie viele Adressen ohne Websuche gefunden wurden. */
+  freeAddressHits: number;
   /** Was mit jedem Einzelnen geschah, für die Rückmeldung im Adminbereich. */
   people: {
     name: string;
@@ -105,6 +113,8 @@ export async function runDemandSourcing(input: {
     importSkipped: [...(lauf.import?.skipped ?? [])],
     addressed: 0,
     invited: 0,
+    searchCalls: 0,
+    freeAddressHits: 0,
     people: [],
   };
 
@@ -125,6 +135,31 @@ export async function runDemandSourcing(input: {
 
   const kandidaten = (data ?? []) as OffeneZeile[];
 
+  // Stufe 2 für alle auf einmal.
+  //
+  // Vorher lief je Person eine eigene Websuche. Ein gemessener Lauf brauchte
+  // dafür zwölf Anbieteranfragen, kostete fünf Cent, brach ab und lieferte
+  // nichts. Ein Werkzeugaufruf kostet aber denselben Cent, ganz gleich für wie
+  // viele Menschen er sucht — sechs in einem Bündel kosten so viel wie einer.
+  const adressen = new Map<string, BatchResolveResult>();
+  if (input.resolveAddresses !== false) {
+    const offen = kandidaten.filter((zeile) => !zeile.contact_email);
+    if (offen.length > 0) {
+      const adresslauf = await resolveAddressesBatch({
+        people: offen.map((zeile) => ({
+          ref: zeile.id,
+          displayName: zeile.full_name,
+          role: zeile.role_title,
+          skills: (zeile.skills ?? []).slice(0, 6),
+          location: zeile.location_text,
+        })),
+      });
+      ergebnis.searchCalls = adresslauf.searchCalls;
+      ergebnis.freeAddressHits = adresslauf.freeHits;
+      for (const treffer of adresslauf.results) adressen.set(treffer.ref, treffer);
+    }
+  }
+
   for (const zeile of kandidaten) {
     const person: DemandRunOutcome["people"][number] = {
       name: zeile.full_name,
@@ -135,24 +170,20 @@ export async function runDemandSourcing(input: {
       note: null,
     };
 
-    // Stufe 2
-    if (!zeile.contact_email && input.resolveAddresses !== false) {
-      const aufloesung = await resolveContactAddress({
-        displayName: zeile.full_name,
-        role: zeile.role_title,
-        skills: (zeile.skills ?? []).slice(0, 6),
-        location: zeile.location_text,
-      });
+    // Stufe 2 — das Ergebnis des Bündellaufs eintragen.
+    const aufloesung = adressen.get(zeile.id);
+    if (aufloesung) {
       const patch: Record<string, unknown> = {
         address_lookup_at: new Date().toISOString(),
-        address_lookup_result: aufloesung.resolved
+        address_lookup_result: aufloesung.address
           ? aufloesung.address.verdict
-          : aufloesung.reason,
+          : (aufloesung.reason ?? "no_usable_address"),
       };
-      if (aufloesung.resolved) {
+      if (aufloesung.address) {
         patch.contact_email = aufloesung.address.email;
         person.email = aufloesung.address.email;
         person.addressVerdict = aufloesung.address.verdict;
+        person.note = aufloesung.via === "derived_domain" ? "ohne Websuche" : null;
         ergebnis.addressed += 1;
       } else {
         person.addressVerdict = aufloesung.reason;
