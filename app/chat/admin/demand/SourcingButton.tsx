@@ -13,26 +13,51 @@ import styles from "./demand.module.css";
  * Er steht in der Spalte „Empfehlung", weil er die Empfehlung ausführt: Wo
  * „Beschaffen" steht, soll man beschaffen können, ohne die Seite zu wechseln.
  *
- * Zwei Klicks, nicht einer. Der erste öffnet die Wahl — mit Adressen? mit
- * Versand? —, der zweite löst aus. Ein einzelner Klick, der Menschen
- * anschreibt, wäre zu leicht danebengegriffen.
+ * **Die Schleife läuft hier, nicht auf dem Server.** Der erste Anlauf rief
+ * eine Route, die alles in einem Zug erledigen sollte — fünfundvierzig bis
+ * fünfundachtzig Sekunden. Die Plattform beendet eine synchrone Funktion
+ * lange vorher; der Knopf blieb hängen und hinterließ nichts. Jetzt arbeitet
+ * ein Aufruf zwölf Sekunden, meldet was offen ist, und dieser Knopf ruft ihn
+ * erneut. Dasselbe Muster wie `PrepareAllButton` bei den Leads.
+ *
+ * Zwei Klicks zum Auslösen, nicht einer: Der erste öffnet die Wahl, der zweite
+ * startet. Ein einzelner Klick, der Menschen anschreibt, wäre zu leicht
+ * danebengegriffen.
  */
 
-type RunResult = {
+/** Sicherheitsnetz gegen eine Schleife, die nicht kleiner wird. */
+const MAX_SCHRITTE = 40;
+
+type Cursor = {
+  phase: "source" | "address" | "invite" | "done";
+  pendingSkills: string[];
+  skippedSkills: string[];
+  pendingIds: string[];
   found: number;
   addressable: number;
   imported: number;
   addressed: number;
   invited: number;
-  alreadyRanToday: boolean;
-  skippedSkills: string[];
-  people: {
-    name: string;
-    email: string | null;
-    addressVerdict: string | null;
-    invite: string | null;
-    note: string | null;
-  }[];
+  searchCalls: number;
+  freeAddressHits: number;
+};
+
+type Person = {
+  name: string;
+  email: string | null;
+  addressVerdict: string | null;
+  invite: string | null;
+  note: string | null;
+};
+
+type StepAntwort = {
+  cursor: Cursor;
+  done: boolean;
+  didThisStep: string;
+  people: Person[];
+  importSkipped: { reason: string; profileUrl: string; detail?: string }[];
+  error?: string;
+  detail?: string;
 };
 
 const VERDICT_LABELS: Record<string, string> = {
@@ -56,6 +81,13 @@ const INVITE_LABELS: Record<string, string> = {
   skipped: "nicht eingeladen",
 };
 
+const PHASE_LABELS: Record<Cursor["phase"], string> = {
+  source: "sucht Profile",
+  address: "sucht Adressen",
+  invite: "verschickt Einladungen",
+  done: "fertig",
+};
+
 export function SourcingButton({
   profileKey,
   profileLabel,
@@ -70,7 +102,6 @@ export function SourcingButton({
   skills: string[];
   workMode: "remote" | "on_site" | "hybrid" | "unknown";
   location: string | null;
-  /** Fuer die Nachricht: wie oft gesucht wurde und von wie vielen. */
   searches: number;
   uniqueSeekers: number;
 }) {
@@ -79,36 +110,68 @@ export function SourcingButton({
   const [laeuft, setLaeuft] = useState(false);
   const [adressen, setAdressen] = useState(true);
   const [versand, setVersand] = useState(false);
-  const [ergebnis, setErgebnis] = useState<RunResult | null>(null);
+  const [cursor, setCursor] = useState<Cursor | null>(null);
+  const [schritte, setSchritte] = useState(0);
+  const [phase, setPhase] = useState<Cursor["phase"] | null>(null);
+  const [leute, setLeute] = useState<Person[]>([]);
+  const [uebersprungen, setUebersprungen] = useState<StepAntwort["importSkipped"]>([]);
   const [fehler, setFehler] = useState<string | null>(null);
 
   async function starten() {
     setLaeuft(true);
     setFehler(null);
-    setErgebnis(null);
+    setLeute([]);
+    setUebersprungen([]);
+    setCursor(null);
+    setSchritte(0);
+
+    let stand: Cursor | null = null;
     try {
-      const antwort = await fetch(appPath("/api/admin/sourcing/run"), {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({
-          profileKey,
-          profileLabel,
-          skills: skills.slice(0, 8),
-          workMode,
-          location,
-          searches,
-          uniqueSeekers,
-          resolveAddresses: adressen,
-          sendInvites: versand,
-        }),
-      });
-      const nutzlast = (await antwort.json()) as RunResult & { error?: string };
-      if (!antwort.ok) {
-        setFehler(nutzlast.error ?? `Fehler ${antwort.status}.`);
-        return;
+      for (let runde = 1; runde <= MAX_SCHRITTE; runde += 1) {
+        const antwort = await fetch(appPath("/api/admin/sourcing/run"), {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({
+            profileKey,
+            profileLabel,
+            skills: skills.slice(0, 8),
+            workMode,
+            location,
+            searches,
+            uniqueSeekers,
+            resolveAddresses: adressen,
+            sendInvites: versand,
+            cursor: stand,
+          }),
+        });
+        const nutzlast = (await antwort.json()) as StepAntwort;
+
+        if (!antwort.ok) {
+          // Der Fehlertext steht jetzt in der Antwort. Vorher gab es „Fehler
+          // 500" und im Protokoll nichts — und damit keine Chance zu sehen,
+          // woran es lag.
+          setFehler(
+            [nutzlast.error ?? `Fehler ${antwort.status}.`, nutzlast.detail]
+              .filter(Boolean)
+              .join(" — "),
+          );
+          return;
+        }
+
+        stand = nutzlast.cursor;
+        setCursor(nutzlast.cursor);
+        setPhase(nutzlast.cursor.phase);
+        setSchritte(runde);
+        if (nutzlast.people.length) {
+          setLeute((bisher) => [...bisher, ...nutzlast.people]);
+        }
+        if (nutzlast.importSkipped.length) {
+          setUebersprungen((bisher) => [...bisher, ...nutzlast.importSkipped]);
+        }
+
+        if (nutzlast.done) break;
       }
-      setErgebnis(nutzlast);
       router.refresh();
     } catch {
       setFehler("Die Verbindung ist abgebrochen.");
@@ -138,7 +201,7 @@ export function SourcingButton({
           onChange={(event) => setAdressen(event.target.checked)}
           type="checkbox"
         />
-        Adressen suchen <span>(~5 ct je Person)</span>
+        Adressen suchen <span>(~1 ct je 6 Personen)</span>
       </label>
       <label>
         <input
@@ -158,8 +221,9 @@ export function SourcingButton({
           disabled={laeuft}
           onClick={() => {
             setOffen(false);
-            setErgebnis(null);
+            setCursor(null);
             setFehler(null);
+            setLeute([]);
           }}
           type="button"
         >
@@ -167,37 +231,55 @@ export function SourcingButton({
         </button>
       </div>
 
-      {laeuft ? (
+      {laeuft && phase ? (
         <p className={styles.sourcingNote}>
-          Sucht bei freelancermap, dann je Person eine Adresse. Das dauert eine
-          knappe Minute.
+          Schritt {schritte} · {PHASE_LABELS[phase]}
+          {cursor && cursor.pendingSkills.length > 0
+            ? ` · noch ${cursor.pendingSkills.length} Skills`
+            : ""}
+          {cursor && cursor.pendingIds.length > 0
+            ? ` · noch ${cursor.pendingIds.length} Personen`
+            : ""}
         </p>
       ) : null}
 
       {fehler ? <p className={styles.sourcingError}>{fehler}</p> : null}
 
-      {ergebnis ? (
+      {cursor && !laeuft ? (
         <div className={styles.sourcingResult}>
           <p>
-            {ergebnis.found} gefunden · {ergebnis.addressable} ansprechbar ·{" "}
-            {ergebnis.imported} neu angelegt · {ergebnis.addressed} mit Adresse
-            {versand ? ` · ${ergebnis.invited} eingeladen` : ""}
+            {cursor.found} gefunden · {cursor.addressable} ansprechbar ·{" "}
+            {cursor.imported} neu angelegt · {cursor.addressed} mit Adresse
+            {versand ? ` · ${cursor.invited} eingeladen` : ""}
           </p>
-          {ergebnis.alreadyRanToday ? (
-            <p>Für dieses Profil lief heute schon ein Lauf — kein zweiter Eintrag.</p>
+          <p>
+            {schritte} Schritte · {cursor.searchCalls} bezahlte Suchen ·{" "}
+            {cursor.freeAddressHits} Adressen ohne Websuche
+          </p>
+          {cursor.skippedSkills.length > 0 ? (
+            <p>Ohne Liste bei der Quelle: {cursor.skippedSkills.join(", ")}</p>
           ) : null}
-          {ergebnis.skippedSkills.length > 0 ? (
-            <p>Ohne Liste bei der Quelle: {ergebnis.skippedSkills.join(", ")}</p>
+          {uebersprungen.length > 0 ? (
+            <p>
+              Nicht angelegt:{" "}
+              {uebersprungen
+                .map((wert) => wert.detail ?? wert.reason)
+                .slice(0, 3)
+                .join(" · ")}
+            </p>
           ) : null}
           <ul>
-            {ergebnis.people.map((person) => (
-              <li key={`${person.name}-${person.email ?? "ohne"}`}>
+            {leute.map((person, index) => (
+              <li key={`${person.name}-${index}`}>
                 <strong>{person.name}</strong>
                 {person.email ? ` · ${person.email}` : ""}
                 {person.addressVerdict
                   ? ` · ${VERDICT_LABELS[person.addressVerdict] ?? person.addressVerdict}`
                   : ""}
-                {person.invite ? ` · ${INVITE_LABELS[person.invite] ?? person.invite}` : ""}
+                {person.invite
+                  ? ` · ${INVITE_LABELS[person.invite] ?? person.invite}`
+                  : ""}
+                {person.note ? ` · ${person.note}` : ""}
               </li>
             ))}
           </ul>

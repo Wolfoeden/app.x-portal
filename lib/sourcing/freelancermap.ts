@@ -389,19 +389,34 @@ export async function resolveSkillSlug(
   const kandidaten = slugCandidates(skill);
   if (kandidaten.length === 0) return null;
 
-  const index = options.index ?? (await loadSkillIndex(options.fetchImpl));
-  for (const kandidat of kandidaten) {
-    if (index.has(kandidat)) return kandidat;
+  // Das Verzeichnis nur benutzen, wenn der Aufrufer es mitbringt.
+  //
+  // Es hier von selbst zu laden war der teuerste Fehler des ganzen Ablaufs:
+  // einundfünfzig Sitemap-Abrufe, rund zwanzig Sekunden, **je Lauf** — und
+  // damit allein schon jenseits der Zeitgrenze, die die Plattform einer
+  // Serverfunktion setzt. Für eine Handvoll Skills ist es ohnehin die falsche
+  // Rechnung: Fünf Probeabrufe je Skill sind billiger als das ganze
+  // Verzeichnis.
+  const index = options.index;
+  if (index) {
+    for (const kandidat of kandidaten) {
+      if (index.has(kandidat)) return kandidat;
+    }
   }
 
-  // Nicht im Verzeichnis: einmal nachsehen, ob es die Seite trotzdem gibt.
+  // Ohne Verzeichnis — oder wenn es die Lücke hat: der Reihe nach nachsehen.
+  // Die Reihenfolge in `slugCandidates()` ist nach Häufigkeit sortiert, der
+  // erste Treffer gewinnt.
   const fetchImpl = options.fetchImpl ?? standardFetch;
-  try {
-    const html = await holeSeite(skillListUrl(kandidaten[0]!), fetchImpl);
-    return isSkillPage(html) ? kandidaten[0]! : null;
-  } catch {
-    return null;
+  for (const kandidat of kandidaten) {
+    try {
+      const html = await holeSeite(skillListUrl(kandidat), fetchImpl);
+      if (isSkillPage(html)) return kandidat;
+    } catch {
+      // Ein Abruf, der scheitert, schließt den nächsten nicht aus.
+    }
   }
+  return null;
 }
 
 export type SourcingRunResult = {

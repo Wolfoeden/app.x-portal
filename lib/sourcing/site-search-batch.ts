@@ -65,7 +65,15 @@ const MODEL = "gpt-5.4-nano-2026-03-17";
 /** Für ein Bündel etwas mehr als für eine Person, aber nicht je Person mehr. */
 const MAX_TOOL_CALLS = 4;
 const MAX_OUTPUT_TOKENS = 1_600;
-const TIMEOUT_MS = 40_000;
+/**
+ * Kurz genug, um in einen Schritt zu passen.
+ *
+ * Vierzig Sekunden waren fuer sich genommen vernuenftig und im Betrieb
+ * falsch: Ein Schritt darf die Zeitgrenze der Plattform nicht reissen, sonst
+ * bricht die Serverfunktion ab und der Knopf haengt. Lieber eine Suche, die
+ * aufgibt, als ein Lauf, der verschwindet.
+ */
+const TIMEOUT_MS = 15_000;
 
 /** Wie viele Menschen höchstens in einen Lauf gehen. */
 export const MAX_BATCH_SIZE = 6;
