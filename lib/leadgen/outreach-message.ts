@@ -29,8 +29,13 @@ export const SENDER_PERSON = "Roman Dering";
 export const IMPRINT_URL = "https://x-portal.eu/imprint";
 export const PRIVACY_URL = "https://x-portal.eu/privacy";
 
-/** Deckungsgleich mit `retention_policies.leadgen_unhandled` in der Datenbank. */
-export const LEAD_RETENTION_DAYS = 90;
+/**
+ * Deckungsgleich mit `retention_policies.leadgen_unhandled` in der Datenbank.
+ *
+ * Von 90 auf 30 gekuerzt: Eine vier Wochen alte Ausschreibung ist in dieser
+ * Branche wertlos, und was wertlos ist, muss nicht gespeichert bleiben.
+ */
+export const LEAD_RETENTION_DAYS = 30;
 
 export type LeadMessageInput = {
   /** Der werbende Teil, ohne Anrede und ohne Grußformel. */

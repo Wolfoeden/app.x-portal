@@ -425,8 +425,8 @@ select is(
     from public.retention_policies
     where record_type = 'leadgen_unhandled'
   ),
-  90,
-  'unbearbeitete Leads verfallen nach 90 Tagen — dieselbe Frist nennt die Mail'
+  30,
+  'unbearbeitete Leads verfallen nach 30 Tagen — dieselbe Frist steht in LEAD_RETENTION_DAYS'
 );
 
 select is(
@@ -437,6 +437,31 @@ select is(
   ),
   365,
   'angeschriebene Leads bleiben ein Jahr als Nachweis'
+);
+
+-- Der Anzeigentext gehoert nicht zum Nachweis, warum jemand Post bekommen hat.
+-- Er faellt deshalb frueher als die Zeile, an der er haengt.
+select is(
+  (
+    select retention_days
+    from public.retention_policies
+    where record_type = 'leadgen_posting_text'
+  ),
+  30,
+  'der Ausschreibungstext wird nach 30 Tagen geleert, auch bei behaltener Zeile'
+);
+
+select ok(
+  (
+    select retention_days
+    from public.retention_policies
+    where record_type = 'leadgen_posting_text'
+  ) <= (
+    select retention_days
+    from public.retention_policies
+    where record_type = 'leadgen_contacted'
+  ),
+  'der Text verfaellt nie spaeter als die Zeile, die ihn traegt'
 );
 
 -- ---------------------------------------------------------------------
