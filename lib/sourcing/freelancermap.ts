@@ -27,6 +27,8 @@
  * Profile zeigt, muss das nicht in Schüben aushalten.
  */
 
+import { htmlToLines } from "./html-text";
+
 const BASIS = "https://www.freelancermap.de";
 
 /**
@@ -172,7 +174,9 @@ export function parseRateRange(
 }
 
 function jsonLdBlocks(html: string): Record<string, unknown>[] {
-  const muster = /<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gu;
+  // `i`, weil `<SCRIPT TYPE="application/ld+json">` sonst übersehen würde und
+  // das Profil dann ohne Namen und Ort dastünde.
+  const muster = /<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script\s*>/giu;
   const bloecke: Record<string, unknown>[] = [];
   for (const treffer of html.matchAll(muster)) {
     try {
@@ -188,18 +192,15 @@ function jsonLdBlocks(html: string): Record<string, unknown>[] {
   return bloecke;
 }
 
+/**
+ * Der sichtbare Text als Zeilen.
+ *
+ * Die eigene Fassung hier war fehlerhaft — `<SCRIPT>` in Großbuchstaben blieb
+ * stehen, und die Entities wurden nacheinander statt in einem Durchgang
+ * aufgelöst. Beides steht jetzt genau einmal in `html-text.ts`.
+ */
 function textLines(html: string): string[] {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gu, " ")
-    .replace(/<style[\s\S]*?<\/style>/gu, " ")
-    .replace(/<[^>]+>/gu, "\n")
-    .replace(/&nbsp;/gu, " ")
-    .replace(/&amp;/gu, "&")
-    .replace(/&quot;/gu, '"')
-    .replace(/&#0?39;/gu, "'")
-    .split("\n")
-    .map((zeile) => zeile.trim())
-    .filter(Boolean);
+  return htmlToLines(html);
 }
 
 /** Die Zeilen zwischen einer Überschrift und der nächsten bekannten. */

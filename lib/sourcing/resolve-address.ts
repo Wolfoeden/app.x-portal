@@ -9,6 +9,7 @@ import {
   type AddressAssessment,
 } from "./address";
 import { fetchSite } from "./fetch-site";
+import { htmlToText } from "./html-text";
 import { searchPersonalSite, type SiteCandidate, type SiteSearchClient } from "./site-search";
 
 /**
@@ -133,17 +134,17 @@ async function holeImpressum(
   return null;
 }
 
-/** HTML zu Text, damit Namen und Rollen nebeneinander stehen. */
+/**
+ * HTML zu Text, damit Namen und Rollen nebeneinander stehen.
+ *
+ * Die frühere Fassung ließ `<SCRIPT>` in Großbuchstaben stehen. Der Quelltext
+ * eines Skripts landete damit in genau dem Text, in dem gleich nach
+ * E-Mail-Adressen und nach dem Namen der Person gesucht wird — wer auf seiner
+ * Seite eine fremde Adresse in ein Skript schreibt, hätte unsere Entscheidung
+ * verschoben, welches Postfach wem gehört.
+ */
 function nurText(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gu, " ")
-    .replace(/<style[\s\S]*?<\/style>/gu, " ")
-    .replace(/<[^>]+>/gu, " ")
-    .replace(/&nbsp;/gu, " ")
-    .replace(/&amp;/gu, "&")
-    .replace(/&#0?64;|&commat;/gu, "@")
-    .replace(/\s+/gu, " ")
-    .trim();
+  return htmlToText(html);
 }
 
 export async function resolveContactAddress(input: {

@@ -23,6 +23,8 @@
  * für diese Seite ein Dritter, und dann fassen wir das Postfach nicht an.
  */
 
+import { htmlToText } from "./html-text";
+
 /**
  * Umlaute und ß auf ihre Ersatzschreibung bringen.
  *
@@ -426,7 +428,10 @@ export function findImprintUrl(html: string, baseUrl: string): string | null {
   const muster =
     /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]{0,120}?)<\/a>/giu;
   for (const treffer of html.matchAll(muster)) {
-    const beschriftung = treffer[2]!.replace(/<[^>]+>/gu, "").toLowerCase();
+    // Die Beschriftung durch dieselbe Umwandlung wie jeden anderen Text: Ein
+    // eigenes `replace(/<[^>]+>/)` an dieser Stelle war unvollständig und
+    // hätte `&lt;` stehen lassen, wo „Impressum" gemeint war.
+    const beschriftung = htmlToText(treffer[2]!).toLowerCase();
     const ziel = treffer[1]!;
     if (
       /impressum|imprint|legal\s*notice|rechtliches/u.test(beschriftung) ||
