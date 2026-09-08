@@ -42,6 +42,7 @@ import {
 import { LeadsPanel } from "./LeadsPanel";
 import { OutreachPanel } from "./OutreachPanel";
 import { PrepareAllButton } from "./PrepareAllButton";
+import { RematchButton } from "./RematchButton";
 import { SendNowButton } from "./SendNowButton";
 import styles from "./leads.module.css";
 
@@ -336,6 +337,8 @@ export default async function LeadsPage({
           tagesmenge={LEAD_BULK_SEND_LIMIT}
           mailReady={mailReady}
         />
+        <RematchButton archiviert={summary.archived} />
+
 
         {runs.length ? (
           <p className={styles.runs}>

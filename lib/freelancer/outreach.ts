@@ -95,7 +95,26 @@ export type DemandBrief = {
   matchingSkills?: readonly string[];
   /** Weitere gefragte Erfahrungen, ohne Überschneidung. */
   otherSkills?: readonly string[];
+  /**
+   * Wie oft nach diesem Profil gesucht wurde, und von wie vielen.
+   *
+   * Steht nur in der Nachricht, wenn es sich lohnt: Bei drei Anfragen wirkt
+   * die Zahl klein, bei vierzehn ist sie das stärkste Argument, das wir haben.
+   * Die Schwelle ist `DEMAND_MENTION_THRESHOLD`.
+   */
+  searches?: number;
+  /** Eindeutige Nachfrager. Gezählt werden Suchende, nicht Suchen. */
+  uniqueSeekers?: number;
 };
+
+/**
+ * Ab dieser Zahl von Anfragen wird die Nachfrage in der Einladung genannt.
+ *
+ * Darunter schweigt der Text. „Zwei Unternehmen haben gesucht" liest sich wie
+ * eine Entschuldigung; erst ab einer zweistelligen Größenordnung wird daraus
+ * ein Grund, sich einzutragen.
+ */
+export const DEMAND_MENTION_THRESHOLD = 8;
 
 function workModePhrase(demand: DemandBrief): string | null {
   const ort = demand.location?.trim();
@@ -155,6 +174,21 @@ function requirementLines(input: {
   const weitere = skillList(demand.otherSkills ?? [], 4);
   if (weitere) {
     zeilen.push(`Daneben geht es um ${weitere}.`);
+  }
+
+  // Die Nachfragezahl zuletzt: Sie ist das Argument, nicht die Auskunft.
+  //
+  // „Anfragen" und nicht „Unternehmen": Gezählt wird je Projekt der jüngste
+  // Matching-Lauf, und dasselbe Unternehmen kann mehrfach ausschreiben. Wer
+  // daraus „vierzehn Unternehmen" machte, behauptete mehr, als die Zahl hergibt.
+  const anfragen = demand.searches ?? 0;
+  if (anfragen >= DEMAND_MENTION_THRESHOLD) {
+    const suchende = demand.uniqueSeekers ?? 0;
+    zeilen.push(
+      suchende >= 2
+        ? `Das ist kein Einzelfall: In den letzten 90 Tagen gab es dazu ${anfragen} Anfragen von ${suchende} verschiedenen Auftraggebern.`
+        : `Das ist kein Einzelfall: In den letzten 90 Tagen gab es dazu ${anfragen} Anfragen.`,
+    );
   }
 
   return zeilen;

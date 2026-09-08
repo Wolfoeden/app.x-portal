@@ -62,12 +62,17 @@ export function SourcingButton({
   skills,
   workMode,
   location,
+  searches,
+  uniqueSeekers,
 }: {
   profileKey: string;
   profileLabel: string;
   skills: string[];
   workMode: "remote" | "on_site" | "hybrid" | "unknown";
   location: string | null;
+  /** Fuer die Nachricht: wie oft gesucht wurde und von wie vielen. */
+  searches: number;
+  uniqueSeekers: number;
 }) {
   const router = useRouter();
   const [offen, setOffen] = useState(false);
@@ -92,6 +97,8 @@ export function SourcingButton({
           skills: skills.slice(0, 8),
           workMode,
           location,
+          searches,
+          uniqueSeekers,
           resolveAddresses: adressen,
           sendInvites: versand,
         }),

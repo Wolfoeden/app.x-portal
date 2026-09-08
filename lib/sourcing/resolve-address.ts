@@ -2,12 +2,15 @@ import "server-only";
 
 import {
   assessAddress,
+  domainCarriesName,
   extractEmails,
   findImprintUrl,
   IMPRINT_PATHS,
+  personRunsSite,
   usableAddresses,
   type AddressAssessment,
 } from "./address";
+import { derivedDomains } from "./derived-domains";
 import { fetchSite } from "./fetch-site";
 import { htmlToText } from "./html-text";
 import { searchPersonalSite, type SiteCandidate, type SiteSearchClient } from "./site-search";
@@ -147,6 +150,55 @@ function nurText(html: string): string {
   return htmlToText(html);
 }
 
+/**
+ * Der kostenlose Vorlauf: Adressen aus dem Namen ableiten und nachsehen.
+ *
+ * Gibt nur dann ein Ergebnis zurück, wenn tatsächlich eine benutzbare Adresse
+ * dabei herauskam. Eine Seite, die der Person nicht gehört, und ein Impressum
+ * ohne Adresse führen beide dazu, dass danach doch die Websuche läuft — der
+ * Vorlauf soll Geld sparen, nicht Ergebnisse verhindern.
+ */
+async function tryDerivedDomains(input: {
+  displayName: string;
+  fetchImpl?: typeof fetch;
+}): Promise<ResolveOutcome | null> {
+  for (const host of derivedDomains(input.displayName)) {
+    const impressum = await holeImpressum(`https://${host}/`, input.fetchImpl);
+    if (!impressum) continue;
+
+    const text = nurText(impressum.text);
+    // Gehört die Seite dieser Person? Sonst ist es ein Namensvetter, und
+    // dessen Postfach geht uns nichts an.
+    const gehoert =
+      domainCarriesName({ domain: host, displayName: input.displayName }) ||
+      personRunsSite({ imprintText: text, displayName: input.displayName });
+    if (!gehoert) continue;
+
+    const geprueft = extractEmails(text)
+      .slice(0, 8)
+      .map((adresse) =>
+        assessAddress({
+          email: adresse,
+          displayName: input.displayName,
+          pageUrl: impressum.url,
+          imprintText: text,
+        }),
+      );
+    const brauchbar = usableAddresses(geprueft);
+    if (brauchbar.length === 0) continue;
+
+    return {
+      resolved: true,
+      address: brauchbar[0]!,
+      imprintUrl: impressum.url,
+      considered: geprueft,
+      // Kein Suchlauf, also auch keine Seitenvorschläge eines Modells.
+      sites: [],
+    };
+  }
+  return null;
+}
+
 export async function resolveContactAddress(input: {
   displayName: string;
   role: string;
@@ -155,7 +207,20 @@ export async function resolveContactAddress(input: {
   safetyIdentifier?: string;
   fetchImpl?: typeof fetch;
   searchClient?: SiteSearchClient;
+  /** Aus für den kostenlosen Vorlauf. Nur für Tests der bezahlten Spur. */
+  skipDerivedDomains?: boolean;
 }): Promise<ResolveOutcome> {
+  // Stufe 0: der kostenlose Versuch.
+  //
+  // Freiberufler betreiben ihre Seite auffallend oft unter
+  // `vorname-nachname.de`. Das auszuprobieren kostet ein paar DNS-Anfragen und
+  // findet gemessen etwa so viele Adressen wie die bezahlte Suche. Erst was
+  // hier durchfällt, ist einen Cent wert.
+  if (!input.skipDerivedDomains) {
+    const ausDomain = await tryDerivedDomains(input);
+    if (ausDomain) return ausDomain;
+  }
+
   const suche = await searchPersonalSite(
     {
       displayName: input.displayName,

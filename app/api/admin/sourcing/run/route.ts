@@ -36,6 +36,9 @@ const InputSchema = z
     location: z.string().trim().max(120).nullable().default(null),
     /** Profile je Skill. Klein halten: dieselben Menschen tauchen mehrfach auf. */
     limitPerSkill: z.number().int().min(1).max(8).default(4),
+    /** Wie oft nach diesem Profil gesucht wurde, und von wie vielen. */
+    searches: z.number().int().min(0).max(100000).default(0),
+    uniqueSeekers: z.number().int().min(0).max(100000).default(0),
     /** Adressen suchen. Kostet rund fünf Cent je Person. */
     resolveAddresses: z.boolean().default(true),
     /** Einladungen verschicken. Erreicht Menschen — deshalb nicht vorbelegt. */
@@ -59,6 +62,8 @@ export async function POST(request: Request) {
       location: input.location,
       adminId: admin.id,
       limitPerSkill: input.limitPerSkill,
+      searches: input.searches,
+      uniqueSeekers: input.uniqueSeekers,
       resolveAddresses: input.resolveAddresses,
       sendInvites: input.sendInvites,
     });
