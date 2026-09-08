@@ -42,6 +42,7 @@ import {
 import { LeadsPanel } from "./LeadsPanel";
 import { OutreachPanel } from "./OutreachPanel";
 import { PrepareAllButton } from "./PrepareAllButton";
+import { SendNowButton } from "./SendNowButton";
 import styles from "./leads.module.css";
 
 export const metadata: Metadata = {
@@ -329,6 +330,13 @@ export default async function LeadsPage({
           )}
         />
 
+        <SendNowButton
+          wartend={summary.pipeline.vorbereitet}
+          heuteVerschickt={summary.pipeline.verschicktHeute}
+          tagesmenge={LEAD_BULK_SEND_LIMIT}
+          mailReady={mailReady}
+        />
+
         {runs.length ? (
           <p className={styles.runs}>
             <span className={styles.filterLabel}>Letzte Läufe</span>
@@ -525,6 +533,7 @@ export default async function LeadsPage({
           <OutreachPanel
             rows={messages.rows}
             view={view === "prepared" ? "prepared" : "sent"}
+            mailReady={mailReady}
           />
         ) : list ? (
           <LeadsPanel

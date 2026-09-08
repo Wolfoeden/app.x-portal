@@ -181,46 +181,6 @@ export function LeadsPanel({
     });
   }
 
-  async function createDraft(row: LeadRow): Promise<boolean> {
-    patchRowState(row.id, { busy: "draft", error: null, note: null });
-    try {
-      const response = await fetch(
-        appPath(`/api/admin/leads/${row.id}/draft`),
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          credentials: "same-origin",
-          body: JSON.stringify({ requestId: crypto.randomUUID() }),
-        },
-      );
-      if (!response.ok) {
-        patchRowState(row.id, { busy: null, error: await readError(response) });
-        return false;
-      }
-      const payload = (await response.json()) as {
-        draft: { subject: string; body: string };
-        mode: "openai" | "fallback";
-      };
-      patchRowState(row.id, {
-        busy: null,
-        subject: payload.draft.subject,
-        body: payload.draft.body,
-        note:
-          payload.mode === "fallback"
-            ? "Ohne KI erzeugt — der Anbieter war nicht erreichbar. Bitte vor dem Senden überarbeiten."
-            : null,
-      });
-      setOpen(row.id);
-      return true;
-    } catch {
-      patchRowState(row.id, {
-        busy: null,
-        error: "Der Entwurf konnte nicht erzeugt werden.",
-      });
-      return false;
-    }
-  }
-
   async function send(
     row: LeadRow,
     options: { autoDraft?: boolean; silent?: boolean } = {},
@@ -661,78 +621,24 @@ export function LeadsPanel({
                             ) : (
                               <>
                                 <p className={styles.detailLabel}>Anschreiben</p>
-                                <input
-                                  className={styles.subjectInput}
-                                  value={current.subject}
-                                  placeholder="Betreff"
-                                  aria-label="Betreff"
-                                  onChange={(event) =>
-                                    patchRowState(row.id, {
-                                      subject: event.target.value,
-                                    })
-                                  }
-                                />
-                                <textarea
-                                  className={styles.bodyInput}
-                                  value={current.body}
-                                  rows={10}
-                                  placeholder="Noch kein Entwurf. Text erzeugen oder selbst schreiben."
-                                  aria-label="Text"
-                                  onChange={(event) =>
-                                    patchRowState(row.id, {
-                                      body: event.target.value,
-                                    })
-                                  }
-                                />
-                                <p className={styles.hint}>
-                                  Anrede, Grußformel und die Pflichtangaben werden
-                                  beim Versand angehängt.
+                                {/* Kein Editor und kein Sendeknopf mehr an
+                                    dieser Stelle. Es gab hier einmal einen
+                                    zweiten Mailweg, der sich seinen Text von
+                                    einem Modell schreiben liess -- derselbe
+                                    Lead bekam damit je nach Knopf eine andere
+                                    Nachricht. Geschrieben wird jetzt nur noch
+                                    beim Abgleich, verschickt nur noch unter
+                                    "Wartet auf Versand". */}
+                                <p className={styles.detailText}>
+                                  Für diesen Lead liegt noch kein Entwurf
+                                  bereit. Der Abgleich legt ihn an — über den
+                                  Knopf oben oder alle zehn Minuten von
+                                  selbst. Danach steht er unter{" "}
+                                  <a href="/chat/admin/leads?ansicht=prepared">
+                                    Wartet auf Versand
+                                  </a>{" "}
+                                  und lässt sich dort einzeln verschicken.
                                 </p>
-
-                                <div className={styles.detailActions}>
-                                  <button
-                                    type="button"
-                                    className={styles.secondaryButton}
-                                    disabled={current.busy !== null}
-                                    onClick={() => void createDraft(row)}
-                                  >
-                                    {current.busy === "draft"
-                                      ? "Schreibt …"
-                                      : `Entwurf erzeugen (${creditsPerDraft} Credits)`}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className={styles.primaryButton}
-                                    disabled={
-                                      current.busy !== null ||
-                                      !mailReady ||
-                                      !sendable ||
-                                      !current.subject.trim() ||
-                                      !current.body.trim()
-                                    }
-                                    onClick={async () => {
-                                      if (
-                                        !window.confirm(
-                                          `Nachricht an ${row.recipient_email} verschicken?`,
-                                        )
-                                      ) {
-                                        return;
-                                      }
-                                      if (await send(row)) router.refresh();
-                                    }}
-                                  >
-                                    {current.busy === "send"
-                                      ? "Verschickt …"
-                                      : "Senden"}
-                                  </button>
-                                </div>
-
-                                {current.note ? (
-                                  <p className={styles.hint}>{current.note}</p>
-                                ) : null}
-                                {current.error ? (
-                                  <p className={styles.error}>{current.error}</p>
-                                ) : null}
                               </>
                             )}
                           </div>

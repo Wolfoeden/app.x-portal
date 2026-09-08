@@ -1,6 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Fragment, useState } from "react";
+
+import { appPath } from "@/lib/app-path";
 
 import type { OutreachRow } from "@/lib/leadgen/leads-data";
 
@@ -45,11 +48,71 @@ const ZUSTAND: Readonly<
 export function OutreachPanel({
   rows,
   view,
+  mailReady,
 }: {
   rows: OutreachRow[];
   view: "prepared" | "sent";
+  mailReady: boolean;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [fehler, setFehler] = useState<Record<string, string>>({});
+
+  /**
+   * Von Hand verschicken heißt: derselbe Entwurf, derselbe Weg, nur ein
+   * Mensch als Auslöser. Der Text wird nicht neu erzeugt — was oben in der
+   * Vorschau steht, geht raus.
+   */
+  async function verschicken(row: OutreachRow) {
+    if (
+      !window.confirm(
+        `Diese Nachricht jetzt an ${row.recipient_email} verschicken?
+
+` +
+          `Es geht genau der Text raus, der hier steht.`,
+      )
+    ) {
+      return;
+    }
+
+    setBusy(row.outreach_id);
+    setFehler((vorher) => {
+      const rest = { ...vorher };
+      delete rest[row.outreach_id];
+      return rest;
+    });
+
+    try {
+      const response = await fetch(
+        appPath(`/api/admin/outreach/${row.outreach_id}/send`),
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          credentials: "same-origin",
+          body: "{}",
+        },
+      );
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        setFehler((vorher) => ({
+          ...vorher,
+          [row.outreach_id]: payload.error || `Fehler ${response.status}.`,
+        }));
+        return;
+      }
+      router.refresh();
+    } catch {
+      setFehler((vorher) => ({
+        ...vorher,
+        [row.outreach_id]: "Der Versand ist gescheitert.",
+      }));
+    } finally {
+      setBusy(null);
+    }
+  }
 
   if (!rows.length) {
     return (
@@ -142,15 +205,38 @@ export function OutreachPanel({
                       )}
                     </td>
                     <td data-label="Aktionen">
-                      <button
-                        type="button"
-                        className={styles.linkButton}
-                        onClick={() =>
-                          setOpen(expanded ? null : row.outreach_id)
-                        }
-                      >
-                        {expanded ? "Schließen" : "Text ansehen"}
-                      </button>
+                      <div className={styles.rowActions}>
+                        <button
+                          type="button"
+                          className={styles.linkButton}
+                          onClick={() =>
+                            setOpen(expanded ? null : row.outreach_id)
+                          }
+                        >
+                          {expanded ? "Schließen" : "Text ansehen"}
+                        </button>
+                        {view === "prepared" ? (
+                          <button
+                            type="button"
+                            className={styles.linkButton}
+                            disabled={
+                              busy === row.outreach_id ||
+                              !mailReady ||
+                              !row.recipient_email
+                            }
+                            onClick={() => void verschicken(row)}
+                          >
+                            {busy === row.outreach_id
+                              ? "Verschickt …"
+                              : "Jetzt verschicken"}
+                          </button>
+                        ) : null}
+                      </div>
+                      {fehler[row.outreach_id] ? (
+                        <p className={styles.error}>
+                          {fehler[row.outreach_id]}
+                        </p>
+                      ) : null}
                     </td>
                   </tr>
                   {expanded ? (
