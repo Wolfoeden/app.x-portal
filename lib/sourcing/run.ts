@@ -170,12 +170,30 @@ export type InviteInput = {
 };
 
 export type InviteOutcome = {
-  status: "sent" | "failed" | "suppressed";
+  status: "sent" | "failed" | "suppressed" | "wrong_origin";
   reason: string | null;
   subject: string | null;
   /** Falsch, wenn der Beleg nicht geschrieben werden konnte. */
   recorded: boolean;
 };
+
+/**
+ * Die einzige Herkunft, die eine Einladung rechtfertigt.
+ *
+ * Die Nachricht behauptet einen konkreten Anlass: „Ein Unternehmen sucht
+ * gerade Unterstützung im Bereich X." Das stimmt nur bei einem Kandidaten aus
+ * einer **bezahlten Nutzersuche** — dort steht ein Auftraggeber mit einem
+ * Projekt dahinter, der dafür Credits ausgegeben hat.
+ *
+ * Ein Kandidat aus einem Beschaffungslauf zu einem Nachfrageprofil hat diesen
+ * Anlass nicht. Dort haben wir aus alten Anfragen geschlossen, dass jemand
+ * gebraucht werden könnte — eine Vermutung, kein Auftrag. Ihn mit demselben
+ * Satz anzuschreiben wäre eine Behauptung, die wir nicht belegen können.
+ *
+ * Deshalb sitzt die Prüfung hier, an der einzigen Stelle, die verschickt, und
+ * nicht in der Oberfläche: Ein Knopf lässt sich umgehen, dieser Weg nicht.
+ */
+const EINLADBARE_HERKUNFT = "user_search";
 
 /**
  * Lädt eine recherchierte Person ein und schreibt den Beleg.
@@ -189,6 +207,43 @@ export async function inviteSourcedCandidate(
   input: InviteInput,
 ): Promise<InviteOutcome> {
   const admin = createAdminSupabaseClient();
+
+  // Herkunft prüfen, bevor irgendetwas rausgeht.
+  //
+  // Ohne Kandidatenzeile lässt sich die Herkunft nicht belegen — und was sich
+  // nicht belegen lässt, wird nicht angeschrieben. Das trifft auch den
+  // Probeversand an die eigene Adresse; der geht über `sendFreelancerOutreach()`
+  // und braucht diesen Weg nicht.
+  if (!input.applicationId) {
+    return {
+      status: "wrong_origin",
+      reason: "ohne Kandidatenzeile lässt sich die Herkunft nicht belegen",
+      subject: null,
+      recorded: true,
+    };
+  }
+
+  const { data: herkunftZeile, error: herkunftFehler } = await admin
+    .from("freelancer_applications")
+    .select("sourcing_origin")
+    .eq("id", input.applicationId)
+    .maybeSingle();
+
+  const herkunft = herkunftFehler
+    ? null
+    : ((herkunftZeile as { sourcing_origin: string | null } | null)
+        ?.sourcing_origin ?? null);
+
+  if (herkunft !== EINLADBARE_HERKUNFT) {
+    // Kein Beleg in `sourcing_outreach`: Es ging nichts raus, und eine Zeile
+    // dort hieße für jeden späteren Leser, jemand sei angeschrieben worden.
+    return {
+      status: "wrong_origin",
+      reason: `Herkunft „${herkunft ?? "unbekannt"}" — eingeladen wird nur aus einer bezahlten Nutzersuche`,
+      subject: null,
+      recorded: true,
+    };
+  }
 
   const versand = await sendFreelancerOutreach({
     candidate: input.candidate,
