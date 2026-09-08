@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { writeAuditEvent } from "@/lib/audit/write";
+import { runLeadRematchPass } from "@/lib/leadgen/rematch";
 import { requireAdminUser } from "@/lib/auth/current-user";
 import { PublishDecisionSchema } from "@/lib/freelancer/application";
 import {
@@ -87,6 +88,18 @@ export async function POST(
         reviewerUserId: admin.id,
       });
 
+      // Der Katalog ist gerade gewachsen. Damit werden Anfragen bedienbar, an
+      // denen XPORTAL vorher scheiterte — und ein Recruiter, der vor drei
+      // Wochen nichts bekam, ist der beste Neukunde, den es gibt: Er hat
+      // seinen Bedarf schon bewiesen.
+      //
+      // Der Neuabgleich rechnet nur mit gespeicherten Briefs und kostet
+      // nichts. Er wirft nicht: Eine Freigabe darf nicht daran scheitern,
+      // dass ein Archivlead klemmt.
+      const wiederbelebt = await runLeadRematchPass({ limit: 200 }).catch(
+        () => null,
+      );
+
       await writeAuditEvent({
         actorUserId: admin.id,
         action: "freelancer_application_published",
@@ -101,6 +114,8 @@ export async function POST(
           verifiedFactCount: parsed.data.verifiedFacts.length,
           cvTransferred: result.cvTransferred,
           cvDownloadable: parsed.data.cvDownloadable,
+          rematchExamined: wiederbelebt?.examined ?? null,
+          rematchRevived: wiederbelebt?.revived ?? null,
         },
         required: true,
       });
