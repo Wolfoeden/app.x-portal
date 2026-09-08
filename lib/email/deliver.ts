@@ -85,7 +85,23 @@ export type DeliveryFailure =
 
 export type DeliveryResult =
   | { delivered: true }
-  | { delivered: false; reason: DeliveryFailure };
+  | {
+      delivered: false;
+      reason: DeliveryFailure;
+      /**
+       * Was der Mailserver geantwortet hat, auf das Nötigste gekürzt.
+       *
+       * `send_failed` allein sagt nur, dass es nicht ging. Als am 8. September
+       * neun Versuche hintereinander scheiterten, stand genau das im Beleg —
+       * und der Grund ließ sich nur noch durch Nachstellen finden. Ein
+       * SMTP-Code und die erste Zeile der Antwort reichen, um ein Zeitlimit
+       * von einer abgelehnten Adresse zu unterscheiden.
+       *
+       * Ohne Empfängeradresse: Die Meldung eines Servers nennt sie
+       * regelmäßig, und der Beleg trägt sie ohnehin in einer eigenen Spalte.
+       */
+      detail?: string;
+    };
 
 type SmtpConfig = {
   host: string;
@@ -243,16 +259,63 @@ export async function deliverEmail(
     // Die Fehlermeldung eines SMTP-Servers nennt regelmäßig die
     // Empfängeradresse. Ins Log geht deshalb nur die Art des Fehlers.
     const code = (error as { code?: unknown })?.code;
+    const detail = describeDeliveryError(error, recipient);
+    // Ins Log geht nur die Art des Fehlers. Die Antwort des Servers steht
+    // im Beleg zu dieser einen Nachricht -- dort gehoert sie hin, denn dort
+    // steht der Empfaenger ohnehin, und dort sucht man sie auch.
     logEvent("email_delivery_failed", {
       host: config.host,
       kind: message.kind,
       code: typeof code === "string" ? code.slice(0, 40) : "unknown",
     });
-    return { delivered: false, reason: "send_failed" };
+    return { delivered: false, reason: "send_failed", detail };
   }
 }
 
 export function resetEmailTransportForTests(): void {
   cachedTransport = null;
   cachedFor = "";
+}
+
+/**
+ * Der Grund eines gescheiterten Versands, ohne den Empfänger.
+ *
+ * SMTP-Server nennen die Adresse in ihrer Antwort — sie wird deshalb entfernt,
+ * bevor der Text irgendwo landet, wo er neben anderen Daten steht.
+ */
+export function describeDeliveryError(
+  error: unknown,
+  recipient: string,
+): string {
+  const fehler = error as {
+    code?: unknown;
+    responseCode?: unknown;
+    response?: unknown;
+    message?: unknown;
+  } | null;
+
+  const teile: string[] = [];
+  if (typeof fehler?.code === "string") teile.push(fehler.code);
+  if (typeof fehler?.responseCode === "number") {
+    teile.push(String(fehler.responseCode));
+  }
+
+  const text =
+    typeof fehler?.response === "string"
+      ? fehler.response
+      : typeof fehler?.message === "string"
+        ? fehler.message
+        : "";
+  // Nur die erste Zeile: Ein SMTP-Server hängt gern eine mehrzeilige
+  // Erklärung an, und die gehört nicht in eine Tabellenzelle.
+  if (text) teile.push(text.split("\n")[0]?.trim() ?? "");
+
+  const adresse = recipient.trim();
+  return teile
+    .join(" ")
+    .split(adresse)
+    .join("<Empfänger>")
+    .replace(/\s+/gu, " ")
+    .trim()
+    .slice(0, 200);
 }

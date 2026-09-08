@@ -22,8 +22,14 @@ import styles from "./leads.module.css";
  * was der Katalog nicht bedienen kann; verschickt wird erst im Fenster.
  */
 
-/** Sicherheitsnetz gegen eine Schleife, die nicht kleiner wird. */
-const MAX_RUNDEN = 40;
+/**
+ * Sicherheitsnetz gegen eine Schleife, die nicht kleiner wird.
+ *
+ * Großzügig bemessen, seit ein Modell jede Ausschreibung liest: Ein
+ * Durchgang schafft dann acht bis zwölf Leads statt fünfzig, und
+ * zweihundertfünfzig brauchen entsprechend mehr Runden.
+ */
+const MAX_RUNDEN = 60;
 
 type Lauf = {
   runden: number;
@@ -31,6 +37,8 @@ type Lauf = {
   vorbereitet: number;
   archiviert: number;
   uebrig: number;
+  /** Wie viele Ausschreibungen das Modell gelesen hat. */
+  vomModell: number;
 };
 
 export function PrepareAllButton({ offen }: { offen: number }) {
@@ -61,6 +69,7 @@ export function PrepareAllButton({ offen }: { offen: number }) {
       vorbereitet: 0,
       archiviert: 0,
       uebrig: offen,
+      vomModell: 0,
     };
     setLauf(summe);
 
@@ -89,6 +98,7 @@ export function PrepareAllButton({ offen }: { offen: number }) {
           archived: number;
           remaining: number;
           stoppedBy: string;
+          extractedByModel: number;
         };
 
         summe.runden += 1;
@@ -96,6 +106,7 @@ export function PrepareAllButton({ offen }: { offen: number }) {
         summe.vorbereitet += ergebnis.prepared;
         summe.archiviert += ergebnis.archived;
         summe.uebrig = ergebnis.remaining;
+        summe.vomModell += ergebnis.extractedByModel ?? 0;
         setLauf({ ...summe });
 
         // Fertig ist, wer nichts mehr vorfindet. Ein Durchgang, der nichts
@@ -120,7 +131,7 @@ export function PrepareAllButton({ offen }: { offen: number }) {
         onClick={() => void abgleichen()}
       >
         {running
-          ? `Gleicht ab … ${lauf?.geprueft ?? 0} geprüft`
+          ? `Gleicht ab … ${lauf?.geprueft ?? 0} von ${offen} geprüft`
           : `Alle ${offen} offenen abgleichen`}
       </button>
       {running ? (
@@ -138,6 +149,9 @@ export function PrepareAllButton({ offen }: { offen: number }) {
         <span className={styles.run}>
           <b>{lauf.vorbereitet}</b> vorbereitet, <b>{lauf.archiviert}</b>{" "}
           archiviert
+          {lauf.geprueft && lauf.vomModell < lauf.geprueft
+            ? `, ${lauf.geprueft - lauf.vomModell} ohne Modell gelesen`
+            : ""}
           {lauf.uebrig ? `, ${lauf.uebrig} übrig` : ""}
           {lauf.runden >= MAX_RUNDEN ? " — noch einmal starten" : ""}
         </span>

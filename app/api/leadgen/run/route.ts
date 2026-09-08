@@ -54,6 +54,11 @@ const InputSchema = z
     examineBudget: z.number().int().min(1).max(500).optional(),
     /** Rechnet durch, ohne zu verschicken und ohne etwas zu speichern. */
     dryRun: z.boolean().optional(),
+    /**
+     * Die Ausschreibung vom Modell lesen lassen. Standardmäßig an; auf
+     * `false` bleibt der deterministische Weg, der nichts kostet.
+     */
+    useAi: z.boolean().optional(),
   })
   .strict();
 
@@ -138,6 +143,7 @@ export async function POST(request: Request) {
       trigger: (auth.actor === "scheduler" ? "scheduler" : "admin") as
         | "scheduler"
         | "admin",
+      useAi: input.useAi ?? true,
     };
 
     const result =
@@ -167,6 +173,8 @@ export async function POST(request: Request) {
         mode,
         dryRun: input.dryRun ?? false,
         examined: result.examined,
+        extractedByModel: result.extractedByModel,
+        extractedByFallback: result.extractedByFallback,
         prepared: result.prepared,
         sent: result.sent,
         archived: result.archived,
@@ -180,6 +188,8 @@ export async function POST(request: Request) {
     return NextResponse.json({
       mode,
       examined: result.examined,
+      extractedByModel: result.extractedByModel,
+      extractedByFallback: result.extractedByFallback,
       prepared: result.prepared,
       sent: result.sent,
       archived: result.archived,

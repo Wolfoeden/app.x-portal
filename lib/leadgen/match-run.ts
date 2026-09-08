@@ -8,7 +8,12 @@ import {
 import { fetchActiveBookableRealProfiles } from "@/lib/data/freelancers";
 import { deliverEmail, publicMailOrigin } from "@/lib/email/deliver";
 import { unsubscribeUrl } from "@/lib/email/unsubscribe";
-import { catalogVersion, recordLeadMatch } from "@/lib/leadgen/demand";
+import {
+  catalogVersion,
+  demandActorForLead,
+  recordLeadMatch,
+} from "@/lib/leadgen/demand";
+import { extractProjectBrief } from "@/lib/openai/brief";
 import {
   claimPreparedDraft,
   discardPreparedDraft,
@@ -76,6 +81,14 @@ export type LeadOutcome =
 
 export type MatchRunResult = {
   examined: number;
+  /**
+   * Wie viele Ausschreibungen das Modell gelesen hat und wie viele auf dem
+   * deterministischen Weg gelandet sind. Der Unterschied erklaert die
+   * Trefferquote: Ein Fallback-Brief traegt selten mehr als ein paar
+   * Stichworte, und daran findet die Rangliste niemanden.
+   */
+  extractedByModel: number;
+  extractedByFallback: number;
   /** Entwürfe, die dieser Durchgang angelegt hat. */
   prepared: number;
   sent: number;
@@ -183,6 +196,14 @@ export type MatchRunOptions = {
   enforceWindow?: boolean;
   /** Wer den Lauf angestoßen hat. Steht im Beleg jeder Nachricht. */
   trigger?: "scheduler" | "admin";
+  /**
+   * Die Ausschreibung vom Modell lesen lassen, wie im Chat.
+   *
+   * Standardmäßig an. Auf `false` bleibt der deterministische Weg — für einen
+   * Probelauf, der nichts kosten soll, und als Notausgang, wenn der Anbieter
+   * teuer oder gestört ist.
+   */
+  useAi?: boolean;
 };
 
 function leeresErgebnis(
@@ -190,6 +211,8 @@ function leeresErgebnis(
 ): MatchRunResult {
   return {
     examined: 0,
+    extractedByModel: 0,
+    extractedByFallback: 0,
     prepared: 0,
     sent: 0,
     archived: 0,
@@ -252,6 +275,8 @@ export async function runLeadPreparePass(
   ) as OpenLead[];
 
   const outcomes: LeadOutcome[] = [];
+  let modellGelesen = 0;
+  let fallbackGelesen = 0;
   let prepared = 0;
   let archived = 0;
   let skipped = 0;
@@ -269,15 +294,39 @@ export async function runLeadPreparePass(
     }
     examined += 1;
 
-    // Nur das Lesen der Ausschreibung wird aufgefangen. Ein Fremdtext von
-    // einer Projektbörse darf unbrauchbar sein — das ist ein Befund über
-    // diesen einen Lead. Alles danach betrifft den Katalog und den Code, und
-    // ein Fehler dort ist keine unlesbare Ausschreibung: Er muss den Lauf
-    // anhalten, statt sich als Reihe von "unreadable" zu tarnen.
+    // Die Ausschreibung wird gelesen wie die Anfrage eines Nutzers im Chat:
+    // dasselbe Modell, dieselben Regeln, derselbe Brief. Vorher lief hier nur
+    // `parseFallbackBrief()` -- ein Notnagel, der Stichworte aus einer Zeile
+    // klaubt. Aus einem freien Ausschreibungstext holt er kaum eine
+    // Anforderung heraus, und ohne Anforderung findet die Rangliste
+    // niemanden: 215 von 261 Abgleichen endeten ohne Treffer, die meisten
+    // davon als `needs_clarification`.
+    //
+    // Das Pseudonym des Leads dient als Sicherheitskennung. Es ist stabil,
+    // enthaelt keine Adresse und ist genau dafuer gedacht.
+    //
+    // Faellt das Modell aus, greift innerhalb von `extractProjectBrief()`
+    // derselbe deterministische Weg wie zuvor. Ein Lauf bricht daran nicht
+    // ab, aber das Ergebnis sagt, was gerechnet wurde.
     let brief;
     try {
-      brief = parseFallbackBrief(lead.stellenanzeige);
+      if (options.useAi === false) {
+        brief = parseFallbackBrief(lead.stellenanzeige);
+        fallbackGelesen += 1;
+      } else {
+        const extraction = await extractProjectBrief({
+          originalRequest: lead.stellenanzeige,
+          safetyIdentifier: demandActorForLead(lead.recipient_email),
+          allowProvider: true,
+        });
+        brief = extraction.brief;
+        if (extraction.mode === "openai") modellGelesen += 1;
+        else fallbackGelesen += 1;
+      }
     } catch {
+      // Ein Fremdtext von einer Projektboerse darf unbrauchbar sein -- das ist
+      // ein Befund ueber diesen einen Lead. Alles danach betrifft den Katalog
+      // und den Code, und ein Fehler dort ist keine unlesbare Ausschreibung.
       outcomes.push({ leadId: lead.id, outcome: "unreadable" });
       continue;
     }
@@ -362,6 +411,8 @@ export async function runLeadPreparePass(
 
   const ergebnis: MatchRunResult = {
     examined,
+    extractedByModel: modellGelesen,
+    extractedByFallback: fallbackGelesen,
     prepared,
     sent: 0,
     archived,
@@ -520,7 +571,11 @@ export async function runLeadSendPass(
     if (!delivery.delivered) {
       await releaseOutreachClaim({
         outreachId: draft.outreach_id,
-        reason: delivery.reason,
+        // Der Text des Mailservers, wenn es einen gibt. Ohne ihn stünde
+        // im Beleg nur, dass es nicht ging.
+        reason: delivery.detail
+          ? `${delivery.reason}: ${delivery.detail}`
+          : delivery.reason,
       });
       outcomes.push({
         leadId: draft.lead_id,
@@ -543,6 +598,8 @@ export async function runLeadSendPass(
 
   const ergebnis: MatchRunResult = {
     examined,
+    extractedByModel: 0,
+    extractedByFallback: 0,
     prepared: 0,
     sent,
     archived: 0,

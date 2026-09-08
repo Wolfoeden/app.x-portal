@@ -41,17 +41,21 @@ export const BUSINESS_ONLY_NOTICE =
  * Die Anbieterkennzeichnung, wie sie unter jeder ausgehenden Nachricht
  * steht.
  *
- * Sie beginnt mit XPORTAL und nicht mit dem eingetragenen Namen „300“.
- * Der Empfänger kennt das Portal, nicht das Einzelunternehmen dahinter;
- * eine Mail, die mit einer Zahl unterschreibt, liest sich wie von einem
- * fremden Absender. Der eingetragene Name bleibt trotzdem stehen — § 5 DDG
- * verlangt ihn, und das Impressum führt dieselbe Angabe.
+ * Ohne den eingetragenen Namen „300“. Der Empfänger kennt das Portal, nicht
+ * das Einzelunternehmen dahinter, und eine Mail, die mit einer Zahl
+ * unterschreibt, liest sich wie von einem fremden Absender.
+ *
+ * Die vollständige Firmierung steht weiterhin im Impressum, im Datenschutz
+ * und in den AGB — dort gehört sie hin, und der Fuß jeder Mail verlinkt
+ * dorthin. Die Aufteilung ist eine Abwägung und kein Versehen: § 5 DDG
+ * verlangt die Firmierung in der Anbieterkennzeichnung selbst, ein Verweis
+ * ist die knappere Form.
  *
  * Zwei Zeilen statt einer: Firmierung und Anschrift gehören optisch
  * getrennt, sonst entsteht die Bandwurmzeile, die den alten Fuß so
  * unleserlich gemacht hat.
  */
-export const PROVIDER_NAME = "XPORTAL — 300, Inhaber Roman Dering";
+export const PROVIDER_NAME = "XPORTAL — Inhaber Roman Dering";
 export const PROVIDER_ADDRESS = "Heilig-Kreuz-Straße 18, 87600 Kaufbeuren";
 
 /** Beide Zeilen in der Reihenfolge, in der sie im Fuß erscheinen. */
