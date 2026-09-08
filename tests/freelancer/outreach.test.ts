@@ -150,3 +150,72 @@ describe("Kanäle", () => {
     expect(result.withinChannelLimit).toBe(false);
   });
 });
+
+describe("Bedarf in der Nachricht", () => {
+  const demand = {
+    headline: "Datenmigration nach PostgreSQL",
+    workMode: "hybrid" as const,
+    location: "Frankfurt am Main",
+    matchingSkills: ["PostgreSQL", "ETL", "Airflow"],
+    otherSkills: ["Kubernetes"],
+  };
+
+  it("nennt Thema und Arbeitsform in einem Satz", () => {
+    const body = draft({ demand }).body;
+    expect(body).toContain(
+      "Unterstützung im Bereich Datenmigration nach PostgreSQL — hybrid, teils vor Ort in Frankfurt am Main.",
+    );
+  });
+
+  it("benennt die gefragten Erfahrungen, die auch auf dem Profil stehen", () => {
+    const body = draft({ demand }).body;
+    expect(body).toContain(
+      "Gefragt ist unter anderem Erfahrung mit PostgreSQL, ETL und Airflow — das steht so auch auf Ihrem Profil.",
+    );
+    expect(body).toContain("Daneben geht es um Kubernetes.");
+  });
+
+  it("behauptet keine Arbeitsform, die nicht feststeht", () => {
+    const body = draft({
+      demand: { ...demand, workMode: "unknown" as const },
+    }).body;
+    expect(body).toContain("Unterstützung im Bereich Datenmigration nach PostgreSQL.");
+    expect(body).not.toContain("Arbeitsform");
+  });
+
+  it("lässt den Satz zur Überschneidung weg, wenn es keine gibt", () => {
+    const body = draft({
+      demand: { ...demand, matchingSkills: [], otherSkills: [] },
+    }).body;
+    expect(body).not.toContain("auch auf Ihrem Profil");
+    expect(body).not.toContain("Daneben geht es um");
+  });
+
+  it("nennt den Ort nur, wo er zur Arbeitsform gehört", () => {
+    const remote = draft({
+      demand: { ...demand, workMode: "remote" as const },
+    }).body;
+    expect(remote).toContain("— remote.");
+    expect(remote).not.toContain("Frankfurt am Main");
+
+    const vorOrt = draft({
+      demand: { ...demand, workMode: "on_site" as const },
+    }).body;
+    expect(vorOrt).toContain("— vor Ort in Frankfurt am Main.");
+  });
+
+  it("bleibt beim einfachen Satz, wenn kein Thema dasteht", () => {
+    const body = draft({
+      demand: { ...demand, headline: "   " },
+      projectHint: "React und PostgreSQL",
+    }).body;
+    expect(body).toContain("Ein Unternehmen sucht gerade Unterstützung für: React und PostgreSQL.");
+  });
+
+  it("trägt Thema und Überschneidung auch in die LinkedIn-Kurzfassung", () => {
+    const entwurf = draft({ channel: "linkedin", demand });
+    expect(entwurf.body).toContain("Datenmigration nach PostgreSQL");
+    expect(entwurf.body).toContain("auch auf Ihrem Profil");
+    expect(entwurf.withinChannelLimit).toBe(true);
+  });
+});

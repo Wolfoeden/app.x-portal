@@ -7,7 +7,11 @@ import {
 } from "@/lib/email/deliver";
 import { unsubscribeUrl } from "@/lib/email/unsubscribe";
 
-import { buildOutreachDraft, type OutreachCandidate } from "./outreach";
+import {
+  buildOutreachDraft,
+  type DemandBrief,
+  type OutreachCandidate,
+} from "./outreach";
 import { markOutreachSent } from "./sourced-candidates-data";
 
 /**
@@ -37,6 +41,8 @@ export async function sendFreelancerOutreach(input: {
   contactEmail: string;
   /** Wonach der Auftraggeber sucht. Ohne Angabe bleibt der Text allgemein. */
   projectHint?: string | null;
+  /** Der Bedarf mit Thema, Arbeitsform und überschneidenden Erfahrungen. */
+  demand?: DemandBrief | null;
   senderName: string;
   senderEmail: string;
   /** Gesetzt, wenn der Versand an einem Kandidaten vermerkt werden soll. */
@@ -51,6 +57,7 @@ export async function sendFreelancerOutreach(input: {
     senderEmail: input.senderEmail,
     contactEmail: input.contactEmail,
     projectHint: input.projectHint ?? null,
+    demand: input.demand ?? null,
     unsubscribeUrl: unsubscribeUrl(origin, input.contactEmail),
   });
 
