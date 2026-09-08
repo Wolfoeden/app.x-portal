@@ -347,6 +347,8 @@ export async function runLeadPreparePass(
         // es später gegen den dann gültigen Katalog.
         profileId: shortlist.matches[0].profile.id,
         preparedAt: now,
+        recipientEmail: lead.recipient_email,
+        company: lead.company,
       });
     }
 

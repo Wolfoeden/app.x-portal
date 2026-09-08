@@ -321,3 +321,52 @@ export function isWithinLeadSendWindow(now: Date): boolean {
   if (!LEAD_SEND_WINDOW.weekdays.includes(weekday)) return false;
   return hour >= LEAD_SEND_WINDOW.startHour && hour < LEAD_SEND_WINDOW.endHour;
 }
+
+/**
+ * Was die Arbeitsfläche zeigt.
+ *
+ * Die drei ersten Reiter zeigen die Warteschlange, die beiden mittleren die
+ * Nachrichten. Der Unterschied ist wesentlich und nicht kosmetisch: Eine
+ * Nachricht überlebt den Lead, an den sie ging. Wer wissen will, was
+ * geschrieben wurde, darf deshalb nicht auf eine Liste angewiesen sein, die
+ * aus der Warteschlange liest — dort steht der Vorgang nicht mehr, sobald der
+ * Lead weg ist.
+ */
+export const LEAD_VIEWS = [
+  "open",
+  "prepared",
+  "sent",
+  "archived",
+  "all",
+] as const;
+export type LeadView = (typeof LEAD_VIEWS)[number];
+
+export const LEAD_VIEW_LABELS: Readonly<Record<LeadView, string>> = {
+  open: "Offen",
+  prepared: "Wartet auf Versand",
+  sent: "Versandt",
+  archived: "Archiv",
+  all: "Alle",
+};
+
+export function isLeadView(value: unknown): value is LeadView {
+  return (
+    typeof value === "string" &&
+    (LEAD_VIEWS as readonly string[]).includes(value)
+  );
+}
+
+/** Zeigt dieser Reiter Nachrichten statt Leads? */
+export function viewShowsMessages(view: LeadView): boolean {
+  return view === "prepared" || view === "sent";
+}
+
+/**
+ * Der Ausschnitt der Warteschlange, den ein Reiter meint. Für die beiden
+ * Nachrichten-Reiter ohne Bedeutung; sie fragen eine andere Tabelle.
+ */
+export function viewToScope(view: LeadView): LeadScope {
+  if (view === "archived") return "archived";
+  if (view === "all") return "all";
+  return "open";
+}
