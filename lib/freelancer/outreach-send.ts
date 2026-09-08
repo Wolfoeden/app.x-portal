@@ -6,6 +6,10 @@ import {
   type DeliveryFailure,
 } from "@/lib/email/deliver";
 import { unsubscribeUrl } from "@/lib/email/unsubscribe";
+import {
+  INVITE_TOKEN_PARAM,
+  mintInviteToken,
+} from "@/lib/sourcing/invite-token";
 
 import {
   buildOutreachDraft,
@@ -49,10 +53,18 @@ export async function sendFreelancerOutreach(input: {
   applicationId?: string | null;
 }): Promise<OutreachSendResult> {
   const origin = publicMailOrigin();
+  // Das Kennzeichen macht die Einladung rückverfolgbar: Wer darüber kommt und
+  // sich einträgt, wird dem Kandidaten zugeordnet, statt als zweite Zeile
+  // danebenzustehen. Fehlt das Geheimnis, geht die Einladung trotzdem raus —
+  // ohne Zähler ist besser als gar nicht.
+  const inviteUrl = new URL(INVITE_PATH, origin);
+  const token = input.applicationId ? mintInviteToken(input.applicationId) : null;
+  if (token) inviteUrl.searchParams.set(INVITE_TOKEN_PARAM, token);
+
   const draft = buildOutreachDraft({
     channel: "email",
     candidate: input.candidate,
-    inviteUrl: new URL(INVITE_PATH, origin).toString(),
+    inviteUrl: inviteUrl.toString(),
     senderName: input.senderName,
     senderEmail: input.senderEmail,
     contactEmail: input.contactEmail,

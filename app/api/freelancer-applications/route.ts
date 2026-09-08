@@ -11,6 +11,7 @@ import {
   CV_MIME_TYPES,
   FreelancerApplicationInputSchema,
 } from "@/lib/freelancer/application";
+import { recordInviteConversion } from "@/lib/sourcing/conversion";
 import {
   hasPdfMagicBytes,
   verifyCvObjectPath,
@@ -258,6 +259,18 @@ export async function POST(request: Request) {
       .single();
     if (error) throw error;
 
+    // Kam die Person über eine Einladung, wird der recherchierte Kandidat als
+    // beantwortet vermerkt. Er bleibt eine eigene Zeile — sie gehört keinem
+    // Konto, diese Bewerbung schon — und fällt damit zugleich aus der
+    // 30-Tage-Löschung heraus.
+    //
+    // Nach dem Anlegen und ohne Folgen für den Bewerber: Ein fehlender Vermerk
+    // kostet eine Zahl in unserer Auswertung, nicht seine Anmeldung.
+    const fromInvite = await recordInviteConversion({
+      token: input.inviteToken,
+      applicationId: data.id as string,
+    });
+
     await writeAuditEvent({
       actorUserId: user.id,
       action: "freelancer_application_submitted",
@@ -270,6 +283,7 @@ export async function POST(request: Request) {
         hasBookingUrl: Boolean(insert.booking_url),
         skillCount: insert.skills.length,
         replacedPending: pending?.length ?? 0,
+        fromInvite,
       },
     });
 

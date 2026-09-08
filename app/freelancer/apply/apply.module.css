@@ -792,3 +792,18 @@
     justify-items: start;
   }
 }
+
+/* Begruessung fuer Eingeladene ---------------------------------------------
+ *
+ * Ein Satz, kein Kasten mit Ausrufezeichen: Die Person kommt aus einer Mail,
+ * die ihr schon erklaert hat, worum es geht. Hier braucht sie nur die
+ * Bestaetigung, dass sie richtig ist. */
+
+.invited {
+  margin: 0 0 18px;
+  border-left: 3px solid #3f4a3c;
+  padding: 2px 0 2px 12px;
+  color: #45473f;
+  font-size: 14px;
+  line-height: 1.55;
+}

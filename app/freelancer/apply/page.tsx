@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { loadFreelancerPortalState } from "@/lib/freelancer/profile-data";
+import { openInvite } from "@/lib/sourcing/conversion";
 import type {
   EditableFreelancerProfile,
   FreelancerMetrics,
@@ -65,11 +66,19 @@ const previewMetrics: FreelancerMetrics = {
 export default async function FreelancerApplyPage({
   searchParams,
 }: {
-  searchParams: Promise<{ preview?: string }>;
+  searchParams: Promise<{ preview?: string; e?: string | string[] }>;
 }) {
   const params = await searchParams;
   const preview =
     process.env.NODE_ENV === "development" && params.preview === "1";
+
+  // Das Kennzeichen aus der Einladung wird beim **Aufruf** eingelöst, nicht
+  // erst beim Absenden. Sonst ließe sich bei einer Einladung ohne Anmeldung
+  // nicht unterscheiden, ob die Nachricht nicht ankam oder das Formular
+  // abschreckte — und das sind zwei verschiedene Probleme.
+  const inviteToken = Array.isArray(params.e) ? params.e[0] : params.e;
+  const invite = preview ? null : await openInvite(inviteToken);
+
   const user = preview ? null : await getCurrentUser();
   const portalState =
     user && !user.isAnonymous
@@ -104,6 +113,17 @@ export default async function FreelancerApplyPage({
           </p>
         </header>
 
+        {invite && !invite.alreadyConverted ? (
+          <p className={styles.invited}>
+            Schön, dass Sie da sind, {invite.fullName.split(/\s+/u)[0]}.
+            {invite.demandLabel
+              ? ` Ein Unternehmen sucht Unterstützung im Bereich ${invite.demandLabel} — dafür haben wir Ihnen geschrieben.`
+              : " Wir hatten Ihnen zu einer Projektanfrage geschrieben."}{" "}
+            Was Sie hier eintragen, stammt von Ihnen; unsere Notiz aus der
+            Recherche wird dadurch ersetzt.
+          </p>
+        ) : null}
+
         {preview ? (
           <FreelancerDashboard
             initialProfile={previewProfile}
@@ -125,7 +145,7 @@ export default async function FreelancerApplyPage({
             />
             {portalState.status === "rejected" ? (
               <div className={styles.reapply}>
-                <ApplyForm accountEmail={user.email ?? ""} />
+                <ApplyForm accountEmail={user.email ?? ""} inviteToken={invite ? inviteToken ?? null : null} />
               </div>
             ) : null}
           </>
@@ -139,7 +159,7 @@ export default async function FreelancerApplyPage({
                 </li>
               ))}
             </ol>
-            <ApplyForm accountEmail={user.email ?? ""} />
+            <ApplyForm accountEmail={user.email ?? ""} inviteToken={invite ? inviteToken ?? null : null} />
           </>
         )}
 

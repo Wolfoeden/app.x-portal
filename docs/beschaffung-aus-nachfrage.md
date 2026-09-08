@@ -311,7 +311,6 @@ der Weitergabe des Grundes durch `runDemandSourcing()`.
 
 Noch offen:
 
-- **Die Rückverfolgung der Anmeldung** (siehe unten).
 - **Ein zweiter Weg zur Adresse.** Gemessen findet die Websuche bei zwei von
   sieben eine benutzbare Adresse. Für die übrigen bleibt LinkedIn oder das
   Kontaktformular der Plattform — beides von Hand.
@@ -371,22 +370,39 @@ Die Läufe selbst und die Übernahme bleiben, wo sie hingehören: auf
 1. `briefFromDemandProfile()` samt Tests — danach ist der Kern belegt.
 2. Tabelle, `runSourcingPass()`, Knopf auf der Nachfrageseite. Ab hier trägt
    die Kette von Hand.
-3. Adressauflösung über das Impressum (siehe unten) — ohne sie endet die Kette
-   im Nichts.
-4. Rückverfolgung der Anmeldung (siehe unten).
+3. Adressauflösung über das Impressum — ohne sie endet die Kette im Nichts.
+4. Rückverfolgung der Anmeldung.
 5. Schalter und Zeitplan — zuletzt, weil sie alles davor voraussetzen.
 
 ## Zwei Dinge, die vorher zu klären sind
 
-**Die Einladung kommt nicht zurück.** `sendFreelancerOutreach()` verlinkt auf
-`/freelancer/apply` ohne Kennzeichen. Wer sich daraufhin einträgt, erzeugt eine
-neue Bewerbung mit `source='apply_form'`; der recherchierte Datensatz bleibt
-unberührt liegen und wird nach 30 Tagen gelöscht. Damit ist **nicht messbar, ob
-die Einladung gewirkt hat** — und ohne diese Zahl lässt sich nicht entscheiden,
-ob der ganze Weg sein Geld wert ist. Vorschlag: ein nicht-ratbares Kennzeichen
-am Link (`/freelancer/apply?e=<token>`), das die Bewerbung mit dem Kandidaten
-verknüpft und `consent_at` auf der recherchierten Zeile setzt, statt eine
-zweite Zeile anzulegen.
+**Die Einladung kommt zurück — gebaut.** Der Link trägt jetzt ein Kennzeichen
+(`/freelancer/apply?e=<token>`), ein HMAC über die Kandidatenkennung. Zwei
+Zeitpunkte entstehen daraus, und die Trennung ist die Aussage:
+
+| Vermerk | beantwortet |
+|---|---|
+| `invite_opened_at` | Kam die Nachricht an, und hat jemand geklickt? |
+| `converted_at` | Wurde daraus ein Profil? |
+
+Ohne diese Trennung wüsste man bei null Anmeldungen nicht, ob der Text schlecht
+ist oder das Formular. Die Bilanz steht auf der Nachfrageseite:
+*„2 Kandidaten · 0 angeschrieben · 1 geöffnet · 0 eingetragen"*.
+
+Zwei Entscheidungen dabei:
+
+- **Kein eigenes Geheimnis.** Der Schlüssel ist der des Abmeldelinks, die
+  HMAC-Nachricht trägt aber ein festes Präfix. Ohne diese Zwecktrennung wäre
+  ein gültiger Abmeldetoken zugleich ein gültiges Einladungskennzeichen —
+  dieselbe Zeichenkette, zwei Wirkungen. Eine neue Umgebungsvariable hätte
+  dasselbe geleistet und die Einführung an eine Konfigurationsänderung
+  gebunden.
+- **Die Bewerbung bleibt eine eigene Zeile.** Sie gehört einem angemeldeten
+  Konto, der Kandidat gehört keinem; sie zusammenzuschieben hieße, die
+  Selbstauskunft der Person mit unserer Recherche zu vermischen. Verbunden
+  werden sie über `converted_application_id` — und `run_sourced_candidate_cleanup()`
+  lässt einen angemeldeten Kandidaten seither stehen, statt ihn nach dreißig
+  Tagen zu löschen: Er ist der Beleg, dass die Einladung gewirkt hat.
 
 **Ohne Adresse keine Mail — und das ist heute der Regelfall.** Ausgezählt über
 die dreizehn Kandidaten aus den acht Läufen mit Treffern:

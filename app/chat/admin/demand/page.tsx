@@ -20,6 +20,7 @@ import {
   isPaused as isSourcingPaused,
   readSourcingAutomation,
 } from "@/lib/sourcing/automation";
+import { readConversionStats } from "@/lib/sourcing/conversion";
 import {
   listSourcingOutreach,
   listSourcingRuns,
@@ -187,11 +188,12 @@ export default async function AdminDemandPage({
   const period = parsePeriod(requestedPeriod);
   // Nebeneinander: Die drei Abfragen hängen nicht voneinander ab, und die
   // Nachfrageauswertung ist von den dreien die langsamste.
-  const [report, outreach, runs, automation] = await Promise.all([
+  const [report, outreach, runs, automation, conversion] = await Promise.all([
     getSearchDemandReport({ period }),
     listSourcingOutreach(50),
     listSourcingRuns(5),
     readSourcingAutomation(),
+    readConversionStats(),
   ]);
 
   await writeAuditEvent({
@@ -518,6 +520,19 @@ export default async function AdminDemandPage({
           automation={automation}
           paused={isSourcingPaused(automation)}
         />
+
+        {conversion.candidates > 0 ? (
+          <p className={styles.runLine}>
+            Bilanz: <strong>{numberFormat.format(conversion.candidates)}</strong>{" "}
+            Kandidaten · {numberFormat.format(conversion.invited)} angeschrieben ·{" "}
+            {numberFormat.format(conversion.opened)} haben den Link geöffnet ·{" "}
+            <strong>{numberFormat.format(conversion.converted)}</strong>{" "}
+            eingetragen
+            {conversion.invited > 0
+              ? ` (${Math.round((conversion.converted / conversion.invited) * 100)} % der Angeschriebenen)`
+              : ""}
+          </p>
+        ) : null}
 
         {runs.length > 0 ? (
           <p className={styles.runLine}>
