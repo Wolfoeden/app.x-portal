@@ -59,7 +59,7 @@ export type DemandRunOutcome = {
     profileUrl: string;
     email: string | null;
     addressVerdict: string | null;
-    invite: "sent" | "failed" | "suppressed" | "skipped" | null;
+    invite: "sent" | "failed" | "suppressed" | "skipped" | "wrong_origin" | null;
     note: string | null;
   }[];
 };

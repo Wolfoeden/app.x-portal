@@ -109,7 +109,6 @@ export function SourcingButton({
   const [offen, setOffen] = useState(false);
   const [laeuft, setLaeuft] = useState(false);
   const [adressen, setAdressen] = useState(true);
-  const [versand, setVersand] = useState(false);
   const [cursor, setCursor] = useState<Cursor | null>(null);
   const [schritte, setSchritte] = useState(0);
   const [phase, setPhase] = useState<Cursor["phase"] | null>(null);
@@ -141,7 +140,7 @@ export function SourcingButton({
             searches,
             uniqueSeekers,
             resolveAddresses: adressen,
-            sendInvites: versand,
+            sendInvites: false,
             cursor: stand,
           }),
         });
@@ -203,19 +202,21 @@ export function SourcingButton({
         />
         Adressen suchen <span>(~1 ct je 6 Personen)</span>
       </label>
-      <label>
-        <input
-          checked={versand}
-          disabled={laeuft}
-          onChange={(event) => setVersand(event.target.checked)}
-          type="checkbox"
-        />
-        Einladungen verschicken
-      </label>
+      {/*
+        Kein Versandhaken mehr. Von hier aus geht keine Einladung raus, und
+        eine Wahl, die nichts bewirkt, wäre schlimmer als keine: Sie verspricht
+        etwas. Angeschrieben wird nur, wer aus einer bezahlten Nutzersuche
+        stammt — dort steht ein Auftraggeber mit einem Projekt dahinter, und
+        genau das behauptet die Nachricht.
+      */}
+      <p className={styles.sourcingNote}>
+        Sammelt Kandidaten. Von hier wird niemand angeschrieben — Einladungen
+        gehen nur an Freelancer aus einer bezahlten Nutzersuche.
+      </p>
 
       <div className={styles.sourcingActions}>
         <button disabled={laeuft} onClick={starten} type="button">
-          {laeuft ? "läuft…" : versand ? "Suchen und anschreiben" : "Suchen"}
+          {laeuft ? "läuft…" : "Suchen"}
         </button>
         <button
           disabled={laeuft}
@@ -250,7 +251,7 @@ export function SourcingButton({
           <p>
             {cursor.found} gefunden · {cursor.addressable} ansprechbar ·{" "}
             {cursor.imported} neu angelegt · {cursor.addressed} mit Adresse
-            {versand ? ` · ${cursor.invited} eingeladen` : ""}
+
           </p>
           <p>
             {schritte} Schritte · {cursor.searchCalls} bezahlte Suchen ·{" "}

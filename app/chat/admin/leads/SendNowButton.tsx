@@ -133,9 +133,21 @@ export function SendNowButton({
         disabled={running || !mailReady || jetztMoeglich === 0}
         onClick={() => void verschicken()}
       >
+        {/*
+          Ein ausgegrauter Knopf mit „0 jetzt verschicken" sagt nicht, warum.
+          Roman hat daraus geschlossen, der Versand sei kaputt — er war es
+          nicht, die Tagesmenge war erreicht. Ein gesperrter Knopf muss seinen
+          Grund tragen, nicht nur seine Zahl.
+        */}
         {running
           ? `Verschickt … ${lauf?.verschickt ?? 0}`
-          : `${jetztMoeglich} jetzt verschicken`}
+          : jetztMoeglich > 0
+            ? `${jetztMoeglich} jetzt verschicken`
+            : !mailReady
+              ? "Mailversand nicht eingerichtet"
+              : wartend === 0
+                ? "Keine Entwürfe vorbereitet"
+                : `Tagesmenge erreicht (${heuteVerschickt}/${tagesmenge})`}
       </button>
       {running ? (
         <button
@@ -150,7 +162,9 @@ export function SendNowButton({
       ) : null}
       <span className={styles.runStopped}>
         heute {heuteVerschickt} von {tagesmenge}
-        {uebrigHeute === 0 ? " — Tagesmenge erreicht" : ""}
+        {uebrigHeute === 0
+          ? " — ab morgen wieder; das Zeitfenster gilt nur für den Zeitgeber"
+          : ""}
       </span>
       {lauf && !running ? (
         <span className={styles.run}>
