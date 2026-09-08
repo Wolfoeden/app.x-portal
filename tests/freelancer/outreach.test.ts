@@ -219,3 +219,34 @@ describe("Bedarf in der Nachricht", () => {
     expect(entwurf.withinChannelLimit).toBe(true);
   });
 });
+
+describe("Nachfrage in der Nachricht", () => {
+  const basis = {
+    headline: "Datenmigration nach PostgreSQL",
+    workMode: "remote" as const,
+    location: null,
+    matchingSkills: ["PostgreSQL"],
+    otherSkills: [],
+  };
+
+  it("nennt die Nachfrage erst, wenn sie ein Argument ist", () => {
+    // Unter der Schwelle liest sich die Zahl wie eine Entschuldigung.
+    const wenig = draft({ demand: { ...basis, searches: 7, uniqueSeekers: 4 } }).body;
+    expect(wenig).not.toContain("Das ist kein Einzelfall");
+
+    const viel = draft({ demand: { ...basis, searches: 14, uniqueSeekers: 6 } }).body;
+    expect(viel).toContain(
+      "In den letzten 90 Tagen gab es dazu 14 Anfragen von 6 verschiedenen Auftraggebern.",
+    );
+  });
+
+  it("behauptet keine Auftraggeber, wo nur einer suchte", () => {
+    const body = draft({ demand: { ...basis, searches: 12, uniqueSeekers: 1 } }).body;
+    expect(body).toContain("gab es dazu 12 Anfragen.");
+    expect(body).not.toContain("Auftraggebern");
+  });
+
+  it("schweigt ohne Zahl", () => {
+    expect(draft({ demand: basis }).body).not.toContain("Das ist kein Einzelfall");
+  });
+});

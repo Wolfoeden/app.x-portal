@@ -456,7 +456,9 @@ export default async function AdminDemandPage({
                           location={profile.locations[0]?.label ?? null}
                           profileKey={profile.key}
                           profileLabel={profile.label}
+                          searches={profile.searches}
                           skills={profile.requiredSkills.map((skill) => skill.label)}
+                          uniqueSeekers={profile.uniqueUsers}
                           workMode={dominantWorkMode(profile.workModes)}
                         />
                       </td>

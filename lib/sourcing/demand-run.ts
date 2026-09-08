@@ -77,6 +77,9 @@ export async function runDemandSourcing(input: {
   location: string | null;
   adminId: string;
   limitPerSkill?: number;
+  /** Wie oft nach diesem Profil gesucht wurde, und von wie vielen. */
+  searches?: number;
+  uniqueSeekers?: number;
   resolveAddresses?: boolean;
   sendInvites?: boolean;
 }): Promise<DemandRunOutcome> {
@@ -169,6 +172,8 @@ export async function runDemandSourcing(input: {
         location: input.location,
         matchingSkills: treffer.matching,
         otherSkills: treffer.other,
+        searches: input.searches,
+        uniqueSeekers: input.uniqueSeekers,
       };
       const versand = await inviteSourcedCandidate({
         candidate: {

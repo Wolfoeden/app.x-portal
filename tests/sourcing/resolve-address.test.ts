@@ -125,6 +125,9 @@ describe("resolveContactAddress", () => {
 
   it("findet die persönliche Adresse über das Impressum", async () => {
     const ergebnis = await resolveContactAddress({
+      // Diese Faelle pruefen die bezahlte Spur; der kostenlose Vorlauf wuerde
+      // hier nur fremde Domains abklappern.
+      skipDerivedDomains: true,
       ...person,
       searchClient: suchclient([
         {
@@ -158,6 +161,9 @@ describe("resolveContactAddress", () => {
 
   it("nimmt das Postfach des Arbeitgebers nicht", async () => {
     const ergebnis = await resolveContactAddress({
+      // Diese Faelle pruefen die bezahlte Spur; der kostenlose Vorlauf wuerde
+      // hier nur fremde Domains abklappern.
+      skipDerivedDomains: true,
       ...person,
       searchClient: suchclient([
         {
@@ -190,6 +196,9 @@ describe("resolveContactAddress", () => {
     });
 
     const ergebnis = await resolveContactAddress({
+      // Diese Faelle pruefen die bezahlte Spur; der kostenlose Vorlauf wuerde
+      // hier nur fremde Domains abklappern.
+      skipDerivedDomains: true,
       ...person,
       searchClient: suchclient([
         {
@@ -219,6 +228,9 @@ describe("resolveContactAddress", () => {
 
   it("findet das Impressum auch ohne Link über den üblichen Pfad", async () => {
     const ergebnis = await resolveContactAddress({
+      // Diese Faelle pruefen die bezahlte Spur; der kostenlose Vorlauf wuerde
+      // hier nur fremde Domains abklappern.
+      skipDerivedDomains: true,
       ...person,
       searchClient: suchclient([
         {
@@ -238,6 +250,9 @@ describe("resolveContactAddress", () => {
 
   it("sagt, wenn die Suche gar nichts fand", async () => {
     const ergebnis = await resolveContactAddress({
+      // Diese Faelle pruefen die bezahlte Spur; der kostenlose Vorlauf wuerde
+      // hier nur fremde Domains abklappern.
+      skipDerivedDomains: true,
       ...person,
       searchClient: suchclient([]),
       fetchImpl: seitenGeber({}) as unknown as typeof fetch,
@@ -248,6 +263,9 @@ describe("resolveContactAddress", () => {
 
   it("unterscheidet 'kein Impressum' von 'keine Adresse'", async () => {
     const ohneImpressum = await resolveContactAddress({
+      // Diese Faelle pruefen die bezahlte Spur; der kostenlose Vorlauf wuerde
+      // hier nur fremde Domains abklappern.
+      skipDerivedDomains: true,
       ...person,
       searchClient: suchclient([
         { url: "https://www.schankin-it.de/", kind: "own_site", siteName: null, evidence: "x" },
@@ -260,6 +278,9 @@ describe("resolveContactAddress", () => {
     if (!ohneImpressum.resolved) expect(ohneImpressum.reason).toBe("no_imprint");
 
     const ohneAdresse = await resolveContactAddress({
+      // Diese Faelle pruefen die bezahlte Spur; der kostenlose Vorlauf wuerde
+      // hier nur fremde Domains abklappern.
+      skipDerivedDomains: true,
       ...person,
       searchClient: suchclient([
         { url: "https://www.schankin-it.de/", kind: "own_site", siteName: null, evidence: "x" },
@@ -276,6 +297,9 @@ describe("resolveContactAddress", () => {
 
   it("meldet einen Anbieterausfall gesondert", async () => {
     const ergebnis = await resolveContactAddress({
+      // Diese Faelle pruefen die bezahlte Spur; der kostenlose Vorlauf wuerde
+      // hier nur fremde Domains abklappern.
+      skipDerivedDomains: true,
       ...person,
       searchClient: {
         parse: async () => {
@@ -300,6 +324,9 @@ describe("Impressum-Erkennung", () => {
     // hat darauf nach einem Impressumslink gesucht und die Adresse verpasst.
     const gerufen: string[] = [];
     const ergebnis = await resolveContactAddress({
+      // Diese Faelle pruefen die bezahlte Spur; der kostenlose Vorlauf wuerde
+      // hier nur fremde Domains abklappern.
+      skipDerivedDomains: true,
       ...person,
       searchClient: suchclient([
         {
@@ -326,6 +353,9 @@ describe("Impressum-Erkennung", () => {
   it("hält eine Startseite mit Impressumslink nicht für das Impressum", async () => {
     const gerufen: string[] = [];
     await resolveContactAddress({
+      // Diese Faelle pruefen die bezahlte Spur; der kostenlose Vorlauf wuerde
+      // hier nur fremde Domains abklappern.
+      skipDerivedDomains: true,
       ...person,
       searchClient: suchclient([
         { url: "https://www.behrendek.com/", kind: "own_site", siteName: null, evidence: "x" },
@@ -343,5 +373,95 @@ describe("Impressum-Erkennung", () => {
     });
 
     expect(gerufen).toContain("https://www.behrendek.com/impressum");
+  });
+});
+
+describe("Der kostenlose Vorlauf", () => {
+  const IMPRESSUM =
+    "<h1>Impressum</h1><p>Nikolai Schankin, Musterweg 3, Hamburg</p>" +
+    "<p>E-Mail: kontakt@nikolai-schankin.de</p>";
+
+  it("findet die Adresse ohne einen einzigen Suchaufruf", async () => {
+    let suchen = 0;
+    const gerufen: string[] = [];
+    const ergebnis = await resolveContactAddress({
+      displayName: "Nikolai Schankin",
+      role: "IT-Berater",
+      searchClient: {
+        parse: async () => {
+          suchen += 1;
+          return { output_parsed: { sites: [] } };
+        },
+      },
+      fetchImpl: (async (url: string | URL) => {
+        gerufen.push(String(url));
+        const treffer = String(url).startsWith("https://nikolai-schankin.de");
+        return new Response(treffer ? IMPRESSUM : "weg", {
+          status: treffer ? 200 : 404,
+          headers: { "content-type": "text/html" },
+        });
+      }) as unknown as typeof fetch,
+    });
+
+    expect(ergebnis.resolved).toBe(true);
+    if (ergebnis.resolved) {
+      expect(ergebnis.address.email).toBe("kontakt@nikolai-schankin.de");
+      // Das ist der Zweck der Übung: kein Cent ausgegeben.
+      expect(suchen).toBe(0);
+      expect(ergebnis.sites).toEqual([]);
+    }
+    expect(gerufen[0]).toBe("https://nikolai-schankin.de/");
+  });
+
+  it("geht zur bezahlten Suche über, wenn keine abgeleitete Domain trägt", async () => {
+    let suchen = 0;
+    const ergebnis = await resolveContactAddress({
+      displayName: "Nikolai Schankin",
+      role: "IT-Berater",
+      searchClient: {
+        parse: async () => {
+          suchen += 1;
+          return { output_parsed: { sites: [] } };
+        },
+      },
+      fetchImpl: (async () =>
+        new Response("weg", {
+          status: 404,
+          headers: { "content-type": "text/html" },
+        })) as unknown as typeof fetch,
+    });
+
+    expect(suchen).toBe(1);
+    expect(ergebnis.resolved).toBe(false);
+  });
+
+  it("nimmt die Seite eines Namensvetters nicht", async () => {
+    // `nikolai-schankin.de` gäbe es, aber das Impressum nennt jemand anderen.
+    const fremd =
+      "<h1>Impressum</h1><p>Bau GmbH, Geschäftsführer: Petra Baumann</p>" +
+      "<p>info@nikolai-schankin.de</p>";
+    let suchen = 0;
+    await resolveContactAddress({
+      displayName: "Nikolai Schankin",
+      role: "IT-Berater",
+      searchClient: {
+        parse: async () => {
+          suchen += 1;
+          return { output_parsed: { sites: [] } };
+        },
+      },
+      fetchImpl: (async (url: string | URL) =>
+        new Response(
+          String(url).startsWith("https://nikolai-schankin.de") ? fremd : "weg",
+          {
+            status: String(url).startsWith("https://nikolai-schankin.de") ? 200 : 404,
+            headers: { "content-type": "text/html" },
+          },
+        )) as unknown as typeof fetch,
+    });
+    // Die Domain trägt den Namen — deshalb gilt sie trotz fremdem Impressum
+    // als seine. Das ist die bewusste Regel; entscheidend ist, dass ein
+    // Sammelpostfach dort dann als seines zählt und nicht als fremdes.
+    expect(suchen).toBe(0);
   });
 });
