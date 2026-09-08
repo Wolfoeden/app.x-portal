@@ -92,6 +92,14 @@ export type LeadPipeline = {
   entwuerfe: number;
   /** Vom Tageslauf vorbereitet und noch nicht zugestellt. */
   vorbereitet: number;
+  /** Offene Leads, die noch nie gegen den Katalog gehalten wurden. */
+  nichtAbgeglichen: number;
+  /**
+   * Zeilen, deren Lead nicht mehr existiert. Sie erklären, warum die
+   * Zahlen der Warteschlange und die des Ergebnisses auseinanderlaufen.
+   */
+  abgleichOhneLead: number;
+  belegOhneLead: number;
   verschicktHeute: number;
   zuletztVerschickt: string | null;
 };
@@ -201,6 +209,9 @@ export async function leadSummary(): Promise<LeadSummary> {
       gescheitert: zahl("gescheitert"),
       entwuerfe: zahl("entwuerfe"),
       vorbereitet: zahl("vorbereitet"),
+      nichtAbgeglichen: zahl("nicht_abgeglichen"),
+      abgleichOhneLead: zahl("abgleich_ohne_lead"),
+      belegOhneLead: zahl("beleg_ohne_lead"),
       verschicktHeute: zahl("verschickt_heute"),
       zuletztVerschickt:
         typeof trichter.zuletzt_verschickt === "string"
@@ -389,6 +400,9 @@ export async function claimOutreach(input: {
   /** Der Portal-Link, wie er in dieser Nachricht steht. */
   ctaUrl?: string | null;
   origin?: "scheduler" | "admin" | null;
+  /** Siehe savePreparedDraft: Der Beleg trägt den Empfänger selbst. */
+  recipientEmail?: string | null;
+  company?: string | null;
 }): Promise<ClaimResult> {
   const admin = requireServiceRole();
   const { data, error } = await admin
@@ -401,6 +415,8 @@ export async function claimOutreach(input: {
       p_created_by: input.createdBy,
       p_cta_url: input.ctaUrl ?? null,
       p_origin: input.origin ?? null,
+      p_recipient_email: input.recipientEmail ?? null,
+      p_company: input.company ?? null,
     })
     .maybeSingle();
   if (error) throw error;
@@ -654,6 +670,13 @@ export async function savePreparedDraft(input: {
   ctaUrl: string | null;
   profileId: string | null;
   preparedAt: Date;
+  /**
+   * Empfänger und Firma wandern in den Beleg, nicht nur in den Lead.
+   * Wird der Lead gelöscht, sagt die Zeile sonst nicht mehr, an wen sie
+   * ging — und genau das ist am 8. September passiert.
+   */
+  recipientEmail: string;
+  company: string | null;
 }): Promise<void> {
   const admin = requireServiceRole();
   const { error: deleteError } = await admin
@@ -677,6 +700,8 @@ export async function savePreparedDraft(input: {
     origin: "scheduler",
     prepared_profile_id: input.profileId,
     prepared_at: input.preparedAt.toISOString(),
+    recipient_email: input.recipientEmail,
+    company: input.company,
   });
   if (error) throw error;
 }
@@ -744,4 +769,72 @@ export async function discardPreparedDraft(input: {
   });
   if (error) throw error;
   return Boolean(data);
+}
+
+/**
+ * Eine verschickte oder vorbereitete Nachricht, gelesen aus dem Beleg.
+ *
+ * Nicht aus der Warteschlange: Ein Lead kann gelöscht sein, die Nachricht ist
+ * trotzdem rausgegangen. `lead_vorhanden` sagt, ob es die Zeile daneben noch
+ * gibt — daran hängt, ob sich der Vorgang noch weiterbearbeiten lässt.
+ */
+export type OutreachRow = {
+  outreach_id: string;
+  lead_id: number | null;
+  lead_vorhanden: boolean;
+  recipient_email: string | null;
+  company: string | null;
+  state: "draft" | "sending" | "sent" | "failed";
+  subject: string;
+  body: string;
+  cta_url: string | null;
+  origin: "scheduler" | "admin" | null;
+  model: string | null;
+  credits: number | null;
+  created_at: string;
+  sent_at: string | null;
+  prepared_at: string | null;
+  prepared_profile_id: string | null;
+  failure_reason: string | null;
+  stellenanzeige: string | null;
+};
+
+export type OutreachListResult = {
+  rows: OutreachRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export async function listOutreach(options: {
+  state?: "draft" | "sent" | "failed" | null;
+  search?: string | null;
+  page?: number;
+  pageSize?: number;
+}): Promise<OutreachListResult> {
+  const admin = requireServiceRole();
+  const pageSize = Math.min(Math.max(options.pageSize ?? LEAD_PAGE_SIZE, 1), 200);
+  const page = Math.max(options.page ?? 1, 1);
+
+  const { data, error } = await admin.rpc("admin_list_leadgen_outreach", {
+    p_state: options.state ?? null,
+    p_search: orNull(options.search),
+    p_limit: pageSize,
+    p_offset: (page - 1) * pageSize,
+  });
+  if (error) throw error;
+
+  const rows = (data ?? []) as (OutreachRow & { total_count: number | string })[];
+  const total = rows.length ? Number(rows[0].total_count) : 0;
+
+  return {
+    rows: rows.map((row) => {
+      const { total_count, ...rest } = row;
+      void total_count;
+      return rest;
+    }),
+    total: Number.isFinite(total) ? total : 0,
+    page,
+    pageSize,
+  };
 }

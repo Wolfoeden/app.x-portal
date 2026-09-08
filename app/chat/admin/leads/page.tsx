@@ -16,6 +16,7 @@ import {
   leadSummary,
   listLeadRuns,
   listLeads,
+  listOutreach,
   type LeadPipeline,
   type LeadRun,
 } from "@/lib/leadgen/leads-data";
@@ -23,19 +24,23 @@ import {
   LEAD_BULK_SEND_LIMIT,
   LEAD_MATCH_FILTERS,
   LEAD_MATCH_FILTER_LABELS,
-  LEAD_SCOPES,
-  LEAD_SCOPE_LABELS,
   LEAD_STATUSES,
   LEAD_STATUS_LABELS,
+  LEAD_VIEWS,
+  LEAD_VIEW_LABELS,
   isLeadMatchFilter,
-  isLeadScope,
   isLeadStatus,
+  isLeadView,
+  viewShowsMessages,
+  viewToScope,
   type LeadMatchFilter,
   type LeadScope,
   type LeadStatus,
+  type LeadView,
 } from "@/lib/leadgen/limits";
 
 import { LeadsPanel } from "./LeadsPanel";
+import { OutreachPanel } from "./OutreachPanel";
 import { PrepareAllButton } from "./PrepareAllButton";
 import styles from "./leads.module.css";
 
@@ -83,6 +88,57 @@ function trefferquote(pipeline: LeadPipeline): string {
   return `${anteil} % der Abgleiche`;
 }
 
+/**
+ * Warum die Ergebniszahlen größer sein können als die Warteschlange.
+ *
+ * Ein Vorgang überlebt den Lead: Wird der Lead gelöscht, bleibt der Abgleich
+ * und bleibt der Versandbeleg. Ohne diesen Hinweis liest sich „261
+ * abgeglichen" neben „31 offen" wie ein Fehler.
+ */
+function herkunftsHinweis(ohneLead: number): string {
+  return ohneLead
+    ? `${ohneLead} davon ohne Lead in der Liste`
+    : "alle noch in der Liste";
+}
+
+const ABSCHNITT_TITEL: Readonly<Record<LeadView, string>> = {
+  open: "Offene Leads",
+  prepared: "Wartet auf Versand",
+  sent: "Versandte Nachrichten",
+  archived: "Archivierte Leads",
+  all: "Alle Leads",
+};
+
+const ABSCHNITT_BESCHREIBUNG: Readonly<Record<LeadView, string>> = {
+  open:
+    "Primärdaten und Status bleiben in der Zeile; Ausschreibung, Notizen und Mailentwurf öffnen sich darunter.",
+  prepared:
+    "Die fertigen Entwürfe in der Reihenfolge, in der sie rausgehen — der älteste zuerst.",
+  sent:
+    "Was tatsächlich rausging, mit Wortlaut. Bleibt auch stehen, wenn der Lead aus der Warteschlange verschwunden ist.",
+  archived: "Bearbeitete Leads: angeschrieben, beantwortet oder verworfen.",
+  all: "Die ganze Warteschlange, unabhängig vom Bearbeitungsstand.",
+};
+
+/** Die Zahl am Reiter — je nach Ansicht aus einem anderen Bestand. */
+function ansichtZahl(
+  value: LeadView,
+  summary: { open: number; archived: number; total: number; pipeline: LeadPipeline },
+): number {
+  switch (value) {
+    case "open":
+      return summary.open;
+    case "prepared":
+      return summary.pipeline.vorbereitet;
+    case "sent":
+      return summary.pipeline.verschickt;
+    case "archived":
+      return summary.archived;
+    default:
+      return summary.total;
+  }
+}
+
 const STOP_LABELS: Readonly<Record<LeadRun["stopped_by"], string>> = {
   queue_empty: "Warteschlange leer",
   time: "Zeit alle",
@@ -123,7 +179,9 @@ export default async function LeadsPage({
   if (!currentUser.isAdmin) notFound();
 
   const params = await searchParams;
-  const scope: LeadScope = isLeadScope(params.ansicht) ? params.ansicht : "open";
+  const view: LeadView = isLeadView(params.ansicht) ? params.ansicht : "open";
+  const scope: LeadScope = viewToScope(view);
+  const zeigtNachrichten = viewShowsMessages(view);
   const status: LeadStatus | null = isLeadStatus(params.status)
     ? params.status
     : null;
@@ -134,11 +192,26 @@ export default async function LeadsPage({
     : null;
   const page = Math.max(Number.parseInt(params.seite ?? "1", 10) || 1, 1);
 
-  const [list, summary, runs] = await Promise.all([
-    listLeads({ search, status, category, scope, match, page }),
+  // Nur die Liste holen, die gezeigt wird. Der Trichter und die Läufe gelten
+  // für beide Ansichten.
+  const [list, messages, summary, runs] = await Promise.all([
+    zeigtNachrichten
+      ? Promise.resolve(null)
+      : listLeads({ search, status, category, scope, match, page }),
+    zeigtNachrichten
+      ? listOutreach({
+          state: view === "prepared" ? "draft" : "sent",
+          search,
+          page,
+        })
+      : Promise.resolve(null),
     leadSummary(),
     listLeadRuns(4),
   ]);
+
+  const gezeigt = list?.rows.length ?? messages?.rows.length ?? 0;
+  const gesamtTreffer = list?.total ?? messages?.total ?? 0;
+  const seitengroesse = list?.pageSize ?? messages?.pageSize ?? 50;
 
   await writeAuditEvent({
     actorUserId: currentUser.id,
@@ -146,16 +219,17 @@ export default async function LeadsPage({
     targetType: "leadgen_queue",
     outcome: "success",
     metadata: {
+      view,
       scope,
       status: status ?? "all",
       match: match ?? "all",
-      listed: list.rows.length,
+      listed: gezeigt,
       searched: Boolean(search),
     },
     required: true,
   });
 
-  const pageCount = Math.max(Math.ceil(list.total / list.pageSize), 1);
+  const pageCount = Math.max(Math.ceil(gesamtTreffer / seitengroesse), 1);
   const mailReady = promotionalDeliveryConfigured();
 
   return (
@@ -166,15 +240,21 @@ export default async function LeadsPage({
           title="Sales-Pipeline"
           description={
             <p>
-              Leads nach Bearbeitungsstand und nächstem Schritt. Einzelne Mails
-              werden im Detail geprüft; die Stapelaktion erzeugt fehlende
-              Entwürfe automatisch und verschickt sie direkt.
+              Der Abgleich hält jeden offenen Lead gegen den Katalog und legt
+              bei einem Treffer einen Entwurf an. Verschickt wird daraus
+              werktags zwischen 8 und 12 Uhr, höchstens{" "}
+              {LEAD_BULK_SEND_LIMIT} am Tag.
             </p>
           }
         />
 
+        {/* Zwei Streifen, weil die Zahlen aus zwei Beständen kommen: die
+            Warteschlange zählt Leads, das Ergebnis zählt Vorgänge — und die
+            überleben den Lead, an dem sie hingen. Nebeneinander in einer Reihe
+            standen einmal „31 gesamt" und „261 abgeglichen", was niemand
+            lesen kann. */}
         <AdminMetricStrip
-          label="Lead-Pipeline"
+          label="Warteschlange"
           items={[
             {
               label: "Offen",
@@ -183,9 +263,32 @@ export default async function LeadsPage({
               tone: summary.pipeline.offen ? "accent" : "default",
             },
             {
+              label: "Nicht abgeglichen",
+              value: summary.pipeline.nichtAbgeglichen,
+              detail: "wartet auf den Abgleich",
+              tone: summary.pipeline.nichtAbgeglichen ? "warning" : "muted",
+            },
+            {
+              label: "Wartet auf Versand",
+              value: summary.pipeline.vorbereitet,
+              detail: "Entwurf liegt bereit",
+              tone: summary.pipeline.vorbereitet ? "accent" : "muted",
+            },
+            {
+              label: "Heute verschickt",
+              value: summary.pipeline.verschicktHeute,
+              detail: `von ${LEAD_BULK_SEND_LIMIT} am Tag`,
+            },
+          ]}
+        />
+
+        <AdminMetricStrip
+          label="Ergebnis insgesamt"
+          items={[
+            {
               label: "Abgeglichen",
               value: summary.pipeline.abgeglichen,
-              detail: `von ${summary.pipeline.gesamt} insgesamt`,
+              detail: herkunftsHinweis(summary.pipeline.abgleichOhneLead),
             },
             {
               label: "Treffer",
@@ -194,15 +297,15 @@ export default async function LeadsPage({
               tone: summary.pipeline.treffer ? "accent" : "default",
             },
             {
-              label: "Vorbereitet",
-              value: summary.pipeline.vorbereitet,
-              detail: "wartet auf Versand",
-              tone: summary.pipeline.vorbereitet ? "accent" : "muted",
+              label: "Ohne Treffer",
+              value: summary.pipeline.ohneTreffer,
+              detail: "als Nachfrage vermerkt",
+              tone: "muted",
             },
             {
               label: "Verschickt",
               value: summary.pipeline.verschickt,
-              detail: `heute ${summary.pipeline.verschicktHeute} von ${LEAD_BULK_SEND_LIMIT}`,
+              detail: herkunftsHinweis(summary.pipeline.belegOhneLead),
             },
             {
               label: "Gescheitert",
@@ -287,28 +390,29 @@ export default async function LeadsPage({
 
           <nav className={styles.tabs} aria-label="Ansicht">
             <span className={styles.filterLabel}>Ansicht</span>
-          {LEAD_SCOPES.map((value) => (
-            <Link
-              key={value}
-              href={buildHref({
-                ansicht: value,
-                suche: search ?? undefined,
-                abgleich: match ?? undefined,
-              })}
-              className={`${styles.tab} ${scope === value ? styles.tabActive : ""}`}
-            >
-              {LEAD_SCOPE_LABELS[value]}{" "}
-              <b>
-                {value === "open"
-                  ? summary.open
-                  : value === "archived"
-                    ? summary.archived
-                    : summary.total}
-              </b>
-            </Link>
-          ))}
+            {LEAD_VIEWS.map((value) => (
+              <Link
+                key={value}
+                href={buildHref({
+                  ansicht: value,
+                  suche: search ?? undefined,
+                  // Der Abgleich-Filter gilt nur für die Warteschlange. Ihn in
+                  // eine Nachrichtenliste mitzunehmen ergäbe einen aktiven
+                  // Filter, der dort nichts tut.
+                  abgleich: viewShowsMessages(value)
+                    ? undefined
+                    : (match ?? undefined),
+                })}
+                className={`${styles.tab} ${view === value ? styles.tabActive : ""}`}
+              >
+                {LEAD_VIEW_LABELS[value]}{" "}
+                <b>{ansichtZahl(value, summary)}</b>
+              </Link>
+            ))}
           </nav>
 
+          {zeigtNachrichten ? null : (
+          <>
           <nav className={styles.tabs} aria-label="Status-Filter">
             <span className={styles.filterLabel}>Status</span>
           <Link
@@ -407,20 +511,29 @@ export default async function LeadsPage({
             ))}
           </nav>
         ) : null}
+          </>
+          )}
         </section>
 
         <AdminSectionHeader
-          title={scope === "open" ? "Offene Leads" : scope === "archived" ? "Archivierte Leads" : "Alle Leads"}
-          description="Primärdaten und Status bleiben in der Zeile; Ausschreibung, Notizen und Mailentwurf öffnen sich darunter."
-          aside={`${list.total} Treffer · Seite ${page}/${pageCount}`}
+          title={ABSCHNITT_TITEL[view]}
+          description={ABSCHNITT_BESCHREIBUNG[view]}
+          aside={`${gesamtTreffer} Treffer · Seite ${page}/${pageCount}`}
         />
 
-        <LeadsPanel
-          rows={list.rows}
-          categories={summary.categories.map((entry) => entry.category)}
-          mailReady={mailReady}
-          creditsPerDraft={LEADGEN_OUTREACH_CREDITS}
-        />
+        {messages ? (
+          <OutreachPanel
+            rows={messages.rows}
+            view={view === "prepared" ? "prepared" : "sent"}
+          />
+        ) : list ? (
+          <LeadsPanel
+            rows={list.rows}
+            categories={summary.categories.map((entry) => entry.category)}
+            mailReady={mailReady}
+            creditsPerDraft={LEADGEN_OUTREACH_CREDITS}
+          />
+        ) : null}
 
         {pageCount > 1 ? (
           <nav className={styles.pagination} aria-label="Seiten">

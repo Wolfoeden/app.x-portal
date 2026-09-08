@@ -523,5 +523,123 @@ select throws_ok(
   'eine Lead-Zeile mit Konto verletzt shortlists_source_shape_check'
 );
 
+-- ---------------------------------------------------------------------
+-- Der Versandbeleg ueberlebt den Lead.
+-- ---------------------------------------------------------------------
+-- Am 8. September verschwanden 234 Leads aus der Warteschlange, und der
+-- Fremdschluessel nahm die Belege mit: Was an dem Morgen verschickt worden
+-- war, liess sich danach nicht mehr belegen.
+insert into public.leadgen_queue (id, recipient_email, company, stellenanzeige, status)
+overriding system value
+values (9000006, 'beleg@example.invalid', 'Belegfirma GmbH', 'Rolle mit Beleg', 'new');
+
+insert into public.leadgen_outreach (
+  lead_id, state, subject, body, sent_at, origin, recipient_email, company
+) values (
+  9000006, 'sent', 'Ging raus', 'Der Wortlaut', now(), 'scheduler',
+  'beleg@example.invalid', 'Belegfirma GmbH'
+);
+
+select lives_ok(
+  $$delete from public.leadgen_queue where id = 9000006$$,
+  'ein angeschriebener Lead laesst sich loeschen'
+);
+
+select is(
+  (select count(*)::int from public.leadgen_outreach where subject = 'Ging raus'),
+  1,
+  'der Versandbeleg bleibt stehen, wenn der Lead geloescht wird'
+);
+
+select is(
+  (
+    select recipient_email || ' / ' || coalesce(company, '-')
+      from public.leadgen_outreach
+     where subject = 'Ging raus'
+  ),
+  'beleg@example.invalid / Belegfirma GmbH',
+  'und sagt weiterhin, an wen er ging'
+);
+
+select is(
+  (select lead_id is null from public.leadgen_outreach where subject = 'Ging raus'),
+  true,
+  'die Lead-Kennung faellt weg, der Rest bleibt'
+);
+
+-- Zwei Belege ohne Lead duerfen nebeneinander stehen. Vor der Einschraenkung
+-- des Index waere die leere Kennung ein Konflikt gewesen.
+insert into public.leadgen_queue (id, recipient_email, stellenanzeige, status)
+overriding system value
+values (9000007, 'zweiter@example.invalid', 'Zweite Rolle', 'new');
+
+insert into public.leadgen_outreach (
+  lead_id, state, subject, body, sent_at, origin, recipient_email
+) values (
+  9000007, 'sent', 'Ging auch raus', 'Zweiter Wortlaut', now(), 'scheduler',
+  'zweiter@example.invalid'
+);
+
+select lives_ok(
+  $$delete from public.leadgen_queue where id = 9000007$$,
+  'ein zweiter angeschriebener Lead laesst sich ebenfalls loeschen'
+);
+
+select is(
+  (select count(*)::int from public.leadgen_outreach where lead_id is null and state = 'sent'),
+  2,
+  'zwei Belege ohne Lead stehen nebeneinander, statt sich zu blockieren'
+);
+
+-- ---------------------------------------------------------------------
+-- Die Versandliste liest aus dem Beleg, nicht aus der Warteschlange.
+-- ---------------------------------------------------------------------
+select is(
+  (
+    select count(*)::int
+      from public.admin_list_leadgen_outreach('sent', null, 50, 0)
+     where subject in ('Ging raus', 'Ging auch raus')
+  ),
+  2,
+  'die Versandliste zeigt auch Nachrichten ohne Lead'
+);
+
+select is(
+  (
+    select lead_vorhanden
+      from public.admin_list_leadgen_outreach('sent', null, 50, 0)
+     where subject = 'Ging raus'
+  ),
+  false,
+  'und sagt dazu, dass der Lead nicht mehr in der Warteschlange steht'
+);
+
+select is(
+  (
+    select count(*)::int
+      from public.admin_list_leadgen_outreach('sent', 'Belegfirma', 50, 0)
+  ),
+  1,
+  'die Suche greift auf die Firma im Beleg'
+);
+
+-- ---------------------------------------------------------------------
+-- Der Trichter zaehlt getrennt und rechnet nicht mehr mit Differenzen.
+-- ---------------------------------------------------------------------
+select ok(
+  (public.admin_leadgen_pipeline_summary() ? 'nicht_abgeglichen'),
+  'der Trichter zaehlt die noch nicht abgeglichenen Leads selbst'
+);
+
+select ok(
+  (public.admin_leadgen_pipeline_summary() ->> 'nicht_abgeglichen')::int >= 0,
+  'und die Zahl kann nicht negativ werden'
+);
+
+select ok(
+  (public.admin_leadgen_pipeline_summary() ? 'beleg_ohne_lead'),
+  'und weist aus, wie viele Belege keinen Lead mehr haben'
+);
+
 select finish();
 rollback;
