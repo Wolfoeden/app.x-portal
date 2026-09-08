@@ -525,3 +525,71 @@ describe("Der Abgleich liest wie im Chat", () => {
     expect(mocks.extract).not.toHaveBeenCalled();
   });
 });
+
+describe("Von Hand und automatisch nehmen denselben Weg", () => {
+  it("stellt einen vorbereiteten Entwurf unverändert zu", async () => {
+    const { deliverPreparedDraft } = await import("@/lib/leadgen/match-run");
+
+    const result = await deliverPreparedDraft(ENTWURF);
+
+    expect(result).toEqual({ sent: true });
+    // Kein neuer Text, kein Modell: Was im Entwurf steht, geht raus.
+    expect(mocks.deliver).toHaveBeenCalledWith({
+      to: ENTWURF.recipient_email,
+      subject: ENTWURF.subject,
+      text: ENTWURF.body,
+      kind: "cold_outreach",
+    });
+    expect(mocks.extract).not.toHaveBeenCalled();
+    expect(mocks.recordSent).toHaveBeenCalledWith(ENTWURF.outreach_id);
+  });
+
+  it("beansprucht den Entwurf, bevor er zustellt", async () => {
+    const { deliverPreparedDraft } = await import("@/lib/leadgen/match-run");
+
+    await deliverPreparedDraft(ENTWURF);
+
+    const beansprucht = mocks.claimDraft.mock.invocationCallOrder[0];
+    const zugestellt = mocks.deliver.mock.invocationCallOrder[0];
+    expect(beansprucht).toBeLessThan(zugestellt);
+  });
+
+  it("gibt den Anspruch mit dem Grund des Servers zurück", async () => {
+    const { deliverPreparedDraft } = await import("@/lib/leadgen/match-run");
+    mocks.deliver.mockResolvedValue({
+      delivered: false,
+      reason: "send_failed",
+      detail: "EENVELOPE 451 rate limited",
+    });
+
+    const result = await deliverPreparedDraft(ENTWURF);
+
+    expect(result).toEqual({ sent: false, reason: "send_failed" });
+    expect(mocks.release).toHaveBeenCalledWith({
+      outreachId: ENTWURF.outreach_id,
+      reason: "send_failed: EENVELOPE 451 rate limited",
+    });
+  });
+
+  it("verschickt nichts ohne Empfänger im Beleg", async () => {
+    const { deliverPreparedDraft } = await import("@/lib/leadgen/match-run");
+
+    const result = await deliverPreparedDraft({
+      ...ENTWURF,
+      recipient_email: null,
+    });
+
+    expect(result).toEqual({ sent: false, reason: "no_recipient" });
+    expect(mocks.claimDraft).not.toHaveBeenCalled();
+    expect(mocks.deliver).not.toHaveBeenCalled();
+  });
+
+  it("legt einen Lead ab, den es noch gibt — und stolpert nicht über einen gelöschten", async () => {
+    const { deliverPreparedDraft } = await import("@/lib/leadgen/match-run");
+
+    await deliverPreparedDraft({ ...ENTWURF, lead_id: null });
+
+    expect(mocks.recordSent).toHaveBeenCalledWith(ENTWURF.outreach_id);
+    expect(mocks.updateLead).not.toHaveBeenCalled();
+  });
+});

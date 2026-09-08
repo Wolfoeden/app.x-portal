@@ -549,49 +549,17 @@ export async function runLeadSendPass(
       continue;
     }
 
-    // Erst beanspruchen, dann zustellen. Läge der Versand zwischen Prüfung
-    // und Protokoll, könnten zwei gleichzeitige Läufe beide zustellen.
-    const claim = await claimPreparedDraft(draft.outreach_id);
-    if (!claim.claimed) {
+    const zustellung = await deliverPreparedDraft(draft);
+    if (!zustellung.sent) {
       outcomes.push({
         leadId: draft.lead_id,
         outcome: "skipped",
-        reason: claim.reason,
+        reason: zustellung.reason,
       });
       skipped += 1;
       continue;
     }
 
-    const delivery = await deliverEmail({
-      to: draft.recipient_email,
-      subject: draft.subject,
-      text: draft.body,
-      kind: "cold_outreach",
-    });
-    if (!delivery.delivered) {
-      await releaseOutreachClaim({
-        outreachId: draft.outreach_id,
-        // Der Text des Mailservers, wenn es einen gibt. Ohne ihn stünde
-        // im Beleg nur, dass es nicht ging.
-        reason: delivery.detail
-          ? `${delivery.reason}: ${delivery.detail}`
-          : delivery.reason,
-      });
-      outcomes.push({
-        leadId: draft.lead_id,
-        outcome: "skipped",
-        reason: delivery.reason,
-      });
-      skipped += 1;
-      continue;
-    }
-
-    await recordOutreachSent(draft.outreach_id);
-    await updateLead({
-      id: draft.lead_id,
-      status: "contacted",
-      archived: true,
-    });
     sent += 1;
     outcomes.push({ leadId: draft.lead_id, outcome: "sent", matchCount: 0 });
   }
@@ -626,4 +594,67 @@ export async function runLeadSendPass(
   });
 
   return ergebnis;
+}
+
+export type DraftDeliveryResult =
+  | { sent: true }
+  | { sent: false; reason: string };
+
+/**
+ * Einen vorbereiteten Entwurf zustellen — genau so, wie es der Tageslauf tut.
+ *
+ * Diese Funktion ist der einzige Weg, auf dem eine Akquise-Nachricht das Haus
+ * verlässt. Vorher gab es zwei: den Tageslauf mit dem Text aus den
+ * Profildaten und daneben einen Einzelversand aus der Arbeitsfläche, der sich
+ * seinen Text von einem Modell schreiben ließ. Derselbe Lead bekam damit je
+ * nach Knopf eine andere Nachricht, und ein Fehler zeigte sich nur auf einem
+ * der beiden Wege.
+ *
+ * Ein Knopf und ein Zeitgeber dürfen sich darin unterscheiden, wann sie
+ * auslösen — nicht darin, was sie verschicken.
+ *
+ * Erst beanspruchen, dann zustellen: Läge der Versand zwischen Prüfung und
+ * Protokoll, könnten zwei gleichzeitige Aufrufe beide zustellen.
+ */
+export async function deliverPreparedDraft(draft: {
+  outreach_id: string;
+  lead_id: number | null;
+  recipient_email: string | null;
+  subject: string;
+  body: string;
+}): Promise<DraftDeliveryResult> {
+  if (!draft.recipient_email) {
+    return { sent: false, reason: "no_recipient" };
+  }
+
+  const claim = await claimPreparedDraft(draft.outreach_id);
+  if (!claim.claimed) return { sent: false, reason: claim.reason };
+
+  const delivery = await deliverEmail({
+    to: draft.recipient_email,
+    subject: draft.subject,
+    text: draft.body,
+    kind: "cold_outreach",
+  });
+  if (!delivery.delivered) {
+    await releaseOutreachClaim({
+      outreachId: draft.outreach_id,
+      // Der Text des Mailservers, wenn es einen gibt. Ohne ihn stünde im
+      // Beleg nur, dass es nicht ging.
+      reason: delivery.detail
+        ? `${delivery.reason}: ${delivery.detail}`
+        : delivery.reason,
+    });
+    return { sent: false, reason: delivery.reason };
+  }
+
+  await recordOutreachSent(draft.outreach_id);
+  if (draft.lead_id !== null) {
+    await updateLead({
+      id: draft.lead_id,
+      status: "contacted",
+      archived: true,
+    });
+  }
+  return { sent: true };
 }
