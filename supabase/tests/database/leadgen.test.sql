@@ -114,7 +114,8 @@ select is(
     from public.claim_leadgen_outreach(
       9000001, 'Betreff', 'Rumpf', 'gpt-5.4-nano', 2,
       'e1111111-1111-4111-8111-111111111111',
-      'https://x-portal.eu/chat?q=Kubernetes', 'admin'
+      'https://x-portal.eu/chat?q=Kubernetes', 'admin',
+      'kontakt@example.invalid', 'Testfirma GmbH'
     )
   ),
   true,
@@ -125,7 +126,7 @@ select is(
   (
     select reason
     from public.claim_leadgen_outreach(
-      9000001, 'Betreff', 'Rumpf', null, null, null, null, null
+      9000001, 'Betreff', 'Rumpf', null, null, null, null, null, null, null
     )
   ),
   'already_sent',
@@ -186,7 +187,8 @@ select is(
   (
     select reason
     from public.claim_leadgen_outreach(
-      9000001, 'Zweiter Betreff', 'Zweiter Rumpf', null, null, null, null, null
+      9000001, 'Zweiter Betreff', 'Zweiter Rumpf', null, null, null, null, null,
+      null, null
     )
   ),
   'already_sent',
@@ -641,5 +643,14 @@ select ok(
   'und weist aus, wie viele Belege keinen Lead mehr haben'
 );
 
+select is(
+  (
+    select recipient_email
+      from public.leadgen_outreach
+     where lead_id = 9000001
+  ),
+  'kontakt@example.invalid',
+  'auch der Einzelversand haelt den Empfaenger im Beleg fest'
+);
 select finish();
 rollback;
