@@ -6,8 +6,16 @@ import {
   type DeliveryFailure,
 } from "@/lib/email/deliver";
 import { unsubscribeUrl } from "@/lib/email/unsubscribe";
+import {
+  INVITE_TOKEN_PARAM,
+  mintInviteToken,
+} from "@/lib/sourcing/invite-token";
 
-import { buildOutreachDraft, type OutreachCandidate } from "./outreach";
+import {
+  buildOutreachDraft,
+  type DemandBrief,
+  type OutreachCandidate,
+} from "./outreach";
 import { markOutreachSent } from "./sourced-candidates-data";
 
 /**
@@ -37,20 +45,31 @@ export async function sendFreelancerOutreach(input: {
   contactEmail: string;
   /** Wonach der Auftraggeber sucht. Ohne Angabe bleibt der Text allgemein. */
   projectHint?: string | null;
+  /** Der Bedarf mit Thema, Arbeitsform und überschneidenden Erfahrungen. */
+  demand?: DemandBrief | null;
   senderName: string;
   senderEmail: string;
   /** Gesetzt, wenn der Versand an einem Kandidaten vermerkt werden soll. */
   applicationId?: string | null;
 }): Promise<OutreachSendResult> {
   const origin = publicMailOrigin();
+  // Das Kennzeichen macht die Einladung rückverfolgbar: Wer darüber kommt und
+  // sich einträgt, wird dem Kandidaten zugeordnet, statt als zweite Zeile
+  // danebenzustehen. Fehlt das Geheimnis, geht die Einladung trotzdem raus —
+  // ohne Zähler ist besser als gar nicht.
+  const inviteUrl = new URL(INVITE_PATH, origin);
+  const token = input.applicationId ? mintInviteToken(input.applicationId) : null;
+  if (token) inviteUrl.searchParams.set(INVITE_TOKEN_PARAM, token);
+
   const draft = buildOutreachDraft({
     channel: "email",
     candidate: input.candidate,
-    inviteUrl: new URL(INVITE_PATH, origin).toString(),
+    inviteUrl: inviteUrl.toString(),
     senderName: input.senderName,
     senderEmail: input.senderEmail,
     contactEmail: input.contactEmail,
     projectHint: input.projectHint ?? null,
+    demand: input.demand ?? null,
     unsubscribeUrl: unsubscribeUrl(origin, input.contactEmail),
   });
 

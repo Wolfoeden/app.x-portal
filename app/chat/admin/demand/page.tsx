@@ -16,7 +16,20 @@ import { getSearchDemandReport } from "@/lib/admin/search-demand";
 import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import {
+  isPaused as isSourcingPaused,
+  readSourcingAutomation,
+} from "@/lib/sourcing/automation";
+import { readConversionStats } from "@/lib/sourcing/conversion";
+import {
+  listSourcingOutreach,
+  listSourcingRuns,
+  type SourcingOutreachRow,
+} from "@/lib/sourcing/run";
 
+import { AutomationStrip } from "./AutomationStrip";
+import { MessageView } from "./MessageView";
+import { SourcingButton } from "./SourcingButton";
 import styles from "./demand.module.css";
 
 export const metadata: Metadata = {
@@ -41,6 +54,52 @@ const oneDecimal = new Intl.NumberFormat("de-DE", {
 const dateFormat = new Intl.DateTimeFormat("de-DE", {
   dateStyle: "medium",
 });
+const dateTimeFormat = new Intl.DateTimeFormat("de-DE", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+const SEND_STATE_LABELS: Record<SourcingOutreachRow["status"], string> = {
+  sent: "Zugestellt",
+  failed: "Gescheitert",
+  suppressed: "Widerspruch",
+  manual: "Von Hand",
+};
+
+function channelLabel(value: string): string {
+  const labels: Record<string, string> = {
+    email: "E-Mail",
+    linkedin: "LinkedIn",
+    website: "Website",
+    other: "Anderer",
+  };
+  return labels[value] ?? value;
+}
+
+/**
+ * Die häufigste Arbeitsform des Profils.
+ *
+ * Sie geht in die Einladung ein („remote", „vor Ort in Hamburg"). Gibt es
+ * keine Mehrheit oder keine Angabe, bleibt es bei `unknown` — dann steht in
+ * der Nachricht nichts dazu, statt einer Behauptung.
+ */
+function dominantWorkMode(
+  facets: readonly { label: string; count: number }[],
+): "remote" | "on_site" | "hybrid" | "unknown" {
+  const oben = facets[0]?.label;
+  return oben === "remote" || oben === "on_site" || oben === "hybrid"
+    ? oben
+    : "unknown";
+}
+
+/** Der Host der Quelle. Die volle Adresse sprengt die Spalte. */
+function sourceHost(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./u, "");
+  } catch {
+    return "Quelle";
+  }
+}
 
 function parsePeriod(value: string | undefined): DemandPeriod {
   if (value === "30") return 30;
@@ -60,6 +119,11 @@ function periodLabel(period: DemandPeriod): string {
 function formatDate(value: string): string {
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? "–" : dateFormat.format(parsed);
+}
+
+function formatDateTime(value: string): string {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? "–" : dateTimeFormat.format(parsed);
 }
 
 function priorityLabel(priority: DemandPriority): string {
@@ -122,7 +186,15 @@ export default async function AdminDemandPage({
     ? params.zeitraum[0]
     : params.zeitraum;
   const period = parsePeriod(requestedPeriod);
-  const report = await getSearchDemandReport({ period });
+  // Nebeneinander: Die drei Abfragen hängen nicht voneinander ab, und die
+  // Nachfrageauswertung ist von den dreien die langsamste.
+  const [report, outreach, runs, automation, conversion] = await Promise.all([
+    getSearchDemandReport({ period }),
+    listSourcingOutreach(50),
+    listSourcingRuns(5),
+    readSourcingAutomation(),
+    readConversionStats(),
+  ]);
 
   await writeAuditEvent({
     actorUserId: currentUser.id,
@@ -380,6 +452,13 @@ export default async function AdminDemandPage({
                                 ? "Bestand beobachten"
                                 : "Mehr messbare Suchen abwarten"}
                         </small>
+                        <SourcingButton
+                          location={profile.locations[0]?.label ?? null}
+                          profileKey={profile.key}
+                          profileLabel={profile.label}
+                          skills={profile.requiredSkills.map((skill) => skill.label)}
+                          workMode={dominantWorkMode(profile.workModes)}
+                        />
                       </td>
                     </tr>
                   );
@@ -427,10 +506,115 @@ export default async function AdminDemandPage({
           </section>
         </div>
 
+        <AdminSectionHeader
+          title="Beschaffung und Einladungen"
+          description="Wer aus einem Beschaffungslauf welche Nachricht bekommen hat — auch die, die nicht ankam."
+          aside={
+            outreach.length > 0
+              ? `${numberFormat.format(outreach.length)} Einladungen`
+              : "noch keine"
+          }
+        />
+
+        <AutomationStrip
+          automation={automation}
+          paused={isSourcingPaused(automation)}
+        />
+
+        {conversion.candidates > 0 ? (
+          <p className={styles.runLine}>
+            Bilanz: <strong>{numberFormat.format(conversion.candidates)}</strong>{" "}
+            Kandidaten · {numberFormat.format(conversion.invited)} angeschrieben ·{" "}
+            {numberFormat.format(conversion.opened)} haben den Link geöffnet ·{" "}
+            <strong>{numberFormat.format(conversion.converted)}</strong>{" "}
+            eingetragen
+            {conversion.invited > 0
+              ? ` (${Math.round((conversion.converted / conversion.invited) * 100)} % der Angeschriebenen)`
+              : ""}
+          </p>
+        ) : null}
+
+        {runs.length > 0 ? (
+          <p className={styles.runLine}>
+            Letzter Lauf: <strong>{runs[0]!.demandProfileLabel}</strong> am{" "}
+            {formatDate(runs[0]!.createdAt)} · {numberFormat.format(runs[0]!.foundCount)}{" "}
+            gefunden, {numberFormat.format(runs[0]!.addressableCount)} ansprechbar,{" "}
+            {numberFormat.format(runs[0]!.importedCount)} übernommen
+            {runs[0]!.skippedSkills.length > 0
+              ? ` · ohne Quelle: ${runs[0]!.skippedSkills.join(", ")}`
+              : ""}
+          </p>
+        ) : null}
+
+        {outreach.length === 0 ? (
+          <p className={styles.empty}>
+            Noch wurde niemand eingeladen. Ein Beschaffungslauf legt Kandidaten
+            an; die Einladung ist ein eigener Schritt, weil sie die Frist aus
+            Art. 14 DSGVO auslöst.
+          </p>
+        ) : (
+          <div className={styles.tableWrap}>
+            <table className={styles.outreachTable}>
+              <thead>
+                <tr>
+                  <th>Empfänger</th>
+                  <th>Bedarf</th>
+                  <th>Kanal</th>
+                  <th>Betreff</th>
+                  <th>Nachricht</th>
+                  <th>Zeitpunkt</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {outreach.map((eintrag) => (
+                  <tr key={eintrag.id}>
+                    <td data-label="Empfänger">
+                      <span className={styles.recipient}>
+                        <strong>{eintrag.recipientName ?? "ohne Namen"}</strong>
+                        <span>{eintrag.recipientEmail}</span>
+                        {eintrag.profileUrl ? (
+                          <a
+                            href={eintrag.profileUrl}
+                            rel="noreferrer nofollow noopener"
+                            target="_blank"
+                          >
+                            {sourceHost(eintrag.profileUrl)}
+                          </a>
+                        ) : null}
+                      </span>
+                    </td>
+                    <td data-label="Bedarf">{eintrag.demandProfileLabel ?? "–"}</td>
+                    <td data-label="Kanal">{channelLabel(eintrag.channel)}</td>
+                    <td data-label="Betreff">{eintrag.subject ?? "–"}</td>
+                    <td data-label="Nachricht">
+                      {/* Der Text entsteht erst nach der Zustellung — bei
+                          allem anderen gibt es keinen zu zeigen. */}
+                      <MessageView
+                        hasBody={eintrag.status === "sent"}
+                        id={eintrag.id}
+                      />
+                    </td>
+                    <td data-label="Zeitpunkt">{formatDateTime(eintrag.createdAt)}</td>
+                    <td data-label="Status">
+                      <span className={styles.sendState} data-status={eintrag.status}>
+                        {SEND_STATE_LABELS[eintrag.status]}
+                      </span>
+                      {eintrag.error ? <small> {eintrag.error}</small> : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
         <p className={styles.footNote}>
           Berechnete Analyseansicht aus <code>shortlists.brief_snapshot</code>,{" "}
           <code>result_status</code> und <code>decision_snapshot</code>. Es werden
           keine Suchrohtexte ausgegeben und keine Freelancer-Datensätze erzeugt.
+          Der Versandbeleg stammt aus <code>sourcing_outreach</code> und überlebt
+          den Kandidaten, damit die Informationspflicht belegbar bleibt.
         </p>
       </div>
     </main>

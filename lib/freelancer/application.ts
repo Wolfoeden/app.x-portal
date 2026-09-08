@@ -171,6 +171,14 @@ export const FreelancerApplicationInputSchema = z
       .nullable()
       .default(null),
     consent: z.literal(true),
+    /**
+     * Das Kennzeichen aus einer Einladung, falls die Person über eine kam.
+     *
+     * Es entscheidet nichts an der Bewerbung selbst — sie wird mit und ohne
+     * gleich behandelt. Es beantwortet nur die Frage, ob unsere Ansprache
+     * gewirkt hat, und ein ungültiges wird stillschweigend übergangen.
+     */
+    inviteToken: z.string().trim().max(200).nullable().default(null),
     /** Honeypot: a real applicant never fills this. */
     website: z.string().max(200).default(""),
   })

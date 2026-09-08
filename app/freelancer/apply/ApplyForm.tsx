@@ -67,7 +67,18 @@ const tagClasses = {
   optional: styles.optional,
 };
 
-export function ApplyForm({ accountEmail = "" }: { accountEmail?: string }) {
+export function ApplyForm({
+  accountEmail = "",
+  inviteToken = null,
+}: {
+  accountEmail?: string;
+  /**
+   * Das Kennzeichen aus der Einladung. Es reist mit dem Formular mit, damit
+   * die Anmeldung dem recherchierten Kandidaten zugeordnet werden kann —
+   * sonst steht sie als zweite Zeile daneben und seine verfaellt.
+   */
+  inviteToken?: string | null;
+}) {
   const [fullName, setFullName] = useState("");
   const [contactEmail, setContactEmail] = useState(accountEmail);
   const [contactPhone, setContactPhone] = useState("");
@@ -234,6 +245,7 @@ export function ApplyForm({ accountEmail = "" }: { accountEmail?: string }) {
           applicantNote,
           cv,
           consent,
+          inviteToken,
           website: honeypot,
         }),
       });
