@@ -279,7 +279,7 @@ describe("Vorbereiten: der Abgleich", () => {
 
 describe("Versenden: die vorbereiteten Entwürfe", () => {
   it("stellt einen Entwurf zu und legt den Lead ab", async () => {
-    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu" });
+    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu", sendSpacingMs: 0 });
 
     expect(result.sent).toBe(1);
     expect(mocks.deliver).toHaveBeenCalledWith(
@@ -299,7 +299,7 @@ describe("Versenden: die vorbereiteten Entwürfe", () => {
   });
 
   it("gleicht nicht erneut ab, denn der Abgleich ist gelaufen", async () => {
-    await runLeadSendPass({ senderEmail: "info@x-portal.eu" });
+    await runLeadSendPass({ senderEmail: "info@x-portal.eu", sendSpacingMs: 0 });
 
     expect(mocks.recordMatch).not.toHaveBeenCalled();
     expect(mocks.saveDraft).not.toHaveBeenCalled();
@@ -308,7 +308,7 @@ describe("Versenden: die vorbereiteten Entwürfe", () => {
   it("verwirft den Entwurf, wenn das angebotene Profil nicht mehr buchbar ist", async () => {
     mocks.profiles.mockResolvedValue([]);
 
-    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu" });
+    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu", sendSpacingMs: 0 });
 
     expect(result.discarded).toBe(1);
     expect(result.sent).toBe(0);
@@ -326,6 +326,7 @@ describe("Versenden: die vorbereiteten Entwürfe", () => {
 
     const result = await runLeadSendPass({
       senderEmail: "info@x-portal.eu",
+      sendSpacingMs: 0,
       now: new Date("2026-09-07T06:00:00Z"),
     });
 
@@ -339,7 +340,7 @@ describe("Versenden: die vorbereiteten Entwürfe", () => {
   it("gibt den Anspruch frei, wenn die Zustellung scheitert", async () => {
     mocks.deliver.mockResolvedValue({ delivered: false, reason: "smtp_error" });
 
-    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu" });
+    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu", sendSpacingMs: 0 });
 
     expect(result.sent).toBe(0);
     expect(result.skipped).toBe(1);
@@ -353,7 +354,7 @@ describe("Versenden: die vorbereiteten Entwürfe", () => {
   it("überspringt einen Entwurf, den ein anderer Lauf schon beansprucht hat", async () => {
     mocks.claimDraft.mockResolvedValue({ claimed: false, reason: "already_sent" });
 
-    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu" });
+    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu", sendSpacingMs: 0 });
 
     expect(result.sent).toBe(0);
     expect(result.skipped).toBe(1);
@@ -365,6 +366,7 @@ describe("Versenden: die vorbereiteten Entwürfe", () => {
 
     const result = await runLeadSendPass({
       senderEmail: "info@x-portal.eu",
+      sendSpacingMs: 0,
       dailyLimit: 20,
     });
 
@@ -382,6 +384,7 @@ describe("Versenden: die vorbereiteten Entwürfe", () => {
 
     const result = await runLeadSendPass({
       senderEmail: "info@x-portal.eu",
+      sendSpacingMs: 0,
       dailyLimit: 2,
     });
 
@@ -394,7 +397,7 @@ describe("Versenden: die vorbereiteten Entwürfe", () => {
   it("meldet einen leeren Vorrat als solchen", async () => {
     mocks.listDrafts.mockResolvedValue([]);
 
-    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu" });
+    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu", sendSpacingMs: 0 });
 
     expect(result.stoppedBy).toBe("nothing_prepared");
     expect(result.sent).toBe(0);
@@ -404,6 +407,7 @@ describe("Versenden: die vorbereiteten Entwürfe", () => {
   it("verschickt im Probelauf nichts", async () => {
     const result = await runLeadSendPass({
       senderEmail: "info@x-portal.eu",
+      sendSpacingMs: 0,
       dryRun: true,
     });
 
@@ -415,6 +419,7 @@ describe("Versenden: die vorbereiteten Entwürfe", () => {
   it("zählt das Tagesbudget ab Mitternacht Ortszeit", async () => {
     await runLeadSendPass({
       senderEmail: "info@x-portal.eu",
+      sendSpacingMs: 0,
       now: new Date("2026-09-07T06:00:00Z"),
     });
 
@@ -427,6 +432,7 @@ describe("Das Versandfenster gilt nur für den Versand", () => {
   it("tut außerhalb des Fensters nichts und fragt die Datenbank nicht", async () => {
     const result = await runLeadSendPass({
       senderEmail: "info@x-portal.eu",
+      sendSpacingMs: 0,
       enforceWindow: true,
       // Montag, 7. September 2026, 5:00 UTC — 7 Uhr Ortszeit, eine Stunde zu
       // früh. Genau der Aufruf, den der Zeitgeber im Winter zusätzlich macht.
@@ -442,6 +448,7 @@ describe("Das Versandfenster gilt nur für den Versand", () => {
   it("arbeitet innerhalb des Fensters wie gewohnt", async () => {
     const result = await runLeadSendPass({
       senderEmail: "info@x-portal.eu",
+      sendSpacingMs: 0,
       enforceWindow: true,
       now: new Date("2026-09-07T06:00:00Z"),
     });
@@ -520,7 +527,7 @@ describe("Der Abgleich liest wie im Chat", () => {
   });
 
   it("fragt das Modell im Versandlauf nicht — der Abgleich ist gelaufen", async () => {
-    await runLeadSendPass({ senderEmail: "info@x-portal.eu" });
+    await runLeadSendPass({ senderEmail: "info@x-portal.eu", sendSpacingMs: 0 });
 
     expect(mocks.extract).not.toHaveBeenCalled();
   });
@@ -591,5 +598,27 @@ describe("Von Hand und automatisch nehmen denselben Weg", () => {
 
     expect(mocks.recordSent).toHaveBeenCalledWith(ENTWURF.outreach_id);
     expect(mocks.updateLead).not.toHaveBeenCalled();
+  });
+
+  it("haelt zwischen zwei Zustellungen Abstand", async () => {
+    // Belegt den Ablauf, nicht die Konstante: Vorher lagen zwischen zwei
+    // Nachrichten nur die drei Sekunden der SMTP-Runde -- ein Zufall, kein
+    // Abstand. Wird der Mailserver schneller, wuerde der Schub dichter.
+    mocks.listDrafts.mockResolvedValue([
+      { ...ENTWURF, outreach_id: "11111111-1111-4111-8111-111111111111" },
+      { ...ENTWURF, outreach_id: "22222222-2222-4222-8222-222222222222" },
+    ]);
+
+    const start = Date.now();
+    const result = await runLeadSendPass({
+      senderEmail: "info@x-portal.eu",
+      sendSpacingMs: 60,
+    });
+    const gedauert = Date.now() - start;
+
+    expect(result.sent).toBe(2);
+    // Genau eine Pause: zwischen den beiden, nicht nach der letzten.
+    expect(gedauert).toBeGreaterThanOrEqual(55);
+    expect(gedauert).toBeLessThan(200);
   });
 });

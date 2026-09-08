@@ -28,6 +28,7 @@ import {
 import {
   LEAD_BULK_SEND_LIMIT,
   LEAD_HOURLY_SEND_LIMIT,
+  LEAD_SEND_SPACING_MS,
   sendHourStart,
   LEAD_DRAFT_MAX_AGE_DAYS,
   isWithinLeadSendWindow,
@@ -196,6 +197,14 @@ export type MatchRunOptions = {
    * verlässt nichts das Haus dabei.
    */
   enforceWindow?: boolean;
+  /**
+   * Abstand zwischen zwei Zustellungen.
+   *
+   * Einstellbar, damit ein Test nicht fuenf Sekunden je Nachricht wartet —
+   * und damit die Zahl an einer Stelle steht, falls der Anbieter wechselt.
+   * Im Betrieb bleibt sie bei .
+   */
+  sendSpacingMs?: number;
   /** Wer den Lauf angestoßen hat. Steht im Beleg jeder Nachricht. */
   trigger?: "scheduler" | "admin";
   /**
@@ -564,6 +573,20 @@ export async function runLeadSendPass(
 
     sent += 1;
     outcomes.push({ leadId: draft.lead_id, outcome: "sent", matchCount: 0 });
+
+    // Abstand halten, aber nur wenn noch etwas folgt.
+    //
+    // Vorher lagen zwischen zwei Zustellungen drei Sekunden — die Laufzeit
+    // der SMTP-Runde, nicht eine Entscheidung. Wird der Mailserver schneller,
+    // wird der Schub dichter, und das ist genau die Spitze, die ein Anbieter
+    // übelnimmt. Die Zeitgrenze des Aufrufs beendet den Durchgang danach von
+    // selbst; was liegen bleibt, holt der nächste.
+    if (sent < budgetHeute && Date.now() - startedAt < timeBudgetMs) {
+      const abstand = options.sendSpacingMs ?? LEAD_SEND_SPACING_MS;
+      if (abstand > 0) {
+        await new Promise((fertig) => setTimeout(fertig, abstand));
+      }
+    }
   }
 
   const ergebnis: MatchRunResult = {
