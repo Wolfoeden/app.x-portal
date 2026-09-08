@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   claimDraft: vi.fn(),
   discardDraft: vi.fn(),
   existingDrafts: vi.fn(),
+  extract: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -45,6 +46,10 @@ vi.mock("@/lib/leadgen/leads-data", () => ({
 vi.mock("@/lib/leadgen/demand", () => ({
   recordLeadMatch: mocks.recordMatch,
   catalogVersion: () => "catalog-test",
+  demandActorForLead: (email: string) => `pseudonym:${email}`,
+}));
+vi.mock("@/lib/openai/brief", () => ({
+  extractProjectBrief: mocks.extract,
 }));
 // Zwei Tabellen werden gelesen: die Warteschlange und, beim Vorbereiten, die
 // schon vorhandenen Entwürfe. Der Mock unterscheidet sie, damit ein Test nicht
@@ -64,6 +69,7 @@ vi.mock("@/lib/supabase/admin", () => ({
   }),
 }));
 
+import { parseFallbackBrief } from "@/lib/domain";
 import {
   runLeadPreparePass,
   runLeadSendPass,
@@ -151,6 +157,14 @@ beforeEach(() => {
   mocks.discardDraft.mockResolvedValue(true);
   mocks.listDrafts.mockResolvedValue([ENTWURF]);
   mocks.leads.mockResolvedValue({ data: [], error: null });
+  // Das Modell liefert denselben Brief, den der deterministische Weg baut.
+  // So bleibt die Rangliste im Test dieselbe, und geprüft wird, ob der
+  // Abgleich das Modell überhaupt anspricht.
+  mocks.extract.mockImplementation(async (input: { originalRequest: string }) => ({
+    brief: parseFallbackBrief(input.originalRequest),
+    mode: "openai" as const,
+    providerAttempted: true,
+  }));
 });
 
 describe("Vorbereiten: der Abgleich", () => {
@@ -445,5 +459,69 @@ describe("Das Versandfenster gilt nur für den Versand", () => {
     });
 
     expect(result.prepared).toBe(1);
+  });
+});
+
+describe("Der Abgleich liest wie im Chat", () => {
+  it("gibt die Ausschreibung an das Modell, mit dem Pseudonym als Kennung", async () => {
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
+
+    const result = await runLeadPreparePass({ senderEmail: "info@x-portal.eu" });
+
+    expect(mocks.extract).toHaveBeenCalledWith({
+      originalRequest: TREFFER,
+      safetyIdentifier: "pseudonym:kontakt1@example.invalid",
+      allowProvider: true,
+    });
+    expect(result.extractedByModel).toBe(1);
+    expect(result.extractedByFallback).toBe(0);
+  });
+
+  it("rechnet weiter, wenn das Modell ausfällt", async () => {
+    // `extractProjectBrief()` faellt intern auf den deterministischen Weg
+    // zurueck und meldet das als mode "fallback". Ein Lauf darf daran nicht
+    // scheitern — er soll nur sagen, wie gerechnet wurde.
+    mocks.extract.mockImplementation(async (input: { originalRequest: string }) => ({
+      brief: parseFallbackBrief(input.originalRequest),
+      mode: "fallback" as const,
+      providerAttempted: true,
+      fallbackReason: "provider_timeout" as const,
+    }));
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
+
+    const result = await runLeadPreparePass({ senderEmail: "info@x-portal.eu" });
+
+    expect(result.prepared).toBe(1);
+    expect(result.extractedByModel).toBe(0);
+    expect(result.extractedByFallback).toBe(1);
+  });
+
+  it("bleibt auf dem deterministischen Weg, wenn das ausdrücklich verlangt ist", async () => {
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
+
+    const result = await runLeadPreparePass({
+      senderEmail: "info@x-portal.eu",
+      useAi: false,
+    });
+
+    expect(mocks.extract).not.toHaveBeenCalled();
+    expect(result.extractedByFallback).toBe(1);
+    expect(result.prepared).toBe(1);
+  });
+
+  it("hält einen Lead für unlesbar, wenn auch das Modell nichts liefert", async () => {
+    mocks.extract.mockRejectedValue(new Error("kaputt"));
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
+
+    const result = await runLeadPreparePass({ senderEmail: "info@x-portal.eu" });
+
+    expect(result.prepared).toBe(0);
+    expect(result.outcomes[0]).toEqual({ leadId: 1, outcome: "unreadable" });
+  });
+
+  it("fragt das Modell im Versandlauf nicht — der Abgleich ist gelaufen", async () => {
+    await runLeadSendPass({ senderEmail: "info@x-portal.eu" });
+
+    expect(mocks.extract).not.toHaveBeenCalled();
   });
 });

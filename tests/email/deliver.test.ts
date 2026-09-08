@@ -150,6 +150,10 @@ describe("transactional email delivery", () => {
     expect(await deliverEmail(MESSAGE)).toEqual({
       delivered: false,
       reason: "send_failed",
+      // Die Antwort des Servers wandert in den Beleg zu dieser Nachricht.
+      // `send_failed` allein sagte nur, dass es nicht ging, und zwang beim
+      // Suchen zum Nachstellen des Fehlers. Die Adresse wird dabei ersetzt.
+      detail: "EENVELOPE 550 no such user <Empfänger>",
     });
   });
 

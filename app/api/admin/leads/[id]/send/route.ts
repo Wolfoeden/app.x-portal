@@ -371,7 +371,9 @@ export async function POST(
     if (!delivery.delivered) {
       await releaseOutreachClaim({
         outreachId: claim.outreachId,
-        reason: delivery.reason,
+        reason: delivery.detail
+          ? `${delivery.reason}: ${delivery.detail}`
+          : delivery.reason,
       });
       await writeAuditEvent({
         actorUserId: admin.id,
