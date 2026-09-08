@@ -6,26 +6,43 @@ import { z } from "zod";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { requireAdminUser } from "@/lib/auth/current-user";
 import { assertSameOrigin, readJsonWithLimit } from "@/lib/security/request";
-import { runDemandSourcing } from "@/lib/sourcing/demand-run";
+import { runDemandStep, STEP_BUDGET_MS } from "@/lib/sourcing/demand-step";
+import { logSourcingFailure } from "@/lib/sourcing/failure-log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Beschaffen, Adressen auflösen und einladen dauert. Ein Nachfrageprofil mit
-// vier Skills und acht Kandidaten liegt bei einer knappen Minute.
-export const maxDuration = 300;
+// Ein Schritt, nicht der ganze Lauf. Das Zeitbudget im Code ist die eigentliche
+// Grenze; dieser Wert ist nur die äußere Reserve.
+export const maxDuration = 60;
 
 /**
- * Der Knopf an einem Nachfrageprofil.
+ * Ein Schritt des Beschaffungslaufs.
  *
- * Er führt in einem Zug aus, was sonst drei Vorgänge sind: bei freelancermap
- * suchen, zu den Gefundenen eine Adresse ermitteln und sie einladen. Das ist
- * bewusst **ein** Knopf und trotzdem **drei** Stufen — jede lässt sich
- * einzeln abwählen, und was in einer Stufe scheitert, hält die anderen nicht
- * auf.
+ * Der erste Anlauf war ein einziger Aufruf, der alles erledigen wollte —
+ * fünfundvierzig bis fünfundachtzig Sekunden. Die Plattform beendet eine
+ * synchrone Funktion lange vorher, und weil hier im Fehlerfall nichts
+ * protokolliert wurde, sah der Abbruch aus wie „niemand hat gedrückt".
  *
- * Der Versand steht dabei nicht in der Vorgabe: Wer eingeladen wird, soll
- * vorher gesehen worden sein. Wer den Haken setzt, hat sich entschieden.
+ * Jetzt arbeitet ein Aufruf zwölf Sekunden und gibt zurück, was noch offen
+ * ist. Die Schleife läuft im Browser — dasselbe Muster wie beim
+ * Lead-Abgleich, aus demselben Grund.
  */
+
+const CursorSchema = z
+  .object({
+    phase: z.enum(["source", "address", "invite", "done"]),
+    pendingSkills: z.array(z.string().trim().max(80)).max(16),
+    skippedSkills: z.array(z.string().trim().max(80)).max(16),
+    pendingIds: z.array(z.string().uuid()).max(200),
+    found: z.number().int().min(0).max(10_000),
+    addressable: z.number().int().min(0).max(10_000),
+    imported: z.number().int().min(0).max(10_000),
+    addressed: z.number().int().min(0).max(10_000),
+    invited: z.number().int().min(0).max(10_000),
+    searchCalls: z.number().int().min(0).max(10_000),
+    freeAddressHits: z.number().int().min(0).max(10_000),
+  })
+  .strict();
 
 const InputSchema = z
   .object({
@@ -34,57 +51,68 @@ const InputSchema = z
     skills: z.array(z.string().trim().min(1).max(80)).min(1).max(8),
     workMode: z.enum(["remote", "on_site", "hybrid", "unknown"]).default("unknown"),
     location: z.string().trim().max(120).nullable().default(null),
-    /** Profile je Skill. Klein halten: dieselben Menschen tauchen mehrfach auf. */
     limitPerSkill: z.number().int().min(1).max(8).default(4),
-    /** Wie oft nach diesem Profil gesucht wurde, und von wie vielen. */
-    searches: z.number().int().min(0).max(100000).default(0),
-    uniqueSeekers: z.number().int().min(0).max(100000).default(0),
-    /** Adressen suchen. Kostet rund fünf Cent je Person. */
+    searches: z.number().int().min(0).max(100_000).default(0),
+    uniqueSeekers: z.number().int().min(0).max(100_000).default(0),
     resolveAddresses: z.boolean().default(true),
-    /** Einladungen verschicken. Erreicht Menschen — deshalb nicht vorbelegt. */
     sendInvites: z.boolean().default(false),
+    /** Der Zustand aus dem vorigen Schritt. Fehlt beim ersten Aufruf. */
+    cursor: CursorSchema.nullable().default(null),
   })
   .strict();
 
 export async function POST(request: Request) {
   const traceId = randomUUID();
+  let adminId: string | null = null;
+  let profileKey: string | null = null;
+  let phase = "unknown";
 
   try {
     assertSameOrigin(request);
     const admin = await requireAdminUser();
-    const input = InputSchema.parse(await readJsonWithLimit(request, 8_000));
+    adminId = admin.id;
+    const input = InputSchema.parse(await readJsonWithLimit(request, 24_000));
+    profileKey = input.profileKey;
+    phase = input.cursor?.phase ?? "source";
 
-    const ergebnis = await runDemandSourcing({
+    const ergebnis = await runDemandStep({
       demandProfileKey: input.profileKey,
       demandProfileLabel: input.profileLabel,
       skills: input.skills,
       workMode: input.workMode,
       location: input.location,
-      adminId: admin.id,
-      limitPerSkill: input.limitPerSkill,
       searches: input.searches,
       uniqueSeekers: input.uniqueSeekers,
+      adminId: admin.id,
+      limitPerSkill: input.limitPerSkill,
       resolveAddresses: input.resolveAddresses,
       sendInvites: input.sendInvites,
+      cursor: input.cursor,
+      timeBudgetMs: STEP_BUDGET_MS,
     });
 
+    // Jeder Schritt hinterlässt eine Spur, nicht erst der letzte. Sonst wäre
+    // ein Lauf, der in Schritt drei von fünf abbricht, wieder unsichtbar.
     await writeAuditEvent({
       actorUserId: admin.id,
-      action: "sourcing_demand_run",
+      action: "sourcing_demand_step",
       targetType: "search_demand",
       targetId: input.profileKey,
       outcome: "success",
       traceId,
       metadata: {
         label: input.profileLabel,
-        found: ergebnis.found,
-        addressable: ergebnis.addressable,
-        imported: ergebnis.imported,
-        addressed: ergebnis.addressed,
-        invited: ergebnis.invited,
-        sendInvites: input.sendInvites,
+        phaseVorher: phase,
+        phaseNachher: ergebnis.cursor.phase,
+        done: ergebnis.done,
+        found: ergebnis.cursor.found,
+        imported: ergebnis.cursor.imported,
+        addressed: ergebnis.cursor.addressed,
+        invited: ergebnis.cursor.invited,
+        searchCalls: ergebnis.cursor.searchCalls,
+        freeAddressHits: ergebnis.cursor.freeAddressHits,
       },
-      required: true,
+      required: ergebnis.done,
     });
 
     return NextResponse.json(
@@ -94,19 +122,32 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof NextResponse) return error;
     if (error instanceof Response) return error;
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Die Angaben zum Nachfrageprofil sind unvollständig.", traceId },
-        { status: 400, headers: { "Cache-Control": "private, no-store" } },
-      );
-    }
+
+    const ungueltig = error instanceof z.ZodError;
+    await logSourcingFailure({
+      actorUserId: adminId,
+      action: "sourcing_demand_step_failed",
+      targetId: profileKey,
+      traceId,
+      error,
+      stage: phase,
+      metadata: { invalidInput: ungueltig },
+    });
+
     return NextResponse.json(
       {
-        error: "Der Beschaffungslauf ist fehlgeschlagen.",
-        detail: error instanceof Error ? error.message : undefined,
+        error: ungueltig
+          ? "Die Angaben zum Nachfrageprofil sind unvollständig."
+          : "Der Beschaffungsschritt ist fehlgeschlagen.",
+        // Der Fehlertext gehört in die Antwort, nicht nur ins Protokoll: Wer
+        // den Knopf drückt, soll lesen können, woran es lag.
+        detail: error instanceof Error ? error.message.slice(0, 300) : undefined,
         traceId,
       },
-      { status: 500, headers: { "Cache-Control": "private, no-store" } },
+      {
+        status: ungueltig ? 400 : 500,
+        headers: { "Cache-Control": "private, no-store" },
+      },
     );
   }
 }
