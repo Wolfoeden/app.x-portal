@@ -4,6 +4,7 @@ vi.mock("server-only", () => ({}));
 
 import {
   LEAD_HOURLY_SEND_LIMIT,
+  LEAD_SEND_SPACING_MS,
   PROVIDER_HOURLY_CEILING,
   sendHourStart,
 } from "@/lib/leadgen/limits";
@@ -43,5 +44,28 @@ describe("Stundenbremse", () => {
     const nachUmstellung = sendHourStart(new Date("2026-10-25T01:30:00.000Z"));
     expect(vorUmstellung.toISOString()).toBe("2026-10-25T00:00:00.000Z");
     expect(nachUmstellung.toISOString()).toBe("2026-10-25T01:00:00.000Z");
+  });
+});
+
+describe("Abstand zwischen zwei Nachrichten", () => {
+  it("wartet fuenf Sekunden", () => {
+    expect(LEAD_SEND_SPACING_MS).toBe(5_000);
+  });
+
+  it("passt zur Stundenmenge, statt ihr zu widersprechen", () => {
+    // Bei fuenf Sekunden Abstand sind zwoelf Nachrichten je Minute moeglich.
+    // Die Stundenmenge bleibt darueber die eigentliche Obergrenze — der
+    // Abstand glaettet die Spitze, er ersetzt die Grenze nicht.
+    const proMinute = 60_000 / LEAD_SEND_SPACING_MS;
+    expect(proMinute).toBe(12);
+    expect(proMinute * 60).toBeGreaterThan(LEAD_HOURLY_SEND_LIMIT);
+  });
+
+  it("laesst einen Durchgang nicht laenger dauern als sein Zeitbudget", () => {
+    // Ein Aufruf arbeitet zwanzig Sekunden. Mit fuenf Sekunden Abstand sind
+    // das drei bis vier Nachrichten je Aufruf — der Rest bleibt liegen und
+    // wird vom naechsten geholt. Das ist gewollt und keine Bremse zu viel.
+    const proDurchgang = Math.floor(20_000 / LEAD_SEND_SPACING_MS);
+    expect(proDurchgang).toBe(4);
   });
 });
