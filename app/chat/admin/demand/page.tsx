@@ -22,6 +22,11 @@ import {
 } from "@/lib/sourcing/automation";
 import { readConversionStats } from "@/lib/sourcing/conversion";
 import {
+  buildWantedProfile,
+  wantedProfileText,
+  type WantedProfile,
+} from "@/lib/sourcing/wanted-profile";
+import {
   listSourcingOutreach,
   listSourcingRuns,
   type SourcingOutreachRow,
@@ -29,7 +34,7 @@ import {
 
 import { AutomationStrip } from "./AutomationStrip";
 import { MessageView } from "./MessageView";
-import { SourcingButton } from "./SourcingButton";
+import { WantedProfileButton } from "./WantedProfileButton";
 import styles from "./demand.module.css";
 
 export const metadata: Metadata = {
@@ -76,21 +81,7 @@ function channelLabel(value: string): string {
   return labels[value] ?? value;
 }
 
-/**
- * Die häufigste Arbeitsform des Profils.
- *
- * Sie geht in die Einladung ein („remote", „vor Ort in Hamburg"). Gibt es
- * keine Mehrheit oder keine Angabe, bleibt es bei `unknown` — dann steht in
- * der Nachricht nichts dazu, statt einer Behauptung.
- */
-function dominantWorkMode(
-  facets: readonly { label: string; count: number }[],
-): "remote" | "on_site" | "hybrid" | "unknown" {
-  const oben = facets[0]?.label;
-  return oben === "remote" || oben === "on_site" || oben === "hybrid"
-    ? oben
-    : "unknown";
-}
+
 
 /** Der Host der Quelle. Die volle Adresse sprengt die Spalte. */
 function sourceHost(url: string): string {
@@ -208,6 +199,29 @@ export default async function AdminDemandPage({
     },
     required: true,
   });
+
+  // Die Wunschprofile entstehen hier, nicht im Browser: Sie sind reine
+  // Rechnung auf Zahlen, die ohnehin schon geladen sind. Ein Knopf, der dafuer
+  // erst eine Route ruft, waere ein Aufruf fuer nichts.
+  const wunschprofile: Record<string, { profil: WantedProfile; text: string }> =
+    {};
+  for (const profile of report.profiles) {
+    const profil = buildWantedProfile({
+      profileKey: profile.key,
+      profileLabel: profile.label,
+      requiredSkills: profile.requiredSkills,
+      optionalSkills: profile.optionalSkills,
+      openSupplyGaps: profile.openSupplyGaps,
+      locations: profile.locations,
+      workModes: profile.workModes,
+      languages: profile.languages,
+      searches: profile.searches,
+      uniqueSeekers: profile.uniqueUsers,
+      noReliableMatch: profile.noReliableMatch,
+      averageResults: profile.averageResults,
+    });
+    wunschprofile[profile.key] = { profil, text: wantedProfileText(profil) };
+  }
 
   const maxSearches = Math.max(
     1,
@@ -452,14 +466,15 @@ export default async function AdminDemandPage({
                                 ? "Bestand beobachten"
                                 : "Mehr messbare Suchen abwarten"}
                         </small>
-                        <SourcingButton
-                          location={profile.locations[0]?.label ?? null}
-                          profileKey={profile.key}
-                          profileLabel={profile.label}
-                          searches={profile.searches}
-                          skills={profile.requiredSkills.map((skill) => skill.label)}
-                          uniqueSeekers={profile.uniqueUsers}
-                          workMode={dominantWorkMode(profile.workModes)}
+                        {/*
+                          Kein Beschaffungslauf mehr. Die Nachfrageseite sucht
+                          niemanden — sie beschreibt, wer gesucht werden soll.
+                          Gerechnet wird auf dem Server, damit der Knopf beim
+                          Klick nichts nachladen muss.
+                        */}
+                        <WantedProfileButton
+                          profil={wunschprofile[profile.key]!.profil}
+                          text={wunschprofile[profile.key]!.text}
                         />
                       </td>
                     </tr>

@@ -404,3 +404,20 @@ export function sendHourStart(now: Date): Date {
   beginn.setUTCMinutes(0, 0, 0);
   return beginn;
 }
+
+/**
+ * Der Abstand zwischen zwei zugestellten Nachrichten im Stapellauf.
+ *
+ * Bis zum 8. September gab es hier gar keine Pause: Die gemessenen drei
+ * Sekunden zwischen zwei Zustellungen waren die Laufzeit der SMTP-Runde und
+ * nichts sonst. Das ist kein Abstand, das ist ein Zufall — wird der Mailserver
+ * schneller, wird der Schub dichter.
+ *
+ * Fünf Sekunden sind Romans Vorgabe. Sie bedeuten höchstens zwölf Nachrichten
+ * in der Minute und damit einen Schub, den der Anbieter sicher trägt; die
+ * Stundenmenge in `LEAD_HOURLY_SEND_LIMIT` bleibt die Obergrenze darüber.
+ *
+ * Gewartet wird **zwischen** zwei Nachrichten, nicht nach der letzten: Eine
+ * Pause am Ende verlängert nur den Aufruf und schützt niemanden.
+ */
+export const LEAD_SEND_SPACING_MS = 5_000;

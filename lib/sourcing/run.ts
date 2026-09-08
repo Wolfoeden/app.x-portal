@@ -1,32 +1,15 @@
 import "server-only";
 
-import {
-  importSourcedCandidates,
-  type ImportOutcome,
-} from "@/lib/freelancer/sourced-candidate-import";
 import type { DemandBrief } from "@/lib/freelancer/outreach";
 import { sendFreelancerOutreach } from "@/lib/freelancer/outreach-send";
-import type { ExternalFreelancerCandidate } from "@/lib/openai/external-freelancer-search";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
-import { candidateFromProfile } from "./candidate";
-import {
-  isAddressable,
-  loadSkillIndex,
-  sourceFromFreelancermap,
-  type FreelancermapProfile,
-} from "./freelancermap";
-
 /**
- * Der Beschaffungslauf: von einer Lücke in der Nachfrage zu Menschen, die
- * eingeladen werden können.
+ * Die Einladung an einen recherchierten Freelancer.
  *
- * Der Lauf tut zwei Dinge, die bewusst getrennt bleiben. Er **beschafft** —
- * das kostet nichts und legt nur Zeilen an. Und er **lädt ein** — das erreicht
- * Menschen und ist damit nicht rückholbar. Zwischen beidem steht die
- * Informationspflicht aus Art. 14 DSGVO, deren Frist mit dem Anlegen zu laufen
- * beginnt. Ein Aufruf, der beides in einem Rutsch täte, wäre bequemer und
- * würde die Uhr für Menschen starten, die niemand angesehen hat.
+ * Hier stand einmal auch ein Beschaffungslauf gegen freelancermap. Der ist
+ * zurückgebaut: Freelancer kommen aus der bezahlten Nutzersuche, nicht aus
+ * einem eigenen Suchlauf. Übrig bleibt der Weg nach draußen und sein Beleg.
  */
 
 /** Der Absender. Ohne „300" — der Empfänger soll XPORTAL lesen. */
@@ -34,121 +17,6 @@ export const SENDER_NAME = "Roman Dering";
 
 function senderEmail(): string {
   return process.env.EMAIL_FROM?.trim() || "info@x-portal.eu";
-}
-
-export type SourcingRunInput = {
-  demandProfileKey: string;
-  demandProfileLabel: string;
-  /** Die Pflichtkompetenzen des Nachfrageprofils. */
-  skills: readonly string[];
-  adminId: string;
-  /** Profile je Skill. Klein halten — dieselben Menschen tauchen mehrfach auf. */
-  limitPerSkill?: number;
-};
-
-export type SourcingRunOutcome = {
-  runId: string | null;
-  demandProfileLabel: string;
-  /** Skills, zu denen es bei der Quelle keine Liste gibt. */
-  skippedSkills: string[];
-  found: number;
-  addressable: number;
-  candidates: ExternalFreelancerCandidate[];
-  import: ImportOutcome | null;
-  /** Gesetzt, wenn heute schon ein Lauf zu diesem Profil stattgefunden hat. */
-  alreadyRanToday: boolean;
-};
-
-/**
- * Beschafft zu einem Nachfrageprofil und legt die Treffer als Kandidaten an.
- *
- * Entdoppelt über `profileUrl`: Wer TypeScript **und** PostgreSQL kann, steht
- * in beiden Listen und ist trotzdem ein Mensch. Ohne diesen Schritt bekäme er
- * zwei Einladungen — gemessen an einem Probelauf betraf das drei von zwanzig.
- */
-export async function runSourcingPass(
-  input: SourcingRunInput,
-): Promise<SourcingRunOutcome> {
-  const admin = createAdminSupabaseClient();
-  const limitPerSkill = Math.min(Math.max(input.limitPerSkill ?? 4, 1), 12);
-
-  const index = await loadSkillIndex();
-  const profiles = new Map<string, FreelancermapProfile>();
-  const skippedSkills: string[] = [];
-
-  for (const skill of input.skills) {
-    const lauf = await sourceFromFreelancermap({
-      skill,
-      limit: limitPerSkill,
-      skillIndex: index,
-    });
-    if (!lauf.skillPageFound) {
-      skippedSkills.push(skill);
-      continue;
-    }
-    for (const profil of lauf.profiles) {
-      if (!profiles.has(profil.profileUrl)) profiles.set(profil.profileUrl, profil);
-    }
-  }
-
-  const ansprechbar = [...profiles.values()].filter(isAddressable);
-  const candidates = ansprechbar
-    .map(candidateFromProfile)
-    .filter((wert): wert is ExternalFreelancerCandidate => wert !== null);
-
-  const eingelesen =
-    candidates.length > 0
-      ? await importSourcedCandidates({ candidates, adminId: input.adminId })
-      : { created: 0, skipped: [] };
-
-  // Woher der Kandidat stammt, nachtragen. Ein Kandidat aus einem
-  // Beschaffungslauf belegt unsere eigene Vermutung, einer aus einer bezahlten
-  // Kundensuche echte Nachfrage — in der Auswertung ist das der Unterschied
-  // zwischen Angebot und Bedarf.
-  if (eingelesen.created > 0) {
-    await admin
-      .from("freelancer_applications")
-      .update({ sourcing_origin: "demand_run" })
-      .in(
-        "source_profile_url",
-        candidates.map((wert) => wert.profileUrl),
-      )
-      .eq("status", "sourced")
-      .is("sourcing_origin", null);
-  }
-
-  const { data, error } = await admin
-    .from("sourcing_runs")
-    .insert({
-      demand_profile_key: input.demandProfileKey.slice(0, 200),
-      demand_profile_label: input.demandProfileLabel.slice(0, 200),
-      skills: input.skills.slice(0, 12),
-      source: "freelancermap",
-      found_count: profiles.size,
-      addressable_count: ansprechbar.length,
-      imported_count: eingelesen.created,
-      skipped_skills: skippedSkills,
-      triggered_by: input.adminId,
-    })
-    .select("id")
-    .maybeSingle();
-
-  // Der eindeutige Index lässt einen zweiten Lauf am selben Tag nicht zu. Das
-  // ist kein Fehler, sondern die Kostenbremse — der Aufrufer erfährt es und
-  // behält die Kandidaten, die er schon hat.
-  const alreadyRanToday = Boolean(error && error.code === "23505");
-  if (error && !alreadyRanToday) throw error;
-
-  return {
-    runId: (data as { id: string } | null)?.id ?? null,
-    demandProfileLabel: input.demandProfileLabel,
-    skippedSkills,
-    found: profiles.size,
-    addressable: ansprechbar.length,
-    candidates,
-    import: eingelesen,
-    alreadyRanToday,
-  };
 }
 
 export type InviteInput = {
