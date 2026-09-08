@@ -47,7 +47,12 @@ export type ImportSkipReason =
 
 export type ImportOutcome = {
   created: number;
-  skipped: { reason: ImportSkipReason; profileUrl: string }[];
+  skipped: {
+    reason: ImportSkipReason;
+    profileUrl: string;
+    /** Die Meldung der Datenbank, wenn sie die Zeile abgewiesen hat. */
+    detail?: string;
+  }[];
 };
 
 /**
@@ -201,9 +206,18 @@ export async function importSourcedCandidates(input: {
       // 23505 ist die Verletzung des eindeutigen Index auf der Profiladresse:
       // die Person liegt bereits vor. Das ist kein Fehler, sondern der Zweck
       // des Index.
+      //
+      // Jeder andere Fehler ist einer, und dann muss die Meldung der Datenbank
+      // mit. „rejected" allein hat eine vollständig kaputte Übernahme wie
+      // einen Normalfall aussehen lassen: Die wahre Ursache war eine Spalte,
+      // die noch NOT NULL stand, und sie blieb sechs Wochen unbemerkt.
       outcome.skipped.push({
         reason: error.code === "23505" ? "duplicate" : "rejected",
         profileUrl: candidate.profileUrl,
+        detail:
+          error.code === "23505"
+            ? undefined
+            : `${error.code ?? "?"}: ${error.message}`,
       });
       continue;
     }
