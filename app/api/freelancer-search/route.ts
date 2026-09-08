@@ -22,6 +22,7 @@ import {
   withoutContactEmail,
   type ExternalFreelancerCandidate,
 } from "@/lib/openai/external-freelancer-search";
+import { absorbSearchCandidates } from "@/lib/sourcing/absorb-search";
 import {
   assertSameOrigin,
   getClientIp,
@@ -383,6 +384,50 @@ export async function POST(request: Request) {
         await writeAuditEvent({
           actorUserId: user.id,
           action: "external_freelancer_search_result_not_stored",
+          targetType: "project",
+          targetId: project.id,
+          outcome: "failed",
+          traceId,
+        }).catch(() => undefined);
+      }
+    }
+
+    // Die Gefundenen in die Freelancer-Pipeline übernehmen.
+    //
+    // Der Anlass ist hier am stärksten: Es sucht ein Unternehmen mit einem
+    // konkreten Projekt, und die gefundene Person erfüllt belegbar einen Teil
+    // seiner Anforderungen — beides steht später in ihrer Einladung. Ohne
+    // diesen Schritt blieben die Treffer im `result_snapshot` liegen, so wie
+    // dreizehn Menschen aus acht Suchläufen davor.
+    //
+    // Ein Fehlschlag bleibt beim Kunden folgenlos: Er hat für Treffer bezahlt
+    // und bekommt sie. Nur der Vermerk fehlt dann. Der Schalter dafür sitzt in
+    // `sourcing_automation` und ist in der Vorgabe aus.
+    if (charged && responseCandidates.length > 0) {
+      try {
+        const uebernahme = await absorbSearchCandidates({
+          candidates: responseCandidates,
+          brief,
+          actorUserId: user.id,
+        });
+        if (uebernahme.ran) {
+          await writeAuditEvent({
+            actorUserId: user.id,
+            action: "sourced_candidates_absorbed_from_search",
+            targetType: "project",
+            targetId: project.id,
+            outcome: "success",
+            traceId,
+            metadata: {
+              created: uebernahme.created,
+              skipped: uebernahme.skipped.length,
+            },
+          }).catch(() => undefined);
+        }
+      } catch {
+        await writeAuditEvent({
+          actorUserId: user.id,
+          action: "sourced_candidates_absorb_failed",
           targetType: "project",
           targetId: project.id,
           outcome: "failed",

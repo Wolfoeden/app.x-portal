@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
     }),
   ),
   execute: vi.fn(),
+  absorb: vi.fn().mockResolvedValue({ ran: false, created: 0, skipped: [] }),
   storeExternalSearchResult: vi.fn(),
   fetchProfiles: vi.fn().mockResolvedValue([]),
   getExternalSearchResult: vi.fn(),
@@ -42,23 +43,38 @@ vi.mock("@/lib/domain", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/domain")>();
   return { ...actual, buildShortlist: mocks.buildShortlist };
 });
-vi.mock("@/lib/openai/external-freelancer-search", () => ({
-  estimateExternalSearchTokenCeiling: () => ({
-    inputTokens: 100,
-    outputTokens: 200,
-    totalTokens: 300,
-    model: "gpt-5.4-nano-2026-03-17",
-  }),
-  searchExternalFreelancers: mocks.search,
-  // Nicht durch eine Attrappe ersetzt: Dass die Kontaktadresse die Route nicht
-  // verlässt, ist genau die Zusage, die hier geprüft werden soll. Ein
-  // Platzhalter würde sie stillschweigend durchlassen.
-  withoutContactEmail: (candidates: readonly Record<string, unknown>[]) =>
-    candidates.map((candidate) => {
-      const copy = { ...candidate };
-      delete copy.contactEmail;
-      return copy;
+// Teilweise ersetzt, nicht vollständig: Seit die Route ihre Treffer in die
+// Kandidatenliste übernimmt, hängt an diesem Modul auch
+// `StoredExternalCandidateSchema`. Eine Attrappe ohne diesen Export ließe die
+// Übernahme schon beim Laden scheitern.
+vi.mock("@/lib/openai/external-freelancer-search", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/lib/openai/external-freelancer-search")>();
+  return {
+    ...actual,
+    estimateExternalSearchTokenCeiling: () => ({
+      inputTokens: 100,
+      outputTokens: 200,
+      totalTokens: 300,
+      model: "gpt-5.4-nano-2026-03-17",
     }),
+    searchExternalFreelancers: mocks.search,
+    // Nicht durch eine Attrappe ersetzt: Dass die Kontaktadresse die Route
+    // nicht verlässt, ist genau die Zusage, die hier geprüft werden soll. Ein
+    // Platzhalter würde sie stillschweigend durchlassen.
+    withoutContactEmail: (candidates: readonly Record<string, unknown>[]) =>
+      candidates.map((candidate) => {
+        const copy = { ...candidate };
+        delete copy.contactEmail;
+        return copy;
+      }),
+  };
+});
+// Die Übernahme selbst hat eigene Tests; hier soll nur belegt sein, dass die
+// Route sie ruft und dass ein Fehlschlag dort die Kundenantwort nicht
+// beschädigt.
+vi.mock("@/lib/sourcing/absorb-search", () => ({
+  absorbSearchCandidates: mocks.absorb,
 }));
 vi.mock("@/lib/ai/gateway", () => ({
   executeTrackedAiRequest: mocks.execute,
