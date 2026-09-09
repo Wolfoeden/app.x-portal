@@ -1,12 +1,7 @@
 import "server-only";
 
-import { z } from "zod";
-
 import { checkEmailSuppression } from "@/lib/email/suppression";
-import {
-  StoredExternalCandidateSchema,
-  type ExternalFreelancerCandidate,
-} from "@/lib/openai/external-freelancer-search";
+import type { ExternalFreelancerCandidate } from "@/lib/openai/external-freelancer-search";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 /**
@@ -225,114 +220,4 @@ export async function importSourcedCandidates(input: {
   }
 
   return outcome;
-}
-
-/* ------------------------------------------------------------------ */
-/* Die Suchläufe, aus denen übernommen werden kann                      */
-/* ------------------------------------------------------------------ */
-
-const SearchRunRowSchema = z.object({
-  id: z.string().uuid(),
-  created_at: z.string().min(1),
-  result_count: z.number().int().min(0).max(3),
-  result_snapshot: z.array(StoredExternalCandidateSchema).max(3),
-});
-
-export type SearchRun = {
-  id: string;
-  createdAt: string;
-  /**
-   * Nur Name und Rolle je Treffer. Die Übersicht soll zeigen, was zu holen
-   * ist — Adressen und Belege gehören in den Einzelfall, nicht in eine Liste,
-   * die beim Öffnen der Seite entsteht.
-   */
-  candidates: { displayName: string; role: string; hasEmail: boolean }[];
-  /** Wie viele davon bereits als Kandidat vorliegen. */
-  alreadyImported: number;
-};
-
-/**
- * Die jüngsten bezahlten Suchläufe, quer über alle Konten.
- *
- * Bewusst ohne Bezug zum Auftraggeber: Für die Informationspflicht zählt die
- * gefundene Person, nicht wer die Suche bezahlt hat. Wer das wissen muss,
- * findet es im Protokoll.
- */
-export async function listSearchRuns(limit = 25): Promise<SearchRun[]> {
-  const admin = createAdminSupabaseClient();
-  const { data, error } = await admin
-    .from("external_freelancer_search_results")
-    .select("id,created_at,result_count,result_snapshot")
-    .gt("result_count", 0)
-    .order("created_at", { ascending: false })
-    .limit(Math.min(Math.max(limit, 1), 100));
-  if (error) throw error;
-
-  const parsedRuns: { run: SearchRun; profileUrls: string[] }[] = [];
-  const allProfileUrls = new Set<string>();
-
-  for (const row of data ?? []) {
-    const parsed = SearchRunRowSchema.safeParse(row);
-    // Ein Schnappschuss, den das Schema nicht mehr liest, wird übersprungen,
-    // statt die ganze Liste scheitern zu lassen.
-    if (!parsed.success) continue;
-
-    const profileUrls = parsed.data.result_snapshot.map(
-      (candidate) => candidate.profileUrl,
-    );
-    for (const url of profileUrls) allProfileUrls.add(url);
-
-    parsedRuns.push({
-      profileUrls,
-      run: {
-        id: parsed.data.id,
-        createdAt: parsed.data.created_at,
-        candidates: parsed.data.result_snapshot.map((candidate) => ({
-          displayName: candidate.displayName,
-          role: candidate.role,
-          hasEmail: Boolean(candidate.contactEmail),
-        })),
-        alreadyImported: 0,
-      },
-    });
-  }
-
-  if (allProfileUrls.size === 0) return parsedRuns.map((entry) => entry.run);
-
-  // Eine Abfrage für alle Läufe zusammen: Bei 25 Läufen wären es sonst 25.
-  const { data: known, error: knownError } = await admin
-    .from("freelancer_applications")
-    .select("source_profile_url")
-    .in("source_profile_url", [...allProfileUrls]);
-  if (knownError) throw knownError;
-
-  const imported = new Set(
-    (known ?? [])
-      .map(
-        (row) => (row as { source_profile_url: string | null }).source_profile_url,
-      )
-      .filter((url): url is string => Boolean(url)),
-  );
-
-  return parsedRuns.map(({ run, profileUrls }) => ({
-    ...run,
-    alreadyImported: profileUrls.filter((url) => imported.has(url)).length,
-  }));
-}
-
-/** Die Kandidaten eines Laufs, vollständig — mit Kontaktadresse. */
-export async function loadSearchRunCandidates(
-  searchRunId: string,
-): Promise<ExternalFreelancerCandidate[] | null> {
-  const admin = createAdminSupabaseClient();
-  const { data, error } = await admin
-    .from("external_freelancer_search_results")
-    .select("id,created_at,result_count,result_snapshot")
-    .eq("id", searchRunId)
-    .maybeSingle();
-  if (error) throw error;
-  if (!data) return null;
-
-  const parsed = SearchRunRowSchema.safeParse(data);
-  return parsed.success ? parsed.data.result_snapshot : null;
 }

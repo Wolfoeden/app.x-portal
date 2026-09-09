@@ -5,40 +5,38 @@ import { usePathname } from "next/navigation";
 
 import styles from "./admin-nav.module.css";
 
+/**
+ * Zwei Rubriken statt drei.
+ *
+ * Nach dem Wegfall von Inbox, Profil-Performance und Informationspflicht
+ * blieben in „Analyse" zwei und in „Betrieb" ein einziger Punkt übrig. Eine
+ * Rubrik mit einem Eintrag ist keine Rubrik, sie ist eine Überschrift über
+ * sich selbst. „Nachfrage" steht deshalb bei der Arbeit — dort werden
+ * Wunschprofile erzeugt, nicht nur Zahlen gelesen.
+ */
 const GROUPS = [
   {
     label: "Arbeit",
     links: [
-      { href: "/chat/admin/inbox", label: "Inbox" },
       { href: "/chat/admin/freelancers", label: "Bewerbungen" },
       { href: "/chat/admin/leads", label: "Leads" },
-    ],
-  },
-  {
-    label: "Analyse",
-    links: [
-      { href: "/chat/admin/users", label: "Nutzer" },
       { href: "/chat/admin/demand", label: "Nachfrage" },
-      { href: "/chat/admin/profiles", label: "Profil-Performance" },
     ],
   },
   {
     label: "Betrieb",
     links: [
-      { href: "/chat/admin/outreach", label: "Informationspflicht" },
+      { href: "/chat/admin/users", label: "Nutzer" },
       { href: "/chat/admin/ai-usage", label: "AI-Kosten" },
     ],
   },
 ] as const;
 
 const PREVIEW_HREFS: Record<string, string> = {
-  "/chat/admin/inbox": "/chat/preview/admin-inbox",
   "/chat/admin/freelancers": "/chat/preview/admin-pages?view=freelancers",
   "/chat/admin/leads": "/chat/preview/admin-pages?view=leads",
   "/chat/admin/users": "/chat/preview/admin-pages?view=users",
   "/chat/admin/demand": "/chat/preview/admin-pages?view=demand",
-  "/chat/admin/profiles": "/chat/preview/admin-pages?view=profiles",
-  "/chat/admin/outreach": "/chat/preview/admin-pages?view=outreach",
   "/chat/admin/ai-usage": "/chat/preview/admin-pages?view=ai-usage",
 };
 

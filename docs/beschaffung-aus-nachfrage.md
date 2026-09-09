@@ -365,6 +365,13 @@ Kasten, keine erklärende Karte.
 Die Läufe selbst und die Übernahme bleiben, wo sie hingehören: auf
 `/chat/admin/outreach`, wo schon die Fristenliste steht.
 
+> **Überholt seit 9. September 2026.** Die Seite `/chat/admin/outreach` gibt
+> es nicht mehr, und mit ihr weder die Fristenliste noch die Übernahme von
+> Hand. Kandidaten entstehen seither nur noch automatisch aus einer bezahlten
+> Nutzersuche (`absorbSearchCandidates`, Schalter auf `/chat/admin/demand`);
+> die Frist aus Art. 14 DSGVO wird durch Löschung nach 30 Tagen eingehalten
+> statt durch Beobachtung. Siehe `docs/processing-register.md`.
+
 ### 5. Reihenfolge
 
 1. `briefFromDemandProfile()` samt Tests — danach ist der Kern belegt.

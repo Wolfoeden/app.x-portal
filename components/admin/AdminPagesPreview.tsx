@@ -12,10 +12,8 @@ import styles from "./admin-pages-preview.module.css";
 export const ADMIN_PREVIEW_VIEWS = [
   "users",
   "demand",
-  "profiles",
   "freelancers",
   "leads",
-  "outreach",
   "ai-usage",
 ] as const;
 
@@ -158,60 +156,6 @@ const CONFIGS: Record<AdminPreviewView, PreviewConfig> = {
       },
     ],
   },
-  profiles: {
-    eyebrow: "Admin / Analyse",
-    title: "Profil-Performance",
-    description:
-      "Reichweite, Interesse und Konversion bilden eine lesbare Kette. Bereitschaftsprobleme stehen direkt am Profil.",
-    metrics: [
-      { label: "Sichtbare Profile", value: "48", detail: "42 vollständig" },
-      { label: "Mit Reichweite", value: "31", detail: "im Zeitraum gezeigt", tone: "accent" },
-      { label: "Mit Interesse", value: "9", detail: "Kontakt oder Shortlist" },
-      { label: "Terminbuchungen", value: "3", detail: "aus Profilinteraktionen", tone: "warning" },
-    ],
-    filters: ["30 Tage", "Alle Profile", "Konversion"],
-    sectionTitle: "Profile nach Wirkung",
-    sectionDescription: "Bereitschaft vor Reichweite; Reichweite vor Konversion.",
-    resultLabel: "48 Profile",
-    columns: ["Profil", "Bereitschaft", "Reichweite", "Interesse", "Konversion", "Letzte Aktivität"],
-    rows: [
-      {
-        key: "profile-1",
-        tone: "accent",
-        cells: [
-          { main: "Mara Hoffmann", meta: "Senior Product Designer · Berlin" },
-          { badge: { label: "Einsatzbereit", tone: "accent" }, meta: "Terminlink vorhanden" },
-          { main: "126 Ansichten", meta: "34 Shortlist-Impressionen" },
-          { main: "12 Kontakte", meta: "9,5 % Kontaktrate" },
-          { main: "3 Buchungen", meta: "25 % aus Kontakten" },
-          { main: "Heute, 08:54" },
-        ],
-      },
-      {
-        key: "profile-2",
-        cells: [
-          { main: "David Kern", meta: "Data Engineer · Remote" },
-          { badge: { label: "Einsatzbereit", tone: "accent" }, meta: "ab sofort" },
-          { main: "64 Ansichten", meta: "21 Shortlist-Impressionen" },
-          { main: "4 Kontakte", meta: "6,3 % Kontaktrate" },
-          { main: "1 Buchung", meta: "25 % aus Kontakten" },
-          { main: "Gestern, 15:20" },
-        ],
-      },
-      {
-        key: "profile-3",
-        tone: "warning",
-        cells: [
-          { main: "Selin Yilmaz", meta: "Change Managerin · Köln" },
-          { badge: { label: "Blockiert", tone: "warning" }, meta: "Terminlink fehlt" },
-          { main: "0 Ansichten", meta: "noch nie ausgespielt" },
-          { main: "0 Kontakte" },
-          { main: "0 Buchungen" },
-          { main: "Vor 16 Tagen" },
-        ],
-      },
-    ],
-  },
   freelancers: {
     eyebrow: "Admin / Arbeit",
     title: "Bewerbungen",
@@ -314,58 +258,6 @@ const CONFIGS: Record<AdminPreviewView, PreviewConfig> = {
           { badge: { label: "Qualifiziert" }, meta: "Bedarf konkretisieren" },
           { main: "Notiz gestern", meta: "Interim Product Lead gesucht" },
           { action: "Bearbeiten →" },
-        ],
-      },
-    ],
-  },
-  outreach: {
-    eyebrow: "Admin / Betrieb",
-    title: "Informationspflicht",
-    description:
-      "Überfällige und bald fällige Fälle stehen oben; bereits informierte Personen bleiben zur Nachvollziehbarkeit am Ende.",
-    metrics: [
-      { label: "Überfällig", value: "3", detail: "heute bearbeiten", tone: "danger" },
-      { label: "Bald fällig", value: "5", detail: "höchstens 3 Tage", tone: "warning" },
-      { label: "Offen", value: "27", detail: "innerhalb der Frist" },
-      { label: "Informiert", value: "41", detail: "nachweisbar erledigt", tone: "muted" },
-    ],
-    filters: ["Offene zuerst", "Alle Quellen", "30 Tage"],
-    sectionTitle: "Fristen nach Dringlichkeit",
-    sectionDescription: "Friststatus, Erhebungszeitpunkt und Quellennachweis pro Person.",
-    resultLabel: "35 offene Fälle",
-    columns: ["Person", "Frist", "Status", "Recherchiert", "Quellen"],
-    rows: [
-      {
-        key: "outreach-1",
-        tone: "danger",
-        cells: [
-          { main: "Dr. Eva Brandt", meta: "e.brandt@example.test" },
-          { main: "Vor 2 Tagen", meta: "02.09.2026" },
-          { badge: { label: "Überfällig", tone: "danger" }, meta: "Information senden" },
-          { main: "19.08.2026", meta: "LinkedIn · Firmenwebsite" },
-          { tags: ["linkedin.com", "northstar.de"] },
-        ],
-      },
-      {
-        key: "outreach-2",
-        tone: "warning",
-        cells: [
-          { main: "Felix Maurer", meta: "f.maurer@example.test" },
-          { main: "Morgen", meta: "05.09.2026" },
-          { badge: { label: "Bald fällig", tone: "warning" }, meta: "Entwurf prüfen" },
-          { main: "22.08.2026", meta: "Unternehmensseite" },
-          { tags: ["evertide.energy"] },
-        ],
-      },
-      {
-        key: "outreach-3",
-        tone: "muted",
-        cells: [
-          { main: "Carla Mertens", meta: "c.mertens@example.test" },
-          { main: "Erledigt", meta: "gesendet 28.08.2026" },
-          { badge: { label: "Informiert", tone: "muted" }, meta: "Nachweis vorhanden" },
-          { main: "14.08.2026", meta: "Branchenverzeichnis" },
-          { tags: ["industry-network.eu"] },
         ],
       },
     ],
