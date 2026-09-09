@@ -6,7 +6,7 @@ import { Fragment, useMemo, useState } from "react";
 import { appPath } from "@/lib/app-path";
 import type { LeadRow } from "@/lib/leadgen/leads-data";
 import {
-  LEAD_BULK_SEND_LIMIT,
+  LEAD_HOURLY_SEND_LIMIT,
   LEAD_STATUS_LABELS,
   leadHeadline,
   leadSourceUrl,
@@ -247,12 +247,16 @@ export function LeadsPanel({
    * Der Stapel. Nacheinander, nicht parallel: jede Zeile bekommt ihren eigenen
    * Anbieteraufruf, und zwanzig gleichzeitig laufen dem Minutenlimit direkt
    * in die Arme.
+   *
+   * Gedeckelt auf die Stundenmenge und nicht auf die Tagesmenge: Was darüber
+   * hinausginge, wiese die Stundenbremse in der Zustellung ohnehin ab, und
+   * der Betreiber sähe eine Reihe gescheiterter Zeilen statt einer Grenze.
    */
   async function sendSelected() {
     const targets = selectable.filter((row) => selected.has(row.id));
     if (!targets.length) return;
 
-    const batch = targets.slice(0, LEAD_BULK_SEND_LIMIT);
+    const batch = targets.slice(0, LEAD_HOURLY_SEND_LIMIT);
     const preview = batch
       .slice(0, 3)
       .map((row) => row.recipient_email)
@@ -315,8 +319,8 @@ export function LeadsPanel({
           </label>
           <span className={styles.muted}>
             {selected.size} ausgewählt
-            {selected.size > LEAD_BULK_SEND_LIMIT
-              ? ` — es werden die ersten ${LEAD_BULK_SEND_LIMIT} verschickt`
+            {selected.size > LEAD_HOURLY_SEND_LIMIT
+              ? ` — es werden die ersten ${LEAD_HOURLY_SEND_LIMIT} verschickt`
               : ""}
           </span>
           <button
