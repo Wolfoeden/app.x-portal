@@ -10,13 +10,45 @@ import {
   INVITE_TOKEN_PARAM,
   mintInviteToken,
 } from "@/lib/sourcing/invite-token";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 import {
   buildOutreachDraft,
   type DemandBrief,
   type OutreachCandidate,
 } from "./outreach";
-import { markOutreachSent } from "./sourced-candidates-data";
+
+/**
+ * Hält fest, dass eine Person informiert wurde.
+ *
+ * Der Nachweis, nicht die Zustellung: ohne Zeitpunkt keine belegbare
+ * Einhaltung der Frist aus Art. 14 DSGVO. Ein bereits vermerkter Zeitpunkt
+ * wird nicht überschrieben — der erste ist der, auf den es ankommt.
+ *
+ * Stand bis zum 9. September in einer eigenen Datei neben einer Liste für die
+ * Adminseite „Informationspflicht". Die Seite ist weg, der Nachweis bleibt.
+ */
+async function markOutreachSent(input: {
+  applicationId: string;
+  channel: "email" | "linkedin" | "website" | "other";
+  sentAt?: Date;
+}): Promise<boolean> {
+  const admin = createAdminSupabaseClient();
+  const { data, error } = await admin
+    .from("freelancer_applications")
+    .update({
+      outreach_sent_at: (input.sentAt ?? new Date()).toISOString(),
+      outreach_channel: input.channel,
+    })
+    .eq("id", input.applicationId)
+    .eq("source", "web_research")
+    .eq("status", "sourced")
+    .is("outreach_sent_at", null)
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  return Boolean(data);
+}
 
 /**
  * Verschickt die Erstansprache an eine recherchierte Person.

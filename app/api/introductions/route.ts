@@ -2,8 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireCurrentUser } from "@/lib/auth/current-user";
+import { contactInbox } from "@/lib/contact/messages";
+import { deliverEmail } from "@/lib/email/deliver";
 import { FreelancerProfileSchema } from "@/lib/domain";
-import { assertSameOrigin, readJsonWithLimit } from "@/lib/security/request";
+import {
+  assertSameOrigin,
+  logEvent,
+  readJsonWithLimit,
+} from "@/lib/security/request";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 const IntroductionInputSchema = z
@@ -119,6 +125,44 @@ export async function POST(request: Request) {
       .eq("id", input.projectId)
       .eq("owner_user_id", user.id);
     if (updateError) throw updateError;
+
+    // Eine Anfrage, die von Hand freigegeben werden muss, wartet sonst
+    // ungesehen in der Tabelle. Bis zum 9. September stand sie in der
+    // Admin-Inbox; die ist weg, und ohne Ersatz waere die Anfrage still
+    // liegengeblieben. Sie geht deshalb denselben Weg wie eine
+    // Kontaktanfrage: als Mail an das Postfach, in das ohnehin geschaut wird.
+    //
+    // Nur beim ersten Mal: Der Upsert liefert bei einer Wiederholung dieselbe
+    // Zeile mit ihrem urspruenglichen `requested_at` zurueck, und eine zweite
+    // Mail zur selben Anfrage waere nur Laerm.
+    const frischAngelegt =
+      Date.now() - new Date(booking.requested_at).getTime() < 60_000;
+    if (booking.status === "manual_review" && frischAngelegt) {
+      const meldung = await deliverEmail({
+        to: contactInbox(),
+        subject: `Vorstellung freigeben: ${profile.displayName}`,
+        text: [
+          "Eine Vorstellung wartet auf Ihre Freigabe.",
+          "",
+          `Freelancer: ${profile.displayName} — ${profile.role}`,
+          `Anfragende Person: ${user.email ?? "unbekannt"}`,
+          `Projekt: ${input.projectId}`,
+          `Vorgang: ${booking.id}`,
+          "",
+          "Antworten Sie der anfragenden Person direkt.",
+        ].join("\n"),
+        // Kein Werbebrief, sondern die Weitergabe einer Anfrage an uns selbst.
+        kind: "transactional",
+      });
+      // Ein gescheiterter Versand macht die Anfrage nicht ungueltig; sie steht
+      // in der Tabelle. Was schiefging, steht im Protokoll.
+      if (!meldung.delivered) {
+        logEvent("intro_notification_failed", {
+          bookingId: booking.id,
+          reason: meldung.reason,
+        });
+      }
+    }
 
     return NextResponse.json({
       introduction: {
