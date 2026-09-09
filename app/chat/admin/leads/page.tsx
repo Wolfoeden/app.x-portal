@@ -8,7 +8,6 @@ import {
   AdminPageHeader,
   AdminSectionHeader,
 } from "@/components/admin/AdminDataPrimitives";
-import { LEADGEN_OUTREACH_CREDITS } from "@/lib/ai/credit-policy";
 import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
@@ -564,7 +563,6 @@ export default async function LeadsPage({
             rows={list.rows}
             categories={summary.categories.map((entry) => entry.category)}
             mailReady={mailReady}
-            creditsPerDraft={LEADGEN_OUTREACH_CREDITS}
           />
         ) : null}
 

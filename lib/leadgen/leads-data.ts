@@ -38,6 +38,8 @@ export type LeadRow = {
   last_contacted_at: string | null;
   created_at: string;
   updated_at: string;
+  /** Der Entwurf oder Beleg zu dieser Zeile. Ohne ihn gibt es nichts zu verschicken. */
+  outreach_id: string | null;
   outreach_state: "draft" | "sending" | "sent" | "failed" | null;
   outreach_subject: string | null;
   /** Der Wortlaut, wie er rausging. Beleg bei einer Rückfrage. */
@@ -280,6 +282,7 @@ const LEAD_COLUMNS =
 
 export type Lead = Omit<
   LeadRow,
+  | "outreach_id"
   | "outreach_state"
   | "outreach_subject"
   | "outreach_body"

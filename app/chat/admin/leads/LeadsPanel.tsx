@@ -29,7 +29,6 @@ type Props = {
   rows: LeadRow[];
   categories: string[];
   mailReady: boolean;
-  creditsPerDraft: number;
 };
 
 type RowState = {
@@ -117,12 +116,7 @@ async function readError(response: Response): Promise<string> {
   }
 }
 
-export function LeadsPanel({
-  rows,
-  categories,
-  mailReady,
-  creditsPerDraft,
-}: Props) {
+export function LeadsPanel({ rows, categories, mailReady }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState<number | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -134,8 +128,23 @@ export function LeadsPanel({
     failed: number;
   } | null>(null);
 
+  /**
+   * Wer ausgewählt werden kann: nur Zeilen mit einem fertigen Entwurf.
+   *
+   * Vorher war es jede unbearbeitete Zeile, und der Stapel versprach, die
+   * Anschreiben unterwegs zu erzeugen. Das tut er nicht mehr — geschrieben
+   * wird im Abgleich. Eine Zeile ohne Entwurf anzubieten hieße, einen Knopf
+   * anzubieten, der nichts tun kann.
+   */
   const selectable = useMemo(
-    () => rows.filter((row) => !row.last_contacted_at && !row.archived_at),
+    () =>
+      rows.filter(
+        (row) =>
+          !row.last_contacted_at &&
+          !row.archived_at &&
+          row.outreach_state === "draft" &&
+          Boolean(row.outreach_id),
+      ),
     [rows],
   );
 
@@ -181,25 +190,40 @@ export function LeadsPanel({
     });
   }
 
+  /**
+   * Einen vorbereiteten Entwurf verschicken.
+   *
+   * Über `/api/admin/outreach/{outreach_id}/send` — denselben Weg, den auch
+   * der Zeitgeber nimmt, und denselben, den der Reiter „Wartet auf Versand"
+   * benutzt. Es gab hier einmal einen zweiten: `/api/admin/leads/{id}/send`
+   * ließ sich den Text unterwegs von einem Modell schreiben. Die Route wurde
+   * mit diesem zweiten Mailweg zurückgebaut, der Aufruf blieb stehen — und
+   * seither antwortete auf jeden Klick eine 404.
+   *
+   * Ohne Entwurf wird nichts verschickt: Der Text entsteht im Abgleich, nicht
+   * beim Klicken.
+   */
   async function send(
     row: LeadRow,
-    options: { autoDraft?: boolean; silent?: boolean } = {},
+    options: { silent?: boolean } = {},
   ): Promise<boolean> {
-    const current = rowState(row);
+    if (!row.outreach_id || row.outreach_state !== "draft") {
+      patchRowState(row.id, {
+        busy: null,
+        error: "Für diesen Lead liegt kein Entwurf bereit.",
+      });
+      return false;
+    }
     if (!options.silent) patchRowState(row.id, { busy: "send", error: null });
     try {
-      const response = await fetch(appPath(`/api/admin/leads/${row.id}/send`), {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({
-          requestId: crypto.randomUUID(),
-          autoDraft: options.autoDraft ?? false,
-          ...(current.subject && current.body
-            ? { subject: current.subject, body: current.body }
-            : {}),
-        }),
-      });
+      const response = await fetch(
+        appPath(`/api/admin/outreach/${row.outreach_id}/send`),
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          credentials: "same-origin",
+        },
+      );
       if (!response.ok) {
         patchRowState(row.id, { busy: null, error: await readError(response) });
         return false;
@@ -262,9 +286,9 @@ export function LeadsPanel({
       .map((row) => row.recipient_email)
       .join(", ");
     const confirmed = window.confirm(
-      `${batch.length} Anschreiben werden jetzt erzeugt und sofort verschickt.\n\n` +
+      `${batch.length} vorbereitete Anschreiben gehen jetzt raus.\n\n` +
         `Empfänger unter anderem: ${preview}${batch.length > 3 ? " …" : ""}\n\n` +
-        `Kosten: bis zu ${batch.length * creditsPerDraft} Credits. ` +
+        `Es entstehen keine Kosten — die Texte stehen schon. ` +
         `Das lässt sich nicht zurücknehmen.`,
     );
     if (!confirmed) return;
@@ -273,7 +297,7 @@ export function LeadsPanel({
     let done = 0;
     let failed = 0;
     for (const row of batch) {
-      const ok = await send(row, { autoDraft: true, silent: false });
+      const ok = await send(row, { silent: false });
       done += 1;
       if (!ok) failed += 1;
       setBulk({ running: true, done, total: batch.length, failed });
@@ -315,7 +339,7 @@ export function LeadsPanel({
                 )
               }
             />
-            Alle {selectable.length} sichtbaren offenen auswählen
+            Alle {selectable.length} vorbereiteten auswählen
           </label>
           <span className={styles.muted}>
             {selected.size} ausgewählt
@@ -331,7 +355,7 @@ export function LeadsPanel({
           >
             {bulk?.running
               ? `Verschickt … ${bulk.done}/${bulk.total}`
-              : "Auswahl automatisch anschreiben"}
+              : "Auswahl verschicken"}
           </button>
           {bulk && !bulk.running ? (
             <span className={styles.muted}>
@@ -365,7 +389,10 @@ export function LeadsPanel({
               const current = rowState(row);
               const expanded = open === row.id;
               const url = leadSourceUrl(row.stellenanzeige);
-              const sendable = !row.last_contacted_at;
+              // Dieselbe Bedingung wie in `selectable`: Ein Kästchen an einer
+              // Zeile, die der Stapel anschließend überspringt, ist ein
+              // Versprechen, das niemand einlöst.
+              const sendable = selectable.some((wert) => wert.id === row.id);
               const abgleich = matchAnzeige(row);
               // Was tatsächlich rausging. Ein Entwurf, der noch herumliegt,
               // ist kein Versand und darf hier nicht so aussehen.
