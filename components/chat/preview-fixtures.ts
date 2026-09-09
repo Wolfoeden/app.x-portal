@@ -19,6 +19,13 @@ export const previewAuth: SessionResponse = {
   },
 };
 
+export const previewGuestAuth: SessionResponse = {
+  authenticated: true,
+  anonymous: true,
+  admin: false,
+  user: null,
+};
+
 export const previewProjects: ProjectListItem[] = [
   {
     id: "preview-project",

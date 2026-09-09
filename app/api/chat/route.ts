@@ -32,6 +32,7 @@ import {
   interactionIdForChatRequest,
   projectIdForChatRequest,
 } from "@/lib/domain/chat-idempotency";
+import { domainClarificationCopy } from "@/lib/domain/clarification-copy";
 import {
   buildDeterministicBrief,
   estimateProjectBriefTokenCeiling,
@@ -148,6 +149,7 @@ function assistantText(
   isFollowUp: boolean,
   clarificationCode: Shortlist["clarificationCode"],
   openCoreRequirements: readonly string[],
+  requestText: string,
 ): string {
   if (status === "needs_clarification") {
     // "No requirement was stated" and "nothing matched" are opposite statements
@@ -155,6 +157,8 @@ function assistantText(
     // the catalogue was searched and found wanting, when in fact nothing was
     // searched for.
     const clarificationPrefix = isFollowUp ? "Ihre Ergänzung wurde übernommen. " : "";
+    const domainCopy = domainClarificationCopy(requestText);
+    if (domainCopy) return `${clarificationPrefix}${domainCopy}`;
     return clarificationCode === "ambiguous_requirement_logic"
       ? `${clarificationPrefix}Die Anforderungen sind noch nicht eindeutig: Bitte schreiben Sie, welche Kompetenzen gemeinsam erforderlich sind und welche echte Alternativen darstellen. Danach prüft XPORTAL den internen Profilpool nach diesen festen Kriterien.`
       : `${clarificationPrefix}Für einen belastbaren Profilabgleich fehlt noch mindestens die gewünschte Rolle oder eine Kernkompetenz. Ergänzen Sie diese Angabe gern um Sprache, Arbeitsort und Startzeitpunkt; fehlende Daten bleiben bis dahin offen.`;
@@ -637,6 +641,9 @@ async function processChatRequest(
       Boolean(existing),
       shortlist.clarificationCode,
       shortlist.decisionSnapshot.openCoreRequirements,
+      existing
+        ? `${existing.original_request}\n${input.message}`
+        : input.message,
     );
     const assistantClientMessageId = `assistant-${requestKey}`;
     const { data: insertedAssistant, error: assistantError } = await admin

@@ -7,10 +7,23 @@ import {
 import {
   buildLeadEmail,
   firmenname,
+  leadSearchUrl,
   salutation,
   stripSalutationAndSignoff,
   unattendedBodyIssue,
 } from "@/lib/leadgen/outreach-message";
+
+describe("Recruiter-Einstieg", () => {
+  it("öffnet den Projektabgleich vorausgefüllt und messbar, aber startet ihn nicht", () => {
+    const url = leadSearchUrl({
+      origin: "https://x-portal.eu",
+      headline: "SAP FI/CO Berater",
+    });
+    expect(url).toBe(
+      "https://x-portal.eu/chat?q=SAP+FI%2FCO+Berater&entry=recruiter",
+    );
+  });
+});
 
 /**
  * Je Pflichtangabe ein eigener Test: fällt einer durch, steht im Namen, welche

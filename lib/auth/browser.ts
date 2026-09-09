@@ -22,9 +22,16 @@ function siteUrl() {
   );
 }
 
-function authDestination() {
+function authDestination(requestedDestination?: string) {
   const chatPath = appPath("/chat");
   if (typeof window === "undefined") return chatPath;
+  if (
+    requestedDestination?.startsWith("/") &&
+    !requestedDestination.startsWith("//") &&
+    !/[\\\u0000-\u001f\u007f]/u.test(requestedDestination)
+  ) {
+    return appPath(requestedDestination);
+  }
   const freelancerPath = appPath("/freelancer/apply");
   if (window.location.pathname === freelancerPath) return freelancerPath;
   if (window.location.pathname !== chatPath) return chatPath;
@@ -91,12 +98,13 @@ export async function prepareGuestClaim() {
 
 export async function startOauthUpgrade(
   providerName: keyof typeof supportedOauthProviders,
+  requestedDestination?: string,
 ) {
   const supabase = getBrowserSupabaseClient();
   const claims = await ensureGuestSession();
   await prepareGuestClaim();
   const provider = supportedOauthProviders[providerName];
-  const destination = authDestination();
+  const destination = authDestination(requestedDestination);
   const redirectTo = `${siteUrl()}${appPath("/auth/callback")}?next=${encodeURIComponent(destination)}`;
   const options = {
     redirectTo,
@@ -169,11 +177,12 @@ export async function registerEmailAccount(
   email: string,
   password: string,
   consent: { termsAcceptedAt: string; marketingEmails: boolean },
+  requestedDestination?: string,
 ) {
   const supabase = getBrowserSupabaseClient();
   await ensureGuestSession();
   await prepareGuestClaim();
-  const destination = authDestination();
+  const destination = authDestination(requestedDestination);
   const state = await prepareEmailAuthState();
   const { data, error } = await supabase.auth.signUp({
     email,

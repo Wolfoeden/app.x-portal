@@ -410,6 +410,7 @@ export function leadSearchUrl(input: {
   try {
     const url = new URL("/chat", input.origin);
     url.searchParams.set("q", rolle);
+    url.searchParams.set("entry", "recruiter");
     return url.toString();
   } catch {
     return null;

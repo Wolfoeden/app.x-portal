@@ -41,6 +41,7 @@ import {
   IconPlus,
 } from "../icons";
 import { authErrorMessage, isServiceSideAuthFailure } from "./auth-errors";
+import { authIntentCopy, type AuthIntent } from "./auth-continuation";
 import {
   GOOGLE_AUTH_ENABLED,
   initials,
@@ -93,13 +94,17 @@ export function Modal({ titleId, onClose, children, size = "default" }: { titleI
 
 export function AuthDialog({
   initialMode,
+  intent = "generic",
+  destination = "/chat",
   onClose,
   onAuthenticated,
   showToast,
 }: {
   initialMode: AuthDialogMode;
+  intent?: AuthIntent;
+  destination?: string;
   onClose: () => void;
-  onAuthenticated: () => void;
+  onAuthenticated: (mode: AuthDialogMode) => void;
   showToast: (message: string, tone?: ToastState["tone"]) => void;
 }) {
   const [mode, setMode] = useState(initialMode);
@@ -111,6 +116,11 @@ export function AuthDialog({
   const [marketingEmails, setMarketingEmails] = useState(false);
   const [busy, setBusy] = useState<"google" | "microsoft" | "email" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const intentCopy = authIntentCopy(intent);
+  const destinationForMode = (currentMode: AuthDialogMode) => {
+    const separator = destination.includes("?") ? "&" : "?";
+    return `${destination}${separator}authflow=${currentMode}`;
+  };
 
   const consentMissing = mode === "register" && !termsAccepted;
 
@@ -118,7 +128,7 @@ export function AuthDialog({
     setBusy(provider);
     setError(null);
     try {
-      await startOauthUpgrade(provider);
+      await startOauthUpgrade(provider, destinationForMode(mode));
     } catch (providerError) {
       setError(
         isServiceSideAuthFailure(providerError)
@@ -144,18 +154,23 @@ export function AuthDialog({
       if (mode === "login") {
         await signInExistingAccount(email, password);
         showToast("Anmeldung erfolgreich. Ihre Auswahl wird fortgesetzt.");
-        onAuthenticated();
+        onAuthenticated(mode);
       } else if (mode === "register") {
-        const result = await registerEmailAccount(email, password, {
-          termsAcceptedAt: new Date().toISOString(),
-          marketingEmails,
-        });
+        const result = await registerEmailAccount(
+          email,
+          password,
+          {
+            termsAcceptedAt: new Date().toISOString(),
+            marketingEmails,
+          },
+          destinationForMode(mode),
+        );
         if (result.confirmationRequired) {
           setConfirmationSent(true);
           setBusy(null);
         } else {
           showToast("Konto erstellt. Ihre Auswahl wird fortgesetzt.");
-          onAuthenticated();
+          onAuthenticated(mode);
         }
       } else if (mode === "recover") {
         await requestPasswordRecovery(email);
@@ -166,7 +181,7 @@ export function AuthDialog({
         const cleanUrl = `${window.location.pathname}${window.location.hash}`;
         window.history.replaceState({}, "", cleanUrl);
         showToast("Ihr Konto ist eingerichtet. Ihre Auswahl wird fortgesetzt.");
-        onAuthenticated();
+        onAuthenticated(mode);
       }
     } catch (emailError) {
       setError(authErrorMessage(emailError, mode));
@@ -177,14 +192,14 @@ export function AuthDialog({
   return (
     <Modal titleId="auth-title" onClose={onClose}>
       <div className="auth-dialog">
-        <span className="dialog-eyebrow">Auswahl sichern</span>
+        <span className="dialog-eyebrow">{intentCopy.eyebrow}</span>
         <h2 id="auth-title">
           {mode === "set-password"
             ? "Neues Passwort festlegen"
             : mode === "recover"
               ? "Zugang wiederherstellen"
               : mode === "register"
-                ? "Konto erstellen"
+                ? intentCopy.title
                 : "Anmelden und direkt fortfahren"}
         </h2>
         <p>
@@ -192,7 +207,7 @@ export function AuthDialog({
             ? "Legen Sie jetzt ein neues Passwort für Ihr bestätigtes Konto fest."
             : mode === "recover"
               ? "Wir senden einen sicheren Link an Ihre E-Mail-Adresse. Ihre aktuelle Anfrage bleibt dabei erhalten."
-              : "Ihre Anfrage bleibt erhalten. Nach der Anmeldung kehren Sie genau zu Ihrem ausgewählten Profil zurück."}
+              : intentCopy.body}
         </p>
 
         {mode !== "set-password" && mode !== "recover" ? (
@@ -319,8 +334,8 @@ export function AuthDialog({
           </form>
         )}
         <p className="auth-privacy">
-          Die Anmeldung dient dazu, Projekte geräteübergreifend zuzuordnen und
-          eine Profilwahl sicher fortzusetzen.
+          Die Anmeldung ordnet Ihre bisherige Arbeit Ihrem Konto zu und setzt
+          den von Ihnen gewählten Schritt fort.
           {GOOGLE_AUTH_ENABLED ? " Google wird erst nach Ihrem Klick geöffnet; alternativ steht die E-Mail-Anmeldung zur Verfügung." : ""}
           {" "}<a href="/privacy">Datenschutzhinweise</a>
         </p>

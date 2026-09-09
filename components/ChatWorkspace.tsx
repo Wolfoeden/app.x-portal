@@ -58,6 +58,17 @@ import {
 
 import { AccountSummary, CreditPlansDialog } from "./chat/account";
 import {
+  clearAuthContinuation,
+  continuationFromSearch,
+  continuationPath,
+  createAuthContinuation,
+  readAuthContinuation,
+  storeAuthContinuation,
+  type AuthContinuation,
+  type AuthIntent,
+} from "./chat/auth-continuation";
+import { rememberFunnelEntry, trackFunnelEvent } from "./chat/funnel-events";
+import {
   AuthDialog,
   ConfirmDeleteDialog,
   ContactDialog,
@@ -1198,6 +1209,8 @@ export function ChatWorkspace({
   const [auth, setAuth] = useState<AuthView>(previewData?.auth ?? emptyAuth);
   const [authOpen, setAuthOpen] = useState(false);
   const [authInitialMode, setAuthInitialMode] = useState<AuthDialogMode>("login");
+  const [authIntent, setAuthIntent] = useState<AuthIntent>("generic");
+  const [authDestination, setAuthDestination] = useState("/chat");
   const [projects, setProjects] = useState<ProjectListItem[]>(previewData?.projects ?? []);
   const [projectCollections, setProjectCollections] = useState<ProjectCollectionItem[]>([]);
   const [activeProject, setActiveProject] = useState<ProjectListItem | null>(previewData?.projects[0] ?? null);
@@ -1291,6 +1304,7 @@ export function ChatWorkspace({
   const endRef = useRef<HTMLDivElement>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const externalSearchRequestIdsRef = useRef(new Map<string, string>());
+  const resumeHandledRef = useRef(false);
 
   const selectedProfile = profiles.find((profile) => profile.id === selectedProfileId) ?? null;
   const selectedAgent = agentById(selectedAgentId);
@@ -1327,6 +1341,24 @@ export function ChatWorkspace({
     setToast({ id: Date.now(), message, tone });
     toastTimerRef.current = setTimeout(() => setToast(null), 5000);
   }, []);
+
+  const openAuth = useCallback(
+    (
+      intent: AuthIntent,
+      continuation?: AuthContinuation,
+      mode: AuthDialogMode = "register",
+    ) => {
+      const next =
+        continuation ?? createAuthContinuation(intent, activeProject?.id ?? null);
+      storeAuthContinuation(next);
+      trackFunnelEvent("registration_started", intent);
+      setAuthIntent(intent);
+      setAuthDestination(continuationPath(next));
+      setAuthInitialMode(mode);
+      setAuthOpen(true);
+    },
+    [activeProject?.id],
+  );
 
   const refreshAuth = useCallback(async () => {
     const claims = await ensureGuestSession();
@@ -1693,6 +1725,7 @@ export function ChatWorkspace({
         const prefill =
           workspaceView === "chat" ? searchParams.get("q") : null;
         if (prefill?.trim()) {
+          rememberFunnelEntry("recruiter");
           setDraft(prefill.slice(0, 12_000));
           searchParams.delete("q");
           const cleanUrl = `${window.location.pathname}${
@@ -1863,7 +1896,13 @@ export function ChatWorkspace({
       setPartialProfiles(result.partialMatches.slice(0, 2));
       setMatchingStatus(result.matchingStatus ?? null);
       setHasResult(true);
-      if (!detailsTouchedRef.current) setDetailsOpen(true);
+      trackFunnelEvent("result_seen", result.matchingStatus ?? "unclassified");
+      if (
+        !detailsTouchedRef.current &&
+        window.matchMedia("(min-width: 1220px)").matches
+      ) {
+        setDetailsOpen(true);
+      }
       setAnalysisMode(result.mode ?? "ai");
       setAnalysisTrace(result.analysis ?? null);
       setExternalSearch(null);
@@ -1894,6 +1933,7 @@ export function ChatWorkspace({
     ) => {
       const text = rawText.trim();
       if (!text || pendingAssistant) return;
+      trackFunnelEvent("search_started");
       const optimistic: ConversationMessage = {
         id: existingClientMessageId ?? makeId("user"),
         role: "user",
@@ -2060,8 +2100,10 @@ export function ChatWorkspace({
     if (!activeProject?.id || externalSearchState === "searching") return;
     const projectId = activeProject.id;
     if (!isAccountUser) {
-      setAuthInitialMode("login");
-      setAuthOpen(true);
+      openAuth(
+        "external_research",
+        createAuthContinuation("external_research", projectId),
+      );
       return;
     }
     if ((usage?.credits.remaining ?? 0) < EXTERNAL_SEARCH_CREDITS) {
@@ -2175,12 +2217,11 @@ export function ChatWorkspace({
 
   const toggleSavedFreelancer = async (profile: FreelancerProfileResult) => {
     if (!isAccountUser) {
-      // Keep the intent across the login, then finish it in handleAuthenticated.
       setPendingSaveProfileId(profile.id);
-      sessionStorage.setItem("pending_profile_save", profile.id);
-      if (activeProject?.id) sessionStorage.setItem("pending_project_id", activeProject.id);
-      setAuthInitialMode("register");
-      setAuthOpen(true);
+      openAuth(
+        "save_profile",
+        createAuthContinuation("save_profile", activeProject?.id, profile.id),
+      );
       return;
     }
     const alreadySaved = team.some((member) => member.profile.id === profile.id);
@@ -2215,10 +2256,10 @@ export function ChatWorkspace({
   const requestProfileSelection = (profile: FreelancerProfileResult) => {
     if (!isAccountUser) {
       setPendingProfileId(profile.id);
-      sessionStorage.setItem("pending_profile_selection", profile.id);
-      if (activeProject?.id) sessionStorage.setItem("pending_project_id", activeProject.id);
-      setAuthInitialMode("login");
-      setAuthOpen(true);
+      openAuth(
+        "contact_profile",
+        createAuthContinuation("contact_profile", activeProject?.id, profile.id),
+      );
       return;
     }
     setSelectedProfileId(profile.id);
@@ -2266,12 +2307,11 @@ export function ChatWorkspace({
   const requestBooking = (profile: FreelancerProfileResult) => {
     if (!profile.bookingUrl) return;
     if (!isAccountUser) {
-      // Keep the intent across the login, then finish it in handleAuthenticated.
       setPendingBookingProfileId(profile.id);
-      sessionStorage.setItem("pending_profile_booking", profile.id);
-      if (activeProject?.id) sessionStorage.setItem("pending_project_id", activeProject.id);
-      setAuthInitialMode("register");
-      setAuthOpen(true);
+      openAuth(
+        "book_profile",
+        createAuthContinuation("book_profile", activeProject?.id, profile.id),
+      );
       return;
     }
     // The link navigates to the redirect route that records the click. This
@@ -2279,13 +2319,21 @@ export function ChatWorkspace({
     void recordIntroduction(profile);
   };
 
-  const handleAuthenticated = async () => {
+  const handleAuthenticated = async (completedMode?: AuthDialogMode) => {
     const view = await refreshAuth();
     if (view.anonymous) return;
+    const continuation =
+      readAuthContinuation() ?? continuationFromSearch(window.location.search);
+    const authFlow = completedMode ?? new URLSearchParams(window.location.search).get("authflow");
+    if (authFlow === "register") {
+      trackFunnelEvent("signup_confirmed", continuation?.intent ?? "generic");
+    }
     const projectIdToReload =
-      activeProject?.id ?? sessionStorage.getItem("pending_project_id");
+      continuation?.projectId ?? activeProject?.id ?? sessionStorage.getItem("pending_project_id");
     const profileIdToRestore =
-      pendingProfileId ?? sessionStorage.getItem("pending_profile_selection");
+      continuation?.intent === "contact_profile"
+        ? continuation.profileId
+        : pendingProfileId ?? sessionStorage.getItem("pending_profile_selection");
     setAuthOpen(false);
     const searchParams = new URLSearchParams(window.location.search);
     if (searchParams.get("admin-login") === "1") {
@@ -2316,7 +2364,9 @@ export function ChatWorkspace({
       setContactOpen(true);
     }
     const profileIdToSave =
-      pendingSaveProfileId ?? sessionStorage.getItem("pending_profile_save");
+      continuation?.intent === "save_profile"
+        ? continuation.profileId
+        : pendingSaveProfileId ?? sessionStorage.getItem("pending_profile_save");
     if (profileIdToSave) {
       try {
         await persistSavedFreelancer(profileIdToSave, "POST");
@@ -2326,7 +2376,9 @@ export function ChatWorkspace({
       }
     }
     const profileIdToBook =
-      pendingBookingProfileId ?? sessionStorage.getItem("pending_profile_booking");
+      continuation?.intent === "book_profile"
+        ? continuation.profileId
+        : pendingBookingProfileId ?? sessionStorage.getItem("pending_profile_booking");
     if (profileIdToBook) {
       // A popup opened this late is blocked by the browser, so the booking is
       // handed back through the contact dialog instead of a new tab.
@@ -2336,14 +2388,19 @@ export function ChatWorkspace({
       if (bookedProfile) {
         setSelectedProfileId(bookedProfile.id);
         setContactOpen(true);
-        const approved = await recordIntroduction(bookedProfile);
         showToast(
-          approved === null
-            ? "Ihre Kontaktanfrage ist eingegangen und wird persönlich geprüft."
-            : `Weiter mit ${bookedProfile.displayName}: Der Termin lässt sich jetzt buchen.`,
+          `Weiter mit ${bookedProfile.displayName}: Entscheiden Sie jetzt selbst über Kontakt oder Termin.`,
           "neutral",
         );
       }
+    }
+    if (continuation?.intent === "external_research") {
+      showToast(
+        `Ihre Anfrage ist wieder geöffnet. Die externe Recherche startet erst nach Ihrer Bestätigung und kostet ${EXTERNAL_SEARCH_CREDITS} Credits.`,
+        "neutral",
+      );
+    } else if (continuation?.intent === "save_search") {
+      showToast("Ihre Suche ist jetzt dauerhaft Ihrem Konto zugeordnet.", "neutral");
     }
     setPendingProfileId(null);
     setPendingSaveProfileId(null);
@@ -2352,7 +2409,46 @@ export function ChatWorkspace({
     sessionStorage.removeItem("pending_profile_save");
     sessionStorage.removeItem("pending_profile_booking");
     sessionStorage.removeItem("pending_project_id");
+    clearAuthContinuation();
+    if (continuation) {
+      trackFunnelEvent("continuation_completed", continuation.intent);
+    }
+    if (continuation || authFlow) {
+      const continuationParams = new URLSearchParams(window.location.search);
+      continuationParams.delete("resume");
+      continuationParams.delete("project");
+      continuationParams.delete("profile");
+      continuationParams.delete("authflow");
+      const cleanUrl = `${window.location.pathname}${
+        continuationParams.size ? `?${continuationParams.toString()}` : ""
+      }${window.location.hash}`;
+      window.history.replaceState({}, "", cleanUrl);
+    }
     await Promise.all([loadProjects(), loadProjectCollections(), loadTeam()]);
+  };
+
+  useEffect(() => {
+    if (preview || !isAccountUser || resumeHandledRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (!continuationFromSearch(window.location.search) && !params.has("authflow")) return;
+    resumeHandledRef.current = true;
+    queueMicrotask(() => void handleAuthenticated());
+  });
+
+  const saveCurrentSearch = () => {
+    if (isAccountUser) {
+      showToast("Diese Suche ist bereits dauerhaft Ihrem Konto zugeordnet.", "neutral");
+      return;
+    }
+    openAuth(
+      "save_search",
+      createAuthContinuation("save_search", activeProject?.id),
+    );
+  };
+
+  const refineCurrentSearch = () => {
+    composerRef.current?.focus();
+    composerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
   const createProjectCollection = async (name: string) => {
@@ -2787,7 +2883,7 @@ export function ChatWorkspace({
                   </>
                 ) : (
                   <>
-                    <button className="account-menu-item" type="button" onClick={() => { setAccountMenuOpen(false); setSidebarOpen(false); setAuthInitialMode("login"); setAuthOpen(true); }}>Anmelden oder Konto erstellen</button>
+                    <button className="account-menu-item" type="button" onClick={() => { setAccountMenuOpen(false); setSidebarOpen(false); openAuth("generic", undefined, "login"); }}>Anmelden oder Konto erstellen</button>
                     <button className="account-menu-item" type="button" onClick={() => { setAccountMenuOpen(false); openCookieSettings(); }}>Cookie-Einstellungen verwalten</button>
                   </>
                 )}
@@ -2901,10 +2997,7 @@ export function ChatWorkspace({
                   <button
                     className="primary-action"
                     type="button"
-                    onClick={() => {
-                      setAuthInitialMode("register");
-                      setAuthOpen(true);
-                    }}
+                    onClick={() => openAuth("generic")}
                   >
                     Konto erstellen
                   </button>
@@ -2967,10 +3060,7 @@ export function ChatWorkspace({
                 <button
                   type="button"
                   className="composer-signup"
-                  onClick={() => {
-                    setAuthInitialMode("register");
-                    setAuthOpen(true);
-                  }}
+                  onClick={() => openAuth("generic")}
                 >
                   Konto erstellen
                 </button>
@@ -3016,9 +3106,16 @@ export function ChatWorkspace({
                     isAccountUser={isAccountUser}
                     creditsRemaining={usage?.credits.remaining ?? null}
                     onRequireLogin={() => {
-                      setAuthInitialMode("login");
-                      setAuthOpen(true);
+                      openAuth(
+                        "external_research",
+                        createAuthContinuation(
+                          "external_research",
+                          activeProject?.id,
+                        ),
+                      );
                     }}
+                    onRefineSearch={refineCurrentSearch}
+                    onSaveSearch={saveCurrentSearch}
                     onNeedCredits={() => {
                       setPlansOpen(true);
                       void loadPlanTeam();
@@ -3099,11 +3196,12 @@ export function ChatWorkspace({
                 Sendeknopf rueckt an seine Stelle nach rechts. */}
             <div className="composer-bottom">
               <button
-                className="send-button"
+                className={`send-button${emptyChat ? " is-project-match" : ""}`}
                 type="submit"
                 disabled={!draft.trim() || Boolean(pendingAssistant)}
-                aria-label="Nachricht senden"
+                aria-label={emptyChat ? "Projekt abgleichen" : "Nachricht senden"}
               >
+                {emptyChat ? <span>Projekt abgleichen</span> : null}
                 <IconArrowUp size={17} />
               </button>
             </div>
@@ -3135,10 +3233,7 @@ export function ChatWorkspace({
                 <button
                   type="button"
                   className="composer-signup"
-                  onClick={() => {
-                    setAuthInitialMode("register");
-                    setAuthOpen(true);
-                  }}
+                  onClick={() => openAuth("generic")}
                 >
                   Konto erstellen
                 </button>
@@ -3208,8 +3303,10 @@ export function ChatWorkspace({
       {authOpen ? (
         <AuthDialog
           initialMode={authInitialMode}
+          intent={authIntent}
+          destination={authDestination}
           onClose={() => setAuthOpen(false)}
-          onAuthenticated={() => void handleAuthenticated()}
+          onAuthenticated={(mode) => void handleAuthenticated(mode)}
           showToast={showToast}
         />
       ) : null}
@@ -3274,6 +3371,12 @@ function WelcomeState() {
     <section className="welcome-state" aria-labelledby="welcome-title">
       <div className="assistant-emblem" aria-hidden="true"><span><IconSpark size={22} /></span></div>
       <h1 id="welcome-title">Welchen Freelancer suchen Sie?</h1>
+      <p className="welcome-copy">
+        Beschreiben Sie Ihr Projekt in eigenen Worten. XPORTAL strukturiert die
+        Anforderungen, gleicht sie mit belegten Profilinformationen ab und zeigt
+        nachvollziehbar, was passt und was offen bleibt.
+      </p>
+      <p className="welcome-guest-note">Ohne Anmeldung starten · Konto erst zum Speichern oder Kontaktieren</p>
     </section>
   );
 }

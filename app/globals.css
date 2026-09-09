@@ -1474,6 +1474,13 @@ a {
   line-height: 1.65;
 }
 
+.welcome-guest-note {
+  margin: 14px 0 0;
+  color: var(--green);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+}
+
 .trust-row {
   display: flex;
   max-width: 580px;
@@ -2611,6 +2618,29 @@ dd.is-unknown,
   text-underline-offset: 3px;
 }
 
+.no-match-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.no-match-actions button {
+  cursor: pointer;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  padding: 8px 13px;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 620;
+}
+
+.no-match-actions button:hover {
+  background: var(--surface-hover);
+}
+
 .composer-zone {
   position: relative;
   z-index: 10;
@@ -2938,6 +2968,17 @@ dd.is-unknown,
   cursor: not-allowed;
   background: #deded9;
   color: #9b9b96;
+}
+
+.send-button.is-project-match {
+  display: inline-flex;
+  width: auto;
+  min-width: 154px;
+  gap: 8px;
+  border-radius: var(--radius-pill);
+  padding: 0 15px;
+  font-size: var(--fs-xs);
+  font-weight: 680;
 }
 
 .composer-disclosure {
@@ -5634,14 +5675,26 @@ dd.is-unknown,
    deshalb eine Zeile darueber statt einer Karte darunter. Ausfuehrlich steht
    ohnehin alles in der rechten Leiste. */
 .brief-line {
-  display: flex;
-  align-items: center;
+  display: grid;
   gap: 10px;
   margin: 0 0 14px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-md);
   background: var(--surface);
-  padding: 7px 8px 7px 13px;
+  padding: 13px 14px;
+}
+
+.brief-line-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.brief-line-header > strong {
+  color: var(--ink);
+  font-size: var(--fs-xs);
+  font-weight: 680;
 }
 
 .brief-line-mark {
@@ -5650,27 +5703,40 @@ dd.is-unknown,
   color: var(--green);
 }
 
-.brief-line-text {
-  display: flex;
-  min-width: 0;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 10px;
+.brief-facts {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
   margin: 0;
-  font-size: var(--fs-xs);
 }
 
-.brief-line-text strong {
-  overflow: hidden;
-  color: var(--ink);
-  font-weight: 650;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.brief-facts > div {
+  min-width: 0;
+  border-left: 1px solid var(--border);
+  padding-left: 9px;
 }
 
-.brief-line-text span {
+.brief-facts dt {
+  margin: 0 0 3px;
   color: var(--muted-light);
-  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.brief-facts dd {
+  overflow: hidden;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--fs-2xs);
+  font-weight: 620;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+}
+
+.brief-facts dd.is-open {
+  color: #946b22;
 }
 
 .brief-line-action {
@@ -5693,6 +5759,25 @@ dd.is-unknown,
 .brief-line-action:hover {
   border-color: var(--border-strong);
   background: var(--surface-hover);
+}
+
+@media (max-width: 760px) {
+  .brief-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .brief-line-action {
+    margin-left: auto;
+  }
+
+  .send-button.is-project-match {
+    min-width: 44px;
+    padding: 0 12px;
+  }
+
+  .send-button.is-project-match span {
+    display: none;
+  }
 }
 
 /* Profil-Stapel ---------------------------------------------------------- */

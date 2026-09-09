@@ -5,6 +5,7 @@ import {
   previewAnalysis,
   previewAuth,
   previewBrief,
+  previewGuestAuth,
   previewMessages,
   previewProfiles,
   previewProjects,
@@ -28,13 +29,14 @@ export const metadata = {
  * `credits` setzt den Kontostand, um die Knopfzustände durchzuspielen: genug
  * Guthaben und zu wenig (unter dem Preis einer Recherche).
  */
-type PreviewState = "ranked" | "no_match" | "searching";
+type PreviewState = "ranked" | "no_match" | "searching" | "empty";
 
 const STATES: Readonly<Record<string, PreviewState>> = {
   ranked: "ranked",
   "no-match": "no_match",
   no_match: "no_match",
   searching: "searching",
+  empty: "empty",
 };
 
 function resultState(value: string | string[] | undefined): PreviewState {
@@ -64,23 +66,24 @@ export default async function ChatPreviewPage({
   if (process.env.NODE_ENV !== "development") notFound();
   const params = (await searchParams) ?? {};
   const state = resultState(params.state);
+  const authParam = Array.isArray(params.auth) ? params.auth[0] : params.auth;
 
   return (
     <ChatWorkspace
       previewData={{
-        auth: previewAuth,
+        auth: authParam === "guest" ? previewGuestAuth : previewAuth,
         projects: previewProjects,
-        messages: previewMessages,
+        messages: state === "empty" ? [] : previewMessages,
         brief: previewBrief,
         profiles: previewProfiles,
         // Ohne diese Freigabe blendet das Ergebnis den Agenten aus — im leeren
         // Fall wäre die Vorschau dann genau um das ärmer, was sie zeigen soll.
         analysis: {
           ...previewAnalysis,
-          externalSearchAvailable: state !== "ranked",
+          externalSearchAvailable: state !== "ranked" && state !== "empty",
         },
         usage: usageFixture(params.credits),
-        resultState: state,
+        resultState: state === "empty" ? "ranked" : state,
       }}
     />
   );

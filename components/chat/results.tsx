@@ -41,7 +41,6 @@ import type {
   ProjectMode,
   SavedFreelancer,
   StructuredBrief,
-  StructuredRequirementGroup,
 } from "../chat-contract";
 import {
   IconAlertCircle,
@@ -288,6 +287,8 @@ export function ResultSection({
   externalSearch,
   externalSearchState,
   onExternalSearch,
+  onRefineSearch,
+  onSaveSearch,
   isAccountUser,
   creditsRemaining,
   onRequireLogin,
@@ -315,6 +316,8 @@ export function ResultSection({
   externalSearch: ExternalFreelancerSearchResponse | null;
   externalSearchState: "idle" | "searching" | "error";
   onExternalSearch: () => void;
+  onRefineSearch?: () => void;
+  onSaveSearch?: () => void;
   isAccountUser: boolean;
   /** Der eine Kontostand. Null, solange er noch geladen wird. */
   creditsRemaining: number | null;
@@ -467,6 +470,20 @@ export function ResultSection({
                         : "Ältere Ergebnisse führen die Einstufung nicht mit."}
                 </p>
               </div>
+            </div>
+          ) : null}
+          {onRefineSearch || onSaveSearch ? (
+            <div className="no-match-actions" aria-label="Nächste Schritte">
+              {onRefineSearch ? (
+                <button type="button" onClick={onRefineSearch}>
+                  Anforderungen konkretisieren
+                </button>
+              ) : null}
+              {onSaveSearch ? (
+                <button type="button" onClick={onSaveSearch}>
+                  Suche speichern
+                </button>
+              ) : null}
             </div>
           ) : null}
           {/* Der Agent steht bewusst neben der Absage und nicht darin: er ist
@@ -808,14 +825,6 @@ function ExternalSearchResults({
 /** Basis points are the matcher's unit; the reader wants a percentage. */
 const RECOMMENDATION_THRESHOLD_PERCENT = MINIMUM_CORE_COVERAGE_BASIS_POINTS / 100;
 
-function requirementCount(
-  brief: StructuredBrief,
-  priority: StructuredRequirementGroup["priority"],
-): number {
-  return brief.requirementGroups.filter((group) => group.priority === priority)
-    .length;
-}
-
 /**
  * Was aus der Anfrage verstanden wurde — in einer Zeile ueber dem Ergebnis.
  *
@@ -832,29 +841,45 @@ export function BriefSummaryLine({
   brief: StructuredBrief;
   onOpenDetails?: () => void;
 }) {
-  const openFields = presentUnknownFields(brief.unknownFields);
-  const counts = [
-    requirementCount(brief, "hard") ? `${requirementCount(brief, "hard")} Muss` : null,
-    requirementCount(brief, "core") ? `${requirementCount(brief, "core")} Kern` : null,
-    requirementCount(brief, "optional")
-      ? `${requirementCount(brief, "optional")} optional`
-      : null,
-    openFields.length ? `${openFields.length} offen` : null,
-  ].filter(Boolean);
+  const allocation = [...brief.constraints, brief.availabilityRequirement ?? ""]
+    .find((value) => /(?:\d{1,3}\s*%|\d(?:[.,]\d)?\s*(?:tage?|tage\/woche|t\/w))/iu.test(value));
+  const skills = brief.requiredSkills.length
+    ? brief.requiredSkills.slice(0, 3).join(", ")
+    : null;
+  const facts = [
+    { label: "Rolle", value: brief.projectTitle || null },
+    { label: "Skills", value: skills },
+    { label: "Start", value: brief.startWindow },
+    { label: "Auslastung", value: allocation ?? null },
+    { label: "Budget", value: brief.budgetOrRate },
+    {
+      label: "Arbeitsort",
+      value: [modeLabel(brief.mode), brief.location].filter(Boolean).join(" · "),
+    },
+  ];
 
   return (
-    <div className="brief-line">
-      <span className="brief-line-mark" aria-hidden="true"><IconCheck size={12} /></span>
-      <p className="brief-line-text">
-        <strong>{brief.projectTitle}</strong>
-        {counts.length ? <span>{counts.join(" · ")}</span> : null}
-      </p>
-      {onOpenDetails ? (
-        <button className="brief-line-action" type="button" onClick={onOpenDetails}>
-          Anforderungen <IconArrowRight size={12} />
-        </button>
-      ) : null}
-    </div>
+    <section className="brief-line" aria-label="Verstandene Projektanforderungen">
+      <header className="brief-line-header">
+        <span className="brief-line-mark" aria-hidden="true"><IconCheck size={12} /></span>
+        <strong>So hat XPORTAL Ihre Anfrage verstanden</strong>
+        {onOpenDetails ? (
+          <button className="brief-line-action" type="button" onClick={onOpenDetails}>
+            Bearbeiten <IconArrowRight size={12} />
+          </button>
+        ) : null}
+      </header>
+      <dl className="brief-facts">
+        {facts.map((fact) => (
+          <div key={fact.label}>
+            <dt>{fact.label}</dt>
+            <dd className={fact.value ? "" : "is-open"}>
+              {fact.value || "Offen"}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   );
 }
 
