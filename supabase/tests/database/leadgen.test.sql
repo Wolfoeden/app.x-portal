@@ -677,5 +677,94 @@ select is(
   'kontakt@example.invalid',
   'auch der Einzelversand haelt den Empfaenger im Beleg fest'
 );
+
+-- ---------------------------------------------------------------------
+-- Die Zahl auf dem Knopf und die Zahl am Filter zaehlen Leads.
+--
+-- Am 8. September stand am Filter "Nicht abgeglichen" die Zahl -284: Die
+-- Oberflaeche hatte Abgleichzeilen von Leads abgezogen. Diese Zusicherungen
+-- halten die Zaehlung dort, wo die Liste ist -- in der Warteschlange.
+-- ---------------------------------------------------------------------
+
+-- Ein Lead ohne Entwurf ist Arbeit fuer den Abgleich.
+create temporary table zaehlstand_vorher as
+select (public.admin_leadgen_pipeline_summary() ->> 'abzugleichen')::int as wert;
+
+insert into public.leadgen_queue (id, recipient_email, stellenanzeige, status)
+overriding system value
+values (9000010, 'abzugleichen@example.invalid', 'Data Engineer gesucht', 'new');
+
+select is(
+  (public.admin_leadgen_pipeline_summary() ->> 'abzugleichen')::int,
+  (select wert from zaehlstand_vorher) + 1,
+  'ein offener Lead ohne Entwurf zaehlt als abzugleichen'
+);
+
+-- Derselbe Lead mit Entwurf ist keine Arbeit mehr: Der Abgleichlauf
+-- ueberspringt ihn, und der Knopf darf ihn deshalb nicht anbieten.
+insert into public.leadgen_outreach (lead_id, state, subject, body)
+values (9000010, 'draft', 'Schon vorbereitet', 'Rumpf');
+
+select is(
+  (public.admin_leadgen_pipeline_summary() ->> 'abzugleichen')::int,
+  (select wert from zaehlstand_vorher),
+  'ein Lead mit Entwurf zaehlt nicht mehr -- sonst widerspricht der Knopf der Kachel'
+);
+
+-- Die Filterzahlen decken jede Ansicht vollstaendig ab. Genau diese
+-- Zusicherung haette die -284 verhindert: Sie geht nur auf, wenn Leads
+-- gezaehlt werden und nicht Vorgaenge.
+select is(
+  (
+    select (uebersicht -> 'by_match' -> 'open' ->> 'hit')::int
+         + (uebersicht -> 'by_match' -> 'open' ->> 'no_hit')::int
+         + (uebersicht -> 'by_match' -> 'open' ->> 'open')::int
+      from (select public.admin_leadgen_queue_summary() as uebersicht) u
+  ),
+  (public.admin_leadgen_queue_summary() ->> 'open')::int,
+  'die drei Abgleich-Filter decken die Ansicht "Offen" genau ab'
+);
+
+select is(
+  (
+    select (uebersicht -> 'by_match' -> 'archived' ->> 'hit')::int
+         + (uebersicht -> 'by_match' -> 'archived' ->> 'no_hit')::int
+         + (uebersicht -> 'by_match' -> 'archived' ->> 'open')::int
+      from (select public.admin_leadgen_queue_summary() as uebersicht) u
+  ),
+  (public.admin_leadgen_queue_summary() ->> 'archived')::int,
+  'und die Ansicht "Archiv" ebenso'
+);
+
+select is(
+  (
+    select (uebersicht -> 'by_match' -> 'all' ->> 'hit')::int
+         + (uebersicht -> 'by_match' -> 'all' ->> 'no_hit')::int
+         + (uebersicht -> 'by_match' -> 'all' ->> 'open')::int
+      from (select public.admin_leadgen_queue_summary() as uebersicht) u
+  ),
+  (public.admin_leadgen_queue_summary() ->> 'total')::int,
+  'und "Alle" deckt die ganze Warteschlange ab'
+);
+
+-- Die Zahl am Filter muss die Zeilen treffen, die der Filter oeffnet.
+select is(
+  (
+    select count(*)::int
+      from public.admin_list_leadgen_queue(null, null, null, 'all', 'no_hit', 200, 0)
+  ),
+  (public.admin_leadgen_queue_summary() -> 'by_match' -> 'all' ->> 'no_hit')::int,
+  'der Filter "Kein Treffer" oeffnet so viele Zeilen, wie an ihm stehen'
+);
+
+select is(
+  (
+    select count(*)::int
+      from public.admin_list_leadgen_queue(null, null, null, 'open', 'open', 200, 0)
+  ),
+  (public.admin_leadgen_queue_summary() -> 'by_match' -> 'open' ->> 'open')::int,
+  'und "Nicht abgeglichen" ebenso -- die Zahl kann dabei nicht negativ werden'
+);
+
 select finish();
 rollback;
