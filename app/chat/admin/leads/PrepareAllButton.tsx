@@ -41,6 +41,12 @@ type Lauf = {
   vomModell: number;
 };
 
+/**
+ * @param offen Leads, die der Lauf tatsächlich anfassen würde — unarchiviert,
+ * Status `new`, kein Entwurf. Nicht die Zahl der offenen Leads: Einer mit
+ * fertigem Entwurf ist offen und wird trotzdem übersprungen, und der Knopf
+ * bot dann „Alle 0 offenen abgleichen" neben der Kachel „Offen 1" an.
+ */
 export function PrepareAllButton({ offen }: { offen: number }) {
   const router = useRouter();
   const [running, setRunning] = useState(false);
@@ -132,7 +138,9 @@ export function PrepareAllButton({ offen }: { offen: number }) {
       >
         {running
           ? `Gleicht ab … ${lauf?.geprueft ?? 0} von ${offen} geprüft`
-          : `Alle ${offen} offenen abgleichen`}
+          : offen === 0
+            ? "Nichts abzugleichen"
+            : `Alle ${offen} offenen abgleichen`}
       </button>
       {running ? (
         <button

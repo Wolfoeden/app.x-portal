@@ -3,15 +3,20 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import {
+  AdminDisclosure,
   AdminMetricStrip,
   AdminPageHeader,
   AdminSectionHeader,
 } from "@/components/admin/AdminDataPrimitives";
-import { LEADGEN_OUTREACH_CREDITS } from "@/lib/ai/credit-policy";
 import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { promotionalDeliveryConfigured } from "@/lib/email/deliver";
+import {
+  herkunftsHinweis,
+  naechsterSchritt,
+  versandDetail,
+} from "@/lib/leadgen/dashboard";
 import {
   leadSummary,
   listLeadRuns,
@@ -88,19 +93,6 @@ function trefferquote(pipeline: LeadPipeline): string {
   if (!pipeline.abgeglichen) return "noch kein Abgleich";
   const anteil = Math.round((pipeline.treffer / pipeline.abgeglichen) * 100);
   return `${anteil} % der Abgleiche`;
-}
-
-/**
- * Warum die Ergebniszahlen größer sein können als die Warteschlange.
- *
- * Ein Vorgang überlebt den Lead: Wird der Lead gelöscht, bleibt der Abgleich
- * und bleibt der Versandbeleg. Ohne diesen Hinweis liest sich „261
- * abgeglichen" neben „31 offen" wie ein Fehler.
- */
-function herkunftsHinweis(ohneLead: number): string {
-  return ohneLead
-    ? `${ohneLead} davon ohne Lead in der Liste`
-    : "alle noch in der Liste";
 }
 
 const ABSCHNITT_TITEL: Readonly<Record<LeadView, string>> = {
@@ -233,6 +225,9 @@ export default async function LeadsPage({
 
   const pageCount = Math.max(Math.ceil(gesamtTreffer / seitengroesse), 1);
   const mailReady = promotionalDeliveryConfigured();
+  // Die Filterzahlen gelten je Ansicht: „Kein Treffer" öffnet unter „Offen"
+  // eine andere Menge als unter „Archiv".
+  const abgleichZahlen = summary.byMatch?.[scope] ?? null;
 
   return (
     <main className={styles.shell}>
@@ -250,25 +245,19 @@ export default async function LeadsPage({
           }
         />
 
-        {/* Zwei Streifen, weil die Zahlen aus zwei Beständen kommen: die
-            Warteschlange zählt Leads, das Ergebnis zählt Vorgänge — und die
-            überleben den Lead, an dem sie hingen. Nebeneinander in einer Reihe
-            standen einmal „31 gesamt" und „261 abgeglichen", was niemand
-            lesen kann. */}
+        {/* Oben steht nur, was Arbeit ist. Zehn Kacheln nebeneinander, von
+            denen sieben Vergangenheit sind, lassen die drei, auf die es
+            ankommt, verschwinden — und die Vergangenheit zählt Vorgänge,
+            während die Arbeit Leads zählt. Der Rest steht unten im Verlauf,
+            zugeklappt. */}
         <AdminMetricStrip
-          label="Warteschlange"
+          label="Zu tun"
           items={[
             {
-              label: "Offen",
-              value: summary.pipeline.offen,
-              detail: "noch nicht abgearbeitet",
-              tone: summary.pipeline.offen ? "accent" : "default",
-            },
-            {
-              label: "Nicht abgeglichen",
-              value: summary.pipeline.nichtAbgeglichen,
-              detail: "wartet auf den Abgleich",
-              tone: summary.pipeline.nichtAbgeglichen ? "warning" : "muted",
+              label: "Abzugleichen",
+              value: summary.pipeline.abzugleichen,
+              detail: "ohne Entwurf, noch offen",
+              tone: summary.pipeline.abzugleichen ? "warning" : "muted",
             },
             {
               label: "Wartet auf Versand",
@@ -279,57 +268,28 @@ export default async function LeadsPage({
             {
               label: "Heute verschickt",
               value: summary.pipeline.verschicktHeute,
-              detail: `von ${LEAD_BULK_SEND_LIMIT} am Tag`,
+              ...versandDetail(
+                summary.pipeline.verschicktHeute,
+                LEAD_BULK_SEND_LIMIT,
+              ),
             },
           ]}
         />
 
-        <AdminMetricStrip
-          label="Ergebnis insgesamt"
-          items={[
-            {
-              label: "Abgeglichen",
-              value: summary.pipeline.abgeglichen,
-              detail: herkunftsHinweis(summary.pipeline.abgleichOhneLead),
-            },
-            {
-              label: "Treffer",
-              value: summary.pipeline.treffer,
-              detail: trefferquote(summary.pipeline),
-              tone: summary.pipeline.treffer ? "accent" : "default",
-            },
-            {
-              label: "Ohne Treffer",
-              value: summary.pipeline.ohneTreffer,
-              detail: "als Nachfrage vermerkt",
-              tone: "muted",
-            },
-            {
-              label: "Verschickt",
-              value: summary.pipeline.verschickt,
-              detail: herkunftsHinweis(summary.pipeline.belegOhneLead),
-            },
-            {
-              label: "Gescheitert",
-              value: summary.pipeline.gescheitert,
-              detail: "nicht zugestellt",
-              tone: summary.pipeline.gescheitert ? "warning" : "muted",
-            },
-            {
-              label: "Antwort da",
-              value: summary.pipeline.beantwortet,
-              detail: "hat reagiert",
-              tone: summary.pipeline.beantwortet ? "accent" : "muted",
-            },
-          ]}
-        />
+        <p className={styles.runs}>
+          <span className={styles.filterLabel}>Nächster Schritt</span>
+          <span className={styles.run}>
+            {naechsterSchritt({
+              abzugleichen: summary.pipeline.abzugleichen,
+              vorbereitet: summary.pipeline.vorbereitet,
+              verschicktHeute: summary.pipeline.verschicktHeute,
+              tagesmenge: LEAD_BULK_SEND_LIMIT,
+              mailReady,
+            })}
+          </span>
+        </p>
 
-        <PrepareAllButton
-          offen={Math.max(
-            summary.pipeline.offen - summary.pipeline.vorbereitet,
-            0,
-          )}
-        />
+        <PrepareAllButton offen={summary.pipeline.abzugleichen} />
 
         <SendNowButton
           wartend={summary.pipeline.vorbereitet}
@@ -366,6 +326,68 @@ export default async function LeadsPage({
             ))}
           </p>
         ) : null}
+
+        {/* Der Verlauf zählt Vorgänge und nicht Leads, und die meisten seiner
+            Zeilen hängen an Leads, die es nicht mehr gibt. Beides steht
+            ausgeschrieben dabei — aufgeklappt neben der Arbeitsliste hat es
+            nur Fragen erzeugt. */}
+        <AdminDisclosure
+          title="Verlauf"
+          summary={`${summary.pipeline.abgeglichen} Abgleiche · ${summary.pipeline.verschickt} verschickt · ${summary.pipeline.beantwortet} Antworten`}
+        >
+          <AdminMetricStrip
+            label="Ergebnis insgesamt"
+            items={[
+              {
+                label: "Abgeglichen",
+                value: summary.pipeline.abgeglichen,
+                detail: herkunftsHinweis(
+                  summary.pipeline.abgleichOhneLead,
+                  summary.pipeline.abgeglichen,
+                ),
+              },
+              {
+                label: "Treffer",
+                value: summary.pipeline.treffer,
+                detail: trefferquote(summary.pipeline),
+                tone: summary.pipeline.treffer ? "accent" : "default",
+              },
+              {
+                label: "Ohne Treffer",
+                value: summary.pipeline.ohneTreffer,
+                detail: "als Nachfrage vermerkt",
+                tone: "muted",
+              },
+              {
+                label: "Verschickt",
+                value: summary.pipeline.verschickt,
+                detail: herkunftsHinweis(
+                  summary.pipeline.belegOhneLead,
+                  summary.pipeline.verschickt,
+                ),
+              },
+              {
+                label: "Gescheitert",
+                value: summary.pipeline.gescheitert,
+                detail: "nicht zugestellt",
+                tone: summary.pipeline.gescheitert ? "warning" : "muted",
+              },
+              {
+                label: "Antwort da",
+                value: summary.pipeline.beantwortet,
+                detail: "hat reagiert",
+                tone: summary.pipeline.beantwortet ? "accent" : "muted",
+              },
+            ]}
+          />
+          <p className={styles.hint}>
+            Ein Vorgang überlebt den Lead, an dem er hing: Abgleich und
+            Versandbeleg bleiben stehen, wenn der Lead aus der Warteschlange
+            verschwindet. Deshalb sind diese Zahlen größer als die
+            Warteschlange — und deshalb lässt sich der größere Teil davon
+            nicht mehr in der Liste öffnen.
+          </p>
+        </AdminDisclosure>
 
         {mailReady ? null : (
           <p className={styles.warning}>
@@ -481,14 +503,12 @@ export default async function LeadsPage({
                 })}
                 className={`${styles.tabSmall} ${match === value ? styles.tabActive : ""}`}
               >
-                {LEAD_MATCH_FILTER_LABELS[value]}{" "}
-                <b>
-                  {value === "hit"
-                    ? summary.pipeline.treffer
-                    : value === "no_hit"
-                      ? summary.pipeline.ohneTreffer
-                      : summary.pipeline.gesamt - summary.pipeline.abgeglichen}
-                </b>
+                {LEAD_MATCH_FILTER_LABELS[value]}
+                {/* Die Zahl zählt die Leads dieser Ansicht — dieselbe Menge,
+                    die der Filter öffnet. Vorher standen hier die Vorgänge
+                    aus `shortlists`, und „Kein Treffer 244" führte auf sieben
+                    Zeilen. Fehlt die Zählung, steht hier gar keine Zahl. */}
+                {abgleichZahlen ? <> <b>{abgleichZahlen[value]}</b></> : null}
               </Link>
             ))}
           </nav>
@@ -543,7 +563,6 @@ export default async function LeadsPage({
             rows={list.rows}
             categories={summary.categories.map((entry) => entry.category)}
             mailReady={mailReady}
-            creditsPerDraft={LEADGEN_OUTREACH_CREDITS}
           />
         ) : null}
 

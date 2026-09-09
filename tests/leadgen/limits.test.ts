@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   LEAD_BULK_SEND_LIMIT,
+  LEAD_HOURLY_SEND_LIMIT,
   LEAD_SEND_WINDOW,
+  LEAD_SEND_WINDOW_HOURS,
+  PROVIDER_HOURLY_CEILING,
   isLeadScope,
   isLeadStatus,
   isWithinLeadSendWindow,
@@ -28,8 +31,21 @@ describe("Lead-Konstanten", () => {
     expect(isLeadScope("offen")).toBe(false);
   });
 
-  it("hält den Stapelversand bei der Tagesmenge eines Postfachs", () => {
-    expect(LEAD_BULK_SEND_LIMIT).toBe(20);
+  it("rechnet die Tagesmenge aus Stundenmenge und Fenster", () => {
+    // Keine glatte Zahl von Hand: vierzig je Stunde über vier Stunden.
+    // Vorher stand hier zwanzig, hergeleitet aus nichts — und die Kachel
+    // meldete „25 von 20", während der Anbieter das Sechsfache verkraftet.
+    expect(LEAD_SEND_WINDOW_HOURS).toBe(4);
+    expect(LEAD_BULK_SEND_LIMIT).toBe(LEAD_HOURLY_SEND_LIMIT * 4);
+    expect(LEAD_BULK_SEND_LIMIT).toBe(160);
+  });
+
+  it("bleibt in jeder Stunde des Fensters unter der Grenze des Anbieters", () => {
+    // Die Tagesmenge darf die Stundenbremse nicht aushebeln: Sie verteilt
+    // sich über das Fenster, statt in der ersten Stunde abzufließen.
+    expect(LEAD_BULK_SEND_LIMIT / LEAD_SEND_WINDOW_HOURS).toBeLessThan(
+      PROVIDER_HOURLY_CEILING,
+    );
   });
 });
 

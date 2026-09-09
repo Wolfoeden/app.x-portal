@@ -3,7 +3,9 @@ import "server-only";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 import {
+  LEAD_MATCH_FILTERS,
   LEAD_PAGE_SIZE,
+  LEAD_SCOPES,
   type LeadMatchFilter,
   type LeadScope,
   type LeadStatus,
@@ -36,6 +38,8 @@ export type LeadRow = {
   last_contacted_at: string | null;
   created_at: string;
   updated_at: string;
+  /** Der Entwurf oder Beleg zu dieser Zeile. Ohne ihn gibt es nichts zu verschicken. */
+  outreach_id: string | null;
   outreach_state: "draft" | "sending" | "sent" | "failed" | null;
   outreach_subject: string | null;
   /** Der Wortlaut, wie er rausging. Beleg bei einer Rückfrage. */
@@ -65,12 +69,26 @@ export type LeadListResult = {
   pageSize: number;
 };
 
+/**
+ * Wie viele Leads ein Abgleich-Filter in einer Ansicht öffnen würde.
+ *
+ * Gezählt wird die Warteschlange, nicht der Bestand an Abgleichen — das ist
+ * der Unterschied, an dem die Oberfläche einmal „−284" angeschrieben hat.
+ */
+export type LeadMatchCounts = Readonly<Record<LeadMatchFilter, number>>;
+
 export type LeadSummary = {
   open: number;
   archived: number;
   total: number;
   byStatus: Record<string, number>;
   categories: { category: string; count: number }[];
+  /**
+   * Je Ansicht die Zahl hinter jedem Abgleich-Filter. `null`, solange die
+   * Datenbank die Zahlen nicht liefert: Dann zeigt die Oberfläche gar keine
+   * Zahl an, statt eine falsche zu behaupten.
+   */
+  byMatch: Readonly<Record<LeadScope, LeadMatchCounts>> | null;
   /**
    * Der Trichter über die ganze Warteschlange: was abgeglichen wurde, was
    * dabei herauskam und was davon zugestellt ist. Die Zahlen gehören
@@ -94,6 +112,12 @@ export type LeadPipeline = {
   vorbereitet: number;
   /** Offene Leads, die noch nie gegen den Katalog gehalten wurden. */
   nichtAbgeglichen: number;
+  /**
+   * Was der nächste Abgleichlauf anfassen würde: unarchiviert, Status `new`,
+   * kein Entwurf. Die Zahl auf dem Knopf — und deshalb dieselbe Auswahl wie
+   * in `runLeadPreparePass`, nicht eine ähnliche.
+   */
+  abzugleichen: number;
   /**
    * Zeilen, deren Lead nicht mehr existiert. Sie erklären, warum die
    * Zahlen der Warteschlange und die des Ergebnisses auseinanderlaufen.
@@ -164,6 +188,35 @@ export async function listLeads(options: {
   };
 }
 
+/**
+ * Die Filterzahlen aus der Übersicht lesen.
+ *
+ * Streng: Fehlt eine Ansicht oder ein Filter, ist das Ergebnis `null` und
+ * die Oberfläche schreibt keine Zahl an den Filter. Eine fehlende Zahl ist
+ * eine Lücke, eine erfundene Null wäre eine Aussage.
+ */
+export function parseMatchCounts(
+  value: unknown,
+): Readonly<Record<LeadScope, LeadMatchCounts>> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const roh = value as Record<string, unknown>;
+  const ergebnis: Record<string, LeadMatchCounts> = {};
+
+  for (const bereich of LEAD_SCOPES) {
+    const eintrag = roh[bereich];
+    if (!eintrag || typeof eintrag !== "object") return null;
+    const zahlen: Record<string, number> = {};
+    for (const filter of LEAD_MATCH_FILTERS) {
+      const zahl = Number((eintrag as Record<string, unknown>)[filter]);
+      if (!Number.isFinite(zahl) || zahl < 0) return null;
+      zahlen[filter] = zahl;
+    }
+    ergebnis[bereich] = zahlen as LeadMatchCounts;
+  }
+
+  return ergebnis as Readonly<Record<LeadScope, LeadMatchCounts>>;
+}
+
 export async function leadSummary(): Promise<LeadSummary> {
   const admin = requireServiceRole();
   // Zwei Aufrufe, weil die eine Zahlenreihe die Warteschlange zählt und
@@ -183,6 +236,7 @@ export async function leadSummary(): Promise<LeadSummary> {
     total?: number;
     by_status?: Record<string, number>;
     categories?: { category: string; count: number }[];
+    by_match?: unknown;
   };
 
   const trichter = (pipeline.data ?? {}) as Record<string, unknown>;
@@ -197,6 +251,7 @@ export async function leadSummary(): Promise<LeadSummary> {
     total: raw.total ?? 0,
     byStatus: raw.by_status ?? {},
     categories: raw.categories ?? [],
+    byMatch: parseMatchCounts(raw.by_match),
     pipeline: {
       gesamt: zahl("gesamt"),
       offen: zahl("offen"),
@@ -210,6 +265,7 @@ export async function leadSummary(): Promise<LeadSummary> {
       entwuerfe: zahl("entwuerfe"),
       vorbereitet: zahl("vorbereitet"),
       nichtAbgeglichen: zahl("nicht_abgeglichen"),
+      abzugleichen: zahl("abzugleichen"),
       abgleichOhneLead: zahl("abgleich_ohne_lead"),
       belegOhneLead: zahl("beleg_ohne_lead"),
       verschicktHeute: zahl("verschickt_heute"),
@@ -226,6 +282,7 @@ const LEAD_COLUMNS =
 
 export type Lead = Omit<
   LeadRow,
+  | "outreach_id"
   | "outreach_state"
   | "outreach_subject"
   | "outreach_body"

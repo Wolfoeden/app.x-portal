@@ -76,16 +76,6 @@ export const LEAD_BODY_MAX_LENGTH = 8_000;
 export const LEAD_PAGE_SIZE = 50;
 
 /**
- * Wie viele Leads ein Stapelversand höchstens anfasst.
- *
- * Die Zahl ist keine technische Grenze, sondern die Tagesmenge, die ein
- * Postfach bei IONOS unauffällig verschickt — dieselbe Grenze, die der
- * Akquise-Bot außerhalb dieser Anwendung einhält. Wer mehr verschickt,
- * landet im Spamfilter, und zwar dauerhaft.
- */
-export const LEAD_BULK_SEND_LIMIT = 20;
-
-/**
  * Wie lange ein vorbereiteter Entwurf gilt.
  *
  * Der Entwurf nennt ein bestimmtes Profil mit Verfügbarkeit und
@@ -397,6 +387,26 @@ export const LEAD_HOURLY_SEND_LIMIT = 40;
  * vierzig der Abstand sind — überschritten werden darf sie nie.
  */
 export const PROVIDER_HOURLY_CEILING = 50;
+
+/** Wie lang das Versandfenster ist: von 8 bis 12 sind es vier Stunden. */
+export const LEAD_SEND_WINDOW_HOURS =
+  LEAD_SEND_WINDOW.endHour - LEAD_SEND_WINDOW.startHour;
+
+/**
+ * Wie viele Nachrichten an einem Tag höchstens rausgehen.
+ *
+ * Gerechnet, nicht gesetzt: vierzig je Stunde über vier Stunden Fenster.
+ * Hier stand einmal eine glatte Zwanzig, und sie hat nichts bedeutet — sie
+ * war weder aus der Stundenmenge noch aus dem Fenster hergeleitet, verschenkte
+ * den größeren Teil der Kapazität und behauptete als Nenner in „25 von 20"
+ * eine Grenze, die niemand gesetzt hatte.
+ *
+ * Ändert sich das Fenster oder die Stundenmenge, ändert sich diese Zahl mit.
+ * Die Stundenbremse bleibt die eigentliche Sicherung: Sie verhindert, dass
+ * die Tagesmenge in zehn Minuten abfließt.
+ */
+export const LEAD_BULK_SEND_LIMIT =
+  LEAD_HOURLY_SEND_LIMIT * LEAD_SEND_WINDOW_HOURS;
 
 /** Der Beginn der laufenden Stunde. Grundlage der Stundenbremse. */
 export function sendHourStart(now: Date): Date {
