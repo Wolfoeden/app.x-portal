@@ -21,6 +21,7 @@ const GROUPS = [
       { href: "/chat/admin/freelancers", label: "Bewerbungen" },
       { href: "/chat/admin/leads", label: "Leads" },
       { href: "/chat/admin/demand", label: "Nachfrage" },
+      { href: "/chat/agent-grid", label: "Agent Grid" },
     ],
   },
   {
@@ -38,6 +39,7 @@ const PREVIEW_HREFS: Record<string, string> = {
   "/chat/admin/users": "/chat/preview/admin-pages?view=users",
   "/chat/admin/demand": "/chat/preview/admin-pages?view=demand",
   "/chat/admin/ai-usage": "/chat/preview/admin-pages?view=ai-usage",
+  "/chat/agent-grid": "/chat/preview/agent-grid",
 };
 
 export function AdminNav({
