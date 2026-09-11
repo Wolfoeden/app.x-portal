@@ -1,190 +1,119 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-
 import "bpmn-js/dist/assets/diagram-js.css";
 import "bpmn-js/dist/assets/bpmn-font/css/bpmn.css";
-
 import type { ProcessNode } from "@/lib/agent-grid/blueprint";
-
+import { bpmnId } from "@/lib/agent-grid/bpmn";
 import styles from "./agent-grid.module.css";
 
 type CanvasService = {
   addMarker(element: string, marker: string): void;
   removeMarker(element: string, marker: string): void;
-  zoom(scale?: number | "fit-viewport"): number;
+  zoom(scale?: number | "fit-viewport", center?: "auto"): number;
+  resized(): void;
+  viewbox(box?: { x: number; y: number; width: number; height: number }): { x: number; y: number; width: number; height: number };
 };
-
 type ViewerLike = {
-  importXML(xml: string): Promise<{ warnings: string[] }>;
+  importXML(xml: string): Promise<unknown>;
   get<T>(name: string): T;
   on<T>(event: string, callback: (event: T) => void): void;
   destroy(): void;
 };
 
-type ElementClickEvent = {
-  element?: { id?: string };
-};
-
-type CanvasMarker =
-  | "agent-grid-ai"
-  | "agent-grid-software"
-  | "agent-grid-human"
-  | "agent-grid-approval"
-  | "agent-grid-data"
-  | "agent-grid-assumed"
-  | "agent-grid-unclear";
-
-function ownershipMarker(node: ProcessNode): CanvasMarker | null {
-  switch (node.type) {
-    case "ai_task":
-      return "agent-grid-ai";
-    case "service_task":
-    case "business_rule":
-      return "agent-grid-software";
-    case "human_task":
-      return "agent-grid-human";
-    case "approval":
-      return "agent-grid-approval";
-    case "data_source":
-      return "agent-grid-data";
-    default:
-      return null;
-  }
-}
-
-function confidenceMarker(
-  node: ProcessNode,
-): CanvasMarker | null {
-  if (node.confidence === "assumed") return "agent-grid-assumed";
-  if (node.confidence === "unclear") return "agent-grid-unclear";
-  return null;
-}
-
-export function AgentGridCanvas({
-  xml,
-  nodes,
-  selectedId,
-  onSelect,
-}: {
-  xml: string;
-  nodes: ProcessNode[];
-  selectedId: string | null;
-  onSelect: (nodeId: string) => void;
+export function AgentGridCanvas({ xml, nodes, selectedId, activeId, completedIds, onSelect }: {
+  xml: string; nodes: ProcessNode[]; selectedId: string | null;
+  activeId?: string | null; completedIds?: string[]; onSelect: (id: string) => void;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<ViewerLike | null>(null);
-  const selectedRef = useRef<string | null>(null);
-  const [renderError, setRenderError] = useState<string | null>(null);
+  const [ready, setReady] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [zoomLabel, setZoomLabel] = useState(100);
 
   useEffect(() => {
     let disposed = false;
-
-    async function renderDiagram() {
-      const host = hostRef.current;
-      if (!host) return;
-      setRenderError(null);
+    let viewer: ViewerLike | null = null;
+    let observer: ResizeObserver | null = null;
+    async function render() {
       try {
-        const { default: NavigatedViewer } = await import(
-          "bpmn-js/lib/NavigatedViewer"
-        );
-        if (disposed) return;
-        const viewer = new NavigatedViewer({ container: host }) as ViewerLike;
-        viewerRef.current = viewer;
+        const { default: Viewer } = await import("bpmn-js/lib/NavigatedViewer");
+        if (disposed || !hostRef.current) return;
+        await document.fonts.ready;
+        if (disposed || !hostRef.current) return;
+        viewer = new Viewer({ container: hostRef.current,
+          textRenderer: { defaultStyle: { fontFamily: getComputedStyle(hostRef.current).fontFamily, fontSize: 13 }, externalStyle: { fontSize: 12 } },
+        }) as ViewerLike;
         await viewer.importXML(xml);
-        if (disposed) {
-          viewer.destroy();
-          return;
-        }
+        if (disposed) return;
+        viewerRef.current = viewer;
         const canvas = viewer.get<CanvasService>("canvas");
         for (const node of nodes) {
-          const elementId = `Node_${node.id}`;
-          const ownership = ownershipMarker(node);
-          const confidence = confidenceMarker(node);
-          if (ownership) canvas.addMarker(elementId, ownership);
-          if (confidence) canvas.addMarker(elementId, confidence);
+          canvas.addMarker(bpmnId("Node", node.id), `agent-grid-${node.type}`);
+          if (node.confidence !== "confirmed") canvas.addMarker(bpmnId("Node", node.id), "agent-grid-assumed");
         }
-        if (selectedRef.current) {
-          canvas.addMarker(
-            `Node_${selectedRef.current}`,
-            "agent-grid-selected",
-          );
-        }
-        canvas.zoom("fit-viewport");
-        viewer.on<ElementClickEvent>("element.click", (event) => {
-          const elementId = event.element?.id;
-          if (!elementId?.startsWith("Node_")) return;
-          const nodeId = elementId.slice("Node_".length);
-          if (nodes.some((node) => node.id === nodeId)) onSelect(nodeId);
+        canvas.zoom("fit-viewport", "auto");
+        viewer.on<{ element?: { id?: string } }>("element.click", event => {
+          const node = nodes.find(n => bpmnId("Node", n.id) === event.element?.id);
+          if (node) onSelect(node.id);
         });
+        viewer.on("canvas.viewbox.changed", () => setZoomLabel(Math.round(canvas.zoom() * 100)));
+        observer = new ResizeObserver(() => { canvas.resized(); canvas.zoom("fit-viewport", "auto"); });
+        observer.observe(hostRef.current);
+        setError(null);
+        setReady(value => value + 1);
       } catch {
-        if (!disposed) {
-          setRenderError(
-            "Das BPMN-Diagramm konnte nicht dargestellt werden. Der Blueprint bleibt erhalten.",
-          );
-        }
+        if (!disposed) setError("Das Diagramm konnte nicht geladen werden. Die Prozessschritte bleiben rechts bearbeitbar.");
       }
     }
-
-    void renderDiagram();
-    return () => {
-      disposed = true;
-      viewerRef.current?.destroy();
-      viewerRef.current = null;
-      selectedRef.current = null;
-    };
-  }, [nodes, onSelect, xml]);
+    void render();
+    return () => { disposed = true; observer?.disconnect(); viewerRef.current = null; viewer?.destroy(); };
+  }, [xml, nodes, onSelect]);
 
   useEffect(() => {
     const canvas = viewerRef.current?.get<CanvasService>("canvas");
-    if (canvas && selectedRef.current) {
-      canvas.removeMarker(
-        `Node_${selectedRef.current}`,
-        "agent-grid-selected",
-      );
+    if (!canvas) return;
+    for (const node of nodes) {
+      const id = bpmnId("Node", node.id);
+      for (const [marker, enabled] of [
+        ["agent-grid-selected", node.id === selectedId],
+        ["agent-grid-running", node.id === activeId],
+        ["agent-grid-completed", completedIds?.includes(node.id)],
+      ] as const) {
+        if (enabled) canvas.addMarker(id, marker); else canvas.removeMarker(id, marker);
+      }
     }
-    selectedRef.current = selectedId;
-    if (canvas && selectedId) {
-      canvas.addMarker(`Node_${selectedId}`, "agent-grid-selected");
-    }
-  }, [selectedId]);
+  }, [nodes, selectedId, activeId, completedIds, ready]);
 
   function zoom(delta: number) {
     const canvas = viewerRef.current?.get<CanvasService>("canvas");
-    if (!canvas) return;
-    canvas.zoom(Math.min(2.5, Math.max(0.25, canvas.zoom() + delta)));
+    if (canvas) canvas.zoom(Math.min(2.5, Math.max(0.2, canvas.zoom() + delta)));
+  }
+  function focusStep() {
+    const viewer = viewerRef.current;
+    const id = activeId ?? selectedId;
+    if (!viewer || !id) return;
+    const element = viewer.get<{ get(id: string): { x: number; y: number; width: number; height: number } }>("elementRegistry").get(bpmnId("Node", id));
+    const canvas = viewer.get<CanvasService>("canvas");
+    canvas.zoom(1.15);
+    const box = canvas.viewbox();
+    canvas.viewbox({ ...box, x: element.x + element.width / 2 - box.width / 2, y: element.y + element.height / 2 - box.height / 2 });
   }
 
-  function fit() {
-    viewerRef.current?.get<CanvasService>("canvas").zoom("fit-viewport");
-  }
-
-  return (
-    <div className={styles.canvasFrame}>
-      <div className={styles.canvasLegend} aria-label="Verantwortung im Prozess">
-        <span data-kind="ai"><i aria-hidden />AI</span>
-        <span data-kind="software"><i aria-hidden />Software / API</span>
-        <span data-kind="human"><i aria-hidden />Mensch</span>
-        <span data-kind="approval"><i aria-hidden />Freigabe</span>
-        <span data-kind="data"><i aria-hidden />Daten</span>
-      </div>
-      <div className={styles.canvasControls} aria-label="Diagramm-Zoom">
-        <button type="button" onClick={() => zoom(-0.15)} aria-label="Verkleinern">
-          −
-        </button>
-        <button type="button" onClick={fit} aria-label="Diagramm einpassen">
-          Fit
-        </button>
-        <button type="button" onClick={() => zoom(0.15)} aria-label="Vergrößern">
-          +
-        </button>
-      </div>
-      <div ref={hostRef} className={styles.canvasHost} aria-label="BPMN-Prozessdiagramm" />
-      {renderError ? (
-        <p className={styles.canvasError} role="alert">
-          {renderError}
-        </p>
-      ) : null}
+  return <div className={styles.canvasFrame}>
+    <div className={styles.canvasLegend} aria-label="Verantwortung im Prozess">
+      <span data-kind="ai_task"><i />AI Agent</span><span data-kind="service_task"><i />System / API</span>
+      <span data-kind="human_task"><i />Mensch</span><span data-kind="approval"><i />Freigabe</span>
+      <span className={styles.assumedLegend}>Gestrichelt = Annahme</span>
     </div>
-  );
+    <div ref={hostRef} className={styles.canvasHost} role="img" aria-label="BPMN-2.0-Prozessdiagramm. Alle Schritte sind über die Schrittliste auswählbar." />
+    <div className={styles.canvasControls} aria-label="Diagramm-Zoom">
+      <button type="button" onClick={() => zoom(-0.15)} aria-label="Verkleinern">−</button>
+      <span>{zoomLabel} %</span>
+      <button type="button" onClick={() => zoom(0.15)} aria-label="Vergrößern">+</button>
+      <button type="button" onClick={() => viewerRef.current?.get<CanvasService>("canvas").zoom("fit-viewport", "auto")}>Einpassen</button>
+      <button type="button" disabled={!selectedId && !activeId} onClick={focusStep}>Schritt fokussieren</button>
+    </div>
+    {error && <p className={styles.canvasError} role="alert">{error}</p>}
+  </div>;
 }

@@ -6,6 +6,7 @@ export type ProcessEconomics = {
 export function parseNonNegativeDecimal(value: string): number | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
+  if (!/^(?:\d+(?:[.,]\d*)?|[.,]\d+)$/u.test(trimmed)) return null;
   const parsed = Number(trimmed.replace(",", "."));
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
@@ -18,11 +19,13 @@ export function calculateProcessEconomics(input: {
   const volume = parseNonNegativeDecimal(input.volumePerMonth);
   const minutes = parseNonNegativeDecimal(input.minutesPerCase);
   const cost = parseNonNegativeDecimal(input.hourlyCost);
-  const hoursPerMonth =
+  const rawHours =
     volume !== null && minutes !== null ? (volume * minutes) / 60 : null;
+  const hoursPerMonth = rawHours !== null && Number.isFinite(rawHours) ? rawHours : null;
+  const processCost = hoursPerMonth !== null && cost !== null ? hoursPerMonth * cost : null;
   return {
     hoursPerMonth,
     currentProcessCost:
-      hoursPerMonth !== null && cost !== null ? hoursPerMonth * cost : null,
+      processCost !== null && Number.isFinite(processCost) ? processCost : null,
   };
 }

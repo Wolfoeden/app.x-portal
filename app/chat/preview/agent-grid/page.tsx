@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+export const dynamic = "force-dynamic";
+
 export default function AgentGridPreviewPage() {
   if (
     process.env.NODE_ENV !== "development" &&

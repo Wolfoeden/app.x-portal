@@ -28,8 +28,10 @@ function xml(value: string): string {
     .replaceAll("'", "&apos;");
 }
 
-function bpmnId(prefix: string, id: string): string {
-  return `${prefix}_${id.replaceAll(/[^a-zA-Z0-9_]/gu, "_")}`;
+export function bpmnId(prefix: string, id: string): string {
+  // Hyphens are valid XML NCName characters. Preserving them prevents collisions
+  // between e.g. step-a and step_a, and keeps viewer selections reversible.
+  return `${prefix}_${id}`;
 }
 
 function bpmnElement(node: ProcessNode): string {
@@ -130,9 +132,10 @@ function layout(
 
   const boxes = new Map<string, Box>();
   const xStart = 100;
-  const xGap = 190;
-  const yCenter = 255;
-  const yGap = 132;
+  const xGap = 184;
+  const largestGroup = Math.max(1, ...[...grouped.values()].map(group => group.length));
+  const yGap = 146;
+  const yCenter = 160 + ((largestGroup - 1) * yGap) / 2;
   for (const [level, nodes] of [...grouped.entries()].sort(
     ([left], [right]) => left - right,
   )) {
@@ -213,7 +216,7 @@ export function processBlueprintToBpmnXml(blueprint: ProcessBlueprint): string {
     ...[...boxes.values()].map((box) => box.x + box.width + 100),
   );
   const height = Math.max(
-    560,
+    360,
     ...[...boxes.values()].map((box) => box.y + box.height + 90),
   );
 
