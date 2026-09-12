@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Inter } from "next/font/google";
 import { CookieConsent } from "@/components/CookieConsent";
+import { JsonLd } from "@/components/JsonLd";
+import { SITE_DESCRIPTION, SITE_URL } from "@/lib/seo";
+import { siteStructuredData } from "@/lib/structured-data";
 import "./globals.css";
 
 // The stylesheet asked for Inter but nothing ever loaded it, so every visitor
@@ -16,7 +19,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://x-portal.eu"),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "XPORTAL",
     template: "%s",
@@ -24,14 +27,14 @@ export const metadata: Metadata = {
   // Deutsch, passend zu lang="de" am Wurzelelement. Eine englische
   // Beschreibung unter einer deutschen Sprachauszeichnung liest jeder
   // Screenreader mit der falschen Aussprache vor.
-  description:
-    "Beschreiben Sie Ihr Projekt im Dialog und erhalten Sie passende Freelancer-Profile nach nachvollziehbaren Regeln.",
+  description: SITE_DESCRIPTION,
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="de" className={inter.variable}>
       <body>
+        <JsonLd data={siteStructuredData()} />
         {children}
         <CookieConsent />
       </body>
