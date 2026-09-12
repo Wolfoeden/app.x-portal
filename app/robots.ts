@@ -1,27 +1,34 @@
 import type { MetadataRoute } from "next";
 
-import { SITE_URL, INDEXABLE_PATHS, NON_INDEXABLE_PREFIXES } from "@/lib/seo";
+import {
+  AI_CRAWLER_POLICY,
+  INDEXABLE_PATHS,
+  ROBOTS_DISALLOW_PATHS,
+  SITE_URL,
+  absoluteUrl,
+} from "@/lib/seo";
 
-/**
- * `x-portal.eu/robots.txt` hat bisher mit 404 geantwortet.
- *
- * Die Indexierungsregeln standen zwar schon in `netlify.toml`, aber als
- * `X-Robots-Tag` — den sieht ein Crawler erst, wenn er die Seite bereits
- * abgerufen hat. Die Datei, die er als Erstes sucht, gab es nicht.
- *
- * Als Route statt als statische Datei, damit sie mit dem Routenbaum wächst
- * und nicht beim nächsten neuen Bereich vergessen wird.
- */
+function publicRules(userAgent: string) {
+  return {
+    userAgent,
+    allow: INDEXABLE_PATHS.map((path) => path + "$"),
+    disallow: [...ROBOTS_DISALLOW_PATHS],
+  };
+}
+
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: {
-      userAgent: "*",
-      allow: [...INDEXABLE_PATHS],
-      // Betreiberbereiche, persönliche Ansichten und alles, was nur mit
-      // einem Token sinnvoll ist.
-      disallow: [...NON_INDEXABLE_PREFIXES],
-    },
-    sitemap: `${SITE_URL}/sitemap.xml`,
+    rules: [
+      publicRules("*"),
+      ...Object.entries(AI_CRAWLER_POLICY).map(
+        ([userAgent, policy]: [string, "allow-public" | "disallow"]) =>
+          policy === "disallow"
+            ? { userAgent, disallow: ["/"] }
+            : publicRules(userAgent),
+      ),
+    ],
+    // Specific bot groups do not inherit '*': each repeats the private rules.
+    sitemap: absoluteUrl("/sitemap.xml"),
     host: SITE_URL,
   };
 }
