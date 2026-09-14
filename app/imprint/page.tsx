@@ -1,27 +1,32 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import "@/app/styles/legal.css";
 
+import {
+  PublicDocumentIntro,
+  PublicFooter,
+  PublicHeader,
+} from "@/components/public/PublicChrome";
 import { CONTACT_RESPONSE_PROMISE } from "@/lib/legal/policy";
 
 export const metadata: Metadata = {
-  title: "Imprint | XPORTAL",
+  title: "Impressum | XPORTAL",
   description: "Impressum und Anbieterangaben der XPORTAL Website.",
 };
 
 export default function ImprintPage() {
   return (
-    <main className="xlegal" lang="de">
-      <header className="xlegal-header">
-        <Link href="/chat" className="xlegal-wordmark">XPORTAL</Link>
-        <span>IMPRINT / 01</span>
-      </header>
+    <div className="xlegal" lang="de">
+      <PublicHeader context="Impressum" />
 
-      <article className="xlegal-document">
-        <p className="xhome-label">Imprint</p>
-        <h1>Impressum</h1>
-        <p className="xlegal-lead">
-          Angaben gemäß § 5 DDG
-        </p>
+      <main className="xlegal-document">
+        <PublicDocumentIntro
+          eyebrow="Anbieterangaben"
+          title="Impressum"
+          signal={{ label: "Anbieter", value: "Einzelunternehmen" }}
+        >
+          <p>Angaben gemäß § 5 DDG</p>
+        </PublicDocumentIntro>
 
         <section>
           <h2>Anbieter</h2>
@@ -77,18 +82,9 @@ export default function ImprintPage() {
         </section>
 
         <p className="xlegal-updated">Stand: 28. August 2026</p>
-      </article>
+      </main>
 
-      <footer className="xlegal-footer">
-        <Link href="/chat">Zurück zu XPORTAL</Link>
-        <span>
-          <Link href="/terms">AGB</Link>
-          {" · "}
-          <Link href="/privacy">Datenschutz</Link>
-          {" · "}
-          <Link href="/contact">Kontakt</Link>
-        </span>
-      </footer>
-    </main>
+      <PublicFooter />
+    </div>
   );
 }

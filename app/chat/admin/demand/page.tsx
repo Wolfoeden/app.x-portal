@@ -7,6 +7,7 @@ import {
   AdminMetricStrip,
   AdminPageHeader,
   AdminSectionHeader,
+  AdminSurface,
 } from "@/components/admin/AdminDataPrimitives";
 import type {
   DemandPeriod,
@@ -229,8 +230,7 @@ export default async function AdminDemandPage({
   );
 
   return (
-    <main className={styles.shell}>
-      <div className={styles.inner}>
+    <AdminSurface label="Administration · Nachfrageprofile">
         <AdminPageHeader
           eyebrow="Admin / Analyse"
           title="Nachfrageprofile"
@@ -633,7 +633,6 @@ export default async function AdminDemandPage({
           Der Versandbeleg stammt aus <code>sourcing_outreach</code> und überlebt
           den Kandidaten, damit die Informationspflicht belegbar bleibt.
         </p>
-      </div>
-    </main>
+    </AdminSurface>
   );
 }

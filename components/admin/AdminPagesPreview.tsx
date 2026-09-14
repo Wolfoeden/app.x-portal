@@ -4,6 +4,7 @@ import {
   AdminMetricStrip,
   AdminPageHeader,
   AdminSectionHeader,
+  AdminSurface,
   type AdminMetric,
 } from "./AdminDataPrimitives";
 
@@ -73,7 +74,7 @@ const CONFIGS: Record<AdminPreviewView, PreviewConfig> = {
           { main: "anna@northstar.de", meta: "Anna Neumann · registriert" },
           { main: "18 Nachrichten", meta: "6 Suchen · 3 Exporte" },
           { main: "Heute, 09:42", meta: "vor 18 Minuten" },
-          { badge: { label: "Scale", tone: "accent" }, meta: "1.420 / 2.000 Credits" },
+          { badge: { label: "Enterprise", tone: "accent" }, meta: "1.420 / 3.000 Credits" },
           { badge: { label: "Aktiv", tone: "accent" }, meta: "keine Aktion" },
         ],
       },
@@ -83,7 +84,7 @@ const CONFIGS: Record<AdminPreviewView, PreviewConfig> = {
           { main: "jonas@atelier.io", meta: "Jonas Richter · registriert" },
           { main: "4 Nachrichten", meta: "1 Suche" },
           { main: "Gestern, 16:08", meta: "vor 17 Stunden" },
-          { badge: { label: "Starter" }, meta: "420 / 500 Credits" },
+          { badge: { label: "Konto" }, meta: "220 / 300 Credits" },
           { badge: { label: "Beobachten", tone: "muted" }, meta: "wenig Nutzung" },
         ],
       },
@@ -94,7 +95,7 @@ const CONFIGS: Record<AdminPreviewView, PreviewConfig> = {
           { main: "lea@studio-elf.de", meta: "Lea Weber · registriert" },
           { main: "0 Nachrichten", meta: "keine Suche" },
           { main: "Noch nie aktiv", meta: "Konto seit 12 Tagen" },
-          { badge: { label: "Starter" }, meta: "500 / 500 Credits" },
+          { badge: { label: "Konto" }, meta: "300 / 300 Credits" },
           { badge: { label: "Aktivieren", tone: "warning" }, meta: "Onboarding prüfen" },
         ],
       },
@@ -264,7 +265,7 @@ const CONFIGS: Record<AdminPreviewView, PreviewConfig> = {
   },
   "ai-usage": {
     eyebrow: "Admin / Betrieb",
-    title: "AI-Kosten & Kontingente",
+    title: "KI-Kosten & Kontingente",
     description:
       "Externe Kundennutzung und wirksame Monats-Credits zuerst. Interne Testkosten und historische Guthaben bleiben separat nachprüfbar.",
     metrics: [
@@ -284,11 +285,11 @@ const CONFIGS: Record<AdminPreviewView, PreviewConfig> = {
         tone: "accent",
         cells: [
           { main: "anna@northstar.de", meta: "usr_8fa…92c" },
-          { badge: { label: "Scale", tone: "accent" }, meta: "2.000 Credits / Monat" },
-          { main: "1.420 / 2.000", meta: "580 genutzt · 0 reserviert" },
+          { badge: { label: "Enterprise", tone: "accent" }, meta: "3.000 Credits / Monat" },
+          { main: "1.420 / 3.000", meta: "1.580 genutzt · 0 reserviert" },
           { main: "428.340 Tokens", meta: "92 % bestätigt · 18 Recherchen" },
           { main: "$ 8,72", meta: "Tokens + Websuchen" },
-          { main: "580" },
+          { main: "1.580" },
           { main: "Heute, 09:42" },
         ],
       },
@@ -296,8 +297,8 @@ const CONFIGS: Record<AdminPreviewView, PreviewConfig> = {
         key: "ai-2",
         cells: [
           { main: "jonas@atelier.io", meta: "usr_4b1…71d" },
-          { badge: { label: "Starter" }, meta: "500 Credits / Monat" },
-          { main: "420 / 500", meta: "80 genutzt · 0 reserviert" },
+          { badge: { label: "Konto" }, meta: "300 Credits / Monat" },
+          { main: "220 / 300", meta: "80 genutzt · 0 reserviert" },
           { main: "91.220 Tokens", meta: "100 % bestätigt · 2 Recherchen" },
           { main: "$ 1,94", meta: "Tokens + Websuchen" },
           { main: "80" },
@@ -345,7 +346,7 @@ export function AdminPagesPreview({ view }: { view: AdminPreviewView }) {
   const config = CONFIGS[view];
 
   return (
-    <main className={styles.shell}>
+    <AdminSurface label={`Lokale Admin-Vorschau · ${config.title}`}>
       <div className={styles.localBanner} role="status">
         <span>Lokale Vorschau</span>
         <strong>Testdaten · keine Supabase-Verbindung · keine Aktionen</strong>
@@ -404,6 +405,6 @@ export function AdminPagesPreview({ view }: { view: AdminPreviewView }) {
         echten Admin-Seiten behalten Authentifizierung, Audit-Logik und ihre
         serverseitigen Datenabfragen.
       </p>
-    </main>
+    </AdminSurface>
   );
 }

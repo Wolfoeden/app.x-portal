@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-
+import "@/app/styles/legal.css";
 import { CookieSettingsButton } from "@/components/CookieConsent";
+import {
+  PublicDocumentIntro,
+  PublicFooter,
+  PublicHeader,
+} from "@/components/public/PublicChrome";
 
 export const metadata: Metadata = {
   title: "Datenschutz | XPORTAL",
@@ -10,20 +14,21 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <main className="xlegal" lang="de">
-      <header className="xlegal-header">
-        <Link href="/chat" className="xlegal-wordmark">XPORTAL</Link>
-        <span>DATENSCHUTZ / 01</span>
-      </header>
+    <div className="xlegal" lang="de">
+      <PublicHeader context="Datenschutz" />
 
-      <article className="xlegal-document">
-        <p className="xhome-label">Datenschutzerklärung</p>
-        <h1>Transparent vom ersten Klick bis zum gespeicherten Projekt.</h1>
-        <p className="xlegal-lead">
-          Diese Erklärung informiert Sie gemäß Art. 13 und 14 DSGVO darüber,
-          welche personenbezogenen Daten XPORTAL beim Besuch der Website, bei
-          der Anmeldung und bei der Nutzung der Anwendung verarbeitet.
-        </p>
+      <main className="xlegal-document">
+        <PublicDocumentIntro
+          eyebrow="Datenschutzerklärung"
+          title="Transparent vom ersten Klick bis zum gespeicherten Projekt."
+          signal={{ label: "Datenfluss", value: "Nachvollziehbar beschrieben" }}
+        >
+          <p>
+            Diese Erklärung informiert Sie gemäß Art. 13 und 14 DSGVO darüber,
+            welche personenbezogenen Daten XPORTAL beim Besuch der Website, bei
+            der Anmeldung und bei der Nutzung der Anwendung verarbeitet.
+          </p>
+        </PublicDocumentIntro>
 
         <section>
           <h2>1. Verantwortlicher und Begriffe</h2>
@@ -300,7 +305,7 @@ export default function PrivacyPage() {
               eine neue, konkrete Einwilligung eingeholt, und er wird nicht
               geladen, bevor sie vorliegt.
             </p>
-            <CookieSettingsButton />
+            <CookieSettingsButton className="contact-submit" />
           </div>
         </section>
 
@@ -471,18 +476,9 @@ export default function PrivacyPage() {
         </section>
 
         <p className="xlegal-updated">Stand: 28. August 2026</p>
-      </article>
+      </main>
 
-      <footer className="xlegal-footer">
-        <Link href="/chat">Zurück zu XPORTAL</Link>
-        <span>
-          <Link href="/imprint">Impressum</Link>
-          {" · "}
-          <Link href="/terms">AGB</Link>
-          {" · "}
-          <Link href="/contact">Kontakt</Link>
-        </span>
-      </footer>
-    </main>
+      <PublicFooter />
+    </div>
   );
 }

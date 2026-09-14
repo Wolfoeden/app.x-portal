@@ -7,6 +7,7 @@ import {
   AdminMetricStrip,
   AdminPageHeader,
   AdminSectionHeader,
+  AdminSurface,
 } from "@/components/admin/AdminDataPrimitives";
 import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
@@ -230,8 +231,7 @@ export default async function LeadsPage({
   const abgleichZahlen = summary.byMatch?.[scope] ?? null;
 
   return (
-    <main className={styles.shell}>
-      <div className={styles.inner}>
+    <AdminSurface label="Administration · Sales-Pipeline">
         <AdminPageHeader
           eyebrow="Admin / Arbeit"
           title="Sales-Pipeline"
@@ -605,7 +605,6 @@ export default async function LeadsPage({
             )}
           </nav>
         ) : null}
-      </div>
-    </main>
+    </AdminSurface>
   );
 }

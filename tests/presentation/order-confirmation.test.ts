@@ -58,8 +58,9 @@ describe("Vertragsbestätigung in Textform", () => {
    * nach § 147 AO. Gäbe die Bestätigung sich als Rechnung aus, fehlten ihr
    * die Pflichtangaben nach § 14 UStG.
    */
-  it("gibt sich nicht als Rechnung aus, sondern kündigt eine an", () => {
+  it("gibt sich nicht als Rechnung aus und erfindet keine Verbrauchsabrechnung", () => {
     expect(message.subject).not.toMatch(/rechnung/iu);
-    expect(message.text).toContain("erhalten Sie eine Rechnung");
+    expect(message.text).toContain("keine");
+    expect(message.text).toContain("verbrauchsabhängige Mehrberechnung");
   });
 });

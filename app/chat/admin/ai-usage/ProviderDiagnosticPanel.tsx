@@ -34,7 +34,7 @@ const transports: Record<ProviderTransport, string> = {
   unconfigured: "Nicht konfiguriert",
   direct_openai: "Direkte OpenAI API",
   netlify_ai_gateway: "Netlify AI Gateway",
-  custom_gateway: "Eigener AI-Gateway",
+  custom_gateway: "Eigenes KI-Gateway",
 };
 
 const statuses: Record<DiagnosticStatus, { label: string; detail: string }> = {

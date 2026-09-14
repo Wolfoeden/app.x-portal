@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { JsonLd } from "@/components/JsonLd";
+import { MatchProtocol } from "@/components/product/MatchProtocol";
 import { MARKETING_PAGES, type PublicPage } from "@/lib/seo";
 import { breadcrumbStructuredData } from "@/lib/structured-data";
 import styles from "./marketing.module.css";
@@ -45,6 +46,9 @@ export function MarketingPage({
         </div>
         {aside}
       </header>
+      <div className={styles.protocolBand}>
+        <MatchProtocol activeStep={4} />
+      </div>
       {children}
       <section className={styles.nextStep} aria-labelledby="next-step-title">
         <div>
@@ -99,7 +103,7 @@ export function Questions({ items }: { items: readonly { question: string; answe
 export function MatchExample() {
   return (
     <figure className={styles.matchExample}>
-      <figcaption>So lesen Sie einen Abgleich</figcaption>
+      <figcaption>Match-Protokoll: Beleg statt Score</figcaption>
       <p className={styles.exampleLabel}>Illustratives Beispiel · kein reales Profil</p>
       <blockquote>„Wir suchen React-Erfahrung, remote. Der Start ist noch offen.“</blockquote>
       <dl className={styles.evidenceList}>
@@ -116,7 +120,7 @@ export function MatchExample() {
           <dd><span className={styles.gap}>Noch zu klären</span><small>Eine fehlende Angabe ist keine Zusage.</small></dd>
         </div>
       </dl>
-      <p className={styles.exampleFoot}>Ein Match ist eine Entscheidungshilfe. Sie führen das Gespräch und wählen selbst.</p>
+      <p className={styles.exampleFoot}>Sie sehen den Beleg und die offene Frage nebeneinander. Ein Score allein entscheidet nichts.</p>
     </figure>
   );
 }

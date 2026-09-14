@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import "@/app/styles/legal.css";
 
 import { CaptchaField } from "@/components/CaptchaField";
+import {
+  PublicDocumentIntro,
+  PublicFooter,
+  PublicHeader,
+} from "@/components/public/PublicChrome";
+import { ActionButton, FormField, Notice } from "@/components/ui/Primitives";
 import { CONTACT_RESPONSE_PROMISE } from "@/lib/legal/policy";
 
 export const metadata: Metadata = {
@@ -25,51 +32,49 @@ export default async function ContactPage({
   const status = statusOf((await searchParams).status);
 
   return (
-    <main className="xlegal" lang="de">
-      <header className="xlegal-header">
-        <Link href="/chat" className="xlegal-wordmark">XPORTAL</Link>
-        <span>KONTAKT / 01</span>
-      </header>
+    <div className="xlegal" lang="de">
+      <PublicHeader context="Kontakt" />
 
-      <article className="xlegal-document">
-        <p className="xhome-label">Kontakt</p>
-        <h1>Schreiben Sie uns.</h1>
-        <p className="xlegal-lead">
-          Für Fragen zum Produkt, zu einem Vertrag, zu Ihren Daten oder zu einem
-          Profil im Portal. {CONTACT_RESPONSE_PROMISE}
-        </p>
+      <main className="xlegal-document">
+        <PublicDocumentIntro
+          eyebrow="Kontakt"
+          title="Schreiben Sie uns."
+          signal={{ label: "Antwort", value: "In der Regel ein Werktag" }}
+        >
+          <p>
+            Für Fragen zum Produkt, zu einem Vertrag, zu Ihren Daten oder zu einem
+            Profil im Portal. {CONTACT_RESPONSE_PROMISE}
+          </p>
+        </PublicDocumentIntro>
 
         {status === "sent" ? (
-          <div className="xlegal-warning" role="status">
-            <strong>Eingegangen</strong>
+          <Notice title="Eingegangen" tone="success" role="status">
             <p>
               Ihre Nachricht ist angekommen. {CONTACT_RESPONSE_PROMISE} Eine
               Kopie versenden wir nicht — notieren Sie sich Ihr Anliegen bei
               Bedarf selbst.
             </p>
-          </div>
+          </Notice>
         ) : null}
 
         {status === "invalid" ? (
-          <div className="xlegal-warning" role="alert">
-            <strong>Bitte prüfen</strong>
+          <Notice title="Bitte prüfen" tone="warning" role="alert">
             <p>
               Eine Angabe fehlt oder ist zu kurz. Name ab 2 Zeichen, Betreff ab
               3 Zeichen, Nachricht ab 20 Zeichen, dazu eine gültige
               E-Mail-Adresse.
             </p>
-          </div>
+          </Notice>
         ) : null}
 
         {status === "error" ? (
-          <div className="xlegal-warning" role="alert">
-            <strong>Nicht gespeichert</strong>
+          <Notice title="Nicht gespeichert" tone="error" role="alert">
             <p>
               Die Nachricht konnte gerade nicht entgegengenommen werden. Bitte
               versuchen Sie es später erneut oder schreiben Sie direkt an{" "}
               <a href="mailto:info@x-portal.eu">info@x-portal.eu</a>.
             </p>
-          </div>
+          </Notice>
         ) : null}
 
         <form
@@ -78,8 +83,7 @@ export default async function ContactPage({
           action="/api/contact"
           method="post"
         >
-          <label>
-            <span>Name</span>
+          <FormField label="Name">
             <input
               name="fullName"
               autoComplete="name"
@@ -87,9 +91,8 @@ export default async function ContactPage({
               maxLength={100}
               required
             />
-          </label>
-          <label>
-            <span>E-Mail-Adresse</span>
+          </FormField>
+          <FormField label="E-Mail-Adresse">
             <input
               name="email"
               type="email"
@@ -97,15 +100,13 @@ export default async function ContactPage({
               maxLength={160}
               required
             />
-          </label>
-          <label>
-            <span>Betreff</span>
+          </FormField>
+          <FormField label="Betreff">
             <input name="subject" minLength={3} maxLength={150} required />
-          </label>
-          <label>
-            <span>Nachricht</span>
+          </FormField>
+          <FormField label="Nachricht">
             <textarea name="message" rows={8} minLength={20} maxLength={5000} required />
-          </label>
+          </FormField>
 
           <div className="contact-honeypot" aria-hidden="true">
             <label>
@@ -115,9 +116,9 @@ export default async function ContactPage({
           </div>
 
           <CaptchaField />
-          <button type="submit" className="contact-submit">
+          <ActionButton type="submit" className="contact-submit">
             Nachricht senden
-          </button>
+          </ActionButton>
         </form>
 
         <p className="contact-note">
@@ -129,18 +130,9 @@ export default async function ContactPage({
           über dieses Formular keine besonderen Kategorien personenbezogener
           Daten.
         </p>
-      </article>
+      </main>
 
-      <footer className="xlegal-footer">
-        <Link href="/chat">Zurück zu XPORTAL</Link>
-        <span>
-          <Link href="/imprint">Impressum</Link>
-          {" · "}
-          <Link href="/terms">AGB</Link>
-          {" · "}
-          <Link href="/privacy">Datenschutz</Link>
-        </span>
-      </footer>
-    </main>
+      <PublicFooter />
+    </div>
   );
 }

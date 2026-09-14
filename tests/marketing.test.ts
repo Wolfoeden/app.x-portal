@@ -63,10 +63,10 @@ describe("marketing pages rendered on the server", () => {
     }
   });
 
-  it("keeps the existing root redirect and direct ChatWorkspace entry", () => {
+  it("routes the root through product context and keeps the direct app entry", () => {
     const root = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
     const chat = readFileSync(new URL("../app/chat/page.tsx", import.meta.url), "utf8");
-    expect(root).toContain('redirect("/chat")');
+    expect(root).toContain('redirect("/freelancer-finden")');
     expect(chat).toContain("return <ChatWorkspace />");
   });
 });

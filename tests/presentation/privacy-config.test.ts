@@ -19,7 +19,7 @@ describe("production privacy and authentication configuration", () => {
   });
 
   it("keeps the primary cookie action readable outside the landing-page scope", () => {
-    const css = repositoryFile("app/globals.css");
+    const css = repositoryFile("app/styles/workspace.css");
     const rule = css.match(/\.cookie-actions button\.is-primary\s*\{([^}]*)\}/u)?.[1];
 
     expect(rule).toContain("background: white");

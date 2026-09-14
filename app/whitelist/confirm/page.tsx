@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import "@/app/styles/legal.css";
+import { PublicFooter, PublicHeader } from "@/components/public/PublicChrome";
+import { ActionButton } from "@/components/ui/Primitives";
 
 import { CONFIRMATION_TTL_HOURS } from "@/lib/whitelist/confirmation";
 
@@ -29,23 +32,11 @@ function tokenOf(value: string | string[] | undefined): string | null {
 
 function Frame({ children }: { children: React.ReactNode }) {
   return (
-    <main className="xlegal" lang="de">
-      <header className="xlegal-header">
-        <Link href="/chat" className="xlegal-wordmark">XPORTAL</Link>
-        <span>ANMELDUNG</span>
-      </header>
-      <article className="xlegal-document">{children}</article>
-      <footer className="xlegal-footer">
-        <Link href="/chat">Zurück zu XPORTAL</Link>
-        <span>
-          <Link href="/imprint">Impressum</Link>
-          {" · "}
-          <Link href="/privacy">Datenschutz</Link>
-          {" · "}
-          <Link href="/contact">Kontakt</Link>
-        </span>
-      </footer>
-    </main>
+    <div className="xlegal" lang="de">
+      <PublicHeader context="Cardano-Lab · Bestätigung" />
+      <main className="xlegal-document">{children}</main>
+      <PublicFooter />
+    </div>
   );
 }
 
@@ -69,7 +60,7 @@ export default async function WhitelistConfirmPage({
   if (result === "confirmed") {
     return (
       <Frame>
-        <p className="xhome-label">Anmeldung</p>
+        <p className="xlegal-label">Anmeldung</p>
         <h1>Bestätigt. Danke.</h1>
         <p className="xlegal-lead">
           Ihre Adresse ist bestätigt. Sie erhalten die Start- und
@@ -93,7 +84,7 @@ export default async function WhitelistConfirmPage({
   if (result === "expired") {
     return (
       <Frame>
-        <p className="xhome-label">Anmeldung</p>
+        <p className="xlegal-label">Anmeldung</p>
         <h1>Dieser Link ist abgelaufen.</h1>
         <p className="xlegal-lead">
           Ein Bestätigungslink gilt {CONFIRMATION_TTL_HOURS} Stunden. Tragen Sie
@@ -109,7 +100,7 @@ export default async function WhitelistConfirmPage({
   if (result === "unknown") {
     return (
       <Frame>
-        <p className="xhome-label">Anmeldung</p>
+        <p className="xlegal-label">Anmeldung</p>
         <h1>Dieser Link führt nirgendwohin.</h1>
         <p className="xlegal-lead">
           Der Bestätigungslink ist unvollständig, wurde bereits verwendet oder
@@ -125,7 +116,7 @@ export default async function WhitelistConfirmPage({
   if (result === "error") {
     return (
       <Frame>
-        <p className="xhome-label">Anmeldung</p>
+        <p className="xlegal-label">Anmeldung</p>
         <h1>Das hat gerade nicht geklappt.</h1>
         <p className="xlegal-lead">
           Bitte versuchen Sie es später erneut oder schreiben Sie uns über das{" "}
@@ -138,7 +129,7 @@ export default async function WhitelistConfirmPage({
   if (!token) {
     return (
       <Frame>
-        <p className="xhome-label">Anmeldung</p>
+        <p className="xlegal-label">Anmeldung</p>
         <h1>Hier fehlt der Bestätigungslink.</h1>
         <p className="xlegal-lead">
           Öffnen Sie den vollständigen Link aus unserer E-Mail. Manche
@@ -150,7 +141,7 @@ export default async function WhitelistConfirmPage({
 
   return (
     <Frame>
-      <p className="xhome-label">Anmeldung</p>
+      <p className="xlegal-label">Anmeldung</p>
       <h1>Noch ein Klick.</h1>
       <p className="xlegal-lead">
         Bestätigen Sie, dass Sie die XPORTAL-Informationen an diese Adresse
@@ -163,9 +154,9 @@ export default async function WhitelistConfirmPage({
         method="post"
       >
         <input type="hidden" name="token" value={token} />
-        <button type="submit" className="contact-submit">
+        <ActionButton type="submit" className="contact-submit">
           Anmeldung bestätigen
-        </button>
+        </ActionButton>
       </form>
 
       <p className="contact-note">

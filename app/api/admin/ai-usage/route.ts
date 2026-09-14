@@ -45,7 +45,7 @@ export async function GET(request: Request) {
   } catch (error) {
     if (error instanceof Response) return error;
     return NextResponse.json(
-      { error: "Die AI-Usage-Auswertung ist vorübergehend nicht verfügbar." },
+      { error: "Die KI-Nutzungs-Auswertung ist vorübergehend nicht verfügbar." },
       {
         status: 503,
         headers: { "Cache-Control": "private, no-store" },

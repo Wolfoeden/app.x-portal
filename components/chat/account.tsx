@@ -4,9 +4,8 @@
  * Kontoübersicht und Credit-Kauf.
  *
  * Zwei Ansichten: die Zusammenfassung im Konto-Menü und der Plan-Dialog
- * dahinter. Beide zeigen dieselben zwei Guthaben getrennt, weil sie sich
- * unterschiedlich verhalten — das monatliche Kontingent verfällt und füllt
- * sich wieder auf, gekaufte Credits nicht.
+ * dahinter. Beide zeigen dasselbe monatliche Guthaben aus der zentralen
+ * Plan- und Credit-Policy.
  */
 
 import { useState } from "react";
@@ -15,9 +14,11 @@ import {
   BRIEF_ANALYSIS_CREDITS,
   CREDIT_PLANS,
   creditPlan,
+  EXTERNAL_SEARCH_CREDITS,
 } from "@/lib/ai/credit-policy";
 import { confirmBusinessCustomer } from "@/lib/auth/browser";
 import { BUSINESS_ONLY_NOTICE } from "@/lib/legal/policy";
+import { TERMS_REVIEW } from "@/lib/legal/policy";
 
 import type { AiUsageSnapshot, PlanTeamSnapshot } from "../chat-contract";
 import {
@@ -34,9 +35,9 @@ import { TeamMembersPanel } from "./team-members";
  * Der einzige bezahlte Plan. Neben der Gratisstufe gibt es nichts weiter —
  * eine dritte Karte waere ein Angebot, das es nicht gibt.
  *
- * Die Zahlung ist zweigeteilt: ein Euro beim Buchen, die tatsaechliche Nutzung
- * am Monatsende auf Rechnung. Deshalb steht beim Preis "zum Start" und nicht
- * "pro Monat" — ein Monatspreis waere hier schlicht falsch.
+ * Enterprise ist ein fester Monatspreis für ein festes Kontingent. Die
+ * Oberfläche nennt keinen nachträglichen Verbrauchspreis, weil der aktuelle
+ * Zahlungs- und Freischaltweg dafür keine Abrechnung implementiert.
  *
  * `credits` bleibt an der Guthabenregel haengen und nicht an einer Zahl von
  * Hand: was die Karte verspricht, muss das sein, was das System danach auch
@@ -45,7 +46,7 @@ import { TeamMembersPanel } from "./team-members";
 export const ENTERPRISE_PLAN = {
   id: CREDIT_PLANS.enterprise.id,
   name: CREDIT_PLANS.enterprise.label,
-  audience: "Für Unternehmen, die nach Verbrauch abrechnen.",
+  audience: "Für Unternehmen mit regelmäßigem Such- und Recherchebedarf.",
   startEuro: ENTERPRISE_START_EURO,
   credits: CREDIT_PLANS.enterprise.monthlyCredits,
   features: [
@@ -53,7 +54,7 @@ export const ENTERPRISE_PLAN = {
     "Websuche nach externen Profilen",
     "KI-Agenten für Recherche und Planung",
     "Teammitglieder teilen sich das Guthaben",
-    "Abrechnung nach Verbrauch, auf Wunsch mit Obergrenze",
+    "Festes Monatskontingent ohne nachträgliche Mehrberechnung",
   ],
 } as const;
 
@@ -202,10 +203,22 @@ export function CreditPlansDialog({
   const [businessConfirmed, setBusinessConfirmed] = useState(false);
   return (
     <div className="plans-dialog" role="dialog" aria-label="Credits und Pläne">
-      <header className="plans-balance">
+      <header className="plans-dialog-header">
         <div>
-          <h2>Guthaben</h2>
-          <p>Ihre aktuellen Credits in Ihrem Konto.</p>
+          <p className="eyebrow">Plan &amp; Guthaben</p>
+          <h2>Aktueller Stand. Klare nächste Option.</h2>
+          <p>Erst sehen Sie Ihr verfügbares Guthaben und die Aktionskosten. Danach folgt genau ein bezahlter Plan.</p>
+        </div>
+        <button className="plans-close" type="button" onClick={onClose}>
+          Schließen
+        </button>
+      </header>
+
+      <section className="plans-balance" aria-labelledby="plans-balance-title">
+        <div>
+          <p className="plans-section-label">Aktueller Plan</p>
+          <h3 id="plans-balance-title">{plan.label}</h3>
+          <p>{plan.euro} € {planPriceSuffix(plan.euro)} · {plan.agents ? "KI-Agenten nutzbar" : "KI-Agenten nach Kontoerstellung"}</p>
         </div>
         <div className="plans-balance-figure">
           <strong>
@@ -213,66 +226,54 @@ export function CreditPlansDialog({
           </strong>
           {customerReference ? <code>{customerReference}</code> : null}
         </div>
-      </header>
+      </section>
 
-      <p className="plans-note">
-        Die Buchung läuft über Stripe: ein Euro beim Abschluss, die tatsächliche
-        Nutzung folgt am Monatsende auf Rechnung. Das Guthaben wird nach
-        bestätigter Zahlung automatisch freigeschaltet.
-      </p>
-
-      <p className="plans-note">
-        {BUSINESS_ONLY_NOTICE} Alle Preise verstehen sich netto zuzüglich der
-        gesetzlichen Umsatzsteuer. Es gelten die{" "}
-        <a href="/terms">Allgemeinen Geschäftsbedingungen</a>.
-      </p>
+      <section className="plans-action-costs" aria-labelledby="plans-action-costs-title">
+        <div>
+          <p className="plans-section-label">Verbrauch</p>
+          <h3 id="plans-action-costs-title">Was eine bestätigte Aktion kostet</h3>
+          <p>Speichern, Prüfen und Kontaktieren starten keine automatische Recherche.</p>
+        </div>
+        <dl>
+          <div>
+            <dt>Projektanalyse</dt>
+            <dd>{BRIEF_ANALYSIS_CREDITS} Credits</dd>
+          </div>
+          <div>
+            <dt>Externe Recherche</dt>
+            <dd>{EXTERNAL_SEARCH_CREDITS} Credits</dd>
+          </div>
+          <div>
+            <dt>Automatik</dt>
+            <dd>Keine</dd>
+          </div>
+        </dl>
+      </section>
 
       <div className="plans-grid">
-        <article className="plan-card is-current">
-          <h3>{plan.label}</h3>
-          <p className="plan-audience">Ihr aktueller Plan.</p>
-          <p className="plan-price">
-            {plan.euro} €<span>{planPriceSuffix(plan.euro)}</span>
-          </p>
-          <p className="plan-credits">
-            {usage ? formatCreditAmount(usage.credits.total) : "–"} Credits monatlich
-          </p>
-          <ul className="plan-features">
-            <li>
-              <IconCheck size={12} /> Freelancer-Suche im internen Katalog
-            </li>
-            <li>
-              <IconCheck size={12} /> Eine Suche kostet {BRIEF_ANALYSIS_CREDITS}{" "}
-              Credits
-            </li>
-            <li>
-              <IconCheck size={12} />{" "}
-              {plan.agents
-                ? "KI-Agenten nutzbar"
-                : "KI-Agenten erst mit einem Konto"}
-            </li>
-          </ul>
-          <button type="button" disabled>
-            Aktueller Plan
-          </button>
-        </article>
-
         <article className="plan-card">
-          <h3>{ENTERPRISE_PLAN.name}</h3>
-          <p className="plan-audience">{ENTERPRISE_PLAN.audience}</p>
-          <p className="plan-price">
-            {ENTERPRISE_PLAN.startEuro} €<span>zum Start, zzgl. USt.</span>
-          </p>
-          <p className="plan-credits">
-            {formatCreditAmount(ENTERPRISE_PLAN.credits)} Credits monatlich
-          </p>
-          <ul className="plan-features">
-            {ENTERPRISE_PLAN.features.map((feature) => (
-              <li key={feature}>
-                <IconCheck size={12} /> {feature}
-              </li>
-            ))}
-          </ul>
+          <div className="plan-card-offer">
+            <div>
+              <p className="plans-section-label">Einzige bezahlte Stufe</p>
+              <h3>{ENTERPRISE_PLAN.name}</h3>
+              <p className="plan-audience">{ENTERPRISE_PLAN.audience}</p>
+            </div>
+            <div>
+              <p className="plan-price">
+                {ENTERPRISE_PLAN.startEuro} €<span>pro Monat, zzgl. USt.</span>
+              </p>
+              <p className="plan-credits">
+                {formatCreditAmount(ENTERPRISE_PLAN.credits)} Credits monatlich
+              </p>
+            </div>
+            <ul className="plan-features">
+              {ENTERPRISE_PLAN.features.map((feature) => (
+                <li key={feature}>
+                  <IconCheck size={12} /> {feature}
+                </li>
+              ))}
+            </ul>
+          </div>
           {/*
             Die Unternehmereigenschaft wird hier abgefragt und nicht mehr bei
             der Anmeldung.
@@ -307,20 +308,22 @@ export function CreditPlansDialog({
               laesst. */}
           <a
             className="plan-action"
-            href={enterprisePaymentLink(customerReference)}
+            href={businessConfirmed && TERMS_REVIEW.checkoutEnabled
+              ? enterprisePaymentLink(customerReference)
+              : undefined}
             target="_blank"
             rel="noopener noreferrer"
-            aria-disabled={!businessConfirmed}
-            tabIndex={businessConfirmed ? undefined : -1}
+            aria-disabled={!businessConfirmed || !TERMS_REVIEW.checkoutEnabled}
+            tabIndex={businessConfirmed && TERMS_REVIEW.checkoutEnabled ? undefined : -1}
             onClick={(event) => {
-              if (!businessConfirmed) {
+              if (!businessConfirmed || !TERMS_REVIEW.checkoutEnabled) {
                 event.preventDefault();
                 return;
               }
               void confirmBusinessCustomer().catch(() => undefined);
             }}
           >
-            Plan buchen <IconArrowUpRight size={12} />
+            {TERMS_REVIEW.checkoutEnabled ? "Plan buchen" : "Buchung nach rechtlicher Freigabe"} <IconArrowUpRight size={12} />
           </a>
           {!businessConfirmed ? (
             <p className="plan-contact-note">
@@ -328,7 +331,13 @@ export function CreditPlansDialog({
               ausschließlich mit Unternehmern.
             </p>
           ) : null}
-          {/* Ueber die Abrechnung nach Verbrauch entstehen Rueckfragen, die ein
+          {!TERMS_REVIEW.checkoutEnabled ? (
+            <p className="plan-contact-note" role="status">
+              AGB-Status: {TERMS_REVIEW.label}. Der Bestellweg bleibt technisch
+              erhalten und wird nach dokumentierter Freigabe aktiviert.
+            </p>
+          ) : null}
+          {/* Bei Fragen zur Abrechnung braucht es einen direkten Weg, den ein
               Formular nicht beantwortet. Deshalb steht der Ansprechpartner
               neben dem Knopf und nicht auf einer Unterseite. */}
           <p className="plan-contact-note">
@@ -338,6 +347,12 @@ export function CreditPlansDialog({
             <a href={`tel:${ENTERPRISE_CONTACT.phone}`}>{ENTERPRISE_CONTACT.phoneDisplay}</a>
             {" · "}
             {ENTERPRISE_CONTACT.person}
+          </p>
+          <p className="plans-note">
+            {BUSINESS_ONLY_NOTICE} Alle Preise verstehen sich netto zuzüglich der
+            gesetzlichen Umsatzsteuer. Es gelten die{" "}
+            <a href="/terms">Allgemeinen Geschäftsbedingungen</a>. Das Guthaben
+            wird erst nach bestätigter Zahlung freigeschaltet.
           </p>
         </article>
       </div>
@@ -360,9 +375,6 @@ export function CreditPlansDialog({
         onRemove={onRemoveTeamMember}
       />
 
-      <button className="plans-close" type="button" onClick={onClose}>
-        Schließen
-      </button>
     </div>
   );
 }

@@ -25,6 +25,8 @@ import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { BrandMark } from "@/components/BrandMark";
 import { openCookieSettings } from "@/components/CookieConsent";
 import { LegalFooter } from "@/components/LegalFooter";
+import { MatchProtocol } from "@/components/product/MatchProtocol";
+import { EmptyState } from "@/components/ui/Primitives";
 import {
   AgentDetails,
   AgentDirectory,
@@ -44,6 +46,7 @@ import {
   IconChevronRight,
   IconClose,
   IconFolder,
+  IconInfo,
   IconMenu,
   IconPanelRight,
   IconPlus,
@@ -274,7 +277,7 @@ function useSidebarWidth() {
 const suggestions = [
   {
     label: "KI & Automatisierung",
-    description: "LLM · RAG · n8n · AI Agents",
+    description: "LLM · RAG · n8n · KI-Agenten",
     draftPrefix:
       "Wir wollen wiederkehrende Abläufe mit KI automatisieren: n8n-Workflows bauen und ein LLM an unsere Bestandssysteme anbinden, perspektivisch auch RAG auf unsere eigenen Dokumente. Projektbasis, remote, Start kurzfristig.",
     intro:
@@ -1264,6 +1267,7 @@ export function ChatWorkspace({
   const [manageChat, setManageChat] = useState<ProjectListItem | null>(null);
   const [chatSearchQuery, setChatSearchQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mobileLayout, setMobileLayout] = useState(false);
   // Closed on arrival: a first-time visitor should meet two columns, not
   // three. It opens itself once there is a result to show, unless the reader
   // has already expressed a preference by using the toggle.
@@ -1300,6 +1304,9 @@ export function ChatWorkspace({
     ? "⌘ K"
     : "Strg K";
   const composerRef = useRef<HTMLTextAreaElement>(null);
+  const projectSidebarRef = useRef<HTMLElement>(null);
+  const mobileMenuRef = useRef<HTMLButtonElement>(null);
+  const sidebarWasOpenRef = useRef(false);
   const startNewProjectRef = useRef<(() => void) | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1335,6 +1342,54 @@ export function ChatWorkspace({
   const freeUsageExhausted = Boolean(
     usage && (usage.credits.exhausted || usage.credits.remaining <= 0),
   );
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 860px)");
+    const update = () => setMobileLayout(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    if (!mobileLayout) {
+      sidebarWasOpenRef.current = sidebarOpen;
+      return;
+    }
+    if (sidebarOpen) {
+      requestAnimationFrame(() => {
+        projectSidebarRef.current
+          ?.querySelector<HTMLElement>("[data-sidebar-close]")
+          ?.focus();
+      });
+    } else if (sidebarWasOpenRef.current) {
+      mobileMenuRef.current?.focus();
+    }
+    sidebarWasOpenRef.current = sidebarOpen;
+  }, [mobileLayout, sidebarOpen]);
+
+  const trapSidebarFocus = (event: KeyboardEvent<HTMLElement>) => {
+    if (!mobileLayout || !sidebarOpen) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setSidebarOpen(false);
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const items = [...(projectSidebarRef.current?.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ) ?? [])].filter((item) => !item.hasAttribute("inert"));
+    const first = items[0];
+    const last = items.at(-1);
+    if (!first || !last) return;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
 
   const showToast = useCallback((message: string, tone: ToastState["tone"] = "neutral") => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -1616,7 +1671,21 @@ export function ChatWorkspace({
   useEffect(() => {
     if (preview) return;
     let alive = true;
-    const supabase = getBrowserSupabaseClient();
+    let supabase: ReturnType<typeof getBrowserSupabaseClient>;
+    try {
+      supabase = getBrowserSupabaseClient();
+    } catch {
+      // The public agent-task catalogue and the explanatory chat shell stay
+      // readable even when a local preview has no Supabase configuration.
+      // Mutating actions remain protected by their API and auth boundaries.
+      queueMicrotask(() => {
+        if (alive) setWorkspaceLoading(false);
+      });
+      return () => {
+        alive = false;
+        if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      };
+    }
 
     void (async () => {
       try {
@@ -1680,7 +1749,7 @@ export function ChatWorkspace({
             }${window.location.hash}`;
             window.history.replaceState({}, "", cleanUrl);
             showToast(
-              "Dieses Konto hat keinen Zugriff auf das AI-Usage-Dashboard.",
+              "Dieses Konto hat keinen Zugriff auf das KI-Nutzungs-Dashboard.",
               "error",
             );
           }
@@ -2349,7 +2418,7 @@ export function ChatWorkspace({
       }${window.location.hash}`;
       window.history.replaceState({}, "", cleanUrl);
       showToast(
-        "Dieses Konto hat keinen Zugriff auf das AI-Usage-Dashboard.",
+        "Dieses Konto hat keinen Zugriff auf das KI-Nutzungs-Dashboard.",
         "error",
       );
     }
@@ -2683,14 +2752,23 @@ export function ChatWorkspace({
         {isAgentView ? "Direkt zu den Agenten" : "Direkt zur Nachricht"}
       </a>
 
-      <aside className={`project-sidebar ${sidebarOpen ? "is-open" : ""}`} aria-label="Projekte">
+      <aside
+        ref={projectSidebarRef}
+        className={`project-sidebar ${sidebarOpen ? "is-open" : ""}`}
+        aria-label="Projekte"
+        aria-hidden={mobileLayout && !sidebarOpen ? true : undefined}
+        aria-modal={mobileLayout ? sidebarOpen : undefined}
+        role={mobileLayout ? "dialog" : undefined}
+        inert={mobileLayout && !sidebarOpen ? true : undefined}
+        onKeyDown={trapSidebarFocus}
+      >
         <div className="sidebar-scroll">
         <div className="sidebar-top">
-          <div className="product-mark" aria-label="XPORTAL">
+          <a className="product-mark" href="/freelancer-finden" aria-label="XPORTAL Produktseite">
             <BrandMark className="mark-glyph" height={26} />
-            <span>PORTAL</span>
-          </div>
-          <button className="icon-button sidebar-close" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schließen"><IconClose size={18} /></button>
+            <span>XPORTAL</span>
+          </a>
+          <button data-sidebar-close className="icon-button sidebar-close" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schließen"><IconClose size={18} /></button>
         </div>
 
         <nav className="sidebar-primary-nav" aria-label="Hauptnavigation">
@@ -2796,6 +2874,22 @@ export function ChatWorkspace({
         </nav>
 
         <div className="sidebar-secondary-nav">
+          <a
+            className="sidebar-apply-link"
+            href="/wie-funktioniert-xportal"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <span className="sidebar-apply-icon" aria-hidden="true">
+              <IconInfo size={15} />
+            </span>
+            <span className="sidebar-apply-copy">
+              <strong>So funktioniert XPORTAL</strong>
+              <small>Matching, Grenzen und Credits</small>
+            </span>
+            <span className="sidebar-apply-chevron" aria-hidden="true">
+              <IconChevronRight size={15} />
+            </span>
+          </a>
           {/* Freelancers are the other half of the marketplace, but not the
               audience this workspace is built for. A quiet, permanent row keeps
               the entry findable without competing with the search flow. */}
@@ -2861,7 +2955,7 @@ export function ChatWorkspace({
                         type="button"
                         onClick={() => window.location.assign(apiPaths.adminUsage!)}
                       >
-                        Geschütztes AI-Usage-Dashboard
+                        Geschütztes KI-Nutzungs-Dashboard
                       </button>
                     ) : null}
                     {auth.admin && apiPaths.adminFreelancers ? (
@@ -2955,11 +3049,12 @@ export function ChatWorkspace({
               : "Projektübersicht einblenden"
         }
         aria-pressed={detailsOpen}
+        inert={mobileLayout && sidebarOpen ? true : undefined}
       ><IconPanelRight size={18} /></button>
 
       {sidebarOpen ? <button className="sidebar-scrim" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schließen" /> : null}
 
-      <main className={`chat-panel${emptyChat ? " is-empty-chat" : ""}`}>
+      <main className={`chat-panel${emptyChat ? " is-empty-chat" : ""}`} inert={mobileLayout && sidebarOpen ? true : undefined}>
         {/* Der Projekttitel stand hier und wiederholte, was in der Seitenleiste
             als ausgewaehlter Chat ohnehin markiert ist. Der Platz gehoert jetzt
             der Unterhaltung, damit die Profilkarten ihre Breite bekommen.
@@ -2967,7 +3062,7 @@ export function ChatWorkspace({
             Ansichten, und sie haben in der Leiste keine Entsprechung. */}
         <header className={`topbar${isTeamView || isAgentView ? "" : " is-bare"}`}>
           <div className="topbar-left">
-            <button className="icon-button mobile-menu" type="button" onClick={() => setSidebarOpen(true)} aria-label="Projekte öffnen"><IconMenu size={18} /></button>
+            <button ref={mobileMenuRef} className="icon-button mobile-menu" type="button" onClick={() => setSidebarOpen(true)} aria-label="Projekte öffnen"><IconMenu size={18} /></button>
             <div>
               {isTeamView || isAgentView ? (
                 <p className="topbar-title">{isTeamView ? "Merkliste" : "KI-Agenten"}</p>
@@ -2980,7 +3075,7 @@ export function ChatWorkspace({
           <div className="agent-scroll">
             <section className="team-page" aria-label="Merkliste">
               <header className="team-page-header">
-                <h2>Merkliste</h2>
+                <h1>Merkliste</h1>
                 <p>
                   Gespeicherte Freelancer-Profile für Ihre spätere Auswahl.
                   Die Merkliste bleibt Ihrem Konto zugeordnet und ist unabhängig
@@ -3029,43 +3124,34 @@ export function ChatWorkspace({
           </div>
         ) : isAgentView ? (
           <div className="agent-scroll">
-            {/* Die Agenten sind die Stufe hinter der Anmeldung. Ein Gast
-                bekommt die Standardanalyse; alles andere braucht ein Konto,
-                an dem Verlauf und Guthaben hängen können. */}
-            {agentsAllowed ? (
-              <AgentDirectory
-                selectedAgentId={selectedAgent.id}
-                selectedTaskId={selectedAgentTask.id}
-                onSelectAgent={selectAgent}
-                onSelectTask={selectAgentTask}
-              />
-            ) : (
-              <div className="agent-locked" role="status">
-                <p className="eyebrow">KI-Agenten</p>
-                <h1>Agenten gibt es mit einem Konto.</h1>
-                <p>
-                  Als Gast steht Ihnen die Standardanalyse im Chat offen —
-                  {" "}{BRIEF_ANALYSIS_CREDITS} Credits pro Suche aus Ihrem
-                  Guthaben von{" "}
-                  {formatCredits(CREDIT_PLANS.guest.monthlyCredits)}. Die
-                  spezialisierten Agenten für Recherche, Planung und Analyse
-                  arbeiten mit Verlauf und Merkliste und brauchen deshalb ein
-                  dauerhaftes Konto.
-                </p>
-                <p>
-                  Ein Konto bringt{" "}
-                  {formatCredits(CREDIT_PLANS.free.monthlyCredits)} Credits im
-                  Monat und den vollen Zugang zu den Agenten.
-                </p>
-                <button
-                  type="button"
-                  className="composer-signup"
-                  onClick={() => openAuth("generic")}
+            <AgentDirectory
+              selectedAgentId={selectedAgent.id}
+              selectedTaskId={selectedAgentTask.id}
+              onSelectAgent={selectAgent}
+              onSelectTask={selectAgentTask}
+              accessNotice={!agentsAllowed ? (
+                <EmptyState
+                  compact
+                  eyebrow="Zugang"
+                  title="Aufgaben prüfen. Für die Nutzung Konto erstellen."
+                  action={(
+                    <button
+                      type="button"
+                      className="composer-signup"
+                      onClick={() => openAuth("generic")}
+                    >
+                      Konto erstellen
+                    </button>
+                  )}
                 >
-                  Konto erstellen
-                </button>
-              </div>
-            )}
+                  <p>
+                    Das Öffnen startet nichts. Ein Konto bringt{" "}
+                    {formatCredits(CREDIT_PLANS.free.monthlyCredits)} Credits im Monat;
+                    die Projektanalyse kostet {BRIEF_ANALYSIS_CREDITS} Credits.
+                  </p>
+                </EmptyState>
+              ) : undefined}
+            />
             <LegalFooter />
           </div>
         ) : (
@@ -3223,7 +3309,7 @@ export function ChatWorkspace({
                 <p>
                   Ihr kostenloses Guthaben ist aufgebraucht. Mit einem Konto
                   erhalten Sie {formatCredits(ACCOUNT_MONTHLY_CREDITS)} Credits
-                  im Monat — bei {BRIEF_ANALYSIS_CREDITS} Credits pro Suche
+                  im Monat — bei {BRIEF_ANALYSIS_CREDITS} Credits pro Projektanalyse
                   reicht das für{" "}
                   {formatCredits(
                     Math.floor(ACCOUNT_MONTHLY_CREDITS / BRIEF_ANALYSIS_CREDITS),
@@ -3244,8 +3330,9 @@ export function ChatWorkspace({
               does. Spelled out: it never picks a person, it only narrows the
               list by fixed rules. */}
           <p className="composer-disclosure">
-            Die KI kann Fehler machen. Daten werden nicht zum Trainieren von
-            Modellen verwendet.
+            KI strukturiert den Text. Das Matching bleibt regelbasiert. Sie
+            entscheiden über Speichern, Recherche und Kontakt. Daten werden
+            nicht zum Trainieren von Modellen verwendet.
             <span className="composer-legal">
               <a href="/imprint">Impressum</a>
               <span aria-hidden="true">·</span>
@@ -3264,6 +3351,7 @@ export function ChatWorkspace({
       <aside
         className={`details-panel ${detailsOpen ? "is-open" : ""}`}
         aria-label={isAgentView ? "Agentendetails" : "Projektübersicht"}
+        inert={mobileLayout && sidebarOpen ? true : undefined}
       >
         {isAgentView ? (
           <AgentDetails agent={selectedAgent} task={selectedAgentTask} />
@@ -3370,13 +3458,18 @@ function WelcomeState() {
   return (
     <section className="welcome-state" aria-labelledby="welcome-title">
       <div className="assistant-emblem" aria-hidden="true"><span><IconSpark size={22} /></span></div>
-      <h1 id="welcome-title">Welchen Freelancer suchen Sie?</h1>
+      <h1 id="welcome-title">Aufgabe beschreiben. Belege und Lücken sehen.</h1>
       <p className="welcome-copy">
-        Beschreiben Sie Ihr Projekt in eigenen Worten. XPORTAL strukturiert die
-        Anforderungen, gleicht sie mit belegten Profilinformationen ab und zeigt
-        nachvollziehbar, was passt und was offen bleibt.
+        Die KI strukturiert Ihren Projekttext. Feste Regeln gleichen ihn mit
+        belegten Profilangaben ab. Sie prüfen das Ergebnis und entscheiden über
+        Speichern, Recherche oder Kontakt.
       </p>
-      <p className="welcome-guest-note">Ohne Anmeldung starten · Konto erst zum Speichern oder Kontaktieren</p>
+      <div className="welcome-protocol">
+        <MatchProtocol compact activeStep={1} label="Das passiert nach dem Absenden" />
+      </div>
+      <p className="welcome-guest-note">
+        Ohne Anmeldung starten · {CREDIT_PLANS.guest.monthlyCredits} Gast-Credits · {BRIEF_ANALYSIS_CREDITS} Credits pro Projektanalyse
+      </p>
     </section>
   );
 }

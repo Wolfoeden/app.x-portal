@@ -143,7 +143,7 @@ describe("collapsing profiles beside the open panel", () => {
     const markup = render(previewProfiles);
 
     expect(markup).not.toContain("Profil ausklappen");
-    expect(markup).toContain("Das ist belegt");
+    expect(markup).toContain("Im Profil belegt");
   });
 });
 
@@ -155,7 +155,7 @@ describe("comparing side by side", () => {
 
     expect(markup).toContain("profile-compare-grid");
     expect(markup).not.toContain("Profil ausklappen");
-    expect(markup).toContain("Das ist belegt");
+    expect(markup).toContain("Im Profil belegt");
   });
 });
 

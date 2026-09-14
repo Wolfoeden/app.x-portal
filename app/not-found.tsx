@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import "@/app/styles/legal.css";
+import {
+  PublicDocumentIntro,
+  PublicFooter,
+  PublicHeader,
+} from "@/components/public/PublicChrome";
 
 export const metadata: Metadata = {
   title: "Seite nicht gefunden | XPORTAL",
@@ -13,19 +19,20 @@ export const metadata: Metadata = {
  */
 export default function NotFound() {
   return (
-    <main className="xlegal" lang="de">
-      <header className="xlegal-header">
-        <Link href="/chat" className="xlegal-wordmark">XPORTAL</Link>
-        <span>404</span>
-      </header>
+    <div className="xlegal" lang="de">
+      <PublicHeader context="404 · Seite nicht gefunden" />
 
-      <article className="xlegal-document">
-        <p className="xhome-label">Nicht gefunden</p>
-        <h1>Diese Seite gibt es nicht.</h1>
-        <p className="xlegal-lead">
-          Möglicherweise wurde die Adresse geändert, oder beim Kopieren ist ein
-          Teil verloren gegangen.
-        </p>
+      <main className="xlegal-document">
+        <PublicDocumentIntro
+          eyebrow="Nicht gefunden"
+          title="Diese Seite gibt es nicht."
+          signal={{ label: "Route", value: "404" }}
+        >
+          <p>
+            Möglicherweise wurde die Adresse geändert, oder beim Kopieren ist ein
+            Teil verloren gegangen.
+          </p>
+        </PublicDocumentIntro>
 
         <div className="booking-actions">
           <Link className="booking-continue" href="/chat">
@@ -33,18 +40,9 @@ export default function NotFound() {
           </Link>
           <Link href="/contact">Etwas melden</Link>
         </div>
-      </article>
+      </main>
 
-      <footer className="xlegal-footer">
-        <Link href="/chat">Zurück zu XPORTAL</Link>
-        <span>
-          <Link href="/imprint">Impressum</Link>
-          {" · "}
-          <Link href="/privacy">Datenschutz</Link>
-          {" · "}
-          <Link href="/terms">AGB</Link>
-        </span>
-      </footer>
-    </main>
+      <PublicFooter />
+    </div>
   );
 }

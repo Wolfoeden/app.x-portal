@@ -4,14 +4,11 @@ import { agentCatalog } from "@/components/AgentDirectory";
 import { ChatWorkspace } from "@/components/ChatWorkspace";
 
 export const metadata: Metadata = {
-  title: "KI-Agenten & EU-Verpackungsverfolgung für Händler | XPORTAL",
+  title: "KI-Agenten für Recherche, Planung und Datenarbeit | XPORTAL",
   description:
-    "Spezialisierte KI-Agenten für Projektmanagement, Research, Datenvisualisierung, Customer Experience, Creative Direction und EU-Verpackungsverfolgung für Händler.",
+    "Konkrete KI-Aufgabenvorlagen mit benanntem Ausgangspunkt, Ergebnis und Grenzen. Vorlagen starten keine autonome oder externe Aktion.",
   keywords: [
     "KI-Agenten",
-    "AI Agents",
-    "EU Verpackungsverfolgung Händler",
-    "Verpackungsdaten EU",
     "Marketing Research Agent",
     "Datenvisualisierung Agent",
     "Customer Experience Agent",
@@ -28,7 +25,7 @@ export const metadata: Metadata = {
     url: "https://x-portal.eu/agent",
     title: "Spezialisierte KI-Agenten | XPORTAL",
     description:
-      "Funktionale KI-Agenten und transparente Ready-To-Run Tasks – einschließlich EU-Verpackungsverfolgung für Händler.",
+      "Konkrete KI-Aufgaben mit transparentem Ausgangspunkt, Ergebnis und Grenzen. Noch keine autonome Ausführung.",
     siteName: "XPORTAL",
   },
 };
@@ -39,7 +36,7 @@ const structuredData = {
   name: "Spezialisierte KI-Agenten",
   url: "https://x-portal.eu/agent",
   description:
-    "KI-Agenten für Projektsteuerung, Research, Datenvisualisierung, Customer Experience, Creative Direction und EU-Verpackungsverfolgung für Händler.",
+    "Konkrete KI-Aufgabenvorlagen für Projektsteuerung, Research, Datenvisualisierung, Customer Experience, Creative Direction und Compliance.",
   mainEntity: {
     "@type": "ItemList",
     itemListElement: agentCatalog.map((agent, index) => ({
@@ -48,7 +45,9 @@ const structuredData = {
       item: {
         "@type": "Service",
         name: agent.title,
-        description: agent.summary,
+        description: agent.tasks
+          .map((task) => `${task.title}: ${task.outcome}`)
+          .join(" "),
         provider: {
           "@type": "Organization",
           name: "XPORTAL",

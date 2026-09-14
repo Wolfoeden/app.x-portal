@@ -12,11 +12,13 @@ import { CookieSettingsButton } from "./CookieConsent";
  * die Links hingen.
  *
  * Als eigene Komponente statt als kopierte Zeile, damit die nächste Ansicht
- * die Links nicht wieder vergisst.
+ * die Links nicht wieder vergisst. Die Gruppe ist bewusst kein eigener
+ * `<footer>`: Sie wird sowohl in App-Flächen als auch innerhalb des globalen
+ * Seitenfußes verwendet und darf dort kein zweites Landmark verschachteln.
  */
 export function LegalFooter({ className = "" }: { className?: string }) {
   return (
-    <footer className={`legal-footer ${className}`.trim()}>
+    <div className={`legal-footer ${className}`.trim()}>
       <nav aria-label="Rechtliches">
         <Link href="/imprint">Impressum</Link>
         <span aria-hidden="true">·</span>
@@ -27,6 +29,6 @@ export function LegalFooter({ className = "" }: { className?: string }) {
         <Link href="/contact">Kontakt</Link>
       </nav>
       <CookieSettingsButton className="legal-footer-button" />
-    </footer>
+    </div>
   );
 }

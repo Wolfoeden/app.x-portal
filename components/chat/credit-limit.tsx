@@ -9,9 +9,8 @@ import { IconCheck, IconInfo } from "../icons";
 /**
  * Die selbst gesetzte Obergrenze.
  *
- * Enterprise wird nach Verbrauch abgerechnet. Wer das bucht, will vorher
- * wissen, wie hoch die Rechnung hoechstens ausfaellt — und zwar selbst
- * einstellbar, ohne anzurufen.
+ * Enterprise hat ein festes Monatskontingent. Das freiwillige Nutzungslimit
+ * senkt den verfügbaren Teamrahmen, nicht den bereits vereinbarten Monatspreis.
  *
  * Ein leeres Feld heisst "kein Limit" und ist etwas anderes als eine 0. Die
  * Null waere ein Konto, das nichts mehr darf; wer das Feld nur leert, meint
@@ -91,9 +90,9 @@ export function CreditLimitSetting({
       {/* Die Zahl allein sagt niemandem, was sie kostet. */}
       <p className="credit-limit-hint">
         <span aria-hidden="true"><IconInfo size={11} /></span>
-        {maxCredits} Credits kosten höchstens {maxEuro} €. Ein niedrigeres Limit
-        senkt die Rechnung entsprechend — abgerechnet wird nur, was Sie
-        tatsächlich verbrauchen.
+        Ihr Plan umfasst {maxCredits} Credits für {maxEuro} € netto pro Monat.
+        Ein niedrigeres Limit begrenzt die Nutzung, ändert aber nicht den
+        Monatspreis.
       </p>
 
       <p className="credit-limit-hint">

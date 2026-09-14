@@ -26,20 +26,22 @@ export default function GlobalError({
           alignItems: "center",
           justifyContent: "center",
           padding: "24px",
-          background: "#f1f1ec",
-          color: "#090909",
+          background: "#ffffff",
+          color: "#181817",
           fontFamily:
             "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         }}
       >
-        <main style={{ maxWidth: "560px" }}>
+        <main style={{ width: "min(100%, 620px)" }}>
           <p
             style={{
-              margin: "0 0 18px",
-              font: "10px ui-monospace, monospace",
-              letterSpacing: "0.14em",
+              margin: "0 0 22px",
+              borderTop: "3px solid #17804d",
+              paddingTop: "12px",
+              font: "12px ui-monospace, monospace",
+              letterSpacing: "0.12em",
               textTransform: "uppercase",
-              color: "#6b6b67",
+              color: "#17804d",
             }}
           >
             XPORTAL
@@ -55,9 +57,9 @@ export default function GlobalError({
           >
             Die Anwendung konnte nicht geladen werden.
           </h1>
-          <p style={{ margin: "0 0 28px", color: "#51514d", lineHeight: 1.65 }}>
+          <p style={{ margin: "0 0 28px", color: "#5f5f5a", lineHeight: 1.65 }}>
             Bitte laden Sie die Seite neu. Bleibt es dabei, schreiben Sie uns an{" "}
-            <a href="mailto:info@x-portal.eu" style={{ color: "#090909" }}>
+            <a href="mailto:info@x-portal.eu" style={{ color: "#181817" }}>
               info@x-portal.eu
             </a>
             {error.digest ? ` und nennen Sie die Kennung ${error.digest}.` : "."}
@@ -68,11 +70,13 @@ export default function GlobalError({
             onClick={reset}
             style={{
               padding: "14px 28px",
-              border: "1px solid #090909",
-              background: "#090909",
-              color: "#f1f1ec",
-              fontSize: "13px",
-              fontWeight: 590,
+              minHeight: "44px",
+              border: "1px solid #181817",
+              borderRadius: "10px",
+              background: "#181817",
+              color: "#ffffff",
+              fontSize: "14px",
+              fontWeight: 650,
               cursor: "pointer",
             }}
           >
@@ -80,9 +84,9 @@ export default function GlobalError({
           </button>
 
           <p style={{ margin: "28px 0 0", fontSize: "12px" }}>
-            <a href="/imprint" style={{ color: "#51514d" }}>Impressum</a>
+            <a href="/imprint" style={{ color: "#5f5f5a" }}>Impressum</a>
             {" · "}
-            <a href="/privacy" style={{ color: "#51514d" }}>Datenschutz</a>
+            <a href="/privacy" style={{ color: "#5f5f5a" }}>Datenschutz</a>
           </p>
         </main>
       </body>

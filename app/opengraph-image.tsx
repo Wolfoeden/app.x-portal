@@ -37,7 +37,7 @@ export default function OpengraphImage() {
           }}
         >
           <span>XPORTAL</span>
-          <span>X-PORTAL.EU</span>
+          <span>XPORTAL.EU</span>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column" }}>

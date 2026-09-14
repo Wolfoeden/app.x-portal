@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import "@/app/styles/legal.css";
+import {
+  PublicDocumentIntro,
+  PublicFooter,
+  PublicHeader,
+} from "@/components/public/PublicChrome";
 
 import {
   bookingDestinationLabel,
@@ -21,21 +27,11 @@ const UUID_PATTERN =
 
 function Frame({ children }: { children: React.ReactNode }) {
   return (
-    <main className="xlegal" lang="de">
-      <header className="xlegal-header">
-        <Link href="/chat" className="xlegal-wordmark">XPORTAL</Link>
-        <span>WEITERLEITUNG</span>
-      </header>
-      <article className="xlegal-document">{children}</article>
-      <footer className="xlegal-footer">
-        <Link href="/chat">Zurück zu XPORTAL</Link>
-        <span>
-          <Link href="/imprint">Impressum</Link>
-          {" · "}
-          <Link href="/privacy">Datenschutz</Link>
-        </span>
-      </footer>
-    </main>
+    <div className="xlegal" lang="de">
+      <PublicHeader context="Externe Buchungsseite" />
+      <main className="xlegal-document">{children}</main>
+      <PublicFooter />
+    </div>
   );
 }
 
@@ -59,11 +55,13 @@ export default async function BookingHandoffPage({
   if (!UUID_PATTERN.test(id)) {
     return (
       <Frame>
-        <p className="xhome-label">Weiterleitung</p>
-        <h1>Dieser Link führt nirgendwohin.</h1>
-        <p className="xlegal-lead">
-          Die Adresse ist unvollständig oder wurde beim Kopieren abgeschnitten.
-        </p>
+        <PublicDocumentIntro
+          eyebrow="Weiterleitung"
+          title="Dieser Link führt nirgendwohin."
+          signal={{ label: "Status", value: "Link ungültig" }}
+        >
+          <p>Die Adresse ist unvollständig oder wurde beim Kopieren abgeschnitten.</p>
+        </PublicDocumentIntro>
       </Frame>
     );
   }
@@ -73,12 +71,16 @@ export default async function BookingHandoffPage({
   if (!destination) {
     return (
       <Frame>
-        <p className="xhome-label">Weiterleitung</p>
-        <h1>Diese Buchungsseite ist gerade nicht verfügbar.</h1>
-        <p className="xlegal-lead">
-          Das Profil ist nicht mehr aktiv, oder es ist keine Buchungsadresse
-          hinterlegt.
-        </p>
+        <PublicDocumentIntro
+          eyebrow="Weiterleitung"
+          title="Diese Buchungsseite ist gerade nicht verfügbar."
+          signal={{ label: "Status", value: "Kein aktives Ziel" }}
+        >
+          <p>
+            Das Profil ist nicht mehr aktiv, oder es ist keine Buchungsadresse
+            hinterlegt.
+          </p>
+        </PublicDocumentIntro>
       </Frame>
     );
   }
@@ -92,12 +94,16 @@ export default async function BookingHandoffPage({
 
   return (
     <Frame>
-      <p className="xhome-label">Weiterleitung</p>
-      <h1>Sie verlassen XPORTAL.</h1>
-      <p className="xlegal-lead">
-        {destination.displayName} nimmt Termine auf einer eigenen Seite
-        entgegen. Der Aufruf entsteht erst mit Ihrem Klick.
-      </p>
+      <PublicDocumentIntro
+        eyebrow="Weiterleitung"
+        title="Sie verlassen XPORTAL."
+        signal={{ label: "Übergang", value: "Erst nach Ihrem Klick" }}
+      >
+        <p>
+          {destination.displayName} nimmt Termine auf einer eigenen Seite
+          entgegen. Der Aufruf entsteht erst mit Ihrem Klick.
+        </p>
+      </PublicDocumentIntro>
 
       <div className="xlegal-warning">
         <strong>Ziel</strong>

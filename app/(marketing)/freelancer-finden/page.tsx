@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Categories } from "@/components/marketing/Categories";
 import { ContentSection, MarketingPage, MatchExample, Questions } from "@/components/marketing/MarketingPage";
 import { MARKETING_PAGE, pageMetadata } from "@/lib/seo";
+import { BRIEF_ANALYSIS_CREDITS, CREDIT_PLANS } from "@/lib/ai/credit-policy";
 import styles from "@/components/marketing/marketing.module.css";
 
 export const metadata = pageMetadata(MARKETING_PAGE.find);
@@ -11,8 +12,8 @@ export default function FindFreelancersPage() {
     <MarketingPage
       page={MARKETING_PAGE.find}
       eyebrow="Freelancer für Ihr Projekt"
-      title="Passende Freelancer finden – mit nachvollziehbarer Match-Begründung."
-      intro="Beschreiben Sie Ihr Projekt in wenigen Sätzen. XPORTAL strukturiert Ihre Anforderungen und gleicht sie mit vorhandenen Profilinformationen ab. Sie sehen, was für einen Match spricht und welche Fragen offenbleiben."
+      title="Freelancer finden. Belege prüfen. Selbst entscheiden."
+      intro={`Beschreiben Sie die Aufgabe in eigenen Worten. Die KI strukturiert Ihren Text; feste Regeln gleichen ihn mit vorhandenen Profilangaben ab. Sie sehen Belege und Lücken, bevor Sie handeln. Der Gaststart enthält ${CREDIT_PLANS.guest.monthlyCredits} Credits, eine Projektanalyse kostet ${BRIEF_ANALYSIS_CREDITS} Credits.`}
       aside={<MatchExample />}
     >
       <ContentSection id="ablauf" label="So starten Sie" title="In drei Schritten zur fundierten Auswahl.">

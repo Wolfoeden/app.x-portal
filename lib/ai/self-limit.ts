@@ -6,9 +6,9 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 /**
  * Das Limit, das ein zahlender Kunde sich selbst setzt.
  *
- * Enterprise wird nach Verbrauch abgerechnet. Wer das bucht, will vorher
- * wissen, wie hoch die Rechnung hoechstens ausfaellt — und zwar selbst
- * einstellbar, ohne anzurufen.
+ * Enterprise hat ein festes Monatskontingent. Ein Konto kann dieses Kontingent
+ * freiwillig nach unten begrenzen, etwa als internen Teamrahmen. Das ändert
+ * nicht den vereinbarten Monatspreis.
  *
  * Durchgesetzt wird es nicht an einer neuen Stelle, sondern ueber das
  * Kontingent der laufenden Periode: die Datenbankfunktion senkt
@@ -25,7 +25,7 @@ export const SELF_LIMIT_MAX = CREDIT_PLANS.enterprise.monthlyCredits;
  * beiden Zahlen gehoeren zusammen, und getrennt gepflegt laufen sie
  * auseinander.
  */
-export const SELF_LIMIT_MAX_EURO = 50;
+export const SELF_LIMIT_MAX_EURO = CREDIT_PLANS.enterprise.euro;
 
 export type SelfLimitResult =
   | { ok: true; limit: number | null; creditsTotal: number }
@@ -51,7 +51,7 @@ export async function setSelfCreditLimit(input: {
   planId: string | null;
   limit: number | null;
 }): Promise<SelfLimitResult> {
-  // Nur wer nach Verbrauch abgerechnet wird, hat hier etwas einzustellen.
+  // Nur ein bezahlter Plan hat einen zusätzlichen Teamrahmen zu begrenzen.
   const plan = creditPlan(input.planId, input.isAnonymous);
   if (input.isAnonymous || !plan.purchasable) {
     return { ok: false, reason: "not_entitled" };

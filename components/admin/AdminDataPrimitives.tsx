@@ -12,6 +12,20 @@ export type AdminMetric = {
   tone?: MetricTone;
 };
 
+export function AdminSurface({
+  children,
+  label = "XPORTAL Administration",
+}: {
+  children: ReactNode;
+  label?: string;
+}) {
+  return (
+    <main className={styles.surface} aria-label={label}>
+      <div className={styles.surfaceInner}>{children}</div>
+    </main>
+  );
+}
+
 export function AdminPageHeader({
   eyebrow,
   title,

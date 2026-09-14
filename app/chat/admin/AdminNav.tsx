@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { BrandMark } from "@/components/BrandMark";
+
 import styles from "./admin-nav.module.css";
 
 /**
@@ -21,14 +23,13 @@ const GROUPS = [
       { href: "/chat/admin/freelancers", label: "Bewerbungen" },
       { href: "/chat/admin/leads", label: "Leads" },
       { href: "/chat/admin/demand", label: "Nachfrage" },
-      { href: "/chat/agent-grid", label: "Agent Grid" },
     ],
   },
   {
     label: "Betrieb",
     links: [
       { href: "/chat/admin/users", label: "Nutzer" },
-      { href: "/chat/admin/ai-usage", label: "AI-Kosten" },
+      { href: "/chat/admin/ai-usage", label: "KI-Kosten" },
     ],
   },
 ] as const;
@@ -39,7 +40,6 @@ const PREVIEW_HREFS: Record<string, string> = {
   "/chat/admin/users": "/chat/preview/admin-pages?view=users",
   "/chat/admin/demand": "/chat/preview/admin-pages?view=demand",
   "/chat/admin/ai-usage": "/chat/preview/admin-pages?view=ai-usage",
-  "/chat/agent-grid": "/chat/preview/agent-grid",
 };
 
 export function AdminNav({
@@ -57,7 +57,18 @@ export function AdminNav({
   return (
     <nav className={styles.bar} aria-label="Admin-Bereich">
       <div className={styles.inner}>
-        <p className={styles.brand}>XPORTAL Admin</p>
+        <div className={styles.identity}>
+          <Link
+            href={previewMode ? "/chat/preview" : "/chat"}
+            prefetch={false}
+            className={styles.brand}
+            aria-label="Zur XPORTAL App"
+          >
+            <BrandMark height={24} />
+            <span>XPORTAL</span>
+          </Link>
+          <span className={styles.context}>Admin</span>
+        </div>
         <ul className={styles.groups}>
           {GROUPS.map((group) => (
             <li className={styles.group} key={group.label}>
@@ -87,6 +98,13 @@ export function AdminNav({
             </li>
           ))}
         </ul>
+        <Link
+          className={styles.appLink}
+          href={previewMode ? "/chat/preview" : "/chat"}
+          prefetch={false}
+        >
+          Zur App <span aria-hidden="true">↗</span>
+        </Link>
       </div>
     </nav>
   );

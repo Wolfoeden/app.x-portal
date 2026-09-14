@@ -1,11 +1,10 @@
 import { redirect } from "next/navigation";
 
 /**
- * The root is the freelancer search. The Cardano page it used to serve lives
- * at /cardano: a recruiter arriving from a campaign must not land on a crypto
- * pre-launch page, which was the single biggest trust problem with the old
- * routing.
+ * The root starts with product context. The working application remains one
+ * deliberate click away; campaign visitors no longer arrive in a tool before
+ * they can understand evidence, limits and price.
  */
 export default function RootPage() {
-  redirect("/chat");
+  redirect("/freelancer-finden");
 }

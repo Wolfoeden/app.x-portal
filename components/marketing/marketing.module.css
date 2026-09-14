@@ -4,20 +4,6 @@
   background: var(--surface);
 }
 
-.siteHeader {
-  max-width: calc(var(--marketing-width) + 80px);
-  margin: 0 auto;
-  padding: 22px 40px;
-  display: flex;
-  align-items: center;
-  gap: 32px;
-  border-bottom: 1px solid var(--border);
-}
-
-.brand { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; font-size: 19px; font-weight: 750; letter-spacing: -.7px; }
-.navigation { display: flex; justify-content: center; flex: 1; flex-wrap: wrap; gap: 12px 25px; }
-.navigation a { color: var(--muted); text-decoration: none; font-size: var(--fs-sm); font-weight: 560; padding: 8px 0; }
-.navigation a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 5px; }
 .primaryLink { display: inline-flex; align-items: center; justify-content: center; gap: 25px; flex-shrink: 0; min-height: var(--control-lg); border-radius: var(--radius-sm); padding: 12px 19px; background: var(--ink); color: var(--surface); font-size: var(--fs-sm); font-weight: 650; text-decoration: none; }
 .primaryLink:hover { background: var(--ink-hover); }
 .primaryLink span { font-size: 20px; font-weight: 400; line-height: 1; }
@@ -50,6 +36,7 @@
 .fact { color: var(--green); background: var(--green-soft); }
 .gap { color: var(--amber); background: var(--amber-soft); }
 .exampleFoot { margin: 18px 0 0; color: var(--muted); font-size: var(--fs-xs); line-height: 1.65; }
+.protocolBand { margin: -20px 0 52px; }
 
 .section { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 65px; border-top: 1px solid var(--border); padding: 52px 0; scroll-margin-top: 24px; }
 .sectionHeading h2 { margin: 0; font-size: 29px; line-height: 1.18; font-weight: 590; letter-spacing: -.04em; text-wrap: balance; }
@@ -103,21 +90,10 @@
 .related a { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-top: 1px solid var(--border); padding: 17px 0; text-decoration: none; font-weight: 560; font-size: var(--fs-sm); }
 .related a:hover { text-decoration: underline; text-underline-offset: 4px; }
 .related a span { font-size: 19px; }
-.footer { border-top: 1px solid var(--border); max-width: var(--marketing-width); margin: 0 auto; padding: 30px 0; }
-.footerIntro { display: flex; justify-content: space-between; gap: 30px; align-items: start; font-size: var(--fs-sm); }
-.footerIntro strong { font-size: 17px; letter-spacing: -.7px; }
-.footerIntro p { margin: 0; color: var(--muted); line-height: 1.6; }
-.footerIntro a { font-size: var(--fs-xs); text-underline-offset: 4px; }
-.footer > footer { margin-top: 24px; }
-
 @media (max-width: 1080px) {
-  .siteHeader { gap: 18px; padding: 20px 28px; flex-wrap: wrap; }
-  .siteHeader > .primaryLink { margin-left: auto; }
-  .navigation { order: 3; flex-basis: 100%; justify-content: flex-start; gap: 10px 24px; }
   .main { padding: 0 28px; }
   .hero { gap: 30px; }
   .section { grid-template-columns: 240px minmax(0, 1fr); gap: 36px; }
-  .footer { margin: 0 28px; }
 }
 
 @media (max-width: 760px) {
@@ -126,21 +102,15 @@
   .hero > .matchExample { max-width: 540px; width: 100%; margin-top: 4px; }
   .main h1 { font-size: clamp(36px, 7vw, 48px); }
   .lead { font-size: 17px; }
+  .protocolBand { margin: 0 0 34px; }
   .section { grid-template-columns: 1fr; gap: 22px; padding: 34px 0; }
   .sectionHeading h2 { font-size: 27px; max-width: 500px; }
   .nextStep { flex-direction: column; align-items: flex-start; gap: 25px; padding: 28px; }
   .nextStep h2 { font-size: 27px; }
   .related ul { grid-template-columns: 1fr; gap: 0; }
-  .footerIntro { flex-wrap: wrap; gap: 18px; }
-  .footerIntro p { flex-basis: 100%; order: 3; }
 }
 
 @media (max-width: 460px) {
-  .siteHeader { padding: 18px 20px 12px; }
-  .siteHeader > .primaryLink { font-size: var(--fs-xs); padding: 10px 12px; gap: 10px; }
-  .brand { font-size: 17px; gap: 6px; }
-  .navigation { gap: 0 20px; }
-  .navigation a { font-size: var(--fs-xs); }
   .main { padding: 0 20px; }
   .breadcrumb { padding-top: 22px; font-size: var(--fs-2xs); }
   .heroActions { align-items: flex-start; flex-direction: column; gap: 12px; }
@@ -149,5 +119,4 @@
   .fact, .gap { padding: 3px 6px; }
   .categories { grid-template-columns: 1fr; gap: 8px; }
   .nextStep { padding: 25px; }
-  .footer { margin: 0 20px; }
 }

@@ -1,41 +1,48 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import "@/app/styles/legal.css";
 
-import { TERMS_EFFECTIVE_DATE, TERMS_VERSION } from "@/lib/legal/policy";
+import {
+  PublicDocumentIntro,
+  PublicFooter,
+  PublicHeader,
+} from "@/components/public/PublicChrome";
+import { Notice } from "@/components/ui/Primitives";
+import { TERMS_EFFECTIVE_DATE, TERMS_REVIEW, TERMS_VERSION } from "@/lib/legal/policy";
 
 export const metadata: Metadata = {
-  title: "AGB | XPORTAL",
+  title: "AGB-Entwurf | XPORTAL",
   description:
-    "Allgemeine Geschäftsbedingungen für die Nutzung von XPORTAL. Das Angebot richtet sich ausschließlich an Unternehmer.",
+    "Entwurf der Allgemeinen Geschäftsbedingungen für XPORTAL. Die rechtliche Prüfung steht noch aus; das Angebot richtet sich ausschließlich an Unternehmer.",
 };
 
 export default function TermsPage() {
   return (
-    <main className="xlegal" lang="de">
-      <header className="xlegal-header">
-        <Link href="/chat" className="xlegal-wordmark">XPORTAL</Link>
-        <span>AGB / {TERMS_VERSION}</span>
-      </header>
+    <div className="xlegal" lang="de">
+      <PublicHeader context={`AGB · Fassung ${TERMS_VERSION}`} />
 
-      <article className="xlegal-document">
-        <p className="xhome-label">Allgemeine Geschäftsbedingungen</p>
-        <h1>Was gilt, wenn Sie XPORTAL nutzen.</h1>
-        <p className="xlegal-lead">
-          Diese Bedingungen regeln die Nutzung der Website und der Anwendung
-          XPORTAL sowie die kostenpflichtigen Leistungen. Das Angebot richtet
-          sich ausschließlich an Unternehmer.
-        </p>
-
-        <div className="xlegal-warning">
-          <strong>Entwurf — noch nicht anwaltlich geprüft</strong>
+      <main className="xlegal-document">
+        <PublicDocumentIntro
+          eyebrow="Allgemeine Geschäftsbedingungen"
+          title="Was gilt, wenn Sie XPORTAL nutzen."
+          signal={{ label: "Freigabe", value: "Rechtliche Prüfung ausstehend" }}
+        >
           <p>
-            Diese Fassung ist inhaltlich vollständig, aber sie ersetzt keine
-            Rechtsberatung. Vor dem Verkaufsstart gehören insbesondere die
-            Haftungsregelung, die Beschränkung auf Unternehmer und die
-            Beschreibung der Vermittlerrolle auf den Tisch einer Kanzlei mit
-            IT-Recht-Schwerpunkt.
+            Diese Bedingungen regeln die Nutzung der Website und der Anwendung
+            XPORTAL sowie die kostenpflichtigen Leistungen. Das Angebot richtet
+            sich ausschließlich an Unternehmer.
           </p>
-        </div>
+        </PublicDocumentIntro>
+
+        <Notice title={TERMS_REVIEW.label} tone="warning" role="status">
+          <p>
+            Diese Fassung bildet den aktuellen Produktstand ab, ist aber noch
+            nicht anwaltlich freigegeben. Der Self-Service-Abschluss des
+            Enterprise-Plans bleibt deshalb bis zur dokumentierten Prüfung
+            deaktiviert. Kostenlose Nutzung und bestehende Kontofunktionen sind
+            davon nicht betroffen.
+          </p>
+        </Notice>
 
         <section>
           <h2>1. Anbieter, Begriffe und Geltungsbereich</h2>
@@ -159,7 +166,7 @@ export default function TermsPage() {
           <div>
             <p>
               Die Nutzung KI-gestützter Funktionen wird in Credits abgerechnet.
-              Es gibt zwei Arten, die sich unterschiedlich verhalten:
+              Jeder Zugang hat ein monatliches Kontingent:
             </p>
             <ul>
               <li>
@@ -168,24 +175,19 @@ export default function TermsPage() {
                 wieder auf und verfällt am Ende der Periode. Nicht genutzte
                 Credits werden nicht übertragen und nicht vergütet.
               </li>
-              <li>
-                <strong>Einzeln erworbene Credits.</strong> Sie verfallen nicht
-                und bleiben bestehen, solange das Konto besteht. Sie werden erst
-                verbraucht, wenn das monatliche Kontingent aufgebraucht ist.
-              </li>
             </ul>
             <p>
               Die Anwendung zeigt vor einer kostenpflichtigen Aktion an, wie
-              viele Credits sie kostet. Der Verbrauch richtet sich nach dem
-              tatsächlichen Aufwand der Anfrage; die hinterlegte Berechnung ist
-              in der Anwendung einsehbar. Credits sind kein Zahlungsmittel,
+              viele Credits sie kostet. Die veröffentlichten Funktionspreise
+              sind Festpreise in Credits und werden aus der zentralen
+              Produktkonfiguration angezeigt. Credits sind kein Zahlungsmittel,
               nicht übertragbar und werden nicht in Geld ausgezahlt.
             </p>
             <p>
               Wird ein Konto vom Nutzer gelöscht oder aus wichtigem Grund
-              beendet, verfallen verbleibende Credits ohne Erstattung. Endet der
-              Vertrag durch ordentliche Kündigung, bleiben einzeln erworbene
-              Credits bis zum Ablauf der bezahlten Periode nutzbar.
+              beendet, verfallen verbleibende Credits ohne Erstattung. Bei
+              ordentlicher Kündigung bleibt das Kontingent bis zum Ende der
+              bereits bezahlten Periode nutzbar.
             </p>
           </div>
         </section>
@@ -202,8 +204,9 @@ export default function TermsPage() {
             <p>
               Alle Preise verstehen sich als Nettopreise zuzüglich der
               gesetzlichen Umsatzsteuer. Der Preis eines Plans gilt je
-              Abrechnungsperiode, der Preis einzeln erworbener Credits je
-              Einheit. Maßgeblich ist der zum Zeitpunkt der Bestellung
+              Abrechnungsperiode. Eine nachträgliche verbrauchsabhängige
+              Mehrberechnung ist im aktuellen Enterprise-Modell nicht
+              vorgesehen. Maßgeblich ist der zum Zeitpunkt der Bestellung
               angezeigte Preis.
             </p>
             <p>
@@ -455,18 +458,9 @@ export default function TermsPage() {
         <p className="xlegal-updated">
           Fassung {TERMS_VERSION} · Stand: {TERMS_EFFECTIVE_DATE}
         </p>
-      </article>
+      </main>
 
-      <footer className="xlegal-footer">
-        <Link href="/chat">Zurück zu XPORTAL</Link>
-        <span>
-          <Link href="/imprint">Impressum</Link>
-          {" · "}
-          <Link href="/privacy">Datenschutz</Link>
-          {" · "}
-          <Link href="/contact">Kontakt</Link>
-        </span>
-      </footer>
-    </main>
+      <PublicFooter />
+    </div>
   );
 }

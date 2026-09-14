@@ -1,7 +1,15 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 
 import { CaptchaField } from "@/components/CaptchaField";
-import { CookieSettingsButton } from "@/components/CookieConsent";
+import { PublicFooter, PublicHeader } from "@/components/public/PublicChrome";
+import "./cardano.css";
+
+export const metadata: Metadata = {
+  title: "Cardano DeFi Lab | XPORTAL",
+  description: "Archivierter, experimenteller Cardano-DeFi-Bereich von XPORTAL.",
+  robots: { index: false, follow: false },
+};
 
 type HomeProps = {
   searchParams?: Promise<{
@@ -29,7 +37,13 @@ export default async function XPortalHome({ searchParams }: HomeProps) {
   const hasError = params.error === "1";
 
   return (
-    <main className="xhome" lang="en">
+    <>
+      <PublicHeader context="Lab · Cardano DeFi · getrennt vom Freelancer-Produkt" />
+      <main className="xhome" lang="en">
+      <p className="xhome-lab-notice">
+        <strong>XPORTAL Lab.</strong> This experimental Cardano area is separate
+        from XPORTAL’s freelancer matching product and is not part of its offer.
+      </p>
       <section className="xhome-hero" aria-labelledby="xhome-title">
         <div className="xhome-hero-copy">
           <div className="xhome-protocol">
@@ -211,20 +225,8 @@ export default async function XPortalHome({ searchParams }: HomeProps) {
         </p>
       </section>
 
-      <footer className="xhome-footer">
-        <div className="xhome-wordmark">XPORTAL</div>
-        <div className="xhome-footer-meta">
-          <span>Cardano DeFi / First gateway</span>
-          <span>© 2026 XPORTAL</span>
-        </div>
-        <nav aria-label="Legal">
-          <Link href="/privacy">Privacy</Link>
-          <Link href="/imprint">Imprint</Link>
-          <Link href="/terms">Terms</Link>
-          <Link href="/contact">Contact</Link>
-          <CookieSettingsButton />
-        </nav>
-      </footer>
-    </main>
+      </main>
+      <PublicFooter />
+    </>
   );
 }

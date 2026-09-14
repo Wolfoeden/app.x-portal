@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import "@/app/styles/legal.css";
+import { PublicFooter, PublicHeader } from "@/components/public/PublicChrome";
+import { ActionButton } from "@/components/ui/Primitives";
 
 export const metadata: Metadata = {
   title: "Keine Werbung mehr | XPORTAL",
@@ -29,25 +32,11 @@ function tokenOf(value: string | string[] | undefined): string | null {
 
 function Frame({ children }: { children: React.ReactNode }) {
   return (
-    <main className="xlegal" lang="de">
-      <header className="xlegal-header">
-        <Link href="/chat" className="xlegal-wordmark">
-          XPORTAL
-        </Link>
-        <span>ABMELDUNG</span>
-      </header>
-      <article className="xlegal-document">{children}</article>
-      <footer className="xlegal-footer">
-        <Link href="/chat">Zurück zu XPORTAL</Link>
-        <span>
-          <Link href="/imprint">Impressum</Link>
-          {" · "}
-          <Link href="/privacy">Datenschutz</Link>
-          {" · "}
-          <Link href="/contact">Kontakt</Link>
-        </span>
-      </footer>
-    </main>
+    <div className="xlegal" lang="de">
+      <PublicHeader context="E-Mail-Abmeldung" />
+      <main className="xlegal-document">{children}</main>
+      <PublicFooter />
+    </div>
   );
 }
 
@@ -75,7 +64,7 @@ export default async function UnsubscribePage({
   if (result === "done") {
     return (
       <Frame>
-        <p className="xhome-label">Abmeldung</p>
+        <p className="xlegal-label">Abmeldung</p>
         <h1>Erledigt. Sie hören nichts mehr von uns.</h1>
         <p className="xlegal-lead">
           Ihre Adresse steht auf unserer Sperrliste. Sie bekommt keine
@@ -105,7 +94,7 @@ export default async function UnsubscribePage({
   if (result === "invalid") {
     return (
       <Frame>
-        <p className="xhome-label">Abmeldung</p>
+        <p className="xlegal-label">Abmeldung</p>
         <h1>Dieser Link führt nirgendwohin.</h1>
         <p className="xlegal-lead">
           Der Abmeldelink ist unvollständig. Manche Mailprogramme kürzen lange
@@ -127,7 +116,7 @@ export default async function UnsubscribePage({
   if (result === "error") {
     return (
       <Frame>
-        <p className="xhome-label">Abmeldung</p>
+        <p className="xlegal-label">Abmeldung</p>
         <h1>Das hat gerade nicht geklappt.</h1>
         <p className="xlegal-lead">
           Bitte versuchen Sie es in ein paar Minuten erneut. Ihre Abmeldung ist
@@ -147,7 +136,7 @@ export default async function UnsubscribePage({
   if (!token) {
     return (
       <Frame>
-        <p className="xhome-label">Abmeldung</p>
+        <p className="xlegal-label">Abmeldung</p>
         <h1>Hier fehlt der Abmeldelink.</h1>
         <p className="xlegal-lead">
           Öffnen Sie den vollständigen Link aus unserer E-Mail. Ohne ihn wissen
@@ -163,7 +152,7 @@ export default async function UnsubscribePage({
 
   return (
     <Frame>
-      <p className="xhome-label">Abmeldung</p>
+      <p className="xlegal-label">Abmeldung</p>
       <h1>Keine Werbung mehr von XPORTAL?</h1>
       <p className="xlegal-lead">
         Ein Klick, und Ihre Adresse bekommt keine Akquise-Mail und keinen
@@ -173,9 +162,9 @@ export default async function UnsubscribePage({
 
       <form className="contact-form" action="/api/unsubscribe" method="post">
         <input type="hidden" name="token" value={token} />
-        <button type="submit" className="contact-submit">
+        <ActionButton type="submit" className="contact-submit">
           Werbung abbestellen
-        </button>
+        </ActionButton>
       </form>
 
       <p className="contact-note">

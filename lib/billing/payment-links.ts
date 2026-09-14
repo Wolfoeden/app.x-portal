@@ -2,8 +2,8 @@
  * Der Weg, auf dem der bezahlte Plan gebucht wird.
  *
  * x-portal.eu verkauft zwei Dinge: die Gratisstufe und Enterprise. Enterprise
- * laeuft ueber einen Stripe Payment Link — 50 Euro netto beim Buchen, die
- * tatsaechliche Nutzung wird am Monatsende in Rechnung gestellt.
+ * laeuft ueber einen Stripe Payment Link — 50 Euro netto pro Monat für ein
+ * festes monatliches Kontingent von 3.000 Credits.
  *
  * Der Link steht hier und nicht in der Oberflaeche, damit die Zuordnung einer
  * Zahlung zu einem Konto an einer Stelle entschieden wird.
@@ -23,6 +23,14 @@ export const ENTERPRISE_PAYMENT_LINK = "https://buy.stripe.com/9B614m38Bb9DbuO2S
  * dem, was bestaetigt wird.
  */
 export const ENTERPRISE_START_EURO = 50;
+
+/** Der vollständige, öffentlich kommunizierbare Abrechnungsvertrag. */
+export const ENTERPRISE_BILLING = {
+  model: "fixed_monthly",
+  priceNetEuro: ENTERPRISE_START_EURO,
+  interval: "month",
+  invoice: "Stripe-Zahlungsbeleg und XPORTAL-Vertragsbestätigung",
+} as const;
 
 /** Wer bei Fragen zur Abrechnung antwortet. */
 export const ENTERPRISE_CONTACT = {

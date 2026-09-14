@@ -1,6 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import "@/app/styles/legal.css";
+import {
+  PublicDocumentIntro,
+  PublicFooter,
+  PublicHeader,
+} from "@/components/public/PublicChrome";
 
 /**
  * Die Fehlerseite innerhalb des Layouts.
@@ -18,19 +24,20 @@ export default function ErrorPage({
   reset: () => void;
 }) {
   return (
-    <main className="xlegal" lang="de">
-      <header className="xlegal-header">
-        <Link href="/chat" className="xlegal-wordmark">XPORTAL</Link>
-        <span>FEHLER</span>
-      </header>
+    <div className="xlegal" lang="de">
+      <PublicHeader context="Fehler" />
 
-      <article className="xlegal-document">
-        <p className="xhome-label">Fehler</p>
-        <h1>Da ist etwas schiefgegangen.</h1>
-        <p className="xlegal-lead">
-          Ihre Daten sind nicht verloren. Versuchen Sie es erneut — bleibt es
-          dabei, melden Sie sich mit der Kennung unten bei uns.
-        </p>
+      <main className="xlegal-document">
+        <PublicDocumentIntro
+          eyebrow="Fehler"
+          title="Da ist etwas schiefgegangen."
+          signal={{ label: "Wiederherstellung", value: "Erneut versuchen" }}
+        >
+          <p>
+            Ihre Daten sind nicht verloren. Versuchen Sie es erneut — bleibt es
+            dabei, melden Sie sich mit der Kennung unten bei uns.
+          </p>
+        </PublicDocumentIntro>
 
         <div className="booking-actions">
           <button type="button" className="booking-continue" onClick={reset}>
@@ -53,18 +60,9 @@ export default function ErrorPage({
           uns direkt; nennen Sie dabei die Kennung, dann finden wir den Vorgang
           wieder.
         </p>
-      </article>
+      </main>
 
-      <footer className="xlegal-footer">
-        <Link href="/chat">Zurück zu XPORTAL</Link>
-        <span>
-          <Link href="/imprint">Impressum</Link>
-          {" · "}
-          <Link href="/privacy">Datenschutz</Link>
-          {" · "}
-          <Link href="/terms">AGB</Link>
-        </span>
-      </footer>
-    </main>
+      <PublicFooter />
+    </div>
   );
 }

@@ -45,7 +45,7 @@ export function openCookieSettings() {
   window.dispatchEvent(new Event(OPEN_COOKIE_SETTINGS_EVENT));
 }
 
-export function CookieSettingsButton({ className = "xhome-footer-button" }: { className?: string }) {
+export function CookieSettingsButton({ className = "legal-footer-button" }: { className?: string }) {
   return (
     <button type="button" className={className} onClick={openCookieSettings}>
       Cookie-Einstellungen verwalten

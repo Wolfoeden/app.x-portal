@@ -18,6 +18,7 @@ import {
 } from "react";
 
 import { appPath } from "@/lib/app-path";
+import { MatchProtocol } from "@/components/product/MatchProtocol";
 import { MINIMUM_CORE_COVERAGE_BASIS_POINTS } from "@/lib/domain/matching";
 
 import {
@@ -389,6 +390,14 @@ export function ResultSection({
         ) : null}
       </div>
       {brief ? <BriefSummaryLine brief={brief} onOpenDetails={onOpenDetails} /> : null}
+      <div className="result-protocol">
+        <MatchProtocol
+          compact
+          activeStep={4}
+          structureMode={analysisMode === "fallback" ? "basis" : "ki"}
+          label="Vom Projekttext zur prüfbaren Auswahl"
+        />
+      </div>
       {profiles.length ? (
         <>
           <p className="matching-disclosure">Die Reihenfolge folgt dokumentierten Kriterien wie Pflichtkompetenzen, Sprache, Arbeitsmodus und Verfügbarkeit. Die KI trifft keine Einstellungsentscheidung.</p>
@@ -1143,7 +1152,7 @@ export function ProfileCard({
 
         <div className="match-columns">
           <div className="match-column reasons">
-            <h4><span aria-hidden="true"><IconCheck size={13} /></span> Das ist belegt</h4>
+            <h4><span aria-hidden="true"><IconCheck size={13} /></span> Im Profil belegt</h4>
             {profile.matchReasons.length ? (
               <>
                 <ul>{profile.matchReasons.slice(0, 3).map((reason) => <li key={reason}>{reason}</li>)}</ul>
@@ -1156,7 +1165,7 @@ export function ProfileCard({
           <div className="match-column gaps">
             <h4>
               <span aria-hidden="true"><IconAlertCircle size={13} /></span>
-              {isPartial ? "Das fehlt für eine Empfehlung" : "Das ist noch offen"}
+              {isPartial ? "Fehlt für eine Empfehlung" : "Vor Kontakt offen"}
             </h4>
             {profile.knownGaps.length ? (
               <>

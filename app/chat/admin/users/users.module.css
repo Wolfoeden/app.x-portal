@@ -1,15 +1,3 @@
-.shell {
-  min-height: 100vh;
-  background: #f6f6f3;
-  color: #20201e;
-  padding: 30px clamp(20px, 5vw, 72px) 72px;
-}
-
-.inner {
-  max-width: 1320px;
-  margin: 0 auto;
-}
-
 .header {
   display: flex;
   align-items: flex-start;
@@ -35,7 +23,7 @@
 .eyebrow {
   margin: 0;
   color: #8b8b84;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -84,7 +72,7 @@
 .statLabel {
   margin: 0 0 6px;
   color: #8b8b84;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -307,7 +295,7 @@
   align-items: center;
   border-radius: 999px;
   padding: 3px 9px;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -362,16 +350,12 @@
 .measurementNote {
   margin: 0 0 14px;
   color: #6f716a;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 620;
   letter-spacing: 0.02em;
 }
 
 @media (max-width: 760px) {
-  .shell {
-    padding: 24px 16px 56px;
-  }
-
   .day {
     grid-template-columns: 72px minmax(120px, 1fr) auto;
     gap: 8px;
@@ -433,7 +417,7 @@
   .table tbody td::before {
     color: #71736b;
     content: attr(data-label);
-    font-size: 11px;
+    font-size: var(--fs-2xs);
     font-weight: 720;
     letter-spacing: 0.045em;
     text-transform: uppercase;

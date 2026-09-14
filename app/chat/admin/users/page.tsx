@@ -5,6 +5,7 @@ import {
   AdminMetricStrip,
   AdminPageHeader,
   AdminSectionHeader,
+  AdminSurface,
 } from "@/components/admin/AdminDataPrimitives";
 import {
   getAdminUserMetrics,
@@ -155,8 +156,7 @@ export default async function AdminUsersPage() {
   );
 
   return (
-    <main className={styles.shell}>
-      <div className={styles.inner}>
+    <AdminSurface label="Administration · Nutzeraktivität">
         <AdminPageHeader
           eyebrow="Admin / Nutzer"
           title="Nutzeraktivität"
@@ -313,7 +313,6 @@ export default async function AdminUsersPage() {
           Erhoben am {formatDateTime(metrics.generatedAt)}. Aktivität aus eigenen
           Nachrichten der letzten {metrics.activityWindowDays} Tage.
         </p>
-      </div>
-    </main>
+    </AdminSurface>
   );
 }

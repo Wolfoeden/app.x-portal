@@ -4,6 +4,7 @@ import {
   IconInfo,
   IconSpark,
 } from "@/components/icons";
+import type { ReactNode } from "react";
 
 export type AgentTask = {
   id: string;
@@ -224,11 +225,13 @@ export function AgentDirectory({
   selectedTaskId,
   onSelectAgent,
   onSelectTask,
+  accessNotice,
 }: {
   selectedAgentId: string;
   selectedTaskId: string;
   onSelectAgent: (agent: AgentDefinition) => void;
   onSelectTask: (agent: AgentDefinition, task: AgentTask) => void;
+  accessNotice?: ReactNode;
 }) {
   const selectedAgent = agentById(selectedAgentId);
 
@@ -236,13 +239,20 @@ export function AgentDirectory({
     <section className="agent-directory" aria-labelledby="agent-directory-title">
       <div className="agent-directory-hero">
         <span className="agent-directory-mark" aria-hidden="true"><IconSpark size={22} /></span>
-        <p className="eyebrow">Spezialisierte Arbeitsbereiche</p>
-        <h1 id="agent-directory-title">Der passende KI-Agent für die nächste Aufgabe.</h1>
+        <p className="eyebrow">Konkrete Aufgabenvorlagen</p>
+        <h1 id="agent-directory-title">KI-Agenten beginnen mit einer klaren Aufgabe.</h1>
         <p>
-          Wählen Sie eine funktionale Rolle. Ein Klick öffnet Aufgaben, Fähigkeiten und Grenzen –
-          ohne erfundene Personenprofile und ohne eine Aktion im Hintergrund zu starten.
+          Wählen Sie keinen erfundenen Charakter, sondern einen prüfbaren Arbeitsauftrag.
+          Jede Vorlage nennt Ausgangspunkt, Ergebnis und Grenze. Das Öffnen startet noch keine Ausführung.
         </p>
+        <dl className="agent-proof-legend">
+          <div><dt>Ausgangspunkt</dt><dd>Ihre Angaben und freigegebene Quellen</dd></div>
+          <div><dt>Ergebnis</dt><dd>Ein klar benanntes Arbeitsartefakt</dd></div>
+          <div><dt>Grenze</dt><dd>Keine externe Aktion ohne Freigabe</dd></div>
+        </dl>
       </div>
+
+      {accessNotice}
 
       <div className="agent-card-grid" aria-label="Verfügbare KI-Agenten">
         {agentCatalog.map((agent) => {
@@ -258,12 +268,21 @@ export function AgentDirectory({
               <span className="agent-card-topline">
                 <span className="agent-card-glyph" aria-hidden="true">{agent.glyph}</span>
                 <span className="agent-card-category">{agent.category}</span>
-                {agent.featured ? <span className="agent-card-featured">Für Händler</span> : null}
+                <span className="agent-card-featured">
+                  {agent.tasks.length} Vorlagen{agent.featured ? " · für Händler" : ""}
+                </span>
               </span>
               <strong>{agent.title}</strong>
-              <span className="agent-card-summary">{agent.summary}</span>
+              <span className="agent-card-tasks" aria-label={`Aufgaben für ${agent.title}`}>
+                {agent.tasks.slice(0, 2).map((task) => (
+                  <span key={task.id}>
+                    <b>{task.title}</b>
+                    <small>{task.outcome}</small>
+                  </span>
+                ))}
+              </span>
               <span className="agent-card-action">
-                Details ansehen <IconArrowRight size={14} />
+                Aufgaben und Grenzen prüfen <IconArrowRight size={14} />
               </span>
             </button>
           );
@@ -274,7 +293,7 @@ export function AgentDirectory({
         <div className="ready-task-heading">
           <div>
             <p className="eyebrow">{selectedAgent.category}</p>
-            <h2 id="ready-task-title">Ready-To-Run Tasks</h2>
+            <h2 id="ready-task-title">Konkrete Aufgaben</h2>
           </div>
           <span>{selectedAgent.title}</span>
         </div>
@@ -291,8 +310,9 @@ export function AgentDirectory({
               >
                 <span aria-hidden="true"><IconCheck size={14} /></span>
                 <strong>{task.title}</strong>
-                <small>{task.summary}</small>
-                <span>Task-Vorlage öffnen <IconArrowRight size={13} /></span>
+                <span className="ready-task-input"><b>Ausgangspunkt</b>{task.summary}</span>
+                <span className="ready-task-outcome"><b>Ergebnis</b>{task.outcome}</span>
+                <span>Aufgabe prüfen <IconArrowRight size={13} /></span>
               </button>
             );
           })}
@@ -339,8 +359,9 @@ export function AgentDetails({
       </section>
 
       <section className="agent-task-preview" aria-labelledby="agent-task-preview-title">
-        <p>Ausgewählte Task-Vorlage</p>
+        <p>Ausgewählte Aufgabenvorlage</p>
         <h4 id="agent-task-preview-title">{task.title}</h4>
+        <strong>Ausgangspunkt</strong>
         <span>{task.summary}</span>
         <strong>Ergebnis</strong>
         <span>{task.outcome}</span>

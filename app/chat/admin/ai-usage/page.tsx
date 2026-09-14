@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import {
   AdminDisclosure,
   AdminPageHeader,
+  AdminSurface,
 } from "@/components/admin/AdminDataPrimitives";
 import { writeAuditEvent } from "@/lib/audit/write";
 import {
@@ -28,7 +29,7 @@ import { ProviderDiagnosticPanel } from "./ProviderDiagnosticPanel";
 import styles from "./usage.module.css";
 
 export const metadata: Metadata = {
-  title: "AI Usage | XPORTAL",
+  title: "KI-Nutzung | XPORTAL",
   robots: { index: false, follow: false },
 };
 
@@ -271,10 +272,10 @@ export default async function AiUsageAdminPage({
   });
 
   return (
-    <main className={styles.shell}>
+    <AdminSurface label="Administration · KI-Kosten und Kontingente">
       <AdminPageHeader
         eyebrow="Admin / Betrieb"
-        title="AI-Kosten & Kontingente"
+        title="KI-Kosten & Kontingente"
         description={
           <p>
             Externe Kundennutzung und ihre zuordenbaren Kosten zuerst, danach
@@ -476,7 +477,7 @@ Bei den Konten stehen zwei
               {formatUsd(dashboard.excludedInternal.combinedCostUsd)}
             </strong>{" "}
             ({numberFormat.format(dashboard.excludedInternal.totals.settlements)}
-            {" "}AI-Abrechnungen und{" "}
+            {" "}KI-Abrechnungen und{" "}
             {numberFormat.format(dashboard.excludedInternal.searchUsage.runs)}
             {" "}Webrecherchen) bleiben nur für den Provider-Abgleich sichtbar.
             Externe plus interne bekannte Kosten ergeben{" "}
@@ -563,7 +564,7 @@ Bei den Konten stehen zwei
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan={5}>Noch keine abgerechnete AI-Nutzung.</td></tr>
+                <tr><td colSpan={5}>Noch keine abgerechnete KI-Nutzung.</td></tr>
               )}
             </tbody>
           </table>
@@ -856,6 +857,6 @@ Bei den Konten stehen zwei
         </div>
       </section>
 
-    </main>
+    </AdminSurface>
   );
 }

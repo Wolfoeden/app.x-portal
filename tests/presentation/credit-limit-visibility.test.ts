@@ -41,7 +41,7 @@ function render(planId: string, selfLimit: number | null = null) {
 }
 
 describe("Sichtbarkeit des eigenen Limits", () => {
-  // Ein Limit einzustellen ergibt nur Sinn, wo nach Verbrauch abgerechnet wird.
+  // Ein zusätzliches Nutzungslimit ergibt nur beim bezahlten Teamrahmen Sinn.
   it("zeigt die Einstellung auf dem abgerechneten Plan", () => {
     const markup = render(CREDIT_PLANS.enterprise.id);
 
@@ -58,12 +58,13 @@ describe("Sichtbarkeit des eigenen Limits", () => {
    * Die Zahl allein sagt niemandem, was sie kostet — und die Obergrenze kommt
    * aus der Stufe, nicht aus einer zweiten Zahl, die davon abweichen kann.
    */
-  it("nennt Obergrenze und Höchstkosten beieinander", () => {
+  it("trennt Nutzungsgrenze und festen Monatspreis", () => {
     const markup = render(CREDIT_PLANS.enterprise.id);
 
     expect(markup).toContain(String(CREDIT_PLANS.enterprise.monthlyCredits));
     expect(markup).toContain("50 €");
-    expect(markup).toContain("nur, was Sie");
+    expect(markup).toContain("ändert aber nicht den");
+    expect(markup).toContain("Monatspreis");
   });
 
   it("zeigt ein gespeichertes Limit statt eines leeren Feldes", () => {

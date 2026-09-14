@@ -6,6 +6,7 @@ import {
   AdminMetricStrip,
   AdminPageHeader,
   AdminSectionHeader,
+  AdminSurface,
 } from "@/components/admin/AdminDataPrimitives";
 import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
@@ -103,8 +104,7 @@ export default async function FreelancerApplicationsPage({
   const total = Object.values(counts).reduce((sum, value) => sum + value, 0);
 
   return (
-    <main className={styles.shell}>
-      <div className={styles.inner}>
+    <AdminSurface label="Administration · Bewerbungen">
         <AdminPageHeader
           eyebrow="Admin / Arbeit"
           title="Bewerbungen"
@@ -284,13 +284,12 @@ export default async function FreelancerApplicationsPage({
                 Freelancer bewerben sich über{" "}
                 <Link href="/freelancer/apply">/freelancer/apply</Link>. Sobald
                 eine Bewerbung eingeht, erscheint sie hier — zum
-                Freigeben klickst du dann rechts in der Zeile auf{" "}
+                Freigeben klicken Sie dann rechts in der Zeile auf{" "}
                 <strong>Prüfen &amp; freigeben</strong>.
               </p>
             </div>
           )}
         </div>
-      </div>
-    </main>
+    </AdminSurface>
   );
 }

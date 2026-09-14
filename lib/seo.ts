@@ -69,7 +69,6 @@ export const SITEMAP_ENTRIES = [
   ...MARKETING_PAGES,
   { path: "/agent", priority: 0.8, changeFrequency: "weekly" },
   { path: "/freelancer/apply", priority: 0.7, changeFrequency: "monthly" },
-  { path: "/cardano", priority: 0.5, changeFrequency: "monthly" },
   { path: "/contact", priority: 0.4, changeFrequency: "yearly" },
   { path: "/terms", priority: 0.3, changeFrequency: "yearly" },
   { path: "/privacy", priority: 0.3, changeFrequency: "yearly" },
@@ -84,6 +83,7 @@ export const NON_INDEXABLE_PREFIXES = [
   "/mein-team",
   "/booking/",
   "/whitelist/",
+  "/cardano",
   "/auth/",
   // Consistent with the existing noindex headers for /chat/* in netlify.toml.
   "/chat/",

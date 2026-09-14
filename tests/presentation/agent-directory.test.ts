@@ -60,8 +60,11 @@ describe("agent directory", () => {
 
     expect(markup).toContain('href="/agent"');
     expect(markup).toContain('aria-current="page"');
-    expect(markup).toContain("Der passende KI-Agent für die nächste Aufgabe.");
-    expect(markup).toContain("Ready-To-Run Tasks");
+    expect(markup).toContain("KI-Agenten beginnen mit einer klaren Aufgabe.");
+    expect(markup).toContain("Konkrete Aufgaben");
+    expect(markup).toContain("Ausgangspunkt");
+    expect(markup).toContain("Ergebnis");
+    expect(markup).toContain("Keine externe Aktion ohne Freigabe");
     expect(markup).toContain("EU-Verpackungsverfolgung für Händler");
     expect(markup).toContain("Noch keine autonome Ausführung.");
     expect(markup).not.toContain('id="chat-composer"');
@@ -71,16 +74,18 @@ describe("agent directory", () => {
     }
   });
 
-  it("keeps the agents behind an account", () => {
-    // Ein Gast bekommt die Standardanalyse, nicht die Agenten. Die Sperre
-    // erklaert den Unterschied, statt eine leere Seite zu zeigen.
+  it("shows the truthful tasks to guests while keeping usage behind an account", () => {
+    // Metadaten und sichtbare Seite dürfen keine unterschiedlichen Aufgaben
+    // versprechen. Ein Gast kann Aufgaben und Grenzen prüfen, aber nichts
+    // ausführen und wird vor der Nutzung zum Konto geführt.
     const markup = renderToStaticMarkup(
       createElement(ChatWorkspace, { view: "agents" }),
     );
 
-    expect(markup).toContain("Agenten gibt es mit einem Konto.");
+    expect(markup).toContain("Aufgaben prüfen. Für die Nutzung Konto erstellen.");
     expect(markup).toContain("Konto erstellen");
-    expect(markup).not.toContain("Der passende KI-Agent für die nächste Aufgabe.");
-    expect(markup).not.toContain("Ready-To-Run Tasks");
+    expect(markup).toContain("KI-Agenten beginnen mit einer klaren Aufgabe.");
+    expect(markup).toContain("Konkrete Aufgaben");
+    expect(markup).toContain("Noch keine autonome Ausführung.");
   });
 });

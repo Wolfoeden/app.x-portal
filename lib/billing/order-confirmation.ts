@@ -1,5 +1,5 @@
 import { CREDIT_PLANS } from "@/lib/ai/credit-policy";
-import { ENTERPRISE_START_EURO } from "@/lib/billing/payment-links";
+import { ENTERPRISE_BILLING } from "@/lib/billing/payment-links";
 import {
   BUSINESS_ONLY_NOTICE,
   IMPRINT_EMAIL,
@@ -55,10 +55,9 @@ export function orderConfirmationMessage(): {
       "Guthaben.",
       "",
       "PREIS",
-      `${euroFormat.format(ENTERPRISE_START_EURO)} zum Start, zuzüglich der gesetzlichen Umsatzsteuer.`,
-      "Die tatsächliche Nutzung wird zum Monatsende abgerechnet. Über",
-      "abgerechnete Leistungen erhalten Sie eine Rechnung mit den Pflichtangaben",
-      "nach § 14 UStG.",
+      `${euroFormat.format(ENTERPRISE_BILLING.priceNetEuro)} pro Monat, zuzüglich der gesetzlichen Umsatzsteuer.`,
+      "Der Betrag umfasst das genannte monatliche Kontingent; es gibt keine",
+      "nachträgliche verbrauchsabhängige Mehrberechnung durch XPORTAL.",
       "",
       "LAUFZEIT",
       "Der Plan läuft einen Monat und verlängert sich um jeweils einen weiteren",

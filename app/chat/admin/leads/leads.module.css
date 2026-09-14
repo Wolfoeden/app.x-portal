@@ -1,15 +1,3 @@
-.shell {
-  min-height: 100vh;
-  background: #f6f6f3;
-  color: #20201e;
-  padding: 38px clamp(20px, 5vw, 72px) 72px;
-}
-
-.inner {
-  max-width: 1240px;
-  margin: 0 auto;
-}
-
 .header {
   display: flex;
   align-items: flex-start;
@@ -35,7 +23,7 @@
 .eyebrow {
   margin: 0;
   color: #8b8b84;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -63,7 +51,7 @@
 }
 
 .warning code {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
 }
 
 .filters {
@@ -124,7 +112,7 @@
 
 .tabSmall {
   padding: 5px 11px;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
 }
 
 .tabActive {
@@ -172,7 +160,7 @@
   background: #2c2c29;
   padding: 7px 13px;
   color: #fff;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 650;
   cursor: pointer;
 }
@@ -197,7 +185,7 @@
   border-bottom: 1px solid #e8e8e2;
   padding: 11px 14px;
   color: #8a8a83;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-align: left;
@@ -228,14 +216,14 @@
 .hint {
   margin: 6px 0 0;
   color: #8b8b84;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   line-height: 1.5;
 }
 
 .error {
   margin: 6px 0 0;
   color: #85413a;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   line-height: 1.5;
 }
 
@@ -243,7 +231,7 @@
   display: inline-block;
   border-radius: 999px;
   padding: 3px 9px;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -276,7 +264,7 @@
   background: #f6f6f2;
   padding: 4px 7px;
   color: #20201e;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
 }
 
 .categoryInput:focus {
@@ -297,7 +285,7 @@
   background: none;
   padding: 0;
   color: #56564f;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 650;
   text-decoration: underline;
   cursor: pointer;
@@ -331,7 +319,7 @@
 .detailLabel {
   margin: 0 0 5px;
   color: #8a8a83;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -377,7 +365,7 @@
   background: #fff;
   padding: 8px 12px;
   color: #333330;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 650;
   cursor: pointer;
 }
@@ -388,7 +376,7 @@
   background: #2c2c29;
   padding: 8px 14px;
   color: #fff;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 650;
   cursor: pointer;
 }
@@ -436,14 +424,6 @@
 }
 
 /* Ein Filterdeck und eine lesbare Arbeitsliste ersetzen drei lose Pillenreihen. */
-.shell {
-  padding: 30px clamp(20px, 5vw, 72px) 72px;
-}
-
-.inner {
-  max-width: 1320px;
-}
-
 .filterDeck {
   display: grid;
   gap: 9px;
@@ -574,10 +554,6 @@
 }
 
 @media (max-width: 760px) {
-  .shell {
-    padding: 24px 16px 56px;
-  }
-
   .filterDeck {
     padding: 10px;
   }
@@ -729,7 +705,7 @@
   gap: 4px 14px;
   margin: 0 0 10px;
   color: #686a62;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   line-height: 1.6;
 }
 
@@ -756,7 +732,7 @@
   border-radius: 8px;
   background: #fbfbf8;
   color: #4a4a45;
-  font-size: 11.5px;
+  font-size: 12px;
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
@@ -768,7 +744,7 @@
   gap: 3px 12px;
   margin: 0 0 7px;
   color: #8b8b84;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
 }
 
 .matchFacts {
@@ -798,7 +774,7 @@
   border-radius: 10px;
   background: #fff;
   padding: 10px 12px;
-  font-size: 11.5px;
+  font-size: 12px;
 }
 .rematchHead {
   display: flex;
@@ -818,7 +794,7 @@
 }
 .rematchHead > span:first-child span {
   color: #85877e;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 .rematchHead label {
   display: flex;
@@ -835,7 +811,7 @@
   padding: 0 12px;
   color: #fff;
   font: inherit;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   cursor: pointer;
 }

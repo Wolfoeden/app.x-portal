@@ -59,11 +59,11 @@ export function FreelancerAuthGate() {
     <>
       <section className={styles.portalCard}>
         <p className={styles.eyebrow}>Geschützter Freelancer-Bereich</p>
-        <h2>Anmelden, Profil verwalten und Zahlen sehen.</h2>
+        <h2>Ein Konto schützt Ihre Angaben bis zur Freigabe.</h2>
         <p>
-          Für eine Bewerbung und das spätere Dashboard brauchen Sie ein
-          dauerhaftes Konto. So können nur Sie und XPORTAL Ihre Profildaten
-          ändern.
+          Nach der Anmeldung reichen Sie Ihr Profil zur Sichtung ein. Erst nach
+          der Freigabe können passende Angaben als Beleg in einem Match erscheinen;
+          den Kontakt entscheidet weiterhin der Kunde.
         </p>
         {notice ? (
           <p className={notice.tone === "error" ? styles.formError : styles.callout}>

@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
-import { AdminPageHeader } from "@/components/admin/AdminDataPrimitives";
+import {
+  AdminPageHeader,
+  AdminSurface,
+} from "@/components/admin/AdminDataPrimitives";
 import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
@@ -81,8 +84,7 @@ export default async function FreelancerApplicationDetailPage({
   const defaults = decisionDefaultsFromApplication(application);
 
   return (
-    <main className={styles.shell}>
-      <div className={styles.inner}>
+    <AdminSurface label="Administration · Bewerbung prüfen">
         <AdminPageHeader
           eyebrow="Admin / Bewerbung prüfen"
           title={application.full_name}
@@ -265,7 +267,6 @@ export default async function FreelancerApplicationDetailPage({
             defaults={defaults}
           />
         </div>
-      </div>
-    </main>
+    </AdminSurface>
   );
 }

@@ -1,8 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import "@/app/styles/legal.css";
 
-import { LegalFooter } from "@/components/LegalFooter";
+import {
+  PublicDocumentIntro,
+  PublicFooter,
+  PublicHeader,
+} from "@/components/public/PublicChrome";
 import { completeEmailAuthSession } from "@/lib/auth/browser";
 import {
   emailAuthFailurePath,
@@ -53,20 +58,39 @@ export default function CompleteEmailAuthPage() {
   }, []);
 
   return (
-    <main className="auth-completion-page" aria-live="polite">
-      <section className="auth-completion-card">
-        <span className="auth-completion-mark">X</span>
-        <p className="auth-completion-kicker">XPORTAL</p>
-        <h1>
-          {failed ? "Link konnte nicht bestätigt werden" : "Zugang wird bestätigt"}
-        </h1>
-        <p>
-          {failed
-            ? "Sie werden sicher zur Anmeldung zurückgeführt. Fordern Sie dort bei Bedarf einen neuen Link an."
-            : "Einen Moment bitte. Danach können Sie Ihr Passwort sicher festlegen."}
-        </p>
-      </section>
-      <LegalFooter />
-    </main>
+    <div className="xlegal" lang="de" aria-live="polite" aria-busy={!failed}>
+      <PublicHeader context="Zugang" />
+      <main className="xlegal-document xlegal-document-compact">
+        <PublicDocumentIntro
+          eyebrow="Sicherer Zugang"
+          title={failed ? "Link konnte nicht bestätigt werden." : "Zugang wird bestätigt."}
+          signal={{
+            label: "Status",
+            value: failed ? "Neuen Link anfordern" : "Prüfung läuft",
+          }}
+        >
+          <p>
+            {failed
+              ? "Sie werden sicher zur Anmeldung zurückgeführt. Fordern Sie dort bei Bedarf einen neuen Link an."
+              : "Einen Moment bitte. Danach können Sie Ihr Passwort sicher festlegen."}
+          </p>
+        </PublicDocumentIntro>
+
+        <section className="auth-transition" data-state={failed ? "failed" : "loading"}>
+          <span className="auth-transition-mark" aria-hidden="true">
+            {failed ? "!" : "↗"}
+          </span>
+          <div>
+            <h2>{failed ? "Zurück zur Anmeldung" : "Verschlüsselter Übergang"}</h2>
+            <p>
+              {failed
+                ? "Der fehlerhafte Link wird verworfen; es werden keine Zugangsdaten übernommen."
+                : "Zugangsdaten werden aus der sichtbaren Adresse entfernt, bevor die Sitzung erstellt wird."}
+            </p>
+          </div>
+        </section>
+      </main>
+      <PublicFooter />
+    </div>
   );
 }

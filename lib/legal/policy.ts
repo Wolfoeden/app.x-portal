@@ -20,6 +20,26 @@ export const TERMS_VERSION = "1.0";
 export const TERMS_EFFECTIVE_DATE = "28. August 2026";
 
 /**
+ * Veröffentlichungsstatus der AGB. Die Website darf aus einem Entwurf keine
+ * Freigabe ableiten. Nach der anwaltlichen Prüfung wird genau dieser Wert auf
+ * `approved` gesetzt; der Bestellweg bleibt bis dahin im Code erhalten, aber
+ * kann keinen Vertragsabschluss auslösen.
+ */
+export type TermsReviewStatus = "draft" | "approved";
+export const TERMS_STATUS: TermsReviewStatus = "draft";
+const TERMS_REVIEW_STATES = {
+  draft: {
+    label: "Entwurf — rechtliche Prüfung ausstehend",
+    checkoutEnabled: false,
+  },
+  approved: {
+    label: "Rechtlich geprüft",
+    checkoutEnabled: true,
+  },
+} as const;
+export const TERMS_REVIEW = TERMS_REVIEW_STATES[TERMS_STATUS];
+
+/**
  * XPORTAL richtet sich ausschließlich an Unternehmer nach § 14 BGB. Der Satz
  * steht überall dort, wo jemand eine Entscheidung trifft — die Beschränkung
  * trägt nur, wenn sie vor der Bestellung sichtbar war und der Bestellweg sie

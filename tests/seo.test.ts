@@ -44,6 +44,8 @@ describe("indexing rules", () => {
     // Zwischenseiten ergeben ohne ID oder Token keinen Sinn.
     expect(NON_INDEXABLE_PREFIXES).toContain("/booking/");
     expect(NON_INDEXABLE_PREFIXES).toContain("/whitelist/");
+    expect(NON_INDEXABLE_PREFIXES).toContain("/cardano");
+    expect(INDEXABLE_PATHS).not.toContain("/cardano");
   });
 
   it("keeps the product landing page indexable", () => {
@@ -151,10 +153,11 @@ describe("public SEO outputs", () => {
     const privatePaths = [
       "/api/", "/api/funnel-events", "/api?debug=1",
       "/chat/admin", "/chat/admin?tab=users", "/chat/admin/users",
-      "/chat/preview", "/chat/agent-grid",
+      "/chat/preview",
       "/mein-team", "/mein-team?list=1",
       "/booking", "/booking/secret", "/booking?token=secret",
       "/whitelist/confirm?token=secret", "/whitelist",
+      "/cardano", "/cardano?joined=1",
       "/auth", "/auth/callback?code=secret", "/auth?token=secret",
     ];
     for (const agent of ["Googlebot", "OAI-SearchBot", "GPTBot", "Google-Extended"]) {

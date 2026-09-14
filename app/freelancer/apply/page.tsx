@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { PublicFooter, PublicHeader } from "@/components/public/PublicChrome";
+import { MatchProtocol } from "@/components/product/MatchProtocol";
 import { loadFreelancerPortalState } from "@/lib/freelancer/profile-data";
 import { openInvite } from "@/lib/sourcing/conversion";
 import type {
@@ -25,12 +27,6 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
-
-const steps = [
-  "Profil ausfüllen",
-  "Prüfung durch XPORTAL",
-  "Freischaltung und Matching",
-];
 
 const previewProfile: EditableFreelancerProfile = {
   id: "a10f78f8-e6ec-47d2-aee9-7fd97b86c9d4",
@@ -84,27 +80,23 @@ export default async function FreelancerApplyPage({
     user && !user.isAnonymous
       ? await loadFreelancerPortalState(user.id)
       : null;
+  const protocolStep = portalState?.kind === "application"
+    ? portalState.status === "approved" ? 3 : 2
+    : portalState?.kind === "profile" || preview
+      ? 3
+      : 1;
 
   return (
-    <main className={styles.shell} lang="de">
+    <>
+      <PublicHeader context="Freelancer-Portal" />
+      <main className={styles.shell} lang="de">
       <div className={styles.inner}>
-        <nav className={styles.topbar} aria-label="Freelancer-Navigation">
-          <div>
-            <Link className={styles.wordmark} href="/chat">
-              XPORTAL
-            </Link>
-            <span>/ Freelancer</span>
-          </div>
-          <Link className={styles.backLink} href="/chat">
-            Zum Matching
-          </Link>
-        </nav>
         <header className={styles.header}>
           <p className={styles.eyebrow}>Profilverwaltung</p>
           <h1>
             {portalState?.kind === "profile" || preview
               ? "Ihr Freelancer-Profil."
-              : "Werde Teil des geprüften Netzwerks."}
+              : "Werden Sie Teil des geprüften Netzwerks."}
           </h1>
           <p>
             {portalState?.kind === "profile" || preview
@@ -123,6 +115,14 @@ export default async function FreelancerApplyPage({
             Recherche wird dadurch ersetzt.
           </p>
         ) : null}
+
+        <div className={styles.protocol}>
+          <MatchProtocol
+            variant="freelancer"
+            activeStep={protocolStep}
+            label="Vom Profil zum nachvollziehbaren Match"
+          />
+        </div>
 
         {preview ? (
           <FreelancerDashboard
@@ -151,26 +151,20 @@ export default async function FreelancerApplyPage({
           </>
         ) : (
           <>
-            <ol className={styles.steps}>
-              {steps.map((step, index) => (
-                <li key={step}>
-                  <span>{index + 1}</span>
-                  {step}
-                </li>
-              ))}
-            </ol>
             <ApplyForm accountEmail={user.email ?? ""} inviteToken={invite ? inviteToken ?? null : null} />
           </>
         )}
 
         <p className={styles.footer}>
-          Fragen? Schreib uns über das{" "}
+          Fragen? Schreiben Sie uns über das{" "}
           <Link href="/contact">Kontaktformular</Link>. Ihre Daten verarbeiten
           wir nach dem <Link href="/privacy">Datenschutzhinweis</Link>; es
           gelten die <Link href="/terms">AGB</Link> und das{" "}
           <Link href="/imprint">Impressum</Link>.
         </p>
       </div>
-    </main>
+      </main>
+      <PublicFooter />
+    </>
   );
 }

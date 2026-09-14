@@ -296,7 +296,7 @@ export function ApplyForm({
     <form className={styles.form} onSubmit={handleSubmit} noValidate>
       <section className={styles.section}>
         <p className={styles.eyebrow}>01 · Kontakt</p>
-        <h2>Wer bist du?</h2>
+        <h2>Wer sind Sie?</h2>
         <p className={styles.sectionHint}>
           Diese Angaben sehen nur wir. Öffentlich sichtbar wird später nur Ihr
           freigegebenes Profil.
@@ -371,10 +371,10 @@ export function ApplyForm({
 
       <section className={styles.section}>
         <p className={styles.eyebrow}>02 · Profil</p>
-        <h2>Was machst du?</h2>
+        <h2>Was machen Sie?</h2>
         <p className={styles.sectionHint}>
-          Skills und Sprachen entscheiden darüber, für welche Projekte du
-          vorgeschlagen wirst. Nenne lieber konkrete Werkzeuge als allgemeine
+          Skills und Sprachen entscheiden darüber, für welche Projekte Sie
+          vorgeschlagen werden. Nennen Sie lieber konkrete Werkzeuge als allgemeine
           Schlagworte.
         </p>
 
@@ -457,7 +457,7 @@ export function ApplyForm({
 
       <section className={styles.section}>
         <p className={styles.eyebrow}>03 · Zusammenarbeit</p>
-        <h2>Wie und ab wann arbeitest du?</h2>
+        <h2>Wie und ab wann arbeiten Sie?</h2>
 
         <div className={styles.grid}>
           <div className={`${styles.field} ${styles.full}`}>
