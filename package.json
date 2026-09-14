@@ -34,7 +34,7 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@playwright/test": "1.55.0",
+    "@playwright/test": "1.55.1",
     "@types/node": "22.19.19",
     "@types/nodemailer": "8.0.1",
     "@types/react": "19.2.14",
