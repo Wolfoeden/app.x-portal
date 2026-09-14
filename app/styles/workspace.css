@@ -158,21 +158,11 @@
 .product-mark {
   display: flex;
   align-items: center;
-  gap: 9px;
   color: var(--ink);
   font-size: 20px;
   font-weight: 680;
   letter-spacing: -0.035em;
   text-decoration: none;
-}
-
-/* Die Marke ist breiter als hoch (133x101). Die Hoehe gibt das Mass vor, die
-   Breite folgt — eine feste Breite wuerde sie stauchen. */
-.mark-glyph {
-  display: block;
-  width: auto;
-  height: 26px;
-  flex: none;
 }
 
 .icon-button {
@@ -359,19 +349,6 @@
   font-size: var(--fs-xs);
 }
 
-.sidebar-chat-groups {
-  display: grid;
-  gap: 11px;
-}
-
-.sidebar-chat-group h3 {
-  margin: 0 10px 3px;
-  color: var(--muted-light);
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: .04em;
-}
-
 .nav-label {
   margin: 0 12px 9px;
   color: var(--muted-light);
@@ -444,27 +421,9 @@
   white-space: nowrap;
 }
 
-.project-meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.project-loading {
   color: var(--muted-light);
   font-size: var(--fs-xs);
-}
-
-.project-status-badge {
-  border-radius: var(--radius-pill);
-  background: #e9e9e5;
-  padding: 1px 5px;
-  color: var(--muted);
-  font-size: var(--fs-2xs);
-  font-weight: 650;
-}
-
-.project-status-badge.is-shortlisted,
-.project-status-badge.is-contact {
-  background: var(--green-soft);
-  color: var(--green);
 }
 
 .sidebar-chat-row {
@@ -1290,21 +1249,6 @@
   font-weight: 520;
   letter-spacing: -0.03em;
   line-height: 1.15;
-}
-
-.welcome-copy {
-  max-width: 650px;
-  margin: 14px 0 0;
-  color: var(--muted);
-  font-size: var(--fs-base);
-  line-height: 1.65;
-}
-
-.welcome-guest-note {
-  margin: 14px 0 0;
-  color: var(--green);
-  font-size: var(--fs-xs);
-  font-weight: 650;
 }
 
 .trust-row {
@@ -4530,10 +4474,6 @@ dd.is-unknown,
     font-size: var(--fs-2xl);
   }
 
-  .welcome-copy {
-    font-size: var(--fs-base);
-  }
-
   .trust-row {
     flex-wrap: wrap;
     margin: 18px 0;
@@ -4753,12 +4693,6 @@ dd.is-unknown,
   .cookie-options { grid-template-columns: 1fr; }
 }
 
-.welcome-protocol {
-  width: min(100%, 900px);
-  margin-top: 22px;
-  text-align: left;
-}
-
 .result-protocol {
   width: min(100%, 940px);
 }
@@ -4847,7 +4781,6 @@ dd.is-unknown,
   display: flex; align-items: flex-start; justify-content: space-between; gap: 32px;
   padding: 5px 0 8px;
 }
-.plans-dialog-header .eyebrow,
 .plans-section-label {
   margin: 0 0 7px; color: var(--green); font-size: 10px; font-weight: 750;
   letter-spacing: .11em; text-transform: uppercase;
@@ -4855,9 +4788,6 @@ dd.is-unknown,
 .plans-dialog-header h2 {
   margin: 0; font-family: var(--font-serif); font-size: clamp(28px, 4vw, 42px);
   font-weight: 400; letter-spacing: -.04em;
-}
-.plans-dialog-header > div > p:last-child {
-  max-width: 680px; margin: 8px 0 0; color: var(--muted); font-size: var(--fs-xs); line-height: 1.55;
 }
 .plans-balance {
   display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px;
@@ -4869,24 +4799,6 @@ dd.is-unknown,
 .plans-balance-figure { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .plans-balance-figure strong { font-size: 24px; letter-spacing: -.03em; }
 .plans-balance-figure code { color: var(--muted); font-size: var(--fs-2xs); }
-
-.plans-action-costs {
-  display: grid; grid-template-columns: minmax(220px, .8fr) minmax(0, 1.45fr); gap: 34px;
-  align-items: center; border: 1px solid var(--border); border-radius: var(--radius-md);
-  background: var(--ink); padding: 20px; color: #fff;
-}
-.plans-action-costs h3 { margin: 0; font-size: 17px; letter-spacing: -.02em; }
-.plans-action-costs > div > p:last-child { margin: 6px 0 0; color: rgba(255,255,255,.64); font-size: var(--fs-2xs); line-height: 1.5; }
-.plans-action-costs dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; }
-.plans-action-costs dl > div { min-width: 0; border-left: 1px solid rgba(255,255,255,.18); padding: 3px 18px; }
-.plans-action-costs dt { color: rgba(255,255,255,.62); font-size: 10px; line-height: 1.4; }
-.plans-action-costs dd { margin: 3px 0 0; font-size: 15px; font-weight: 700; }
-
-.plans-note {
-  margin: 0; border: 1px solid var(--border); border-left: 3px solid #b9a7f0;
-  border-radius: var(--radius-sm); background: var(--surface);
-  padding: 10px 13px; color: var(--muted); font-size: var(--fs-2xs);
-}
 
 .plans-grid { display: grid; gap: 14px; }
 .plan-card {
@@ -4918,17 +4830,6 @@ dd.is-unknown,
 .plan-card > button:hover:not(:disabled),
 .plan-card .plan-action:not(.is-quiet):hover { border-color: #000; background: #000; }
 .plan-card > button:disabled { border-color: var(--border); background: var(--surface-soft); color: var(--muted); cursor: not-allowed; }
-
-/* Der Ansprechpartner steht unter dem Knopf, nicht daneben: die Abrechnung
-   nach Verbrauch wirft Fragen auf, die ein Formular nicht beantwortet. */
-.plan-contact-note {
-  margin: 8px 0 0;
-  color: var(--muted-light);
-  font-size: var(--fs-2xs);
-  line-height: 1.5;
-}
-.plan-contact-note a { color: var(--muted); text-underline-offset: 2px; }
-.plan-contact-note a:hover { color: var(--ink); }
 
 /* Die Bestätigung der Unternehmereigenschaft vor der Buchung. Dieselbe
    Formensprache wie das Häkchen im Anmeldedialog — es ist dieselbe Art von
@@ -4975,8 +4876,6 @@ dd.is-unknown,
 
 @media (max-width: 780px) {
   .plans-dialog-header { gap: 18px; }
-  .plans-action-costs { grid-template-columns: 1fr; gap: 16px; }
-  .plans-action-costs dl > div:first-child { border-left: 0; padding-left: 0; }
   .plan-card-offer { grid-template-columns: 1fr 1fr; }
   .plan-card-offer .plan-features { grid-column: 1 / -1; }
 }
@@ -4985,11 +4884,8 @@ dd.is-unknown,
   .plans-dialog { gap: 12px; }
   .plans-dialog-header { display: grid; }
   .plans-dialog-header .plans-close { grid-row: 1; justify-self: end; }
-  .plans-dialog-header > div { grid-row: 2; }
+  .plans-dialog-header h2 { grid-row: 2; }
   .plans-balance-figure { align-items: flex-start; }
-  .plans-action-costs dl { grid-template-columns: 1fr; gap: 10px; }
-  .plans-action-costs dl > div,
-  .plans-action-costs dl > div:first-child { border-top: 1px solid rgba(255,255,255,.18); border-left: 0; padding: 10px 0 0; }
   .plan-card-offer { grid-template-columns: 1fr; gap: 14px; }
   .plan-card-offer .plan-features { grid-column: auto; }
   .plan-price { flex-wrap: wrap; }

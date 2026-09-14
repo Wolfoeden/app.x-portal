@@ -14,11 +14,10 @@ test.describe("geschützte Rollen-Journeys", () => {
   test("Gast: Projekt beschreiben, ohne versteckte Kontoaktion", async ({ page }) => {
     await page.goto("/chat/preview?auth=guest&state=empty");
     await expect(page.getByRole("heading", { name: "Aufgabe beschreiben. Belege und Lücken sehen." })).toBeVisible();
-    await expect(page.getByLabel("Das passiert nach dem Absenden")).toBeVisible();
-    await expect(page.getByText("KI", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("Regeln", { exact: true }).first()).toBeVisible();
+    await expect(page.getByLabel("Das passiert nach dem Absenden")).toHaveCount(0);
+    await expect(page.getByText("Gast-Credits", { exact: false })).toHaveCount(0);
+    await expect(page.getByText("KI strukturiert den Text", { exact: false })).toHaveCount(0);
     await expect(page.getByLabel("Projekt oder Ergänzung beschreiben")).toBeVisible();
-    await expect(page.getByText("Ohne Anmeldung starten")).toBeVisible();
   });
 
   test("Konto: Ergebnis, Merkliste und Kontostand bleiben erreichbar", async ({ page }) => {
@@ -39,12 +38,13 @@ test.describe("geschützte Rollen-Journeys", () => {
     await expect(page.getByRole("dialog", { name: "Credits und Pläne" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Enterprise" })).toBeVisible();
     await expect(page.getByText("3.000 Credits monatlich")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Was eine bestätigte Aktion kostet" })).toBeVisible();
-    await expect(page.getByText("30 Credits", { exact: true })).toBeVisible();
-    await expect(page.getByText("Keine", { exact: true })).toBeVisible();
-    const gatedCheckout = page.getByText("Buchung nach rechtlicher Freigabe", { exact: false });
+    await expect(page.getByRole("heading", { name: "Was eine bestätigte Aktion kostet" })).toHaveCount(0);
+    const gatedCheckout = page.locator("a.plan-action");
     await expect(gatedCheckout).toHaveAttribute("aria-disabled", "true");
     await expect(gatedCheckout).not.toHaveAttribute("href", /.+/u);
+    await page.getByRole("checkbox", { name: /Ich bestätige, dass ich als Unternehmer/u }).check();
+    await expect(gatedCheckout).toHaveAttribute("aria-disabled", "false");
+    await expect(gatedCheckout).toHaveAttribute("href", /^https:\/\/buy\.stripe\.com\//u);
   });
 
   test("Freelancer: Profilverwaltung und Nachweise sind erreichbar", async ({ page }) => {
@@ -91,7 +91,9 @@ test.describe("geschützte Rollen-Journeys", () => {
       "/diese-seite-gibt-es-nicht",
     ]) {
       await page.goto(route);
-      await expect(page.getByRole("link", { name: "XPORTAL – Freelancer finden" })).toBeVisible();
+      const brand = page.getByRole("link", { name: "XPORTAL – Freelancer finden" });
+      await expect(brand).toBeVisible();
+      await expect(brand.locator("svg")).toHaveCount(0);
       await expect(page.locator("h1:visible")).toHaveCount(1);
       await expect(page.getByRole("contentinfo")).toContainText("Match-Protokoll statt Black Box.");
     }

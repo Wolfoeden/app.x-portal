@@ -12,10 +12,13 @@ Basis: `e36d9e24e8beb41ccc8887dc3b78a529252f7c74` · 12. September 2026
 | A-SEO | automatisch | `tests/seo.test.ts`, `tests/marketing.test.ts`, `tests/product-truth.test.ts` |
 | A-PROOF | automatisch | `tests/presentation/core-journey-proof.test.ts`: gemeinsamer Beweisfaden, Fallback-Wahrheit, Ergebnissprache und progressive Preisstufe |
 | A-SURFACE | automatisch | `tests/presentation/package-3-surfaces.test.ts`: gemeinsamer Sekundärseitenkopf, Auth-Übergang, Admin-Rahmen und vollständige Agent-Grid-Entfernung |
+| A-CONSOLIDATION | automatisch | `tests/presentation/package-4-release.test.ts`: extrahierte Chat-Verhalten, reduzierter Einstieg, flache Sidebar, fokussierter Kontodialog und freigegebene AGB |
+| A-RELEASE-VISUAL | automatisch | `pnpm test:visual-release`: Gast, Marketing, AGB, Preisdialog und Admin bei 390, 768 und 1280 px |
+| A-PERF | automatisch | `pnpm check:performance`: gzip-Budgets für JavaScript/CSS und Rohbudget für öffentliche Assets |
 | A-A11Y | automatisch/manuell | Rollen-Journeys plus M-A11Y-FOKUS und M-A11Y-STRUKTUR |
 | M-A11Y-FOKUS | manuell | Bei 390 px: Menü öffnen, Tab/Shift+Tab bleibt darin, Escape schließt, Fokus kehrt zum Menüknopf zurück; geschlossenes Menü erhält keinen Fokus |
 | M-A11Y-STRUKTUR | manuell | Jede öffentliche Route hat genau eine sichtbare H1; Text ist mindestens 12 px; 200 % Zoom bleibt ohne Funktionsverlust bedienbar |
-| M-COMMERCIAL | manuell | Konto → Mehr Credits: 50 € netto/Monat, 3.000 Credits, keine Verbrauchsnachberechnung; AGB-Status sperrt nur den Abschluss, nicht die Funktionen |
+| M-COMMERCIAL | manuell | Konto → Mehr Credits: Guthaben, 50 € netto/Monat, 3.000 Credits und genau ein Plan; bestätigte Unternehmereigenschaft aktiviert den rechtlich freigegebenen Bestellweg |
 | M-EXTERNAL | manuell | Externe Buchungslinks zeigen Ziel und senden erst nach bewusstem Klick weiter |
 | M-30S | automatisch/manuell | Marketing-Einstieg nennt im ersten View Produkt, KI-Anteil, Regel-Match, Verantwortung, Startguthaben und nächsten Schritt; Browserprüfung bei breitem, mittlerem und schmalem Viewport |
 
@@ -34,7 +37,7 @@ Basis: `e36d9e24e8beb41ccc8887dc3b78a529252f7c74` · 12. September 2026
 | Route/Familie | Rollen | Funktionsvertrag | Abnahme |
 |---|---|---|---|
 | `/` | alle | Einstieg erklärt das Produkt über `/freelancer-finden`; die Anwendung bleibt direkt unter `/chat` erreichbar | A-REG (`tests/marketing.test.ts`), A-PROOF, M-30S |
-| `/chat` | Gast, Konto, Enterprise | Dialog, Brief, Match-Protokoll, Projektverwaltung, externe Recherche nur nach Bestätigung | A-REG, A-JOURNEY, A-VISUAL, A-PROOF |
+| `/chat` | Gast, Konto, Enterprise | kompakter Dialogeinstieg, Brief, regelbasierte Ergebnisse, Projektverwaltung und externe Recherche nur nach Bestätigung | A-REG, A-JOURNEY, A-VISUAL, A-PROOF, A-CONSOLIDATION, A-RELEASE-VISUAL |
 | `/mein-team` | Konto, Enterprise | kontoübergreifende Merkliste mit sichtbarer H1 | A-REG, A-JOURNEY, M-A11Y-STRUKTUR |
 | `/agent` | alle; Nutzung ab Konto | Metadaten und sichtbarer Katalog beschreiben konkrete Aufgabenvorlagen mit Ausgangspunkt, Ergebnis und Ausführungsgrenze; keine autonome Ausführung | A-SEO, A-JOURNEY, A-VISUAL, A-PROOF |
 | `/freelancer-finden`, `/it-freelancer-finden`, `/ki-freelancer-matching`, `/wie-funktioniert-xportal` | alle | servergerenderte Produktinformation, Match-Protokoll, aktuelle Preise, CTA zum kontextfreien Start | A-SEO, A-VISUAL, A-PROOF, M-30S |
@@ -68,6 +71,6 @@ Basis: `e36d9e24e8beb41ccc8887dc3b78a529252f7c74` · 12. September 2026
 
 ## Freigaberegel
 
-Die Freigabe bleibt an `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build` und `pnpm test:journeys` gebunden. Paket 2 ergänzt A-PROOF und M-30S. Paket 3 ergänzt A-SURFACE und entfernt auf ausdrücklichen Produktentscheid Agent Grid samt seinen 27 isolierten Tests; alle fachfremden Basistests bleiben Teil des Regressionstors. Die eingefrorene Screenshot-Baseline wird nicht ersetzt. Eine Änderung ohne zugeordneten Abnahmepunkt erweitert zuerst diese Matrix.
+Die Freigabe bleibt an `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm check:performance`, `pnpm test:journeys` und `pnpm test:visual-release` gebunden. Paket 2 ergänzt A-PROOF und M-30S. Paket 3 ergänzt A-SURFACE und entfernt auf ausdrücklichen Produktentscheid Agent Grid samt seinen 27 isolierten Tests; alle fachfremden Basistests bleiben Teil des Regressionstors. Paket 4 ergänzt A-CONSOLIDATION, A-RELEASE-VISUAL und A-PERF. Die eingefrorene Screenshot-Baseline wird nicht ersetzt. Eine Änderung ohne zugeordneten Abnahmepunkt erweitert zuerst diese Matrix.
 
-Aktuelle Protokolle: `docs/baseline/e36d9e24e8beb41ccc8887dc3b78a529252f7c74/acceptance-2026-09-13.md`, `docs/xportal-package-2-acceptance.md` und `docs/xportal-package-3-acceptance.md`.
+Aktuelle Protokolle: `docs/baseline/e36d9e24e8beb41ccc8887dc3b78a529252f7c74/acceptance-2026-09-13.md`, `docs/xportal-package-2-acceptance.md`, `docs/xportal-package-3-acceptance.md` und `docs/xportal-package-4-acceptance.md`.

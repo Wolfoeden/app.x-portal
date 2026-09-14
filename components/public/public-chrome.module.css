@@ -15,7 +15,6 @@
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
   flex: 0 0 auto;
   color: var(--ink);
   font-size: 19px;

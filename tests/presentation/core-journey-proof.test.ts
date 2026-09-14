@@ -16,7 +16,6 @@ import {
   previewUsage,
 } from "@/components/chat/preview-fixtures";
 import { MatchProtocol } from "@/components/product/MatchProtocol";
-import { BRIEF_ANALYSIS_CREDITS, EXTERNAL_SEARCH_CREDITS } from "@/lib/ai/credit-policy";
 
 describe("Paket 2: gemeinsamer Beweisfaden", () => {
   it("trennt KI-Strukturierung, Regelabgleich und menschliche Entscheidung", () => {
@@ -38,7 +37,7 @@ describe("Paket 2: gemeinsamer Beweisfaden", () => {
     expect(markup).toContain("ohne KI-Antwort");
   });
 
-  it("erklärt Gaststart und Ergebnis mit demselben Protokoll", () => {
+  it("hält den Gaststart ruhig und belegt erst das Ergebnis", () => {
     const guestMarkup = renderToStaticMarkup(
       createElement(ChatWorkspace, {
         previewData: {
@@ -67,14 +66,15 @@ describe("Paket 2: gemeinsamer Beweisfaden", () => {
     );
 
     expect(guestMarkup).toContain("Aufgabe beschreiben. Belege und Lücken sehen.");
-    expect(guestMarkup).toContain("Das passiert nach dem Absenden");
-    expect(guestMarkup).toContain(`${BRIEF_ANALYSIS_CREDITS} Credits pro Projektanalyse`);
+    expect(guestMarkup).not.toContain("Das passiert nach dem Absenden");
+    expect(guestMarkup).not.toContain("Gast-Credits");
+    expect(guestMarkup).not.toContain("KI strukturiert den Text. Das Matching bleibt regelbasiert.");
     expect(resultMarkup).toContain("Vom Projekttext zur prüfbaren Auswahl");
     expect(resultMarkup).toContain("Im Profil belegt");
     expect(resultMarkup).toContain("Vor Kontakt offen");
   });
 
-  it("zeigt im Preisdialog erst Stand und Aktionskosten, dann genau eine bezahlte Stufe", () => {
+  it("zeigt im Preisdialog nur Kontostand und die eine bezahlte Stufe", () => {
     const markup = renderToStaticMarkup(
       createElement(CreditPlansDialog, {
         usage: previewUsage,
@@ -91,11 +91,11 @@ describe("Paket 2: gemeinsamer Beweisfaden", () => {
       }),
     );
 
-    expect(markup).toContain("Aktueller Stand. Klare nächste Option.");
-    expect(markup).toContain(`${BRIEF_ANALYSIS_CREDITS} Credits`);
-    expect(markup).toContain(`${EXTERNAL_SEARCH_CREDITS} Credits`);
+    expect(markup).toContain("Plan und Guthaben");
+    expect(markup).not.toContain("Was eine bestätigte Aktion kostet");
+    expect(markup).not.toContain("Aktueller Stand. Klare nächste Option.");
+    expect(markup).not.toContain("Fragen zur Abrechnung oder eine Obergrenze vereinbaren");
     expect(markup).toContain("Einzige bezahlte Stufe");
     expect(markup.match(/<h3>Enterprise<\/h3>/gu)).toHaveLength(1);
-    expect(markup).toContain("Keine");
   });
 });

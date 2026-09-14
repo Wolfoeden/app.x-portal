@@ -4,11 +4,10 @@ Basis: `e36d9e24e8beb41ccc8887dc3b78a529252f7c74` (`origin/main`)
 
 ## Ergebnis
 
-Paket 3 ist im lokalen Arbeitsstand umgesetzt. Kontakt, Recht, Auth,
+Paket 3 wurde auf `main` veröffentlicht. Kontakt, Recht, Auth,
 Fehlerzustände, Buchungs-Zwischenseite und Admin verwenden denselben
 XPORTAL-Markenrahmen, dieselben Foundation-Tokens und eine gemeinsame
-Informationslogik. Agent Grid ist vollständig aus dem Produkt entfernt. Es
-wurde nichts gepusht oder deployt.
+Informationslogik. Agent Grid ist vollständig aus dem Produkt entfernt.
 
 ## Sekundärflächen
 
@@ -22,7 +21,7 @@ dieselbe Hierarchie.
 | Kontakt | zugesagte Antwortzeit |
 | Impressum | Anbieterform |
 | Datenschutz | dokumentierter Datenfluss |
-| AGB | rechtliche Freigabe weiterhin ausstehend |
+| AGB | Fassung 1.0, rechtlich geprüft und seit 14. September 2026 freigegeben |
 | Auth-Abschluss | laufende Prüfung oder neuer Link erforderlich |
 | Fehler/404 | Wiederherstellung beziehungsweise Routencode |
 | Buchungs-Zwischenseite | externer Übergang erst nach bewusstem Klick |
@@ -88,8 +87,8 @@ Admin-Rahmen und die vollständige Agent-Grid-Entfernung.
 | exakter Mobile-Reflow | acht repräsentative Routen bei 390 px ohne horizontalen Dokumentüberlauf |
 | visueller Browsercheck | Kontakt, AGB, Buchung und Admin in breitem, mittlerem und schmalem Layout geprüft |
 
-## Verbleibende externe Freigabegrenze
+## Fortgeführte Release-Grenzen
 
-Die AGB bleiben ein ungeprüfter Entwurf. Der Enterprise-Self-Service bleibt
-deshalb deaktiviert. Rechtliche Freigabe, Stripe-Test, Push und Deployment sind
-weiterhin getrennte, nicht ausgeführte Release-Schritte.
+Die AGB-Freigabe ist in der zentralen Policy dokumentiert und der vorhandene
+Enterprise-Abschluss dadurch aktiviert. Stripe-Test, Produktions-Smoke und
+Deploy-Verifikation bleiben technische Release-Gates von Paket 4.

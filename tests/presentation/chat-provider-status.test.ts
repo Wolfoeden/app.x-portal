@@ -8,9 +8,9 @@ import {
 import {
   assistantAttribution,
   normalizeAnalysisTrace,
-  sidebarAccountButtonClassName,
 } from "@/components/ChatWorkspace";
 import type { AiAnalysisTrace } from "@/components/chat-contract";
+import { sidebarAccountButtonClassName } from "@/components/chat/sidebar-chat-list";
 
 function trace(
   provider: Partial<AiAnalysisTrace["provider"]>,

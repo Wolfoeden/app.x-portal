@@ -5,13 +5,15 @@ import { describe, expect, it } from "vitest";
 import { AnalysisTrace, visibleAnalysisSteps } from "@/components/chat/results";
 import { agentLaunchState } from "@/components/chat/agent-launch";
 import {
-  estimatedRequestsLeft,
   mergeUsageSnapshot,
   normalizeUsageSnapshot,
-  publicProgressLabel,
-  usageSummary,
 } from "@/components/ChatWorkspace";
 import type { AiAnalysisTrace, AiUsageSnapshot } from "@/components/chat-contract";
+import {
+  estimatedRequestsLeft,
+  publicProgressLabel,
+  usageSummary,
+} from "@/components/chat/usage-presentation";
 
 const usage: AiUsageSnapshot = {
   credits: {

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { BrandMark } from "@/components/BrandMark";
 import { LegalFooter } from "@/components/LegalFooter";
 import { MARKETING_PAGE } from "@/lib/seo";
 
@@ -12,7 +11,6 @@ export function PublicHeader({ context }: { context?: string }) {
     <header className={styles.header}>
       <div className={styles.headerInner}>
         <Link href={MARKETING_PAGE.find.path} className={styles.brand} aria-label="XPORTAL – Freelancer finden">
-          <BrandMark height={27} />
           <span>XPORTAL</span>
         </Link>
         {context ? <span className={styles.context}>{context}</span> : null}

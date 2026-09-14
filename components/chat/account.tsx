@@ -11,18 +11,14 @@
 import { useState } from "react";
 
 import {
-  BRIEF_ANALYSIS_CREDITS,
   CREDIT_PLANS,
   creditPlan,
-  EXTERNAL_SEARCH_CREDITS,
 } from "@/lib/ai/credit-policy";
 import { confirmBusinessCustomer } from "@/lib/auth/browser";
-import { BUSINESS_ONLY_NOTICE } from "@/lib/legal/policy";
 import { TERMS_REVIEW } from "@/lib/legal/policy";
 
 import type { AiUsageSnapshot, PlanTeamSnapshot } from "../chat-contract";
 import {
-  ENTERPRISE_CONTACT,
   ENTERPRISE_START_EURO,
   enterprisePaymentLink,
 } from "@/lib/billing/payment-links";
@@ -204,11 +200,7 @@ export function CreditPlansDialog({
   return (
     <div className="plans-dialog" role="dialog" aria-label="Credits und Pläne">
       <header className="plans-dialog-header">
-        <div>
-          <p className="eyebrow">Plan &amp; Guthaben</p>
-          <h2>Aktueller Stand. Klare nächste Option.</h2>
-          <p>Erst sehen Sie Ihr verfügbares Guthaben und die Aktionskosten. Danach folgt genau ein bezahlter Plan.</p>
-        </div>
+        <h2>Plan und Guthaben</h2>
         <button className="plans-close" type="button" onClick={onClose}>
           Schließen
         </button>
@@ -226,28 +218,6 @@ export function CreditPlansDialog({
           </strong>
           {customerReference ? <code>{customerReference}</code> : null}
         </div>
-      </section>
-
-      <section className="plans-action-costs" aria-labelledby="plans-action-costs-title">
-        <div>
-          <p className="plans-section-label">Verbrauch</p>
-          <h3 id="plans-action-costs-title">Was eine bestätigte Aktion kostet</h3>
-          <p>Speichern, Prüfen und Kontaktieren starten keine automatische Recherche.</p>
-        </div>
-        <dl>
-          <div>
-            <dt>Projektanalyse</dt>
-            <dd>{BRIEF_ANALYSIS_CREDITS} Credits</dd>
-          </div>
-          <div>
-            <dt>Externe Recherche</dt>
-            <dd>{EXTERNAL_SEARCH_CREDITS} Credits</dd>
-          </div>
-          <div>
-            <dt>Automatik</dt>
-            <dd>Keine</dd>
-          </div>
-        </dl>
       </section>
 
       <div className="plans-grid">
@@ -323,37 +293,8 @@ export function CreditPlansDialog({
               void confirmBusinessCustomer().catch(() => undefined);
             }}
           >
-            {TERMS_REVIEW.checkoutEnabled ? "Plan buchen" : "Buchung nach rechtlicher Freigabe"} <IconArrowUpRight size={12} />
+            {TERMS_REVIEW.checkoutEnabled ? "Plan buchen" : "Plan derzeit nicht verfügbar"} <IconArrowUpRight size={12} />
           </a>
-          {!businessConfirmed ? (
-            <p className="plan-contact-note">
-              Setzen Sie zuerst das Häkchen — XPORTAL schließt Verträge
-              ausschließlich mit Unternehmern.
-            </p>
-          ) : null}
-          {!TERMS_REVIEW.checkoutEnabled ? (
-            <p className="plan-contact-note" role="status">
-              AGB-Status: {TERMS_REVIEW.label}. Der Bestellweg bleibt technisch
-              erhalten und wird nach dokumentierter Freigabe aktiviert.
-            </p>
-          ) : null}
-          {/* Bei Fragen zur Abrechnung braucht es einen direkten Weg, den ein
-              Formular nicht beantwortet. Deshalb steht der Ansprechpartner
-              neben dem Knopf und nicht auf einer Unterseite. */}
-          <p className="plan-contact-note">
-            Fragen zur Abrechnung oder eine Obergrenze vereinbaren:{" "}
-            <a href={`mailto:${ENTERPRISE_CONTACT.email}`}>{ENTERPRISE_CONTACT.email}</a>
-            {" · "}
-            <a href={`tel:${ENTERPRISE_CONTACT.phone}`}>{ENTERPRISE_CONTACT.phoneDisplay}</a>
-            {" · "}
-            {ENTERPRISE_CONTACT.person}
-          </p>
-          <p className="plans-note">
-            {BUSINESS_ONLY_NOTICE} Alle Preise verstehen sich netto zuzüglich der
-            gesetzlichen Umsatzsteuer. Es gelten die{" "}
-            <a href="/terms">Allgemeinen Geschäftsbedingungen</a>. Das Guthaben
-            wird erst nach bestätigter Zahlung freigeschaltet.
-          </p>
         </article>
       </div>
 

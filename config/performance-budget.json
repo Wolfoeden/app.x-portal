@@ -1,0 +1,8 @@
+{
+  "clientJavaScriptGzipTotalBytes": 480000,
+  "clientJavaScriptGzipLargestBytes": 120000,
+  "clientCssGzipTotalBytes": 48000,
+  "clientCssGzipLargestBytes": 22000,
+  "publicAssetsTotalBytes": 250000,
+  "publicAssetLargestBytes": 150000
+}

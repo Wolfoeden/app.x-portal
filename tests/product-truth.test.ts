@@ -39,10 +39,10 @@ describe("zentrale Produktwahrheit", () => {
     ]) expect(source).not.toMatch(stale);
   });
 
-  it("macht den ungeprüften AGB-Status technisch wirksam, ohne Code zu löschen", () => {
-    expect(TERMS_STATUS).toBe("draft");
-    expect(TERMS_REVIEW.checkoutEnabled).toBe(false);
-    expect(TERMS_REVIEW.label).toContain("Prüfung ausstehend");
+  it("schaltet den anwaltlich freigegebenen AGB-Stand für den Bestellweg frei", () => {
+    expect(TERMS_STATUS).toBe("approved");
+    expect(TERMS_REVIEW.checkoutEnabled).toBe(true);
+    expect(TERMS_REVIEW.label).toBe("Rechtlich geprüft");
   });
 
   it("isoliert Cardano und Whitelist von Recruiting-SEO", () => {

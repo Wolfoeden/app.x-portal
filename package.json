@@ -18,9 +18,11 @@
     "test": "vitest run",
     "test:journeys": "playwright test tests/e2e/role-journeys.spec.ts",
     "test:visual-baseline": "playwright test tests/e2e/visual-baseline.spec.ts",
+    "test:visual-release": "playwright test tests/e2e/release-visual.spec.ts",
+    "check:performance": "node scripts/check-performance-budget.mjs",
     "test:watch": "vitest",
     "test:rls": "supabase test db",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm check:performance"
   },
   "dependencies": {
     "@netlify/functions": "5.3.0",

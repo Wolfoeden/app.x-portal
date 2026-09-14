@@ -7,9 +7,8 @@ import {
   ChatWorkspace,
   IncompleteChatStreamError,
   parseStreamResponse,
-  projectStatusLabel,
-  sidebarChatGroups,
 } from "@/components/ChatWorkspace";
+import { SidebarChatList } from "@/components/chat/sidebar-chat-list";
 
 function eventStream(...events: unknown[]): Response {
   return new Response(
@@ -70,16 +69,24 @@ describe("sidebar hierarchy", () => {
     expect(markup).toContain("Merkliste");
   });
 
-  it("groups chat history by recency and translates workflow states", () => {
-    const groups = sidebarChatGroups([
-      { id: "today", title: "Heute", updatedAt: "2026-08-25T12:00:00.000Z", status: "matching" },
-      { id: "yesterday", title: "Gestern", updatedAt: "2026-08-24T12:00:00.000Z", status: "shortlisted" },
-      { id: "older", title: "Früher", updatedAt: "2026-08-01T12:00:00.000Z", status: "closed" },
-    ], new Date("2026-08-25T15:00:00.000Z"));
+  it("shows one flat chat history without dates or workflow labels", () => {
+    const markup = renderToStaticMarkup(createElement(SidebarChatList, {
+      chats: [
+        { id: "matching", title: "SAP Migration", updatedAt: "2026-08-25T12:00:00.000Z", status: "matching" },
+        { id: "shortlisted", title: "Data Platform", updatedAt: "2026-08-24T12:00:00.000Z", status: "shortlisted" },
+        { id: "contact", title: "Support Team", updatedAt: "2026-08-01T12:00:00.000Z", status: "contact" },
+      ],
+      activeProjectId: null,
+      loadingProjectId: null,
+      onOpen: () => undefined,
+      onPrefetch: () => undefined,
+      onManage: () => undefined,
+    }));
 
-    expect(groups.map((group) => group.label)).toEqual(["Heute", "Gestern", "Früher"]);
-    expect(projectStatusLabel("matching")).toBe("Abgleich");
-    expect(projectStatusLabel("shortlisted")).toBe("Auswahl");
-    expect(projectStatusLabel("closed")).toBe("Abgeschlossen");
+    expect(markup).toContain("SAP Migration");
+    expect(markup).toContain("Data Platform");
+    expect(markup).toContain("Support Team");
+    expect(markup).not.toMatch(/Heute|Gestern|Letzte 7 Tage|Früher/u);
+    expect(markup).not.toMatch(/Abgleich|Auswahl|Kontakt/u);
   });
 });

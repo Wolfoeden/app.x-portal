@@ -4,10 +4,11 @@ Basis: `e36d9e24e8beb41ccc8887dc3b78a529252f7c74` (`origin/main`)
 
 ## Ergebnis
 
-Paket 2 ist im lokalen Arbeitsstand umgesetzt. Marketing, Chat, Ergebnisse,
-Kontodialog, Freelancer-Onboarding und Agentenkatalog erzählen denselben
-prüfbaren Produktablauf. Bestehende Funktionen bleiben durch das vollständige
-Regressionstor geschützt. Es wurde nichts gepusht oder deployt.
+Paket 2 wurde mit Paket 3 auf `main` veröffentlicht. Marketing, Chat,
+Ergebnisse, Freelancer-Onboarding und Agentenkatalog erzählen denselben
+prüfbaren Produktablauf. Paket 4 konsolidiert anschließend den Chat-Einstieg
+und den Kontodialog; die Funktionsverträge bleiben durch das vollständige
+Regressionstor geschützt.
 
 ## Gemeinsamer Beweisfaden
 
@@ -37,9 +38,10 @@ Ausführungsgrenze.
 | Externe Recherche | 30 Credits nach Bestätigung |
 | Enterprise | 50 Euro netto pro Monat, 3.000 Credits, keine Verbrauchsnachberechnung |
 
-Alle Zahlen werden aus `lib/ai/credit-policy.ts` bezogen. Der
-Enterprise-Abschluss bleibt gesperrt, solange
-`lib/legal/policy.ts` den AGB-Status `draft` ausweist.
+Alle Zahlen werden aus `lib/ai/credit-policy.ts` bezogen. Die AGB-Fassung 1.0
+wurde nach der vom Betreiber bestätigten anwaltlichen Prüfung zum
+14. September 2026 freigegeben. Der bestehende Enterprise-Abschluss ist damit
+aktiv; Preis, Unternehmereigenschaft und Zahlungslogik bleiben unverändert.
 
 ## Automatische Abnahme
 
@@ -66,10 +68,10 @@ automatisiert auf horizontalen Überlauf geprüft.
   breitem, mittlerem und schmalem Layout geprüft.
 - Marketing zeigt im ersten sichtbaren Bereich Nutzen, Zuständigkeiten,
   Startguthaben, Preis der Projektanalyse und den nächsten Schritt.
-- Chat-Composer und Ergebnisansicht setzen den Beweisfaden fort; Karten
-  trennen Profilbelege von vor dem Kontakt offenen Punkten.
-- Der Kontodialog zeigt zuerst den Ist-Zustand, dann konkrete Aktionskosten und
-  erst danach eine einzelne bezahlte Enterprise-Stufe.
+- Ergebnisansicht und Karten trennen Profilbelege von vor dem Kontakt offenen
+  Punkten; der leere Chat-Einstieg bleibt bewusst kompakt.
+- Der Kontodialog zeigt Guthaben und genau eine bezahlte Enterprise-Stufe ohne
+  zusätzliche Verbrauchserklärung.
 - Das Freelancer-Onboarding nutzt denselben Markenrahmen und macht den Status
   im Beweisfaden sichtbar.
 - Der Agentenkatalog beschreibt konkrete Aufgaben, Ergebnisse und Grenzen vor
@@ -81,10 +83,8 @@ read-only Vorschau statt eines Absturzes; außerdem verdrängt das Gast-Gate den
 Produktbeweis nicht mehr. Ein mobiler Doppelkontext im Freelancer-Header und
 ein zu schwacher Textkontrast wurden ebenfalls korrigiert.
 
-## Verbleibende externe Freigabegrenze
+## Fortgeführte Release-Grenzen
 
-Die AGB sind weiterhin ein ungeprüfter Entwurf. Deshalb bleibt der
-Enterprise-Self-Service technisch deaktiviert. Eine anwaltliche Freigabe,
-Stripe-Testabnahme, Produktions-Smoke und Deploy-Verifikation sind getrennte,
-noch nicht autorisierte Release-Schritte; sie sind nicht Teil dieser lokalen
-Abnahme.
+Die rechtliche Freigabe wurde am 14. September 2026 in der zentralen Policy
+dokumentiert. Stripe-Webhook, Checkout und Produktionszustand bleiben
+eigenständige technische Release-Gates und werden in Paket 4 erneut geprüft.

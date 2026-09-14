@@ -14,18 +14,14 @@ import {
 } from "react";
 import {
   ACCOUNT_MONTHLY_CREDITS,
-  affordableCount,
   BRIEF_ANALYSIS_CREDITS,
-  countLabel,
   CREDIT_PLANS,
   creditPlan,
   EXTERNAL_SEARCH_CREDITS,
 } from "@/lib/ai/credit-policy";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
-import { BrandMark } from "@/components/BrandMark";
 import { openCookieSettings } from "@/components/CookieConsent";
 import { LegalFooter } from "@/components/LegalFooter";
-import { MatchProtocol } from "@/components/product/MatchProtocol";
 import { EmptyState } from "@/components/ui/Primitives";
 import {
   AgentDetails,
@@ -38,7 +34,6 @@ import {
 } from "@/components/AgentDirectory";
 import {
   IconAlertCircle,
-  IconArrowRight,
   IconArrowUp,
   IconChat,
   IconCheck,
@@ -88,6 +83,20 @@ import {
 } from "./chat/shared";
 import { ProjectDetails, ResultSection, SavedProfileList } from "./chat/results";
 import {
+  SidebarChatList,
+  sidebarAccountButtonClassName,
+  SidebarSkeleton,
+} from "./chat/sidebar-chat-list";
+import {
+  publicProgressLabel,
+  usageSummary,
+} from "./chat/usage-presentation";
+import {
+  type GuidedSuggestion,
+  SuggestionGrid,
+  WelcomeState,
+} from "./chat/welcome";
+import {
   type AiAnalysisTrace,
   type AiUsageSnapshot,
   type PlanTeamSnapshot,
@@ -103,7 +112,6 @@ import {
   type ExternalFreelancerCandidate,
   type ExternalFreelancerSearchResponse,
   type FreelancerProfileResult,
-  type CreditBalanceSnapshot,
   type MatchingStatus,
   type ProjectDetailResponse,
   type ProjectCollectionItem,
@@ -115,11 +123,6 @@ import {
   type VerificationLevel,
   defaultChatApiPaths,
 } from "./chat-contract";
-
-
-export function sidebarAccountButtonClassName(isAccountUser: boolean): string {
-  return `sidebar-account-button${isAccountUser ? "" : " is-guest-login"}`;
-}
 
 /**
  * Examples, not a menu. They are worded broadly on purpose: the catalogue
@@ -135,7 +138,6 @@ const SIDEBAR_WIDTH_STORAGE_KEY = "xportal.sidebar-width.v2";
 function clampSidebarWidth(value: number): number {
   return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, Math.round(value)));
 }
-
 type SidebarPreferences = { width: number };
 
 /**
@@ -260,49 +262,6 @@ function useSidebarWidth() {
     isResizingSidebar,
   };
 }
-
-/**
- * Three ready-to-send briefs instead of four category headings.
- *
- * Each aims at a cluster the catalogue can actually serve: measured on
- * 2026-08-21 across the 66 matchable profiles, at least two skill hits are
- * available for performance marketing (9 profiles), AI automation (8) and
- * requirements engineering (6). Classic software development reaches 4 and is
- * deliberately not offered, because the example a visitor clicks first sets
- * the expectation the result then has to meet.
- *
- * No rate is named: 52 of those 66 profiles carry none, so a budget in the
- * example would promise a filter the data cannot honour.
- */
-const suggestions = [
-  {
-    label: "KI & Automatisierung",
-    description: "LLM · RAG · n8n · KI-Agenten",
-    draftPrefix:
-      "Wir wollen wiederkehrende Abläufe mit KI automatisieren: n8n-Workflows bauen und ein LLM an unsere Bestandssysteme anbinden, perspektivisch auch RAG auf unsere eigenen Dokumente. Projektbasis, remote, Start kurzfristig.",
-    intro:
-      "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Was Sie nicht erwähnen, ergänze ich nicht.",
-  },
-  {
-    label: "SAP",
-    description: "S/4HANA · FI/CO · HCM · Migration",
-    draftPrefix:
-      "Wir suchen Unterstützung im SAP-Umfeld: SAP S/4HANA, Anbindung an unsere bestehenden Systeme und Begleitung der Migration. Erfahrung mit SAP FI/CO oder SAP HCM ist willkommen. Projektbasis, remote möglich, Start in den nächsten Wochen.",
-    intro:
-      "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Was Sie nicht erwähnen, ergänze ich nicht.",
-  },
-  {
-    label: "1st & 2nd Level Support",
-    description: "IT Support · Helpdesk · L1/L2",
-    draftPrefix:
-      "Wir brauchen Verstärkung im IT Support: 1st und 2nd Level, Helpdesk für unsere Mitarbeitenden, Ticketbearbeitung und Störungsbehebung. Remote möglich, Start kurzfristig.",
-    intro:
-      "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Was Sie nicht erwähnen, ergänze ich nicht.",
-  },
-] as const;
-
-type Suggestion = (typeof suggestions)[number];
-
 
 type PendingAssistant = {
   id: string;
@@ -1007,75 +966,6 @@ function authViewFromClaims(data: unknown): AuthView {
       : null,
   };
 }
-
-function formatRelativeDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Kürzlich";
-  const diff = Date.now() - date.getTime();
-  const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) return "Gerade eben";
-  if (minutes < 60) return `Vor ${minutes} Min.`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `Vor ${hours} Std.`;
-  return new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "short" }).format(date);
-}
-
-
-
-/**
- * Exact since a normal search carries a flat price: the balance divided by
- * that price is the number of searches left, not an estimate. Still floored,
- * so a remainder below one search is never advertised as one.
- */
-export function estimatedRequestsLeft(credits: CreditBalanceSnapshot): number {
-  if (credits.creditsPerRequest <= 0) return 0;
-  return Math.floor(credits.remaining / credits.creditsPerRequest);
-}
-
-export function usageSummary(
-  usage: AiUsageSnapshot,
-  authenticated: boolean,
-): string {
-  const left = estimatedRequestsLeft(usage.credits);
-  const balance = `Guthaben: ${formatCredits(usage.credits.remaining)} Credits · ${formatCredits(left)} ${
-    left === 1 ? "Anfrage" : "Anfragen"
-  }`;
-  // Für ein angemeldetes Konto ist die zweite Zahl die interessantere: eine
-  // Recherche kostet ein Vielfaches einer Anfrage, und wie oft sie noch geht,
-  // rechnet sonst niemand im Kopf aus.
-  const searches = affordableCount(usage.credits.remaining, "research");
-  return authenticated
-    ? `${balance} · ${countLabel(searches, "research")}`
-    : balance;
-}
-
-
-
-export function publicProgressLabel(label: string): string {
-  const normalized = label.toLocaleLowerCase("de-DE");
-  if (normalized.includes("speicher")) return "Anfrage wird gespeichert";
-  if (normalized.includes("teiltreffer")) {
-    return "Teiltreffer und offene Muss-Kriterien werden aufbereitet";
-  }
-  if (normalized.includes("kein") && normalized.includes("treffer")) {
-    return "Interner Profilabgleich abgeschlossen · kein passendes Profil gefunden";
-  }
-  if (normalized.includes("profil") || normalized.includes("abgleich")) {
-    if (normalized.includes("aufbereit") || normalized.includes("vorbereit")) {
-      return "Passende Profile werden nach belegter Passung priorisiert";
-    }
-    return "Profile werden nach belegten Kriterien geprüft";
-  }
-  if (normalized.includes("struktur") || normalized.includes("analys")) {
-    return "Projektanforderungen werden strukturiert";
-  }
-  return "Anfrage wird verarbeitet";
-}
-
-
-
-
-
 
 function formatUsageReset(value: string) {
   const date = new Date(value);
@@ -1926,7 +1816,7 @@ export function ChatWorkspace({
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  const startGuidedRequest = (suggestion: Suggestion) => {
+  const startGuidedRequest = (suggestion: GuidedSuggestion) => {
     setActiveProject(null);
     setBrief(null);
     setProfiles([]);
@@ -2765,7 +2655,6 @@ export function ChatWorkspace({
         <div className="sidebar-scroll">
         <div className="sidebar-top">
           <a className="product-mark" href="/freelancer-finden" aria-label="XPORTAL Produktseite">
-            <BrandMark className="mark-glyph" height={26} />
             <span>XPORTAL</span>
           </a>
           <button data-sidebar-close className="icon-button sidebar-close" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schließen"><IconClose size={18} /></button>
@@ -2931,6 +2820,7 @@ export function ChatWorkspace({
                   isAccountUser={isAccountUser}
                   onMoreCredits={() => {
                     setAccountMenuOpen(false);
+                    setSidebarOpen(false);
                     setPlansOpen(true);
                     void loadPlanTeam();
                   }}
@@ -3326,13 +3216,8 @@ export function ChatWorkspace({
               </div>
             )
           ) : null}
-          {/* "Sie wählen selbst" left readers guessing what the AI actually
-              does. Spelled out: it never picks a person, it only narrows the
-              list by fixed rules. */}
           <p className="composer-disclosure">
-            KI strukturiert den Text. Das Matching bleibt regelbasiert. Sie
-            entscheiden über Speichern, Recherche und Kontakt. Daten werden
-            nicht zum Trainieren von Modellen verwendet.
+            Daten werden nicht zum Trainieren von Modellen verwendet.
             <span className="composer-legal">
               <a href="/imprint">Impressum</a>
               <span aria-hidden="true">·</span>
@@ -3438,56 +3323,6 @@ export function ChatWorkspace({
 }
 
 
-/**
- * Placeholder rows in the shape the real list will take.
- *
- * Aria-hidden and marked busy: a screen reader should hear "wird geladen",
- * not a handful of empty list items.
- */
-function SidebarSkeleton({ rows }: { rows: number }) {
-  return (
-    <div className="sidebar-skeleton" aria-busy="true" aria-label="Wird geladen">
-      {Array.from({ length: rows }, (_, index) => (
-        <span key={index} className="sidebar-skeleton-row" aria-hidden="true" />
-      ))}
-    </div>
-  );
-}
-
-function WelcomeState() {
-  return (
-    <section className="welcome-state" aria-labelledby="welcome-title">
-      <div className="assistant-emblem" aria-hidden="true"><span><IconSpark size={22} /></span></div>
-      <h1 id="welcome-title">Aufgabe beschreiben. Belege und Lücken sehen.</h1>
-      <p className="welcome-copy">
-        Die KI strukturiert Ihren Projekttext. Feste Regeln gleichen ihn mit
-        belegten Profilangaben ab. Sie prüfen das Ergebnis und entscheiden über
-        Speichern, Recherche oder Kontakt.
-      </p>
-      <div className="welcome-protocol">
-        <MatchProtocol compact activeStep={1} label="Das passiert nach dem Absenden" />
-      </div>
-      <p className="welcome-guest-note">
-        Ohne Anmeldung starten · {CREDIT_PLANS.guest.monthlyCredits} Gast-Credits · {BRIEF_ANALYSIS_CREDITS} Credits pro Projektanalyse
-      </p>
-    </section>
-  );
-}
-
-function SuggestionGrid({ onSuggestion }: { onSuggestion: (suggestion: Suggestion) => void }) {
-  return (
-    <div className="suggestion-grid" aria-label="Beispielanfragen">
-      {suggestions.map((suggestion) => (
-        <button key={suggestion.label} type="button" onClick={() => onSuggestion(suggestion)}>
-          <span className="suggestion-label">{suggestion.label}</span>
-          <span className="suggestion-description">{suggestion.description}</span>
-          <span className="suggestion-arrow" aria-hidden="true"><IconArrowRight size={17} /></span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
 export function assistantAttribution(): {
   ariaLabel: string;
   author: string;
@@ -3532,7 +3367,6 @@ function MessageBubble({ message }: { message: ConversationMessage }) {
     </article>
   );
 }
-
 function PendingMessage({
   pending,
   onRetry,
@@ -3576,107 +3410,5 @@ function PendingMessage({
         )}
       </div>
     </article>
-  );
-}
-
-export function projectStatusLabel(status: ProjectListItem["status"]): string | null {
-  if (status === "draft") return "Entwurf";
-  if (status === "matching") return "Abgleich";
-  if (status === "shortlisted") return "Auswahl";
-  if (status === "contact") return "Kontakt";
-  if (status === "closed") return "Abgeschlossen";
-  return null;
-}
-
-export function sidebarChatGroups(
-  chats: ProjectListItem[],
-  now = new Date(),
-): { label: string; chats: ProjectListItem[] }[] {
-  const today = new Date(now);
-  today.setHours(0, 0, 0, 0);
-  const groups = new Map<string, ProjectListItem[]>([
-    ["Heute", []],
-    ["Gestern", []],
-    ["Letzte 7 Tage", []],
-    ["Früher", []],
-  ]);
-  for (const chat of chats) {
-    const updatedAt = new Date(chat.updatedAt);
-    updatedAt.setHours(0, 0, 0, 0);
-    const ageInDays = Number.isNaN(updatedAt.getTime())
-      ? Number.POSITIVE_INFINITY
-      : Math.floor((today.getTime() - updatedAt.getTime()) / 86_400_000);
-    const label = ageInDays <= 0
-      ? "Heute"
-      : ageInDays === 1
-        ? "Gestern"
-        : ageInDays <= 7
-          ? "Letzte 7 Tage"
-          : "Früher";
-    groups.get(label)!.push(chat);
-  }
-  return Array.from(groups, ([label, groupedChats]) => ({ label, chats: groupedChats }))
-    .filter((group) => group.chats.length > 0);
-}
-
-
-function SidebarChatList({
-  chats,
-  activeProjectId,
-  loadingProjectId,
-  onOpen,
-  onPrefetch,
-  onManage,
-}: {
-  chats: ProjectListItem[];
-  activeProjectId: string | null;
-  loadingProjectId: string | null;
-  onOpen: (chat: ProjectListItem) => void;
-  /** Holt den Chat schon beim Überfahren, damit der Klick ihn vorfindet. */
-  onPrefetch: (chat: ProjectListItem) => void;
-  onManage: (chat: ProjectListItem) => void;
-}) {
-  if (!chats.length) return <p className="sidebar-section-empty">Keine unzugeordneten Chats</p>;
-  return (
-    <div className="sidebar-chat-groups">
-      {sidebarChatGroups(chats).map((group) => (
-        <section className="sidebar-chat-group" key={group.label}>
-          <h3>{group.label}</h3>
-          <ul className="project-list">
-            {group.chats.map((chat) => {
-              const status = projectStatusLabel(chat.status);
-              return (
-                <li key={chat.id} className="sidebar-chat-row">
-                  <button
-                    type="button"
-                    className={`sidebar-chat-open${activeProjectId === chat.id ? " active" : ""}`}
-                    onClick={() => onOpen(chat)}
-                    // Zeigefinger und Tastatur kündigen den Klick an, lange
-                    // bevor er kommt. Bis dahin ist der Chat meistens da.
-                    onPointerEnter={() => onPrefetch(chat)}
-                    onFocus={() => onPrefetch(chat)}
-                    aria-current={activeProjectId === chat.id ? "page" : undefined}
-                  >
-                    <span className="project-title">{chat.title}</span>
-                    <span className="project-meta">
-                      {loadingProjectId === chat.id ? "Wird geladen …" : formatRelativeDate(chat.updatedAt)}
-                      {status ? <span className={`project-status-badge is-${chat.status}`}>{status}</span> : null}
-                    </span>
-                  </button>
-                  <button
-                    className="sidebar-chat-manage"
-                    type="button"
-                    onClick={() => onManage(chat)}
-                    aria-label={`${chat.title} verwalten`}
-                  >
-                    •••
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      ))}
-    </div>
   );
 }

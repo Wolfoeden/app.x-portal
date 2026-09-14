@@ -11,9 +11,9 @@ import { Notice } from "@/components/ui/Primitives";
 import { TERMS_EFFECTIVE_DATE, TERMS_REVIEW, TERMS_VERSION } from "@/lib/legal/policy";
 
 export const metadata: Metadata = {
-  title: "AGB-Entwurf | XPORTAL",
+  title: "Allgemeine Geschäftsbedingungen | XPORTAL",
   description:
-    "Entwurf der Allgemeinen Geschäftsbedingungen für XPORTAL. Die rechtliche Prüfung steht noch aus; das Angebot richtet sich ausschließlich an Unternehmer.",
+    "Allgemeine Geschäftsbedingungen für XPORTAL. Das Angebot richtet sich ausschließlich an Unternehmer.",
 };
 
 export default function TermsPage() {
@@ -25,7 +25,7 @@ export default function TermsPage() {
         <PublicDocumentIntro
           eyebrow="Allgemeine Geschäftsbedingungen"
           title="Was gilt, wenn Sie XPORTAL nutzen."
-          signal={{ label: "Freigabe", value: "Rechtliche Prüfung ausstehend" }}
+          signal={{ label: "Status", value: TERMS_REVIEW.label }}
         >
           <p>
             Diese Bedingungen regeln die Nutzung der Website und der Anwendung
@@ -34,13 +34,10 @@ export default function TermsPage() {
           </p>
         </PublicDocumentIntro>
 
-        <Notice title={TERMS_REVIEW.label} tone="warning" role="status">
+        <Notice title={TERMS_REVIEW.label} tone="success" role="status">
           <p>
-            Diese Fassung bildet den aktuellen Produktstand ab, ist aber noch
-            nicht anwaltlich freigegeben. Der Self-Service-Abschluss des
-            Enterprise-Plans bleibt deshalb bis zur dokumentierten Prüfung
-            deaktiviert. Kostenlose Nutzung und bestehende Kontofunktionen sind
-            davon nicht betroffen.
+            Diese Fassung wurde rechtlich geprüft und ist seit dem{" "}
+            {TERMS_EFFECTIVE_DATE} für XPORTAL freigegeben.
           </p>
         </Notice>
 
