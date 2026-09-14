@@ -65,7 +65,7 @@ describe("Paket 2: gemeinsamer Beweisfaden", () => {
       }),
     );
 
-    expect(guestMarkup).toContain("Aufgabe beschreiben. Belege und Lücken sehen.");
+    expect(guestMarkup).toContain("Projekt einfügen. Profil buchen.");
     expect(guestMarkup).not.toContain("Das passiert nach dem Absenden");
     expect(guestMarkup).not.toContain("Gast-Credits");
     expect(guestMarkup).not.toContain("KI strukturiert den Text. Das Matching bleibt regelbasiert.");

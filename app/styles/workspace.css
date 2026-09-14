@@ -1205,32 +1205,6 @@
   text-align: center;
 }
 
-.assistant-emblem {
-  position: relative;
-  display: grid;
-  width: 38px;
-  height: 38px;
-  margin-bottom: 24px;
-  place-items: center;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  background: var(--surface-soft);
-  box-shadow: inset 0 0 0 4px #fff;
-  font-size: var(--fs-base);
-}
-
-.assistant-emblem::after {
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
-  width: 10px;
-  height: 10px;
-  border: 3px solid #fff;
-  border-radius: 50%;
-  background: var(--green);
-  content: "";
-}
-
 .eyebrow,
 .dialog-eyebrow {
   margin: 0 0 7px;
@@ -1291,25 +1265,22 @@
    saehen aus, als gehoerten sie zu etwas anderem. */
 .suggestion-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   width: min(100%, 1000px);
   gap: 10px;
   margin: 14px auto 0;
 }
 
 .suggestion-grid button {
-  position: relative;
   display: grid;
   min-height: 68px;
   cursor: pointer;
   align-content: center;
-  gap: 3px;
-  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 16px;
   background: var(--surface);
-  padding: 13px 40px 13px 16px;
-  text-align: left;
+  padding: 13px 16px;
+  text-align: center;
   transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
 }
 
@@ -1322,29 +1293,6 @@
 .suggestion-label {
   font-size: var(--fs-base);
   font-weight: 660;
-}
-
-.suggestion-description {
-  overflow: hidden;
-  color: var(--muted);
-  font-size: var(--fs-xs);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.suggestion-arrow {
-  position: absolute;
-  top: 50%;
-  right: 15px;
-  color: var(--muted-light);
-  font-size: var(--fs-md);
-  transform: translateY(-50%);
-  transition: transform 150ms ease;
-}
-
-.suggestion-grid button:hover .suggestion-arrow {
-  color: var(--ink);
-  transform: translate(2px, -50%);
 }
 
 .suggestion-intro {
@@ -3766,7 +3714,6 @@ dd.is-unknown,
    specificity. */
 
 .sidebar-primary-chevron,
-.suggestion-arrow,
 .analysis-trace-toggle,
 .match-column h4 span,
 .reference-note > span,
@@ -4410,23 +4357,6 @@ dd.is-unknown,
     width: min(100%, 880px);
   }
 
-  .chat-panel.is-empty-chat .suggestion-grid {
-    display: flex;
-    overflow-x: auto;
-    padding-bottom: 2px;
-    scrollbar-width: none;
-    scroll-snap-type: x proximity;
-  }
-
-  .chat-panel.is-empty-chat .suggestion-grid::-webkit-scrollbar {
-    display: none;
-  }
-
-  .chat-panel.is-empty-chat .suggestion-grid button {
-    min-width: min(78vw, 260px);
-    scroll-snap-align: start;
-  }
-
   .agent-directory {
     padding: 24px 14px 42px;
   }
@@ -4481,10 +4411,6 @@ dd.is-unknown,
 
   .trust-line {
     display: none;
-  }
-
-  .suggestion-grid {
-    grid-template-columns: 1fr;
   }
 
   .suggestion-grid button {
