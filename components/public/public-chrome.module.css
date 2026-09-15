@@ -163,7 +163,8 @@
 @media (max-width: 680px) {
   .headerInner { width: calc(100% - 40px); gap: 12px; }
   .context { display: none; }
-  .navigation { overflow-x: auto; flex-wrap: nowrap; justify-content: flex-start; padding-bottom: 2px; }
+  .navigation { overflow-x: auto; flex-wrap: nowrap; justify-content: flex-start; padding-bottom: 2px; scrollbar-width: none; }
+  .navigation::-webkit-scrollbar { display: none; }
   .navigation a { white-space: nowrap; font-size: var(--fs-xs); }
   .primaryAction { min-height: var(--control-md); gap: 8px; padding: 8px 11px; font-size: var(--fs-xs); }
   .footer { width: calc(100% - 40px); }

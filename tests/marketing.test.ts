@@ -15,7 +15,7 @@ import { MARKETING_CATEGORIES } from "@/lib/marketing-categories";
 import { MARKETING_PAGE, MARKETING_PAGES, absoluteUrl, pageMetadata } from "@/lib/seo";
 
 const routes = [
-  { Component: FindPage, page: MARKETING_PAGE.find, metadata: findMetadata, required: ["drei Schritten", "fehlende Informationen", "Projekt beschreiben"] },
+  { Component: FindPage, page: MARKETING_PAGE.find, metadata: findMetadata, required: ["Kopieren. Einfügen. Buchen.", "fehlende Informationen", "Projekt jetzt einfügen"] },
   { Component: ItPage, page: MARKETING_PAGE.it, metadata: itMetadata, required: ["IT-Freelancer", "React", "SAP", "Verfügbarkeit"] },
   { Component: MatchingPage, page: MARKETING_PAGE.matching, metadata: matchingMetadata, required: ["regelbasiert", "KI-gestütztes", "Nicht belegt"] },
   { Component: HowPage, page: MARKETING_PAGE.how, metadata: howMetadata, required: ["Requirement Extraction", "Credits", "Informationslücken"] },
@@ -36,7 +36,7 @@ describe("marketing pages rendered on the server", () => {
       expect(html.match(/<h1\b/gu)).toHaveLength(1);
       expect(text.length).toBeGreaterThan(1800);
       for (const phrase of required) expect(text).toContain(phrase);
-      expect(main).toMatch(/href="\/chat"[^>]*>Projekt beschreiben/u);
+      expect(main).toMatch(/href="\/chat"[^>]*>Projekt (?:beschreiben|jetzt einfügen)/u);
       expect(metadata).toEqual(pageMetadata(page));
       expect(metadata.alternates?.canonical).toBe(absoluteUrl(page.path));
       for (const related of MARKETING_PAGES.filter((item) => item.path !== page.path)) {
