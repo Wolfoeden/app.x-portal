@@ -6,9 +6,9 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 /**
  * Das Limit, das ein zahlender Kunde sich selbst setzt.
  *
- * Enterprise hat ein festes Monatskontingent. Ein Konto kann dieses Kontingent
- * freiwillig nach unten begrenzen, etwa als internen Teamrahmen. Das ändert
- * nicht den vereinbarten Monatspreis.
+ * Basic, Pro und Business haben feste Monatskontingente. Ein Konto kann sein
+ * jeweiliges Kontingent freiwillig nach unten begrenzen. Enterprise Flex hat
+ * bewusst kein künstliches Credit-Limit und nutzt diese Einstellung nicht.
  *
  * Durchgesetzt wird es nicht an einer neuen Stelle, sondern ueber das
  * Kontingent der laufenden Periode: die Datenbankfunktion senkt
@@ -16,7 +16,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
  */
 
 /** Die Obergrenze, die sich ueberhaupt einstellen laesst. */
-export const SELF_LIMIT_MAX = CREDIT_PLANS.enterprise.monthlyCredits;
+export const SELF_LIMIT_MAX = CREDIT_PLANS.business.monthlyCredits;
 
 /**
  * Was das volle Kontingent hoechstens kostet.
@@ -25,7 +25,7 @@ export const SELF_LIMIT_MAX = CREDIT_PLANS.enterprise.monthlyCredits;
  * beiden Zahlen gehoeren zusammen, und getrennt gepflegt laufen sie
  * auseinander.
  */
-export const SELF_LIMIT_MAX_EURO = CREDIT_PLANS.enterprise.euro;
+export const SELF_LIMIT_MAX_EURO = CREDIT_PLANS.business.euro;
 
 export type SelfLimitResult =
   | { ok: true; limit: number | null; creditsTotal: number }

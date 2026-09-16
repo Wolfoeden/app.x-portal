@@ -26,7 +26,7 @@ function body(overrides: Record<string, unknown> = {}) {
   return JSON.stringify({
     id: "evt_1",
     type: "checkout.session.completed",
-    data: { object: { client_reference_id: ACCOUNT } },
+    data: { object: { client_reference_id: ACCOUNT, payment_link: "plink_pro" } },
     ...overrides,
   });
 }
@@ -50,7 +50,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   process.env.STRIPE_WEBHOOK_SECRET = SECRET;
   process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-test-key";
-  mocks.rpc.mockResolvedValue({ data: [{ activated: true, credits_total: 3_000 }], error: null });
+  process.env.STRIPE_FIXED_PLANS_ACTIVATION_ENABLED = "true";
+  process.env.STRIPE_PRO_PAYMENT_LINK_ID = "plink_pro";
+  mocks.rpc.mockResolvedValue({ data: [{ activated: true, credits_total: 1_250 }], error: null });
   mocks.getUserById.mockResolvedValue({
     data: { user: { email: "buchhaltung@example.com" } },
     error: null,
@@ -60,6 +62,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  delete process.env.STRIPE_FIXED_PLANS_ACTIVATION_ENABLED;
+  delete process.env.STRIPE_PRO_PAYMENT_LINK_ID;
   vi.restoreAllMocks();
 });
 
@@ -72,8 +76,8 @@ describe("POST /api/stripe/webhook", () => {
       p_event_id: "evt_1",
       p_event_type: "checkout.session.completed",
       p_user_id: ACCOUNT,
-      p_plan_id: CREDIT_PLANS.enterprise.id,
-      p_plan_allowance: CREDIT_PLANS.enterprise.monthlyCredits,
+      p_plan_id: CREDIT_PLANS.pro.id,
+      p_plan_allowance: CREDIT_PLANS.pro.monthlyCredits,
     });
   });
 
@@ -138,7 +142,7 @@ describe("POST /api/stripe/webhook", () => {
 
   // Ein zweiter Zustellversuch darf kein zweites Kontingent buchen.
   it("meldet eine Wiederholung als nicht erneut freigeschaltet", async () => {
-    mocks.rpc.mockResolvedValue({ data: [{ activated: false, credits_total: 3_000 }], error: null });
+    mocks.rpc.mockResolvedValue({ data: [{ activated: false, credits_total: 1_250 }], error: null });
 
     const response = await POST(request(body()));
 

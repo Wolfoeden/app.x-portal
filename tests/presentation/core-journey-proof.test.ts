@@ -74,7 +74,7 @@ describe("Paket 2: gemeinsamer Beweisfaden", () => {
     expect(resultMarkup).toContain("Vor Kontakt offen");
   });
 
-  it("zeigt im Preisdialog nur Kontostand und die eine bezahlte Stufe", () => {
+  it("zeigt im Preisdialog alle neuen Abrechnungswege", () => {
     const markup = renderToStaticMarkup(
       createElement(CreditPlansDialog, {
         usage: previewUsage,
@@ -95,7 +95,10 @@ describe("Paket 2: gemeinsamer Beweisfaden", () => {
     expect(markup).not.toContain("Was eine bestätigte Aktion kostet");
     expect(markup).not.toContain("Aktueller Stand. Klare nächste Option.");
     expect(markup).not.toContain("Fragen zur Abrechnung oder eine Obergrenze vereinbaren");
-    expect(markup).toContain("Einzige bezahlte Stufe");
+    expect(markup).toContain("Basic");
+    expect(markup).toContain("Pro");
+    expect(markup).toContain("Business");
+    expect(markup).toContain("Nach Nutzung");
     expect(markup.match(/<h3>Enterprise<\/h3>/gu)).toHaveLength(1);
   });
 });

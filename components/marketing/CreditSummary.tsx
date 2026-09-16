@@ -1,44 +1,61 @@
-import { CREDIT_PLANS, CREDIT_PRICES, affordableCount } from "@/lib/ai/credit-policy";
+import Link from "next/link";
+
+import { CREDIT_PRICES } from "@/lib/ai/credit-policy";
+import {
+  PUBLIC_PRICING_PLANS,
+  START_CREDITS,
+  meteredNetCents,
+} from "@/lib/billing/plans";
 import { BUSINESS_ONLY_NOTICE } from "@/lib/legal/policy";
+
 import styles from "./marketing.module.css";
 
 const number = new Intl.NumberFormat("de-DE");
-const euro = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const euro = new Intl.NumberFormat("de-DE", {
+  style: "currency",
+  currency: "EUR",
+  minimumFractionDigits: 2,
+});
 
 export function CreditSummary() {
   return (
     <div className={styles.creditSummary}>
       <p>
-        Eine {CREDIT_PRICES.project_brief.label} kostet{" "}
-        <strong>{number.format(CREDIT_PRICES.project_brief.credits)} Credits</strong>.
-        Eine separat gestartete {CREDIT_PRICES.research.label} kostet{" "}
-        <strong>{number.format(CREDIT_PRICES.research.credits)} Credits</strong>.
-        Beide Leistungen nutzen dasselbe Guthaben.
+        <strong>{number.format(START_CREDITS)} Start-Credits werden einmalig vergeben.</strong>{" "}
+        Sie füllen sich nicht monatlich neu auf. Danach wählen Sie ein monatliches
+        Kontingent oder Enterprise-Abrechnung nach tatsächlicher Nutzung.
       </p>
-      <div className={styles.tableWrap} tabIndex={0} role="region" aria-label="Monatliche Kontingente und Preise">
+      <div className={styles.tableWrap} tabIndex={0} role="region" aria-label="Kontingente und Preise">
         <table>
-          <caption>Monatliche Kontingente und Preise</caption>
-          <thead>
-            <tr><th scope="col">Zugang</th><th scope="col">Preis / Monat</th><th scope="col">Credits / Monat</th><th scope="col">Bis zu Projektanalysen*</th></tr>
-          </thead>
+          <caption>Kontingente und Preise</caption>
+          <thead><tr><th scope="col">Tarif</th><th scope="col">Preis netto</th><th scope="col">Credits</th><th scope="col">Abrechnung</th></tr></thead>
           <tbody>
-            {Object.values(CREDIT_PLANS).map((plan) => (
+            <tr><th scope="row">Kostenloser Start</th><td>0 €</td><td>{number.format(START_CREDITS)} einmalig</td><td>Kein Abo</td></tr>
+            {PUBLIC_PRICING_PLANS.map((plan) => (
               <tr key={plan.id} data-plan={plan.id}>
                 <th scope="row">{plan.label}</th>
-                <td>{euro.format(plan.euro)}{plan.purchasable ? <small>zzgl. USt.</small> : null}</td>
-                <td>{number.format(plan.monthlyCredits)}</td>
-                <td>{number.format(affordableCount(plan.monthlyCredits, "project_brief"))}</td>
+                {plan.billingModel === "fixed_monthly" ? <>
+                  <td>{euro.format(plan.priceNetCents / 100)}<small>zzgl. USt.</small></td>
+                  <td>{number.format(plan.monthlyCredits)} / Monat</td>
+                  <td>Monatliches Kontingent</td>
+                </> : <>
+                  <td>{euro.format(plan.euroPerCreditCents / 100)} / Credit<small>0 € Grundgebühr</small></td>
+                  <td>Nach Verbrauch</td>
+                  <td>Monatliche Verbrauchsabrechnung</td>
+                </>}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <p className={styles.subtle}>
-        * Rechnerisch bei ausschließlicher Nutzung für Projektanalysen. Andere
-        kostenpflichtige Funktionen verringern die verbleibende Anzahl. Ein
-        Kontingent garantiert keine passenden Treffer. Ihr verfügbares Guthaben
-        sehen Sie im Chat; Freelancer-Honorare sind hier nicht enthalten.
+      <p>
+        Eine {CREDIT_PRICES.project_brief.label} kostet <strong>{CREDIT_PRICES.project_brief.credits} Credits</strong>,
+        eine {CREDIT_PRICES.research.label} <strong>{CREDIT_PRICES.research.credits} Credits</strong> und ein
+        {" "}{CREDIT_PRICES.leadgen_outreach.label} <strong>{CREDIT_PRICES.leadgen_outreach.credits} Credits</strong>.
+        Enterprise berechnet dafür {euro.format(meteredNetCents(CREDIT_PRICES.project_brief.credits) / 100)}, {euro.format(meteredNetCents(CREDIT_PRICES.research.credits) / 100)} beziehungsweise {euro.format(meteredNetCents(CREDIT_PRICES.leadgen_outreach.credits) / 100)} netto.
       </p>
+      <p className={styles.subtle}>Alle Leistungen verwenden dasselbe Guthaben. Nicht verbrauchte Monatscredits werden nicht kumuliert. Freelancer-Honorare sind nicht enthalten.</p>
+      <p><Link href="/preise">Alle Tarife und Rechenbeispiele ansehen</Link></p>
       <p className={styles.subtle}>{BUSINESS_ONLY_NOTICE}</p>
     </div>
   );

@@ -1,4 +1,11 @@
-# AI usage, free analyses and product credits
+# AI usage, credits and billing
+
+> Pricing v2 (2026-09-15): The current commercial model is documented in
+> `docs/pricing-billing-v2.md`. In particular, 300 account credits are a
+> one-time grant, Basic/Pro/Business refill monthly, and Enterprise Flex is
+> metered at two euro cents per billable credit. Historical sections below
+> describe why the single-balance architecture exists; old free/Enterprise
+> amounts are not the current public offer.
 
 ## Product boundary
 

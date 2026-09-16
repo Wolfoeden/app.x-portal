@@ -60,6 +60,14 @@ export const MARKETING_PAGE = {
     priority: 0.8,
     changeFrequency: "monthly",
   },
+  pricing: {
+    path: "/preise",
+    label: "Preise & Credits",
+    title: "Preise & Credits: Basic, Pro, Business und Enterprise | XPORTAL",
+    description: "XPORTAL kostenlos mit 300 Start-Credits testen. Danach Basic, Pro oder Business monatlich nutzen – oder Enterprise nach tatsächlichem Credit-Verbrauch abrechnen.",
+    priority: 0.9,
+    changeFrequency: "monthly",
+  },
 } as const satisfies Record<string, PublicPage>;
 
 export const MARKETING_PAGES = Object.values(MARKETING_PAGE);

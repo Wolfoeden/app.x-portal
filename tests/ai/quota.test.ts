@@ -48,7 +48,7 @@ describe("provider cost reconciliation", () => {
     expect(calculateProviderCostCents(1_000_000, 1_000_000)).toBe(1540);
   });
 
-  it("gives a guest 100 and an account 300 credits a month", () => {
+  it("gives a guest 100 and an account 300 credits once", () => {
     expect(GUEST_MONTHLY_CREDITS).toBe(100);
     expect(configuredInitialCredits(true)).toBe(100);
     expect(ACCOUNT_MONTHLY_CREDITS).toBe(300);
@@ -93,7 +93,7 @@ describe("Kontingente, die die Datenbank auch annimmt", () => {
   it("jede erlaubte Zahl ist auch in der Datenbank erlaubt", () => {
     // Die Aufzählung ist die Kopie einer Prüfregel im Schema. Ändert sie sich
     // dort, muss sie sich hier mitändern — dieser Test ist die Erinnerung.
-    expect(ALLOWED_MONTHLY_CREDIT_TOTALS).toEqual([0, 10, 63, 100, 300]);
+    expect(ALLOWED_MONTHLY_CREDIT_TOTALS).toEqual([0, 10, 63, 100, 300, 500, 1_250, 3_000, 4_000]);
     expect(ALLOWED_MONTHLY_CREDIT_TOTALS).toContain(ACCOUNT_MONTHLY_CREDITS);
     expect(ALLOWED_MONTHLY_CREDIT_TOTALS).toContain(GUEST_MONTHLY_CREDITS);
   });
@@ -108,6 +108,11 @@ describe("Kontingente, die die Datenbank auch annimmt", () => {
 
   it("lässt einen zulässigen Wert weiterhin durch", () => {
     process.env.AI_CREDITS_USER_TOTAL = "300";
+    expect(configuredInitialCredits(false)).toBe(300);
+  });
+
+  it("lässt das feste 300-Credit-Trial nicht per Umgebung erhöhen", () => {
+    process.env.AI_CREDITS_USER_TOTAL = "500";
     expect(configuredInitialCredits(false)).toBe(300);
   });
 

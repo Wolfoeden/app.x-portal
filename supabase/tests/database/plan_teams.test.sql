@@ -42,7 +42,7 @@ insert into auth.users (
 -- ---------------------------------------------------------------- Stufen ---
 
 -- Genau der Fall, der die erste Fassung brach: get_ai_credit_snapshot legt
--- ein Konto ohne plan_id an. Der Spalten-Default ist 'free', der Constraint
+-- ein Konto ohne plan_id an. Der Spalten-Default ist 'trial', der Constraint
 -- verlangt bei einer Gastsitzung 'guest'. Ohne den normalisierenden Trigger
 -- bekam damit keine neue Gastsitzung mehr ein Guthabenkonto.
 select lives_ok(
@@ -67,14 +67,14 @@ insert into public.user_ai_credit_accounts (
 select is(
   (select plan_id from public.user_ai_credit_accounts
     where user_id = 'b2000000-0000-4000-8000-000000000001'),
-  'free',
-  'ein neues Konto steht auf der Gratisstufe'
+  'trial',
+  'ein neues Konto steht auf dem einmaligen Trial'
 );
 
 select lives_ok(
-  $$update public.user_ai_credit_accounts set plan_id = 'enterprise'
+  $$update public.user_ai_credit_accounts set plan_id = 'enterprise_legacy'
      where user_id = 'b2000000-0000-4000-8000-000000000001'$$,
-  'ein Konto darf die gekaufte Stufe tragen'
+  'ein Konto darf die historische gekaufte Stufe tragen'
 );
 
 select throws_ok(
@@ -88,7 +88,7 @@ select throws_ok(
 -- Der Trigger normalisiert, statt die Zeile abzulehnen: eine Gastsitzung
 -- bleibt auf der Gaststufe, egal was geschrieben wird.
 select lives_ok(
-  $$update public.user_ai_credit_accounts set plan_id = 'enterprise'
+  $$update public.user_ai_credit_accounts set plan_id = 'enterprise_flex'
      where user_id = 'b2000000-0000-4000-8000-000000000004'$$,
   'ein Schreibversuch auf eine Gastsitzung laeuft nicht in einen Fehler'
 );

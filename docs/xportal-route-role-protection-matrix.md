@@ -18,7 +18,7 @@ Basis: `e36d9e24e8beb41ccc8887dc3b78a529252f7c74` · 12. September 2026
 | A-A11Y | automatisch/manuell | Rollen-Journeys plus M-A11Y-FOKUS und M-A11Y-STRUKTUR |
 | M-A11Y-FOKUS | manuell | Bei 390 px: Menü öffnen, Tab/Shift+Tab bleibt darin, Escape schließt, Fokus kehrt zum Menüknopf zurück; geschlossenes Menü erhält keinen Fokus |
 | M-A11Y-STRUKTUR | manuell | Jede öffentliche Route hat genau eine sichtbare H1; Text ist mindestens 12 px; 200 % Zoom bleibt ohne Funktionsverlust bedienbar |
-| M-COMMERCIAL | manuell | Konto → Mehr Credits: Guthaben, 50 € netto/Monat, 3.000 Credits und genau ein Plan; bestätigte Unternehmereigenschaft aktiviert den rechtlich freigegebenen Bestellweg |
+| M-COMMERCIAL | manuell | `/preise` und Konto → Tarife: Basic 9 €/500, Pro 19 €/1.250, Business 50 €/4.000; Enterprise Flex 0 € Grundgebühr und 2 Cent je abgerechnetem Credit; Stripe nur nach exakter externer Konfiguration |
 | M-EXTERNAL | manuell | Externe Buchungslinks zeigen Ziel und senden erst nach bewusstem Klick weiter |
 | M-30S | automatisch/manuell | Marketing-Einstieg nennt im ersten View Produkt, KI-Anteil, Regel-Match, Verantwortung, Startguthaben und nächsten Schritt; Browserprüfung bei breitem, mittlerem und schmalem Viewport |
 
@@ -28,7 +28,7 @@ Basis: `e36d9e24e8beb41ccc8887dc3b78a529252f7c74` · 12. September 2026
 |---|---|---|---|
 | Gast | `/chat`: Projekttext, strukturierter Brief, interner Match, transparente Lücken, 100 Credits | anonyme Sitzung; kein Speichern/Kontakt/Agentennutzen | A-JOURNEY, A-REG, A-VISUAL, A-PROOF, M-A11Y-FOKUS |
 | Konto | `/chat`, `/mein-team`, `/agent`: Projekte, Merkliste, Kontostand, Agentenvorlagen | bestätigtes Konto; Besitzprüfung serverseitig | A-JOURNEY, A-REG, A-VISUAL |
-| Enterprise | Konto → Guthaben: 3.000 Credits/Monat, Team, freiwilliges Nutzungslimit, Stripe-Aktivierung | Konto + Unternehmereigenschaft + rechtlich freigegebene AGB | A-JOURNEY, A-REG, A-PROOF, M-COMMERCIAL |
+| Monatspläne / Enterprise Flex | Konto → Guthaben oder laufender Verbrauch, Teamzuordnung zum Billing Owner, sichere Checkout-/Anfragewege | Konto + Unternehmereigenschaft; Stripe zusätzlich nur mit konfigurierter Payment-Link-ID | A-JOURNEY, A-REG, A-PROOF, M-COMMERCIAL |
 | Freelancer | `/freelancer/apply`: Bewerbung, CV/Avatar, Status, Profilpflege, Metriken | Gast sieht Auth-Gate; eigenes Konto sieht nur eigenes Profil | A-JOURNEY, A-REG, A-VISUAL, A-PROOF |
 | Admin | `/chat/admin/*`: Betrieb, Nachfrage, Leads, Bewerbungen und KI-Kosten | Admin-Claim; Fixture-Routen nur lokal | A-JOURNEY, A-REG, A-VISUAL, A-SURFACE |
 

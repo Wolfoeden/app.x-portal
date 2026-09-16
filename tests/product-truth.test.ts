@@ -16,24 +16,25 @@ const publicContractFiles = [
 ] as const;
 
 describe("zentrale Produktwahrheit", () => {
-  it("verknüpft Enterprise-Preis und Kontingent ohne alternative Zahl", () => {
-    expect(ENTERPRISE_START_EURO).toBe(CREDIT_PLANS.enterprise.euro);
+  it("hält den historischen Enterprise-Vertrag getrennt", () => {
+    expect(ENTERPRISE_START_EURO).toBe(CREDIT_PLANS.enterprise_legacy.euro);
     expect(ENTERPRISE_BILLING).toMatchObject({
       model: "fixed_monthly",
-      priceNetEuro: CREDIT_PLANS.enterprise.euro,
+      priceNetEuro: CREDIT_PLANS.enterprise_legacy.euro,
       interval: "month",
     });
-    expect(CREDIT_PLANS.enterprise.monthlyCredits).toBe(3_000);
+    expect(CREDIT_PLANS.enterprise_legacy.monthlyCredits).toBe(3_000);
+    expect(CREDIT_PLANS.enterprise_flex.billingModel).toBe("metered");
+    expect(CREDIT_PLANS.enterprise_flex.euroPerCreditCents).toBe(2);
   });
 
-  it("veröffentlicht keine historischen Verbrauchs- oder Ein-Euro-Verträge", () => {
+  it("veröffentlicht keine alten Ein-Euro- oder Credit-Kauf-Verträge", () => {
     const source = publicContractFiles
       .map((file) => readFileSync(new URL("../" + file, import.meta.url), "utf8"))
       .join("\n");
     for (const stale of [
       /ein Euro/iu,
       /one euro/iu,
-      /tatsächliche Nutzung wird.+abgerechnet/iu,
       /einzeln erworbene Credits/iu,
       /senkt die Rechnung/iu,
     ]) expect(source).not.toMatch(stale);

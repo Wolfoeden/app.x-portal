@@ -36,13 +36,15 @@ describe("Paket 4: Konsolidierung und Freigabe", () => {
     expect(sidebar).not.toContain("chat.status");
   });
 
-  it("reduziert den Zahlungsdialog auf Kontostand, Angebot und Buchung", () => {
+  it("zeigt im Zahlungsdialog nur reale Buchungs- oder Anfragewege", () => {
     const account = source("components/chat/account.tsx");
     expect(account).not.toContain("Was eine bestätigte Aktion kostet");
     expect(account).not.toContain("Aktueller Stand. Klare nächste Option.");
     expect(account).not.toContain("Setzen Sie zuerst das Häkchen");
     expect(account).not.toContain("Fragen zur Abrechnung oder eine Obergrenze vereinbaren");
-    expect(account).toContain("Plan buchen");
+    expect(account).toContain("anfragen");
+    expect(account).toContain("Enterprise per E-Mail anfragen");
+    expect(account).toContain("fixedPlanCheckout");
   });
 
   it("veroeffentlicht den freigegebenen AGB-Stand", () => {

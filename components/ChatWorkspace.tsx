@@ -455,7 +455,7 @@ export function normalizeUsageUpdate(value: unknown): AiUsageUpdate | null {
       exhausted: creditsSource.exhausted === true || remaining <= 0,
       creditsPerRequest,
       planId:
-        nullableString(creditsSource.planId ?? creditsSource.plan_id) ?? "free",
+        nullableString(creditsSource.planId ?? creditsSource.plan_id) ?? "trial",
       // Absent outside a chat response, and absent when a request was
       // answered without ever reaching the provider.
       lastRequestCost: nonNegativeNumber(
@@ -3036,7 +3036,7 @@ export function ChatWorkspace({
                 >
                   <p>
                     Das Öffnen startet nichts. Ein Konto bringt{" "}
-                    {formatCredits(CREDIT_PLANS.free.monthlyCredits)} Credits im Monat;
+                    {formatCredits(CREDIT_PLANS.trial.grantCredits)} Start-Credits einmalig;
                     die Projektanalyse kostet {BRIEF_ANALYSIS_CREDITS} Credits.
                   </p>
                 </EmptyState>

@@ -1,0 +1,78 @@
+.main { --pricing-width: 1360px; max-width: calc(var(--pricing-width) + 80px); margin: 0 auto; padding: 0 40px; color: var(--ink); }
+.main:focus { outline: none; }
+.breadcrumb { padding: 28px 0 0; color: var(--muted); font-size: var(--fs-xs); }
+.breadcrumb ol { display: flex; list-style: none; gap: 10px; padding: 0; margin: 0; }
+.breadcrumb li + li::before { content: "/"; margin-right: 10px; color: var(--muted-light); }
+.breadcrumb a { text-decoration: none; }
+.eyebrow { margin: 0 0 16px; text-transform: uppercase; letter-spacing: .14em; font-size: var(--fs-2xs); font-weight: 650; color: var(--muted); }
+.hero { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(270px, .65fr); gap: clamp(42px, 7vw, 110px); align-items: end; padding: 68px 0 78px; }
+.hero h1 { margin: 0; font-size: clamp(45px, 6vw, 82px); line-height: .98; letter-spacing: -.065em; font-weight: 600; text-wrap: balance; }
+.hero h1 span { color: var(--green); }
+.lead { max-width: 760px; margin: 30px 0 0; color: var(--ink-soft); font-size: clamp(17px, 1.5vw, 21px); line-height: 1.65; }
+.heroActions { display: flex; align-items: center; gap: 22px; margin-top: 34px; }
+.heroActions p { display: grid; gap: 3px; margin: 0; font-size: var(--fs-sm); }
+.heroActions p span { color: var(--muted); font-size: var(--fs-xs); }
+.primaryAction, .cardAction { display: inline-flex; align-items: center; justify-content: space-between; gap: 28px; min-height: var(--control-lg); padding: 12px 19px; border-radius: var(--radius-sm); background: var(--ink); color: var(--surface); font-size: var(--fs-sm); font-weight: 650; text-decoration: none; }
+.primaryAction:hover, .cardAction:hover { background: var(--ink-hover); }
+.creditThesis { border-top: 3px solid var(--ink); padding-top: 18px; }
+.creditThesis > p { margin: 0; color: var(--muted); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .12em; }
+.creditThesis > strong { display: block; margin-top: 8px; font-size: 58px; line-height: 1; letter-spacing: -.06em; }
+.creditThesis > span { color: var(--muted); font-size: var(--fs-sm); }
+.creditThesis ul { list-style: none; padding: 18px 0 0; margin: 20px 0 0; border-top: 1px solid var(--border); }
+.creditThesis li { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; font-size: var(--fs-xs); }
+.creditThesis li strong { font-variant-numeric: tabular-nums; }
+.planSection { border-top: 1px solid var(--border); padding: 62px 0 72px; }
+.sectionIntro { display: grid; grid-template-columns: minmax(240px, .7fr) minmax(0, 1.3fr); column-gap: 60px; align-items: end; margin-bottom: 34px; }
+.sectionIntro .eyebrow { grid-column: 1 / -1; }
+.sectionIntro h2, .explainer h2, .finalCta h2 { margin: 0; font-size: clamp(30px, 3.2vw, 44px); line-height: 1.08; letter-spacing: -.05em; font-weight: 590; text-wrap: balance; }
+.sectionIntro > p:last-child { margin: 0; color: var(--ink-soft); font-size: 16px; line-height: 1.7; max-width: 680px; }
+.cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; align-items: stretch; }
+.card { position: relative; display: flex; flex-direction: column; min-width: 0; padding: 24px 22px 22px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+.recommended { border-color: var(--green-border); box-shadow: 0 18px 45px rgba(16, 89, 61, .1); background: linear-gradient(180deg, var(--green-soft), var(--surface) 30%); }
+.recommended::before { content: ""; position: absolute; inset: -1px -1px auto; height: 4px; border-radius: var(--radius-md) var(--radius-md) 0 0; background: var(--green); }
+.cardTopline { min-height: 27px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.planName { margin: 0; text-transform: uppercase; letter-spacing: .13em; font-size: var(--fs-2xs); font-weight: 720; }
+.badge { padding: 5px 8px; border-radius: 999px; color: var(--green); background: var(--green-soft); font-size: 10px; font-weight: 720; letter-spacing: .09em; text-transform: uppercase; }
+.audience { min-height: 84px; margin: 14px 0 22px; color: var(--muted); font-size: var(--fs-xs); line-height: 1.55; }
+.priceBlock { min-height: 112px; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+.priceBlock > span { color: var(--muted); font-size: var(--fs-xs); }
+.priceBlock > strong { margin: 5px 0 2px; font-size: 19px; letter-spacing: -.03em; }
+.price { margin: 0; font-size: clamp(39px, 3.6vw, 54px); line-height: 1; letter-spacing: -.06em; font-weight: 610; }
+.usagePrice { margin: 0; font-size: 29px; line-height: 1.1; letter-spacing: -.045em; font-weight: 610; }
+.creditVolume { margin: 20px 0 0; font-size: var(--fs-sm); }
+.creditVolume strong { font-size: 19px; }
+.unitPrice { margin: 5px 0 0; color: var(--muted); font-size: var(--fs-xs); }
+.usageExample { display: grid; gap: 2px; min-height: 94px; margin: 20px 0 0; padding: 15px; border-radius: var(--radius-sm); background: var(--surface-soft); font-size: var(--fs-xs); }
+.usageExample strong { color: var(--ink); font-size: var(--fs-sm); }
+.usageExample span { color: var(--muted); }
+.features { display: grid; gap: 11px; list-style: none; padding: 21px 0; margin: 0 0 auto; color: var(--ink-soft); font-size: var(--fs-xs); line-height: 1.45; }
+.features li { position: relative; padding-left: 18px; }
+.features li::before { content: "✓"; position: absolute; left: 0; color: var(--green); font-weight: 700; }
+.cardAction { width: 100%; margin-top: 5px; }
+.recommended .cardAction { background: var(--green); }
+.recommended .cardAction:hover { filter: brightness(.92); }
+.enterpriseCard { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.enterpriseCard .audience, .enterpriseCard .unitPrice, .enterpriseCard .priceBlock > span, .enterpriseCard .features { color: rgba(255,255,255,.68); }
+.enterpriseCard .priceBlock { border-color: rgba(255,255,255,.18); }
+.enterpriseCard .usageExample { background: rgba(255,255,255,.08); }
+.enterpriseCard .usageExample strong { color: var(--surface); }
+.enterpriseCard .cardAction { background: var(--surface); color: var(--ink); }
+.checkoutNote { max-width: 820px; margin: 20px 0 0; color: var(--muted); font-size: var(--fs-xs); line-height: 1.6; }
+.actionSection { border-top: 1px solid var(--border); padding: 62px 0; }
+.actionGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.actionGrid article { display: grid; min-height: 170px; align-content: end; padding: 24px; border-radius: var(--radius-md); background: var(--surface-soft); }
+.actionGrid p { margin: 0 0 auto; color: var(--muted); font-size: var(--fs-sm); }
+.actionGrid strong { font-size: 28px; letter-spacing: -.04em; }
+.actionGrid span { margin-top: 4px; color: var(--green); font-size: var(--fs-xs); font-weight: 650; }
+.explainer { display: grid; grid-template-columns: .8fr 1.2fr; gap: 70px; padding: 62px 0; border-top: 1px solid var(--border); }
+.explainer p { margin: 0 0 18px; color: var(--ink-soft); font-size: 16px; line-height: 1.75; }
+.explainer p:last-child { color: var(--muted); font-size: var(--fs-xs); }
+.finalCta { display: flex; align-items: center; justify-content: space-between; gap: 45px; margin: 20px 0 58px; padding: 38px 42px; border-radius: var(--radius-lg); background: var(--green-soft); }
+.finalCta p:not(.eyebrow) { max-width: 720px; margin: 12px 0 0; color: var(--ink-soft); }
+.related { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; padding: 0 0 52px; }
+.related a { display: flex; justify-content: space-between; gap: 12px; padding: 16px 0; border-top: 1px solid var(--border); font-size: var(--fs-xs); font-weight: 650; text-decoration: none; }
+.related a:hover { text-decoration: underline; text-underline-offset: 4px; }
+@media (max-width: 1180px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } .audience { min-height: 62px; } }
+@media (max-width: 760px) { .main { padding: 0 24px; } .hero { grid-template-columns: 1fr; padding: 46px 0 54px; } .creditThesis { max-width: 520px; } .sectionIntro, .explainer { grid-template-columns: 1fr; gap: 20px; } .cards, .actionGrid, .related { grid-template-columns: 1fr; } .audience, .priceBlock, .usageExample { min-height: auto; } .finalCta { align-items: flex-start; flex-direction: column; padding: 30px; } }
+@media (max-width: 460px) { .main { padding: 0 18px; } .hero h1 { font-size: 44px; } .heroActions { align-items: flex-start; flex-direction: column; } .card { padding: 22px 19px 19px; } .finalCta { padding: 25px; } }
+@media (prefers-reduced-motion: reduce) { .primaryAction, .cardAction { transition: none; } }

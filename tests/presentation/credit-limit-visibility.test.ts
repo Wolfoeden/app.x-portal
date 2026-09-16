@@ -43,7 +43,7 @@ function render(planId: string, selfLimit: number | null = null) {
 describe("Sichtbarkeit des eigenen Limits", () => {
   // Ein zusätzliches Nutzungslimit ergibt nur beim bezahlten Teamrahmen Sinn.
   it("zeigt die Einstellung auf dem abgerechneten Plan", () => {
-    const markup = render(CREDIT_PLANS.enterprise.id);
+    const markup = render(CREDIT_PLANS.business.id);
 
     expect(markup).toContain("credit-limit");
     expect(markup).toContain("Eigenes Limit");
@@ -52,6 +52,7 @@ describe("Sichtbarkeit des eigenen Limits", () => {
   it("zeigt sie nicht auf der Gratisstufe", () => {
     expect(render(CREDIT_PLANS.free.id)).not.toContain("Eigenes Limit");
     expect(render(CREDIT_PLANS.guest.id)).not.toContain("Eigenes Limit");
+    expect(render(CREDIT_PLANS.enterprise_flex.id)).not.toContain("Eigenes Limit");
   });
 
   /**
@@ -59,15 +60,15 @@ describe("Sichtbarkeit des eigenen Limits", () => {
    * aus der Stufe, nicht aus einer zweiten Zahl, die davon abweichen kann.
    */
   it("trennt Nutzungsgrenze und festen Monatspreis", () => {
-    const markup = render(CREDIT_PLANS.enterprise.id);
+    const markup = render(CREDIT_PLANS.business.id);
 
-    expect(markup).toContain(String(CREDIT_PLANS.enterprise.monthlyCredits));
+    expect(markup).toContain(String(CREDIT_PLANS.business.monthlyCredits));
     expect(markup).toContain("50 €");
     expect(markup).toContain("ändert aber nicht den");
     expect(markup).toContain("Monatspreis");
   });
 
   it("zeigt ein gespeichertes Limit statt eines leeren Feldes", () => {
-    expect(render(CREDIT_PLANS.enterprise.id, 800)).toContain('value="800"');
+    expect(render(CREDIT_PLANS.business.id, 800)).toContain('value="800"');
   });
 });

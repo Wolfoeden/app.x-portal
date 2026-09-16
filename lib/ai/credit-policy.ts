@@ -4,6 +4,18 @@ import {
   type AiModelIdentity,
   type AiTokenUsage,
 } from "@/lib/ai/model-pricing";
+import {
+  GUEST_TRIAL_CREDITS,
+  START_CREDITS,
+} from "@/lib/billing/plans";
+
+export {
+  CREDIT_PLANS,
+  creditPlan,
+  isCreditPlanId,
+  type CreditPlan,
+  type CreditPlanId,
+} from "@/lib/billing/plans";
 
 /**
  * Token-weighted metering for the customer-facing balance. Jede Anfrage wird
@@ -66,9 +78,9 @@ export const CREDIT_PRICES = {
   },
   research: {
     credits: 30,
-    label: "Websuche nach Freelancern",
-    singular: "Recherche",
-    plural: "Recherchen",
+    label: "AI-Agent-Recherche",
+    singular: "AI-Agent-Recherche",
+    plural: "AI-Agent-Recherchen",
   },
   leadgen_outreach: {
     credits: 2,
@@ -109,9 +121,9 @@ export function countLabel(count: number, id: CreditPriceId): string {
  * wiederkehrende Zahl, er legt kein zweites Guthaben daneben.
  *
  * Das Kontingent trägt alles: Analyse, Websuche und jede weitere Funktion aus
- * CREDIT_PRICES. Enterprise sind 3.000 Credits für 50 € netto — bei 30
- * Credits je Websuche also bis zu 100 Recherchen im Monat, wenn sonst nichts
- * abgeht.
+ * CREDIT_PRICES. Die kommerziellen Tarifwerte stehen zentral in
+ * lib/billing/plans.ts; Enterprise Flex nutzt dieselbe Credit-Einheit als
+ * Verbrauchsmesser, aber kein vorausbezahltes Kontingent.
  *
  * `agents` ist die einzige Fähigkeit, die nicht am Guthaben hängt: ein Gast
  * bekommt die Standardanalyse, aber keine Agenten. Damit ist die Anmeldung
@@ -120,51 +132,9 @@ export function countLabel(count: number, id: CreditPriceId): string {
  * Sie stehen hier statt in lib/ai/quota.ts, weil die Oberfläche sie nennt und
  * quota.ts server-only ist.
  */
-export const CREDIT_PLANS = {
-  guest: {
-    id: "guest",
-    label: "Gast",
-    monthlyCredits: 100,
-    agents: false,
-    purchasable: false,
-    euro: 0,
-  },
-  free: {
-    id: "free",
-    label: "Free",
-    monthlyCredits: 300,
-    agents: true,
-    purchasable: false,
-    euro: 0,
-  },
-  enterprise: {
-    id: "enterprise",
-    label: "Enterprise",
-    monthlyCredits: 3_000,
-    agents: true,
-    purchasable: true,
-    euro: 50,
-  },
-} as const;
-
-export type CreditPlanId = keyof typeof CREDIT_PLANS;
-export type CreditPlan = (typeof CREDIT_PLANS)[CreditPlanId];
-
-export function isCreditPlanId(value: unknown): value is CreditPlanId {
-  return typeof value === "string" && value in CREDIT_PLANS;
-}
-
-/** Fällt auf die Gratisstufe zurück, statt an einem unbekannten Wert zu scheitern. */
-export function creditPlan(
-  planId: string | null | undefined,
-  isAnonymous = false,
-): CreditPlan {
-  if (isCreditPlanId(planId)) return CREDIT_PLANS[planId];
-  return isAnonymous ? CREDIT_PLANS.guest : CREDIT_PLANS.free;
-}
-
-export const GUEST_MONTHLY_CREDITS = CREDIT_PLANS.guest.monthlyCredits;
-export const ACCOUNT_MONTHLY_CREDITS = CREDIT_PLANS.free.monthlyCredits;
+/** Compatibility names: these grants are one-time, never monthly refills. */
+export const GUEST_MONTHLY_CREDITS = GUEST_TRIAL_CREDITS;
+export const ACCOUNT_MONTHLY_CREDITS = START_CREDITS;
 
 /**
  * Token weights:

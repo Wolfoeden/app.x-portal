@@ -36,7 +36,8 @@ Ausführungsgrenze.
 | Konto | 300 Credits pro Monat |
 | Projektanalyse | 3 Credits |
 | Externe Recherche | 30 Credits nach Bestätigung |
-| Enterprise | 50 Euro netto pro Monat, 3.000 Credits, keine Verbrauchsnachberechnung |
+| Basic / Pro / Business | 9/19/50 Euro netto pro Monat, 500/1.250/4.000 Credits, keine Verbrauchsnachberechnung |
+| Enterprise Flex | 0 Euro Grundgebühr, 2 Cent netto je abrechenbarem Credit, Anfrage statt vorgetäuschter Self-Service-Aktivierung |
 
 Alle Zahlen werden aus `lib/ai/credit-policy.ts` bezogen. Die AGB-Fassung 1.0
 wurde nach der vom Betreiber bestätigten anwaltlichen Prüfung zum

@@ -1,5 +1,7 @@
-import { CREDIT_PLANS } from "@/lib/ai/credit-policy";
-import { ENTERPRISE_BILLING } from "@/lib/billing/payment-links";
+import {
+  CREDIT_PLANS,
+  type FixedMonthlyPlan,
+} from "@/lib/billing/plans";
 import {
   BUSINESS_ONLY_NOTICE,
   IMPRINT_EMAIL,
@@ -34,12 +36,12 @@ const euroFormat = new Intl.NumberFormat("de-DE", {
 
 const creditFormat = new Intl.NumberFormat("de-DE");
 
-export function orderConfirmationMessage(): {
+export function orderConfirmationMessage(
+  plan: FixedMonthlyPlan = CREDIT_PLANS.enterprise_legacy,
+): {
   subject: string;
   text: string;
 } {
-  const plan = CREDIT_PLANS.enterprise;
-
   return {
     subject: "Ihre Bestellung bei XPORTAL — Bestätigung in Textform",
     text: [
@@ -55,7 +57,7 @@ export function orderConfirmationMessage(): {
       "Guthaben.",
       "",
       "PREIS",
-      `${euroFormat.format(ENTERPRISE_BILLING.priceNetEuro)} pro Monat, zuzüglich der gesetzlichen Umsatzsteuer.`,
+      `${euroFormat.format(plan.priceNetCents / 100)} pro Monat, zuzüglich der gesetzlichen Umsatzsteuer.`,
       "Der Betrag umfasst das genannte monatliche Kontingent; es gibt keine",
       "nachträgliche verbrauchsabhängige Mehrberechnung durch XPORTAL.",
       "",

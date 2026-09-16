@@ -109,6 +109,7 @@ export async function executeTrackedAiRequest<T>(input: {
 
   const quota = await reserveAiQuota({
     requestKey: input.requestKey,
+    actorUserId: input.userId,
     userId: billing.userId,
     interactionId: input.interactionId,
     userHash: input.userHash,

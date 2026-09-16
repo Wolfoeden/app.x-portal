@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
-import { CREDIT_PLANS } from "@/lib/ai/credit-policy";
 import { orderConfirmationMessage } from "@/lib/billing/order-confirmation";
+import { planForStripePaymentLink } from "@/lib/billing/payment-links";
+import type { FixedMonthlyPlan } from "@/lib/billing/plans";
 import { verifyStripeSignature } from "@/lib/billing/stripe-signature";
 import { deliverEmail } from "@/lib/email/deliver";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -31,7 +32,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 type StripeEvent = {
   id?: unknown;
   type?: unknown;
-  data?: { object?: { client_reference_id?: unknown } } | null;
+  data?: {
+    object?: { client_reference_id?: unknown; payment_link?: unknown };
+  } | null;
 };
 
 /**
@@ -52,6 +55,7 @@ async function sendOrderConfirmation(
   admin: ReturnType<typeof createAdminSupabaseClient>,
   userId: string,
   eventId: string,
+  plan: FixedMonthlyPlan,
 ): Promise<void> {
   try {
     const { data, error } = await admin.auth.admin.getUserById(userId);
@@ -63,7 +67,7 @@ async function sendOrderConfirmation(
 
     const result = await deliverEmail({
       to: email,
-      ...orderConfirmationMessage(),
+      ...orderConfirmationMessage(plan),
       // Geschuldet in Textform. Ein Widerspruch gegen Werbung darf sie
       // nicht aufhalten — wer bestellt hat, bekommt seine Bestaetigung.
       kind: "transactional",
@@ -127,6 +131,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true, assigned: false });
   }
 
+  const plan = planForStripePaymentLink(event.data?.object?.payment_link);
+  if (!plan) {
+    logEvent("stripe_webhook_unassigned", {
+      eventId,
+      eventType,
+      reason: "unknown_payment_link",
+    });
+    return NextResponse.json({ received: true, assigned: false });
+  }
+
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
     // 503 statt 200: hier hilft ein erneuter Zustellversuch tatsächlich.
     return NextResponse.json({ error: "Nicht verfügbar." }, { status: 503 });
@@ -137,8 +151,8 @@ export async function POST(request: Request) {
     p_event_id: eventId,
     p_event_type: eventType,
     p_user_id: reference,
-    p_plan_id: CREDIT_PLANS.enterprise.id,
-    p_plan_allowance: CREDIT_PLANS.enterprise.monthlyCredits,
+    p_plan_id: plan.id,
+    p_plan_allowance: plan.monthlyCredits,
   });
 
   if (error) {
@@ -158,7 +172,7 @@ export async function POST(request: Request) {
   // zweite Bestätigung zu demselben Vertrag wäre keine Dopplung, sondern die
   // Auskunft über einen Abschluss, den es nicht gegeben hat.
   if (activated) {
-    await sendOrderConfirmation(admin, reference, eventId);
+    await sendOrderConfirmation(admin, reference, eventId, plan);
   }
 
   return NextResponse.json({ received: true, activated });
