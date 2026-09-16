@@ -54,7 +54,7 @@ function configuredPublicUrl(planId: CheckoutPlanId): string | null {
   if (!value) return null;
   try {
     const url = new URL(value);
-    return url.protocol === "https:" && url.hostname.endsWith("stripe.com")
+    return url.protocol === "https:" && url.hostname.toLowerCase() === "buy.stripe.com"
       ? url.toString()
       : null;
   } catch {

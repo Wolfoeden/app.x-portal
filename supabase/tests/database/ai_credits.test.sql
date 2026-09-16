@@ -179,7 +179,7 @@ select is(
       'credits-test-v1'
     ) q
   ),
-  'true:reserved:40',
+  'true:reserved:240',
   'extended preflight reserves quota and credits atomically'
 );
 
@@ -250,13 +250,13 @@ select is(
       100,
       10000,
       10000,
-      50,
+      250,
       1,
       'c1111111-1111-4111-8111-111111111111',
       'd2222222-2222-4222-8222-222222222222',
       'gpt-test',
       'project_brief',
-      50,
+      250,
       100,
       15000,
       'pricing-test-v1',
@@ -298,7 +298,7 @@ select is(
       'credits-test-v1'
     ) r
   ),
-  'true:recorded:20:0:80',
+  'true:recorded:20:0:280',
   'settlement replaces the credit reservation with actual consumption'
 );
 

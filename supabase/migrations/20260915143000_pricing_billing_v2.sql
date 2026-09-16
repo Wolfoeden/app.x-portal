@@ -456,11 +456,11 @@ set search_path = ''
 as $$
 begin
   if old.settled_at is null and new.settled_at is not null then
-    new.enterprise_billable := (
+    new.enterprise_billable := coalesce((
       new.billing_model_at_reservation = 'metered'
       and coalesce(new.actual_credits, 0) > 0
       and new.outcome in ('succeeded', 'reconciled_estimate')
-    );
+    ), false);
   end if;
 
   if old.actor_user_id is not null and new.actor_user_id is null
@@ -543,6 +543,10 @@ create table public.enterprise_usage_invoices (
 alter table public.ai_usage_reservations
   add constraint ai_usage_reservations_enterprise_invoice_fk
   foreign key (enterprise_invoice_id) references public.enterprise_usage_invoices (id) on delete restrict;
+
+create index if not exists ai_usage_reservations_enterprise_invoice_idx
+  on public.ai_usage_reservations (enterprise_invoice_id)
+  where enterprise_invoice_id is not null;
 
 alter table public.enterprise_usage_invoices enable row level security;
 alter table public.enterprise_usage_invoices force row level security;

@@ -40,6 +40,14 @@ describe("new fixed-plan checkout", () => {
     expect(fixedPlanCheckout("pro", null)).toBe("https://buy.stripe.com/pro");
     expect(planForStripePaymentLink("plink_pro")?.id).toBe("pro");
   });
+
+  it("rejects hosts that merely end with the Stripe domain name", () => {
+    process.env.NEXT_PUBLIC_STRIPE_PRO_PAYMENT_LINK =
+      "https://attackerstripe.com/pro";
+    process.env.NEXT_PUBLIC_STRIPE_FIXED_PLANS_CHECKOUT_ENABLED = "true";
+
+    expect(fixedPlanCheckout("pro", null)).toBeNull();
+  });
 });
 
 describe("enterprise contact", () => {
