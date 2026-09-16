@@ -1,66 +1,98 @@
-/**
- * Der Weg, auf dem der bezahlte Plan gebucht wird.
- *
- * x-portal.eu verkauft zwei Dinge: die Gratisstufe und Enterprise. Enterprise
- * laeuft ueber einen Stripe Payment Link — 50 Euro netto pro Monat für ein
- * festes monatliches Kontingent von 3.000 Credits.
- *
- * Der Link steht hier und nicht in der Oberflaeche, damit die Zuordnung einer
- * Zahlung zu einem Konto an einer Stelle entschieden wird.
- */
+import {
+  CREDIT_PLANS,
+  type CreditPlanId,
+  type FixedMonthlyPlan,
+} from "@/lib/billing/plans";
 
-/** Der Stripe Payment Link fuer Enterprise. Oeffentlich, kein Geheimnis. */
-export const ENTERPRISE_PAYMENT_LINK = "https://buy.stripe.com/9B614m38Bb9DbuO2SMa3u02";
+export const FIXED_PLAN_PAYMENT_LINKS = {
+  basic: "https://buy.stripe.com/7sY3cu24xa5z7ey64Ya3u04",
+  pro: "https://buy.stripe.com/3cIcN4fVnb9DcyS9haa3u05",
+  business: "https://buy.stripe.com/9B614m38Bb9DbuO2SMa3u02",
+} as const;
 
-/**
- * Was beim Buchen sofort faellig wird, in Euro und netto. Seit September 2026
- * der volle Monatspreis statt eines symbolischen Startbetrags.
- *
- * Steht hier und nicht mehr in der Kontokarte, weil inzwischen zwei Stellen
- * denselben Betrag nennen muessen: die Karte, auf der jemand bucht, und die
- * Vertragsbestaetigung, die danach rausgeht. Zwei Zahlen von Hand waeren keine
- * Doppelung, sondern ein Widerspruch zwischen dem, was angezeigt wurde, und
- * dem, was bestaetigt wird.
- */
-export const ENTERPRISE_START_EURO = 50;
+const VERIFIED_PAYMENT_LINK_IDS = {
+  basic: "plink_1UG3v2CQxgmYRfmL4ktH8PYg",
+  pro: "plink_1UG3wWCQxgmYRfmLPI05Uc7q",
+  business: "plink_1UBAWJCQxgmYRfmLtce10O55",
+} as const;
 
-/** Der vollständige, öffentlich kommunizierbare Abrechnungsvertrag. */
+export const ENTERPRISE_START_EURO = CREDIT_PLANS.enterprise_legacy.euro;
 export const ENTERPRISE_BILLING = {
   model: "fixed_monthly",
-  priceNetEuro: ENTERPRISE_START_EURO,
+  priceNetEuro: CREDIT_PLANS.enterprise_legacy.euro,
   interval: "month",
   invoice: "Stripe-Zahlungsbeleg und XPORTAL-Vertragsbestätigung",
 } as const;
 
-/** Wer bei Fragen zur Abrechnung antwortet. */
 export const ENTERPRISE_CONTACT = {
-  email: "info@x-portal.eu",
+  email: "roman@dering.info",
   phone: "+491758934338",
   phoneDisplay: "+49 175 8934338",
   person: "Roman Dering",
 } as const;
 
-/**
- * Haengt die Kontokennung an den Zahlungslink.
- *
- * Ohne sie kommt bei Stripe eine Zahlung an, aber nichts, woran sich das
- * zugehoerige Konto erkennen laesst. Ueber die E-Mail-Adresse zu gehen ist
- * unzuverlaessig: bei einem Unternehmen zahlt oft die Buchhaltung und nicht
- * die Person, die das Konto angelegt hat.
- *
- * `client_reference_id` ist das Feld, das Stripe genau dafuer vorsieht — es
- * taucht in der Zahlung und spaeter im Webhook wieder auf. Es ergaenzt das
- * `internal_sku` aus den Produktdaten: das sagt, *was* gekauft wurde, dies
- * sagt, *wer* es gekauft hat.
- *
- * Erlaubt sind Buchstaben, Ziffern, Unterstrich und Bindestrich; eine Kennung,
- * die davon abweicht, wird weggelassen statt verstuemmelt uebertragen.
- */
-export function enterprisePaymentLink(customerReference: string | null): string {
-  const reference = customerReference?.trim();
-  if (!reference || !/^[\w-]{1,200}$/u.test(reference)) return ENTERPRISE_PAYMENT_LINK;
+type CheckoutPlanId = "basic" | "pro" | "business";
 
-  const url = new URL(ENTERPRISE_PAYMENT_LINK);
-  url.searchParams.set("client_reference_id", reference);
+const PAYMENT_LINK_ID_ENV: Record<CheckoutPlanId, string> = {
+  basic: "STRIPE_BASIC_PAYMENT_LINK_ID",
+  pro: "STRIPE_PRO_PAYMENT_LINK_ID",
+  business: "STRIPE_BUSINESS_PAYMENT_LINK_ID",
+};
+
+function configuredPublicUrl(planId: CheckoutPlanId): string | null {
+  if (process.env.NEXT_PUBLIC_STRIPE_FIXED_PLANS_CHECKOUT_ENABLED !== "true") {
+    return null;
+  }
+  // Direct property access is required so Next.js can inline NEXT_PUBLIC
+  // values in the account client component.
+  const value = (planId === "basic"
+    ? process.env.NEXT_PUBLIC_STRIPE_BASIC_PAYMENT_LINK
+    : planId === "pro"
+      ? process.env.NEXT_PUBLIC_STRIPE_PRO_PAYMENT_LINK
+      : process.env.NEXT_PUBLIC_STRIPE_BUSINESS_PAYMENT_LINK
+  )?.trim() || FIXED_PLAN_PAYMENT_LINKS[planId];
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname.endsWith("stripe.com")
+      ? url.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export function fixedPlanCheckout(
+  planId: CheckoutPlanId,
+  customerReference: string | null,
+): string | null {
+  const configured = configuredPublicUrl(planId);
+  if (!configured) return null;
+  if (!customerReference?.trim() || !/^[\w-]{1,200}$/u.test(customerReference)) {
+    return configured;
+  }
+  const url = new URL(configured);
+  url.searchParams.set("client_reference_id", customerReference.trim());
   return url.toString();
+}
+
+/** Server-side allow-list: a Stripe session activates only its configured plan. */
+export function planForStripePaymentLink(
+  paymentLinkId: unknown,
+): FixedMonthlyPlan | null {
+  if (process.env.STRIPE_FIXED_PLANS_ACTIVATION_ENABLED !== "true") return null;
+  if (typeof paymentLinkId !== "string" || !paymentLinkId.trim()) return null;
+  for (const planId of Object.keys(PAYMENT_LINK_ID_ENV) as CheckoutPlanId[]) {
+    const configuredId = process.env[PAYMENT_LINK_ID_ENV[planId]]?.trim() || VERIFIED_PAYMENT_LINK_IDS[planId];
+    if (configuredId === paymentLinkId) {
+      return CREDIT_PLANS[planId];
+    }
+  }
+  return null;
+}
+
+export function checkoutConfigured(planId: CreditPlanId): boolean {
+  return planId === "basic" || planId === "pro" || planId === "business"
+    ? configuredPublicUrl(planId) !== null
+    : false;
 }

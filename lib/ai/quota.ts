@@ -89,8 +89,8 @@ function firstRow(data: unknown): Record<string, unknown> | null {
 
 /**
  * Die Kontingente selbst stehen in lib/ai/credit-policy.ts, weil die
- * Oberfläche sie nennt. Hier bleibt nur, wie eine Umgebungsvariable sie
- * übersteuern kann.
+ * Oberfläche sie nennt. Das angemeldete Trial ist absichtlich nicht per
+ * Umgebung überschreibbar: 300 Credits einmalig sind ein Vertragsmerkmal.
  */
 export {
   ACCOUNT_MONTHLY_CREDITS,
@@ -124,7 +124,7 @@ export function currentPeriodEndIso(now: Date = new Date()): string {
  * abgelaufene Perioden Historie sind und nicht rückwirkend geändert werden.
  */
 export const ALLOWED_MONTHLY_CREDIT_TOTALS: readonly number[] = [
-  0, 10, 63, 100, 300,
+  0, 10, 63, 100, 300, 500, 1_250, 3_000, 4_000,
 ];
 
 /**
@@ -139,6 +139,13 @@ export function configuredInitialCredits(isAnonymous: boolean): number {
   const fallback = isAnonymous ? GUEST_MONTHLY_CREDITS : ACCOUNT_MONTHLY_CREDITS;
   const name = isAnonymous ? "AI_CREDITS_GUEST_TOTAL" : "AI_CREDITS_USER_TOTAL";
   const configured = nonNegativeInteger(name, fallback);
+
+  if (!isAnonymous) {
+    if (configured !== fallback) {
+      logEvent("ai_credit_total_rejected", { name, fallback });
+    }
+    return fallback;
+  }
 
   if (!ALLOWED_MONTHLY_CREDIT_TOTALS.includes(configured)) {
     logEvent("ai_credit_total_rejected", { name, fallback });
@@ -338,6 +345,8 @@ export async function resolveBillingAccount(input: {
 
 export async function reserveAiQuota(input: {
   requestKey: string;
+  /** Person who initiated the request; userId may instead be the team owner. */
+  actorUserId: string;
   userId: string;
   interactionId: string;
   userHash: string;
@@ -373,7 +382,7 @@ export async function reserveAiQuota(input: {
   // before its reservation predicate runs, and that function rolls an expired
   // monthly period. No separate roll statement is needed here.
   const admin = createAdminSupabaseClient();
-  const { data, error } = await admin.rpc("consume_ai_quota", {
+  const { data, error } = await admin.rpc("consume_ai_quota_v2", {
     p_request_key: input.requestKey,
     p_user_hash: input.userHash,
     p_ip_hash: input.ipHash,
@@ -387,6 +396,7 @@ export async function reserveAiQuota(input: {
     p_estimated_tokens: estimatedTokens,
     p_estimated_cost_cents: estimatedCostCents,
     p_user_id: input.userId,
+    p_actor_user_id: input.actorUserId,
     p_interaction_id: input.interactionId,
     p_requested_model: input.requestedModel,
     p_purpose: input.purpose,
@@ -442,7 +452,7 @@ export async function recordAiUsage(input: {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) return null;
 
   const admin = createAdminSupabaseClient();
-  const { data, error } = await admin.rpc("record_ai_usage", {
+  const { data, error } = await admin.rpc("record_ai_usage_v2", {
     p_request_key: input.requestKey,
     p_actual_input_tokens: input.inputTokens,
     p_actual_cached_input_tokens: input.cachedInputTokens,

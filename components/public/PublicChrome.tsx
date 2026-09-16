@@ -18,6 +18,7 @@ export function PublicHeader({ context }: { context?: string }) {
           <Link href={MARKETING_PAGE.find.path}>Freelancer finden</Link>
           <Link href={MARKETING_PAGE.matching.path}>KI-Matching</Link>
           <Link href={MARKETING_PAGE.how.path}>So funktioniert’s</Link>
+          <Link href={MARKETING_PAGE.pricing.path}>Preise</Link>
           <Link href="/freelancer/apply">Freelancer-Portal</Link>
         </nav>
         <Link href="/chat" prefetch={false} className={styles.primaryAction}>

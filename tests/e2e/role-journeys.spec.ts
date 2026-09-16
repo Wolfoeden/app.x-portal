@@ -31,20 +31,20 @@ test.describe("geschützte Rollen-Journeys", () => {
     await expect(page.getByRole("link", { name: "Merkliste" })).toBeVisible();
   });
 
-  test("Enterprise: Plan, Preis, Kontingent und Buchungsstatus stehen zusammen", async ({ page }) => {
+  test("Preise: Monatspläne und Enterprise-Verbrauch stehen zusammen", async ({ page }) => {
     await page.goto("/chat/preview?state=ranked");
     await page.getByRole("button", { name: "Konto und Einstellungen öffnen" }).click();
-    await page.getByRole("button", { name: "Mehr Credits erhalten" }).click();
-    await expect(page.getByRole("dialog", { name: "Credits und Pläne" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Enterprise" })).toBeVisible();
-    await expect(page.getByText("3.000 Credits monatlich")).toBeVisible();
+    await page.getByRole("button", { name: "Tarife ansehen" }).click();
+    const dialog = page.getByRole("dialog", { name: "Credits und Pläne" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "Basic", exact: true })).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "Pro", exact: true })).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "Business", exact: true })).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "Enterprise", exact: true })).toBeVisible();
+    await expect(dialog.getByText("1.250 Credits pro Monat")).toBeVisible();
+    await expect(dialog).toContainText("0,02 €");
     await expect(page.getByRole("heading", { name: "Was eine bestätigte Aktion kostet" })).toHaveCount(0);
-    const gatedCheckout = page.locator("a.plan-action");
-    await expect(gatedCheckout).toHaveAttribute("aria-disabled", "true");
-    await expect(gatedCheckout).not.toHaveAttribute("href", /.+/u);
-    await page.getByRole("checkbox", { name: /Ich bestätige, dass ich als Unternehmer/u }).check();
-    await expect(gatedCheckout).toHaveAttribute("aria-disabled", "false");
-    await expect(gatedCheckout).toHaveAttribute("href", /^https:\/\/buy\.stripe\.com\//u);
+    await expect(page.getByRole("link", { name: /Enterprise per E-Mail anfragen/u })).toHaveAttribute("href", "mailto:roman@dering.info?subject=XPORTAL%20Enterprise");
   });
 
   test("Freelancer: Profilverwaltung und Nachweise sind erreichbar", async ({ page }) => {

@@ -9,7 +9,7 @@ import { IconCheck, IconInfo } from "../icons";
 /**
  * Die selbst gesetzte Obergrenze.
  *
- * Enterprise hat ein festes Monatskontingent. Das freiwillige Nutzungslimit
+ * Ein fester Monatsplan hat ein Credit-Kontingent. Das freiwillige Nutzungslimit
  * senkt den verfügbaren Teamrahmen, nicht den bereits vereinbarten Monatspreis.
  *
  * Ein leeres Feld heisst "kein Limit" und ist etwas anderes als eine 0. Die

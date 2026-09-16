@@ -61,7 +61,7 @@ export default function HowXportalWorksPage() {
       <ContentSection id="auswahl" title="Sie wählen aus und entscheiden über die nächsten Schritte">
         <p>Sie können Profile ansehen, Fragen prüfen und entscheiden, ob Sie ein Profil speichern oder einen Kontakt anfragen möchten. Für dauerhafte Speicherung und weitere Schritte mit einem Profil ist ein Konto vorgesehen. Die Suche allein beauftragt niemanden.</p>
         <p>Aktuelle Verfügbarkeit, Honorar, konkrete Erfahrung und die Bedingungen einer Zusammenarbeit klären Sie im weiteren Austausch. XPORTAL trifft keine automatische Einstellungs- oder Beauftragungsentscheidung.</p>
-        <p>Externe Webrecherche ist vom internen Abgleich getrennt. Wenn sie angeboten wird, braucht sie ein Konto und Ihre ausdrückliche Bestätigung. Externe Ergebnisse werden als nicht durch XPORTAL verifiziert gekennzeichnet; auch sie sind keine garantierten Empfehlungen.</p>
+        <p>Die externe AI-Agent-Recherche ist vom internen Abgleich getrennt. Wenn sie angeboten wird, braucht sie ein Konto und Ihre ausdrückliche Bestätigung. Externe Ergebnisse werden als nicht durch XPORTAL verifiziert gekennzeichnet; auch sie sind keine garantierten Empfehlungen.</p>
       </ContentSection>
 
       <ContentSection id="kosten" label="Kosten verständlich machen" title="Credits stehen für einzelne Leistungen">
@@ -73,7 +73,7 @@ export default function HowXportalWorksPage() {
           { question: "Was macht die KI und was macht der Matcher?", answer: <p>Die KI unterstützt die Strukturierung Ihres Textes. Der interne Matcher gleicht die erfassten Anforderungen nach festen Regeln mit vorhandenen Profilangaben ab. Auswahl und Beauftragung bleiben Ihre Entscheidung.</p> },
           { question: "Kann ich ein erkanntes Detail korrigieren?", answer: <p>Ja. Sie können die Projektangaben im Dialog ergänzen oder korrigieren. Prüfen Sie danach die aktualisierte Übersicht, insbesondere bei Muss-Anforderungen, Alternativen oder Ausschlüssen.</p> },
           { question: "Sind sämtliche Freelancer unabhängig geprüft?", answer: <p>Eine solche pauschale Zusage macht XPORTAL hier nicht. Einzelne Fakten können als bestätigt hinterlegt sein, andere beruhen auf Profilangaben oder Selbstauskünften. Prüfen Sie die für Ihr Projekt entscheidenden Nachweise im weiteren Austausch.</p> },
-          { question: "Startet nach der Anmeldung automatisch eine Recherche?", answer: <p>Nein. Eine externe Recherche wird separat bestätigt. Die Anmeldung allein startet weder eine Webrecherche noch eine Beauftragung.</p> },
+          { question: "Startet nach der Anmeldung automatisch eine Recherche?", answer: <p>Nein. Eine externe Recherche wird separat bestätigt. Die Anmeldung allein startet weder eine AI-Agent-Recherche noch eine Beauftragung.</p> },
           { question: "Enthalten die Plattformpreise das Honorar des Freelancers?", answer: <p>Nein. Die angegebenen Credits und Preise betreffen XPORTAL-Leistungen. Das Honorar und die Bedingungen der Zusammenarbeit mit einem Freelancer müssen gesondert vereinbart werden.</p> },
         ]} />
         <p>Zum Einstieg: <Link href={MARKETING_PAGE.find.path}>Freelancer finden</Link> oder <Link href={MARKETING_PAGE.it.path}>IT-Projekte konkret beschreiben</Link>.</p>

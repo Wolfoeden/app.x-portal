@@ -6,10 +6,12 @@ import { describe, expect, it } from "vitest";
 import FindPage, { metadata as findMetadata } from "@/app/(marketing)/freelancer-finden/page";
 import ItPage, { metadata as itMetadata } from "@/app/(marketing)/it-freelancer-finden/page";
 import MatchingPage, { metadata as matchingMetadata } from "@/app/(marketing)/ki-freelancer-matching/page";
+import PricingPage, { metadata as pricingMetadata } from "@/app/(marketing)/preise/page";
 import HowPage, { metadata as howMetadata } from "@/app/(marketing)/wie-funktioniert-xportal/page";
 import MarketingLayout from "@/app/(marketing)/layout";
 import { CreditSummary } from "@/components/marketing/CreditSummary";
-import { CREDIT_PLANS, CREDIT_PRICES, affordableCount } from "@/lib/ai/credit-policy";
+import { CREDIT_PLANS, CREDIT_PRICES } from "@/lib/ai/credit-policy";
+import { PUBLIC_PRICING_PLANS, START_CREDITS } from "@/lib/billing/plans";
 import { SKILL_TAXONOMY } from "@/lib/domain/skill-taxonomy";
 import { MARKETING_CATEGORIES } from "@/lib/marketing-categories";
 import { MARKETING_PAGE, MARKETING_PAGES, absoluteUrl, pageMetadata } from "@/lib/seo";
@@ -19,12 +21,13 @@ const routes = [
   { Component: ItPage, page: MARKETING_PAGE.it, metadata: itMetadata, required: ["IT-Freelancer", "React", "SAP", "Verfügbarkeit"] },
   { Component: MatchingPage, page: MARKETING_PAGE.matching, metadata: matchingMetadata, required: ["regelbasiert", "KI-gestütztes", "Nicht belegt"] },
   { Component: HowPage, page: MARKETING_PAGE.how, metadata: howMetadata, required: ["Requirement Extraction", "Credits", "Informationslücken"] },
+  { Component: PricingPage, page: MARKETING_PAGE.pricing, metadata: pricingMetadata, required: ["Ein Guthaben", "Empfohlen", "Nach Nutzung", "300 Start-Credits"] },
 ];
 
 describe("marketing pages rendered on the server", () => {
-  it("covers precisely the four phase-two routes", () => {
+  it("covers every public marketing route", () => {
     expect(routes.map(({ page }) => page.path).sort()).toEqual(MARKETING_PAGES.map((page) => page.path).sort());
-    expect(routes).toHaveLength(4);
+    expect(routes).toHaveLength(5);
   });
 
   for (const { Component, page, metadata, required } of routes) {
@@ -36,7 +39,7 @@ describe("marketing pages rendered on the server", () => {
       expect(html.match(/<h1\b/gu)).toHaveLength(1);
       expect(text.length).toBeGreaterThan(1800);
       for (const phrase of required) expect(text).toContain(phrase);
-      expect(main).toMatch(/href="\/chat"[^>]*>Projekt (?:beschreiben|jetzt einfügen)/u);
+      expect(main).toMatch(/href="\/chat"[^>]*>(?:Projekt (?:beschreiben|jetzt einfügen)|Kostenlos starten)/u);
       expect(metadata).toEqual(pageMetadata(page));
       expect(metadata.alternates?.canonical).toBe(absoluteUrl(page.path));
       for (const related of MARKETING_PAGES.filter((item) => item.path !== page.path)) {
@@ -76,33 +79,36 @@ describe("costs derived from product policy", () => {
     const html = renderToStaticMarkup(createElement(CreditSummary));
     expect(html).toContain(String(CREDIT_PRICES.project_brief.credits) + " Credits");
     expect(html).toContain(String(CREDIT_PRICES.research.credits) + " Credits");
-    for (const plan of Object.values(CREDIT_PLANS)) {
+    expect(html).toContain(`${START_CREDITS} einmalig`);
+    for (const plan of PUBLIC_PRICING_PLANS) {
       const row = html.match(new RegExp('<tr data-plan="' + plan.id + '">([\\s\\S]*?)</tr>', "u"))?.[1];
       expect(row).toContain(plan.label);
-      expect(row).toContain(new Intl.NumberFormat("de-DE").format(plan.monthlyCredits));
-      expect(row).toContain(new Intl.NumberFormat("de-DE").format(affordableCount(plan.monthlyCredits, "project_brief")));
+      if (plan.billingModel === "fixed_monthly") {
+        expect(row).toContain(new Intl.NumberFormat("de-DE").format(plan.monthlyCredits));
+      } else {
+        expect(row).toContain("Nach Verbrauch");
+      }
     }
     expect(html).toContain("zzgl. USt.");
-    expect(html).toContain("ausschließlicher Nutzung");
+    expect(html).toContain("nicht kumuliert");
     expect(html).toContain("Freelancer-Honorare");
   });
 
   it("follows changed policy values, including cents, without updating the component", () => {
     const oldPrice = CREDIT_PRICES.project_brief.credits;
-    const oldPlan = { ...CREDIT_PLANS.enterprise };
+    const oldPlan = { ...CREDIT_PLANS.business };
     try {
       // A regression test for duplicated literals: alter the source, then render.
       Object.assign(CREDIT_PRICES.project_brief, { credits: 7 });
-      Object.assign(CREDIT_PLANS.enterprise, { monthlyCredits: 427, euro: 47.5 });
+      Object.assign(CREDIT_PLANS.business, { monthlyCredits: 427, priceNetCents: 4_750 });
       const html = renderToStaticMarkup(createElement(CreditSummary));
       expect(html).toContain("7 Credits");
-      const row = html.match(/<tr data-plan="enterprise">([\s\S]*?)<\/tr>/u)?.[1];
+      const row = html.match(/<tr data-plan="business">([\s\S]*?)<\/tr>/u)?.[1];
       expect(row).toContain("427");
-      expect(row).toContain("47,5");
-      expect(row).toContain(">61<");
+      expect(row).toContain("47,50");
     } finally {
       Object.assign(CREDIT_PRICES.project_brief, { credits: oldPrice });
-      Object.assign(CREDIT_PLANS.enterprise, oldPlan);
+      Object.assign(CREDIT_PLANS.business, oldPlan);
     }
   });
 });

@@ -1,48 +1,51 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
   ENTERPRISE_CONTACT,
-  ENTERPRISE_PAYMENT_LINK,
-  enterprisePaymentLink,
+  FIXED_PLAN_PAYMENT_LINKS,
+  fixedPlanCheckout,
+  planForStripePaymentLink,
 } from "@/lib/billing/payment-links";
 
-describe("enterprise payment link", () => {
-  /**
-   * Ohne Kennung kommt bei Stripe eine Zahlung an, die sich keinem Konto
-   * zuordnen laesst. Ueber die E-Mail zu gehen ist unzuverlaessig: bei Stripe
-   * zahlt oft die Buchhaltung, nicht die Person mit dem Konto.
-   */
-  it("carries the account id so a payment can be matched", () => {
-    const url = new URL(enterprisePaymentLink("a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d"));
+afterEach(() => {
+  delete process.env.NEXT_PUBLIC_STRIPE_FIXED_PLANS_CHECKOUT_ENABLED;
+  delete process.env.STRIPE_FIXED_PLANS_ACTIVATION_ENABLED;
+  delete process.env.NEXT_PUBLIC_STRIPE_PRO_PAYMENT_LINK;
+  delete process.env.STRIPE_PRO_PAYMENT_LINK_ID;
+});
 
-    expect(url.origin + url.pathname).toBe(ENTERPRISE_PAYMENT_LINK);
-    expect(url.searchParams.get("client_reference_id")).toBe(
-      "a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
-    );
+describe("new fixed-plan checkout", () => {
+  it("keeps the three supplied links assigned to their exact plans", () => {
+    expect(FIXED_PLAN_PAYMENT_LINKS).toEqual({
+      basic: "https://buy.stripe.com/7sY3cu24xa5z7ey64Ya3u04",
+      pro: "https://buy.stripe.com/3cIcN4fVnb9DcyS9haa3u05",
+      business: "https://buy.stripe.com/9B614m38Bb9DbuO2SMa3u02",
+    });
   });
 
-  it("still links to Stripe when no account is known", () => {
-    expect(enterprisePaymentLink(null)).toBe(ENTERPRISE_PAYMENT_LINK);
-    expect(enterprisePaymentLink("   ")).toBe(ENTERPRISE_PAYMENT_LINK);
+  it("stays fail-closed when only a URL and id are configured", () => {
+    process.env.NEXT_PUBLIC_STRIPE_PRO_PAYMENT_LINK = "https://buy.stripe.com/pro";
+    process.env.STRIPE_PRO_PAYMENT_LINK_ID = "plink_pro";
+
+    expect(fixedPlanCheckout("pro", null)).toBeNull();
+    expect(planForStripePaymentLink("plink_pro")).toBeNull();
   });
 
-  // Eine Kennung, die Stripe nicht annimmt, wird weggelassen statt
-  // verstuemmelt uebertragen — sonst zeigt sie spaeter auf nichts.
-  it("drops a reference Stripe would not accept", () => {
-    for (const bad of ["hat leerzeichen", "kaputt/slash", "ümlaut", "a".repeat(201)]) {
-      expect(enterprisePaymentLink(bad)).toBe(ENTERPRISE_PAYMENT_LINK);
-    }
-  });
+  it("requires independent public and server activation switches", () => {
+    process.env.NEXT_PUBLIC_STRIPE_PRO_PAYMENT_LINK = "https://buy.stripe.com/pro";
+    process.env.STRIPE_PRO_PAYMENT_LINK_ID = "plink_pro";
+    process.env.NEXT_PUBLIC_STRIPE_FIXED_PLANS_CHECKOUT_ENABLED = "true";
+    process.env.STRIPE_FIXED_PLANS_ACTIVATION_ENABLED = "true";
 
-  it("keeps the link itself untouched", () => {
-    expect(ENTERPRISE_PAYMENT_LINK.startsWith("https://buy.stripe.com/")).toBe(true);
+    expect(fixedPlanCheckout("pro", null)).toBe("https://buy.stripe.com/pro");
+    expect(planForStripePaymentLink("plink_pro")?.id).toBe("pro");
   });
 });
 
 describe("enterprise contact", () => {
   it("names a person, an address and a number", () => {
     expect(ENTERPRISE_CONTACT.person).toBe("Roman Dering");
-    expect(ENTERPRISE_CONTACT.email).toBe("info@x-portal.eu");
+    expect(ENTERPRISE_CONTACT.email).toBe("roman@dering.info");
     // Die Telefonnummer wird als tel:-Link verwendet und muss dafür ohne
     // Leerzeichen vorliegen; angezeigt wird die lesbare Fassung.
     expect(ENTERPRISE_CONTACT.phone).toMatch(/^\+\d+$/u);

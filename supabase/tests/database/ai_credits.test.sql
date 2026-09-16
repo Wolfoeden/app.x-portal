@@ -81,11 +81,11 @@ select is(
   (
     select s.credits_total::text || ':' || s.credits_remaining
     from public.get_ai_credit_snapshot(
-      'c1111111-1111-4111-8111-111111111111', false, 100
+      'c1111111-1111-4111-8111-111111111111', false, 300
     ) s
   ),
-  '100:100',
-  'server-supplied initial account credits are persisted without a SQL default'
+  '300:300',
+  'the server-supplied one-time account trial starts at 300 credits'
 );
 
 select is(
@@ -106,8 +106,8 @@ select is(
       'c6666666-6666-4666-8666-666666666666', true, 2500
     ) s
   ),
-  '2500:2500',
-  'raising the configured guest allocation raises an existing guest total once'
+  '500:500',
+  're-reading a guest account does not grant additional credits'
 );
 
 select ok(
@@ -148,11 +148,11 @@ select is(
     select s.credits_total::text || ':' || s.credits_used || ':'
            || s.credits_reserved || ':' || s.credits_remaining
     from public.get_ai_credit_snapshot(
-      'c5555555-5555-4555-8555-555555555555', false, 10
+      'c5555555-5555-4555-8555-555555555555', false, 300
     ) s
   ),
-  '60:0:60:0',
-  'guest upgrade never lowers total credits below used plus reserved credits'
+  '300:0:0:300',
+  'guest conversion creates the one-time account trial without a second grant'
 );
 
 select is(

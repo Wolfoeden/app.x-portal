@@ -145,7 +145,7 @@ export interface CreditBalanceSnapshot {
   exhausted: boolean;
   /** Fixed price of one normal search. */
   creditsPerRequest: number;
-  /** Die Stufe des Kontos: "guest", "free" oder "enterprise". */
+  /** Stable plan id from the central billing catalogue. */
   planId: string;
   /** What the request returning this snapshot cost. Null outside a request. */
   lastRequestCost: number | null;

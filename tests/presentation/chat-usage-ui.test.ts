@@ -85,7 +85,7 @@ describe("chat usage presentation contract", () => {
     // 1.026 Credits, 30 je Recherche: 34 — abgerundet, nie aufgerundet in eine
     // Recherche hinein, die das Guthaben nicht mehr trägt.
     expect(usageSummary(usage, true)).toBe(
-      "Guthaben: 1.026 Credits · 48 Anfragen · 34 Recherchen",
+      "Guthaben: 1.026 Credits · 48 Anfragen · 34 AI-Agent-Recherchen",
     );
   });
 
@@ -96,7 +96,7 @@ describe("chat usage presentation contract", () => {
       "Guthaben: 30 Credits · 1 Anfrage",
     );
     expect(usageSummary({ credits: almostEmpty }, true)).toBe(
-      "Guthaben: 30 Credits · 1 Anfrage · 1 Recherche",
+      "Guthaben: 30 Credits · 1 Anfrage · 1 AI-Agent-Recherche",
     );
   });
 

@@ -35,8 +35,8 @@ describe("selbst gesetztes Limit", () => {
   // Die Obergrenze haengt an der Stufe und nicht an einer zweiten Zahl, die
   // irgendwann davon abweicht.
   it("leitet die Obergrenze aus dem Plan ab", () => {
-    expect(SELF_LIMIT_MAX).toBe(CREDIT_PLANS.enterprise.monthlyCredits);
-    expect(SELF_LIMIT_MAX).toBe(3_000);
+    expect(SELF_LIMIT_MAX).toBe(CREDIT_PLANS.business.monthlyCredits);
+    expect(SELF_LIMIT_MAX).toBe(4_000);
   });
 
   it("nennt, was das volle Kontingent hoechstens kostet", () => {
