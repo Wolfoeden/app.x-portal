@@ -16,8 +16,8 @@ export const CONTACT_RESPONSE_PROMISE =
  * Fassung und Stand der AGB. Wer zustimmt, stimmt einer bestimmten Fassung zu;
  * ohne diese Nummer ließe sich später nicht sagen, welcher.
  */
-export const TERMS_VERSION = "1.0";
-export const TERMS_EFFECTIVE_DATE = "14. September 2026";
+export const TERMS_VERSION = "1.1";
+export const TERMS_EFFECTIVE_DATE = "17. September 2026";
 
 /**
  * Veröffentlichungsstatus der AGB. Die Website darf aus einem Entwurf keine

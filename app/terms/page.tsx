@@ -441,9 +441,11 @@ export default function TermsPage() {
               Streitigkeiten aus diesem Vertrag.
             </p>
             <p>
-              XPORTAL ist nicht bereit und nicht verpflichtet, an
-              Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle
-              teilzunehmen.
+              XPORTAL ist bereit, an Streitbeilegungsverfahren vor einer
+              Verbraucherschlichtungsstelle teilzunehmen. Zuständig ist die
+              Universalschlichtungsstelle des Bundes, Zentrum für Schlichtung
+              e.V., Straßburger Straße 8, 77694 Kehl am Rhein,{" "}
+              <a href="https://www.universalschlichtungsstelle.de" target="_blank" rel="noreferrer">www.universalschlichtungsstelle.de</a>.
             </p>
             <p>
               Sollte eine Bestimmung unwirksam sein, bleibt die Wirksamkeit der
