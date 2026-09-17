@@ -287,9 +287,9 @@ export function AuthDialog({
               DSGVO angreifbar; und ein Kästchen, das drei Erklärungen auf
               einmal abgibt, kann niemand mehr überblicken.
 
-              Die Unternehmereigenschaft wird deshalb dort abgefragt, wo sie
-              zählt: beim Abschluss einer kostenpflichtigen Leistung. Hier
-              steht sie nur noch als Hinweis.
+              Der B2B-Hinweis steht deshalb auf der zentralen Preisseite und
+              in den Vertragsbedingungen des Stripe-Checkouts. Hier steht die
+              Unternehmereigenschaft nur noch als Hinweis.
             */}
             {mode === "register" ? (
               <div className="auth-consent">

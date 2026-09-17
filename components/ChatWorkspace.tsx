@@ -41,8 +41,6 @@ import {
   ensureGuestSession,
   signOut as signOutAccount,
 } from "@/lib/auth/browser";
-import type { CheckoutPlanId } from "@/lib/billing/payment-links";
-
 import { AccountSummary, CreditPlansDialog } from "./chat/account";
 import {
   clearAuthContinuation,
@@ -1160,7 +1158,6 @@ export function ChatWorkspace({
   const [contactOpen, setContactOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [plansOpen, setPlansOpen] = useState(false);
-  const [requestedPlanId, setRequestedPlanId] = useState<CheckoutPlanId | null>(null);
   const [planTeam, setPlanTeam] = useState<PlanTeamSnapshot | null>(null);
   const [planTeamBusy, setPlanTeamBusy] = useState(false);
   const [planTeamNotice, setPlanTeamNotice] = useState<
@@ -1601,7 +1598,6 @@ export function ChatWorkspace({
       try {
         const view = await loadWorkspace();
         if (!alive) return;
-        if (!alive) return;
         const searchParams = new URLSearchParams(window.location.search);
         const requestedCheckout = searchParams.get("checkout");
         if (
@@ -1609,14 +1605,16 @@ export function ChatWorkspace({
           requestedCheckout === "pro" ||
           requestedCheckout === "business"
         ) {
-          setRequestedPlanId(requestedCheckout);
           if (view.anonymous) {
             setAuthIntent("generic");
             setAuthDestination(`/chat?checkout=${requestedCheckout}`);
             setAuthInitialMode("login");
             setAuthOpen(true);
           } else {
-            setPlansOpen(true);
+            window.location.assign(
+              new URL(`/api/billing/checkout?plan=${requestedCheckout}`, window.location.origin).toString(),
+            );
+            return;
           }
         }
         const authError = searchParams.get("auth_error");
@@ -2336,8 +2334,10 @@ export function ChatWorkspace({
       requestedCheckout === "pro" ||
       requestedCheckout === "business"
     ) {
-      setRequestedPlanId(requestedCheckout);
-      setPlansOpen(true);
+      window.location.assign(
+        new URL(`/api/billing/checkout?plan=${requestedCheckout}`, window.location.origin).toString(),
+      );
+      return;
     }
     if (searchParams.get("admin-login") === "1") {
       if (view.admin) {
@@ -3072,8 +3072,9 @@ export function ChatWorkspace({
                     onRefineSearch={refineCurrentSearch}
                     onSaveSearch={saveCurrentSearch}
                     onNeedCredits={() => {
-                      setPlansOpen(true);
-                      void loadPlanTeam();
+                      window.location.assign(
+                        new URL("/preise", window.location.origin).toString(),
+                      );
                     }}
                     selectedProfileId={selectedProfileId}
                     onOpenDetails={() => {
@@ -3232,7 +3233,6 @@ export function ChatWorkspace({
       {plansOpen ? (
         <CreditPlansDialog
           usage={usage}
-          customerReference={auth.user?.id ?? null}
           selfLimit={selfLimit}
           selfLimitMaxEuro={selfLimitMaxEuro}
           onSelfLimitSaved={setSelfLimit}
@@ -3241,19 +3241,9 @@ export function ChatWorkspace({
           teamNotice={planTeamNotice}
           onInviteTeamMember={invitePlanTeamMember}
           onRemoveTeamMember={removePlanTeamMember}
-          requestedPlanId={requestedPlanId}
           onClose={() => {
             setPlansOpen(false);
             setPlanTeamNotice(null);
-            if (requestedPlanId) {
-              const params = new URLSearchParams(window.location.search);
-              params.delete("checkout");
-              const cleanUrl = `${window.location.pathname}${
-                params.size ? `?${params.toString()}` : ""
-              }${window.location.hash}`;
-              window.history.replaceState({}, "", cleanUrl);
-              setRequestedPlanId(null);
-            }
           }}
         />
       ) : null}

@@ -109,11 +109,14 @@ describe("production privacy and authentication configuration", () => {
 
     expect(dialogs).toContain("Ich stimme den");
     expect(dialogs).toContain("Newsletter:");
-    // Die Unternehmereigenschaft wird beim Bezahlvorgang abgefragt, nicht hier.
+    // Die Unternehmereigenschaft steht im zentralen Kaufweg, nicht im Login.
     expect(dialogs).not.toContain(
       "Ich handle als Unternehmer im Sinne des § 14 BGB und",
     );
-    expect(repositoryFile("components/chat/account.tsx")).toContain(
+    expect(repositoryFile("app/(marketing)/preise/page.tsx")).toContain(
+      "BUSINESS_ONLY_NOTICE",
+    );
+    expect(repositoryFile("components/chat/account.tsx")).not.toContain(
       "Ich bestätige, dass ich als Unternehmer",
     );
   });

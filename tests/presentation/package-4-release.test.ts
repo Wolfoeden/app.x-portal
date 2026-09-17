@@ -41,15 +41,23 @@ describe("Paket 4: Konsolidierung und Freigabe", () => {
     expect(sidebar).not.toContain("chat.status");
   });
 
-  it("zeigt im Zahlungsdialog nur reale Buchungs- oder Anfragewege", () => {
+  it("haelt den Zahlungsdialog frei von einer zweiten Preisliste", () => {
     const account = source("components/chat/account.tsx");
     expect(account).not.toContain("Was eine bestätigte Aktion kostet");
     expect(account).not.toContain("Aktueller Stand. Klare nächste Option.");
     expect(account).not.toContain("Setzen Sie zuerst das Häkchen");
     expect(account).not.toContain("Fragen zur Abrechnung oder eine Obergrenze vereinbaren");
-    expect(account).toContain("anfragen");
-    expect(account).toContain("Enterprise per E-Mail anfragen");
-    expect(account).toContain("fixedPlanCheckout");
+    expect(account).toContain('href="/preise"');
+    expect(account).toContain("Tarife ansehen und Credits kaufen");
+    expect(account).not.toContain("fixedPlanCheckout");
+    expect(account).not.toContain("businessConfirmed");
+  });
+
+  it("startet die Stripe-Weiterleitung mit echten Links auf der Preisseite", () => {
+    const pricing = source("app/(marketing)/preise/page.tsx");
+    expect(pricing).toContain('const href = `/api/billing/checkout?plan=${plan.id}`');
+    expect(pricing).toContain('<a className={styles.cardAction} href={href}>');
+    expect(pricing).not.toContain('<Link className={styles.cardAction} href={href}');
   });
 
   it("veroeffentlicht den freigegebenen AGB-Stand", () => {
