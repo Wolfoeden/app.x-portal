@@ -36,9 +36,11 @@ import {
   IconSearch,
   IconSpark,
 } from "@/components/icons";
+import { accountNameFromMetadata } from "@/lib/auth/account-name";
 import {
   claimPreparedGuestWorkspace,
   ensureGuestSession,
+  saveAccountName,
   signOut as signOutAccount,
 } from "@/lib/auth/browser";
 import { AccountSummary, CreditPlansDialog } from "./chat/account";
@@ -54,6 +56,7 @@ import {
 } from "./chat/auth-continuation";
 import { rememberFunnelEntry, trackFunnelEvent } from "./chat/funnel-events";
 import {
+  AccountNameDialog,
   AuthDialog,
   ConfirmDeleteDialog,
   ContactDialog,
@@ -965,7 +968,6 @@ function authViewFromClaims(data: unknown): AuthView {
   const claims = isRecord(wrapper.claims) ? wrapper.claims : wrapper;
   const sessionUser = isRecord(wrapper.user) ? wrapper.user : {};
   const appMetadata = isRecord(claims.app_metadata) ? claims.app_metadata : {};
-  const userMetadata = isRecord(claims.user_metadata) ? claims.user_metadata : {};
   const metadataRoles = Array.isArray(appMetadata.roles)
     ? appMetadata.roles
     : [];
@@ -985,9 +987,9 @@ function authViewFromClaims(data: unknown): AuthView {
     user: userId
       ? {
           id: userId,
-          displayName: nullableString(
-            sessionUser.displayName ?? userMetadata.full_name ?? userMetadata.name,
-          ),
+          displayName:
+            nullableString(sessionUser.displayName) ??
+            accountNameFromMetadata(claims.user_metadata),
           email: nullableString(sessionUser.email ?? claims.email),
         }
       : null,
@@ -1170,6 +1172,7 @@ export function ChatWorkspace({
   const [selfLimit, setSelfLimit] = useState<number | null>(null);
   const [selfLimitMaxEuro, setSelfLimitMaxEuro] = useState(50);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [accountNameOpen, setAccountNameOpen] = useState(false);
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [team, setTeam] = useState<SavedFreelancer[]>([]);
   // Starts true: an account always loads its team on mount, and setting the
@@ -2534,6 +2537,13 @@ export function ChatWorkspace({
     }
   };
 
+  const updateAccountName = async (name: string) => {
+    await saveAccountName(name);
+    await refreshAuth();
+    setAccountNameOpen(false);
+    showToast(name ? "Ihr Name ist gespeichert." : "Ihr Name wurde entfernt.");
+  };
+
   const deleteData = async (confirmation: string) => {
     setDataAction("delete");
     try {
@@ -2858,6 +2868,9 @@ export function ChatWorkspace({
                 </a>
                 {isAccountUser ? (
                   <>
+                    <button className="account-menu-item" type="button" onClick={() => { setAccountMenuOpen(false); setAccountNameOpen(true); }}>
+                      {auth.user?.displayName ? "Name ändern" : "Name hinterlegen"}
+                    </button>
                     {auth.admin && apiPaths.adminUsage ? (
                       <button
                         className="account-menu-item"
@@ -3273,6 +3286,14 @@ export function ChatWorkspace({
           accountEmail={auth.user?.email ?? null}
           onClose={() => setDeleteOpen(false)}
           onConfirm={(confirmation) => void deleteData(confirmation)}
+        />
+      ) : null}
+
+      {accountNameOpen ? (
+        <AccountNameDialog
+          currentName={auth.user?.displayName ?? null}
+          onClose={() => setAccountNameOpen(false)}
+          onSave={updateAccountName}
         />
       ) : null}
 

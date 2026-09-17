@@ -8,6 +8,7 @@ const auth = {
   signUp: vi.fn(),
   signInWithPassword: vi.fn(),
   updateUser: vi.fn(),
+  refreshSession: vi.fn(),
   resetPasswordForEmail: vi.fn(),
   setSession: vi.fn(),
   exchangeCodeForSession: vi.fn(),
@@ -22,6 +23,7 @@ import {
   completeEmailAuthSession,
   registerEmailAccount,
   requestPasswordRecovery,
+  saveAccountName,
   startOauthUpgrade,
 } from "@/lib/auth/browser";
 import { TERMS_VERSION } from "@/lib/legal/policy";
@@ -166,7 +168,7 @@ describe("browser authentication journeys", () => {
   });
 
   it("creates an email account with an explicit password and confirmation callback", async () => {
-    const result = await registerEmailAccount("user@example.com", "secure-password", {
+    const result = await registerEmailAccount("user@example.com", "secure-password", "Erika Mustermann", {
       termsAcceptedAt: "2026-08-31T10:00:00.000Z",
       marketingEmails: false,
     });
@@ -178,6 +180,7 @@ describe("browser authentication journeys", () => {
       options: {
         emailRedirectTo: "https://x-portal.eu/auth/complete?next=%2Fchat&state=email-state",
         data: {
+          display_name: "Erika Mustermann",
           terms_accepted_at: "2026-08-31T10:00:00.000Z",
           // Ohne die Fassung belegt der Zeitstempel nur, DASS zugestimmt
           // wurde, nicht wozu.
@@ -189,7 +192,7 @@ describe("browser authentication journeys", () => {
   });
 
   it("records an opt-in for optional email on the new account", async () => {
-    await registerEmailAccount("user@example.com", "secure-password", {
+    await registerEmailAccount("user@example.com", "secure-password", "Erika Mustermann", {
       termsAcceptedAt: "2026-08-31T10:00:00.000Z",
       marketingEmails: true,
     });
@@ -198,6 +201,7 @@ describe("browser authentication journeys", () => {
       expect.objectContaining({
         options: expect.objectContaining({
           data: {
+            display_name: "Erika Mustermann",
             terms_accepted_at: "2026-08-31T10:00:00.000Z",
             terms_version: TERMS_VERSION,
             marketing_emails: true,
@@ -216,7 +220,7 @@ describe("browser authentication journeys", () => {
       },
     });
 
-    await registerEmailAccount("freelancer@example.com", "secure-password", {
+    await registerEmailAccount("freelancer@example.com", "secure-password", "Erika Mustermann", {
       termsAcceptedAt: "2026-08-31T10:00:00.000Z",
       marketingEmails: false,
     });
@@ -239,7 +243,7 @@ describe("browser authentication journeys", () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({ claimed: true }), { status: 200 }));
 
     await expect(
-      registerEmailAccount("user@example.com", "secure-password", {
+      registerEmailAccount("user@example.com", "secure-password", "Erika Mustermann", {
         termsAcceptedAt: "2026-08-31T10:00:00.000Z",
         marketingEmails: false,
       }),
@@ -247,6 +251,32 @@ describe("browser authentication journeys", () => {
       confirmationRequired: false,
     });
     expect(fetch).toHaveBeenLastCalledWith("/api/auth/claim", expect.objectContaining({ method: "POST" }));
+  });
+
+  it("saves the account name and renews the token that carries it", async () => {
+    auth.refreshSession.mockResolvedValue({ data: { session: {} }, error: null });
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ displayName: "Erika Mustermann" }), { status: 200 }),
+    );
+
+    await saveAccountName("Erika Mustermann");
+
+    expect(fetch).toHaveBeenCalledWith("/api/account/name", expect.objectContaining({
+      method: "PUT",
+      body: JSON.stringify({ name: "Erika Mustermann" }),
+    }));
+    expect(auth.refreshSession).toHaveBeenCalledOnce();
+  });
+
+  it("reports the server's reason and keeps the old token when saving the name fails", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "Bitte geben Sie höchstens 80 Zeichen ein." }), { status: 400 }),
+    );
+
+    await expect(saveAccountName("x".repeat(81))).rejects.toThrow(
+      "Bitte geben Sie höchstens 80 Zeichen ein.",
+    );
+    expect(auth.refreshSession).not.toHaveBeenCalled();
   });
 
   it("sends password recovery back to the set-password journey", async () => {

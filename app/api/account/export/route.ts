@@ -146,7 +146,7 @@ export async function GET() {
       {
         formatVersion: 5,
         generatedAt: new Date().toISOString(),
-        user: { id: user.id, email: user.email },
+        user: { id: user.id, email: user.email, displayName: user.displayName },
         userProfile: userProfile.data ?? null,
         projectCollections: projectCollections.data ?? [],
         projects: projects.data ?? [],

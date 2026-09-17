@@ -176,6 +176,7 @@ async function consumeEmailAuthState(state: string | null) {
 export async function registerEmailAccount(
   email: string,
   password: string,
+  displayName: string,
   consent: { termsAcceptedAt: string; marketingEmails: boolean },
   requestedDestination?: string,
 ) {
@@ -193,6 +194,7 @@ export async function registerEmailAccount(
       // Es gibt damit kein Fenster, in dem ein Konto ohne den Nachweis
       // existiert — anders als bei einem nachgelagerten zweiten Aufruf.
       data: {
+        display_name: displayName.trim(),
         terms_accepted_at: consent.termsAcceptedAt,
         // Ohne die Fassung ist der Zeitstempel wenig wert: Er belegt, dass
         // jemand zugestimmt hat, aber nicht, wozu. Sobald sich die AGB
@@ -221,6 +223,28 @@ export async function signInExistingAccount(email: string, password: string) {
   if (error) throw error;
 
   await claimPreparedGuestWorkspace();
+}
+
+/**
+ * Speichert den Kontonamen und holt ein Zugriffstoken, das ihn schon enthält.
+ * Ohne die Erneuerung sähe der Server den neuen Namen erst beim nächsten
+ * regulären Tokenwechsel.
+ */
+export async function saveAccountName(name: string) {
+  const response = await fetch(appPath("/api/account/name"), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as
+      | { error?: string }
+      | null;
+    throw new Error(payload?.error ?? "Der Name konnte nicht gespeichert werden.");
+  }
+
+  const { error } = await getBrowserSupabaseClient().auth.refreshSession();
+  if (error) throw error;
 }
 
 export async function setAccountPassword(password: string) {

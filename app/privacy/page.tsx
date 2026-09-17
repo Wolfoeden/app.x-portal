@@ -100,8 +100,9 @@ export default function PrivacyPage() {
               Authentifizierungs- und Datenbankdienst zunächst eine anonyme
               Benutzerkennung. Sie ordnet Projekte und Nachrichten einem
               Zugriff zu. Bei einem dauerhaften Konto verarbeitet XPORTAL
-              zusätzlich die E-Mail-Adresse, den gewählten Anmeldeweg,
-              Authentifizierungsmetadaten und Sitzungsinformationen.
+              zusätzlich die E-Mail-Adresse, den angegebenen Namen, den
+              gewählten Anmeldeweg, Authentifizierungsmetadaten und
+              Sitzungsinformationen. Mit dem Vornamen spricht Sie der Chat an.
             </p>
             <p>
               Sie können sich auch über einen externen Anmeldeanbieter

@@ -21,15 +21,23 @@ const suggestions = [
 
 export type GuidedSuggestion = (typeof suggestions)[number];
 
-const GREETING = "Schönen Guten Morgen";
 /** Anrede für Gäste und für Konten, zu denen kein Name bekannt ist. */
 const FALLBACK_ADDRESSEE = "Recruiter";
+/** Die Stunde, mit der vorgerendert wird; die Uhr des Besuchers kennt erst der Browser. */
+const PRERENDER_HOUR = 12;
 
 const FIRST_KEYSTROKE_DELAY_MS = 400;
 const KEYSTROKE_MS = 50;
 const WORD_GAP_MS = 35;
 const COMMA_PAUSE_MS = 260;
 const DELETE_MS = 32;
+
+/** Morgens bis 11 Uhr, tagsüber bis 18 Uhr, danach bis 5 Uhr früh der Abend. */
+export function greetingFor(hour: number): string {
+  if (hour >= 5 && hour < 11) return "Schönen Guten Morgen";
+  if (hour >= 11 && hour < 18) return "Schönen Guten Tag";
+  return "Schönen Guten Abend";
+}
 
 /**
  * Der Vorname aus dem Kontonamen, wie Google oder Microsoft ihn liefern.
@@ -86,6 +94,11 @@ const subscribeToReducedMotion = (onChange: () => void) => {
 const readReducedMotion = () => window.matchMedia(reducedMotionQuery).matches;
 const readReducedMotionOnServer = () => false;
 
+const subscribeToNothing = () => () => {};
+const readHydrated = () => true;
+const readHydratedOnServer = () => false;
+const currentHour = () => new Date().getHours();
+
 /** Tippt `target` ein, sobald `active` gilt; bei reduzierter Bewegung steht er dann sofort da. */
 function useTypewriter(target: string, active: boolean) {
   const reducedMotion = useSyncExternalStore(
@@ -119,8 +132,12 @@ export function WelcomeState({
    */
   ready: boolean;
 }) {
-  const greeting = `${GREETING}, ${greetingName(displayName) ?? FALLBACK_ADDRESSEE}`;
-  const { text, typing } = useTypewriter(greeting, ready);
+  const hydrated = useSyncExternalStore(subscribeToNothing, readHydrated, readHydratedOnServer);
+  // Beim Öffnen festgehalten, damit die Überschrift nicht neu tippt, wenn
+  // während des Schreibens die Tageszeit wechselt.
+  const [openedAtHour] = useState(currentHour);
+  const greeting = `${greetingFor(hydrated ? openedAtHour : PRERENDER_HOUR)}, ${greetingName(displayName) ?? FALLBACK_ADDRESSEE}`;
+  const { text, typing } = useTypewriter(greeting, ready && hydrated);
   // Der ungetippte Rest steht unsichtbar im Satz, damit die Zeile von Anfang
   // an ihre endgültige Breite und ihren Umbruch hat und nicht beim Tippen wandert.
   const untyped = greeting.startsWith(text) ? greeting.slice(text.length) : "";
@@ -131,7 +148,9 @@ export function WelcomeState({
         <span className="sr-only">{greeting}</span>
         <span aria-hidden="true">
           {text}
-          <span className={typing ? "welcome-caret is-typing" : "welcome-caret"} />
+          {/* Erst im Browser: Vorgerendert stünde die Marke vor der
+              Platzhalter-Tageszeit und spränge nach dem Laden zur Seite. */}
+          {hydrated ? <span className={typing ? "welcome-caret is-typing" : "welcome-caret"} /> : null}
           <span className="welcome-untyped">{untyped}</span>
         </span>
       </h1>
