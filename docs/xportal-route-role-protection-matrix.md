@@ -27,7 +27,7 @@ Basis: `e36d9e24e8beb41ccc8887dc3b78a529252f7c74` · 12. September 2026
 | Rolle | Einstieg und geschützte Funktion | Autorisierung | Abnahme |
 |---|---|---|---|
 | Gast | `/chat`: Projekttext, strukturierter Brief, interner Match, transparente Lücken, 100 Credits | anonyme Sitzung; kein Speichern/Kontakt/Agentennutzen | A-JOURNEY, A-REG, A-VISUAL, A-PROOF, M-A11Y-FOKUS |
-| Konto | `/chat`, `/mein-team`, `/agent`: Projekte, Merkliste, Kontostand, Agentenvorlagen | bestätigtes Konto; Besitzprüfung serverseitig | A-JOURNEY, A-REG, A-VISUAL |
+| Konto | `/chat`, `/mein-team`: Projekte, Merkliste, Kontostand | bestätigtes Konto; Besitzprüfung serverseitig | A-JOURNEY, A-REG, A-VISUAL |
 | Monatspläne / Enterprise Flex | Konto → Guthaben oder laufender Verbrauch, Teamzuordnung zum Billing Owner, sichere Checkout-/Anfragewege | Konto + Unternehmereigenschaft; Stripe zusätzlich nur mit konfigurierter Payment-Link-ID | A-JOURNEY, A-REG, A-PROOF, M-COMMERCIAL |
 | Freelancer | `/freelancer/apply`: Bewerbung, CV/Avatar, Status, Profilpflege, Metriken | Gast sieht Auth-Gate; eigenes Konto sieht nur eigenes Profil | A-JOURNEY, A-REG, A-VISUAL, A-PROOF |
 | Admin | `/chat/admin/*`: Betrieb, Nachfrage, Leads, Bewerbungen und KI-Kosten | Admin-Claim; Fixture-Routen nur lokal | A-JOURNEY, A-REG, A-VISUAL, A-SURFACE |
@@ -39,7 +39,6 @@ Basis: `e36d9e24e8beb41ccc8887dc3b78a529252f7c74` · 12. September 2026
 | `/` | alle | Einstieg erklärt das Produkt über `/freelancer-finden`; die Anwendung bleibt direkt unter `/chat` erreichbar | A-REG (`tests/marketing.test.ts`), A-PROOF, M-30S |
 | `/chat` | Gast, Konto, Enterprise | kompakter Dialogeinstieg, Brief, regelbasierte Ergebnisse, Projektverwaltung und externe Recherche nur nach Bestätigung | A-REG, A-JOURNEY, A-VISUAL, A-PROOF, A-CONSOLIDATION, A-RELEASE-VISUAL |
 | `/mein-team` | Konto, Enterprise | kontoübergreifende Merkliste mit sichtbarer H1 | A-REG, A-JOURNEY, M-A11Y-STRUKTUR |
-| `/agent` | alle; Nutzung ab Konto | Metadaten und sichtbarer Katalog beschreiben konkrete Aufgabenvorlagen mit Ausgangspunkt, Ergebnis und Ausführungsgrenze; keine autonome Ausführung | A-SEO, A-JOURNEY, A-VISUAL, A-PROOF |
 | `/freelancer-finden`, `/it-freelancer-finden`, `/ki-freelancer-matching`, `/wie-funktioniert-xportal` | alle | servergerenderte Produktinformation, Match-Protokoll, aktuelle Preise, CTA zum kontextfreien Start | A-SEO, A-VISUAL, A-PROOF, M-30S |
 | `/freelancer/apply` | Freelancer | Auth-Gate, Bewerbung, Prüfung, Dashboard und Aktualisierung ohne Datenverlust; derselbe Beweisfaden wie im Recruiting | A-REG, A-JOURNEY, A-VISUAL, A-PROOF |
 | `/contact` | alle | Kontaktformular, Captcha, klare Erfolgs-/Fehlerzustände und gemeinsamer Kontextstempel | A-REG (`tests/api/contact-route.test.ts`), A-SURFACE, A-JOURNEY, M-A11Y-STRUKTUR |
@@ -47,7 +46,6 @@ Basis: `e36d9e24e8beb41ccc8887dc3b78a529252f7c74` · 12. September 2026
 | `/booking/[id]` | Konto | sichere Zwischenseite, sichtbares externes Ziel, Hostprüfung, kein automatisches Weiterleiten | A-REG (`tests/security/booking-hosts.test.ts`), A-SURFACE, A-JOURNEY, M-EXTERNAL |
 | `/auth/complete`, `/auth/callback`, `/auth/confirm` | Gast, Konto | Anmeldung und Claim erhalten Projektkontext; Codes werden vor Sitzungsaufbau aus der sichtbaren URL entfernt | A-REG (`tests/auth/*`, `tests/chat/auth-continuation.test.ts`), A-SURFACE |
 | `/unsubscribe` | Empfänger | Werbung erst nach POST abmelden; Transaktionsmails bleiben möglich | A-REG (`tests/email/unsubscribe.test.ts`) |
-| `/cardano`, `/whitelist/confirm` | Lab-Interessenten | getrenntes, nicht indexiertes Cardano-Lab; Double-Opt-in bleibt erhalten | A-SEO, A-REG (`tests/whitelist/*`, `tests/api/whitelist-route.test.ts`), A-VISUAL |
 | `/chat/preview/*` | lokal | deterministische, nicht indexierte Abnahme ohne Produktion/OpenAI | A-JOURNEY, A-VISUAL |
 | `/chat/admin/{users,demand,freelancers,leads,ai-usage}` | Admin | Auswertung und Betrieb mit serverseitiger Rollenprüfung | A-REG (`tests/admin/*`, `tests/ai/admin-usage.test.ts`), A-JOURNEY |
 | `not-found`, `error`, `global-error` | alle | deutsche Wiederherstellung mit Supportkennung, nächstem Schritt und XPORTAL-Markenlogik | A-REG, A-SURFACE, A-JOURNEY, M-A11Y-STRUKTUR |
@@ -63,7 +61,7 @@ Basis: `e36d9e24e8beb41ccc8887dc3b78a529252f7c74` · 12. September 2026
 | `/api/stripe/webhook` | signierte, idempotente Enterprise-Aktivierung und Vertragsbestätigung | A-REG: `tests/api/stripe-webhook-route.test.ts`, `tests/security/stripe-signature.test.ts`, `tests/presentation/order-confirmation.test.ts` |
 | `/api/freelancer-applications*`, `/api/freelancer/{profile,avatar*}`, `/api/freelancer-events` | eigene Bewerbung, CV/Avatar, Profilpflege und Metriken | A-REG: `tests/freelancer/*`, `tests/api/freelancer-cv-route.test.ts`, `tests/data/freelancer-cvs.test.ts` |
 | `/api/freelancers/[id]/{book,cv}`, `/api/introductions` | geschützter CV, Buchungs- und Einführungsworkflow | A-REG: `tests/api/freelancer-cv-route.test.ts`, `tests/api/introductions-route.test.ts`, `tests/security/booking-hosts.test.ts` |
-| `/api/contact`, `/api/unsubscribe`, `/api/whitelist*` | Captcha/Rate-Limit, Abmeldung und Double-Opt-in | A-REG: `tests/api/contact-route.test.ts`, `tests/email/unsubscribe.test.ts`, `tests/whitelist/*` |
+| `/api/contact`, `/api/unsubscribe` | Captcha/Rate-Limit und Abmeldung | A-REG: `tests/api/contact-route.test.ts`, `tests/api/captcha-gate.test.ts`, `tests/email/unsubscribe.test.ts` |
 | `/api/admin/*` | Admin-Auswertung, Bewerbungen, Leads, Outreach, Automation | A-REG: `tests/admin/*`, `tests/leadgen/*`, `tests/api/ai-provider-route.test.ts` |
 | `/api/leadgen/run` | signierter, limitierter Lauf mit Deduplizierung/Stopregeln | A-REG: `tests/api/leadgen-run-route.test.ts`, `tests/leadgen/*`, `tests/sourcing/*` |
 | `/api/account/{export,delete}` | eigener Export und Löschung | A-REG: Auth-/Request-/RLS-Regressionstor; manuelle Kontoabnahme vor Release |

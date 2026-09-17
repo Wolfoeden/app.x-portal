@@ -55,18 +55,17 @@ describe("chat stream recovery", () => {
 });
 
 describe("sidebar hierarchy", () => {
-  it("places Neuer Chat, Merkliste and Agenten before saved chats", () => {
+  it("places Neuer Chat and Merkliste before saved chats", () => {
     const markup = renderToStaticMarkup(createElement(ChatWorkspace));
     const newChat = markup.indexOf('data-sidebar-primary="new-chat"');
     const team = markup.indexOf('data-sidebar-primary="team"');
-    const agents = markup.indexOf('data-sidebar-primary="agents"');
     const savedChats = markup.indexOf('aria-label="Gespeicherte Chats"');
 
     expect(newChat).toBeGreaterThan(-1);
     expect(team).toBeGreaterThan(newChat);
-    expect(agents).toBeGreaterThan(team);
-    expect(savedChats).toBeGreaterThan(agents);
+    expect(savedChats).toBeGreaterThan(team);
     expect(markup).toContain("Merkliste");
+    expect(markup).not.toContain('href="/agent"');
   });
 
   it("shows one flat chat history without dates or workflow labels", () => {

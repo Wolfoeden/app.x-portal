@@ -36,9 +36,9 @@ const nextConfig: NextConfig = {
   typedRoutes: false,
   async redirects() {
     return [
-      // /home was the Cardano page until the root became the product. External
-      // links, bookmarks and the whitelist confirmation still point here.
-      { source: "/home", destination: "/cardano", permanent: true },
+      // /home was the old landing page; external links and bookmarks still
+      // point here.
+      { source: "/home", destination: "/", permanent: true },
     ];
   },
   async headers() {

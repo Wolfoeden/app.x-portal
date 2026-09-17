@@ -7,9 +7,8 @@ import { CookieSettingsButton } from "./CookieConsent";
  *
  * Impressum und Datenschutz müssen von jeder Seite aus leicht erkennbar,
  * unmittelbar erreichbar und ständig verfügbar sein. Das galt bisher für die
- * Chat-Ansicht, nicht aber für die Merkliste und das Agentenverzeichnis: Beide
- * rendern denselben Rahmen, aber nicht die Zeile über dem Eingabefeld, an der
- * die Links hingen.
+ * Chat-Ansicht, nicht aber für die Merkliste: Sie rendert denselben Rahmen,
+ * aber nicht die Zeile über dem Eingabefeld, an der die Links hingen.
  *
  * Als eigene Komponente statt als kopierte Zeile, damit die nächste Ansicht
  * die Links nicht wieder vergisst. Die Gruppe ist bewusst kein eigener

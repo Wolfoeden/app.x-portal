@@ -9,11 +9,9 @@ const pages = [
   { id: "guest", path: "/chat/preview?auth=guest&state=empty" },
   { id: "account", path: "/chat/preview?state=ranked" },
   { id: "marketing", path: "/freelancer-finden" },
-  { id: "agents", path: "/agent" },
   { id: "freelancer", path: "/freelancer/apply?preview=1" },
   { id: "admin", path: "/chat/preview/admin-pages?view=users" },
   { id: "terms", path: "/terms" },
-  { id: "cardano-lab", path: "/cardano" },
 ] as const;
 
 test("sichert die visuelle main-Basis für Kernoberflächen", async ({ page }) => {

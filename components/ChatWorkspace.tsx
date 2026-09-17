@@ -15,23 +15,11 @@ import {
 import {
   ACCOUNT_MONTHLY_CREDITS,
   BRIEF_ANALYSIS_CREDITS,
-  CREDIT_PLANS,
-  creditPlan,
   EXTERNAL_SEARCH_CREDITS,
 } from "@/lib/ai/credit-policy";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { openCookieSettings } from "@/components/CookieConsent";
 import { LegalFooter } from "@/components/LegalFooter";
-import { EmptyState } from "@/components/ui/Primitives";
-import {
-  AgentDetails,
-  AgentDirectory,
-  agentById,
-  agentCatalog,
-  agentTaskById,
-  type AgentDefinition,
-  type AgentTask,
-} from "@/components/AgentDirectory";
 import {
   IconAlertCircle,
   IconArrowUp,
@@ -275,7 +263,7 @@ type PendingAssistant = {
 
 interface ChatWorkspaceProps {
   apiPaths?: Partial<ChatApiPaths>;
-  view?: "chat" | "agents" | "team";
+  view?: "chat" | "team";
   /** Development-only visual fixture; its presence disables all data loading. */
   previewData?: {
     auth: SessionResponse;
@@ -1220,10 +1208,6 @@ export function ChatWorkspace({
     resetSidebarWidth,
     isResizingSidebar,
   } = useSidebarWidth();
-  const [selectedAgentId, setSelectedAgentId] = useState(agentCatalog[0]!.id);
-  const [selectedAgentTaskId, setSelectedAgentTaskId] = useState(
-    agentCatalog[0]!.tasks[0]!.id,
-  );
   const [loadingProjectId, setLoadingProjectId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [dataAction, setDataAction] = useState<"export" | "delete" | null>(null);
@@ -1245,9 +1229,6 @@ export function ChatWorkspace({
   const resumeHandledRef = useRef(false);
 
   const selectedProfile = profiles.find((profile) => profile.id === selectedProfileId) ?? null;
-  const selectedAgent = agentById(selectedAgentId);
-  const selectedAgentTask = agentTaskById(selectedAgent, selectedAgentTaskId);
-  const isAgentView = workspaceView === "agents";
   const isTeamView = workspaceView === "team";
   const isAccountUser = auth.authenticated && !auth.anonymous;
   /**
@@ -1268,8 +1249,6 @@ export function ChatWorkspace({
             label: "Als Freelancer bewerben",
             hint: "Profil einreichen und prüfen lassen",
           };
-  // Nur die Gaststufe hat keinen Agentenzugang; jeder Plan darüber schon.
-  const agentsAllowed = creditPlan(usage?.credits.planId, !isAccountUser).agents;
   const freeUsageExhausted = Boolean(
     usage && (usage.credits.exhausted || usage.credits.remaining <= 0),
   );
@@ -1606,8 +1585,8 @@ export function ChatWorkspace({
     try {
       supabase = getBrowserSupabaseClient();
     } catch {
-      // The public agent-task catalogue and the explanatory chat shell stay
-      // readable even when a local preview has no Supabase configuration.
+      // The explanatory chat shell stays readable even when a local preview
+      // has no Supabase configuration.
       // Mutating actions remain protected by their API and auth boundaries.
       queueMicrotask(() => {
         if (alive) setWorkspaceLoading(false);
@@ -1825,8 +1804,7 @@ export function ChatWorkspace({
 
   const startNewProject = () => {
     // Any view that is not the chat lives on its own route, so opening a chat
-    // has to navigate rather than only reset state. Testing for "agents" alone
-    // left /mein-team with buttons that changed state nobody could see.
+    // has to navigate rather than only reset state.
     if (workspaceView !== "chat") {
       // This shell is rendered without an App Router context in presentation tests.
       // A hard navigation is intentional when crossing from another view into chat.
@@ -2673,18 +2651,6 @@ export function ChatWorkspace({
     [runPlanTeamRequest],
   );
 
-  const selectAgent = (agent: AgentDefinition) => {
-    setSelectedAgentId(agent.id);
-    setSelectedAgentTaskId(agent.tasks[0]!.id);
-    setDetailsOpen(true);
-  };
-
-  const selectAgentTask = (agent: AgentDefinition, task: AgentTask) => {
-    setSelectedAgentId(agent.id);
-    setSelectedAgentTaskId(task.id);
-    setDetailsOpen(true);
-  };
-
   const normalizedChatSearch = chatSearchQuery.trim().toLocaleLowerCase("de-DE");
   const visibleProjects = normalizedChatSearch
     ? projects.filter((project) =>
@@ -2697,15 +2663,15 @@ export function ChatWorkspace({
         visibleProjects.some((project) => project.collectionId === collection.id),
       )
     : projectCollections;
-  const emptyChat = !isTeamView && !isAgentView && messages.length === 0 && !pendingAssistant;
+  const emptyChat = !isTeamView && messages.length === 0 && !pendingAssistant;
 
   return (
     <div
-      className={`app-shell ${detailsOpen ? "" : "details-hidden"}${isAgentView ? " is-agent-view" : ""}${emptyChat ? " is-empty-chat" : ""}${profileFocus ? " is-profile-focus" : ""}${isResizingSidebar ? " is-resizing-sidebar" : ""}`}
+      className={`app-shell ${detailsOpen ? "" : "details-hidden"}${emptyChat ? " is-empty-chat" : ""}${profileFocus ? " is-profile-focus" : ""}${isResizingSidebar ? " is-resizing-sidebar" : ""}`}
       style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
     >
-      <a className="skip-link" href={isAgentView ? "#agent-directory-title" : "#chat-composer"}>
-        {isAgentView ? "Direkt zu den Agenten" : "Direkt zur Nachricht"}
+      <a className="skip-link" href="#chat-composer">
+        Direkt zur Nachricht
       </a>
 
       <aside
@@ -2751,17 +2717,6 @@ export function ChatWorkspace({
             ) : (
               <span className="sidebar-primary-chevron" aria-hidden="true"><IconChevronRight size={16} /></span>
             )}
-          </a>
-          <a
-            className={`sidebar-primary-button${isAgentView ? " is-active" : ""}`}
-            href="/agent"
-            aria-current={isAgentView ? "page" : undefined}
-            onClick={() => setSidebarOpen(false)}
-            data-sidebar-primary="agents"
-          >
-            <span className="agent-glyph" aria-hidden="true">A</span>
-            <span>Agenten</span>
-            <span className="sidebar-primary-chevron" aria-hidden="true"><IconChevronRight size={16} /></span>
           </a>
         </nav>
 
@@ -2995,15 +2950,7 @@ export function ChatWorkspace({
           detailsTouchedRef.current = true;
           setDetailsOpen((current) => !current);
         }}
-        aria-label={
-          isAgentView
-            ? detailsOpen
-              ? "Agentendetails ausblenden"
-              : "Agentendetails einblenden"
-            : detailsOpen
-              ? "Projektübersicht ausblenden"
-              : "Projektübersicht einblenden"
-        }
+        aria-label={detailsOpen ? "Projektübersicht ausblenden" : "Projektübersicht einblenden"}
         aria-pressed={detailsOpen}
         inert={mobileLayout && sidebarOpen ? true : undefined}
       ><IconPanelRight size={18} /></button>
@@ -3014,21 +2961,19 @@ export function ChatWorkspace({
         {/* Der Projekttitel stand hier und wiederholte, was in der Seitenleiste
             als ausgewaehlter Chat ohnehin markiert ist. Der Platz gehoert jetzt
             der Unterhaltung, damit die Profilkarten ihre Breite bekommen.
-            Merkliste und Agenten behalten ihre Beschriftung: das sind eigene
-            Ansichten, und sie haben in der Leiste keine Entsprechung. */}
-        <header className={`topbar${isTeamView || isAgentView ? "" : " is-bare"}`}>
+            Die Merkliste behält ihre Beschriftung: Sie ist eine eigene Ansicht
+            und hat in der Leiste keine Entsprechung. */}
+        <header className={`topbar${isTeamView ? "" : " is-bare"}`}>
           <div className="topbar-left">
             <button ref={mobileMenuRef} className="icon-button mobile-menu" type="button" onClick={() => setSidebarOpen(true)} aria-label="Projekte öffnen"><IconMenu size={18} /></button>
             <div>
-              {isTeamView || isAgentView ? (
-                <p className="topbar-title">{isTeamView ? "Merkliste" : "KI-Agenten"}</p>
-              ) : null}
+              {isTeamView ? <p className="topbar-title">Merkliste</p> : null}
             </div>
           </div>
         </header>
 
         {isTeamView ? (
-          <div className="agent-scroll">
+          <div className="view-scroll">
             <section className="team-page" aria-label="Merkliste">
               <header className="team-page-header">
                 <h1>Merkliste</h1>
@@ -3076,38 +3021,6 @@ export function ChatWorkspace({
                 />
               )}
             </section>
-            <LegalFooter />
-          </div>
-        ) : isAgentView ? (
-          <div className="agent-scroll">
-            <AgentDirectory
-              selectedAgentId={selectedAgent.id}
-              selectedTaskId={selectedAgentTask.id}
-              onSelectAgent={selectAgent}
-              onSelectTask={selectAgentTask}
-              accessNotice={!agentsAllowed ? (
-                <EmptyState
-                  compact
-                  eyebrow="Zugang"
-                  title="Aufgaben prüfen. Für die Nutzung Konto erstellen."
-                  action={(
-                    <button
-                      type="button"
-                      className="composer-signup"
-                      onClick={() => openAuth("generic")}
-                    >
-                      Konto erstellen
-                    </button>
-                  )}
-                >
-                  <p>
-                    Das Öffnen startet nichts. Ein Konto bringt{" "}
-                    {formatCredits(CREDIT_PLANS.trial.grantCredits)} Start-Credits einmalig;
-                    die Projektanalyse kostet {BRIEF_ANALYSIS_CREDITS} Credits.
-                  </p>
-                </EmptyState>
-              ) : undefined}
-            />
             <LegalFooter />
           </div>
         ) : (
@@ -3301,23 +3214,19 @@ export function ChatWorkspace({
 
       <aside
         className={`details-panel ${detailsOpen ? "is-open" : ""}`}
-        aria-label={isAgentView ? "Agentendetails" : "Projektübersicht"}
+        aria-label="Projektübersicht"
         inert={mobileLayout && sidebarOpen ? true : undefined}
       >
-        {isAgentView ? (
-          <AgentDetails agent={selectedAgent} task={selectedAgentTask} />
-        ) : (
-          <ProjectDetails
-            brief={brief}
-            selectedProfile={selectedProfile}
-            busy={Boolean(pendingAssistant)}
-            analysis={analysisTrace}
-            profileCount={profiles.length}
-            partialProfileCount={partialProfiles.length}
-            onContact={() => setContactOpen(true)}
-            onUpdateBrief={(message) => void sendMessage(message)}
-          />
-        )}
+        <ProjectDetails
+          brief={brief}
+          selectedProfile={selectedProfile}
+          busy={Boolean(pendingAssistant)}
+          analysis={analysisTrace}
+          profileCount={profiles.length}
+          partialProfileCount={partialProfiles.length}
+          onContact={() => setContactOpen(true)}
+          onUpdateBrief={(message) => void sendMessage(message)}
+        />
       </aside>
 
       {plansOpen ? (

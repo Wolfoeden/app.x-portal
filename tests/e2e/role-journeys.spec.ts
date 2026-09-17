@@ -64,15 +64,6 @@ test.describe("geschützte Rollen-Journeys", () => {
     await expect(page.getByRole("link", { name: "Projekt beschreiben" }).first()).toBeVisible();
   });
 
-  test("Agenten: Aufgaben, Ergebnisse und Ausführungsgrenze sind konkret", async ({ page }) => {
-    await page.goto("/agent");
-    await expect(page.getByRole("heading", { name: "KI-Agenten beginnen mit einer klaren Aufgabe." })).toBeVisible();
-    await expect(page.getByText("Ausgangspunkt", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("Ergebnis", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("Keine externe Aktion ohne Freigabe", { exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Konkrete Aufgaben" })).toBeVisible();
-  });
-
   test("Admin: geschützte Betriebsansicht bleibt als Fixture abnehmbar", async ({ page }) => {
     await page.goto("/chat/preview/admin-pages?view=users");
     await expect(page.getByRole("navigation", { name: "Admin-Bereich" })).toBeVisible();
@@ -121,8 +112,6 @@ test.describe("geschützte Rollen-Journeys", () => {
     "/freelancer-finden",
     "/terms",
     "/freelancer/apply?preview=1",
-    "/agent",
-    "/cardano",
     "/contact",
     "/privacy",
     "/booking/kein-gueltiger-link",
