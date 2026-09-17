@@ -42,9 +42,9 @@ vi.mock("@/lib/supabase/admin", () => ({
 import { inviteSourcedCandidate } from "@/lib/sourcing/run";
 
 const KANDIDAT = {
-  fullName: "Nikolai Schankin",
+  fullName: "Anna Beispiel",
   roleTitle: "IT-Berater",
-  sourceUrls: ["https://www.freelancermap.de/profil/nikolai-schankin"],
+  sourceUrls: ["https://www.freelancermap.de/profil/anna-beispiel"],
 };
 const ID = "11111111-1111-4111-8111-111111111111";
 
@@ -61,7 +61,7 @@ describe("inviteSourcedCandidate — Herkunftssperre", () => {
     mocks.herkunft = "user_search";
     const ergebnis = await inviteSourcedCandidate({
       candidate: KANDIDAT,
-      contactEmail: "kontakt@nikolai-schankin.de",
+      contactEmail: "kontakt@anna-beispiel.example",
       demandProfileLabel: "React + TypeScript",
       applicationId: ID,
     });
@@ -77,7 +77,7 @@ describe("inviteSourcedCandidate — Herkunftssperre", () => {
     mocks.herkunft = "demand_run";
     const ergebnis = await inviteSourcedCandidate({
       candidate: KANDIDAT,
-      contactEmail: "kontakt@nikolai-schankin.de",
+      contactEmail: "kontakt@anna-beispiel.example",
       demandProfileLabel: "React + TypeScript",
       applicationId: ID,
     });

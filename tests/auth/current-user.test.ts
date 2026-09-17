@@ -14,7 +14,7 @@ const originalAdminEmails = process.env.ADMIN_ALLOWED_EMAILS;
 describe("server-side admin authorization", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.ADMIN_USER_IDS = "roman-auth-uuid,paul-auth-uuid";
+    process.env.ADMIN_USER_IDS = "admin-auth-uuid,second-admin-auth-uuid";
     delete process.env.ADMIN_ALLOWED_EMAILS;
   });
 
@@ -27,12 +27,12 @@ describe("server-side admin authorization", () => {
     }
   });
 
-  it("grants admin access only by server-side UUID configuration", async () => {
+  it("grants admin access by server-side UUID configuration", async () => {
     getClaims.mockResolvedValue({
       data: {
         claims: {
-          sub: "roman-auth-uuid",
-          email: "roman@dering.info",
+          sub: "admin-auth-uuid",
+          email: "admin@example.test",
           is_anonymous: false,
         },
       },
@@ -40,7 +40,7 @@ describe("server-side admin authorization", () => {
     });
 
     await expect(getCurrentUser()).resolves.toMatchObject({
-      id: "roman-auth-uuid",
+      id: "admin-auth-uuid",
       isAdmin: true,
     });
   });
@@ -50,7 +50,7 @@ describe("server-side admin authorization", () => {
       data: {
         claims: {
           sub: "different-auth-uuid",
-          email: "roman@dering.info",
+          email: "admin@example.test",
           is_anonymous: false,
         },
       },
@@ -66,8 +66,8 @@ describe("server-side admin authorization", () => {
     getClaims.mockResolvedValue({
       data: {
         claims: {
-          sub: "roman-auth-uuid",
-          email: "roman@dering.info",
+          sub: "admin-auth-uuid",
+          email: "admin@example.test",
           is_anonymous: false,
           app_metadata: { role: "admin" },
         },
@@ -81,32 +81,47 @@ describe("server-side admin authorization", () => {
     });
   });
 
-  it("denies an authorized account whose address is not on the allowlist", async () => {
-    // Der Zugang hängt an zwei Adressen. Eine gültige Rolle allein reicht
-    // nicht — sonst öffnet ein versehentlich gesetztes app_metadata den
-    // gesamten Admin-Bereich.
+  it("accepts the admin role from a roles list", async () => {
+    getClaims.mockResolvedValue({
+      data: {
+        claims: {
+          sub: "second-admin-auth-uuid",
+          email: "second-admin@example.test",
+          is_anonymous: false,
+          app_metadata: { roles: ["billing", "admin"] },
+        },
+      },
+      error: null,
+    });
+    process.env.ADMIN_USER_IDS = "";
+
+    await expect(getCurrentUser()).resolves.toMatchObject({ isAdmin: true });
+  });
+
+  it("denies an authorized account outside a configured allowlist", async () => {
+    process.env.ADMIN_ALLOWED_EMAILS = "admin@example.test";
     getClaims.mockResolvedValue({
       data: {
         claims: {
           sub: "someone-else-uuid",
-          email: "ro.mann.de@gmail.com",
+          email: "someone-else@example.test",
           is_anonymous: false,
           app_metadata: { role: "admin" },
         },
       },
       error: null,
     });
-    process.env.ADMIN_USER_IDS = "someone-else-uuid";
 
     await expect(getCurrentUser()).resolves.toMatchObject({ isAdmin: false });
   });
 
-  it("admits paul as the second allowlisted address", async () => {
+  it("matches a configured allowlist regardless of case", async () => {
+    process.env.ADMIN_ALLOWED_EMAILS = "admin@example.test, second-admin@example.test";
     getClaims.mockResolvedValue({
       data: {
         claims: {
-          sub: "paul-auth-uuid",
-          email: "Paul@Dering.info",
+          sub: "second-admin-auth-uuid",
+          email: "Second-Admin@Example.test",
           is_anonymous: false,
         },
       },
@@ -116,11 +131,12 @@ describe("server-side admin authorization", () => {
     await expect(getCurrentUser()).resolves.toMatchObject({ isAdmin: true });
   });
 
-  it("denies an authorized account that carries no address at all", async () => {
+  it("denies an account without an address when an allowlist is configured", async () => {
+    process.env.ADMIN_ALLOWED_EMAILS = "admin@example.test";
     getClaims.mockResolvedValue({
       data: {
         claims: {
-          sub: "roman-auth-uuid",
+          sub: "admin-auth-uuid",
           is_anonymous: false,
           app_metadata: { role: "admin" },
         },
@@ -131,13 +147,13 @@ describe("server-side admin authorization", () => {
     await expect(getCurrentUser()).resolves.toMatchObject({ isAdmin: false });
   });
 
-  it("lets a deployment override the allowlist without granting rights", async () => {
+  it("lets a deployment narrow access without granting rights", async () => {
     process.env.ADMIN_ALLOWED_EMAILS = "staging-admin@example.test";
     getClaims.mockResolvedValue({
       data: {
         claims: {
-          sub: "roman-auth-uuid",
-          email: "roman@dering.info",
+          sub: "admin-auth-uuid",
+          email: "admin@example.test",
           is_anonymous: false,
         },
       },

@@ -594,7 +594,7 @@ export async function getAdminUsageDashboard(input: {
       readSearchUsageRows(input),
     ]);
   const emails = auth.emails;
-  const excludedUserIds = platformAnalyticsExcludedUserIds(emails);
+  const excludedUserIds = platformAnalyticsExcludedUserIds(emails, auth.adminUserIds);
   const externalUsageRows = usageResult.rows.filter(
     (row) => !row.user_id || !excludedUserIds.has(row.user_id),
   );

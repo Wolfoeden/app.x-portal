@@ -357,7 +357,7 @@ select is(
     from public.grant_product_credits(
       'a1000000-0000-4000-8000-000000000004',
       'pilot-grant-credits-a-001', 60, 'Pilot search credits',
-      'operator:roman@dering.info'
+      'operator:admin@example.com'
     ) g
   ),
   'true:granted:60:60',
@@ -370,7 +370,7 @@ select is(
     from public.grant_product_credits(
       'a1000000-0000-4000-8000-000000000004',
       'pilot-grant-credits-a-001', 60, 'Pilot search credits',
-      'operator:roman@dering.info'
+      'operator:admin@example.com'
     ) g
   ),
   'false:already_recorded:60',
@@ -486,7 +486,7 @@ select is(
     from public.grant_product_credits(
       'a1000000-0000-4000-8000-000000000004',
       'pilot-grant-result-retry-001', 30, 'Retry persistence fixture',
-      'operator:roman@dering.info'
+      'operator:admin@example.com'
     ) g
   ),
   'true:60',
@@ -566,7 +566,7 @@ select ok(
     select 1
     from public.audit_events a
     where a.action = 'product_credits_granted'
-      and a.actor_tombstone = 'operator:roman@dering.info'
+      and a.actor_tombstone = 'operator:admin@example.com'
       and a.metadata ->> 'amount' = '60'
   )
   and exists (
@@ -642,7 +642,7 @@ select ok(
     from public.grant_product_credits(
       'a1000000-0000-4000-8000-000000000005',
       'pilot-grant-credits-b-001', 30, 'Second RLS fixture account',
-      'operator:paul@dering.info'
+      'operator:second-admin@example.com'
     ) g
   ),
   'a second user has a real product-credit account and ledger entry'

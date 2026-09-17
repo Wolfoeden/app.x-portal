@@ -17,29 +17,33 @@ afterEach(() => {
 });
 
 describe("platform analytics exclusions", () => {
-  it("normalizes the built-in internal email", () => {
-    expect(isPlatformAnalyticsExcludedEmail("  ROMAN@DERING.INFO ")).toBe(true);
-    expect(isPlatformAnalyticsExcludedEmail("customer@example.test")).toBe(false);
+  it("excludes no address unless one is configured", () => {
+    delete process.env.PLATFORM_ANALYTICS_EXCLUDED_EMAILS;
+    expect(isPlatformAnalyticsExcludedEmail("admin@example.test")).toBe(false);
     expect(isPlatformAnalyticsExcludedEmail(null)).toBe(false);
   });
 
-  it("supports additional configured internal accounts", () => {
+  it("normalizes configured internal addresses", () => {
     process.env.PLATFORM_ANALYTICS_EXCLUDED_EMAILS =
       " qa@example.test, OPS@example.test ";
-    expect(isPlatformAnalyticsExcludedEmail("qa@example.test")).toBe(true);
+    expect(isPlatformAnalyticsExcludedEmail("  QA@example.test ")).toBe(true);
     expect(isPlatformAnalyticsExcludedEmail("ops@example.test")).toBe(true);
+    expect(isPlatformAnalyticsExcludedEmail("customer@example.test")).toBe(false);
   });
 
-  it("resolves only matching auth identities to stable user IDs", () => {
+  it("resolves admin accounts and configured addresses to stable user IDs", () => {
+    process.env.PLATFORM_ANALYTICS_EXCLUDED_EMAILS = "qa@example.test";
     const excluded = platformAnalyticsExcludedUserIds(
       new Map([
-        ["roman-id", "roman@dering.info"],
+        ["admin-id", "admin@example.test"],
+        ["qa-id", "qa@example.test"],
         ["customer-id", "customer@example.test"],
         ["guest-id", null],
       ]),
+      new Set(["admin-id"]),
     );
-    expect([...excluded]).toEqual(["roman-id"]);
-    expect(isExcludedAnalyticsUser("roman-id", excluded)).toBe(true);
+    expect([...excluded].sort()).toEqual(["admin-id", "qa-id"]);
+    expect(isExcludedAnalyticsUser("admin-id", excluded)).toBe(true);
     expect(isExcludedAnalyticsUser("customer-id", excluded)).toBe(false);
     expect(isExcludedAnalyticsUser(null, excluded)).toBe(false);
   });

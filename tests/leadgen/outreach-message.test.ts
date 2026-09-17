@@ -35,7 +35,7 @@ const BASIS = {
   body: "Sie haben eine Rolle ausgeschrieben. Darf ich Ihnen ein Profil schicken?",
   recipientName: "Michel Corda",
   company: "Krongaard GmbH",
-  senderEmail: "roman@dering.info",
+  senderEmail: "vertrieb@example.com",
   sourceUrl: "https://www.example.invalid/projekt/123",
 };
 
@@ -180,7 +180,7 @@ describe("Pflichtangaben der Akquise-Mail", () => {
 });
 
 describe("Sperre für den unbeaufsichtigten Stapelversand", () => {
-  const ABSENDER = "roman@dering.info";
+  const ABSENDER = "vertrieb@example.com";
 
   it("lässt einen Text ohne Adressen und Links durch", () => {
     expect(

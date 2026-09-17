@@ -90,7 +90,7 @@ Invoices, payment methods and cancellation stay in Stripe's hosted customer
 portal. XPORTAL stores only the identifiers and lifecycle status required for
 entitlements; it does not duplicate Stripe's invoice history.
 
-Enterprise Flex is available only by email to `roman@dering.info` until the external invoicing,
+Enterprise Flex is available only by email (`ENTERPRISE_CONTACT` in `lib/billing/payment-links.ts`) until the external invoicing,
 tax/VAT, retention and Stripe metered-billing workflow has been configured and
 commercially verified. Internal usage measurement and exact monthly net totals
 do not claim that Stripe invoicing is already automated.

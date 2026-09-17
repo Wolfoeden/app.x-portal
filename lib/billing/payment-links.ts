@@ -24,11 +24,9 @@ export const ENTERPRISE_BILLING = {
   invoice: "Stripe-Zahlungsbeleg und XPORTAL-Vertragsbestätigung",
 } as const;
 
+/** The address behind "Enterprise per E-Mail anfragen"; shown publicly on /preise. */
 export const ENTERPRISE_CONTACT = {
   email: "roman@dering.info",
-  phone: "+491758934338",
-  phoneDisplay: "+49 175 8934338",
-  person: "Roman Dering",
 } as const;
 
 export type CheckoutPlanId = "basic" | "pro" | "business";

@@ -71,7 +71,7 @@ returns nothing is not recoverable by a second one.
 
 ## Known data defect
 
-One profile carries a phone number in `role_title` (`+4915162735905`). Whatever
+One profile carries a phone number in `role_title`. Whatever
 import wrote it put a contact field into a display field, so the same mistake
 may sit in neighbouring rows. Worth a scan of the import path before the
 catalogue grows.

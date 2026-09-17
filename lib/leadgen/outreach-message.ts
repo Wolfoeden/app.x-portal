@@ -177,7 +177,7 @@ const MAIL_PATTERN = /[\w.+-]+@[\w-]+\.[\w.-]+/giu;
 
 /**
  * Ein Satzzeichen am Ende gehört nicht zur Adresse. Ohne diesen Schnitt läse
- * die Prüfung „roman@dering.info." als fremde Adresse und hielte den eigenen
+ * die Prüfung „vertrieb@example.com." als fremde Adresse und hielte den eigenen
  * Absender auf — dieselbe Falle wie bei `leadSourceUrl`.
  */
 function ohneSatzzeichen(wert: string): string {

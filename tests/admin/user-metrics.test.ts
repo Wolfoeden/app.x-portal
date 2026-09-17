@@ -13,17 +13,18 @@ beforeAll(async () => {
 });
 
 describe("admin user metrics exclusions", () => {
-  it("removes the internal account from every account and activity metric", () => {
+  it("removes admin accounts from every account and activity metric", () => {
     const report = buildUserMetrics({
       now: new Date("2026-09-04T12:00:00.000Z"),
       truncated: false,
       accounts: [
         {
-          id: "roman-id",
-          email: " ROMAN@DERING.INFO ",
+          id: "admin-id",
+          email: "admin@example.test",
           createdAt: "2026-09-04T08:00:00.000Z",
           lastSignInAt: "2026-09-04T09:00:00.000Z",
           anonymous: false,
+          admin: true,
         },
         {
           id: "customer-id",
@@ -31,14 +32,15 @@ describe("admin user metrics exclusions", () => {
           createdAt: "2026-09-04T08:30:00.000Z",
           lastSignInAt: "2026-09-04T09:30:00.000Z",
           anonymous: false,
+          admin: false,
         },
       ],
       projects: new Map([
-        ["roman-id", { count: 50, last: "2026-09-04T10:00:00.000Z" }],
+        ["admin-id", { count: 50, last: "2026-09-04T10:00:00.000Z" }],
         ["customer-id", { count: 1, last: "2026-09-04T10:00:00.000Z" }],
       ]),
       messages: new Map([
-        ["roman-id", { count: 100, last: "2026-09-04T10:00:00.000Z" }],
+        ["admin-id", { count: 100, last: "2026-09-04T10:00:00.000Z" }],
         ["customer-id", { count: 2, last: "2026-09-04T10:00:00.000Z" }],
       ]),
     });

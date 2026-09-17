@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -72,14 +74,12 @@ describe("new fixed-plan checkout", () => {
 });
 
 describe("enterprise contact", () => {
-  it("names a person, an address and a number", () => {
-    expect(ENTERPRISE_CONTACT.person).toBe("Roman Dering");
-    expect(ENTERPRISE_CONTACT.email).toBe("roman@dering.info");
-    // Die Telefonnummer wird als tel:-Link verwendet und muss dafür ohne
-    // Leerzeichen vorliegen; angezeigt wird die lesbare Fassung.
-    expect(ENTERPRISE_CONTACT.phone).toMatch(/^\+\d+$/u);
-    expect(ENTERPRISE_CONTACT.phoneDisplay.replace(/\s/gu, "")).toBe(
-      ENTERPRISE_CONTACT.phone,
-    );
+  it("routes both enterprise buttons through one address", () => {
+    expect(ENTERPRISE_CONTACT.email).toMatch(/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/u);
+    for (const file of ["app/(marketing)/preise/page.tsx", "components/chat/account.tsx"]) {
+      const source = readFileSync(new URL(`../../${file}`, import.meta.url), "utf8");
+      expect(source).toContain("ENTERPRISE_CONTACT.email");
+      expect(source).not.toMatch(/mailto:[a-z]/u);
+    }
   });
 });

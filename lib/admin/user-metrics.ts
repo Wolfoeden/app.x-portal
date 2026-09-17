@@ -1,6 +1,7 @@
 import "server-only";
 
 import { isPlatformAnalyticsExcludedEmail } from "@/lib/admin/analytics-exclusions";
+import { hasAdminRole } from "@/lib/auth/admin-role";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export type AdminAccountKind = "registered" | "guest";
@@ -72,6 +73,7 @@ type AuthAccount = {
   createdAt: string;
   lastSignInAt: string | null;
   anonymous: boolean;
+  admin: boolean;
 };
 
 function isoDaysAgo(days: number): string {
@@ -105,6 +107,7 @@ async function readAuthAccounts(): Promise<{
         // Fail closed: treat a missing flag as a guest so a malformed record
         // never inflates the registered-user count.
         anonymous: user.is_anonymous !== false,
+        admin: hasAdminRole(user.app_metadata),
       });
     }
     if (data.users.length < AUTH_PAGE_SIZE) {
@@ -190,7 +193,7 @@ export function buildUserMetrics(input: {
   let excludedAccounts = 0;
 
   for (const account of input.accounts) {
-    if (isPlatformAnalyticsExcludedEmail(account.email)) {
+    if (account.admin || isPlatformAnalyticsExcludedEmail(account.email)) {
       excludedAccounts += 1;
       continue;
     }
