@@ -89,7 +89,6 @@ describe("canonical pricing checkout route", () => {
       "https://x-portal.eu/chat?checkout=pro",
     );
   });
-
   it("rejects unknown plan names before checking authentication", async () => {
     const response = await GET(
       new Request("https://x-portal.eu/api/billing/checkout?plan=enterprise"),
