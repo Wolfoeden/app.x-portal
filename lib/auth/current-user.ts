@@ -1,10 +1,11 @@
+import { accountNameFromMetadata } from "@/lib/auth/account-name";
 import { hasAdminRole } from "@/lib/auth/admin-role";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export type CurrentUser = {
   id: string;
   email: string | null;
-  /** Kontoname aus der Google- oder Microsoft-Anmeldung; E-Mail-Konten haben keinen. */
+  /** Selbst eingetragener Name oder der aus der Google- bzw. Microsoft-Anmeldung. */
   displayName: string | null;
   isAnonymous: boolean;
   isAdmin: boolean;
@@ -45,16 +46,6 @@ function hasAdminClaim(claims: Record<string, unknown>, userId: string): boolean
   return hasAdminRole(claims.app_metadata) || configuredAdminIds().has(userId);
 }
 
-function displayNameFromClaims(claims: Record<string, unknown>): string | null {
-  const metadata = claims.user_metadata;
-  if (!metadata || typeof metadata !== "object") return null;
-  const { full_name: fullName, name } = metadata as Record<string, unknown>;
-  for (const value of [fullName, name]) {
-    if (typeof value === "string" && value.trim()) return value.trim();
-  }
-  return null;
-}
-
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase.auth.getClaims();
@@ -67,7 +58,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   return {
     id,
     email,
-    displayName: displayNameFromClaims(data.claims as Record<string, unknown>),
+    displayName: accountNameFromMetadata(data.claims.user_metadata),
     // A permanent account is security-sensitive state. Fail closed when the
     // required claim is absent or malformed instead of treating it as false.
     isAnonymous: data.claims.is_anonymous !== false,

@@ -13,7 +13,7 @@ test.describe("geschützte Rollen-Journeys", () => {
 
   test("Gast: Projekt beschreiben, ohne versteckte Kontoaktion", async ({ page }) => {
     await page.goto("/chat/preview?auth=guest&state=empty");
-    await expect(page.getByRole("heading", { name: "Schönen Guten Morgen, Recruiter" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^Schönen Guten (Morgen|Tag|Abend), Recruiter$/u })).toBeVisible();
     await expect(page.getByLabel("Das passiert nach dem Absenden")).toHaveCount(0);
     await expect(page.getByText("Gast-Credits", { exact: false })).toHaveCount(0);
     await expect(page.getByText("KI strukturiert den Text", { exact: false })).toHaveCount(0);

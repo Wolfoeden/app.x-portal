@@ -24,6 +24,7 @@ import {
   signInExistingAccount,
   startOauthUpgrade,
 } from "@/lib/auth/browser";
+import { ACCOUNT_NAME_MAX_LENGTH } from "@/lib/auth/account-name";
 import { appPath } from "@/lib/app-path";
 import { BUSINESS_ONLY_NOTICE } from "@/lib/legal/policy";
 
@@ -108,6 +109,7 @@ export function AuthDialog({
   showToast: (message: string, tone?: ToastState["tone"]) => void;
 }) {
   const [mode, setMode] = useState(initialMode);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordRepeat, setPasswordRepeat] = useState("");
@@ -145,6 +147,11 @@ export function AuthDialog({
     event.preventDefault();
     setBusy("email");
     setError(null);
+    if (mode === "register" && !name.trim()) {
+      setError("Bitte geben Sie Ihren Namen ein.");
+      setBusy(null);
+      return;
+    }
     if ((mode === "register" || mode === "set-password") && password !== passwordRepeat) {
       setError("Die beiden Passwörter stimmen nicht überein.");
       setBusy(null);
@@ -159,6 +166,7 @@ export function AuthDialog({
         const result = await registerEmailAccount(
           email,
           password,
+          name,
           {
             termsAcceptedAt: new Date().toISOString(),
             marketingEmails,
@@ -247,6 +255,12 @@ export function AuthDialog({
           </div>
         ) : (
           <form className="email-login" onSubmit={submitEmail}>
+            {mode === "register" ? (
+              <>
+                <label htmlFor="register-name">Vor- und Nachname</label>
+                <input id="register-name" value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" maxLength={ACCOUNT_NAME_MAX_LENGTH} required />
+              </>
+            ) : null}
             {mode !== "set-password" ? (
               <>
                 <label htmlFor="login-email">E-Mail-Adresse</label>
@@ -394,6 +408,48 @@ export function CreateProjectDialog({
         <div className="dialog-actions">
           <button className="secondary-action" type="button" onClick={onClose} disabled={busy}>Abbrechen</button>
           <button className="primary-action" type="submit" disabled={busy || !name.trim()}>{busy ? "Wird erstellt …" : "Projekt erstellen"}</button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+export function AccountNameDialog({
+  currentName,
+  onClose,
+  onSave,
+}: {
+  currentName: string | null;
+  onClose: () => void;
+  onSave: (name: string) => Promise<void>;
+}) {
+  const [name, setName] = useState(currentName ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const unchanged = name.trim() === (currentName ?? "");
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (busy || unchanged) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await onSave(name.trim());
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Der Name konnte nicht gespeichert werden.");
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal titleId="account-name-title" onClose={onClose}>
+      <form className="project-dialog" onSubmit={submit}>
+        <h2 id="account-name-title">Ihr Name</h2>
+        <p>Mit Ihrem Vornamen begrüßt Sie der Chat.</p>
+        <label htmlFor="account-name">Vor- und Nachname</label>
+        <input id="account-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={ACCOUNT_NAME_MAX_LENGTH} autoComplete="name" autoFocus />
+        {error ? <p className="form-error" role="alert">{error}</p> : null}
+        <div className="dialog-actions">
+          <button className="secondary-action" type="button" onClick={onClose} disabled={busy}>Abbrechen</button>
+          <button className="primary-action" type="submit" disabled={busy || unchanged}>{busy ? "Wird gespeichert …" : "Speichern"}</button>
         </div>
       </form>
     </Modal>

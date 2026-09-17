@@ -2,7 +2,12 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { greetingName, nextKeystroke, WelcomeState } from "@/components/chat/welcome";
+import {
+  greetingFor,
+  greetingName,
+  nextKeystroke,
+  WelcomeState,
+} from "@/components/chat/welcome";
 
 /** Alle Anschläge von `shown` bis `target`, wie der Browser sie nacheinander ausführt. */
 function keystrokes(shown: string, target: string) {
@@ -14,13 +19,13 @@ function keystrokes(shown: string, target: string) {
 }
 
 describe("welcome greeting", () => {
-  it("addresses guests as recruiter and only blinks until the account is known", () => {
+  it("prerenders the recruiter greeting without a caret, since only the browser knows the time", () => {
     const markup = renderToStaticMarkup(
-      createElement(WelcomeState, { displayName: null, ready: false }),
+      createElement(WelcomeState, { displayName: null, ready: true }),
     );
 
-    expect(markup).toContain('<span class="sr-only">Schönen Guten Morgen, Recruiter</span>');
-    expect(markup).toContain('<span aria-hidden="true"><span class="welcome-caret"></span>');
+    expect(markup).toContain('<span class="sr-only">Schönen Guten Tag, Recruiter</span>');
+    expect(markup).not.toContain("welcome-caret");
   });
 
   it("greets an account by first name", () => {
@@ -28,8 +33,20 @@ describe("welcome greeting", () => {
       createElement(WelcomeState, { displayName: "Erika Mustermann", ready: true }),
     );
 
-    expect(markup).toContain('<span class="sr-only">Schönen Guten Morgen, Erika</span>');
-    expect(markup).toContain('class="welcome-caret is-typing"');
+    expect(markup).toContain('<span class="sr-only">Schönen Guten Tag, Erika</span>');
+  });
+
+  it.each([
+    [4, "Schönen Guten Abend"],
+    [5, "Schönen Guten Morgen"],
+    [10, "Schönen Guten Morgen"],
+    [11, "Schönen Guten Tag"],
+    [17, "Schönen Guten Tag"],
+    [18, "Schönen Guten Abend"],
+    [23, "Schönen Guten Abend"],
+    [0, "Schönen Guten Abend"],
+  ])("greets at %i o'clock with %j", (hour, expected) => {
+    expect(greetingFor(hour)).toBe(expected);
   });
 
   it.each([

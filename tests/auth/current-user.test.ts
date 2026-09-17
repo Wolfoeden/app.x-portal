@@ -200,6 +200,24 @@ describe("account name", () => {
     });
   });
 
+  it("prefers the name the account holder entered", async () => {
+    getClaims.mockResolvedValue({
+      data: {
+        claims: {
+          sub: "email-account-uuid",
+          email: "erika@example.test",
+          is_anonymous: false,
+          user_metadata: { display_name: "Erika Mustermann" },
+        },
+      },
+      error: null,
+    });
+
+    await expect(getCurrentUser()).resolves.toMatchObject({
+      displayName: "Erika Mustermann",
+    });
+  });
+
   it("leaves an email account without a name", async () => {
     getClaims.mockResolvedValue({
       data: {
