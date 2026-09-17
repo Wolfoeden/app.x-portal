@@ -72,7 +72,7 @@ export function presentWorkspaceAuth(
     admin: user?.isAdmin ?? false,
     freelancer,
     user: user
-      ? { id: user.id, displayName: null, email: user.email }
+      ? { id: user.id, displayName: user.displayName, email: user.email }
       : null,
   };
 }

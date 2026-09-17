@@ -1208,6 +1208,43 @@
   line-height: 1.15;
 }
 
+.welcome-untyped {
+  visibility: hidden;
+}
+
+/* Schreibmarke: fest, solange getippt wird, danach blinkend wie in einer
+   Textverarbeitung. Ein leeres Inline-Element statt inline-block, damit sie
+   mitten im Wort keinen Zeilenumbruch erlaubt. */
+.welcome-caret {
+  position: relative;
+}
+
+.welcome-caret::after {
+  position: absolute;
+  top: 0.06em;
+  bottom: 0;
+  left: 0.02em;
+  width: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  content: "";
+  animation: welcome-caret-blink 1.06s steps(1, end) infinite;
+}
+
+.welcome-caret.is-typing::after {
+  animation: none;
+}
+
+@keyframes welcome-caret-blink {
+  50% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-caret {
+    display: none;
+  }
+}
+
 .trust-row {
   display: flex;
   max-width: 580px;

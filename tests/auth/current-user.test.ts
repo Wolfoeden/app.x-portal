@@ -180,3 +180,39 @@ describe("server-side admin authorization", () => {
     });
   });
 });
+
+describe("account name", () => {
+  it("takes the name the sign-in provider put into user_metadata", async () => {
+    getClaims.mockResolvedValue({
+      data: {
+        claims: {
+          sub: "google-account-uuid",
+          email: "erika@example.test",
+          is_anonymous: false,
+          user_metadata: { full_name: " Erika Mustermann ", name: "Erika Mustermann" },
+        },
+      },
+      error: null,
+    });
+
+    await expect(getCurrentUser()).resolves.toMatchObject({
+      displayName: "Erika Mustermann",
+    });
+  });
+
+  it("leaves an email account without a name", async () => {
+    getClaims.mockResolvedValue({
+      data: {
+        claims: {
+          sub: "email-account-uuid",
+          email: "erika@example.test",
+          is_anonymous: false,
+          user_metadata: { email_verified: true },
+        },
+      },
+      error: null,
+    });
+
+    await expect(getCurrentUser()).resolves.toMatchObject({ displayName: null });
+  });
+});
