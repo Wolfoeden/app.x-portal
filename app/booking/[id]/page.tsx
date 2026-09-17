@@ -129,7 +129,7 @@ export default async function BookingHandoffPage({
         XPORTAL betreibt diese Seite nicht{known ? "" : " und kennt sie nicht"}.
         Was Sie dort eingeben, verarbeitet der jeweilige Anbieter nach seinen
         eigenen Bedingungen. Aus Ihrem Chat wird nichts übermittelt. Näheres
-        steht in Abschnitt 7 der{" "}
+        steht in Abschnitt 6 der{" "}
         <Link href="/privacy">Datenschutzhinweise</Link>.
       </p>
     </Frame>

@@ -52,7 +52,7 @@ export default function PrivacyPage() {
               als Freelancer mit einem Profil. <strong>Dienstleister</strong>{" "}
               bezeichnet ein Unternehmen, das für XPORTAL einen abgegrenzten
               technischen Beitrag erbringt; welche Arten das sind und wo sie
-              verarbeiten, steht in Abschnitt 10.
+              verarbeiten, steht in Abschnitt 9.
             </p>
             <p>
               Dienstleister werden hier nach Aufgabe und Verarbeitungsort
@@ -207,37 +207,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>6. Whitelist</h2>
-          <div>
-            <p>
-              Bei einer freiwilligen Whitelist-Anmeldung verarbeiten wir Name,
-              E-Mail-Adresse, Land, Quelle und Einwilligungszeitpunkt, um die
-              Anmeldung zu verwalten und die ausdrücklich gewünschten Start-
-              und Onboarding-Informationen zu senden. Rechtsgrundlage ist Ihre
-              Einwilligung nach Art. 6 Abs. 1 lit. a DSGVO.
-            </p>
-            <p>
-              Die Anmeldung wird im Doppelbestätigungsverfahren geprüft. Nach
-              dem Absenden speichern wir den Eintrag zunächst als unbestätigt
-              und senden einen Bestätigungslink an die angegebene Adresse. Erst
-              mit Ihrem Klick auf diesen Link entsteht die Einwilligung; vorher
-              erhalten Sie von uns keine weiteren Nachrichten. Dazu speichern
-              wir eine kryptografische Ableitung des Bestätigungstokens, dessen
-              Ablaufzeitpunkt und den Zeitpunkt der Bestätigung — Letzterer ist
-              der Nachweis nach Art. 7 Abs. 1 DSGVO. Ein unbestätigter Eintrag
-              wird nach 30 Tagen automatisch gelöscht.
-            </p>
-            <p>
-              Sie können die Einwilligung jederzeit mit Wirkung für die Zukunft
-              per E-Mail an <a href="mailto:info@x-portal.eu?subject=Widerruf%20Whitelist">info@x-portal.eu</a> widerrufen.
-              Die Rechtmäßigkeit der Verarbeitung bis zum Widerruf bleibt
-              unberührt.
-            </p>
-          </div>
-        </section>
-
-        <section>
-          <h2>7. Externe Buchungslinks</h2>
+          <h2>6. Externe Buchungslinks</h2>
           <div>
             <p>
               Die Buchungsseite eines Freelancers wird nicht eingebettet und
@@ -251,7 +221,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>8. Kontaktanfragen</h2>
+          <h2>7. Kontaktanfragen</h2>
           <div>
             <p>
               Wenn Sie das <a href="/contact">Kontaktformular</a> nutzen,
@@ -281,7 +251,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>9. Cookies und Sitzungsspeicher</h2>
+          <h2>8. Cookies und Sitzungsspeicher</h2>
           <div>
             <p>
               XPORTAL verwendet derzeit keine Analyse- oder Marketingcookies.
@@ -310,7 +280,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>10. Empfänger und Drittländer</h2>
+          <h2>9. Empfänger und Drittländer</h2>
           <div>
             <p>
               Je nach genutzter Funktion erhalten folgende Kategorien von
@@ -359,9 +329,9 @@ export default function PrivacyPage() {
               </li>
               <li>
                 ein <strong>Dienstleister zur Abwehr automatisierter
-                Eingaben</strong> mit Sitz in den USA, auf dem Kontakt- und dem
-                Whitelist-Formular. Das Prüf-Widget wird beim Aufruf dieser
-                beiden Seiten geladen und erhält dabei Ihre IP-Adresse, Angaben
+                Eingaben</strong> mit Sitz in den USA, auf dem Kontaktformular.
+                Das Prüf-Widget wird beim Aufruf dieser Seite geladen und
+                erhält dabei Ihre IP-Adresse, Angaben
                 zu Browser und Gerät sowie Ihr Verhalten im Widget. Dies ist
                 eine Übermittlung in ein Drittland.
               </li>
@@ -380,7 +350,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>11. Speicherdauer</h2>
+          <h2>10. Speicherdauer</h2>
           <div>
             <p>
               Wir speichern personenbezogene Daten nur so lange, wie sie für
@@ -393,8 +363,6 @@ export default function PrivacyPage() {
               <li>Nachrichten in inaktiven Projekten: 180 Tage;</li>
               <li>inaktive Projekte, Match-Snapshots und externe Suchergebnisse: Prüfung beziehungsweise Löschung nach 365 Tagen;</li>
               <li>Lebensläufe von Freelancern: bis zum Widerruf der Bereitstellung, zur Beendigung des Vermittlungszwecks oder bis zu einer früheren berechtigten Löschanfrage; die Erforderlichkeit wird bei Profilprüfung und Deaktivierung erneut geprüft;</li>
-              <li>unbestätigte Whitelist-Anmeldungen: automatische Löschung nach 30 Tagen;</li>
-              <li>bestätigte Whitelist-Datensätze: Überprüfung nach 365 Tagen und Löschung, wenn keine Rechtsgrundlage mehr besteht;</li>
               <li>Kontaktanfragen: Löschung nach Erledigung, spätestens Überprüfung nach 365 Tagen;</li>
               <li>Zähler der Ratenbegrenzung: Löschung am Tag nach Ablauf des jeweiligen Zeitfensters;</li>
               <li>technische KI-Nutzungsdaten: je nach Kontotyp und Abrechnungsfenster 90 bis 400 Tage;</li>
@@ -411,7 +379,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>12. Ihre Rechte</h2>
+          <h2>11. Ihre Rechte</h2>
           <div>
             <p>
               Sie haben nach Maßgabe der DSGVO das Recht auf Auskunft,
@@ -422,7 +390,7 @@ export default function PrivacyPage() {
             <p>
               Angemeldete Nutzer können den in der Anwendung angebotenen
               Datenexport und die Kontolöschung verwenden. Für alle Anliegen –
-              insbesondere zu Whitelist- oder Freelancer-Daten – erreichen Sie
+              insbesondere zu Freelancer-Daten – erreichen Sie
               uns unter <a href="mailto:info@x-portal.eu">info@x-portal.eu</a>.
               Vor der Bearbeitung können wir einen Identitätsnachweis verlangen,
               soweit dies zum Schutz Ihrer Daten erforderlich ist.
@@ -431,7 +399,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>13. Beschwerderecht</h2>
+          <h2>12. Beschwerderecht</h2>
           <div>
             <p>
               Sie können sich bei einer Datenschutzaufsichtsbehörde beschweren.
@@ -444,10 +412,10 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>14. Datenbereitstellung und Automatisierung</h2>
+          <h2>13. Datenbereitstellung und Automatisierung</h2>
           <div>
             <p>
-              Whitelist und die Anmeldung über einen externen Anbieter sind
+              Die Anmeldung über einen externen Anbieter ist
               freiwillig. Ohne die für eine
               Sitzung, ein Konto oder eine Projektanfrage erforderlichen Daten
               kann die jeweilige Funktion nicht bereitgestellt werden.
@@ -464,7 +432,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>15. Änderungen</h2>
+          <h2>14. Änderungen</h2>
           <div>
             <p>
               Wir aktualisieren diese Erklärung, wenn sich Funktionen,
@@ -475,7 +443,7 @@ export default function PrivacyPage() {
           </div>
         </section>
 
-        <p className="xlegal-updated">Stand: 28. August 2026</p>
+        <p className="xlegal-updated">Stand: 17. September 2026</p>
       </main>
 
       <PublicFooter />
