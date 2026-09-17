@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireCurrentUser: vi.fn(),
@@ -15,15 +15,10 @@ const accountId = "10000000-0000-4000-8000-000000000001";
 
 beforeEach(() => {
   vi.clearAllMocks();
-  process.env.NEXT_PUBLIC_STRIPE_FIXED_PLANS_CHECKOUT_ENABLED = "true";
   mocks.requireCurrentUser.mockResolvedValue({
     id: accountId,
     isAnonymous: false,
   });
-});
-
-afterEach(() => {
-  delete process.env.NEXT_PUBLIC_STRIPE_FIXED_PLANS_CHECKOUT_ENABLED;
 });
 
 describe("canonical pricing checkout route", () => {

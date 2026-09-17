@@ -73,7 +73,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   process.env.STRIPE_WEBHOOK_SECRET = SECRET;
   process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-test-key";
-  process.env.STRIPE_FIXED_PLANS_ACTIVATION_ENABLED = "true";
   process.env.STRIPE_PRO_PAYMENT_LINK_ID = "plink_pro";
   process.env.STRIPE_PRO_PRICE_ID = "price_pro";
 
@@ -107,13 +106,45 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  delete process.env.STRIPE_FIXED_PLANS_ACTIVATION_ENABLED;
   delete process.env.STRIPE_PRO_PAYMENT_LINK_ID;
   delete process.env.STRIPE_PRO_PRICE_ID;
   vi.restoreAllMocks();
 });
 
 describe("POST /api/stripe/webhook", () => {
+  it("verarbeitet die verifizierten Produktions-IDs ohne Deployment-Schalter", async () => {
+    delete process.env.STRIPE_PRO_PAYMENT_LINK_ID;
+    delete process.env.STRIPE_PRO_PRICE_ID;
+
+    const checkoutResponse = await POST(request(event(
+      "checkout.session.completed",
+      checkoutObject({ payment_link: "plink_1UG3wWCQxgmYRfmLPI05Uc7q" }),
+      "evt_checkout_production",
+    )));
+    const invoiceResponse = await POST(request(event(
+      "invoice.paid",
+      invoiceObject({
+        lines: {
+          data: [{
+            price: { id: "price_1UGQgTCQxgmYRfmLkAttXxUC" },
+            period: { start: PERIOD_START, end: PERIOD_END },
+          }],
+        },
+      }),
+      "evt_invoice_production",
+    )));
+
+    expect(checkoutResponse.status).toBe(200);
+    expect(invoiceResponse.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith(
+      "activate_paid_plan",
+      expect.objectContaining({
+        p_plan_id: "pro",
+        p_plan_allowance: 1_250,
+      }),
+    );
+  });
+
   it("verknüpft den Checkout, ohne dabei Credits oder eine Bestätigung zu erzeugen", async () => {
     const response = await POST(request(event("checkout.session.completed", checkoutObject())));
 

@@ -12,8 +12,6 @@ import {
 } from "@/lib/billing/payment-links";
 
 afterEach(() => {
-  delete process.env.NEXT_PUBLIC_STRIPE_FIXED_PLANS_CHECKOUT_ENABLED;
-  delete process.env.STRIPE_FIXED_PLANS_ACTIVATION_ENABLED;
   delete process.env.NEXT_PUBLIC_STRIPE_PRO_PAYMENT_LINK;
   delete process.env.NEXT_PUBLIC_STRIPE_CUSTOMER_PORTAL_URL;
   delete process.env.STRIPE_PRO_PAYMENT_LINK_ID;
@@ -29,20 +27,16 @@ describe("new fixed-plan checkout", () => {
     });
   });
 
-  it("stays fail-closed when only a URL and id are configured", () => {
-    process.env.NEXT_PUBLIC_STRIPE_PRO_PAYMENT_LINK = "https://buy.stripe.com/pro";
-    process.env.STRIPE_PRO_PAYMENT_LINK_ID = "plink_pro";
-
-    expect(fixedPlanCheckout("pro", null)).toBeNull();
-    expect(planForStripePaymentLink("plink_pro")).toBeNull();
+  it("keeps the verified production mappings active without deployment switches", () => {
+    expect(fixedPlanCheckout("pro", null)).toBe(FIXED_PLAN_PAYMENT_LINKS.pro);
+    expect(planForStripePaymentLink("plink_1UG3wWCQxgmYRfmLPI05Uc7q")?.id).toBe("pro");
+    expect(planForStripePriceId("price_1UGQgTCQxgmYRfmLkAttXxUC")?.id).toBe("pro");
   });
 
-  it("requires independent public and server activation switches", () => {
+  it("allows explicit Stripe mappings while retaining the account reference", () => {
     process.env.NEXT_PUBLIC_STRIPE_PRO_PAYMENT_LINK = "https://buy.stripe.com/pro";
     process.env.STRIPE_PRO_PAYMENT_LINK_ID = "plink_pro";
     process.env.STRIPE_PRO_PRICE_ID = "price_pro";
-    process.env.NEXT_PUBLIC_STRIPE_FIXED_PLANS_CHECKOUT_ENABLED = "true";
-    process.env.STRIPE_FIXED_PLANS_ACTIVATION_ENABLED = "true";
 
     expect(fixedPlanCheckout("pro", null)).toBe("https://buy.stripe.com/pro");
     expect(fixedPlanCheckout("pro", "account-1")).toBe(
@@ -67,7 +61,6 @@ describe("new fixed-plan checkout", () => {
   it("rejects hosts that merely end with the Stripe domain name", () => {
     process.env.NEXT_PUBLIC_STRIPE_PRO_PAYMENT_LINK =
       "https://attackerstripe.com/pro";
-    process.env.NEXT_PUBLIC_STRIPE_FIXED_PLANS_CHECKOUT_ENABLED = "true";
 
     expect(fixedPlanCheckout("pro", null)).toBeNull();
   });

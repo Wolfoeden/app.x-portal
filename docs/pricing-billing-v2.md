@@ -72,12 +72,10 @@ Price IDs are assigned to Basic, Pro and Business in
 
 The marketing CTA first establishes an authenticated XPORTAL account, then
 opens the selected Stripe link with its non-secret account UUID as
-`client_reference_id`. There is no contact-form fallback. The two independent
-fail-closed switches `NEXT_PUBLIC_STRIPE_FIXED_PLANS_CHECKOUT_ENABLED=true`
-and `STRIPE_FIXED_PLANS_ACTIVATION_ENABLED=true` remain off until all three
-links are recurring monthly subscriptions, Price IDs are allow-listed, the
-customer portal is active, and the webhook listens to the five lifecycle
-events used by the route.
+`client_reference_id`. There is no contact-form fallback. The exact Stripe
+payment-link and recurring-price IDs are allowlisted for all three recurring
+monthly subscriptions. The customer portal is active, and the webhook listens
+to the five lifecycle events used by the route.
 
 The webhook maps checkout only from the server-side Payment-Link-ID allow list
 and grants credits only from the separate Price-ID allow list. Its five events

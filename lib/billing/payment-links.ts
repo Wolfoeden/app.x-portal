@@ -16,6 +16,12 @@ const VERIFIED_PAYMENT_LINK_IDS = {
   business: "plink_1UBAWJCQxgmYRfmLtce10O55",
 } as const;
 
+const VERIFIED_PRICE_IDS = {
+  basic: "price_1UGQfrCQxgmYRfmL7z6DURBe",
+  pro: "price_1UGQgTCQxgmYRfmLkAttXxUC",
+  business: "price_1UBAVPCQxgmYRfmLM6WX4Dax",
+} as const;
+
 export const ENTERPRISE_START_EURO = CREDIT_PLANS.enterprise_legacy.euro;
 export const ENTERPRISE_BILLING = {
   model: "fixed_monthly",
@@ -44,11 +50,6 @@ const PRICE_ID_ENV: Record<CheckoutPlanId, string> = {
 };
 
 function configuredPublicUrl(planId: CheckoutPlanId): string | null {
-  if (process.env.NEXT_PUBLIC_STRIPE_FIXED_PLANS_CHECKOUT_ENABLED !== "true") {
-    return null;
-  }
-  // Direct property access is required so Next.js can inline NEXT_PUBLIC
-  // values in the account client component.
   const value = (planId === "basic"
     ? process.env.NEXT_PUBLIC_STRIPE_BASIC_PAYMENT_LINK
     : planId === "pro"
@@ -84,7 +85,6 @@ export function fixedPlanCheckout(
 export function planForStripePaymentLink(
   paymentLinkId: unknown,
 ): FixedMonthlyPlan | null {
-  if (process.env.STRIPE_FIXED_PLANS_ACTIVATION_ENABLED !== "true") return null;
   if (typeof paymentLinkId !== "string" || !paymentLinkId.trim()) return null;
   for (const planId of Object.keys(PAYMENT_LINK_ID_ENV) as CheckoutPlanId[]) {
     const configuredId = process.env[PAYMENT_LINK_ID_ENV[planId]]?.trim() || VERIFIED_PAYMENT_LINK_IDS[planId];
@@ -97,10 +97,10 @@ export function planForStripePaymentLink(
 
 /** A renewal invoice is trusted only when its recurring Price is configured. */
 export function planForStripePriceId(priceId: unknown): FixedMonthlyPlan | null {
-  if (process.env.STRIPE_FIXED_PLANS_ACTIVATION_ENABLED !== "true") return null;
   if (typeof priceId !== "string" || !priceId.trim()) return null;
   for (const planId of Object.keys(PRICE_ID_ENV) as CheckoutPlanId[]) {
-    if (process.env[PRICE_ID_ENV[planId]]?.trim() === priceId) {
+    const configuredId = process.env[PRICE_ID_ENV[planId]]?.trim() || VERIFIED_PRICE_IDS[planId];
+    if (configuredId === priceId) {
       return CREDIT_PLANS[planId];
     }
   }
