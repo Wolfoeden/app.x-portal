@@ -1,6 +1,9 @@
 "use client";
 
+import { useState, type FormEvent } from "react";
+
 import { creditPlan } from "@/lib/ai/credit-policy";
+import { ACCOUNT_NAME_MAX_LENGTH } from "@/lib/auth/account-name";
 import { customerPortalUrl } from "@/lib/billing/payment-links";
 import { CREDIT_PLANS } from "@/lib/billing/plans";
 
@@ -80,17 +83,88 @@ export function totalBalance(usage: AiUsageSnapshot): number {
   return usage.credits.remaining;
 }
 
+/**
+ * Der Name im Kopf der Kontokarte. Ein Klick macht ihn zum Eingabefeld;
+ * Enter oder „Speichern" übernimmt, Escape verwirft.
+ */
+function EditableAccountName({
+  name,
+  onSave,
+}: {
+  name: string;
+  onSave: (name: string) => Promise<void>;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (draft === null) {
+    return (
+      <button className="account-name-button" type="button" title="Name ändern" onClick={() => setDraft(name)}>
+        {name}
+      </button>
+    );
+  }
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (saving) return;
+    const next = draft.trim();
+    if (next === name) {
+      setDraft(null);
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave(next);
+      setDraft(null);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Der Name konnte nicht gespeichert werden.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form className="account-name-form" onSubmit={submit}>
+      <input
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key !== "Escape") return;
+          // Markiert die Taste als erledigt, damit sie nicht zusätzlich die
+          // ganze Karte schließt.
+          event.preventDefault();
+          setDraft(null);
+          setError(null);
+        }}
+        aria-label="Name"
+        autoComplete="name"
+        maxLength={ACCOUNT_NAME_MAX_LENGTH}
+        autoFocus
+        disabled={saving}
+      />
+      <button type="submit" disabled={saving}>{saving ? "…" : "Speichern"}</button>
+      {error ? <p className="form-error" role="alert">{error}</p> : null}
+    </form>
+  );
+}
+
 export function AccountSummary({
   usage,
   displayName,
   email,
   isAccountUser,
+  onRename,
   onMoreCredits,
 }: {
   usage: AiUsageSnapshot | null;
   displayName: string;
   email: string;
   isAccountUser: boolean;
+  /** Nur für Konten: Gäste haben keinen Namen, den sie ändern könnten. */
+  onRename?: (name: string) => Promise<void>;
   onMoreCredits: () => void;
 }) {
   const monthly = usage?.credits ?? null;
@@ -108,7 +182,10 @@ export function AccountSummary({
     <div className="account-summary">
       <div className="account-summary-head">
         <span className="account-summary-avatar" aria-hidden="true">{displayName.slice(0, 2).toUpperCase()}</span>
-        <span className="account-summary-identity"><strong>{displayName}</strong><span>{email}</span></span>
+        <span className="account-summary-identity">
+          {onRename ? <EditableAccountName name={displayName} onSave={onRename} /> : <strong>{displayName}</strong>}
+          <span>{email}</span>
+        </span>
       </div>
       <div className="account-summary-status">
         <span className="account-status-dot">{isAccountUser ? "Angemeldet" : "Gast"}</span>
@@ -129,13 +206,11 @@ export function AccountSummary({
               monthly.cancelAtPeriodEnd,
             )}</p>
           </section>
-        ) : (
+        ) : plan.billingModel === "metered" ? (
           <p className="account-credit-muted">
-            {plan.billingModel === "metered"
-              ? `Voraussichtlich ${euroFormat.format(monthly.used * CREDIT_PLANS.enterprise_flex.euroPerCreditCents / 100)} netto.`
-              : "Einmaliges Startguthaben – keine monatliche Auffüllung."}
+            {`Voraussichtlich ${euroFormat.format(monthly.used * CREDIT_PLANS.enterprise_flex.euroPerCreditCents / 100)} netto.`}
           </p>
-        )}
+        ) : null}
       </> : <p className="account-credit-muted">Guthaben wird geladen …</p>}
 
       {isAccountUser ? <button className="account-upgrade" type="button" onClick={onMoreCredits}><IconSpark size={14} /> Abrechnung und Team</button> : null}

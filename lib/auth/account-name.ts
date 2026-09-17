@@ -2,6 +2,15 @@
 export const ACCOUNT_NAME_MAX_LENGTH = 80;
 
 /**
+ * Der Name, der in Seitenleiste und Kontokarte steht: der gespeicherte, sonst
+ * der Teil der E-Mail-Adresse vor dem @. Die Begrüßung nutzt nur den
+ * gespeicherten — „Guten Tag, info" wäre schlimmer als „Recruiter".
+ */
+export function shownAccountName(displayName: string | null, email: string | null): string | null {
+  return displayName ?? (email?.split("@")[0]?.trim() || null);
+}
+
+/**
  * Der Anzeigename eines Kontos aus den Supabase-`user_metadata`.
  *
  * Ein selbst eingetragener Name (`display_name`) geht vor; sonst gilt, was

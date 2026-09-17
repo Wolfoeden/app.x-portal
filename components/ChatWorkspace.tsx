@@ -36,7 +36,7 @@ import {
   IconSearch,
   IconSpark,
 } from "@/components/icons";
-import { accountNameFromMetadata } from "@/lib/auth/account-name";
+import { accountNameFromMetadata, shownAccountName } from "@/lib/auth/account-name";
 import {
   claimPreparedGuestWorkspace,
   ensureGuestSession,
@@ -56,7 +56,6 @@ import {
 } from "./chat/auth-continuation";
 import { rememberFunnelEntry, trackFunnelEvent } from "./chat/funnel-events";
 import {
-  AccountNameDialog,
   AuthDialog,
   ConfirmDeleteDialog,
   ContactDialog,
@@ -1172,7 +1171,6 @@ export function ChatWorkspace({
   const [selfLimit, setSelfLimit] = useState<number | null>(null);
   const [selfLimitMaxEuro, setSelfLimitMaxEuro] = useState(50);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [accountNameOpen, setAccountNameOpen] = useState(false);
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [team, setTeam] = useState<SavedFreelancer[]>([]);
   // Starts true: an account always loads its team on mount, and setting the
@@ -1186,6 +1184,7 @@ export function ChatWorkspace({
   const [expandedExternalUrl, setExpandedExternalUrl] = useState<string | null>(null);
   const [manageChat, setManageChat] = useState<ProjectListItem | null>(null);
   const [chatSearchQuery, setChatSearchQuery] = useState("");
+  const [chatSearchOpen, setChatSearchOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileLayout, setMobileLayout] = useState(false);
   // Closed on arrival: a first-time visitor should meet two columns, not
@@ -1226,12 +1225,16 @@ export function ChatWorkspace({
   const startNewProjectRef = useRef<(() => void) | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
   const externalSearchRequestIdsRef = useRef(new Map<string, string>());
   const resumeHandledRef = useRef(false);
 
   const selectedProfile = profiles.find((profile) => profile.id === selectedProfileId) ?? null;
   const isTeamView = workspaceView === "team";
   const isAccountUser = auth.authenticated && !auth.anonymous;
+  const accountName = isAccountUser
+    ? shownAccountName(auth.user?.displayName ?? null, auth.user?.email ?? null) ?? "Ihr Konto"
+    : null;
   /**
    * Wie der Einstieg auf die Freelancer-Seite beschriftet ist.
    *
@@ -1792,6 +1795,24 @@ export function ChatWorkspace({
     workspaceView,
     preview,
   ]);
+
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!accountMenuRef.current?.contains(event.target as Node)) setAccountMenuOpen(false);
+    };
+    // React hängt seine Handler ebenfalls an `document`; ein Feld in der Karte,
+    // das Escape selbst verarbeitet, meldet das über `defaultPrevented`.
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape" && !event.defaultPrevented) setAccountMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [accountMenuOpen]);
 
   useEffect(() => {
     const textarea = composerRef.current;
@@ -2537,10 +2558,14 @@ export function ChatWorkspace({
     }
   };
 
+  const closeChatSearch = () => {
+    setChatSearchQuery("");
+    setChatSearchOpen(false);
+  };
+
   const updateAccountName = async (name: string) => {
     await saveAccountName(name);
     await refreshAuth();
-    setAccountNameOpen(false);
     showToast(name ? "Ihr Name ist gespeichert." : "Ihr Name wurde entfernt.");
   };
 
@@ -2693,9 +2718,33 @@ export function ChatWorkspace({
       >
         <div className="sidebar-scroll">
         <div className="sidebar-top">
-          <a className="product-mark" href="/freelancer-finden" aria-label="XPORTAL Produktseite">
-            <span>XPORTAL</span>
-          </a>
+          {chatSearchOpen ? (
+            <div className="sidebar-chat-search" role="search">
+              <span aria-hidden="true"><IconSearch size={14} /></span>
+              <input
+                type="search"
+                value={chatSearchQuery}
+                onChange={(event) => setChatSearchQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") closeChatSearch();
+                }}
+                onBlur={() => {
+                  if (!chatSearchQuery.trim()) closeChatSearch();
+                }}
+                placeholder="Chats durchsuchen"
+                aria-label="Gespeicherte Chats durchsuchen"
+                autoFocus
+              />
+              <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={closeChatSearch} aria-label="Suche schließen"><IconClose size={14} /></button>
+            </div>
+          ) : (
+            <div className="sidebar-brand">
+              <a className="product-mark" href="/freelancer-finden" aria-label="XPORTAL Produktseite">
+                <span>X PORTAL</span>
+              </a>
+              <button className="icon-button sidebar-search-toggle" type="button" onClick={() => setChatSearchOpen(true)} aria-label="Chats durchsuchen"><IconSearch size={16} /></button>
+            </div>
+          )}
           <button data-sidebar-close className="icon-button sidebar-close" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schließen"><IconClose size={18} /></button>
         </div>
 
@@ -2706,7 +2755,7 @@ export function ChatWorkspace({
             onClick={startNewProject}
             data-sidebar-primary="new-chat"
           >
-            <span className="sidebar-primary-icon" aria-hidden="true"><IconPlus size={18} /></span>
+            <span className="sidebar-primary-icon" aria-hidden="true"><IconPlus size={16} /></span>
             <span>Neuer Chat</span>
             <span className="new-chat-key" aria-hidden="true">{newChatShortcut}</span>
           </button>
@@ -2717,28 +2766,18 @@ export function ChatWorkspace({
             onClick={() => setSidebarOpen(false)}
             data-sidebar-primary="team"
           >
-            <span className="sidebar-primary-icon" aria-hidden="true"><IconFolder size={18} /></span>
+            <span className="sidebar-primary-icon" aria-hidden="true"><IconFolder size={16} /></span>
             <span>Merkliste</span>
             {isAccountUser && team.length ? (
               <span className="sidebar-primary-count" aria-hidden="true">{team.length}</span>
             ) : (
-              <span className="sidebar-primary-chevron" aria-hidden="true"><IconChevronRight size={16} /></span>
+              <span className="sidebar-primary-chevron" aria-hidden="true"><IconChevronRight size={14} /></span>
             )}
           </a>
         </nav>
 
         <nav className="project-nav" aria-label="Gespeicherte Chats">
           <p className="nav-label">Chats</p>
-          <label className="sidebar-chat-search">
-            <span aria-hidden="true"><IconSearch size={14} /></span>
-            <input
-              type="search"
-              value={chatSearchQuery}
-              onChange={(event) => setChatSearchQuery(event.target.value)}
-              placeholder="Chats durchsuchen"
-              aria-label="Gespeicherte Chats durchsuchen"
-            />
-          </label>
           {workspaceLoading ? (
             <SidebarSkeleton rows={4} />
           ) : unassignedChats.length === 0 ? (
@@ -2830,22 +2869,19 @@ export function ChatWorkspace({
         </div>
 
         <div className="sidebar-footer">
-          <div className="account-menu-wrap sidebar-account-menu-wrap">
+          <div className="account-menu-wrap sidebar-account-menu-wrap" ref={accountMenuRef}>
             {accountMenuOpen ? (
               <div className="account-popover sidebar-account-popover" role="dialog" aria-label="Konto und Einstellungen">
                 <AccountSummary
                   usage={usage}
-                  displayName={
-                    isAccountUser
-                      ? auth.user?.displayName ?? auth.user?.email ?? "Ihr Konto"
-                      : "Ohne Konto"
-                  }
+                  displayName={accountName ?? "Ohne Konto"}
                   email={
                     isAccountUser
                       ? auth.user?.email ?? "Angemeldet"
                       : "Anfrage bleibt in diesem Browser"
                   }
                   isAccountUser={isAccountUser}
+                  onRename={isAccountUser ? updateAccountName : undefined}
                   onMoreCredits={() => {
                     setAccountMenuOpen(false);
                     setSidebarOpen(false);
@@ -2868,9 +2904,6 @@ export function ChatWorkspace({
                 </a>
                 {isAccountUser ? (
                   <>
-                    <button className="account-menu-item" type="button" onClick={() => { setAccountMenuOpen(false); setAccountNameOpen(true); }}>
-                      {auth.user?.displayName ? "Name ändern" : "Name hinterlegen"}
-                    </button>
                     {auth.admin && apiPaths.adminUsage ? (
                       <button
                         className="account-menu-item"
@@ -2903,7 +2936,6 @@ export function ChatWorkspace({
                     <button className="account-menu-item" type="button" onClick={() => { setAccountMenuOpen(false); openCookieSettings(); }}>Cookie-Einstellungen verwalten</button>
                   </>
                 )}
-                <p className="account-privacy-note">Projekte werden nur Ihrem aktuellen Zugang zugeordnet.</p>
               </div>
             ) : null}
             <button
@@ -2918,10 +2950,10 @@ export function ChatWorkspace({
               }}
             >
               <span className="sidebar-account-avatar" aria-hidden="true">
-                {isAccountUser ? initials(auth.user?.displayName ?? auth.user?.email ?? "Konto") : "G"}
+                {accountName ? initials(accountName) : "G"}
               </span>
               <span className="sidebar-account-copy">
-                <strong>{isAccountUser ? auth.user?.displayName ?? auth.user?.email ?? "Ihr Konto" : "Anmelden"}</strong>
+                <strong>{accountName ?? "Anmelden"}</strong>
                 <span>
                   {usage
                     ? usageSummary(usage, isAccountUser)
@@ -3286,14 +3318,6 @@ export function ChatWorkspace({
           accountEmail={auth.user?.email ?? null}
           onClose={() => setDeleteOpen(false)}
           onConfirm={(confirmation) => void deleteData(confirmation)}
-        />
-      ) : null}
-
-      {accountNameOpen ? (
-        <AccountNameDialog
-          currentName={auth.user?.displayName ?? null}
-          onClose={() => setAccountNameOpen(false)}
-          onSave={updateAccountName}
         />
       ) : null}
 

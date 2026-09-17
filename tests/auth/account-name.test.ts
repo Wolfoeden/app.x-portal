@@ -1,6 +1,25 @@
 import { describe, expect, it } from "vitest";
 
-import { ACCOUNT_NAME_MAX_LENGTH, accountNameFromMetadata } from "@/lib/auth/account-name";
+import {
+  ACCOUNT_NAME_MAX_LENGTH,
+  accountNameFromMetadata,
+  shownAccountName,
+} from "@/lib/auth/account-name";
+
+describe("shown account name", () => {
+  it("uses the stored name when there is one", () => {
+    expect(shownAccountName("Erika Mustermann", "erika@example.com")).toBe("Erika Mustermann");
+  });
+
+  it("falls back to the part of the e-mail address before the @", () => {
+    expect(shownAccountName(null, "erika.mustermann@example.com")).toBe("erika.mustermann");
+  });
+
+  it("has nothing to show without a name or address", () => {
+    expect(shownAccountName(null, null)).toBeNull();
+    expect(shownAccountName(null, "@example.com")).toBeNull();
+  });
+});
 
 describe("account name from user metadata", () => {
   it("prefers the name the account holder entered over the sign-in provider's", () => {
