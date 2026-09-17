@@ -22,7 +22,7 @@ export function PublicHeader({ context }: { context?: string }) {
           <Link href="/freelancer/apply">Freelancer-Portal</Link>
         </nav>
         <Link href="/chat" prefetch={false} className={styles.primaryAction}>
-          Projekt beschreiben <span aria-hidden="true">↗</span>
+          App öffnen <span aria-hidden="true">↗</span>
         </Link>
       </div>
     </header>

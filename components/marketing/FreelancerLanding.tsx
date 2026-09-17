@@ -22,7 +22,7 @@ export function FreelancerLanding() {
       <header className={styles.hero}>
         <div className={styles.heroCopy}>
           <p className={styles.eyebrow}>Für Recruiter mit fertiger Projektanzeige</p>
-          <h1>Projekt kopieren.<br />Freelancer finden.<br /><span>Termin buchen.</span></h1>
+          <h1>Freelancer finden.<br /><span>Termin buchen.</span></h1>
           <p className={styles.lead}>Projektbeschreibung bei XPORTAL einfügen, passende Profile prüfen und – bei vorhandenem Terminlink – direkt ein Erstgespräch buchen.</p>
           <div className={styles.actions}><ProjectLink>Projekt jetzt einfügen</ProjectLink><a className={styles.textLink} href="#ablauf">So funktioniert’s <span aria-hidden="true">↓</span></a></div>
           <p className={styles.startNote}><span aria-hidden="true">✓</span> Analyse ohne Anmeldung · Termin mit Konto</p>
