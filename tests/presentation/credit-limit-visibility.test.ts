@@ -26,7 +26,6 @@ function render(planId: string, selfLimit: number | null = null) {
   return renderToStaticMarkup(
     createElement(CreditPlansDialog, {
       usage: usage(planId),
-      customerReference: "account-1",
       team: null,
       teamBusy: false,
       teamNotice: null,

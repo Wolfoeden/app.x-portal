@@ -1,22 +1,11 @@
 "use client";
 
-import { useState } from "react";
-
 import { creditPlan } from "@/lib/ai/credit-policy";
-import { confirmBusinessCustomer } from "@/lib/auth/browser";
-import {
-  customerPortalUrl,
-  ENTERPRISE_CONTACT,
-  fixedPlanCheckout,
-} from "@/lib/billing/payment-links";
-import {
-  CREDIT_PLANS,
-  type FixedMonthlyPlan,
-} from "@/lib/billing/plans";
-import { TERMS_REVIEW } from "@/lib/legal/policy";
+import { customerPortalUrl } from "@/lib/billing/payment-links";
+import { CREDIT_PLANS } from "@/lib/billing/plans";
 
 import type { AiUsageSnapshot, PlanTeamSnapshot } from "../chat-contract";
-import { IconArrowUpRight, IconCheck, IconSpark } from "../icons";
+import { IconArrowUpRight, IconSpark } from "../icons";
 import { CreditLimitSetting } from "./credit-limit";
 import { TeamMembersPanel } from "./team-members";
 
@@ -87,10 +76,6 @@ export function billingPeriodLabel(
   return renewalLabel(periodEnd);
 }
 
-function hasManagedSubscription(status: SubscriptionStatus | null | undefined): boolean {
-  return Boolean(status && status !== "canceled" && status !== "incomplete_expired");
-}
-
 export function totalBalance(usage: AiUsageSnapshot): number {
   return usage.credits.remaining;
 }
@@ -153,89 +138,13 @@ export function AccountSummary({
         )}
       </> : <p className="account-credit-muted">Guthaben wird geladen …</p>}
 
-      {isAccountUser ? <button className="account-upgrade" type="button" onClick={onMoreCredits}><IconSpark size={14} /> Tarife ansehen</button> : null}
+      {isAccountUser ? <button className="account-upgrade" type="button" onClick={onMoreCredits}><IconSpark size={14} /> Abrechnung und Team</button> : null}
     </div>
-  );
-}
-
-const ACCOUNT_FEATURES = [
-  "Projektanalysen",
-  "AI-Agent-Recherche",
-  "Akquise-Anschreiben",
-] as const;
-
-function MonthlyPlanCard({
-  plan,
-  customerReference,
-  businessConfirmed,
-  managedSubscription,
-  portal,
-  requested,
-}: {
-  plan: FixedMonthlyPlan;
-  customerReference: string | null;
-  businessConfirmed: boolean;
-  managedSubscription: boolean;
-  portal: string | null;
-  requested: boolean;
-}) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const checkout = fixedPlanCheckout(plan.id as "basic" | "pro" | "business", customerReference);
-  const canCheckout = Boolean(checkout && businessConfirmed && TERMS_REVIEW.checkoutEnabled);
-
-  async function startCheckout() {
-    if (!canCheckout || !checkout || busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await confirmBusinessCustomer();
-      window.location.assign(checkout);
-    } catch {
-      setError("Die Unternehmerbestätigung konnte nicht gespeichert werden. Bitte erneut versuchen.");
-      setBusy(false);
-    }
-  }
-
-  return (
-    <article className={`plan-card ${plan.recommended ? "is-recommended" : ""} ${requested ? "is-requested" : ""}`}>
-      <div className="plan-card-offer">
-        <div>
-          <p className="plans-section-label">{requested ? "Ihre Auswahl" : plan.recommended ? "Empfohlen" : "Monatsplan"}</p>
-          <h3>{plan.label}</h3>
-          <p className="plan-audience">{formatCreditAmount(plan.monthlyCredits)} Credits pro Monat</p>
-        </div>
-        <p className="plan-price">{euroFormat.format(plan.priceNetCents / 100)}<span>netto pro Monat</span></p>
-        <ul className="plan-features">
-          {ACCOUNT_FEATURES.map((feature) => <li key={feature}><IconCheck size={12} /> {feature}</li>)}
-        </ul>
-      </div>
-      {managedSubscription && portal ? (
-        <a className="plan-action is-quiet" href={portal}>
-          Abo und Rechnungen verwalten <IconArrowUpRight size={12} />
-        </a>
-      ) : (
-        <button
-          className="plan-action"
-          type="button"
-          disabled={!canCheckout || busy || managedSubscription}
-          onClick={() => void startCheckout()}
-        >
-          {managedSubscription
-            ? "Bestehendes Abo zuerst verwalten"
-            : busy
-              ? "Stripe wird geöffnet …"
-              : `${plan.label} buchen`} <IconArrowUpRight size={12} />
-        </button>
-      )}
-      {error ? <p className="plan-checkout-error" role="alert">{error}</p> : null}
-    </article>
   );
 }
 
 export function CreditPlansDialog({
   usage,
-  customerReference,
   team,
   teamBusy,
   teamNotice,
@@ -244,11 +153,9 @@ export function CreditPlansDialog({
   onSelfLimitSaved,
   onInviteTeamMember,
   onRemoveTeamMember,
-  requestedPlanId,
   onClose,
 }: {
   usage: AiUsageSnapshot | null;
-  customerReference: string | null;
   selfLimit: number | null;
   selfLimitMaxEuro: number;
   onSelfLimitSaved: (limit: number | null) => void;
@@ -257,22 +164,18 @@ export function CreditPlansDialog({
   teamNotice: { tone: "error" | "success"; message: string } | null;
   onInviteTeamMember: (email: string) => void;
   onRemoveTeamMember: (memberUserId: string) => void;
-  requestedPlanId?: "basic" | "pro" | "business" | null;
   onClose: () => void;
 }) {
   const plan = creditPlan(usage?.credits.planId);
-  const [businessConfirmed, setBusinessConfirmed] = useState(false);
-  const fixedPlans = [CREDIT_PLANS.basic, CREDIT_PLANS.pro, CREDIT_PLANS.business] as const;
   const subscriptionLabel = subscriptionStatusLabel(
     usage?.credits.subscriptionStatus,
     usage?.credits.cancelAtPeriodEnd,
   );
-  const managedSubscription = hasManagedSubscription(usage?.credits.subscriptionStatus);
   const portal = customerPortalUrl();
 
   return (
-    <div className="plans-dialog" role="dialog" aria-label="Credits und Pläne">
-      <header className="plans-dialog-header"><h2>Plan und Guthaben</h2><button className="plans-close" type="button" onClick={onClose}>Schließen</button></header>
+    <div className="plans-dialog" role="dialog" aria-label="Abrechnung und Team">
+      <header className="plans-dialog-header"><h2>Abrechnung und Team</h2><button className="plans-close" type="button" onClick={onClose}>Schließen</button></header>
       <section className="plans-balance" aria-labelledby="plans-balance-title">
         <div><p className="plans-section-label">Aktueller Plan</p><h3 id="plans-balance-title">{plan.label}</h3><p>{plan.billingModel === "fixed_monthly" ? `${plan.euro} € ${planPriceSuffix(plan.euro)}` : plan.billingModel === "metered" ? "2 Cent netto je verbrauchtem Credit · 0 € Grundgebühr" : "Einmaliges Guthaben · keine monatliche Auffüllung"}</p></div>
         <div className="plans-balance-figure"><strong>{usage ? formatCreditAmount(plan.billingModel === "metered" ? usage.credits.used : totalBalance(usage)) : "–"} Credits</strong><span>{subscriptionLabel ?? "Kontostand"}</span></div>
@@ -292,20 +195,9 @@ export function CreditPlansDialog({
         ) : null}
       </section>
 
-      {!managedSubscription ? (
-        <label className="plan-business-confirm">
-          <input type="checkbox" checked={businessConfirmed} onChange={(event) => setBusinessConfirmed(event.target.checked)} />
-          <span>Ich bestätige, dass ich als Unternehmer im Sinne des § 14 BGB handle und die Leistung für meine gewerbliche oder selbständige berufliche Tätigkeit buche.</span>
-        </label>
-      ) : null}
-
-      <div className="plans-grid">
-        {fixedPlans.map((entry) => <MonthlyPlanCard key={entry.id} plan={entry} customerReference={customerReference} businessConfirmed={businessConfirmed} managedSubscription={managedSubscription} portal={portal} requested={requestedPlanId === entry.id} />)}
-        <article className="plan-card">
-          <div className="plan-card-offer"><div><p className="plans-section-label">Nach Nutzung</p><h3>Enterprise</h3><p className="plan-audience">Keine Grundgebühr und kein vorausbezahltes Kontingent.</p></div><p className="plan-price">0,02 €<span>netto pro Credit</span></p><ul className="plan-features"><li><IconCheck size={12} /> Monatliche Verbrauchsabrechnung</li><li><IconCheck size={12} /> Keine ungenutzten Pakete</li><li><IconCheck size={12} /> Teamnutzung beim Billing Owner</li></ul></div>
-          <a className="plan-action" href={`mailto:${ENTERPRISE_CONTACT.email}?subject=XPORTAL%20Enterprise`}>Enterprise per E-Mail anfragen <IconArrowUpRight size={12} /></a>
-        </article>
-      </div>
+      <a className="plan-action" href="/preise">
+        Tarife ansehen und Credits kaufen <IconArrowUpRight size={12} />
+      </a>
 
       {plan.billingModel === "fixed_monthly" ? <CreditLimitSetting limit={selfLimit} maxCredits={plan.monthlyCredits} maxEuro={selfLimitMaxEuro} onSaved={onSelfLimitSaved} /> : null}
       <TeamMembersPanel team={team} planLabel={plan.label} busy={teamBusy} notice={teamNotice} onInvite={onInviteTeamMember} onRemove={onRemoveTeamMember} />

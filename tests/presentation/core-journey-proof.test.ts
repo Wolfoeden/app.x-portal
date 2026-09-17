@@ -74,11 +74,10 @@ describe("Paket 2: gemeinsamer Beweisfaden", () => {
     expect(resultMarkup).toContain("Vor Kontakt offen");
   });
 
-  it("zeigt im Preisdialog alle neuen Abrechnungswege", () => {
+  it("verweist aus der Kontoverwaltung auf die einzige Preisseite", () => {
     const markup = renderToStaticMarkup(
       createElement(CreditPlansDialog, {
         usage: previewUsage,
-        customerReference: "preview-user",
         team: null,
         teamBusy: false,
         teamNotice: null,
@@ -91,14 +90,12 @@ describe("Paket 2: gemeinsamer Beweisfaden", () => {
       }),
     );
 
-    expect(markup).toContain("Plan und Guthaben");
+    expect(markup).toContain("Abrechnung und Team");
     expect(markup).not.toContain("Was eine bestätigte Aktion kostet");
     expect(markup).not.toContain("Aktueller Stand. Klare nächste Option.");
     expect(markup).not.toContain("Fragen zur Abrechnung oder eine Obergrenze vereinbaren");
-    expect(markup).toContain("Basic");
-    expect(markup).toContain("Pro");
-    expect(markup).toContain("Business");
-    expect(markup).toContain("Nach Nutzung");
-    expect(markup.match(/<h3>Enterprise<\/h3>/gu)).toHaveLength(1);
+    expect(markup).toContain('href="/preise"');
+    expect(markup).toContain("Tarife ansehen und Credits kaufen");
+    expect(markup).not.toContain("Monatlich buchen");
   });
 });

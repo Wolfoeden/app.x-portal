@@ -213,28 +213,6 @@ export async function registerEmailAccount(
   return { confirmationRequired: true } as const;
 }
 
-/**
- * Hält fest, dass jemand vor einer kostenpflichtigen Buchung bestätigt hat,
- * als Unternehmer zu handeln.
- *
- * Das ist keine Förmlichkeit. Die Beschränkung auf Unternehmer nach § 14 BGB
- * trägt nur, wenn der Bestellweg sie tatsächlich abfragt und das Ergebnis
- * festhält — steht sie allein in den AGB und bestellt jemand als Verbraucher,
- * gilt Verbraucherrecht mitsamt Widerrufsbelehrung, Kündigungsknopf und
- * Bruttopreisen, ganz gleich, was im Text steht.
- *
- * Abgelegt in denselben Metadaten wie die AGB-Zustimmung, weil es dieselbe
- * Art von Nachweis ist: eine Erklärung des Kontoinhabers mit Zeitpunkt.
- */
-export async function confirmBusinessCustomer(): Promise<void> {
-  const response = await fetch(appPath("/api/billing/business-confirmation"), {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { Accept: "application/json" },
-  });
-  if (!response.ok) throw new Error("business_confirmation_failed");
-}
-
 export async function signInExistingAccount(email: string, password: string) {
   const supabase = getBrowserSupabaseClient();
   await ensureGuestSession();

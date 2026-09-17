@@ -51,7 +51,7 @@ const CARD_COPY = {
 } as const;
 
 function FixedCard({ plan }: { plan: FixedMonthlyPlan }) {
-  const href = `/chat?checkout=${plan.id}`;
+  const href = `/api/billing/checkout?plan=${plan.id}`;
   const copy = CARD_COPY[plan.id as "basic" | "pro" | "business"];
   const researchExamples = Math.floor(affordableCount(plan.monthlyCredits, "research") / 5) * 5;
   const analysisExamples = researchExamples * (CREDIT_PRICES.research.credits / CREDIT_PRICES.project_brief.credits);
@@ -77,9 +77,9 @@ function FixedCard({ plan }: { plan: FixedMonthlyPlan }) {
         <li>{number.format(plan.monthlyCredits)} Credits pro Monat</li>
         {copy.features.map((feature) => <li key={feature}>{feature}</li>)}
       </ul>
-      <Link className={styles.cardAction} href={href} prefetch={false}>
+      <a className={styles.cardAction} href={href}>
         {plan.label} buchen <span aria-hidden="true">↗</span>
-      </Link>
+      </a>
     </article>
   );
 }

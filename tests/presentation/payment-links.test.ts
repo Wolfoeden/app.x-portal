@@ -74,12 +74,20 @@ describe("new fixed-plan checkout", () => {
 });
 
 describe("enterprise contact", () => {
-  it("routes both enterprise buttons through one address", () => {
+  it("routes the single enterprise offer through the configured address", () => {
     expect(ENTERPRISE_CONTACT.email).toMatch(/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/u);
-    for (const file of ["app/(marketing)/preise/page.tsx", "components/chat/account.tsx"]) {
-      const source = readFileSync(new URL(`../../${file}`, import.meta.url), "utf8");
-      expect(source).toContain("ENTERPRISE_CONTACT.email");
-      expect(source).not.toMatch(/mailto:[a-z]/u);
-    }
+    const pricing = readFileSync(
+      new URL("../../app/(marketing)/preise/page.tsx", import.meta.url),
+      "utf8",
+    );
+    const account = readFileSync(
+      new URL("../../components/chat/account.tsx", import.meta.url),
+      "utf8",
+    );
+
+    expect(pricing).toContain("ENTERPRISE_CONTACT.email");
+    expect(pricing).not.toMatch(/mailto:[a-z]/u);
+    expect(account).toContain('href="/preise"');
+    expect(account).not.toContain("mailto:");
   });
 });
