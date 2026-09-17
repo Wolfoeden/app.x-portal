@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 import { CREDIT_PLANS } from "@/lib/ai/credit-policy";
 import { ENTERPRISE_BILLING, ENTERPRISE_START_EURO } from "@/lib/billing/payment-links";
 import { TERMS_REVIEW, TERMS_STATUS } from "@/lib/legal/policy";
-import { INDEXABLE_PATHS, NON_INDEXABLE_PREFIXES } from "@/lib/seo";
 
 const publicContractFiles = [
   "components/chat/account.tsx",
@@ -44,10 +43,5 @@ describe("zentrale Produktwahrheit", () => {
     expect(TERMS_STATUS).toBe("approved");
     expect(TERMS_REVIEW.checkoutEnabled).toBe(true);
     expect(TERMS_REVIEW.label).toBe("Rechtlich geprüft");
-  });
-
-  it("isoliert Cardano und Whitelist von Recruiting-SEO", () => {
-    expect(INDEXABLE_PATHS).not.toContain("/cardano");
-    expect(NON_INDEXABLE_PREFIXES).toEqual(expect.arrayContaining(["/cardano", "/whitelist/"]));
   });
 });

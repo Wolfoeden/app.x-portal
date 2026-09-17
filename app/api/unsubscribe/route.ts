@@ -22,8 +22,7 @@ export const dynamic = "force-dynamic";
  *      ein GET auf eine Seite und trägt nichts aus — Virenscanner und
  *      Vorschaudienste rufen Links in E-Mails automatisch ab, und ein GET,
  *      das schon abmeldet, würde Leute stillschweigend austragen, die nur
- *      ihre Post geöffnet haben. Dieselbe Überlegung wie bei
- *      `/api/whitelist/confirm`, nur mit umgekehrtem Vorzeichen.
+ *      ihre Post geöffnet haben.
  *   2. Gmail, Yahoo und Outlook zeigen neben dem Absender einen eigenen
  *      „Abbestellen"-Knopf, sobald die Kopfzeilen nach RFC 8058 gesetzt sind,
  *      und schicken darauf einen POST mit `List-Unsubscribe=One-Click`. Der

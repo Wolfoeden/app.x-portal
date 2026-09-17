@@ -1,12 +1,11 @@
 /**
  * Die hCaptcha-Pruefung fuer die oeffentlichen Formulare.
  *
- * Whitelist-Anmeldung, Kontaktformular und Freelancer-Bewerbung standen bisher
- * nur hinter einem Honeypot und einem Rate-Limit. Beides haelt Gelegenheitsbots
- * ab, aber nichts, was ein Formular gezielt bedient.
+ * Das Kontaktformular stand bisher nur hinter einem Honeypot und einem
+ * Rate-Limit. Beides haelt Gelegenheitsbots ab, aber nichts, was ein Formular
+ * gezielt bedient.
  *
- * Die Pruefung liegt hier und nicht in den Routen, damit alle drei dieselbe
- * Antwort auf denselben Fehler geben — und damit sie ohne Netz und ohne
+ * Die Pruefung liegt hier und nicht in der Route, damit sie ohne Netz und ohne
  * Next.js pruefbar ist.
  */
 

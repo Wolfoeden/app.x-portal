@@ -125,10 +125,6 @@ export function countLabel(count: number, id: CreditPriceId): string {
  * lib/billing/plans.ts; Enterprise Flex nutzt dieselbe Credit-Einheit als
  * Verbrauchsmesser, aber kein vorausbezahltes Kontingent.
  *
- * `agents` ist die einzige Fähigkeit, die nicht am Guthaben hängt: ein Gast
- * bekommt die Standardanalyse, aber keine Agenten. Damit ist die Anmeldung
- * nicht nur eine größere Zahl, sondern ein anderer Funktionsumfang.
- *
  * Sie stehen hier statt in lib/ai/quota.ts, weil die Oberfläche sie nennt und
  * quota.ts server-only ist.
  */

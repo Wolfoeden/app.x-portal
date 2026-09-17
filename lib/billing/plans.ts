@@ -9,7 +9,6 @@
 type PlanBase = {
   id: string;
   label: string;
-  agents: boolean;
   public: boolean;
   recommended: boolean;
 };
@@ -51,7 +50,6 @@ export const CREDIT_PLANS = {
     grantCredits: 100,
     monthlyCredits: 0,
     priceNetCents: 0,
-    agents: false,
     purchasable: false,
     euro: 0,
     public: false,
@@ -64,7 +62,6 @@ export const CREDIT_PLANS = {
     grantCredits: 300,
     monthlyCredits: 0,
     priceNetCents: 0,
-    agents: true,
     purchasable: false,
     euro: 0,
     public: false,
@@ -76,7 +73,6 @@ export const CREDIT_PLANS = {
     billingModel: "fixed_monthly",
     monthlyCredits: 500,
     priceNetCents: 900,
-    agents: true,
     purchasable: true,
     euro: 9,
     public: true,
@@ -88,7 +84,6 @@ export const CREDIT_PLANS = {
     billingModel: "fixed_monthly",
     monthlyCredits: 1_250,
     priceNetCents: 1_900,
-    agents: true,
     purchasable: true,
     euro: 19,
     public: true,
@@ -100,7 +95,6 @@ export const CREDIT_PLANS = {
     billingModel: "fixed_monthly",
     monthlyCredits: 4_000,
     priceNetCents: 5_000,
-    agents: true,
     purchasable: true,
     euro: 50,
     public: true,
@@ -114,7 +108,6 @@ export const CREDIT_PLANS = {
     monthlyBaseFeeCents: 0,
     euroPerCreditCents: 2,
     priceNetCents: 0,
-    agents: true,
     purchasable: false,
     euro: 0,
     public: true,
@@ -127,7 +120,6 @@ export const CREDIT_PLANS = {
     billingModel: "fixed_monthly",
     monthlyCredits: 3_000,
     priceNetCents: 5_000,
-    agents: true,
     purchasable: true,
     euro: 50,
     public: false,
@@ -141,7 +133,6 @@ export const CREDIT_PLANS = {
     grantCredits: 300,
     monthlyCredits: 0,
     priceNetCents: 0,
-    agents: true,
     purchasable: false,
     euro: 0,
     public: false,
@@ -154,7 +145,6 @@ export const CREDIT_PLANS = {
     billingModel: "fixed_monthly",
     monthlyCredits: 3_000,
     priceNetCents: 5_000,
-    agents: true,
     purchasable: true,
     euro: 50,
     public: false,

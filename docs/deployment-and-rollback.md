@@ -78,7 +78,7 @@ The PR remains draft while any required gate is missing.
    - the Next.js server handler function exists.
 6. Verify the live security and product routes:
    - `/` redirects to `/freelancer-finden`;
-   - `/cardano` returns 200 and `/home` redirects to it;
+   - `/home` redirects to `/`;
    - `/chat` returns 200 with `noindex` and `private, no-store`;
    - `/api/health` returns 200;
    - `/api/health?deep=1` returns 200 and Supabase reachable;
