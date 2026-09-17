@@ -125,7 +125,7 @@ export default async function ContactPage({
           Wir verarbeiten Ihre Angaben ausschließlich, um dieses Anliegen zu
           bearbeiten. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO bei einem
           vertraglichen Anliegen, sonst Art. 6 Abs. 1 lit. f DSGVO. Einzelheiten
-          in Abschnitt 8 der{" "}
+          in Abschnitt 7 der{" "}
           <Link href="/privacy">Datenschutzhinweise</Link>. Bitte senden Sie
           über dieses Formular keine besonderen Kategorien personenbezogener
           Daten.

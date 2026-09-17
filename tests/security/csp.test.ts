@@ -63,7 +63,7 @@ describe("content security policy", () => {
 
   /**
    * Frueher stand hier `frame-src 'none'`. Eingebettet wird jetzt hCaptcha —
-   * und ausschliesslich das. Abschnitt 7 der Datenschutzhinweise sagt zu, dass
+   * und ausschliesslich das. Abschnitt 6 der Datenschutzhinweise sagt zu, dass
    * Buchungsseiten erst nach einem Klick und in einem eigenen Aufruf geladen
    * werden; diese Zusage haelt der Test weiter fest.
    */

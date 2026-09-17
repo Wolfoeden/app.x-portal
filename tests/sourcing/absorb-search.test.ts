@@ -10,12 +10,12 @@ function kandidat(
   patch: Partial<ExternalFreelancerCandidate> = {},
 ): ExternalFreelancerCandidate {
   return {
-    displayName: "Nikolai Schankin",
+    displayName: "Anna Beispiel",
     role: "Freiberuflicher Software-Entwickler",
     summary: "Datenbanken und Prozessautomatisierung seit 2003.",
     matchedRequirements: ["PostgreSQL", "Docker"],
     knownGaps: [],
-    profileUrl: "https://www.freelancermap.de/profil/nikolai-schankin",
+    profileUrl: "https://www.freelancermap.de/profil/anna-beispiel",
     bookingUrl: null,
     linkedinUrl: null,
     websiteUrl: null,
@@ -24,7 +24,7 @@ function kandidat(
     skills: ["PostgreSQL", "Docker", "Airflow"],
     activities: [],
     projects: [],
-    sourceUrls: ["https://www.freelancermap.de/profil/nikolai-schankin"],
+    sourceUrls: ["https://www.freelancermap.de/profil/anna-beispiel"],
     verificationStatus: "external_unverified",
     nameVerified: true,
     ...patch,

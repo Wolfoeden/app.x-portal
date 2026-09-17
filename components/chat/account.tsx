@@ -6,6 +6,7 @@ import { creditPlan } from "@/lib/ai/credit-policy";
 import { confirmBusinessCustomer } from "@/lib/auth/browser";
 import {
   customerPortalUrl,
+  ENTERPRISE_CONTACT,
   fixedPlanCheckout,
 } from "@/lib/billing/payment-links";
 import {
@@ -302,7 +303,7 @@ export function CreditPlansDialog({
         {fixedPlans.map((entry) => <MonthlyPlanCard key={entry.id} plan={entry} customerReference={customerReference} businessConfirmed={businessConfirmed} managedSubscription={managedSubscription} portal={portal} requested={requestedPlanId === entry.id} />)}
         <article className="plan-card">
           <div className="plan-card-offer"><div><p className="plans-section-label">Nach Nutzung</p><h3>Enterprise</h3><p className="plan-audience">Keine Grundgebühr und kein vorausbezahltes Kontingent.</p></div><p className="plan-price">0,02 €<span>netto pro Credit</span></p><ul className="plan-features"><li><IconCheck size={12} /> Monatliche Verbrauchsabrechnung</li><li><IconCheck size={12} /> Keine ungenutzten Pakete</li><li><IconCheck size={12} /> Teamnutzung beim Billing Owner</li></ul></div>
-          <a className="plan-action" href="mailto:roman@dering.info?subject=XPORTAL%20Enterprise">Enterprise per E-Mail anfragen <IconArrowUpRight size={12} /></a>
+          <a className="plan-action" href={`mailto:${ENTERPRISE_CONTACT.email}?subject=XPORTAL%20Enterprise`}>Enterprise per E-Mail anfragen <IconArrowUpRight size={12} /></a>
         </article>
       </div>
 

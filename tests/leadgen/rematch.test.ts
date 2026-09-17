@@ -84,13 +84,13 @@ describe("runLeadRematchPass", () => {
     mocks.shortlists = [{ lead_id: 1, brief_snapshot: BRIEF, created_at: "2026-09-01" }];
     mocks.buildShortlist.mockReturnValue({
       status: "ranked",
-      matches: [{ profile: { displayName: "Nikolai Schankin" } }],
+      matches: [{ profile: { displayName: "Anna Beispiel" } }],
     });
 
     const ergebnis = await runLeadRematchPass();
 
     expect(ergebnis.revived).toBe(1);
-    expect(ergebnis.leads[0]!.matched).toEqual(["Nikolai Schankin"]);
+    expect(ergebnis.leads[0]!.matched).toEqual(["Anna Beispiel"]);
     expect(mocks.updates).toHaveLength(1);
     expect(mocks.updates[0]!.patch).toMatchObject({
       status: "new",

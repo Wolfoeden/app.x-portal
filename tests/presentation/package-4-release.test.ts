@@ -1,7 +1,12 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { TERMS_EFFECTIVE_DATE, TERMS_REVIEW, TERMS_STATUS } from "@/lib/legal/policy";
+import {
+  TERMS_EFFECTIVE_DATE,
+  TERMS_REVIEW,
+  TERMS_STATUS,
+  TERMS_VERSION,
+} from "@/lib/legal/policy";
 
 const source = (path: string) =>
   readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
@@ -51,6 +56,7 @@ describe("Paket 4: Konsolidierung und Freigabe", () => {
     expect(TERMS_STATUS).toBe("approved");
     expect(TERMS_REVIEW.checkoutEnabled).toBe(true);
     expect(TERMS_REVIEW.label).toBe("Rechtlich geprüft");
-    expect(TERMS_EFFECTIVE_DATE).toBe("14. September 2026");
+    expect(TERMS_VERSION).toBe("1.1");
+    expect(TERMS_EFFECTIVE_DATE).toBe("17. September 2026");
   });
 });

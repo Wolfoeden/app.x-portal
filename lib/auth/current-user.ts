@@ -1,3 +1,4 @@
+import { hasAdminRole } from "@/lib/auth/admin-role";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export type CurrentUser = {
@@ -8,27 +9,25 @@ export type CurrentUser = {
 };
 
 /**
- * Wer den Admin-Bereich überhaupt sehen darf. Die Liste vergibt keine Rechte,
- * sie nimmt sie nur: ein Konto muss zusätzlich über app_metadata.role oder
- * ADMIN_USER_IDS berechtigt sein. Eine E-Mail-Adresse allein bleibt damit
- * wertlos, auch wenn jemand sie in einem Claim unterschiebt.
+ * Optionale Einschränkung des Admin-Bereichs auf bestimmte Adressen.
  *
- * Über ADMIN_ALLOWED_EMAILS übersteuerbar, damit eine Testumgebung nicht auf
- * die Produktionsadressen angewiesen ist.
+ * Die Liste vergibt keine Rechte, sie nimmt sie nur: Ein Konto muss
+ * zusätzlich über app_metadata.role oder ADMIN_USER_IDS berechtigt sein. Eine
+ * E-Mail-Adresse allein bleibt damit wertlos. Ist ADMIN_ALLOWED_EMAILS nicht
+ * gesetzt, entscheidet allein diese Berechtigung.
  */
-const DEFAULT_ADMIN_EMAILS = ["roman@dering.info", "paul@dering.info"];
-
-function allowedAdminEmails(): Set<string> {
+function allowedAdminEmails(): Set<string> | null {
   const configured = (process.env.ADMIN_ALLOWED_EMAILS ?? "")
     .split(",")
     .map((value) => value.trim().toLowerCase())
     .filter(Boolean);
-  return new Set(configured.length ? configured : DEFAULT_ADMIN_EMAILS);
+  return configured.length ? new Set(configured) : null;
 }
 
-function isAllowedAdminEmail(email: string | null): boolean {
-  if (!email) return false;
-  return allowedAdminEmails().has(email.trim().toLowerCase());
+function passesAdminEmailRestriction(email: string | null): boolean {
+  const allowed = allowedAdminEmails();
+  if (!allowed) return true;
+  return Boolean(email && allowed.has(email.trim().toLowerCase()));
 }
 
 function configuredAdminIds(): Set<string> {
@@ -41,18 +40,7 @@ function configuredAdminIds(): Set<string> {
 }
 
 function hasAdminClaim(claims: Record<string, unknown>, userId: string): boolean {
-  const appMetadata = claims.app_metadata;
-  if (appMetadata && typeof appMetadata === "object") {
-    const metadata = appMetadata as Record<string, unknown>;
-    if (metadata.role === "admin") return true;
-    if (
-      Array.isArray(metadata.roles) &&
-      metadata.roles.some((role) => role === "admin")
-    ) {
-      return true;
-    }
-  }
-  return configuredAdminIds().has(userId);
+  return hasAdminRole(claims.app_metadata) || configuredAdminIds().has(userId);
 }
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
@@ -70,10 +58,10 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     // A permanent account is security-sensitive state. Fail closed when the
     // required claim is absent or malformed instead of treating it as false.
     isAnonymous: data.claims.is_anonymous !== false,
-    // Beide Bedingungen müssen halten: berechtigt *und* auf der Liste.
+    // Berechtigt und, falls eine Adressliste gesetzt ist, auf der Liste.
     isAdmin:
       hasAdminClaim(data.claims as Record<string, unknown>, id) &&
-      isAllowedAdminEmail(email),
+      passesAdminEmailRestriction(email),
   };
 }
 

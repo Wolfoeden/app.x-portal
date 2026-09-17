@@ -75,13 +75,15 @@ export default function ImprintPage() {
         <section>
           <h2>Streitbeilegung</h2>
           <p>
-            Wir sind nicht bereit und nicht verpflichtet, an
-            Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle
-            teilzunehmen.
+            Wir sind bereit, an Streitbeilegungsverfahren vor einer
+            Verbraucherschlichtungsstelle teilzunehmen. Zuständig ist die
+            Universalschlichtungsstelle des Bundes, Zentrum für Schlichtung
+            e.V., Straßburger Straße 8, 77694 Kehl am Rhein,{" "}
+            <a href="https://www.universalschlichtungsstelle.de" target="_blank" rel="noreferrer">www.universalschlichtungsstelle.de</a>.
           </p>
         </section>
 
-        <p className="xlegal-updated">Stand: 28. August 2026</p>
+        <p className="xlegal-updated">Stand: 17. September 2026</p>
       </main>
 
       <PublicFooter />

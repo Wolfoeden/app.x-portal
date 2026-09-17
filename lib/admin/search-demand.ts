@@ -57,7 +57,7 @@ export async function getSearchDemandReport(input: {
     readShortlistRows({ period, now }),
     readAdminAuthEmails(),
   ]);
-  const excludedUserIds = platformAnalyticsExcludedUserIds(auth.emails);
+  const excludedUserIds = platformAnalyticsExcludedUserIds(auth.emails, auth.adminUserIds);
   return {
     ...buildSearchDemandReport({
       rows: shortlists.rows,

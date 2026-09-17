@@ -38,7 +38,7 @@ export const CSP_REPORT_PATH = "/api/csp-report";
  * Ohne alle drei Direktiven erscheint statt des Kaestchens nichts.
  *
  * Der frueher hier stehende Satz "Kein `frame-src`: Es wird nichts eingebettet"
- * gilt damit nicht mehr uneingeschraenkt. Die Zusage aus Abschnitt 7 der
+ * gilt damit nicht mehr uneingeschraenkt. Die Zusage aus Abschnitt 6 der
  * Datenschutzhinweise — Buchungsseiten erst nach einem Klick und in einem
  * eigenen Aufruf — bleibt davon unberuehrt: erlaubt ist ausschliesslich
  * hCaptcha, nicht das Einbetten beliebiger Dritter.
@@ -78,7 +78,7 @@ export function buildContentSecurityPolicy({
     scriptSrc,
     `connect-src 'self' https://*.supabase.co wss://*.supabase.co ${HCAPTCHA_ORIGINS}`,
     // Eingebettet wird ausschließlich hCaptcha. Die frühere Ausnahme für
-    // calendly.com bleibt gestrichen: sie stand im Widerspruch zu Abschnitt 7
+    // calendly.com bleibt gestrichen: sie stand im Widerspruch zu Abschnitt 6
     // der Datenschutzhinweise, der zusagt, dass Buchungsseiten erst nach einem
     // Klick und dann in einem eigenen Aufruf geladen werden.
     `frame-src ${HCAPTCHA_ORIGINS}`,

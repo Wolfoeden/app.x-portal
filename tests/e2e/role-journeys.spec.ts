@@ -44,7 +44,7 @@ test.describe("geschützte Rollen-Journeys", () => {
     await expect(dialog.getByText("1.250 Credits pro Monat")).toBeVisible();
     await expect(dialog).toContainText("0,02 €");
     await expect(page.getByRole("heading", { name: "Was eine bestätigte Aktion kostet" })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: /Enterprise per E-Mail anfragen/u })).toHaveAttribute("href", "mailto:roman@dering.info?subject=XPORTAL%20Enterprise");
+    await expect(page.getByRole("link", { name: /Enterprise per E-Mail anfragen/u })).toHaveAttribute("href", /^mailto:[^?]+\?subject=XPORTAL%20Enterprise$/u);
   });
 
   test("Freelancer: Profilverwaltung und Nachweise sind erreichbar", async ({ page }) => {
@@ -57,11 +57,11 @@ test.describe("geschützte Rollen-Journeys", () => {
 
   test("Marketing: Produkt, Verantwortungen, Preis und nächster Schritt sind sofort sichtbar", async ({ page }) => {
     await page.goto("/freelancer-finden");
-    await expect(page.getByRole("heading", { level: 1, name: "Freelancer finden. Belege prüfen. Selbst entscheiden." })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /^Freelancer finden\.\s*Termin buchen\.$/u })).toBeVisible();
     await expect(page.getByLabel("So entsteht ein nachvollziehbarer Match")).toBeVisible();
     await expect(page.getByText("100 Credits", { exact: false }).first()).toBeVisible();
     await expect(page.getByText("3 Credits", { exact: false }).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "Projekt beschreiben" }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "App öffnen" }).first()).toBeVisible();
   });
 
   test("Admin: geschützte Betriebsansicht bleibt als Fixture abnehmbar", async ({ page }) => {

@@ -82,11 +82,11 @@ describe("search demand analysis", () => {
     const report = buildSearchDemandReport({
       now,
       period: 90,
-      excludedUserIds: new Set(["roman-id"]),
+      excludedUserIds: new Set(["internal-id"]),
       rows: [
         row({ id: "old", project: "project-1", at: "2026-09-01T09:00:00.000Z", result: "no_reliable_match" }),
         row({ id: "new", project: "project-1", at: "2026-09-01T10:00:00.000Z", result: "ranked", count: 3 }),
-        row({ id: "internal", project: "project-2", user: "roman-id", at: "2026-09-02T10:00:00.000Z", result: "no_reliable_match" }),
+        row({ id: "internal", project: "project-2", user: "internal-id", at: "2026-09-02T10:00:00.000Z", result: "no_reliable_match" }),
       ],
     });
 

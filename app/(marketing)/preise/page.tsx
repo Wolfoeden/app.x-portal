@@ -14,6 +14,7 @@ import {
   meteredNetCents,
   type FixedMonthlyPlan,
 } from "@/lib/billing/plans";
+import { ENTERPRISE_CONTACT } from "@/lib/billing/payment-links";
 import { BUSINESS_ONLY_NOTICE } from "@/lib/legal/policy";
 import { MARKETING_PAGE, MARKETING_PAGES, pageMetadata } from "@/lib/seo";
 import { breadcrumbStructuredData } from "@/lib/structured-data";
@@ -105,7 +106,7 @@ function EnterpriseCard() {
         {CARD_COPY.enterprise_flex.features.map((feature) => <li key={feature}>{feature}</li>)}
         <li>{euro.format(plan.euroPerCreditCents / 100)} je verbrauchtem Credit</li>
       </ul>
-      <a className={styles.cardAction} href="mailto:roman@dering.info?subject=XPORTAL%20Enterprise">Enterprise per E-Mail anfragen <span aria-hidden="true">↗</span></a>
+      <a className={styles.cardAction} href={`mailto:${ENTERPRISE_CONTACT.email}?subject=XPORTAL%20Enterprise`}>Enterprise per E-Mail anfragen <span aria-hidden="true">↗</span></a>
     </article>
   );
 }

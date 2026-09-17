@@ -86,7 +86,7 @@ describe("POST /api/contact", () => {
 
     const row = mocks.insert.mock.calls[0][0] as Record<string, unknown>;
     // Eine Kontaktanfrage ist kein Anlass, Herkunftsdaten zu sammeln — die
-    // Datenschutzerklärung sagt in Abschnitt 8 genau das zu.
+    // Datenschutzerklärung sagt in Abschnitt 7 genau das zu.
     for (const forbidden of ["ip", "ip_hash", "user_agent", "referrer"]) {
       expect(Object.keys(row)).not.toContain(forbidden);
     }
