@@ -68,6 +68,16 @@ describe("sidebar hierarchy", () => {
     expect(markup).not.toContain('href="/agent"');
   });
 
+  it("keeps chat search behind a magnifier next to the brand", () => {
+    const markup = renderToStaticMarkup(createElement(ChatWorkspace));
+
+    expect(markup).toContain("<span>X PORTAL</span></a>");
+    expect(markup).toContain(
+      '</a><button class="icon-button sidebar-search-toggle" type="button" aria-label="Chats durchsuchen">',
+    );
+    expect(markup).not.toContain('aria-label="Gespeicherte Chats durchsuchen"');
+  });
+
   it("shows one flat chat history without dates or workflow labels", () => {
     const markup = renderToStaticMarkup(createElement(SidebarChatList, {
       chats: [

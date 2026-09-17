@@ -155,6 +155,18 @@
   padding: 0 16px 0 20px;
 }
 
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sidebar-search-toggle {
+  width: 30px;
+  height: 30px;
+  color: var(--muted);
+}
+
 .product-mark {
   display: flex;
   align-items: center;
@@ -191,22 +203,21 @@
 .sidebar-primary-nav {
   display: grid;
   gap: 2px;
-  margin: 1px 8px 24px;
+  margin: 1px 8px 18px;
 }
 
 .sidebar-primary-button {
   display: flex;
   width: 100%;
-  min-height: 48px;
   cursor: pointer;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   border: 0;
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
   background: transparent;
-  padding: 0 12px;
+  padding: 8px 10px;
   color: var(--ink-soft);
-  font-size: var(--fs-base);
+  font-size: var(--fs-sm);
   font-weight: 470;
   text-align: left;
   text-decoration: none;
@@ -231,9 +242,9 @@
 
 .sidebar-primary-icon {
   display: grid;
-  width: 24px;
+  width: 18px;
   place-items: center;
-  font-size: var(--fs-lg);
+  font-size: var(--fs-md);
   font-weight: 300;
   line-height: 1;
 }
@@ -316,21 +327,16 @@
 
 .sidebar-chat-search {
   display: flex;
-  min-height: 40px;
+  min-width: 0;
+  height: 36px;
+  flex: 1;
   align-items: center;
   gap: 7px;
-  margin: 0 4px 17px;
-  border: 0;
-  border-radius: 11px;
-  background: transparent;
-  padding: 0 10px;
-  color: var(--muted-light);
-}
-
-.sidebar-chat-search:focus-within {
+  border-radius: var(--radius-sm);
   background: var(--surface);
   box-shadow: inset 0 0 0 1px var(--border);
-  color: var(--ink);
+  padding: 0 4px 0 10px;
+  color: var(--muted-light);
 }
 
 .sidebar-chat-search input {
@@ -341,13 +347,35 @@
   background: transparent;
   color: var(--ink);
   font: inherit;
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
+}
+
+/* Die eigene Schließen-Schaltfläche ersetzt das Kreuz des Browsers. */
+.sidebar-chat-search input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.sidebar-chat-search button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  place-items: center;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.sidebar-chat-search button:hover {
+  background: var(--surface-hover);
+  color: var(--ink);
 }
 
 .nav-label {
-  margin: 0 12px 9px;
+  margin: 0 10px 7px;
   color: var(--muted-light);
-  font-size: 14px;
+  font-size: var(--fs-xs);
   font-weight: 650;
   letter-spacing: 0;
   text-transform: none;
@@ -370,13 +398,13 @@
 .empty-projects p {
   margin: 0 0 4px;
   color: var(--muted);
-  font-size: var(--fs-base);
+  font-size: var(--fs-sm);
   font-weight: 550;
 }
 
 .empty-projects small {
   display: block;
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
   line-height: 1.45;
 }
 
@@ -395,7 +423,7 @@
   gap: 1px;
   border-radius: var(--radius-sm);
   background: transparent;
-  padding: 9px 10px;
+  padding: 8px 10px;
   text-align: left;
 }
 
@@ -410,7 +438,7 @@
 
 .project-title {
   overflow: hidden;
-  font-size: var(--fs-base);
+  font-size: var(--fs-sm);
   font-weight: 560;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1139,13 +1167,6 @@
   opacity: 0.55;
 }
 
-.account-privacy-note {
-  margin: 7px 10px 8px;
-  color: var(--muted-light);
-  font-size: var(--fs-2xs);
-  line-height: 1.45;
-}
-
 .menu-divider {
   height: 1px;
   margin: 5px;
@@ -1284,35 +1305,34 @@
    teilen. Blieben sie bei 880 px, ragten sie beidseitig darueber hinaus und
    saehen aus, als gehoerten sie zu etwas anderem. */
 .suggestion-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   width: min(100%, 1000px);
-  gap: 10px;
-  margin: 14px auto 0;
+  gap: 8px;
+  margin: 12px auto 0;
 }
 
 .suggestion-grid button {
-  display: grid;
-  min-height: 68px;
+  display: inline-flex;
+  min-height: 32px;
   cursor: pointer;
-  align-content: center;
+  align-items: center;
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--radius-pill);
   background: var(--surface);
-  padding: 13px 16px;
-  text-align: center;
-  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+  padding: 5px 14px;
+  transition: border-color 150ms ease, background 150ms ease;
 }
 
 .suggestion-grid button:hover {
   border-color: #c4c4bd;
   background: var(--surface-raised);
-  transform: translateY(-1px);
 }
 
 .suggestion-label {
-  font-size: var(--fs-base);
-  font-weight: 660;
+  font-size: var(--fs-sm);
+  font-weight: 600;
 }
 
 .suggestion-intro {
@@ -3991,10 +4011,6 @@ dd.is-unknown,
     display: none;
   }
 
-  .suggestion-grid button {
-    min-height: 67px;
-  }
-
   .composer-zone {
     padding: 9px 10px;
   }
@@ -4219,12 +4235,46 @@ dd.is-unknown,
   font-weight: 620;
   letter-spacing: -0.035em;
 }
-.account-summary-identity { display: flex; flex-direction: column; min-width: 0; }
+.account-summary-identity { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .account-summary-identity strong { font-size: var(--fs-sm); }
 .account-summary-identity span {
   overflow: hidden; color: var(--muted);
   font-size: var(--fs-2xs); text-overflow: ellipsis; white-space: nowrap;
 }
+
+.account-name-button {
+  align-self: flex-start;
+  max-width: 100%;
+  overflow: hidden;
+  cursor: text;
+  margin: 0 -5px;
+  border-radius: 6px;
+  background: transparent;
+  padding: 1px 5px;
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-name-button:hover,
+.account-name-button:focus-visible { background: #f1f1ef; }
+
+.account-name-form { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 2px; }
+.account-name-form input {
+  min-width: 0; height: 30px; flex: 1;
+  border: 1px solid var(--border-strong); border-radius: 8px;
+  background: var(--surface); padding: 0 8px;
+  color: var(--ink); font-size: var(--fs-sm);
+}
+.account-name-form button {
+  height: 30px; cursor: pointer;
+  border-radius: 8px; background: var(--ink); padding: 0 10px;
+  color: #fff; font-size: var(--fs-2xs); font-weight: 650;
+}
+.account-name-form button:disabled { cursor: wait; opacity: .6; }
+.account-name-form .form-error { flex-basis: 100%; margin: 0; font-size: var(--fs-2xs); }
 
 .account-summary-status { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .account-status-dot { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: var(--fs-2xs); }

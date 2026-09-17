@@ -414,48 +414,6 @@ export function CreateProjectDialog({
   );
 }
 
-export function AccountNameDialog({
-  currentName,
-  onClose,
-  onSave,
-}: {
-  currentName: string | null;
-  onClose: () => void;
-  onSave: (name: string) => Promise<void>;
-}) {
-  const [name, setName] = useState(currentName ?? "");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const unchanged = name.trim() === (currentName ?? "");
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (busy || unchanged) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await onSave(name.trim());
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Der Name konnte nicht gespeichert werden.");
-      setBusy(false);
-    }
-  };
-  return (
-    <Modal titleId="account-name-title" onClose={onClose}>
-      <form className="project-dialog" onSubmit={submit}>
-        <h2 id="account-name-title">Ihr Name</h2>
-        <p>Mit Ihrem Vornamen begrüßt Sie der Chat.</p>
-        <label htmlFor="account-name">Vor- und Nachname</label>
-        <input id="account-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={ACCOUNT_NAME_MAX_LENGTH} autoComplete="name" autoFocus />
-        {error ? <p className="form-error" role="alert">{error}</p> : null}
-        <div className="dialog-actions">
-          <button className="secondary-action" type="button" onClick={onClose} disabled={busy}>Abbrechen</button>
-          <button className="primary-action" type="submit" disabled={busy || unchanged}>{busy ? "Wird gespeichert …" : "Speichern"}</button>
-        </div>
-      </form>
-    </Modal>
-  );
-}
-
 export function ManageChatDialog({
   chat,
   collections,
