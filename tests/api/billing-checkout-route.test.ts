@@ -24,7 +24,6 @@ beforeEach(() => {
 
 afterEach(() => {
   delete process.env.NEXT_PUBLIC_STRIPE_FIXED_PLANS_CHECKOUT_ENABLED;
-  delete process.env.CONTEXT;
 });
 
 describe("canonical pricing checkout route", () => {
@@ -73,7 +72,6 @@ describe("canonical pricing checkout route", () => {
   });
 
   it("keeps production redirects on x-portal.eu behind Netlify's internal host", async () => {
-    process.env.CONTEXT = "production";
     mocks.requireCurrentUser.mockRejectedValue(
       new Response("Authentication required", { status: 401 }),
     );

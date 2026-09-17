@@ -18,7 +18,7 @@ function checkoutPlan(value: string | null): CheckoutPlanId | null {
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
-  const redirectBase = process.env.CONTEXT === "production"
+  const redirectBase = requestUrl.hostname.endsWith(".netlify.app")
     ? new URL(SITE_URL)
     : requestUrl;
   const plan = checkoutPlan(requestUrl.searchParams.get("plan"));
