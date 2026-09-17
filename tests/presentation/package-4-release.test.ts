@@ -26,7 +26,7 @@ describe("Paket 4: Konsolidierung und Freigabe", () => {
     expect(visibleChat).not.toContain("Das passiert nach dem Absenden");
     expect(visibleChat).not.toContain("Gast-Credits");
     expect(visibleChat).not.toContain("KI strukturiert den Text. Das Matching bleibt regelbasiert.");
-    expect(welcome).toContain("Projekt einfügen. Profil buchen.");
+    expect(welcome).toContain("Schönen Guten Morgen");
     expect(welcome).not.toContain("assistant-emblem");
     expect(welcome).not.toContain("1st & 2nd Level Support");
     expect(welcome).not.toContain("description:");

@@ -965,6 +965,7 @@ function authViewFromClaims(data: unknown): AuthView {
   const claims = isRecord(wrapper.claims) ? wrapper.claims : wrapper;
   const sessionUser = isRecord(wrapper.user) ? wrapper.user : {};
   const appMetadata = isRecord(claims.app_metadata) ? claims.app_metadata : {};
+  const userMetadata = isRecord(claims.user_metadata) ? claims.user_metadata : {};
   const metadataRoles = Array.isArray(appMetadata.roles)
     ? appMetadata.roles
     : [];
@@ -985,7 +986,7 @@ function authViewFromClaims(data: unknown): AuthView {
       ? {
           id: userId,
           displayName: nullableString(
-            sessionUser.displayName ?? claims.name ?? claims.full_name,
+            sessionUser.displayName ?? userMetadata.full_name ?? userMetadata.name,
           ),
           email: nullableString(sessionUser.email ?? claims.email),
         }
@@ -3025,7 +3026,10 @@ export function ChatWorkspace({
           <div className="chat-scroll" aria-live="polite">
           <div className="conversation">
             {messages.length === 0 && !pendingAssistant ? (
-              <WelcomeState />
+              <WelcomeState
+                displayName={isAccountUser ? auth.user?.displayName ?? null : null}
+                ready={!workspaceLoading}
+              />
             ) : (
               <div className="message-list">
                 {messages.map((message) => (
