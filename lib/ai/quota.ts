@@ -24,7 +24,43 @@ export type AiCreditSnapshot = {
  */
 export type AiCreditSnapshotWithPlan = AiCreditSnapshot & {
   planId: CreditPlanId;
+  periodEnd: string | null;
+  subscriptionStatus: StripeSubscriptionStatus | null;
+  cancelAtPeriodEnd: boolean;
+  latestInvoiceStatus: string | null;
 };
+
+export type StripeSubscriptionStatus =
+  | "pending"
+  | "incomplete"
+  | "incomplete_expired"
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "canceled"
+  | "unpaid"
+  | "paused";
+
+type CreditAccountState = Pick<
+  AiCreditSnapshotWithPlan,
+  | "planId"
+  | "periodEnd"
+  | "subscriptionStatus"
+  | "cancelAtPeriodEnd"
+  | "latestInvoiceStatus"
+>;
+
+const STRIPE_SUBSCRIPTION_STATUSES = new Set<StripeSubscriptionStatus>([
+  "pending",
+  "incomplete",
+  "incomplete_expired",
+  "trialing",
+  "active",
+  "past_due",
+  "canceled",
+  "unpaid",
+  "paused",
+]);
 
 export type AiQuotaReservation = {
   allowed: boolean;
@@ -231,18 +267,18 @@ export async function getAiCreditSnapshot(input: {
   // Nebenlauf keine Zeile und `readPlanId` fällt auf genau die Stufe zurück,
   // die ein frisches Konto ohnehin bekommt. Das spart auf jedem Workspace-Aufruf
   // eine volle Wartezeit zur Datenbank.
-  const [snapshot, planId] = await Promise.all([
+  const [snapshot, account] = await Promise.all([
     admin.rpc("get_ai_credit_snapshot", {
       p_user_id: input.userId,
       p_is_anonymous: input.isAnonymous,
       p_initial_credit_total: configuredInitialCredits(input.isAnonymous),
     }),
-    readPlanId(admin, input.userId, input.isAnonymous),
+    readAccountState(admin, input.userId, input.isAnonymous),
   ]);
   if (snapshot.error) throw snapshot.error;
   const credits = creditSnapshot(firstRow(snapshot.data));
   if (!credits) throw new Error("invalid_credit_snapshot");
-  return { ...credits, planId };
+  return { ...credits, ...account };
 }
 
 /**
@@ -277,15 +313,55 @@ async function readPlanId(
   userId: string,
   isAnonymous: boolean,
 ): Promise<CreditPlanId> {
-  const { data } = await admin
+  return (await readAccountState(admin, userId, isAnonymous)).planId;
+}
+
+async function readAccountState(
+  admin: ReturnType<typeof createAdminSupabaseClient>,
+  userId: string,
+  isAnonymous: boolean,
+): Promise<CreditAccountState> {
+  const fallback: CreditAccountState = {
+    planId: creditPlan(null, isAnonymous).id,
+    periodEnd: null,
+    subscriptionStatus: null,
+    cancelAtPeriodEnd: false,
+    latestInvoiceStatus: null,
+  };
+  const { data, error } = await admin
     .from("user_ai_credit_accounts")
-    .select("plan_id,is_anonymous")
+    .select(
+      "plan_id,is_anonymous,period_end,stripe_subscription_status,stripe_cancel_at_period_end,stripe_latest_invoice_status",
+    )
     .eq("user_id", userId)
     .maybeSingle();
-  const row = data as { plan_id: string; is_anonymous: boolean } | null;
-  // Fehlt die Spalte noch, ist `data` null. Dann entscheidet die Anonymität
-  // des Aufrufers — sonst bekäme eine Gastsitzung die Kontostufe angezeigt.
-  return creditPlan(row?.plan_id, row?.is_anonymous ?? isAnonymous).id;
+  if (error || !data) return fallback;
+  const row = data as {
+    plan_id?: unknown;
+    is_anonymous?: unknown;
+    period_end?: unknown;
+    stripe_subscription_status?: unknown;
+    stripe_cancel_at_period_end?: unknown;
+    stripe_latest_invoice_status?: unknown;
+  };
+  const rawStatus = row.stripe_subscription_status;
+  return {
+    planId: creditPlan(
+      typeof row.plan_id === "string" ? row.plan_id : null,
+      typeof row.is_anonymous === "boolean" ? row.is_anonymous : isAnonymous,
+    ).id,
+    periodEnd: typeof row.period_end === "string" ? row.period_end : null,
+    subscriptionStatus:
+      typeof rawStatus === "string" &&
+      STRIPE_SUBSCRIPTION_STATUSES.has(rawStatus as StripeSubscriptionStatus)
+        ? rawStatus as StripeSubscriptionStatus
+        : null,
+    cancelAtPeriodEnd: row.stripe_cancel_at_period_end === true,
+    latestInvoiceStatus:
+      typeof row.stripe_latest_invoice_status === "string"
+        ? row.stripe_latest_invoice_status
+        : null,
+  };
 }
 
 export type BillingAccount = {

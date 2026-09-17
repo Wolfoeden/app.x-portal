@@ -147,6 +147,22 @@ export interface CreditBalanceSnapshot {
   creditsPerRequest: number;
   /** Stable plan id from the central billing catalogue. */
   planId: string;
+  /** Last signed Stripe state for fixed monthly plans. */
+  subscriptionStatus?:
+    | "pending"
+    | "incomplete"
+    | "incomplete_expired"
+    | "trialing"
+    | "active"
+    | "past_due"
+    | "canceled"
+    | "unpaid"
+    | "paused"
+    | null;
+  /** True when Stripe will stop renewal after the already paid period. */
+  cancelAtPeriodEnd?: boolean;
+  /** Compact state only; invoices themselves remain in Stripe. */
+  latestInvoiceStatus?: string | null;
   /** What the request returning this snapshot cost. Null outside a request. */
   lastRequestCost: number | null;
 }

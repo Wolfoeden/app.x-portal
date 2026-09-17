@@ -6,7 +6,6 @@ import {
   affordableCount,
   type CreditPriceId,
 } from "@/lib/ai/credit-policy";
-import { fixedPlanCheckout } from "@/lib/billing/payment-links";
 import {
   CREDIT_PLANS,
   PUBLIC_PRICING_PLANS,
@@ -51,8 +50,7 @@ const CARD_COPY = {
 } as const;
 
 function FixedCard({ plan }: { plan: FixedMonthlyPlan }) {
-  const checkout = fixedPlanCheckout(plan.id as "basic" | "pro" | "business", null);
-  const href = checkout ?? `/contact?tarif=${plan.id}`;
+  const href = `/chat?checkout=${plan.id}`;
   const copy = CARD_COPY[plan.id as "basic" | "pro" | "business"];
   const researchExamples = Math.floor(affordableCount(plan.monthlyCredits, "research") / 5) * 5;
   const analysisExamples = researchExamples * (CREDIT_PRICES.research.credits / CREDIT_PRICES.project_brief.credits);
@@ -78,8 +76,8 @@ function FixedCard({ plan }: { plan: FixedMonthlyPlan }) {
         <li>{number.format(plan.monthlyCredits)} Credits pro Monat</li>
         {copy.features.map((feature) => <li key={feature}>{feature}</li>)}
       </ul>
-      <Link className={styles.cardAction} href={href} target={checkout ? "_blank" : undefined} rel={checkout ? "noopener noreferrer" : undefined}>
-        {plan.label} {checkout ? "wählen" : "anfragen"} <span aria-hidden="true">↗</span>
+      <Link className={styles.cardAction} href={href} prefetch={false}>
+        {plan.label} buchen <span aria-hidden="true">↗</span>
       </Link>
     </article>
   );
@@ -147,7 +145,7 @@ export default function PricingPage() {
           {PUBLIC_PRICING_PLANS.filter((plan) => plan.billingModel === "fixed_monthly").map((plan) => <FixedCard key={plan.id} plan={plan} />)}
           <EnterpriseCard />
         </div>
-        <p className={styles.checkoutNote}>Alle Preise netto, zuzüglich gesetzlicher Umsatzsteuer. Ist ein neuer Stripe-Checkout extern noch nicht konfiguriert, führt die Tarifauswahl zur sicheren Anfrage statt zu einem falschen Zahlungslink.</p>
+        <p className={styles.checkoutNote}>Alle Preise netto, zuzüglich gesetzlicher Umsatzsteuer. Basic, Pro und Business sind Monatsabonnements und verlängern sich automatisch. Sie können das Abonnement über Stripe verwalten und zum Ende der laufenden Abrechnungsperiode kündigen.</p>
       </section>
 
       <section className={styles.actionSection} aria-labelledby="actions-title">

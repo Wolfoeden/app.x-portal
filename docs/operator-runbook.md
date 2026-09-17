@@ -265,8 +265,9 @@ appointment in the linked booking provider. Do not paste invitee answers,
 calendar payloads or other unnecessary personal data into Supabase.
 
 There is no premium charge, payment unlock, Stripe event, invoice or bank
-transfer in V1. If someone requests payment handling, stop and route it to a
-future approved migration.
+transfer for an introduction. Account-level Basic, Pro and Business
+subscriptions are a separate flow and must never be inferred from a profile or
+booking click.
 
 ## Engagement operations
 

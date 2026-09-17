@@ -114,8 +114,10 @@ Every external candidate must be supported by public source evidence and a
 public profile URL. At most three candidates are returned, separately labelled
 `external_unverified`.
 
-There is no self-service credit purchase. The Enterprise allowance is raised by
-`activate_stripe_plan` from the Stripe webhook.
+Basic, Pro and Business are self-service monthly subscriptions. Checkout only
+links the Stripe subscription; the signed `invoice.paid` webhook calls
+`activate_paid_plan` with the allow-listed plan and Stripe billing period.
+Enterprise Flex remains an email-led offer.
 
 ## Provider usage and cost reporting
 

@@ -108,7 +108,7 @@ export async function loadWorkspaceUsage(
   return {
     credits: {
       ...credits,
-      periodEnd: currentPeriodEndIso(),
+      periodEnd: credits.periodEnd ?? currentPeriodEndIso(),
       exhausted: credits.remaining <= 0,
       creditsPerRequest: BRIEF_ANALYSIS_CREDITS,
       // Nothing was spent by loading the workspace.

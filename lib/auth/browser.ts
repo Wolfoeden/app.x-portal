@@ -227,11 +227,12 @@ export async function registerEmailAccount(
  * Art von Nachweis ist: eine Erklärung des Kontoinhabers mit Zeitpunkt.
  */
 export async function confirmBusinessCustomer(): Promise<void> {
-  const supabase = getBrowserSupabaseClient();
-  const { error } = await supabase.auth.updateUser({
-    data: { business_confirmed_at: new Date().toISOString() },
+  const response = await fetch(appPath("/api/billing/business-confirmation"), {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { Accept: "application/json" },
   });
-  if (error) throw error;
+  if (!response.ok) throw new Error("business_confirmation_failed");
 }
 
 export async function signInExistingAccount(email: string, password: string) {

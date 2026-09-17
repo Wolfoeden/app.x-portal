@@ -272,7 +272,8 @@ select is(
 );
 
 -- ---------------------------------------------------------------------
--- Fixed subscriptions refill to the exact plan allowance, without rollover.
+-- Fixed subscriptions are renewed only by Stripe invoice.paid. The local
+-- calendar may expire them, but can never create a paid entitlement.
 -- ---------------------------------------------------------------------
 update public.user_ai_credit_accounts
   set plan_id = 'basic', credits_total = 500, credits_used = 499,
@@ -283,8 +284,8 @@ update public.user_ai_credit_accounts
 select is(
   (select s.credits_total::text || ':' || s.credits_used || ':' || s.credits_remaining
      from public.get_ai_credit_snapshot('d1111111-1111-4111-8111-111111111111', false, 300) s),
-  '500:0:500',
-  'Basic starts a new period with exactly 500 credits'
+  '0:0:0',
+  'an expired Basic period receives no credits without a paid invoice'
 );
 
 update public.user_ai_credit_accounts
@@ -296,8 +297,8 @@ update public.user_ai_credit_accounts
 select is(
   (select s.credits_total::text || ':' || s.credits_remaining
      from public.get_ai_credit_snapshot('d1111111-1111-4111-8111-111111111111', false, 300) s),
-  '1250:1250',
-  'Pro starts a new period with exactly 1,250 credits'
+  '0:0',
+  'an expired Pro period receives no credits without a paid invoice'
 );
 
 update public.user_ai_credit_accounts
@@ -309,8 +310,8 @@ update public.user_ai_credit_accounts
 select is(
   (select s.credits_total::text || ':' || s.credits_remaining
      from public.get_ai_credit_snapshot('d1111111-1111-4111-8111-111111111111', false, 300) s),
-  '4000:4000',
-  'Business starts a new period with exactly 4,000 credits'
+  '0:0',
+  'an expired Business period receives no credits without a paid invoice'
 );
 
 -- ---------------------------------------------------------------------

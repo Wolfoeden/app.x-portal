@@ -23,13 +23,20 @@ historic EUR 50 / 3,000-credit contract.
 
 ## Renewal and one-time grants
 
-The migration `20260915143000_pricing_billing_v2.sql` makes rollover depend on
-the stored plan id. Basic, Pro, Business and Enterprise Legacy reset to their
-exact allowance at a new UTC month; unused included credits are not added.
-Trial and guest periods advance for reporting but usage is not cleared and no
-new grant is made. `trial_granted_at` is permanent evidence that the one-time
-entitlement was created. Converting an anonymous guest into a real account
-creates the account trial once; later login and snapshot calls preserve it.
+The migration `20260916161917_stripe_subscription_lifecycle.sql` binds Basic,
+Pro and Business to Stripe's real subscription period. Checkout completion
+stores only the customer/subscription mapping. Credits are set to the exact
+plan allowance only by a signed, allow-listed `invoice.paid` event. A local
+calendar rollover never creates a paid entitlement: after `period_end` the
+balance becomes zero until the next paid invoice arrives. Failed payments and
+subscription updates change status without resetting already-paid credits.
+
+Trial and guest periods remain one-time grants. Their reporting period may
+advance, but usage is not cleared and no new grant is made. `trial_granted_at`
+is permanent evidence that the entitlement was created. Converting an
+anonymous guest into a real account creates the account trial once; later
+login and snapshot calls preserve it. Historical `enterprise_legacy` accounts
+retain their pre-existing calendar renewal behaviour.
 
 ## Enterprise Flex ledger and invoicing
 
@@ -51,30 +58,37 @@ creates one unique invoice record and links every included ledger row in the
 same transaction. A retry returns the same invoice. Net amount is exact integer
 arithmetic: `consumed_credits * 2` cents.
 
-## Stripe configuration still required
+## Stripe subscription configuration
 
-The three supplied Stripe URLs and the Payment-Link ids exposed by their
-public checkout metadata are assigned to Basic, Pro and Business in
-`lib/billing/payment-links.ts` and repeated in `.env.example` as deploy-time
-overrides.
+The three supplied Stripe URLs, their Payment-Link IDs and their recurring
+Price IDs are assigned to Basic, Pro and Business in
+`lib/billing/payment-links.ts` and `.env.example`.
 
 - `NEXT_PUBLIC_STRIPE_BASIC_PAYMENT_LINK` + `STRIPE_BASIC_PAYMENT_LINK_ID`
 - `NEXT_PUBLIC_STRIPE_PRO_PAYMENT_LINK` + `STRIPE_PRO_PAYMENT_LINK_ID`
 - `NEXT_PUBLIC_STRIPE_BUSINESS_PAYMENT_LINK` + `STRIPE_BUSINESS_PAYMENT_LINK_ID`
+- `STRIPE_BASIC_PRICE_ID`, `STRIPE_PRO_PRICE_ID`, `STRIPE_BUSINESS_PRICE_ID`
+- `NEXT_PUBLIC_STRIPE_CUSTOMER_PORTAL_URL`
 
-URLs and ids alone do not enable checkout. On 2026-09-15, live read-only checks
-showed that Business is a recurring monthly subscription, while Basic and Pro
-are configured as one-time payments and still contain "XPORTAL Enterprise" in
-their product description. The two independent fail-closed
-switches `NEXT_PUBLIC_STRIPE_FIXED_PLANS_CHECKOUT_ENABLED=true` and
-`STRIPE_FIXED_PLANS_ACTIVATION_ENABLED=true` may be set only after the external
-subscription lifecycle (including corrected recurring Basic/Pro prices,
-renewal, cancellation, failed payment, tax/VAT and documents) has been
-configured and verified. Until then every fixed-plan CTA goes to an inquiry
-and the webhook refuses plan activation.
+The marketing CTA first establishes an authenticated XPORTAL account, then
+opens the selected Stripe link with its non-secret account UUID as
+`client_reference_id`. There is no contact-form fallback. The two independent
+fail-closed switches `NEXT_PUBLIC_STRIPE_FIXED_PLANS_CHECKOUT_ENABLED=true`
+and `STRIPE_FIXED_PLANS_ACTIVATION_ENABLED=true` remain off until all three
+links are recurring monthly subscriptions, Price IDs are allow-listed, the
+customer portal is active, and the webhook listens to the five lifecycle
+events used by the route.
 
-The webhook selects a plan only from the server-side Payment-Link-id allow
-list. An unknown or missing id is acknowledged but never activates an account.
+The webhook maps checkout only from the server-side Payment-Link-ID allow list
+and grants credits only from the separate Price-ID allow list. Its five events
+are `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`,
+`customer.subscription.updated` and `customer.subscription.deleted`. Unknown
+prices never activate an account; a known event that arrives before its
+checkout mapping returns 503 so Stripe retries it.
+
+Invoices, payment methods and cancellation stay in Stripe's hosted customer
+portal. XPORTAL stores only the identifiers and lifecycle status required for
+entitlements; it does not duplicate Stripe's invoice history.
 
 Enterprise Flex is available only by email to `roman@dering.info` until the external invoicing,
 tax/VAT, retention and Stripe metered-billing workflow has been configured and

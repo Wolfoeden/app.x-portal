@@ -4,7 +4,10 @@ import { useState } from "react";
 
 import { creditPlan } from "@/lib/ai/credit-policy";
 import { confirmBusinessCustomer } from "@/lib/auth/browser";
-import { fixedPlanCheckout } from "@/lib/billing/payment-links";
+import {
+  customerPortalUrl,
+  fixedPlanCheckout,
+} from "@/lib/billing/payment-links";
 import {
   CREDIT_PLANS,
   type FixedMonthlyPlan,
@@ -41,6 +44,52 @@ export function renewalLabel(periodEnd: string, now = new Date()): string {
   return `Credits werden in ${days} Tagen erneuert`;
 }
 
+type SubscriptionStatus = NonNullable<
+  AiUsageSnapshot["credits"]["subscriptionStatus"]
+>;
+
+export function subscriptionStatusLabel(
+  status: SubscriptionStatus | null | undefined,
+  cancelAtPeriodEnd = false,
+): string | null {
+  if (cancelAtPeriodEnd && status !== "canceled") return "Gekündigt";
+  if (status === "active" || status === "trialing") return "Abo aktiv";
+  if (status === "pending" || status === "incomplete") return "Aktivierung läuft";
+  if (status === "past_due" || status === "unpaid") return "Zahlung offen";
+  if (status === "paused") return "Pausiert";
+  if (status === "canceled" || status === "incomplete_expired") return "Beendet";
+  return null;
+}
+
+export function billingPeriodLabel(
+  periodEnd: string,
+  status: SubscriptionStatus | null | undefined,
+  cancelAtPeriodEnd = false,
+): string {
+  const end = new Date(periodEnd);
+  if (Number.isNaN(end.getTime())) {
+    if (status === "pending" || status === "incomplete") return "Zahlung wird bestätigt";
+    if (status === "canceled" || status === "incomplete_expired") return "Abonnement beendet";
+    return "Abrechnungszeitraum wird geladen";
+  }
+  const formattedEnd = new Intl.DateTimeFormat("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(end);
+  if (cancelAtPeriodEnd) return `Credits verfügbar bis ${formattedEnd}`;
+  if (status === "past_due" || status === "unpaid") {
+    return `Keine neue Auffüllung ohne Zahlung · aktueller Zeitraum bis ${formattedEnd}`;
+  }
+  if (status === "pending" || status === "incomplete") return "Zahlung wird bestätigt";
+  if (status === "canceled" || status === "incomplete_expired") return "Abonnement beendet";
+  return renewalLabel(periodEnd);
+}
+
+function hasManagedSubscription(status: SubscriptionStatus | null | undefined): boolean {
+  return Boolean(status && status !== "canceled" && status !== "incomplete_expired");
+}
+
 export function totalBalance(usage: AiUsageSnapshot): number {
   return usage.credits.remaining;
 }
@@ -61,6 +110,10 @@ export function AccountSummary({
   const monthly = usage?.credits ?? null;
   const plan = creditPlan(monthly?.planId, !isAccountUser);
   const consumed = monthly ? monthly.used + monthly.reserved : 0;
+  const subscriptionLabel = subscriptionStatusLabel(
+    monthly?.subscriptionStatus,
+    monthly?.cancelAtPeriodEnd,
+  );
   const progress = monthly && monthly.total > 0
     ? Math.min(100, Math.max(0, (consumed / monthly.total) * 100))
     : 0;
@@ -73,7 +126,7 @@ export function AccountSummary({
       </div>
       <div className="account-summary-status">
         <span className="account-status-dot">{isAccountUser ? "Angemeldet" : "Gast"}</span>
-        <span className="account-plan-badge">{plan.label}</span>
+        <span className="account-plan-badge">{subscriptionLabel ?? plan.label}</span>
       </div>
 
       {monthly ? <>
@@ -84,7 +137,11 @@ export function AccountSummary({
         {plan.billingModel === "fixed_monthly" ? (
           <section className="account-credit-block" aria-label="Guthaben">
             <div className="account-credit-progress" role="progressbar" aria-valuemin={0} aria-valuemax={Math.max(monthly.total, 1)} aria-valuenow={Math.min(consumed, Math.max(monthly.total, 1))}><span style={{ width: `${progress}%` }} /></div>
-            <p className="account-credit-muted">{renewalLabel(monthly.periodEnd)}</p>
+            <p className="account-credit-muted">{billingPeriodLabel(
+              monthly.periodEnd,
+              monthly.subscriptionStatus,
+              monthly.cancelAtPeriodEnd,
+            )}</p>
           </section>
         ) : (
           <p className="account-credit-muted">
@@ -110,19 +167,40 @@ function MonthlyPlanCard({
   plan,
   customerReference,
   businessConfirmed,
+  managedSubscription,
+  portal,
+  requested,
 }: {
   plan: FixedMonthlyPlan;
   customerReference: string | null;
   businessConfirmed: boolean;
+  managedSubscription: boolean;
+  portal: string | null;
+  requested: boolean;
 }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const checkout = fixedPlanCheckout(plan.id as "basic" | "pro" | "business", customerReference);
   const canCheckout = Boolean(checkout && businessConfirmed && TERMS_REVIEW.checkoutEnabled);
-  const fallback = `/contact?tarif=${plan.id}`;
+
+  async function startCheckout() {
+    if (!canCheckout || !checkout || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await confirmBusinessCustomer();
+      window.location.assign(checkout);
+    } catch {
+      setError("Die Unternehmerbestätigung konnte nicht gespeichert werden. Bitte erneut versuchen.");
+      setBusy(false);
+    }
+  }
+
   return (
-    <article className={`plan-card ${plan.recommended ? "is-recommended" : ""}`}>
+    <article className={`plan-card ${plan.recommended ? "is-recommended" : ""} ${requested ? "is-requested" : ""}`}>
       <div className="plan-card-offer">
         <div>
-          <p className="plans-section-label">{plan.recommended ? "Empfohlen" : "Monatsplan"}</p>
+          <p className="plans-section-label">{requested ? "Ihre Auswahl" : plan.recommended ? "Empfohlen" : "Monatsplan"}</p>
           <h3>{plan.label}</h3>
           <p className="plan-audience">{formatCreditAmount(plan.monthlyCredits)} Credits pro Monat</p>
         </div>
@@ -131,15 +209,25 @@ function MonthlyPlanCard({
           {ACCOUNT_FEATURES.map((feature) => <li key={feature}><IconCheck size={12} /> {feature}</li>)}
         </ul>
       </div>
-      <a
-        className="plan-action"
-        href={canCheckout ? checkout! : fallback}
-        target={canCheckout ? "_blank" : undefined}
-        rel={canCheckout ? "noopener noreferrer" : undefined}
-        onClick={() => { if (canCheckout) void confirmBusinessCustomer().catch(() => undefined); }}
-      >
-        {canCheckout ? `${plan.label} buchen` : `${plan.label} anfragen`} <IconArrowUpRight size={12} />
-      </a>
+      {managedSubscription && portal ? (
+        <a className="plan-action is-quiet" href={portal}>
+          Abo und Rechnungen verwalten <IconArrowUpRight size={12} />
+        </a>
+      ) : (
+        <button
+          className="plan-action"
+          type="button"
+          disabled={!canCheckout || busy || managedSubscription}
+          onClick={() => void startCheckout()}
+        >
+          {managedSubscription
+            ? "Bestehendes Abo zuerst verwalten"
+            : busy
+              ? "Stripe wird geöffnet …"
+              : `${plan.label} buchen`} <IconArrowUpRight size={12} />
+        </button>
+      )}
+      {error ? <p className="plan-checkout-error" role="alert">{error}</p> : null}
     </article>
   );
 }
@@ -155,6 +243,7 @@ export function CreditPlansDialog({
   onSelfLimitSaved,
   onInviteTeamMember,
   onRemoveTeamMember,
+  requestedPlanId,
   onClose,
 }: {
   usage: AiUsageSnapshot | null;
@@ -167,27 +256,50 @@ export function CreditPlansDialog({
   teamNotice: { tone: "error" | "success"; message: string } | null;
   onInviteTeamMember: (email: string) => void;
   onRemoveTeamMember: (memberUserId: string) => void;
+  requestedPlanId?: "basic" | "pro" | "business" | null;
   onClose: () => void;
 }) {
   const plan = creditPlan(usage?.credits.planId);
   const [businessConfirmed, setBusinessConfirmed] = useState(false);
   const fixedPlans = [CREDIT_PLANS.basic, CREDIT_PLANS.pro, CREDIT_PLANS.business] as const;
+  const subscriptionLabel = subscriptionStatusLabel(
+    usage?.credits.subscriptionStatus,
+    usage?.credits.cancelAtPeriodEnd,
+  );
+  const managedSubscription = hasManagedSubscription(usage?.credits.subscriptionStatus);
+  const portal = customerPortalUrl();
 
   return (
     <div className="plans-dialog" role="dialog" aria-label="Credits und Pläne">
       <header className="plans-dialog-header"><h2>Plan und Guthaben</h2><button className="plans-close" type="button" onClick={onClose}>Schließen</button></header>
       <section className="plans-balance" aria-labelledby="plans-balance-title">
         <div><p className="plans-section-label">Aktueller Plan</p><h3 id="plans-balance-title">{plan.label}</h3><p>{plan.billingModel === "fixed_monthly" ? `${plan.euro} € ${planPriceSuffix(plan.euro)}` : plan.billingModel === "metered" ? "2 Cent netto je verbrauchtem Credit · 0 € Grundgebühr" : "Einmaliges Guthaben · keine monatliche Auffüllung"}</p></div>
-        <div className="plans-balance-figure"><strong>{usage ? formatCreditAmount(plan.billingModel === "metered" ? usage.credits.used : totalBalance(usage)) : "–"} Credits</strong>{customerReference ? <code>{customerReference}</code> : null}</div>
+        <div className="plans-balance-figure"><strong>{usage ? formatCreditAmount(plan.billingModel === "metered" ? usage.credits.used : totalBalance(usage)) : "–"} Credits</strong><span>{subscriptionLabel ?? "Kontostand"}</span></div>
+        {subscriptionLabel ? (
+          <div className="plans-billing-rail" data-status={usage?.credits.subscriptionStatus ?? "pending"}>
+            <span className="plans-billing-dot" aria-hidden="true" />
+            <div>
+              <strong>{subscriptionLabel}</strong>
+              <span>{usage ? billingPeriodLabel(
+                usage.credits.periodEnd,
+                usage.credits.subscriptionStatus,
+                usage.credits.cancelAtPeriodEnd,
+              ) : "Zahlungsstatus wird geladen"}</span>
+            </div>
+            {portal ? <a href={portal}>Zahlungen und Rechnungen <IconArrowUpRight size={12} /></a> : null}
+          </div>
+        ) : null}
       </section>
 
-      <label className="plan-business-confirm">
-        <input type="checkbox" checked={businessConfirmed} onChange={(event) => setBusinessConfirmed(event.target.checked)} />
-        <span>Ich bestätige, dass ich als Unternehmer im Sinne des § 14 BGB handle und die Leistung für meine gewerbliche oder selbständige berufliche Tätigkeit buche.</span>
-      </label>
+      {!managedSubscription ? (
+        <label className="plan-business-confirm">
+          <input type="checkbox" checked={businessConfirmed} onChange={(event) => setBusinessConfirmed(event.target.checked)} />
+          <span>Ich bestätige, dass ich als Unternehmer im Sinne des § 14 BGB handle und die Leistung für meine gewerbliche oder selbständige berufliche Tätigkeit buche.</span>
+        </label>
+      ) : null}
 
       <div className="plans-grid">
-        {fixedPlans.map((entry) => <MonthlyPlanCard key={entry.id} plan={entry} customerReference={customerReference} businessConfirmed={businessConfirmed} />)}
+        {fixedPlans.map((entry) => <MonthlyPlanCard key={entry.id} plan={entry} customerReference={customerReference} businessConfirmed={businessConfirmed} managedSubscription={managedSubscription} portal={portal} requested={requestedPlanId === entry.id} />)}
         <article className="plan-card">
           <div className="plan-card-offer"><div><p className="plans-section-label">Nach Nutzung</p><h3>Enterprise</h3><p className="plan-audience">Keine Grundgebühr und kein vorausbezahltes Kontingent.</p></div><p className="plan-price">0,02 €<span>netto pro Credit</span></p><ul className="plan-features"><li><IconCheck size={12} /> Monatliche Verbrauchsabrechnung</li><li><IconCheck size={12} /> Keine ungenutzten Pakete</li><li><IconCheck size={12} /> Teamnutzung beim Billing Owner</li></ul></div>
           <a className="plan-action" href="mailto:roman@dering.info?subject=XPORTAL%20Enterprise">Enterprise per E-Mail anfragen <IconArrowUpRight size={12} /></a>

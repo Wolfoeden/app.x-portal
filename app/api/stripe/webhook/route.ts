@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { orderConfirmationMessage } from "@/lib/billing/order-confirmation";
-import { planForStripePaymentLink } from "@/lib/billing/payment-links";
+import {
+  planForStripePaymentLink,
+  planForStripePriceId,
+} from "@/lib/billing/payment-links";
 import type { FixedMonthlyPlan } from "@/lib/billing/plans";
 import { verifyStripeSignature } from "@/lib/billing/stripe-signature";
 import { deliverEmail } from "@/lib/email/deliver";
+import { TERMS_VERSION } from "@/lib/legal/policy";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { logEvent } from "@/lib/security/request";
 
@@ -14,9 +18,9 @@ export const dynamic = "force-dynamic";
 /**
  * Der Rückkanal von Stripe.
  *
- * Bezahlt wird über einen Payment Link; hier kommt die Bestätigung an und
- * schaltet die Stufe frei. Ohne diese Route bliebe ein zahlender Kunde auf der
- * Gratisstufe stehen, bis jemand von Hand nachbucht.
+ * Bezahlt wird über ein Stripe-Monatsabonnement. Der Checkout verknüpft das
+ * externe Abo mit dem bestehenden XPORTAL-Konto; ausschließlich invoice.paid
+ * setzt anschließend Credits für die echte Stripe-Abrechnungsperiode.
  *
  * `assertSameOrigin` greift bewusst nicht: Stripe ruft aus einem fremden
  * Ursprung auf. Was den Endpunkt schützt, ist ausschließlich die Signatur — und
@@ -24,18 +28,113 @@ export const dynamic = "force-dynamic";
  * zusammengesetztes JSON.
  */
 
-/** Nur diese Ereignisse schalten frei. Alles andere wird bestätigt und verworfen. */
-const ACTIVATING_EVENTS = new Set(["checkout.session.completed"]);
+const HANDLED_EVENTS = new Set([
+  "checkout.session.completed",
+  "invoice.paid",
+  "invoice.payment_failed",
+  "customer.subscription.updated",
+  "customer.subscription.deleted",
+]);
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
 type StripeEvent = {
   id?: unknown;
   type?: unknown;
-  data?: {
-    object?: { client_reference_id?: unknown; payment_link?: unknown };
-  } | null;
+  data?: { object?: unknown } | null;
 };
+
+type LinkedAccount = {
+  user_id: string;
+  stripe_plan_id: string | null;
+};
+
+const SUBSCRIPTION_STATUSES = new Set([
+  "pending",
+  "incomplete",
+  "incomplete_expired",
+  "trialing",
+  "active",
+  "past_due",
+  "canceled",
+  "unpaid",
+  "paused",
+]);
+
+function record(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object"
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function stripeId(value: unknown, prefix: string): string | null {
+  const direct = typeof value === "string" ? value : record(value)?.id;
+  return typeof direct === "string" && direct.startsWith(`${prefix}_`)
+    ? direct
+    : null;
+}
+
+function subscriptionId(object: Record<string, unknown>): string | null {
+  const ownId = stripeId(object.id, "sub");
+  if (ownId) return ownId;
+  const direct = stripeId(object.subscription, "sub");
+  if (direct) return direct;
+  const parent = record(object.parent);
+  const details = record(parent?.subscription_details);
+  return stripeId(details?.subscription, "sub");
+}
+
+function invoicePriceId(object: Record<string, unknown>): string | null {
+  const lines = record(object.lines);
+  const data = Array.isArray(lines?.data) ? lines.data : [];
+  for (const entry of data) {
+    const line = record(entry);
+    const legacy = stripeId(line?.price, "price");
+    if (legacy) return legacy;
+    const pricing = record(line?.pricing);
+    const details = record(pricing?.price_details);
+    const current = stripeId(details?.price, "price");
+    if (current) return current;
+  }
+  return null;
+}
+
+function subscriptionPriceId(object: Record<string, unknown>): string | null {
+  const items = record(object.items);
+  const data = Array.isArray(items?.data) ? items.data : [];
+  for (const entry of data) {
+    const item = record(entry);
+    const price = stripeId(item?.price, "price");
+    if (price) return price;
+  }
+  return null;
+}
+
+function unixInstant(value: unknown): string | null {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value <= 0) {
+    return null;
+  }
+  return new Date(value * 1_000).toISOString();
+}
+
+function invoicePeriod(object: Record<string, unknown>): {
+  start: string;
+  end: string;
+} | null {
+  const lines = record(object.lines);
+  const data = Array.isArray(lines?.data) ? lines.data : [];
+  const firstLine = record(data[0]);
+  const linePeriod = record(firstLine?.period);
+  const start = unixInstant(linePeriod?.start ?? object.period_start);
+  const end = unixInstant(linePeriod?.end ?? object.period_end);
+  return start && end && end > start ? { start, end } : null;
+}
+
+function subscriptionStatus(value: unknown, fallback = "pending"): string {
+  return typeof value === "string" && SUBSCRIPTION_STATUSES.has(value)
+    ? value
+    : fallback;
+}
 
 /**
  * Die Vertragsbestätigung in Textform, nach der Freischaltung.
@@ -116,64 +215,164 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Ereignis unvollständig." }, { status: 400 });
   }
 
-  // Alles, was nicht freischaltet, wird bestätigt statt abgelehnt: eine
-  // Fehlerantwort ließe Stripe endlos wiederholen.
-  if (!ACTIVATING_EVENTS.has(eventType)) {
+  // Fremde Ereignisse werden bestätigt statt abgelehnt: eine Fehlerantwort
+  // ließe Stripe ohne Nutzen wiederholen.
+  if (!HANDLED_EVENTS.has(eventType)) {
     return NextResponse.json({ received: true, ignored: eventType });
   }
 
-  const reference = event.data?.object?.client_reference_id;
-  if (typeof reference !== "string" || !UUID.test(reference)) {
-    // Eine Zahlung ohne zuordenbares Konto ist nichts, was sich durch
-    // Wiederholen löst — deshalb 200 und ein Protokolleintrag, damit sie von
-    // Hand zugeordnet werden kann statt still zu verschwinden.
-    logEvent("stripe_webhook_unassigned", { eventId, eventType });
-    return NextResponse.json({ received: true, assigned: false });
-  }
-
-  const plan = planForStripePaymentLink(event.data?.object?.payment_link);
-  if (!plan) {
-    logEvent("stripe_webhook_unassigned", {
-      eventId,
-      eventType,
-      reason: "unknown_payment_link",
-    });
-    return NextResponse.json({ received: true, assigned: false });
-  }
-
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
-    // 503 statt 200: hier hilft ein erneuter Zustellversuch tatsächlich.
     return NextResponse.json({ error: "Nicht verfügbar." }, { status: 503 });
   }
 
+  const object = record(event.data?.object);
+  if (!object) {
+    return NextResponse.json({ error: "Ereignis unvollständig." }, { status: 400 });
+  }
+
   const admin = createAdminSupabaseClient();
-  const { data, error } = await admin.rpc("activate_paid_plan", {
+
+  if (eventType === "checkout.session.completed") {
+    const reference = object.client_reference_id;
+    const plan = planForStripePaymentLink(object.payment_link);
+    const customer = stripeId(object.customer, "cus");
+    const subscription = stripeId(object.subscription, "sub");
+    if (typeof reference !== "string" || !UUID.test(reference) || !plan || !customer || !subscription) {
+      logEvent("stripe_webhook_unassigned", {
+        eventId,
+        eventType,
+        reason: !plan ? "unknown_payment_link" : "missing_account_or_subscription",
+      });
+      return NextResponse.json({ received: true, assigned: false });
+    }
+
+    const { data, error } = await admin.rpc("link_stripe_subscription_checkout", {
+      p_event_id: eventId,
+      p_event_type: eventType,
+      p_user_id: reference,
+      p_plan_id: plan.id,
+      p_stripe_customer_id: customer,
+      p_stripe_subscription_id: subscription,
+      p_terms_version: TERMS_VERSION,
+    });
+    if (error) {
+      logEvent("stripe_webhook_link_failed", { eventId });
+      return NextResponse.json({ error: "Zuordnung fehlgeschlagen." }, { status: 503 });
+    }
+    const row = (Array.isArray(data) ? data[0] : data) as { linked?: unknown } | null;
+    return NextResponse.json({ received: true, linked: row?.linked === true });
+  }
+
+  const subscription = subscriptionId(object);
+  if (!subscription) {
+    logEvent("stripe_webhook_unassigned", { eventId, eventType, reason: "missing_subscription" });
+    return NextResponse.json({ received: true, assigned: false });
+  }
+
+  const linkedResult = await admin
+    .from("user_ai_credit_accounts")
+    .select("user_id,stripe_plan_id")
+    .eq("stripe_subscription_id", subscription)
+    .maybeSingle();
+  if (linkedResult.error) {
+    return NextResponse.json({ error: "Zuordnung nicht verfügbar." }, { status: 503 });
+  }
+  const linked = linkedResult.data as LinkedAccount | null;
+
+  if (eventType === "invoice.paid" || eventType === "invoice.payment_failed") {
+    const plan = planForStripePriceId(invoicePriceId(object));
+    if (!plan) {
+      return NextResponse.json({ received: true, ignored: "unknown_price" });
+    }
+    if (!linked) {
+      // A known XPORTAL invoice can arrive milliseconds before the checkout
+      // event that creates the subscription mapping. A retry resolves it.
+      return NextResponse.json({ error: "Zuordnung noch nicht verfügbar." }, { status: 503 });
+    }
+    if (linked.stripe_plan_id !== plan.id) {
+      logEvent("stripe_webhook_unassigned", { eventId, eventType, reason: "plan_mismatch" });
+      return NextResponse.json({ received: true, assigned: false });
+    }
+
+    const invoice = stripeId(object.id, "in");
+    if (!invoice) {
+      return NextResponse.json({ error: "Rechnung unvollständig." }, { status: 400 });
+    }
+
+    if (eventType === "invoice.payment_failed") {
+      const { error } = await admin.rpc("record_stripe_subscription_status", {
+        p_event_id: eventId,
+        p_event_type: eventType,
+        p_stripe_subscription_id: subscription,
+        p_status: "past_due",
+        p_cancel_at_period_end: null,
+        p_latest_invoice_id: invoice,
+        p_latest_invoice_status: "payment_failed",
+      });
+      if (error) {
+        return NextResponse.json({ error: "Zahlungsstatus nicht gespeichert." }, { status: 503 });
+      }
+      return NextResponse.json({ received: true, recorded: true });
+    }
+
+    const customer = stripeId(object.customer, "cus");
+    const period = invoicePeriod(object);
+    if (!customer || !period) {
+      return NextResponse.json({ error: "Rechnungsperiode unvollständig." }, { status: 400 });
+    }
+    const { data, error } = await admin.rpc("activate_paid_plan", {
+      p_event_id: eventId,
+      p_event_type: eventType,
+      p_user_id: linked.user_id,
+      p_plan_id: plan.id,
+      p_plan_allowance: plan.monthlyCredits,
+      p_period_start: period.start,
+      p_period_end: period.end,
+      p_stripe_customer_id: customer,
+      p_stripe_subscription_id: subscription,
+      p_invoice_id: invoice,
+    });
+    if (error) {
+      logEvent("stripe_webhook_activation_failed", { eventId });
+      return NextResponse.json({ error: "Freischaltung fehlgeschlagen." }, { status: 503 });
+    }
+    const row = (Array.isArray(data) ? data[0] : data) as {
+      activated?: unknown;
+      was_first_payment?: unknown;
+    } | null;
+    const activated = row?.activated === true;
+    logEvent("stripe_webhook_activated", { eventId, repeated: !activated });
+    if (activated && row?.was_first_payment === true) {
+      await sendOrderConfirmation(admin, linked.user_id, eventId, plan);
+    }
+    return NextResponse.json({ received: true, activated });
+  }
+
+  if (!linked) {
+    if (planForStripePriceId(subscriptionPriceId(object))) {
+      // Stripe does not guarantee ordering. A known XPORTAL subscription
+      // update may beat checkout.session.completed by a few milliseconds.
+      return NextResponse.json({ error: "Zuordnung noch nicht verfügbar." }, { status: 503 });
+    }
+    return NextResponse.json({ received: true, assigned: false });
+  }
+  const status = eventType === "customer.subscription.deleted"
+    ? "canceled"
+    : subscriptionStatus(object.status);
+  const cancelAtPeriodEnd = eventType === "customer.subscription.deleted"
+    ? false
+    : object.cancel_at_period_end === true;
+  const { error } = await admin.rpc("record_stripe_subscription_status", {
     p_event_id: eventId,
     p_event_type: eventType,
-    p_user_id: reference,
-    p_plan_id: plan.id,
-    p_plan_allowance: plan.monthlyCredits,
+    p_stripe_subscription_id: subscription,
+    p_status: status,
+    p_cancel_at_period_end: cancelAtPeriodEnd,
+    p_latest_invoice_id: null,
+    p_latest_invoice_status: null,
   });
-
   if (error) {
-    logEvent("stripe_webhook_activation_failed", { eventId });
-    return NextResponse.json({ error: "Freischaltung fehlgeschlagen." }, { status: 503 });
+    return NextResponse.json({ error: "Abonnementstatus nicht gespeichert." }, { status: 503 });
   }
-
-  const row = (Array.isArray(data) ? data[0] : data) as { activated?: unknown } | null;
-  const activated = row?.activated === true;
-  logEvent("stripe_webhook_activated", {
-    eventId,
-    repeated: row?.activated === false,
-  });
-
-  // Nur beim ersten Mal. Stripe stellt dasselbe Ereignis mehrfach zu, und
-  // `activate_paid_plan` meldet die Wiederholung mit `activated: false`. Eine
-  // zweite Bestätigung zu demselben Vertrag wäre keine Dopplung, sondern die
-  // Auskunft über einen Abschluss, den es nicht gegeben hat.
-  if (activated) {
-    await sendOrderConfirmation(admin, reference, eventId, plan);
-  }
-
-  return NextResponse.json({ received: true, activated });
+  return NextResponse.json({ received: true, recorded: true });
 }

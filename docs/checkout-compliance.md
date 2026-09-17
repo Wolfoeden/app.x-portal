@@ -1,9 +1,9 @@
 # Pflichten des Bestellwegs
 
-Die Zahlungsabwicklung ist noch nicht angebunden. Dieses Dokument hält fest,
-was der Bestellweg leisten muss, damit er beim ersten zahlenden Kunden
-rechtmäßig ist — geschrieben, bevor er gebaut wird, weil ein Checkout billiger
-richtig entsteht als nachträglich korrigiert.
+Die Zahlungsabwicklung läuft für Basic, Pro und Business über gehostete
+Stripe-Monatsabonnements. Dieses Dokument hält fest, welche Teile technisch
+umgesetzt sind und welche rechtlichen bzw. steuerlichen Prüfungen vor dem
+ersten echten Verkauf noch abgeschlossen werden müssen.
 
 Sprache: Deutsch, abweichend vom Rest von `docs/`. Der Gegenstand ist deutsches
 Recht, und eine Übersetzung der Begriffe würde sie unschärfer machen.
@@ -37,6 +37,12 @@ Daraus folgt für die Umsetzung:
   Streitfall wertlos.
 - Bei einer angegebenen USt-IdNr. aus einem anderen EU-Staat: Prüfung über das
   VIES-Bestätigungsverfahren, Ergebnis samt Zeitpunkt archivieren.
+
+Die Unternehmerbestätigung, ihr Zeitpunkt und `TERMS_VERSION` werden vor dem
+Öffnen von Stripe serverseitig auf `user_ai_credit_accounts` gespeichert. Das
+Webhook verknüpft nur ein Konto mit passender Bestätigung. Firma, Steuer-ID und
+deren Pflicht-/Prüflogik bleiben zusätzlich in Stripe zu konfigurieren und vor
+dem ersten echten Verkauf zu testen.
 
 ## Was durch die B2B-Beschränkung entfällt
 
@@ -120,12 +126,14 @@ angewendeten AGB-Fassung.
 
 **Umgesetzt seit dem 01.09.2026.** Der Text steht in
 `lib/billing/order-confirmation.ts` und geht aus dem Stripe-Webhook raus,
-sobald `activate_paid_plan` freigeschaltet hat — an die Adresse des Kontos, das
-freigeschaltet wurde, und nur beim ersten Zustellversuch eines Ereignisses.
+sobald die erste `invoice.paid` das Konto freigeschaltet hat — an die Adresse
+des Kontos und nur bei der ersten bezahlten Abrechnungsperiode.
 `tests/presentation/order-confirmation.test.ts` weist die fünf Angaben einzeln
 nach. Ein gescheiterter Versand steht als `order_confirmation_failed` im
 Protokoll und ist von Hand nachzuholen; er stößt die Freischaltung nicht um.
-Diese Bestätigung ist **nicht** die Rechnung — die bleibt offen.
+Diese Bestätigung ist **nicht** die Rechnung. Belege, Zahlungsmittel und
+Kündigung liegen im gehosteten Stripe-Kundenportal; die E-Rechnungsfrage bleibt
+vor dem ersten echten Verkauf gesondert zu klären.
 
 ## Datenschutz und Auftragsverarbeitung
 

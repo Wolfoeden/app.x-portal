@@ -31,12 +31,18 @@ export const ENTERPRISE_CONTACT = {
   person: "Roman Dering",
 } as const;
 
-type CheckoutPlanId = "basic" | "pro" | "business";
+export type CheckoutPlanId = "basic" | "pro" | "business";
 
 const PAYMENT_LINK_ID_ENV: Record<CheckoutPlanId, string> = {
   basic: "STRIPE_BASIC_PAYMENT_LINK_ID",
   pro: "STRIPE_PRO_PAYMENT_LINK_ID",
   business: "STRIPE_BUSINESS_PAYMENT_LINK_ID",
+};
+
+const PRICE_ID_ENV: Record<CheckoutPlanId, string> = {
+  basic: "STRIPE_BASIC_PRICE_ID",
+  pro: "STRIPE_PRO_PRICE_ID",
+  business: "STRIPE_BUSINESS_PRICE_ID",
 };
 
 function configuredPublicUrl(planId: CheckoutPlanId): string | null {
@@ -89,6 +95,34 @@ export function planForStripePaymentLink(
     }
   }
   return null;
+}
+
+/** A renewal invoice is trusted only when its recurring Price is configured. */
+export function planForStripePriceId(priceId: unknown): FixedMonthlyPlan | null {
+  if (process.env.STRIPE_FIXED_PLANS_ACTIVATION_ENABLED !== "true") return null;
+  if (typeof priceId !== "string" || !priceId.trim()) return null;
+  for (const planId of Object.keys(PRICE_ID_ENV) as CheckoutPlanId[]) {
+    if (process.env[PRICE_ID_ENV[planId]]?.trim() === priceId) {
+      return CREDIT_PLANS[planId];
+    }
+  }
+  return null;
+}
+
+/** Stripe's no-code portal keeps invoices and payment methods out of XPORTAL. */
+export function customerPortalUrl(): string | null {
+  const value = process.env.NEXT_PUBLIC_STRIPE_CUSTOMER_PORTAL_URL?.trim();
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" &&
+      url.hostname.toLowerCase() === "billing.stripe.com" &&
+      url.pathname.startsWith("/p/login/")
+      ? url.toString()
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 export function checkoutConfigured(planId: CreditPlanId): boolean {

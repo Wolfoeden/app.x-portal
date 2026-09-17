@@ -53,6 +53,7 @@ import {
   ensureGuestSession,
   signOut as signOutAccount,
 } from "@/lib/auth/browser";
+import type { CheckoutPlanId } from "@/lib/billing/payment-links";
 
 import { AccountSummary, CreditPlansDialog } from "./chat/account";
 import {
@@ -421,6 +422,18 @@ function normalizeRequirementGroup(
   };
 }
 
+const STRIPE_SUBSCRIPTION_STATUSES = new Set([
+  "pending",
+  "incomplete",
+  "incomplete_expired",
+  "trialing",
+  "active",
+  "past_due",
+  "canceled",
+  "unpaid",
+  "paused",
+]);
+
 export function normalizeUsageUpdate(value: unknown): AiUsageUpdate | null {
   const envelope = isRecord(value) && isRecord(value.data) ? value.data : value;
   if (!isRecord(envelope)) return null;
@@ -456,6 +469,31 @@ export function normalizeUsageUpdate(value: unknown): AiUsageUpdate | null {
       creditsPerRequest,
       planId:
         nullableString(creditsSource.planId ?? creditsSource.plan_id) ?? "trial",
+      ...(typeof (creditsSource.subscriptionStatus ?? creditsSource.subscription_status) === "string" &&
+      STRIPE_SUBSCRIPTION_STATUSES.has(String(
+        creditsSource.subscriptionStatus ?? creditsSource.subscription_status,
+      ))
+        ? {
+            subscriptionStatus: String(
+              creditsSource.subscriptionStatus ?? creditsSource.subscription_status,
+            ) as NonNullable<AiUsageSnapshot["credits"]["subscriptionStatus"]>,
+          }
+        : {}),
+      ...(Object.prototype.hasOwnProperty.call(creditsSource, "cancelAtPeriodEnd") ||
+      Object.prototype.hasOwnProperty.call(creditsSource, "cancel_at_period_end")
+        ? {
+            cancelAtPeriodEnd:
+              (creditsSource.cancelAtPeriodEnd ?? creditsSource.cancel_at_period_end) === true,
+          }
+        : {}),
+      ...(Object.prototype.hasOwnProperty.call(creditsSource, "latestInvoiceStatus") ||
+      Object.prototype.hasOwnProperty.call(creditsSource, "latest_invoice_status")
+        ? {
+            latestInvoiceStatus: nullableString(
+              creditsSource.latestInvoiceStatus ?? creditsSource.latest_invoice_status,
+            ),
+          }
+        : {}),
       // Absent outside a chat response, and absent when a request was
       // answered without ever reaching the provider.
       lastRequestCost: nonNegativeNumber(
@@ -478,7 +516,9 @@ export function mergeUsageSnapshot(
   update: AiUsageUpdate | null | undefined,
 ): AiUsageSnapshot | null {
   if (!update) return current;
-  const credits = update.credits ?? current?.credits;
+  const credits = update.credits
+    ? { ...current?.credits, ...update.credits }
+    : current?.credits;
   if (!credits) return current;
   return { credits };
 }
@@ -1132,6 +1172,7 @@ export function ChatWorkspace({
   const [contactOpen, setContactOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [plansOpen, setPlansOpen] = useState(false);
+  const [requestedPlanId, setRequestedPlanId] = useState<CheckoutPlanId | null>(null);
   const [planTeam, setPlanTeam] = useState<PlanTeamSnapshot | null>(null);
   const [planTeamBusy, setPlanTeamBusy] = useState(false);
   const [planTeamNotice, setPlanTeamNotice] = useState<
@@ -1583,6 +1624,22 @@ export function ChatWorkspace({
         if (!alive) return;
         if (!alive) return;
         const searchParams = new URLSearchParams(window.location.search);
+        const requestedCheckout = searchParams.get("checkout");
+        if (
+          requestedCheckout === "basic" ||
+          requestedCheckout === "pro" ||
+          requestedCheckout === "business"
+        ) {
+          setRequestedPlanId(requestedCheckout);
+          if (view.anonymous) {
+            setAuthIntent("generic");
+            setAuthDestination(`/chat?checkout=${requestedCheckout}`);
+            setAuthInitialMode("login");
+            setAuthOpen(true);
+          } else {
+            setPlansOpen(true);
+          }
+        }
         const authError = searchParams.get("auth_error");
         if (authError) {
           showToast(
@@ -2295,6 +2352,15 @@ export function ChatWorkspace({
         : pendingProfileId ?? sessionStorage.getItem("pending_profile_selection");
     setAuthOpen(false);
     const searchParams = new URLSearchParams(window.location.search);
+    const requestedCheckout = searchParams.get("checkout");
+    if (
+      requestedCheckout === "basic" ||
+      requestedCheckout === "pro" ||
+      requestedCheckout === "business"
+    ) {
+      setRequestedPlanId(requestedCheckout);
+      setPlansOpen(true);
+    }
     if (searchParams.get("admin-login") === "1") {
       if (view.admin) {
         window.location.assign(
@@ -3266,9 +3332,19 @@ export function ChatWorkspace({
           teamNotice={planTeamNotice}
           onInviteTeamMember={invitePlanTeamMember}
           onRemoveTeamMember={removePlanTeamMember}
+          requestedPlanId={requestedPlanId}
           onClose={() => {
             setPlansOpen(false);
             setPlanTeamNotice(null);
+            if (requestedPlanId) {
+              const params = new URLSearchParams(window.location.search);
+              params.delete("checkout");
+              const cleanUrl = `${window.location.pathname}${
+                params.size ? `?${params.toString()}` : ""
+              }${window.location.hash}`;
+              window.history.replaceState({}, "", cleanUrl);
+              setRequestedPlanId(null);
+            }
           }}
         />
       ) : null}

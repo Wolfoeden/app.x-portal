@@ -4724,13 +4724,36 @@ dd.is-unknown,
 .plans-balance p { margin: 0; color: var(--muted); font-size: var(--fs-2xs); }
 .plans-balance-figure { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .plans-balance-figure strong { font-size: 24px; letter-spacing: -.03em; }
-.plans-balance-figure code { color: var(--muted); font-size: var(--fs-2xs); }
+.plans-balance-figure span { color: var(--muted); font-size: var(--fs-2xs); }
+.plans-billing-rail {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px;
+  flex: 1 0 100%; border-top: 1px solid var(--border); padding-top: 14px;
+}
+.plans-billing-dot {
+  width: 9px; height: 9px; border-radius: 50%; background: var(--green, #1f7a4d);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--green, #1f7a4d) 12%, transparent);
+}
+.plans-billing-rail[data-status="past_due"] .plans-billing-dot,
+.plans-billing-rail[data-status="unpaid"] .plans-billing-dot { background: #a85d16; box-shadow: 0 0 0 4px rgb(168 93 22 / 12%); }
+.plans-billing-rail[data-status="canceled"] .plans-billing-dot,
+.plans-billing-rail[data-status="incomplete_expired"] .plans-billing-dot { background: var(--muted); box-shadow: 0 0 0 4px rgb(100 100 100 / 10%); }
+.plans-billing-rail > div { display: flex; flex-direction: column; gap: 2px; }
+.plans-billing-rail strong { font-size: var(--fs-2xs); }
+.plans-billing-rail span { color: var(--muted); font-size: var(--fs-2xs); }
+.plans-billing-rail a {
+  display: inline-flex; align-items: center; gap: 5px; color: var(--ink);
+  font-size: var(--fs-2xs); font-weight: 700; text-underline-offset: 3px;
+}
 
 .plans-grid { display: grid; gap: 14px; }
 .plan-card {
   display: flex; flex-direction: column; gap: 8px;
   border: 1px solid var(--border); border-radius: var(--radius-md);
   background: var(--surface); padding: 20px;
+}
+.plan-card.is-requested {
+  outline: 2px solid color-mix(in srgb, var(--accent) 72%, white);
+  outline-offset: 2px;
 }
 .plan-card h3 { margin: 0; font-family: var(--font-serif); font-size: var(--fs-md); font-weight: 400; }
 .plan-card-offer { display: grid; grid-template-columns: minmax(230px, .8fr) minmax(190px, .55fr) minmax(280px, 1fr); gap: 26px; align-items: start; }
@@ -4756,6 +4779,7 @@ dd.is-unknown,
 .plan-card > button:hover:not(:disabled),
 .plan-card .plan-action:not(.is-quiet):hover { border-color: #000; background: #000; }
 .plan-card > button:disabled { border-color: var(--border); background: var(--surface-soft); color: var(--muted); cursor: not-allowed; }
+.plan-checkout-error { margin: 2px 0 0; color: var(--danger, #a22d2d); font-size: var(--fs-2xs); }
 
 /* Die Bestätigung der Unternehmereigenschaft vor der Buchung. Dieselbe
    Formensprache wie das Häkchen im Anmeldedialog — es ist dieselbe Art von
@@ -4812,6 +4836,8 @@ dd.is-unknown,
   .plans-dialog-header .plans-close { grid-row: 1; justify-self: end; }
   .plans-dialog-header h2 { grid-row: 2; }
   .plans-balance-figure { align-items: flex-start; }
+  .plans-billing-rail { grid-template-columns: auto 1fr; }
+  .plans-billing-rail a { grid-column: 2; }
   .plan-card-offer { grid-template-columns: 1fr; gap: 14px; }
   .plan-card-offer .plan-features { grid-column: auto; }
   .plan-price { flex-wrap: wrap; }

@@ -268,7 +268,9 @@ availability changes.
 `intro_policy` remains either `free` or `manual_approval` for future commercial
 flows. In this release, every eligible real profile with a booking URL exposes
 that URL directly and no payment or manual approval blocks the meeting. No
-Stripe, bank transfer, charge, invoice, fee or payment table/field exists.
+booking-specific Stripe, bank-transfer, charge, invoice or fee field exists.
+Account subscriptions are tracked separately on `user_ai_credit_accounts`;
+Stripe remains the invoice and payment-history system of record.
 
 ## Explicit actions and idempotency
 
