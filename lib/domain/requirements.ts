@@ -122,12 +122,12 @@ export function requirementPriority(
     // the same physical line (for example "React ... Optional: Next.js").
     // Sentence-local markers still support natural wording such as
     // "Deutsch ist zwingend" and same-line headings such as "Optional: SQL".
-    for (const sentence of line.split(/(?<=[.!?;])\s+/u)) {
+    for (const sentence of line.split(/(?<=[.!?;])\s+|,\s*(?=(?:perspektivisch|erst\s+später)\b)/iu)) {
       if (lineContainsRequirement(sentence, value)) {
         if (HARD_REQUIREMENT_MARKER.test(sentence) || section === "hard") {
           return "hard";
         }
-        if (OPTIONAL_REQUIREMENT_MARKER.test(sentence) || section === "optional") {
+        if (OPTIONAL_REQUIREMENT_MARKER.test(sentence) || /\b(?:perspektivisch|erst\s+später)\b/iu.test(sentence) || section === "optional") {
           observedOptional = true;
         } else {
           observedCore = true;

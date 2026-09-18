@@ -1245,6 +1245,13 @@ export function evaluateProfile(
     (brief.contractualRequirements ?? []).map(normalize),
   );
   for (const constraint of brief.constraints ?? []) {
+    // These facts already have a dedicated assessment above. Assessing them
+    // again against free-text skill facts produced "remote fits / unconfirmed"
+    // and repeated the same start question on one profile.
+    if ((brief.workMode !== "unknown" && requirementTerms(brief.workMode).some((term) => normalize(term) === normalize(constraint))) ||
+        (brief.startWindow && normalize(constraint) === normalize(brief.startWindow.raw))) {
+      continue;
+    }
     if (contractualRequirementKeys.has(normalize(constraint))) {
       continue;
     }

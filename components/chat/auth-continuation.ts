@@ -97,6 +97,23 @@ export function clearAuthContinuation() {
   localStorage.removeItem(STORAGE_KEY);
 }
 
+/**
+ * The profile a completed sign-in continues with for one intent.
+ *
+ * A stored continuation names the single action the dialog was last opened
+ * for. A pending id left over from an earlier, abandoned dialog must not act
+ * alongside it — otherwise closing "book" and then signing in via "contact"
+ * would still open or save the first profile.
+ */
+export function continuationProfileId(
+  continuation: AuthContinuation | null,
+  intent: AuthIntent,
+  fallback: string | null,
+): string | null {
+  if (continuation) return continuation.intent === intent ? continuation.profileId : null;
+  return fallback;
+}
+
 export function continuationFromSearch(
   search: string,
 ): AuthContinuation | null {

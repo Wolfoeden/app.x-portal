@@ -61,16 +61,37 @@ describe("profile card footer", () => {
     const markup = render(profile());
 
     expect(markup).not.toContain("Bereit für den nächsten Schritt");
-    expect(markup).not.toContain("öffnet sich in einem neuen Tab");
+    expect(markup).toContain("Erstgespräch vereinbaren");
   });
 
-  it("keeps the four actions side by side under the profile", () => {
+  it("keeps CV and contact methods with the full profile and only the meeting and Merken below", () => {
     const markup = render(profile());
+    const footer = markup.slice(markup.indexOf('<footer class="profile-footer">'));
 
-    expect(markup).toContain("profile-actions");
     for (const label of ["Lebenslauf herunterladen", "Zur Merkliste", "Kontaktwege anzeigen"]) {
       expect(markup).toContain(label);
     }
+    expect(footer).toContain("Erstgespräch vereinbaren");
+    expect(footer).toContain("Merken");
+    expect(footer).not.toContain("Kontaktwege anzeigen");
+    expect(footer).not.toContain("Lebenslauf");
+  });
+
+  // Die Reihenfolge im Markup ist die Tab-Reihenfolge; sie darf nicht erst per
+  // CSS umgestellt werden.
+  it("puts the meeting first in the markup, as it is shown", () => {
+    const footer = render(profile()).split('<footer class="profile-footer">')[1] ?? "";
+
+    expect(footer.indexOf("Erstgespräch vereinbaren")).toBeLessThan(footer.indexOf("Merken"));
+  });
+
+  // Ohne Kalender gibt es keinen anderen Anfrageweg; der Knopf verspricht
+  // deshalb keinen.
+  it("says plainly that a profile without a calendar cannot be booked", () => {
+    const markup = render(profile({ bookingUrl: null }));
+
+    expect(markup).toMatch(/<button[^>]*disabled=""[^>]*>Aktuell nicht buchbar<\/button>/u);
+    expect(markup).not.toContain("Gespräch anfragen");
   });
 
   // Dass hier auf eigene Entscheidung gehandelt wird, muss neben den Knoepfen

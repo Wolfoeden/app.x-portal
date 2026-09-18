@@ -1,0 +1,125 @@
+/* Profilergebnis ---------------------------------------------------------- */
+
+/* Die erste Lesestufe einer Karte ist der Bezug zur Anfrage: was das Profil
+   dafuer nennt, was offen ist, Honorar und Start. Biografie, alle Kompetenzen,
+   Belege und weitere Kontaktwege stehen dahinter. */
+
+.result-section .brief-line { padding: 12px 15px; }
+.brief-line-header strong { min-width: 0; font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.brief-context, .brief-optional { margin: 5px 0 0; color: var(--muted); font-size: var(--fs-xs); }
+.brief-optional { font-size: var(--fs-2xs); }
+
+.profile-shortlist .profile-stack-bar { justify-content: flex-end; margin-bottom: 12px; }
+.profile-shortlist .profile-list { gap: 20px; }
+
+.result-section .profile-card { grid-template-columns: 30px minmax(0, 1fr); }
+.result-section .profile-card.is-primary::before { left: 30px; background: var(--green); }
+.result-section .profile-main { padding: 22px 22px 0; }
+.result-section .profile-footer { margin: 0 -22px; padding: 14px 22px; }
+.result-section .profile-identity h3 { font-size: var(--fs-lg); }
+.result-section .profile-identity p { font-size: var(--fs-sm); }
+
+.profile-project-fit {
+  display: grid;
+  gap: 4px;
+  margin: 18px 0;
+  border-radius: 9px;
+  background: var(--green-soft);
+  padding: 14px 16px;
+  color: var(--green);
+}
+.profile-project-fit strong { font-size: var(--fs-md); line-height: 1.4; overflow-wrap: anywhere; }
+.profile-project-fit span { font-size: var(--fs-xs); overflow-wrap: anywhere; }
+
+.profile-evidence h4,
+.profile-conversation h4 { margin: 0 0 8px; font-size: var(--fs-sm); font-weight: 650; }
+.profile-evidence ul { margin: 0; padding: 0; list-style: none; }
+.profile-evidence-row {
+  display: grid;
+  grid-template-columns: minmax(120px, .9fr) minmax(0, 1.3fr);
+  align-items: baseline;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  padding: 9px 0;
+  font-size: var(--fs-sm);
+}
+.profile-evidence-row strong { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-weight: 550; overflow-wrap: anywhere; }
+.profile-evidence-row strong svg { flex-shrink: 0; color: var(--green); }
+.profile-evidence-row.is-missing strong svg { color: var(--amber); }
+.profile-evidence-row strong small {
+  border-radius: var(--radius-pill);
+  background: var(--surface-soft);
+  padding: 1px 7px;
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+  font-weight: 620;
+}
+.profile-evidence-row > span { color: var(--muted); font-size: var(--fs-xs); }
+.profile-evidence-row.is-missing > span { color: var(--amber); }
+
+.profile-conversation { margin: 16px 0 0; color: var(--amber); }
+.profile-conversation ul { display: grid; gap: 5px; margin: 0; padding-left: 18px; font-size: var(--fs-xs); line-height: 1.5; }
+
+.profile-decision-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 20px;
+  margin: 16px 0 0;
+  border-top: 1px solid var(--border);
+  padding: 14px 0;
+  font-size: var(--fs-sm);
+}
+.profile-decision-facts strong { font-variant-numeric: tabular-nums; }
+.profile-decision-facts span:last-child { color: var(--muted); font-size: var(--fs-xs); }
+.profile-decision-facts span.is-conflict { color: var(--amber); font-weight: 620; }
+
+.profile-collapse-toggle { margin: 0 0 16px; }
+.profile-more-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 16px; }
+.profile-more-actions .cv-action-group { display: grid; gap: 4px; }
+
+.result-section .profile-footer > .profile-main-actions { justify-content: flex-start; }
+.result-section .profile-footer > .profile-main-actions > * { flex: 0 0 auto; }
+.profile-booking-hint { margin: 0; color: var(--muted); font-size: var(--fs-2xs); line-height: 1.5; }
+
+.result-method { border-top: 1px solid var(--border); }
+.result-method > p { color: var(--muted); font-size: var(--fs-xs); line-height: 1.5; }
+.result-method summary,
+.recovery-research summary { cursor: pointer; padding: 8px 0; color: var(--muted); font-size: var(--fs-xs); }
+.recovery-research summary:hover,
+.result-method summary:hover { color: var(--ink); }
+
+/* Kein Treffer: keine Karte, nur die Wege weiter. */
+.search-recovery > p { margin: 0; color: var(--ink-soft); font-size: var(--fs-sm); }
+.search-recovery .no-match-actions { margin-top: 10px; }
+.no-match-actions button { display: inline-flex; align-items: center; gap: 6px; }
+.no-match-actions button.is-primary { border-color: var(--ink); background: var(--ink); color: #fff; }
+.no-match-actions button.is-primary:hover { border-color: #000; background: #000; }
+.no-match-actions button[aria-expanded="true"] svg { transform: rotate(180deg); }
+.recovery-editor { margin-top: 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface-raised); padding: 12px 8px 12px; }
+.recovery-editor > p { margin: 0; padding: 0 7px 10px; color: var(--muted); font-size: var(--fs-xs); }
+.recovery-editor .brief-editor-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.recovery-editor .brief-field input,
+.recovery-editor .brief-field textarea,
+.recovery-editor .brief-field select { border-color: var(--border); background: var(--surface); }
+.recovery-editor .brief-editor-actions { padding: 10px 7px 0; }
+.recovery-research .agent-launch { margin: 4px 0 8px; }
+
+.auth-profile-context { display: grid; gap: 4px; margin: 12px 0 18px; border-radius: 9px; background: var(--surface-raised); padding: 12px 14px; }
+.auth-profile-context span { color: var(--muted); font-size: var(--fs-xs); }
+
+@media (max-width: 620px) {
+  .result-section .profile-card { grid-template-columns: minmax(0, 1fr); }
+  .result-section .profile-rank { display: none; }
+  .result-section .profile-card.is-primary::before { left: 0; }
+  .result-section .profile-main { padding: 18px 16px 0; }
+  .result-section .profile-footer { margin: 0 -16px; padding: 12px 16px; }
+  .result-section .profile-header { flex-wrap: wrap; }
+  .profile-evidence-row { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+  .result-section .profile-footer > .profile-main-actions > * { min-height: 44px; }
+  .result-section .profile-footer > .profile-main-actions > .primary-action { flex: 1 1 100%; }
+  .recovery-editor .brief-editor-fields { grid-template-columns: minmax(0, 1fr); }
+  .recovery-editor .brief-field input,
+  .recovery-editor .brief-field textarea,
+  .recovery-editor .brief-field select { font-size: 16px; }
+}

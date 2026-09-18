@@ -241,9 +241,6 @@ export function presentSavedProfile(
 export function presentMatch(match: ShortlistMatch): FreelancerProfileResult {
   const profile = match.profile;
   const firstMode = profile.workModes[0] ?? "unknown";
-  // A partial result is evidence for comparison, never a recommendation or an
-  // introduction entitlement. Hiding the URL here protects both the immediate
-  // response and persisted/reloaded snapshots independently of the UI.
   const isPartial = match.recommendationRole === "partial";
   // A partial result keeps its booking URL. It is still labelled as not
   // recommended everywhere it appears, but the reader decides whether to make

@@ -113,7 +113,7 @@ function parseAllocationConstraint(text: string): string[] | null {
 }
 
 const OPTIONAL_MARKER =
-  /(?:nice[ -]to[ -]have|optional(?:ly)?|ideally|wünschenswert|optional)\s*[:,-]?\s*$/iu;
+  /(?:nice[ -]to[ -]have|optional(?:ly)?|ideally|wünschenswert|perspektivisch(?:\s+auch)?|erst\s+später(?:\s+auch)?)\s*[:,-]?\s*$/iu;
 
 /**
  * A negation standing directly in front of the skill: "keine Angular-Leute",

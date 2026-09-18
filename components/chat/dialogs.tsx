@@ -96,6 +96,8 @@ export function Modal({ titleId, onClose, children, size = "default" }: { titleI
 export function AuthDialog({
   initialMode,
   intent = "generic",
+  profileName,
+  projectTitle,
   destination = "/chat",
   onClose,
   onAuthenticated,
@@ -103,6 +105,8 @@ export function AuthDialog({
 }: {
   initialMode: AuthDialogMode;
   intent?: AuthIntent;
+  profileName?: string;
+  projectTitle?: string;
   destination?: string;
   onClose: () => void;
   onAuthenticated: (mode: AuthDialogMode) => void;
@@ -217,7 +221,9 @@ export function AuthDialog({
               ? "Wir senden einen sicheren Link an Ihre E-Mail-Adresse. Ihre aktuelle Anfrage bleibt dabei erhalten."
               : intentCopy.body}
         </p>
-
+        {profileName && (intent === "book_profile" || intent === "contact_profile") ? (
+          <div className="auth-profile-context"><strong>{profileName}</strong>{projectTitle ? <span>{projectTitle}</span> : null}</div>
+        ) : null}
         {mode !== "set-password" && mode !== "recover" ? (
           <>
             {GOOGLE_AUTH_ENABLED || MICROSOFT_AUTH_ENABLED ? (

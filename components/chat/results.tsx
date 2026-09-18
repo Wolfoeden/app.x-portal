@@ -31,6 +31,7 @@ import {
 } from "./brief-editor";
 import { factPreview } from "./fact-preview";
 import { shouldHighlightProfile } from "./profile-fit";
+import { joinGerman, profilePresentation, type RequirementEvidence } from "./profile-presentation";
 
 import type {
   AiAnalysisTrace,
@@ -49,8 +50,6 @@ import {
   IconArrowUpRight,
   IconCheck,
   IconChevronDown,
-  IconChevronLeft,
-  IconChevronRight,
   IconDocument,
   IconInfo,
   IconMaximize,
@@ -156,7 +155,7 @@ function modeLabel(mode: ProjectMode) {
 }
 
 function availabilityLabel(status: AvailabilityStatus) {
-  if (status === "available") return "Verfügbarkeit bestätigt";
+  if (status === "available") return "Grundsätzlich verfügbar";
   if (status === "limited") return "Begrenzt verfügbar";
   if (status === "unavailable") return "Nicht verfügbar";
   return "Verfügbarkeit offen";
@@ -167,13 +166,12 @@ function presentUnknownFields(fields: string[]) {
 }
 
 /**
- * Mehrere Treffer als Stapel statt untereinander.
+ * Mehrere Treffer untereinander, eingeklappt auf das, was die Entscheidung
+ * braucht.
  *
- * Drei volle Profilkarten hintereinander sind laenger als der Bildschirm hoch
- * ist: wer den zweiten mit dem ersten vergleichen will, muss scrollen und aus
- * dem Gedaechtnis vergleichen. Der Stapel zeigt einen und laesst durchblaettern,
- * der vergroesserte Zustand klappt beide Leisten ein und stellt sie
- * nebeneinander — dann liegt der Vergleich nebeneinander statt untereinander.
+ * Ein Stapel mit Blaetterpfeilen hat die Alternativen versteckt: wer nur die
+ * erste Karte sah, hielt sie fuer das ganze Ergebnis. Der vergroesserte Zustand
+ * klappt beide Leisten ein und stellt die Karten vollstaendig nebeneinander.
  */
 function ProfileStack({
   profiles,
@@ -186,11 +184,6 @@ function ProfileStack({
   focused: boolean;
   onToggleFocus: () => void;
 }) {
-  const [active, setActive] = useState(0);
-  // Kommt ein neues Ergebnis mit weniger Treffern, zeigt der Zeiger sonst ins
-  // Leere und der Stapel bliebe blank.
-  const current = Math.min(active, Math.max(0, profiles.length - 1));
-
   useEffect(() => {
     if (!focused) return;
     const onKey = (event: globalThis.KeyboardEvent) => {
@@ -230,48 +223,15 @@ function ProfileStack({
   }
 
   return (
-    <div className="profile-stack">
+    <div className="profile-shortlist">
       <div className="profile-stack-bar">
-        <div className="profile-stack-nav">
-          <button
-            type="button"
-            aria-label="Vorheriges Profil"
-            disabled={current === 0}
-            onClick={() => setActive(current - 1)}
-          >
-            <IconChevronLeft size={15} />
-          </button>
-          <span aria-live="polite">
-            {current + 1} von {profiles.length}
-          </span>
-          <button
-            type="button"
-            aria-label="Nächstes Profil"
-            disabled={current === profiles.length - 1}
-            onClick={() => setActive(current + 1)}
-          >
-            <IconChevronRight size={15} />
-          </button>
-        </div>
         <button className="text-button" type="button" onClick={onToggleFocus}>
           <IconMaximize size={13} /> Nebeneinander vergleichen
         </button>
       </div>
 
-      {/* Die verdeckten Karten bleiben im Baum, damit ein Wechsel nicht jedes
-          Mal Zustand und Sichtbarkeitsmeldung der Karte neu aufbaut. */}
-      <div className="profile-stack-deck">
-        {profiles.map((profile, index) => (
-          <div
-            className={`profile-stack-item${index === current ? " is-active" : ""}`}
-            key={profile.id}
-            aria-hidden={index === current ? undefined : true}
-            inert={index !== current}
-          >
-            {renderCard(profile, index)}
-          </div>
-        ))}
-        <div className="profile-stack-shadow" aria-hidden="true" data-remaining={profiles.length - current - 1} />
+      <div className="profile-list">
+        {profiles.map((profile, index) => <div key={profile.id}>{renderCard(profile, index)}</div>)}
       </div>
     </div>
   );
@@ -305,7 +265,8 @@ export function ResultSection({
   onOpenDetails,
   profileFocus,
   onToggleProfileFocus,
-  detailsOpen,
+  onUpdateBrief,
+  busy = false,
 }: {
   brief: StructuredBrief | null;
   projectId: string | null;
@@ -336,8 +297,10 @@ export function ResultSection({
   /** Beide Leisten eingeklappt, Profile nebeneinander. */
   profileFocus: boolean;
   onToggleProfileFocus: () => void;
-  /** Steht die Projektuebersicht offen, bleibt fuer die Karten wenig Breite. */
-  detailsOpen: boolean;
+  /** Uebernimmt geaenderte Suchkriterien als neue Anfrage. */
+  onUpdateBrief?: (message: string) => void;
+  /** Waehrend eine Antwort laeuft, startet keine zweite Suche. */
+  busy?: boolean;
 }) {
   const launchState = agentLaunchState(isAccountUser, creditsRemaining);
   /**
@@ -353,34 +316,34 @@ export function ResultSection({
    */
   const showNoMatchCard =
     matchingStatus === "needs_clarification" ||
-    partialProfiles.length > 0 ||
     analysisMode === "fallback" ||
     matchingStatus !== "no_reliable_match";
   /**
-   * Bei offener Projektuebersicht zeigen die Karten nur noch Kopf und
-   * Aktionen. Aufgeklappt ist immer hoechstens eine: zwei ausgeklappte Karten
-   * nebeneinander in der schmalen Spalte waeren genau der Zustand, den das
-   * Einklappen vermeiden soll.
+   * Die Karten zeigen zuerst nur, was die Entscheidung braucht: Belege, offene
+   * Punkte, Honorar und die Gesprächsaktion. Ausgeklappt ist immer hoechstens
+   * eine — zwei volle Profile untereinander verdecken wieder die Alternativen.
    */
   const [expandedProfileId, setExpandedProfileId] = useState<string | null>(null);
   // Im Vergleich sind beide Leisten eingeklappt und der Platz ist gerade der
   // Zweck — dort waere ein zusaetzlich zusammengefaltetes Profil widersinnig.
-  const cardsCollapsible = detailsOpen && !profileFocus;
+  const cardsCollapsible = !profileFocus;
+  const [criteriaOpen, setCriteriaOpen] = useState(false);
+  const canEditCriteria = Boolean(brief && onUpdateBrief) && matchingStatus !== "needs_clarification";
   const resultHeading =
     matchingStatus === "needs_clarification"
       ? "Bitte konkretisieren Sie die Anforderung"
       : matchingStatus === "no_reliable_match"
         ? partialProfiles.length
-          ? `${partialProfiles.length} ${partialProfiles.length === 1 ? "nicht empfohlener Teiltreffer" : "nicht empfohlene Teiltreffer"}`
-          : "Kein ausreichend passendes internes Profil"
+          ? `${partialProfiles.length} ${partialProfiles.length === 1 ? "Profil" : "Profile"} mit Überschneidungen – wichtige Punkte offen`
+          : "Noch kein passendes Profil für diese Kombination"
         : profiles.length
-          ? `${profiles.length} ${profiles.length === 1 ? "passendes internes Profil" : "passende interne Profile"}`
+          ? `${profiles.length} ${profiles.length === 1 ? "Profil für Ihr Projekt" : "Profile für Ihr Projekt"}`
           : "Kein gespeichertes internes Ergebnis";
   return (
     <section className="result-section" aria-label="Suchergebnis">
       <div className="shortlist-heading">
         <div>
-          <p className="eyebrow">Interner Profilabgleich</p>
+          <p className="eyebrow">Ihre Auswahl</p>
           <h2>{resultHeading}</h2>
         </div>
         {profiles.length ? (
@@ -390,17 +353,8 @@ export function ResultSection({
         ) : null}
       </div>
       {brief ? <BriefSummaryLine brief={brief} onOpenDetails={onOpenDetails} /> : null}
-      <div className="result-protocol">
-        <MatchProtocol
-          compact
-          activeStep={4}
-          structureMode={analysisMode === "fallback" ? "basis" : "ki"}
-          label="Vom Projekttext zur prüfbaren Auswahl"
-        />
-      </div>
       {profiles.length ? (
         <>
-          <p className="matching-disclosure">Die Reihenfolge folgt dokumentierten Kriterien wie Pflichtkompetenzen, Sprache, Arbeitsmodus und Verfügbarkeit. Die KI trifft keine Einstellungsentscheidung.</p>
           <ProfileStack
             profiles={profiles.slice(0, 3)}
             focused={profileFocus}
@@ -408,6 +362,7 @@ export function ResultSection({
             renderCard={(profile, index) => (
               <ProfileCard
                 profile={profile}
+                brief={brief}
                 position={index + 1}
                 isAccountUser={isAccountUser}
                 projectId={projectId}
@@ -432,29 +387,30 @@ export function ResultSection({
         </>
       ) : (
         <>
+          {/* Teiltreffer stehen vor den Suchkriterien: erst ihre Abweichungen
+              zeigen, ob sich ein Gespräch lohnt oder eine Vorgabe geändert
+              werden sollte. */}
           {partialProfiles.length ? (
-            <>
-              <p className="matching-disclosure is-warning">
-                Diese Profile haben belegte Überschneidungen, erfüllen aber nicht alle Muss-Kriterien oder bleiben unter 70 % Kernabdeckung. Sie sind ausdrücklich keine Empfehlung und können aus diesem Ergebnis nicht direkt gebucht werden.
-              </p>
-              <div className="profile-list partial-profile-list">
-                {partialProfiles.slice(0, 2).map((profile, index) => (
-                  <ProfileCard
-                    key={profile.id}
-                    profile={profile}
-                    position={index + 1}
-                    isAccountUser={isAccountUser}
-                    projectId={projectId}
-                    selected={false}
-                    onSelect={() => undefined}
-                    onContact={() => undefined}
-                    onRequestBooking={() => onRequestBooking(profile)}
-                    saved={savedFreelancerIds.includes(profile.id)}
-                    onToggleSave={() => onToggleSave(profile)}
-                  />
-                ))}
-              </div>
-            </>
+            <div className="profile-list partial-profile-list">
+              {partialProfiles.slice(0, 2).map((profile, index) => (
+                <ProfileCard
+                  key={profile.id}
+                  profile={profile}
+                  brief={brief}
+                  position={index + 1}
+                  isAccountUser={isAccountUser}
+                  projectId={projectId}
+                  selected={selectedProfileId === profile.id}
+                  onSelect={() => onSelect(profile)}
+                  onContact={() => onContact(profile)}
+                  onRequestBooking={() => onRequestBooking(profile)}
+                  saved={savedFreelancerIds.includes(profile.id)}
+                  onToggleSave={() => onToggleSave(profile)}
+                  collapsed={expandedProfileId !== profile.id}
+                  onToggleCollapsed={() => setExpandedProfileId((current) => current === profile.id ? null : profile.id)}
+                />
+              ))}
+            </div>
           ) : null}
           {showNoMatchCard ? (
             <div className="no-match-card">
@@ -463,52 +419,66 @@ export function ResultSection({
                 <strong>
                   {matchingStatus === "needs_clarification"
                     ? "Nennen Sie bitte mindestens die gewünschte Rolle oder eine benötigte Kernkompetenz."
-                    : partialProfiles.length
-                      ? "Keiner der internen Teiltreffer erreicht die Empfehlungsschwelle."
-                      : analysisMode === "fallback"
-                        ? "Strukturiert wurde mit der sicheren Basisanalyse, nicht mit der KI."
-                        : "Für dieses historische Ergebnis ist keine Qualitätsklassifikation gespeichert."}
+                    : analysisMode === "fallback"
+                      ? "Strukturiert wurde mit der sicheren Basisanalyse, nicht mit der KI."
+                      : "Für dieses historische Ergebnis ist keine Qualitätsklassifikation gespeichert."}
                 </strong>
                 <p>
                   {matchingStatus === "needs_clarification"
                     ? "Ohne prüfbare Kompetenzanforderung wird kein Profil geraten und keine kostenpflichtige Recherche angeboten."
-                    : partialProfiles.length
-                      ? "Prüfen Sie die offengelegten Lücken oder lockern Sie ein Kriterium im Chat."
-                      : analysisMode === "fallback"
-                        ? "Die Anforderungen können dadurch gröber gefasst sein als beschrieben."
-                        : "Ältere Ergebnisse führen die Einstufung nicht mit."}
+                    : analysisMode === "fallback"
+                      ? "Die Anforderungen können dadurch gröber gefasst sein als beschrieben."
+                      : "Ältere Ergebnisse führen die Einstufung nicht mit."}
                 </p>
               </div>
             </div>
           ) : null}
-          {onRefineSearch || onSaveSearch ? (
+          <div className="search-recovery">
+            <p>{partialProfiles.length ? "Passt keines dieser Profile? Ihre Anfrage bleibt erhalten." : "Ihre Anfrage bleibt erhalten."}</p>
             <div className="no-match-actions" aria-label="Nächste Schritte">
-              {onRefineSearch ? (
-                <button type="button" onClick={onRefineSearch}>
-                  Anforderungen konkretisieren
+              {canEditCriteria ? (
+                <button
+                  className="is-primary"
+                  type="button"
+                  aria-expanded={criteriaOpen}
+                  aria-controls={criteriaOpen ? "recovery-criteria" : undefined}
+                  onClick={() => setCriteriaOpen((current) => !current)}
+                >
+                  Suchkriterien prüfen <IconChevronDown size={14} />
                 </button>
+              ) : onRefineSearch ? (
+                <button type="button" onClick={onRefineSearch}>Anfrage ergänzen</button>
               ) : null}
-              {onSaveSearch ? (
+              {/* Mit Konto ist die Suche ohnehin gespeichert. */}
+              {onSaveSearch && !isAccountUser ? (
                 <button type="button" onClick={onSaveSearch}>
                   Suche speichern
                 </button>
               ) : null}
             </div>
-          ) : null}
-          {/* Der Agent steht bewusst neben der Absage und nicht darin: er ist
-              nicht die Fußnote eines leeren Ergebnisses, sondern der nächste
-              Schritt. */}
+            {canEditCriteria && brief && onUpdateBrief && criteriaOpen ? (
+              <div className="recovery-editor" id="recovery-criteria">
+                <p>Feste Vorgaben wie Muss-Kriterien und Budget bleiben, bis Sie sie hier ändern.</p>
+                <BriefEditor brief={brief} busy={busy} onUpdate={onUpdateBrief} compact />
+              </div>
+            ) : null}
+          </div>
+          {/* Die Recherche kostet Credits und steht deshalb nach den kostenlosen
+              Wegen — aufklappbar, mit dem Preis schon an der Zeile. */}
           {matchingStatus === "no_reliable_match" &&
           (analysis?.externalSearchAvailable ?? true) &&
           externalSearch?.mode !== "openai" ? (
-            <AgentLaunchPanel
-              state={launchState}
-              searching={externalSearchState === "searching"}
-              failed={externalSearchState === "error"}
-              onStart={onExternalSearch}
-              onRequireLogin={onRequireLogin}
-              onNeedCredits={onNeedCredits}
-            />
+            <details className="recovery-research" open={externalSearchState === "idle" ? undefined : true}>
+              <summary>Öffentlich weitersuchen · {EXTERNAL_SEARCH_CREDITS} Credits</summary>
+              <AgentLaunchPanel
+                state={launchState}
+                searching={externalSearchState === "searching"}
+                failed={externalSearchState === "error"}
+                onStart={onExternalSearch}
+                onRequireLogin={onRequireLogin}
+                onNeedCredits={onNeedCredits}
+              />
+            </details>
           ) : null}
           {externalSearch ? (
             <ExternalSearchResults
@@ -519,6 +489,11 @@ export function ResultSection({
           ) : null}
         </>
       )}
+      <details className="result-method">
+        <summary>Wie kommt diese Auswahl zustande?</summary>
+        <MatchProtocol compact activeStep={4} structureMode={analysisMode === "fallback" ? "basis" : "ki"} label="Vom Projekttext zur prüfbaren Auswahl" />
+        <p>Die Auswahl folgt Ihren Anforderungen und den vorhandenen Profilangaben. Fehlende Angaben bleiben offen. Die KI trifft keine Einstellungsentscheidung.</p>
+      </details>
       {/* Der Arbeitsprozess stand hier als aufklappbarer Block unter jedem
           Ergebnis und war fuer die meisten nur eine Zeile, die man wegliest.
           Er steht jetzt in der Projektuebersicht, wo die uebrigen Angaben zur
@@ -850,44 +825,24 @@ export function BriefSummaryLine({
   brief: StructuredBrief;
   onOpenDetails?: () => void;
 }) {
-  const allocation = [...brief.constraints, brief.availabilityRequirement ?? ""]
-    .find((value) => /(?:\d{1,3}\s*%|\d(?:[.,]\d)?\s*(?:tage?|tage\/woche|t\/w))/iu.test(value));
   const skills = brief.requiredSkills.length
     ? brief.requiredSkills.slice(0, 3).join(", ")
     : null;
-  const facts = [
-    { label: "Rolle", value: brief.projectTitle || null },
-    { label: "Skills", value: skills },
-    { label: "Start", value: brief.startWindow },
-    { label: "Auslastung", value: allocation ?? null },
-    { label: "Budget", value: brief.budgetOrRate },
-    {
-      label: "Arbeitsort",
-      value: [modeLabel(brief.mode), brief.location].filter(Boolean).join(" · "),
-    },
-  ];
+  const context = [skills, brief.mode !== "unknown" ? modeLabel(brief.mode) : null, brief.budgetOrRate].filter(Boolean);
 
   return (
     <section className="brief-line" aria-label="Verstandene Projektanforderungen">
       <header className="brief-line-header">
         <span className="brief-line-mark" aria-hidden="true"><IconCheck size={12} /></span>
-        <strong>So hat XPORTAL Ihre Anfrage verstanden</strong>
+        <strong>{brief.projectTitle}</strong>
         {onOpenDetails ? (
           <button className="brief-line-action" type="button" onClick={onOpenDetails}>
-            Bearbeiten <IconArrowRight size={12} />
+            Anpassen <IconArrowRight size={12} />
           </button>
         ) : null}
       </header>
-      <dl className="brief-facts">
-        {facts.map((fact) => (
-          <div key={fact.label}>
-            <dt>{fact.label}</dt>
-            <dd className={fact.value ? "" : "is-open"}>
-              {fact.value || "Offen"}
-            </dd>
-          </div>
-        ))}
-      </dl>
+      {context.length ? <p className="brief-context">{context.join(" · ")}</p> : null}
+      {brief.optionalSkills.length ? <p className="brief-optional">Optional: {brief.optionalSkills.join(" · ")}</p> : null}
     </section>
   );
 }
@@ -1008,6 +963,8 @@ export function bookingActionState(
   profile: Pick<FreelancerProfileResult, "bookingUrl">,
   isAccountUser: boolean,
 ): BookingActionState {
+  // Without a calendar there is no other way to request a conversation, so
+  // the button says so instead of promising one.
   if (!profile.bookingUrl) {
     return {
       kind: "unavailable",
@@ -1019,21 +976,30 @@ export function bookingActionState(
   if (!isAccountUser) {
     return {
       kind: "login_required",
-      label: "Anmelden & Terminseite öffnen",
-      hint: "Nach der Anmeldung geht es direkt mit diesem Profil weiter.",
+      label: "Erstgespräch vereinbaren",
+      hint: "Mit Konto zur Terminseite · Sie wählen und buchen den Termin selbst.",
       disabled: false,
     };
   }
   return {
     kind: "bookable",
-    label: "Terminseite öffnen",
+    label: "Erstgespräch vereinbaren",
     hint: "Die Terminseite des Freelancers öffnet sich in einem neuen Tab.",
     disabled: false,
   };
 }
 
+/** Says only what the row's name does not: another wording, a check, a gap. */
+function evidenceDetail(row: RequirementEvidence): string | null {
+  if (row.status === "missing") return "Nicht im Profil aufgeführt";
+  if (row.status === "context") return "Über Projekt, Branche oder Zertifikat belegt";
+  if (row.profileTerm) return `Als „${row.profileTerm}“ ${row.verified ? "von XPORTAL geprüft" : "angegeben"}`;
+  return row.verified ? "Von XPORTAL geprüft" : null;
+}
+
 export function ProfileCard({
   profile,
+  brief,
   position,
   isAccountUser,
   projectId,
@@ -1047,6 +1013,7 @@ export function ProfileCard({
   onToggleCollapsed,
 }: {
   profile: FreelancerProfileResult;
+  brief?: StructuredBrief | null;
   position: number;
   isAccountUser: boolean;
   projectId: string | null;
@@ -1063,6 +1030,7 @@ export function ProfileCard({
   const verifiedFacts = profile.facts.filter((fact) => fact.verification === "verified");
   const selfReportedFacts = profile.facts.filter((fact) => fact.verification === "self-reported");
   const isPartial = profile.recommendationRole === "partial";
+  const presentation = profilePresentation(profile, brief);
   const cvAction = cvActionState(profile, isAccountUser);
   const bookingAction = bookingActionState(profile, isAccountUser);
   const [cvDownloadState, setCvDownloadState] = useState<"idle" | "loading" | "error">("idle");
@@ -1118,7 +1086,7 @@ export function ProfileCard({
                 {profile.recommendationRole === "primary"
                   ? "Hauptvorschlag"
                   : profile.recommendationRole === "partial"
-                    ? "Nicht empfohlen"
+                    ? "Teilpassung"
                     : "Alternative"}
               </span>
             ) : null}
@@ -1126,13 +1094,48 @@ export function ProfileCard({
           </div>
         </header>
 
-        {/* Eingeklappt bleiben Kopf, Schlagworte und Aktionen stehen — genug,
-            um die Karte wiederzuerkennen und zu handeln. Alles, was gelesen
-            werden will, kommt erst beim Ausklappen. */}
-        <div className="profile-tags">
-          {profile.skillTags.slice(0, 5).map((skill) => <span key={skill}>{skill}</span>)}
-          {profile.skillTags.length > 5 ? <span className="profile-tags-more">+{profile.skillTags.length - 5}</span> : null}
-        </div>
+        {presentation.evidence.length ? (
+          <>
+            {presentation.highlights.length ? (
+              <div className="profile-project-fit">
+                <strong>{joinGerman(presentation.highlights)} im Profil genannt</strong>
+                {presentation.additional.length ? (
+                  <span>Zusätzlich im Profil: {presentation.additional.join(", ")}</span>
+                ) : null}
+              </div>
+            ) : null}
+            <div className="profile-evidence">
+              <h4>Das bringt das Profil für Ihr Projekt mit</h4>
+              <ul>
+                {presentation.evidence.map((row) => (
+                  <li className={`profile-evidence-row is-${row.status}`} key={row.requirement}>
+                    <strong>
+                      {row.status === "missing" ? <IconAlertCircle size={14} /> : <IconCheck size={14} />}
+                      {row.requirement}
+                      {row.priority === "core" ? null : <small>{row.priority === "hard" ? "Muss" : "optional"}</small>}
+                    </strong>
+                    <span>{evidenceDetail(row)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </>
+        ) : (
+          <div className="profile-tags">{presentation.skills.map((skill) => <span key={skill}>{skill}</span>)}</div>
+        )}
+        {presentation.openPoints.length ? (
+          <div className="profile-conversation">
+            <h4>{isPartial ? "Vor einem Gespräch prüfen" : "Im Erstgespräch klären"}</h4>
+            <ul>{presentation.openPoints.map((point) => <li key={point}>{point}</li>)}</ul>
+          </div>
+        ) : null}
+        <p className="profile-decision-facts">
+          <strong>{profile.rate ?? "Honorar auf Anfrage"}</strong>
+          <span>{profile.remoteMode === "unknown" ? "Arbeitsmodus offen" : modeLabel(profile.remoteMode)}</span>
+          {presentation.start ? (
+            <span className={presentation.start.conflict ? "is-conflict" : undefined}>{presentation.start.text}</span>
+          ) : null}
+        </p>
 
         {onToggleCollapsed ? (
           <button
@@ -1142,7 +1145,7 @@ export function ProfileCard({
             aria-expanded={!collapsed}
           >
             <span aria-hidden="true"><IconChevronDown size={14} /></span>
-            {collapsed ? "Profil ausklappen" : "Profil einklappen"}
+            {collapsed ? "Vollständiges Profil und Belege" : "Profildetails schließen"}
           </button>
         ) : null}
 
@@ -1150,35 +1153,18 @@ export function ProfileCard({
         <>
         {profile.experienceSummary ? <p className="experience-summary">{profile.experienceSummary}</p> : null}
 
-        <div className="match-columns">
+        {presentation.evidence.length ? (
+          <div className="profile-tags">{presentation.skills.map((skill) => <span key={skill}>{skill}</span>)}</div>
+        ) : null}
+        {profile.matchReasons.length ? (
           <div className="match-column reasons">
             <h4><span aria-hidden="true"><IconCheck size={13} /></span> Im Profil belegt</h4>
-            {profile.matchReasons.length ? (
-              <>
-                <ul>{profile.matchReasons.slice(0, 3).map((reason) => <li key={reason}>{reason}</li>)}</ul>
-                {profile.matchReasons.length > 3 ? (
-                  <details className="profile-more"><summary>{profile.matchReasons.length - 3} weitere Belege</summary><ul>{profile.matchReasons.slice(3).map((reason) => <li key={reason}>{reason}</li>)}</ul></details>
-                ) : null}
-              </>
-            ) : <p className="unknown-text">Keine Begründung übermittelt</p>}
+            <ul>{profile.matchReasons.slice(0, 3).map((reason) => <li key={reason}>{reason}</li>)}</ul>
+            {profile.matchReasons.length > 3 ? (
+              <details className="profile-more"><summary>{profile.matchReasons.length - 3} weitere Belege</summary><ul>{profile.matchReasons.slice(3).map((reason) => <li key={reason}>{reason}</li>)}</ul></details>
+            ) : null}
           </div>
-          <div className="match-column gaps">
-            <h4>
-              <span aria-hidden="true"><IconAlertCircle size={13} /></span>
-              {isPartial ? "Fehlt für eine Empfehlung" : "Vor Kontakt offen"}
-            </h4>
-            {profile.knownGaps.length ? (
-              <>
-                <ul>{profile.knownGaps.slice(0, 3).map((gap) => <li key={gap}>{gap}</li>)}</ul>
-                {profile.knownGaps.length > 3 ? (
-                  <details className="profile-more"><summary>{profile.knownGaps.length - 3} weitere offene Punkte</summary><ul>{profile.knownGaps.slice(3).map((gap) => <li key={gap}>{gap}</li>)}</ul></details>
-                ) : null}
-              </>
-            ) : (
-              <p>{isPartial ? "Die Muss-Kriterien sind nicht vollständig belegt." : "Nichts offen im Abgleich"}</p>
-            )}
-          </div>
-        </div>
+        ) : null}
 
         <div className="fact-row">
           {verifiedFacts.length ? (
@@ -1199,6 +1185,32 @@ export function ProfileCard({
             <span aria-hidden="true">{profile.referenceStatus === "Verifiziert" ? <IconCheck size={12} /> : <IconInfo size={12} />}</span> Referenzstatus: {profile.referenceStatus}
           </p>
         ) : null}
+
+        <div className="profile-actions profile-more-actions">
+          <div className="cv-action-group">
+            {cvAction.kind === "available" ? (
+              <button
+                className="secondary-action cv-action"
+                type="button"
+                disabled={!projectId || cvDownloadState === "loading"}
+                aria-busy={cvDownloadState === "loading"}
+                aria-describedby={cvDownloadError ? `cv-error-${profile.id}` : undefined}
+                onClick={downloadCv}
+              >
+                <IconDocument size={13} />
+                {cvDownloadState === "loading" ? "Lebenslauf wird vorbereitet …" : cvAction.label}
+              </button>
+            ) : (
+              <span className="profile-action-status"><IconDocument size={13} /> {cvAction.label}</span>
+            )}
+            {cvDownloadError ? (
+              <p className="cv-download-status is-error" id={`cv-error-${profile.id}`} role="alert">
+                {cvDownloadError}
+              </p>
+            ) : null}
+          </div>
+          <button className="secondary-action" type="button" onClick={selected ? onContact : onSelect}>Kontaktwege anzeigen</button>
+        </div>
         </>
         )}
 
@@ -1215,44 +1227,7 @@ export function ProfileCard({
               Nicht empfohlen — Kontakt auf eigene Entscheidung. Offene Muss-Kriterien bleiben sichtbar.
             </p>
           ) : null}
-          <div className="profile-actions">
-              <div className="cv-action-group">
-                {cvAction.kind === "available" ? (
-                  <button
-                    className="secondary-action cv-action"
-                    type="button"
-                    disabled={!projectId || cvDownloadState === "loading"}
-                    aria-busy={cvDownloadState === "loading"}
-                    aria-describedby={cvDownloadError ? `cv-error-${profile.id}` : undefined}
-                    onClick={downloadCv}
-                  >
-                    <IconDocument size={13} />
-                    {cvDownloadState === "loading" ? "Lebenslauf wird vorbereitet …" : cvAction.label}
-                  </button>
-                ) : (
-                  <span className="profile-action-status"><IconDocument size={13} /> {cvAction.label}</span>
-                )}
-                {cvDownloadError ? (
-                  <p className="cv-download-status is-error" id={`cv-error-${profile.id}`} role="alert">
-                    {cvDownloadError}
-                  </p>
-                ) : null}
-              </div>
-              {/* Marking and contacting used to be the same button, which is
-                  why "Profil merken" opened the contact dialog and saved
-                  nothing. They are now separate actions. */}
-              <button
-                className={`secondary-action${saved ? " is-saved" : ""}`}
-                type="button"
-                onClick={onToggleSave}
-                aria-pressed={saved}
-                title={saved ? "Aus der Merkliste entfernen" : "Zur Merkliste hinzufügen"}
-              >
-                {saved ? <><IconCheck size={13} /> Gemerkt</> : "Zur Merkliste"}
-              </button>
-              <button className="secondary-action" type="button" onClick={selected ? onContact : onSelect}>
-                Kontaktwege anzeigen
-              </button>
+          <div className="profile-actions profile-main-actions">
               {bookingAction.kind === "bookable" ? (
                 // The redirect route records the click and then forwards to the
                 // freelancer's calendar. onClick only files the introduction
@@ -1263,7 +1238,7 @@ export function ProfileCard({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={onRequestBooking}
-                  aria-label={`Meeting mit ${profile.displayName} buchen`}
+                  aria-label={`Erstgespräch mit ${profile.displayName} vereinbaren`}
                 >
                   {bookingAction.label} <IconArrowRight size={13} />
                 </a>
@@ -1275,7 +1250,7 @@ export function ProfileCard({
                   onClick={onRequestBooking}
                   aria-label={
                     bookingAction.kind === "login_required"
-                      ? `Anmelden und Meeting mit ${profile.displayName} buchen`
+                      ? `Erstgespräch mit ${profile.displayName} vereinbaren`
                       : undefined
                   }
                 >
@@ -1283,7 +1258,17 @@ export function ProfileCard({
                   {bookingAction.disabled ? null : <IconArrowRight size={13} />}
                 </button>
               )}
+              <button
+                className={`secondary-action${saved ? " is-saved" : ""}`}
+                type="button"
+                onClick={onToggleSave}
+                aria-pressed={saved}
+                title={saved ? "Aus der Merkliste entfernen" : "Zur Merkliste hinzufügen"}
+              >
+                {saved ? <><IconCheck size={13} /> Gemerkt</> : "Merken"}
+              </button>
           </div>
+          <p className="profile-booking-hint">{bookingAction.hint}</p>
         </footer>
       </div>
     </article>
@@ -1328,10 +1313,12 @@ function BriefEditor({
   brief,
   busy,
   onUpdate,
+  compact = false,
 }: {
   brief: StructuredBrief;
   busy: boolean;
   onUpdate: (message: string) => void;
+  compact?: boolean;
 }) {
   const base = useMemo(() => briefToDraft(brief), [brief]);
   const [draft, setDraft] = useState<BriefDraft>(base);
@@ -1367,8 +1354,8 @@ function BriefEditor({
   return (
     <div className="brief-editor" onKeyDown={onKeyDown}>
       <div className="brief-editor-fields">
-        {BRIEF_FIELDS.map(({ field, label, hint, multiline, placeholder }) => {
-          const id = `brief-field-${field}`;
+        {BRIEF_FIELDS.filter(({ field }) => !compact || ["hardRequirements", "coreRequirements", "optionalRequirements", "mode", "startWindow", "budgetOrRate"].includes(field)).map(({ field, label, hint, multiline, placeholder }) => {
+          const id = `${compact ? "recovery" : "brief"}-field-${field}`;
           const changed = changes.some((change) => change.field === field);
           return (
             <div className={`brief-field${changed ? " is-changed" : ""}`} key={field}>
@@ -1423,7 +1410,7 @@ function BriefEditor({
           </>
         ) : (
           <p className="brief-editor-rest">
-            Änderungen an diesen Feldern starten eine neue Suche.
+            Erst „Übernehmen und neu suchen“ startet einen neuen Abgleich.
           </p>
         )}
       </div>

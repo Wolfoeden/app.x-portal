@@ -300,7 +300,7 @@ export interface ChatResponse {
   brief: StructuredBrief;
   /** Already filtered and deterministically ordered by the server. */
   matches: FreelancerProfileResult[];
-  /** Best internal overlaps below the recommendation gate; never directly bookable. */
+  /** Internal overlaps below the recommendation gate, with explicit gaps. */
   partialMatches: FreelancerProfileResult[];
   matchingStatus?: MatchingStatus;
   mode?: "ai" | "fallback";

@@ -69,9 +69,15 @@ describe("Paket 2: gemeinsamer Beweisfaden", () => {
     expect(guestMarkup).not.toContain("Das passiert nach dem Absenden");
     expect(guestMarkup).not.toContain("Gast-Credits");
     expect(guestMarkup).not.toContain("KI strukturiert den Text. Das Matching bleibt regelbasiert.");
+    // Belegt wird zuerst an der Karte: was das Profil zur Anfrage nennt und
+    // was vor dem Gespräch offen ist. Das Verfahren steht aufklappbar darunter.
+    const cardStart = resultMarkup.indexOf('<article class="profile-card');
+    const firstCard = resultMarkup.slice(cardStart, resultMarkup.indexOf("</article>", cardStart));
+    expect(firstCard).toContain("Das bringt das Profil für Ihr Projekt mit");
+    expect(firstCard).toContain("React, TypeScript und Next.js im Profil genannt");
+    expect(firstCard).toContain("Im Erstgespräch klären");
+    expect(resultMarkup).toContain("Wie kommt diese Auswahl zustande?");
     expect(resultMarkup).toContain("Vom Projekttext zur prüfbaren Auswahl");
-    expect(resultMarkup).toContain("Im Profil belegt");
-    expect(resultMarkup).toContain("Vor Kontakt offen");
   });
 
   it("verweist aus der Kontoverwaltung auf die einzige Preisseite", () => {
