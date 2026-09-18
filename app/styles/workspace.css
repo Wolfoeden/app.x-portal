@@ -1555,21 +1555,6 @@ dd.is-unknown,
   font-size: var(--fs-2xs);
 }
 
-.matching-disclosure {
-  margin: -9px 0 -2px;
-  color: var(--muted-light);
-  font-size: var(--fs-2xs);
-  line-height: 1.5;
-}
-
-.matching-disclosure.is-warning {
-  margin-bottom: 0;
-  border-left: 3px solid var(--amber);
-  background: var(--amber-soft);
-  color: var(--ink-soft);
-  padding: 10px 12px;
-}
-
 .result-count.is-warning {
   color: var(--amber);
   font-weight: 700;
@@ -2007,17 +1992,6 @@ dd.is-unknown,
   font-weight: 570;
 }
 
-.profile-tags .profile-tags-more {
-  border-style: dashed;
-  color: var(--muted-light);
-}
-
-.match-columns {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
 .match-column {
   min-width: 0;
   border-radius: var(--radius-sm);
@@ -2036,10 +2010,6 @@ dd.is-unknown,
 
 .match-column.reasons h4 span {
   color: var(--green);
-}
-
-.match-column.gaps h4 span {
-  color: var(--amber);
 }
 
 .match-column ul {
@@ -2250,7 +2220,7 @@ dd.is-unknown,
   min-width: max-content;
 }
 
-.profile-footer .profile-action-status {
+.profile-actions .profile-action-status {
   display: inline-flex;
   min-height: var(--control-md);
   align-items: center;
@@ -2264,7 +2234,7 @@ dd.is-unknown,
   font-weight: 620;
 }
 
-.profile-footer .profile-action-status.is-warning {
+.profile-actions .profile-action-status.is-warning {
   border-color: var(--amber-border);
   background: var(--amber-soft);
   color: var(--amber);
@@ -4027,7 +3997,6 @@ dd.is-unknown,
     margin-left: 0;
   }
 
-  .match-columns,
   .fact-row {
     grid-template-columns: 1fr;
   }
@@ -4211,10 +4180,6 @@ dd.is-unknown,
   .cookie-panel { grid-template-columns: 1fr; padding: 22px; }
   .cookie-actions { flex-direction: column-reverse; align-items: stretch; }
   .cookie-options { grid-template-columns: 1fr; }
-}
-
-.result-protocol {
-  width: min(100%, 940px);
 }
 
 /* --- Kontoübersicht im Menü (Vorbild: Konto-Popover) --- */
@@ -4585,42 +4550,6 @@ dd.is-unknown,
   color: var(--green);
 }
 
-.brief-facts {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0;
-}
-
-.brief-facts > div {
-  min-width: 0;
-  border-left: 1px solid var(--border);
-  padding-left: 9px;
-}
-
-.brief-facts dt {
-  margin: 0 0 3px;
-  color: var(--muted-light);
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-}
-
-.brief-facts dd {
-  overflow: hidden;
-  margin: 0;
-  color: var(--ink-soft);
-  font-size: var(--fs-2xs);
-  font-weight: 620;
-  line-height: 1.35;
-  text-overflow: ellipsis;
-}
-
-.brief-facts dd.is-open {
-  color: #946b22;
-}
-
 .brief-line-action {
   display: inline-flex;
   flex: none;
@@ -4644,10 +4573,6 @@ dd.is-unknown,
 }
 
 @media (max-width: 760px) {
-  .brief-facts {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .brief-line-action {
     margin-left: auto;
   }
@@ -4662,7 +4587,7 @@ dd.is-unknown,
   }
 }
 
-/* Profil-Stapel ---------------------------------------------------------- */
+/* Profilliste ------------------------------------------------------------ */
 
 .profile-stack-bar,
 .profile-compare-bar {
@@ -4672,96 +4597,6 @@ dd.is-unknown,
   justify-content: space-between;
   gap: 8px 12px;
   margin-bottom: 10px;
-}
-
-.profile-stack-nav {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.profile-stack-nav button {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  cursor: pointer;
-  place-items: center;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--ink-soft);
-}
-
-.profile-stack-nav button:hover:not(:disabled) {
-  border-color: var(--border-strong);
-  background: var(--surface-hover);
-}
-
-.profile-stack-nav button:disabled {
-  cursor: default;
-  color: var(--muted-light);
-  opacity: 0.5;
-}
-
-.profile-stack-nav span {
-  min-width: 62px;
-  color: var(--muted);
-  font-size: var(--fs-2xs);
-  font-weight: 650;
-  text-align: center;
-}
-
-/* Die verdeckten Karten bleiben im Baum, damit ein Wechsel den Zustand der
-   Karte nicht jedes Mal neu aufbaut. Sie duerfen aber keinen Platz belegen. */
-.profile-stack-deck {
-  position: relative;
-}
-
-.profile-stack-item {
-  display: none;
-}
-
-.profile-stack-item.is-active {
-  display: block;
-}
-
-/* Zwei angedeutete Kanten unter der Karte zeigen, dass noch etwas dahinter
-   liegt — ohne die haette der Stapel keine Tiefe und der Pfeil kaeme
-   unmotiviert. */
-.profile-stack-shadow {
-  pointer-events: none;
-}
-
-.profile-stack-shadow[data-remaining='0'] {
-  display: none;
-}
-
-.profile-stack-shadow::before,
-.profile-stack-shadow::after {
-  content: '';
-  position: absolute;
-  right: 8px;
-  left: 8px;
-  height: 10px;
-  border: 1px solid var(--border);
-  border-top: 0;
-  border-radius: 0 0 var(--radius-md) var(--radius-md);
-  background: var(--surface);
-}
-
-.profile-stack-shadow::before {
-  top: 100%;
-}
-
-.profile-stack-shadow::after {
-  top: calc(100% + 5px);
-  right: 16px;
-  left: 16px;
-  opacity: 0.6;
-}
-
-.profile-stack-shadow[data-remaining='1']::after {
-  display: none;
 }
 
 /* Vergleich nebeneinander ------------------------------------------------ */
@@ -4804,10 +4639,6 @@ dd.is-unknown,
 .profile-compare-cell .profile-actions {
   display: grid;
   gap: 6px;
-}
-
-.profile-compare-cell .match-columns {
-  grid-template-columns: 1fr;
 }
 
 /* Fokus: beide Leisten eingeklappt --------------------------------------- */
@@ -4949,7 +4780,6 @@ dd.is-unknown,
    nicht mitmachen — ueber 1240 px laufende Zeilen verliert das Auge beim
    Ruecksprung an den Zeilenanfang. */
 .message-row,
-.matching-disclosure,
 .brief-line {
   max-width: 940px;
 }
@@ -4962,7 +4792,6 @@ dd.is-unknown,
 
 /* Nebeneinander verglichen gilt die Begrenzung nicht: dort ist die Breite
    genau der Zweck. */
-.app-shell.is-profile-focus .matching-disclosure,
 .app-shell.is-profile-focus .brief-line {
   max-width: none;
 }

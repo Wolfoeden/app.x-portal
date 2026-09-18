@@ -9,6 +9,7 @@ export type SkillDefinition = {
 };
 
 export const SKILL_TAXONOMY: readonly SkillDefinition[] = [
+  { canonical: "n8n", aliases: ["n8n"] },
   {
     canonical: "Requirements Management",
     aliases: [

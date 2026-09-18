@@ -4,6 +4,7 @@ import {
   authIntentCopy,
   continuationFromSearch,
   continuationPath,
+  continuationProfileId,
   createAuthContinuation,
   parseAuthContinuation,
 } from "@/components/chat/auth-continuation";
@@ -43,5 +44,20 @@ describe("auth continuation", () => {
   it("states that paid research never starts automatically", () => {
     expect(authIntentCopy("external_research").body).toContain("startet erst");
     expect(authIntentCopy("external_research").body).toContain("30 Credits");
+  });
+
+  // Booking was abandoned, then contact was chosen for another profile: the
+  // sign-in must continue only the contact, with the second profile.
+  it("lets the latest continuation decide which profile an intent acts on", () => {
+    const contact = createAuthContinuation("contact_profile", "project-1", "profile-2");
+
+    expect(continuationProfileId(contact, "contact_profile", "profile-1")).toBe("profile-2");
+    expect(continuationProfileId(contact, "book_profile", "profile-1")).toBeNull();
+    expect(continuationProfileId(contact, "save_profile", "profile-1")).toBeNull();
+  });
+
+  it("falls back to the pending profile only without a stored continuation", () => {
+    expect(continuationProfileId(null, "book_profile", "profile-1")).toBe("profile-1");
+    expect(continuationProfileId(null, "book_profile", null)).toBeNull();
   });
 });

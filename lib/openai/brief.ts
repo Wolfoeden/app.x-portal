@@ -20,6 +20,7 @@ import {
   type OpenAiDiagnosticStatus,
 } from "@/lib/openai/diagnostics";
 import { createOpenAiClient } from "@/lib/openai/provider";
+import { requirementPriority } from "@/lib/domain/requirements";
 
 /**
  * Product allowlist: normal project analysis is deliberately pinned to Nano.
@@ -531,7 +532,7 @@ function groundedSkillList(
     if (!terms.some((term) => sourceContains(source, term))) continue;
     if (!group && !unreviewedSkillHasRequirementContext(source, terms)) continue;
 
-    const optional = skillHasOptionalContext(source, terms);
+    const optional = skillHasOptionalContext(source, terms) || requirementPriority(source, value) === "optional";
     if (kind === "optional" ? optional : !optional) {
       accepted.push(group?.canonical ?? value);
     }

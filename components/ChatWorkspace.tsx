@@ -48,6 +48,7 @@ import {
   clearAuthContinuation,
   continuationFromSearch,
   continuationPath,
+  continuationProfileId,
   createAuthContinuation,
   readAuthContinuation,
   storeAuthContinuation,
@@ -271,6 +272,7 @@ interface ChatWorkspaceProps {
     messages: ConversationMessage[];
     brief: StructuredBrief;
     profiles: FreelancerProfileResult[];
+    partialProfiles?: FreelancerProfileResult[];
     analysis: AiAnalysisTrace;
     usage: AiUsageSnapshot;
     /**
@@ -859,7 +861,7 @@ function normalizeMessage(value: unknown): ConversationMessage {
   };
 }
 
-function normalizeChatResponse(value: unknown, fallbackTitle: string): ChatResponse {
+export function normalizeChatResponse(value: unknown, fallbackTitle: string): ChatResponse {
   const envelope = isRecord(value) ? value : {};
   const response = isRecord(envelope.data) ? envelope.data : value;
   if (!isRecord(response)) throw new Error("Die Serverantwort hatte kein gültiges Format.");
@@ -879,8 +881,7 @@ function normalizeChatResponse(value: unknown, fallbackTitle: string): ChatRespo
         .filter(
           (item): item is FreelancerProfileResult =>
             item !== null &&
-            item.recommendationRole === "partial" &&
-            item.bookingUrl === null,
+            item.recommendationRole === "partial",
         )
     : [];
   const usage = normalizeUsageUpdate(response.usage ?? response);
@@ -922,7 +923,7 @@ function normalizeProjectCollection(value: unknown): ProjectCollectionItem {
   };
 }
 
-function normalizeProjectDetail(value: unknown): ProjectDetailResponse {
+export function normalizeProjectDetail(value: unknown): ProjectDetailResponse {
   const response = isRecord(value) && isRecord(value.data) ? value.data : value;
   if (!isRecord(response)) throw new Error("Das Projekt konnte nicht gelesen werden.");
   const messages = Array.isArray(response.messages) ? response.messages.map(normalizeMessage) : [];
@@ -937,8 +938,7 @@ function normalizeProjectDetail(value: unknown): ProjectDetailResponse {
         .filter(
           (item): item is FreelancerProfileResult =>
             item !== null &&
-            item.recommendationRole === "partial" &&
-            item.bookingUrl === null,
+            item.recommendationRole === "partial",
         )
     : [];
   const matchingStatus = normalizeMatchingStatus(
@@ -1131,6 +1131,8 @@ export function ChatWorkspace({
   const [authOpen, setAuthOpen] = useState(false);
   const [authInitialMode, setAuthInitialMode] = useState<AuthDialogMode>("login");
   const [authIntent, setAuthIntent] = useState<AuthIntent>("generic");
+  // The profile the open dialog is about, taken from its own continuation.
+  const [authProfileId, setAuthProfileId] = useState<string | null>(null);
   const [authDestination, setAuthDestination] = useState("/chat");
   const [projects, setProjects] = useState<ProjectListItem[]>(previewData?.projects ?? []);
   const [projectCollections, setProjectCollections] = useState<ProjectCollectionItem[]>([]);
@@ -1142,7 +1144,7 @@ export function ChatWorkspace({
   const [profiles, setProfiles] = useState<FreelancerProfileResult[]>(
     previewNoMatch ? [] : previewData?.profiles ?? [],
   );
-  const [partialProfiles, setPartialProfiles] = useState<FreelancerProfileResult[]>([]);
+  const [partialProfiles, setPartialProfiles] = useState<FreelancerProfileResult[]>(previewData?.partialProfiles ?? []);
   const [matchingStatus, setMatchingStatus] = useState<MatchingStatus | null>(
     preview ? (previewNoMatch ? "no_reliable_match" : "ranked") : null,
   );
@@ -1229,7 +1231,7 @@ export function ChatWorkspace({
   const externalSearchRequestIdsRef = useRef(new Map<string, string>());
   const resumeHandledRef = useRef(false);
 
-  const selectedProfile = profiles.find((profile) => profile.id === selectedProfileId) ?? null;
+  const selectedProfile = [...profiles, ...partialProfiles].find((profile) => profile.id === selectedProfileId) ?? null;
   const isTeamView = workspaceView === "team";
   const isAccountUser = auth.authenticated && !auth.anonymous;
   const accountName = isAccountUser
@@ -1322,6 +1324,7 @@ export function ChatWorkspace({
       storeAuthContinuation(next);
       trackFunnelEvent("registration_started", intent);
       setAuthIntent(intent);
+      setAuthProfileId(next.profileId);
       setAuthDestination(continuationPath(next));
       setAuthInitialMode(mode);
       setAuthOpen(true);
@@ -1759,7 +1762,7 @@ export function ChatWorkspace({
           const detail = await loadProject(pendingProject);
           sessionStorage.removeItem("pending_project_id");
           const pendingProfile = sessionStorage.getItem("pending_profile_selection");
-          if (detail && pendingProfile && detail.profiles.some((profile) => profile.id === pendingProfile)) {
+          if (detail && pendingProfile && [...detail.profiles, ...detail.partialProfiles].some((profile) => profile.id === pendingProfile)) {
             setSelectedProfileId(pendingProfile);
             setContactOpen(true);
             sessionStorage.removeItem("pending_profile_selection");
@@ -1914,12 +1917,7 @@ export function ChatWorkspace({
       setMatchingStatus(result.matchingStatus ?? null);
       setHasResult(true);
       trackFunnelEvent("result_seen", result.matchingStatus ?? "unclassified");
-      if (
-        !detailsTouchedRef.current &&
-        window.matchMedia("(min-width: 1220px)").matches
-      ) {
-        setDetailsOpen(true);
-      }
+      if (!detailsTouchedRef.current) setDetailsOpen(false);
       setAnalysisMode(result.mode ?? "ai");
       setAnalysisTrace(result.analysis ?? null);
       setExternalSearch(null);
@@ -1950,6 +1948,10 @@ export function ChatWorkspace({
     ) => {
       const text = rawText.trim();
       if (!text || pendingAssistant) return;
+      if (preview) {
+        showToast("Lokale Vorschau: Ihre Änderung ist vorbereitet. Es wird keine echte Suche gestartet.", "neutral");
+        return;
+      }
       trackFunnelEvent("search_started");
       const optimistic: ConversationMessage = {
         id: existingClientMessageId ?? makeId("user"),
@@ -2103,8 +2105,10 @@ export function ChatWorkspace({
       finishChatResponse,
       loadProject,
       pendingAssistant,
+      preview,
       refreshAuth,
       refreshUsage,
+      showToast,
     ],
   );
 
@@ -2347,10 +2351,11 @@ export function ChatWorkspace({
     }
     const projectIdToReload =
       continuation?.projectId ?? activeProject?.id ?? sessionStorage.getItem("pending_project_id");
-    const profileIdToRestore =
-      continuation?.intent === "contact_profile"
-        ? continuation.profileId
-        : pendingProfileId ?? sessionStorage.getItem("pending_profile_selection");
+    const profileIdToRestore = continuationProfileId(
+      continuation,
+      "contact_profile",
+      pendingProfileId ?? sessionStorage.getItem("pending_profile_selection"),
+    );
     setAuthOpen(false);
     const searchParams = new URLSearchParams(window.location.search);
     const requestedCheckout = searchParams.get("checkout");
@@ -2386,15 +2391,16 @@ export function ChatWorkspace({
       : null;
     if (
       profileIdToRestore &&
-      refreshedProject?.profiles.some((profile) => profile.id === profileIdToRestore)
+      [...(refreshedProject?.profiles ?? []), ...(refreshedProject?.partialProfiles ?? [])].some((profile) => profile.id === profileIdToRestore)
     ) {
       setSelectedProfileId(profileIdToRestore);
       setContactOpen(true);
     }
-    const profileIdToSave =
-      continuation?.intent === "save_profile"
-        ? continuation.profileId
-        : pendingSaveProfileId ?? sessionStorage.getItem("pending_profile_save");
+    const profileIdToSave = continuationProfileId(
+      continuation,
+      "save_profile",
+      pendingSaveProfileId ?? sessionStorage.getItem("pending_profile_save"),
+    );
     if (profileIdToSave) {
       try {
         await persistSavedFreelancer(profileIdToSave, "POST");
@@ -2403,15 +2409,16 @@ export function ChatWorkspace({
         showToast("Das Profil konnte nicht gespeichert werden.", "error");
       }
     }
-    const profileIdToBook =
-      continuation?.intent === "book_profile"
-        ? continuation.profileId
-        : pendingBookingProfileId ?? sessionStorage.getItem("pending_profile_booking");
+    const profileIdToBook = continuationProfileId(
+      continuation,
+      "book_profile",
+      pendingBookingProfileId ?? sessionStorage.getItem("pending_profile_booking"),
+    );
     if (profileIdToBook) {
       // A popup opened this late is blocked by the browser, so the booking is
       // handed back through the contact dialog instead of a new tab.
       const bookedProfile =
-        refreshedProject?.profiles.find((profile) => profile.id === profileIdToBook) ??
+        [...(refreshedProject?.profiles ?? []), ...(refreshedProject?.partialProfiles ?? [])].find((profile) => profile.id === profileIdToBook) ??
         null;
       if (bookedProfile) {
         setSelectedProfileId(bookedProfile.id);
@@ -3116,6 +3123,8 @@ export function ChatWorkspace({
                       );
                     }}
                     onRefineSearch={refineCurrentSearch}
+                    onUpdateBrief={(message) => void sendMessage(message)}
+                    busy={Boolean(pendingAssistant)}
                     onSaveSearch={saveCurrentSearch}
                     onNeedCredits={() => {
                       window.location.assign(
@@ -3129,7 +3138,6 @@ export function ChatWorkspace({
                     }}
                     profileFocus={profileFocus}
                     onToggleProfileFocus={() => setProfileFocus((current) => !current)}
-                    detailsOpen={detailsOpen}
                     savedFreelancerIds={
                       isAccountUser ? team.map((member) => member.profile.id) : []
                     }
@@ -3298,6 +3306,12 @@ export function ChatWorkspace({
         <AuthDialog
           initialMode={authInitialMode}
           intent={authIntent}
+          profileName={
+            authProfileId
+              ? [...profiles, ...partialProfiles].find((profile) => profile.id === authProfileId)?.displayName
+              : undefined
+          }
+          projectTitle={brief?.projectTitle}
           destination={authDestination}
           onClose={() => setAuthOpen(false)}
           onAuthenticated={(mode) => void handleAuthenticated(mode)}
