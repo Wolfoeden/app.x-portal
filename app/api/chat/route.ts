@@ -122,9 +122,8 @@ function storedShortlistMatch(match: ShortlistMatch): ShortlistMatch {
       ...match.profile,
       introPolicy: {
         ...match.profile.introPolicy,
-        // Stored result snapshots never retain a direct booking URL. Current
-        // recommended matches restore it from the live profile; partials stay
-        // non-bookable by definition.
+        // Stored result snapshots never retain a direct booking URL. On reload
+        // recommended and partial matches restore it from the live profile.
         bookingUrl: null,
       },
     },

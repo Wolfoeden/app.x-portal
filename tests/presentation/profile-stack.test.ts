@@ -184,7 +184,7 @@ describe("results without a recommendation", () => {
 
     expect(markup).toContain("Noch kein passendes Profil für diese Kombination");
     expect(occurrences(markup, "Ihre Anfrage bleibt erhalten")).toBe(1);
-    expect(markup).toMatch(/aria-expanded="false"[^>]*aria-controls="recovery-criteria"[^>]*>Suchkriterien prüfen/u);
+    expect(markup).toMatch(/aria-expanded="false"[^>]*>Suchkriterien prüfen/u);
     // Der Editor oeffnet erst auf Klick; bis dahin laeuft und aendert nichts.
     expect(markup).not.toContain("recovery-field-");
     expect(markup).toContain("Suche speichern");

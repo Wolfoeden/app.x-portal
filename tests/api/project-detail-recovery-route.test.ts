@@ -203,7 +203,7 @@ describe("project detail deterministic recovery", () => {
     expect(mocks.fetchProfilesByIds).toHaveBeenCalledWith(expect.anything(), []);
   });
 
-  it("restores persisted partial matches separately and without booking access", async () => {
+  async function restoredPartial() {
     const partialBrief = applyBriefPatch(
       parseFallbackBrief(
         "Muss-Anforderungen:\n- React\n- C++\n100% remote",
@@ -237,7 +237,15 @@ describe("project detail deterministic recovery", () => {
     const response = await GET(new Request(`https://x-portal.eu/api/projects/${projectId}`), {
       params: Promise.resolve({ id: projectId }),
     });
-    const body = await response.json();
+    return { response, body: await response.json() };
+  }
+
+  // Live answers keep a partial match bookable; a reload after sign-in must
+  // not take the booking away that the guest signed up for.
+  it("restores a persisted partial match with the current booking link", async () => {
+    mocks.fetchProfilesByIds.mockResolvedValue([profileFixtures[0]!]);
+
+    const { response, body } = await restoredPartial();
 
     expect(response.status).toBe(200);
     expect(body.matchingStatus).toBe("no_reliable_match");
@@ -245,6 +253,16 @@ describe("project detail deterministic recovery", () => {
     expect(body.partialProfiles).toHaveLength(1);
     expect(body.partialProfiles[0]).toMatchObject({
       displayName: "Anna Keller",
+      recommendationRole: "partial",
+      bookingUrl: profileFixtures[0]!.introPolicy.bookingUrl,
+    });
+    expect(mocks.fetchProfilesByIds).toHaveBeenCalledWith(expect.anything(), [profileFixtures[0]!.id]);
+  });
+
+  it("keeps a persisted partial match unbookable once the profile is no longer current", async () => {
+    const { body } = await restoredPartial();
+
+    expect(body.partialProfiles[0]).toMatchObject({
       recommendationRole: "partial",
       bookingUrl: null,
     });

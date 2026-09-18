@@ -85,11 +85,13 @@ describe("profile card footer", () => {
     expect(footer.indexOf("Erstgespräch vereinbaren")).toBeLessThan(footer.indexOf("Merken"));
   });
 
-  it("asks for a conversation instead of a dead button when there is no calendar", () => {
+  // Ohne Kalender gibt es keinen anderen Anfrageweg; der Knopf verspricht
+  // deshalb keinen.
+  it("says plainly that a profile without a calendar cannot be booked", () => {
     const markup = render(profile({ bookingUrl: null }));
 
-    expect(markup).toContain("Gespräch anfragen");
-    expect(markup).not.toMatch(/<button[^>]*disabled[^>]*>Aktuell nicht buchbar/u);
+    expect(markup).toMatch(/<button[^>]*disabled=""[^>]*>Aktuell nicht buchbar<\/button>/u);
+    expect(markup).not.toContain("Gespräch anfragen");
   });
 
   // Dass hier auf eigene Entscheidung gehandelt wird, muss neben den Knoepfen

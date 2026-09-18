@@ -1231,8 +1231,12 @@ export function ChatWorkspace({
   const externalSearchRequestIdsRef = useRef(new Map<string, string>());
   const resumeHandledRef = useRef(false);
 
-  const selectedProfile = [...profiles, ...partialProfiles].find((profile) => profile.id === selectedProfileId) ?? null;
   const isTeamView = workspaceView === "team";
+  // The Merkliste opens the contact dialog for saved profiles too, and those
+  // are not part of the current chat's result.
+  const selectedProfile =
+    (isTeamView ? team.map((member) => member.profile) : [...profiles, ...partialProfiles])
+      .find((profile) => profile.id === selectedProfileId) ?? null;
   const isAccountUser = auth.authenticated && !auth.anonymous;
   const accountName = isAccountUser
     ? shownAccountName(auth.user?.displayName ?? null, auth.user?.email ?? null) ?? "Ihr Konto"
@@ -3133,6 +3137,8 @@ export function ChatWorkspace({
                     }}
                     selectedProfileId={selectedProfileId}
                     onOpenDetails={() => {
+                      // Opened on purpose, so a following result keeps it open.
+                      detailsTouchedRef.current = true;
                       setProfileFocus(false);
                       setDetailsOpen(true);
                     }}

@@ -127,6 +127,28 @@ function currentBookingUrl(profile: FreelancerProfile): string | null {
   }
 }
 
+/**
+ * A partial match is bookable in the live answer, so a reload must not take
+ * that away: the booking link comes from the current profile, exactly as for
+ * recommended matches. A profile that is no longer active or available stays
+ * without one.
+ */
+function withCurrentBookingUrl(
+  match: ShortlistMatch,
+  currentProfile: FreelancerProfile | undefined,
+): ShortlistMatch {
+  return ShortlistMatchSchema.parse({
+    ...match,
+    profile: {
+      ...match.profile,
+      introPolicy: {
+        ...match.profile.introPolicy,
+        bookingUrl: currentProfile ? currentBookingUrl(currentProfile) : null,
+      },
+    },
+  });
+}
+
 function restoreMatch(
   row: StoredMatchRow,
   currentProfile: FreelancerProfile | undefined,
@@ -340,23 +362,23 @@ export async function GET(
       const storedPartials = StoredPartialMatchesSchema.safeParse(
         storedShortlist.partial_matches_snapshot ?? [],
       );
+      let partialMatches: ShortlistMatch[] = [];
       if (!storedPartials.success) {
         matchingIntegrityNotice =
           "Die gespeicherten Teiltreffer sind unvollständig und werden deshalb nicht dargestellt.";
       } else {
-        partialProfiles = storedPartials.data
+        partialMatches = storedPartials.data
           .map(restorePartialMatch)
-          .filter((match): match is ShortlistMatch => match !== null)
-          .map(presentMatch);
+          .filter((match): match is ShortlistMatch => match !== null);
         if (
           decision.success &&
           decision.data.schemaVersion === 2 &&
           JSON.stringify(decision.data.partialProfileIds ?? []) !==
-            JSON.stringify(partialProfiles.map((profile) => profile.id))
+            JSON.stringify(partialMatches.map((match) => match.profile.id))
         ) {
           matchingIntegrityNotice =
             "Die gespeicherten Teiltreffer stimmen nicht mit der Matching-Entscheidung überein und werden nicht dargestellt.";
-          partialProfiles = [];
+          partialMatches = [];
         }
       }
       const { data: rows, error } = await admin
@@ -373,16 +395,19 @@ export async function GET(
         matchingIntegrityNotice =
           "Die gespeicherte Trefferzahl und die vorhandenen Profilzeilen weichen voneinander ab; das Ergebnis wird nur eingeschränkt dargestellt.";
       }
-      const currentProfiles = await fetchRealProfilesByIds(
-        admin,
-        storedRows.map((row) => row.freelancer_profile_id),
-      );
+      const currentProfiles = await fetchRealProfilesByIds(admin, [
+        ...storedRows.map((row) => row.freelancer_profile_id),
+        ...partialMatches.map((match) => match.profile.id),
+      ]);
       const currentProfilesById = new Map(
         currentProfiles.map((profile) => [profile.id, profile]),
       );
       profiles = storedRows
         .map((row) => restoreMatch(row, currentProfilesById.get(row.freelancer_profile_id)))
         .filter((match): match is ShortlistMatch => match !== null)
+        .map(presentMatch);
+      partialProfiles = partialMatches
+        .map((match) => withCurrentBookingUrl(match, currentProfilesById.get(match.profile.id)))
         .map(presentMatch);
     }
 

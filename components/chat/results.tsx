@@ -441,7 +441,7 @@ export function ResultSection({
                   className="is-primary"
                   type="button"
                   aria-expanded={criteriaOpen}
-                  aria-controls="recovery-criteria"
+                  aria-controls={criteriaOpen ? "recovery-criteria" : undefined}
                   onClick={() => setCriteriaOpen((current) => !current)}
                 >
                   Suchkriterien prüfen <IconChevronDown size={14} />
@@ -951,6 +951,7 @@ export type BookingActionState = {
   kind: "login_required" | "bookable" | "unavailable";
   label: string;
   hint: string;
+  disabled: boolean;
 };
 
 /**
@@ -962,13 +963,14 @@ export function bookingActionState(
   profile: Pick<FreelancerProfileResult, "bookingUrl">,
   isAccountUser: boolean,
 ): BookingActionState {
-  // Without a calendar the next step is still a conversation — via the
-  // contact dialog instead of a dead button.
+  // Without a calendar there is no other way to request a conversation, so
+  // the button says so instead of promising one.
   if (!profile.bookingUrl) {
     return {
       kind: "unavailable",
-      label: "Gespräch anfragen",
-      hint: "Kontakt öffnen und das weitere Vorgehen abstimmen.",
+      label: "Aktuell nicht buchbar",
+      hint: "Dieses Profil ist aktuell nicht direkt buchbar.",
+      disabled: true,
     };
   }
   if (!isAccountUser) {
@@ -976,12 +978,14 @@ export function bookingActionState(
       kind: "login_required",
       label: "Erstgespräch vereinbaren",
       hint: "Mit Konto zur Terminseite · Sie wählen und buchen den Termin selbst.",
+      disabled: false,
     };
   }
   return {
     kind: "bookable",
     label: "Erstgespräch vereinbaren",
     hint: "Die Terminseite des Freelancers öffnet sich in einem neuen Tab.",
+    disabled: false,
   };
 }
 
@@ -1242,7 +1246,8 @@ export function ProfileCard({
                 <button
                   className="primary-action"
                   type="button"
-                  onClick={bookingAction.kind === "unavailable" ? (selected ? onContact : onSelect) : onRequestBooking}
+                  disabled={bookingAction.disabled}
+                  onClick={onRequestBooking}
                   aria-label={
                     bookingAction.kind === "login_required"
                       ? `Erstgespräch mit ${profile.displayName} vereinbaren`
@@ -1250,7 +1255,7 @@ export function ProfileCard({
                   }
                 >
                   {bookingAction.label}
-                  <IconArrowRight size={13} />
+                  {bookingAction.disabled ? null : <IconArrowRight size={13} />}
                 </button>
               )}
               <button
