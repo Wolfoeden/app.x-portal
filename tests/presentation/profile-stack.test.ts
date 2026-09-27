@@ -197,8 +197,16 @@ describe("results without a recommendation", () => {
   it("keeps the paid research behind the free ways, with its price on the line", () => {
     const markup = partial({ partialProfiles: [] });
 
-    expect(markup).toMatch(/<details class="recovery-research"><summary>Öffentlich weitersuchen · 30 Credits<\/summary>/u);
+    expect(markup).toMatch(/<section class="recovery-research"[^>]*><p class="recovery-research-title"[^>]*>Öffentlich weitersuchen · 30 Credits<\/p>/u);
     expect(markup.indexOf("Suche speichern")).toBeLessThan(markup.indexOf("Öffentlich weitersuchen"));
+  });
+
+  it("shows the research openly with what it does, not folded behind a grey line", () => {
+    const markup = partial({ partialProfiles: [] });
+
+    expect(markup).not.toContain('<details class="recovery-research"');
+    expect(markup).toContain("prüft jeden Treffer an seiner Quelle");
+    expect(markup).toContain("Scheitert der Lauf technisch, wird nichts belastet.");
   });
 
   it("asks for a missing requirement in the chat when the request needs clarification", () => {

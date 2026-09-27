@@ -76,3 +76,22 @@
 @media (max-width: 760px) { .main { padding: 0 24px; } .hero { grid-template-columns: 1fr; padding: 46px 0 54px; } .creditThesis { max-width: 520px; } .sectionIntro, .explainer { grid-template-columns: 1fr; gap: 20px; } .cards, .actionGrid, .related { grid-template-columns: 1fr; } .audience, .priceBlock, .usageExample { min-height: auto; } .finalCta { align-items: flex-start; flex-direction: column; padding: 30px; } }
 @media (max-width: 460px) { .main { padding: 0 18px; } .hero h1 { font-size: 44px; } .heroActions { align-items: flex-start; flex-direction: column; } .card { padding: 22px 19px 19px; } .finalCta { padding: 25px; } }
 @media (prefers-reduced-motion: reduce) { .primaryAction, .cardAction { transition: none; } }
+
+/* Aus der App gekommen: ein Satz, warum, und der Weg zurück. */
+.context { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin: 22px 0 0; padding: 16px 20px; border: 1px solid var(--green-border); border-left: 4px solid var(--green); border-radius: var(--radius-md); background: var(--green-soft); }
+.context strong { font-size: var(--fs-base); }
+.context p { max-width: 780px; margin: 4px 0 0; color: var(--ink-soft); font-size: var(--fs-sm); line-height: 1.55; }
+.context a { flex: 0 0 auto; color: var(--ink); font-size: var(--fs-sm); font-weight: 650; text-underline-offset: 4px; }
+
+/* Was vor dem Kauf beruhigt, direkt unter den Karten. */
+.trust { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; list-style: none; margin: 22px 0 0; padding: 18px 0 0; border-top: 1px solid var(--border); }
+.trust li { display: grid; gap: 4px; padding-left: 26px; position: relative; font-size: var(--fs-xs); line-height: 1.5; }
+.trust li::before { content: "✓"; position: absolute; left: 0; top: 0; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--green-soft); color: var(--green); font-size: 11px; font-weight: 800; }
+.trust strong { color: var(--ink); font-size: var(--fs-sm); }
+.trust span { color: var(--muted); }
+
+.faq { display: grid; grid-template-columns: .8fr 1.2fr; gap: 70px; padding: 62px 0; border-top: 1px solid var(--border); }
+.faq h2 { margin: 0; font-size: clamp(30px, 3.2vw, 44px); line-height: 1.08; letter-spacing: -.05em; font-weight: 590; text-wrap: balance; }
+
+@media (max-width: 1180px) { .trust { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .context { align-items: flex-start; flex-direction: column; gap: 10px; } .trust { grid-template-columns: 1fr; } .faq { grid-template-columns: 1fr; gap: 20px; } }

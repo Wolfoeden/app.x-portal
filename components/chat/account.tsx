@@ -157,6 +157,7 @@ export function AccountSummary({
   email,
   isAccountUser,
   onRename,
+  managesBilling = false,
   onMoreCredits,
 }: {
   usage: AiUsageSnapshot | null;
@@ -165,6 +166,8 @@ export function AccountSummary({
   isAccountUser: boolean;
   /** Nur für Konten: Gäste haben keinen Namen, den sie ändern könnten. */
   onRename?: (name: string) => Promise<void>;
+  /** Laufendes Abo: der Knopf führt in die Verwaltung statt zu den Tarifen. */
+  managesBilling?: boolean;
   onMoreCredits: () => void;
 }) {
   const monthly = usage?.credits ?? null;
@@ -213,7 +216,7 @@ export function AccountSummary({
         ) : null}
       </> : <p className="account-credit-muted">Guthaben wird geladen …</p>}
 
-      {isAccountUser ? <button className="account-upgrade" type="button" onClick={onMoreCredits}><IconSpark size={14} /> Abrechnung und Team</button> : null}
+      {isAccountUser ? <button className="account-upgrade" type="button" onClick={onMoreCredits}><IconSpark size={14} /> {managesBilling ? "Abrechnung und Team" : "Tarif wählen"}</button> : null}
     </div>
   );
 }

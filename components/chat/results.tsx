@@ -464,12 +464,21 @@ export function ResultSection({
             ) : null}
           </div>
           {/* Die Recherche kostet Credits und steht deshalb nach den kostenlosen
-              Wegen — aufklappbar, mit dem Preis schon an der Zeile. */}
+              Wegen, mit dem Preis in der Überschrift. Sie ist aber offen
+              sichtbar: Zugeklappt war sie für die meisten nur eine graue
+              Zeile, und wenn der Katalog keinen belastbaren Treffer hat — bei
+              einem großen Teil der Suchen —, ist sie der einzige Weg, der
+              doch noch zu einem Freelancer führt. */}
           {matchingStatus === "no_reliable_match" &&
           (analysis?.externalSearchAvailable ?? true) &&
           externalSearch?.mode !== "openai" ? (
-            <details className="recovery-research" open={externalSearchState === "idle" ? undefined : true}>
-              <summary>Öffentlich weitersuchen · {EXTERNAL_SEARCH_CREDITS} Credits</summary>
+            <section className="recovery-research" aria-labelledby="recovery-research-title">
+              <p className="recovery-research-title" id="recovery-research-title">
+                Öffentlich weitersuchen · {EXTERNAL_SEARCH_CREDITS} Credits
+              </p>
+              <p className="recovery-research-lead">
+                Der Recherche-Agent sucht in öffentlichen Quellen nach Freelancern für genau diese Anforderungen, prüft jeden Treffer an seiner Quelle und zeigt ihn mit Link. Scheitert der Lauf technisch, wird nichts belastet.
+              </p>
               <AgentLaunchPanel
                 state={launchState}
                 searching={externalSearchState === "searching"}
@@ -478,7 +487,7 @@ export function ResultSection({
                 onRequireLogin={onRequireLogin}
                 onNeedCredits={onNeedCredits}
               />
-            </details>
+            </section>
           ) : null}
           {externalSearch ? (
             <ExternalSearchResults

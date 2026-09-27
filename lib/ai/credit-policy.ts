@@ -109,6 +109,16 @@ export function affordableCount(
   return Math.floor(remainingCredits / price);
 }
 
+/**
+ * Die runde Beispielmenge für Tarife: auf Fünferschritte abgerundet, damit sie
+ * nie mehr verspricht, als das Kontingent trägt. Preisseite, Startseite und
+ * App nennen dieselbe Zahl — vorher stand dort einmal 16 und einmal 15.
+ */
+export function roundedExampleCount(credits: number, id: CreditPriceId): number {
+  const count = affordableCount(credits, id);
+  return count < 5 ? count : Math.floor(count / 5) * 5;
+}
+
 /** „1 Recherche" / „9 Recherchen" — die Zählweise, die die Oberfläche zeigt. */
 export function countLabel(count: number, id: CreditPriceId): string {
   const price = CREDIT_PRICES[id];

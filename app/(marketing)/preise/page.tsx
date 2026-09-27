@@ -1,9 +1,10 @@
 import Link from "next/link";
 
 import { JsonLd } from "@/components/JsonLd";
+import { Questions } from "@/components/marketing/MarketingPage";
 import {
   CREDIT_PRICES,
-  affordableCount,
+  roundedExampleCount,
   type CreditPriceId,
 } from "@/lib/ai/credit-policy";
 import {
@@ -19,6 +20,7 @@ import { BUSINESS_ONLY_NOTICE } from "@/lib/legal/policy";
 import { MARKETING_PAGE, MARKETING_PAGES, pageMetadata } from "@/lib/seo";
 import { breadcrumbStructuredData } from "@/lib/structured-data";
 
+import { PricingContext } from "./PricingContext";
 import styles from "./pricing.module.css";
 
 export const metadata = pageMetadata(MARKETING_PAGE.pricing);
@@ -53,7 +55,7 @@ const CARD_COPY = {
 function FixedCard({ plan }: { plan: FixedMonthlyPlan }) {
   const href = `/api/billing/checkout?plan=${plan.id}`;
   const copy = CARD_COPY[plan.id as "basic" | "pro" | "business"];
-  const researchExamples = Math.floor(affordableCount(plan.monthlyCredits, "research") / 5) * 5;
+  const researchExamples = roundedExampleCount(plan.monthlyCredits, "research");
   const analysisExamples = researchExamples * (CREDIT_PRICES.research.credits / CREDIT_PRICES.project_brief.credits);
   return (
     <article className={`${styles.card} ${plan.recommended ? styles.recommended : ""}`}>
@@ -113,6 +115,41 @@ function EnterpriseCard() {
 
 const ACTION_IDS = Object.keys(CREDIT_PRICES) as CreditPriceId[];
 
+/**
+ * Was vor dem Klick auf „buchen" beruhigt. Jede Zeile ist durch AGB,
+ * Datenschutzhinweise oder den Stripe-Checkout gedeckt — hier nur kurz und an
+ * der Stelle, an der die Frage aufkommt.
+ */
+const TRUST_FACTS = [
+  { title: "Sichere Zahlung über Stripe", body: "Bezahlt wird im Stripe-Checkout; Kartendaten erreichen XPORTAL nicht." },
+  { title: "Monatlich kündbar", body: "Zum Ende der laufenden Periode, bequem im Kundenportal." },
+  { title: "Rechnung nach § 14 UStG", body: "Alle Rechnungen jederzeit im Stripe-Kundenportal." },
+  { title: "Hosting und Datenbank in der EU", body: "Ihre Projektdaten werden nicht zum KI-Training verwendet." },
+] as const;
+
+const PRICING_QUESTIONS = [
+  {
+    question: "Kann ich jederzeit kündigen?",
+    answer: <p>Ja. Basic, Pro und Business laufen monatlich und lassen sich zum Ende der laufenden Abrechnungsperiode kündigen – im Stripe-Kundenportal oder in Textform, etwa über das <Link href="/contact">Kontaktformular</Link>. Das bezahlte Kontingent bleibt bis zum Periodenende nutzbar.</p>,
+  },
+  {
+    question: "Was passiert, wenn meine Credits aufgebraucht sind?",
+    answer: <p>Sie können weiter schreiben; XPORTAL speichert Ihre Angaben und gleicht sie regelbasiert ab. KI-Analysen und AI-Agent-Recherchen sind wieder möglich, sobald das nächste Kontingent beginnt oder Sie in einen größeren Tarif wechseln. Nicht verbrauchte Monatscredits werden nicht in den Folgemonat übertragen.</p>,
+  },
+  {
+    question: "Kostet ein fehlgeschlagener Recherche-Lauf Credits?",
+    answer: <p>Nein. Scheitert eine AI-Agent-Recherche technisch, wird nichts belastet. Ein abgeschlossener Lauf kostet {CREDIT_PRICES.research.credits} Credits – auch dann, wenn die öffentlichen Quellen keine passenden Profile hergeben.</p>,
+  },
+  {
+    question: "Sind Freelancer-Honorare im Preis enthalten?",
+    answer: <p>Nein. Der Tarif deckt die Nutzung von XPORTAL ab. Honorar, Verfügbarkeit und Vertrag vereinbaren Sie direkt mit dem Freelancer.</p>,
+  },
+  {
+    question: "Wer kann einen Tarif buchen?",
+    answer: <p>{BUSINESS_ONLY_NOTICE} Alle Preise sind Nettopreise zuzüglich gesetzlicher Umsatzsteuer.</p>,
+  },
+] as const;
+
 export default function PricingPage() {
   return (
     <main id="main-content" className={styles.main} tabIndex={-1}>
@@ -120,6 +157,7 @@ export default function PricingPage() {
       <nav aria-label="Brotkrümelnavigation" className={styles.breadcrumb}>
         <ol><li><Link href="/chat" prefetch={false}>XPORTAL</Link></li><li><span aria-current="page">Preise &amp; Credits</span></li></ol>
       </nav>
+      <PricingContext />
 
       <header className={styles.hero}>
         <div>
@@ -146,6 +184,9 @@ export default function PricingPage() {
           {PUBLIC_PRICING_PLANS.filter((plan) => plan.billingModel === "fixed_monthly").map((plan) => <FixedCard key={plan.id} plan={plan} />)}
           <EnterpriseCard />
         </div>
+        <ul className={styles.trust} aria-label="Sicherheit und Konditionen">
+          {TRUST_FACTS.map((fact) => <li key={fact.title}><strong>{fact.title}</strong><span>{fact.body}</span></li>)}
+        </ul>
         <p className={styles.checkoutNote}>Alle Preise netto, zuzüglich gesetzlicher Umsatzsteuer. Basic, Pro und Business sind Monatsabonnements und verlängern sich automatisch. Sie können das Abonnement über Stripe verwalten und zum Ende der laufenden Abrechnungsperiode kündigen.</p>
       </section>
 
@@ -170,6 +211,11 @@ export default function PricingPage() {
           <p>Bei Basic, Pro und Business wird das inkludierte Kontingent zu Beginn jeder Abrechnungsperiode neu gesetzt; Restguthaben wird nicht addiert. Enterprise Flex hat kein Prepaid-Kontingent: Abgerechnet werden nur protokollierte, abrechenbare Credits.</p>
           <p>{BUSINESS_ONLY_NOTICE}</p>
         </div>
+      </section>
+
+      <section className={styles.faq} aria-labelledby="pricing-faq-title">
+        <div><p className={styles.eyebrow}>Vor dem Kauf</p><h2 id="pricing-faq-title">Häufige Fragen zur Abrechnung</h2></div>
+        <Questions items={PRICING_QUESTIONS} />
       </section>
 
       <section className={styles.finalCta}>
