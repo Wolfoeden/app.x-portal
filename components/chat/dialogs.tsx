@@ -20,6 +20,7 @@ import {
 import {
   registerEmailAccount,
   requestPasswordRecovery,
+  requestSignInLink,
   setAccountPassword,
   signInExistingAccount,
   startOauthUpgrade,
@@ -118,6 +119,11 @@ export function AuthDialog({
   const [password, setPassword] = useState("");
   const [passwordRepeat, setPasswordRepeat] = useState("");
   const [confirmationSent, setConfirmationSent] = useState(false);
+  // Supabase nimmt je Adresse einen Link pro Minute an. Der Knopf zum
+  // erneuten Senden wartet deshalb so lange, statt eine Fehlermeldung zu
+  // provozieren.
+  const [resendReady, setResendReady] = useState(false);
+  const [sendCount, setSendCount] = useState(0);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [marketingEmails, setMarketingEmails] = useState(false);
   const [busy, setBusy] = useState<"google" | "microsoft" | "email" | null>(null);
@@ -129,6 +135,26 @@ export function AuthDialog({
   };
 
   const consentMissing = mode === "register" && !termsAccepted;
+
+  useEffect(() => {
+    if (!sendCount) return;
+    const timer = window.setTimeout(() => setResendReady(true), 60_000);
+    return () => window.clearTimeout(timer);
+  }, [sendCount]);
+
+  const markSent = () => {
+    setConfirmationSent(true);
+    setResendReady(false);
+    setSendCount((count) => count + 1);
+    setBusy(null);
+  };
+
+  const switchMode = (next: AuthDialogMode) => {
+    setMode(next);
+    setError(null);
+    setConfirmationSent(false);
+    setPassword("");
+  };
 
   const connectProvider = async (provider: "google" | "microsoft") => {
     setBusy(provider);
@@ -147,8 +173,8 @@ export function AuthDialog({
     }
   };
 
-  const submitEmail = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const submitEmail = async (event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
     setBusy("email");
     setError(null);
     if (mode === "register" && !name.trim()) {
@@ -156,7 +182,7 @@ export function AuthDialog({
       setBusy(null);
       return;
     }
-    if ((mode === "register" || mode === "set-password") && password !== passwordRepeat) {
+    if (mode === "set-password" && password !== passwordRepeat) {
       setError("Die beiden Passwörter stimmen nicht überein.");
       setBusy(null);
       return;
@@ -167,9 +193,8 @@ export function AuthDialog({
         showToast("Anmeldung erfolgreich. Ihre Auswahl wird fortgesetzt.");
         onAuthenticated(mode);
       } else if (mode === "register") {
-        const result = await registerEmailAccount(
+        await registerEmailAccount(
           email,
-          password,
           name,
           {
             termsAcceptedAt: new Date().toISOString(),
@@ -177,17 +202,13 @@ export function AuthDialog({
           },
           destinationForMode(mode),
         );
-        if (result.confirmationRequired) {
-          setConfirmationSent(true);
-          setBusy(null);
-        } else {
-          showToast("Konto erstellt. Ihre Auswahl wird fortgesetzt.");
-          onAuthenticated(mode);
-        }
+        markSent();
+      } else if (mode === "link") {
+        await requestSignInLink(email, destinationForMode(mode));
+        markSent();
       } else if (mode === "recover") {
         await requestPasswordRecovery(email);
-        setConfirmationSent(true);
-        setBusy(null);
+        markSent();
       } else {
         await setAccountPassword(password);
         const cleanUrl = `${window.location.pathname}${window.location.hash}`;
@@ -210,21 +231,25 @@ export function AuthDialog({
             ? "Neues Passwort festlegen"
             : mode === "recover"
               ? "Zugang wiederherstellen"
-              : mode === "register"
-                ? intentCopy.title
-                : "Anmelden und direkt fortfahren"}
+              : mode === "link"
+                ? "Anmelden ohne Passwort"
+                : mode === "register"
+                  ? intentCopy.title
+                  : "Anmelden und direkt fortfahren"}
         </h2>
         <p>
           {mode === "set-password"
             ? "Legen Sie jetzt ein neues Passwort für Ihr bestätigtes Konto fest."
             : mode === "recover"
               ? "Wir senden einen sicheren Link an Ihre E-Mail-Adresse. Ihre aktuelle Anfrage bleibt dabei erhalten."
-              : intentCopy.body}
+              : mode === "link"
+                ? "Wir senden einen Anmeldelink an die Adresse Ihres Kontos. Ihre aktuelle Anfrage bleibt dabei erhalten."
+                : intentCopy.body}
         </p>
         {profileName && (intent === "book_profile" || intent === "contact_profile") ? (
           <div className="auth-profile-context"><strong>{profileName}</strong>{projectTitle ? <span>{projectTitle}</span> : null}</div>
         ) : null}
-        {mode !== "set-password" && mode !== "recover" ? (
+        {mode === "login" || mode === "register" ? (
           <>
             {GOOGLE_AUTH_ENABLED || MICROSOFT_AUTH_ENABLED ? (
               <>
@@ -240,8 +265,8 @@ export function AuthDialog({
               </>
             ) : null}
             <div className="auth-mode-tabs" role="tablist" aria-label="E-Mail-Zugang">
-              <button type="button" role="tab" aria-selected={mode === "login"} className={mode === "login" ? "active" : ""} onClick={() => { setMode("login"); setError(null); }}>Bestehendes Konto</button>
-              <button type="button" role="tab" aria-selected={mode === "register"} className={mode === "register" ? "active" : ""} onClick={() => { setMode("register"); setError(null); }}>Neues Konto</button>
+              <button type="button" role="tab" aria-selected={mode === "login"} className={mode === "login" ? "active" : ""} onClick={() => switchMode("login")}>Bestehendes Konto</button>
+              <button type="button" role="tab" aria-selected={mode === "register"} className={mode === "register" ? "active" : ""} onClick={() => switchMode("register")}>Neues Konto</button>
             </div>
           </>
         ) : null}
@@ -249,15 +274,43 @@ export function AuthDialog({
         {confirmationSent ? (
           <div className="confirmation-state" role="status">
             <span aria-hidden="true"><IconCheck size={16} /></span>
-            <h3>{mode === "recover" ? "Wiederherstellungslink versendet" : "Bestätigungslink versendet"}</h3>
+            <h3>
+              {mode === "recover"
+                ? "Wiederherstellungslink versendet"
+                : mode === "link"
+                  ? "Anmeldelink versendet"
+                  : "Bestätigungslink versendet"}
+            </h3>
             <p>
               {mode === "recover" ? (
                 <>Öffnen Sie den Link in der E-Mail an <strong>{email}</strong> und legen Sie anschließend ein neues Passwort fest.</>
+              ) : mode === "link" ? (
+                // Ohne Konto zu dieser Adresse geht keine Mail hinaus. Der Satz
+                // sagt das, ohne zu verraten, ob es ein Konto gibt.
+                <>Besteht zu <strong>{email}</strong> ein Konto, ist der Link unterwegs. Öffnen Sie ihn in diesem Browser; danach geht es an dieser Stelle weiter.</>
               ) : (
-                <>Öffnen Sie den Link in der E-Mail an <strong>{email}</strong>, um Ihr Konto mit dem gewählten Passwort zu aktivieren.</>
+                <>Öffnen Sie den Link in der E-Mail an <strong>{email}</strong> in diesem Browser. {intentCopy.afterConfirmation}</>
               )}
             </p>
-            <button type="button" onClick={onClose}>Verstanden</button>
+            <p className="confirmation-hint">
+              Keine E-Mail? Prüfen Sie den Spam-Ordner. Ein neuer Link ersetzt den vorherigen.
+            </p>
+            <div className="confirmation-actions">
+              <button type="button" onClick={onClose}>Verstanden</button>
+              <button
+                type="button"
+                className="confirmation-resend"
+                disabled={!resendReady || Boolean(busy)}
+                onClick={() => void submitEmail()}
+              >
+                {busy === "email"
+                  ? "Wird gesendet …"
+                  : resendReady
+                    ? "Link erneut senden"
+                    : "Erneut senden nach 1 Minute"}
+              </button>
+            </div>
+            {error ? <p className="form-error" role="alert">{error}</p> : null}
           </div>
         ) : (
           <form className="email-login" onSubmit={submitEmail}>
@@ -273,27 +326,38 @@ export function AuthDialog({
                 <input id="login-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
               </>
             ) : null}
-            {mode === "login" || mode === "register" || mode === "set-password" ? (
+            {mode === "login" || mode === "set-password" ? (
               <>
                 <label htmlFor="login-password">{mode === "set-password" ? "Neues Passwort" : "Passwort"}</label>
                 <input id="login-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={mode === "login" ? "current-password" : "new-password"} minLength={8} required />
               </>
             ) : null}
-            {mode === "register" || mode === "set-password" ? (
+            {mode === "set-password" ? (
               <>
                 <label htmlFor="login-password-repeat">Passwort wiederholen</label>
                 <input id="login-password-repeat" type="password" value={passwordRepeat} onChange={(event) => setPasswordRepeat(event.target.value)} autoComplete="new-password" minLength={8} required />
               </>
             ) : null}
             {mode === "login" ? (
-              <button className="forgot-password" type="button" onClick={() => { setMode("recover"); setError(null); setPassword(""); }}>
-                Passwort vergessen?
-              </button>
+              <div className="login-alternatives">
+                <button className="forgot-password" type="button" onClick={() => switchMode("link")}>
+                  Ohne Passwort anmelden
+                </button>
+                <button className="forgot-password" type="button" onClick={() => switchMode("recover")}>
+                  Passwort vergessen?
+                </button>
+              </div>
             ) : null}
-            {mode === "recover" ? (
-              <button className="back-to-login" type="button" onClick={() => { setMode("login"); setError(null); }}>
+            {mode === "recover" || mode === "link" ? (
+              <button className="back-to-login" type="button" onClick={() => switchMode("login")}>
                 Zurück zur Anmeldung
               </button>
+            ) : null}
+            {mode === "register" ? (
+              <p className="auth-passwordless-note">
+                Kein Passwort nötig: Sie bestätigen Ihre Adresse über einen Link
+                per E-Mail. Auch später melden Sie sich einfach per Link an.
+              </p>
             ) : null}
             {/*
               Ein Pflichthäkchen, eines freiwillig — und die beiden erklären
@@ -346,10 +410,12 @@ export function AuthDialog({
                 : mode === "login"
                   ? "Mit E-Mail anmelden"
                   : mode === "register"
-                    ? "Konto erstellen"
-                    : mode === "recover"
-                      ? "Wiederherstellungslink senden"
-                      : "Passwort speichern & fortfahren"}
+                    ? "Bestätigungslink senden"
+                    : mode === "link"
+                      ? "Anmeldelink senden"
+                      : mode === "recover"
+                        ? "Wiederherstellungslink senden"
+                        : "Passwort speichern & fortfahren"}
             </button>
           </form>
         )}

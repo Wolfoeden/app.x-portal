@@ -5,6 +5,7 @@ import {
   planForStripePaymentLink,
   planForStripePriceId,
 } from "@/lib/billing/payment-links";
+import { recordSubscriptionPaid } from "@/lib/billing/funnel";
 import type { FixedMonthlyPlan } from "@/lib/billing/plans";
 import { verifyStripeSignature } from "@/lib/billing/stripe-signature";
 import { deliverEmail } from "@/lib/email/deliver";
@@ -341,8 +342,19 @@ export async function POST(request: Request) {
       was_first_payment?: unknown;
     } | null;
     const activated = row?.activated === true;
+    const firstPayment = row?.was_first_payment === true;
     logEvent("stripe_webhook_activated", { eventId, repeated: !activated });
-    if (activated && row?.was_first_payment === true) {
+    if (activated) {
+      // Nur eine tatsächlich neu gesetzte Periode zählt. Ein wiederholt
+      // zugestelltes Ereignis käme sonst zweimal in den Umsatztrichter.
+      await recordSubscriptionPaid({
+        userId: linked.user_id,
+        plan: plan.id,
+        monthlyNetCents: plan.priceNetCents,
+        firstPayment,
+      });
+    }
+    if (activated && firstPayment) {
       await sendOrderConfirmation(admin, linked.user_id, eventId, plan);
     }
     return NextResponse.json({ received: true, activated });

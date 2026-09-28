@@ -7,10 +7,12 @@ const mocks = vi.hoisted(() => ({
   maybeSingle: vi.fn(),
   getUserById: vi.fn(),
   deliver: vi.fn(),
+  writeAuditEvent: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/email/deliver", () => ({ deliverEmail: mocks.deliver }));
+vi.mock("@/lib/audit/write", () => ({ writeAuditEvent: mocks.writeAuditEvent }));
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminSupabaseClient: () => ({
     rpc: mocks.rpc,
@@ -102,6 +104,7 @@ beforeEach(() => {
     error: null,
   });
   mocks.deliver.mockResolvedValue({ delivered: true });
+  mocks.writeAuditEvent.mockResolvedValue("trace");
   vi.spyOn(console, "info").mockImplementation(() => undefined);
 });
 
@@ -179,6 +182,39 @@ describe("POST /api/stripe/webhook", () => {
       p_invoice_id: "in_1",
     });
     expect(mocks.deliver).toHaveBeenCalledTimes(1);
+    expect(mocks.writeAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorUserId: ACCOUNT,
+        action: "billing_subscription_paid",
+        metadata: {
+          plan: "pro",
+          monthlyNetCents: CREDIT_PLANS.pro.priceNetCents,
+          first: true,
+        },
+      }),
+    );
+  });
+
+  it("zählt ein erneut zugestelltes Ereignis nicht ein zweites Mal als Zahlung", async () => {
+    mocks.rpc.mockImplementation((name: string) => Promise.resolve({
+      data: name === "activate_paid_plan"
+        ? [{ activated: false, was_first_payment: false }]
+        : [{ recorded: true }],
+      error: null,
+    }));
+
+    await POST(request(event("invoice.paid", invoiceObject())));
+
+    expect(mocks.writeAuditEvent).not.toHaveBeenCalled();
+  });
+
+  it("schaltet frei, auch wenn der Messpunkt nicht geschrieben werden kann", async () => {
+    mocks.writeAuditEvent.mockRejectedValue(new Error("audit down"));
+
+    const response = await POST(request(event("invoice.paid", invoiceObject())));
+
+    expect(response.status).toBe(200);
+    expect(mocks.deliver).toHaveBeenCalledTimes(1);
   });
 
   it("verschickt bei einer Verlängerung keine neue Vertragsbestätigung", async () => {
@@ -192,6 +228,12 @@ describe("POST /api/stripe/webhook", () => {
     await POST(request(event("invoice.paid", invoiceObject())));
 
     expect(mocks.deliver).not.toHaveBeenCalled();
+    expect(mocks.writeAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "billing_subscription_paid",
+        metadata: expect.objectContaining({ first: false }),
+      }),
+    );
   });
 
   it("markiert eine fehlgeschlagene Rechnung, ohne Credits neu zu setzen", async () => {

@@ -10,7 +10,7 @@
  * Eine Meldung darf deshalb nur dann auf die Eingabe zeigen, wenn der Server
  * die Eingabe auch tatsaechlich beanstandet hat.
  */
-export type AuthAttemptMode = "login" | "register" | "recover" | "set-password";
+export type AuthAttemptMode = "login" | "register" | "link" | "recover" | "set-password";
 
 /** Was Supabase an einem Fehler mitliefert, soweit wir es auswerten. */
 type MaybeAuthError = {
@@ -68,14 +68,29 @@ export function isServiceSideAuthFailure(error: unknown): boolean {
  *
  * Die Empfaengerdomain existierte nicht. Die Meldung sagte trotzdem "unser
  * Dienst ist gestoert" und schickte jemanden weg, dessen Adresse schlicht
- * keine Post annimmt. Umgekehrt darf sie nicht auf das Passwort zeigen: Daran
- * liegt es in keinem der beiden Faelle. Genannt werden deshalb beide, und die
- * einzige Pruefung, die der Nutzer selbst machen kann, steht dabei.
+ * keine Post annimmt. Genannt werden deshalb beide Ursachen, und die einzige
+ * Pruefung, die der Nutzer selbst machen kann, steht dabei.
  */
 const SERVICE_SIDE_MESSAGE =
-  "Die Bestätigungsmail konnte nicht zugestellt werden. Das liegt nicht an Ihrem Passwort — entweder ist unser Versand gerade gestört, oder die angegebene Adresse nimmt keine Nachrichten an. Prüfen Sie bitte die Schreibweise; stimmt sie, versuchen Sie es später erneut oder wenden Sie sich an Roman Dering.";
+  "Die E-Mail konnte nicht zugestellt werden. Entweder ist unser Versand gerade gestört, oder die angegebene Adresse nimmt keine Nachrichten an. Prüfen Sie bitte die Schreibweise; stimmt sie, versuchen Sie es später erneut oder wenden Sie sich an Roman Dering.";
+
+/**
+ * Supabase lässt je Adresse nur einen Link pro Minute zu und meldet das mit
+ * demselben Code wie ein gestörter Versand. Wer zweimal klickt, hat aber schon
+ * einen gültigen Link im Postfach — die Meldung muss das sagen, statt ihn die
+ * Schreibweise prüfen zu lassen.
+ */
+function isResendTooSoon(error: unknown) {
+  return (
+    readCode(error) === "over_email_send_rate_limit" &&
+    readMessage(error).includes("for security purposes")
+  );
+}
 
 export function authErrorMessage(error: unknown, mode: AuthAttemptMode): string {
+  if (isResendTooSoon(error)) {
+    return "Ein Link ist bereits unterwegs. Prüfen Sie Ihr Postfach und den Spam-Ordner; einen neuen Link können Sie nach einer Minute anfordern.";
+  }
   if (isServiceSideAuthFailure(error)) return SERVICE_SIDE_MESSAGE;
 
   const message = readMessage(error);
@@ -105,7 +120,10 @@ export function authErrorMessage(error: unknown, mode: AuthAttemptMode): string 
     return "Der Wiederherstellungslink konnte gerade nicht versendet werden.";
   }
   if (mode === "register") {
-    return "Das Konto konnte gerade nicht erstellt werden. Prüfen Sie E-Mail und Passwort.";
+    return "Der Bestätigungslink konnte gerade nicht versendet werden. Prüfen Sie die E-Mail-Adresse.";
+  }
+  if (mode === "link") {
+    return "Der Anmeldelink konnte gerade nicht versendet werden. Prüfen Sie die E-Mail-Adresse.";
   }
   return "Das neue Passwort konnte gerade nicht gespeichert werden.";
 }

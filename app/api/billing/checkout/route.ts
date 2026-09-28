@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireCurrentUser } from "@/lib/auth/current-user";
+import { recordCheckoutStarted } from "@/lib/billing/funnel";
 import {
   fixedPlanCheckout,
   type CheckoutPlanId,
@@ -29,6 +30,7 @@ export async function GET(request: Request) {
   try {
     const user = await requireCurrentUser();
     if (user.isAnonymous) {
+      await recordCheckoutStarted({ userId: user.id, plan, result: "login_required" });
       return NextResponse.redirect(
         new URL(`/chat?checkout=${plan}`, redirectBase),
         303,
@@ -36,6 +38,11 @@ export async function GET(request: Request) {
     }
 
     const checkout = fixedPlanCheckout(plan, user.id);
+    await recordCheckoutStarted({
+      userId: user.id,
+      plan,
+      result: checkout ? "stripe" : "unavailable",
+    });
     if (!checkout) {
       return NextResponse.redirect(
         new URL("/preise?billing=unavailable", redirectBase),
@@ -45,6 +52,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(checkout, 303);
   } catch (error) {
     if (error instanceof Response && error.status === 401) {
+      await recordCheckoutStarted({ userId: null, plan, result: "login_required" });
       return NextResponse.redirect(
         new URL(`/chat?checkout=${plan}`, redirectBase),
         303,
