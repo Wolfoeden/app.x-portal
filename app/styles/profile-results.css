@@ -84,9 +84,7 @@
 
 .result-method { border-top: 1px solid var(--border); }
 .result-method > p { color: var(--muted); font-size: var(--fs-xs); line-height: 1.5; }
-.result-method summary,
-.recovery-research summary { cursor: pointer; padding: 8px 0; color: var(--muted); font-size: var(--fs-xs); }
-.recovery-research summary:hover,
+.result-method summary { cursor: pointer; padding: 8px 0; color: var(--muted); font-size: var(--fs-xs); }
 .result-method summary:hover { color: var(--ink); }
 
 /* Kein Treffer: keine Karte, nur die Wege weiter. */
@@ -103,7 +101,19 @@
 .recovery-editor .brief-field textarea,
 .recovery-editor .brief-field select { border-color: var(--border); background: var(--surface); }
 .recovery-editor .brief-editor-actions { padding: 10px 7px 0; }
-.recovery-research .agent-launch { margin: 4px 0 8px; }
+/* Der bezahlte Weg nach den kostenlosen: eine ruhige Fläche mit grüner Kante,
+   kein Prospekt — Überschrift mit Preis, ein Satz, ein Knopf. */
+.recovery-research {
+  margin: 14px 0 6px;
+  border: 1px solid var(--green-border);
+  border-left: 3px solid var(--green);
+  border-radius: 10px;
+  background: var(--surface-raised);
+  padding: 14px 16px 12px;
+}
+.recovery-research-title { margin: 0; color: var(--ink); font-size: var(--fs-sm); font-weight: 680; }
+.recovery-research-lead { max-width: 62ch; margin: 5px 0 0; color: var(--muted); font-size: var(--fs-xs); line-height: 1.5; }
+.recovery-research .agent-launch { margin: 10px 0 0; }
 
 .auth-profile-context { display: grid; gap: 4px; margin: 12px 0 18px; border-radius: 9px; background: var(--surface-raised); padding: 12px 14px; }
 .auth-profile-context span { color: var(--muted); font-size: var(--fs-xs); }

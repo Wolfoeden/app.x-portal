@@ -131,6 +131,11 @@ function lead(input: { id: number; text: string }) {
 const TREFFER = "React Engineer — React gesucht, remote — https://example.invalid/p/1";
 const OHNE_TREFFER = "SAP Berater — SAP S/4HANA gesucht, remote — https://example.invalid/p/2";
 
+// Die Versandläufe rechnen mit einer festen Uhr: Ein Entwurf verfällt nach
+// LEAD_DRAFT_MAX_AGE_DAYS, und gegen die echte Uhr wäre der Beleg unten
+// irgendwann zu alt — die Tests fielen dann mit dem Kalender statt mit dem Code.
+const VORBEREITET_AM = new Date("2026-09-07T06:00:00.000Z");
+
 const ENTWURF = {
   outreach_id: "11111111-1111-4111-8111-aaaaaaaaaaaa",
   lead_id: 1,
@@ -139,7 +144,7 @@ const ENTWURF = {
   body: "Guten Tag …",
   cta_url: "https://x-portal.eu/chat?q=React+Engineer",
   prepared_profile_id: PROFIL.id,
-  prepared_at: "2026-09-07T06:00:00.000Z",
+  prepared_at: VORBEREITET_AM.toISOString(),
 };
 
 beforeEach(() => {
@@ -279,7 +284,7 @@ describe("Vorbereiten: der Abgleich", () => {
 
 describe("Versenden: die vorbereiteten Entwürfe", () => {
   it("stellt einen Entwurf zu und legt den Lead ab", async () => {
-    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu", sendSpacingMs: 0 });
+    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu", sendSpacingMs: 0, now: VORBEREITET_AM });
 
     expect(result.sent).toBe(1);
     expect(mocks.deliver).toHaveBeenCalledWith(
@@ -299,7 +304,7 @@ describe("Versenden: die vorbereiteten Entwürfe", () => {
   });
 
   it("gleicht nicht erneut ab, denn der Abgleich ist gelaufen", async () => {
-    await runLeadSendPass({ senderEmail: "info@x-portal.eu", sendSpacingMs: 0 });
+    await runLeadSendPass({ senderEmail: "info@x-portal.eu", sendSpacingMs: 0, now: VORBEREITET_AM });
 
     expect(mocks.recordMatch).not.toHaveBeenCalled();
     expect(mocks.saveDraft).not.toHaveBeenCalled();
@@ -308,7 +313,7 @@ describe("Versenden: die vorbereiteten Entwürfe", () => {
   it("verwirft den Entwurf, wenn das angebotene Profil nicht mehr buchbar ist", async () => {
     mocks.profiles.mockResolvedValue([]);
 
-    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu", sendSpacingMs: 0 });
+    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu", sendSpacingMs: 0, now: VORBEREITET_AM });
 
     expect(result.discarded).toBe(1);
     expect(result.sent).toBe(0);
@@ -340,7 +345,7 @@ describe("Versenden: die vorbereiteten Entwürfe", () => {
   it("gibt den Anspruch frei, wenn die Zustellung scheitert", async () => {
     mocks.deliver.mockResolvedValue({ delivered: false, reason: "smtp_error" });
 
-    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu", sendSpacingMs: 0 });
+    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu", sendSpacingMs: 0, now: VORBEREITET_AM });
 
     expect(result.sent).toBe(0);
     expect(result.skipped).toBe(1);
@@ -354,7 +359,7 @@ describe("Versenden: die vorbereiteten Entwürfe", () => {
   it("überspringt einen Entwurf, den ein anderer Lauf schon beansprucht hat", async () => {
     mocks.claimDraft.mockResolvedValue({ claimed: false, reason: "already_sent" });
 
-    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu", sendSpacingMs: 0 });
+    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu", sendSpacingMs: 0, now: VORBEREITET_AM });
 
     expect(result.sent).toBe(0);
     expect(result.skipped).toBe(1);
@@ -367,6 +372,7 @@ describe("Versenden: die vorbereiteten Entwürfe", () => {
     const result = await runLeadSendPass({
       senderEmail: "info@x-portal.eu",
       sendSpacingMs: 0,
+      now: VORBEREITET_AM,
       dailyLimit: 20,
     });
 
@@ -385,6 +391,7 @@ describe("Versenden: die vorbereiteten Entwürfe", () => {
     const result = await runLeadSendPass({
       senderEmail: "info@x-portal.eu",
       sendSpacingMs: 0,
+      now: VORBEREITET_AM,
       dailyLimit: 2,
     });
 
@@ -397,7 +404,7 @@ describe("Versenden: die vorbereiteten Entwürfe", () => {
   it("meldet einen leeren Vorrat als solchen", async () => {
     mocks.listDrafts.mockResolvedValue([]);
 
-    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu", sendSpacingMs: 0 });
+    const result = await runLeadSendPass({ senderEmail: "info@x-portal.eu", sendSpacingMs: 0, now: VORBEREITET_AM });
 
     expect(result.stoppedBy).toBe("nothing_prepared");
     expect(result.sent).toBe(0);
@@ -408,6 +415,7 @@ describe("Versenden: die vorbereiteten Entwürfe", () => {
     const result = await runLeadSendPass({
       senderEmail: "info@x-portal.eu",
       sendSpacingMs: 0,
+      now: VORBEREITET_AM,
       dryRun: true,
     });
 
@@ -527,7 +535,7 @@ describe("Der Abgleich liest wie im Chat", () => {
   });
 
   it("fragt das Modell im Versandlauf nicht — der Abgleich ist gelaufen", async () => {
-    await runLeadSendPass({ senderEmail: "info@x-portal.eu", sendSpacingMs: 0 });
+    await runLeadSendPass({ senderEmail: "info@x-portal.eu", sendSpacingMs: 0, now: VORBEREITET_AM });
 
     expect(mocks.extract).not.toHaveBeenCalled();
   });
@@ -613,6 +621,7 @@ describe("Von Hand und automatisch nehmen denselben Weg", () => {
     const result = await runLeadSendPass({
       senderEmail: "info@x-portal.eu",
       sendSpacingMs: 60,
+      now: VORBEREITET_AM,
     });
     const gedauert = Date.now() - start;
 

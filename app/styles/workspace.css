@@ -4135,6 +4135,28 @@ dd.is-unknown,
 .cookie-options strong { display: block; margin-top: 22px; font-size: 18px; }
 .cookie-options p { margin: 8px 0 0; color: #999994; font-size: var(--fs-2xs); }
 
+/* Die Kenntnisnahme ist keine Entscheidung, also auch kein Vorhang: Solange es
+   nichts auszuwählen gibt, steht sie als kleine Karte in der Ecke. Als dunkler
+   Block über die volle Breite verdeckte sie beim ersten Besuch die halbe
+   Startseite, noch bevor jemand gelesen hatte, worum es geht. Die Auswahl
+   selbst (`is-settings`) bleibt der zentrierte Dialog. */
+.cookie-layer:not(.is-settings) { inset: auto auto 0 0; width: min(100%, 440px); padding: 16px; background: none; }
+.cookie-layer:not(.is-settings) .cookie-panel {
+  grid-template-columns: 1fr; gap: 12px; padding: 16px 18px;
+  border: 1px solid var(--border-strong); border-radius: var(--radius-md, 14px);
+  background: var(--surface); color: var(--ink); box-shadow: var(--shadow-soft);
+}
+.cookie-layer:not(.is-settings) .xhome-label { display: none; }
+.cookie-layer:not(.is-settings) .cookie-panel h2 { font-size: var(--fs-sm); letter-spacing: -.01em; line-height: 1.3; }
+.cookie-layer:not(.is-settings) .cookie-copy > p:last-child { margin-top: 6px; color: var(--muted); font-size: var(--fs-2xs); line-height: 1.5; }
+.cookie-layer:not(.is-settings) .cookie-copy a { color: var(--ink); }
+.cookie-layer:not(.is-settings) .cookie-actions { justify-content: flex-end; }
+.cookie-layer:not(.is-settings) .cookie-actions button { min-height: 36px; border-radius: var(--radius-sm); }
+.cookie-layer:not(.is-settings) .cookie-actions button.is-primary { border-color: var(--ink); background: var(--ink); color: #fff; -webkit-text-fill-color: #fff; }
+@media (max-width: 520px) {
+  .cookie-layer:not(.is-settings) { width: 100%; padding: 10px; }
+}
+
 .project-dialog {
   display: grid;
   gap: 14px;
@@ -5002,3 +5024,14 @@ dd.is-unknown,
     max-height: calc((100dvh - 48px) / var(--ui-zoom));
   }
 }
+
+/* Aufgebraucht ist kein Fehler, sondern der Moment für den nächsten Schritt:
+   eine ruhige Karte mit einem Knopf statt roter Warnschrift. */
+.composer-credit-status.is-exhausted {
+  border: 1px solid var(--amber-border);
+  border-radius: var(--radius-sm);
+  background: var(--amber-raised);
+  padding: 11px 13px;
+  color: var(--ink-soft);
+}
+.composer-credit-status.is-exhausted p { margin: 0; }

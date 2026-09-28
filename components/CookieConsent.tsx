@@ -106,18 +106,30 @@ export function CookieConsent() {
                 ? "Ihre Datenschutz-Auswahl"
                 : "Nur notwendige Cookies"}
           </h2>
-          <p>
-            XPORTAL verwendet ausschließlich technisch notwendige Cookies und
-            Sitzungsspeicher für Anmeldung, Sicherheit und Ihre Auswahl. Auf dem
-            Kontaktformular prüft hCaptcha, ob ein Mensch
-            absendet; dabei wird Ihre IP-Adresse an Intuition Machines, Inc.
-            (USA) übertragen.
-            {OPTIONAL_SERVICES_AVAILABLE
-              ? " Optionale Dienste werden erst nach Ihrer Zustimmung geladen."
-              : " Analyse- und Marketingdienste setzen wir nicht ein — hier gibt es nichts zu entscheiden. Sollte sich das ändern, fragen wir vorher."}
-            {" "}<a href="/privacy">Datenschutzhinweise</a>
-            {" · "}<a href="/imprint">Impressum</a>
-          </p>
+          {/* Die Kenntnisnahme ohne Wahl bleibt kurz. hCaptcha wird dort
+              ausgewiesen, wo es läuft (am Formular), und die vollständige
+              Fassung steht in den Einstellungen und Datenschutzhinweisen. */}
+          {view === "banner" && !OPTIONAL_SERVICES_AVAILABLE ? (
+            <p>
+              XPORTAL setzt nur technisch notwendige Cookies für Anmeldung,
+              Sicherheit und Ihre Auswahl – keine Analyse, kein Marketing.
+              {" "}<a href="/privacy">Datenschutzhinweise</a>
+              {" · "}<a href="/imprint">Impressum</a>
+            </p>
+          ) : (
+            <p>
+              XPORTAL verwendet ausschließlich technisch notwendige Cookies und
+              Sitzungsspeicher für Anmeldung, Sicherheit und Ihre Auswahl. Auf dem
+              Kontaktformular prüft hCaptcha, ob ein Mensch
+              absendet; dabei wird Ihre IP-Adresse an Intuition Machines, Inc.
+              (USA) übertragen.
+              {OPTIONAL_SERVICES_AVAILABLE
+                ? " Optionale Dienste werden erst nach Ihrer Zustimmung geladen."
+                : " Analyse- und Marketingdienste setzen wir nicht ein — hier gibt es nichts zu entscheiden. Sollte sich das ändern, fragen wir vorher."}
+              {" "}<a href="/privacy">Datenschutzhinweise</a>
+              {" · "}<a href="/imprint">Impressum</a>
+            </p>
+          )}
         </div>
 
         {view === "settings" ? (

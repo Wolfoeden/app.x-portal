@@ -126,7 +126,7 @@ function firstRow(data: unknown): Record<string, unknown> | null {
 /**
  * Die Kontingente selbst stehen in lib/ai/credit-policy.ts, weil die
  * Oberfläche sie nennt. Das angemeldete Trial ist absichtlich nicht per
- * Umgebung überschreibbar: 300 Credits einmalig sind ein Vertragsmerkmal.
+ * Umgebung überschreibbar: Das einmalige Startguthaben ist ein Vertragsmerkmal.
  */
 export {
   ACCOUNT_MONTHLY_CREDITS,
@@ -156,11 +156,14 @@ export function currentPeriodEndIso(now: Date = new Date()): string {
  * Tippfehler in einer Umgebungsvariablen hatte die KI-Funktionen still
  * abgeschaltet, und nichts in der Anwendung hat es gemeldet.
  *
- * `10`, `63` und `100` stammen aus früheren Stufen. Sie bleiben zulässig, weil
- * abgelaufene Perioden Historie sind und nicht rückwirkend geändert werden.
+ * `10`, `63`, `100` und `300` stammen aus früheren Stufen. Sie bleiben
+ * zulässig, weil abgelaufene Perioden Historie sind und nicht rückwirkend
+ * geändert werden. `30` und `90` sind das heutige Gast- und Startguthaben; die
+ * Kontingentfunktionen in der Datenbank prüfen nur noch auf nicht negative
+ * Werte, die Liste ist die Sicherung auf Anwendungsseite.
  */
 export const ALLOWED_MONTHLY_CREDIT_TOTALS: readonly number[] = [
-  0, 10, 63, 100, 300, 500, 1_250, 3_000, 4_000,
+  0, 10, 30, 63, 90, 100, 300, 500, 1_250, 3_000, 4_000,
 ];
 
 /**
@@ -376,7 +379,7 @@ export type BillingAccount = {
  *
  * Reihenfolge: erst das eigene Monatskontingent, danach der Pool des Teams.
  * Das eigene Guthaben zuerst zu verbrauchen ist die Zusage an das Mitglied —
- * seine 300 Credits gehoeren ihm, auch wenn er eingeladen wurde. Der Pool ist
+ * sein Startguthaben gehoert ihm, auch wenn er eingeladen wurde. Der Pool ist
  * der Puffer danach.
  *
  * Bewusst eine Vorabpruefung statt eines zweiten Reservierungsversuchs: eine

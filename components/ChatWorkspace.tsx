@@ -12,11 +12,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import {
-  ACCOUNT_MONTHLY_CREDITS,
-  BRIEF_ANALYSIS_CREDITS,
-  EXTERNAL_SEARCH_CREDITS,
-} from "@/lib/ai/credit-policy";
+import { EXTERNAL_SEARCH_CREDITS } from "@/lib/ai/credit-policy";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { openCookieSettings } from "@/components/CookieConsent";
 import { LegalFooter } from "@/components/LegalFooter";
@@ -45,6 +41,13 @@ import {
 } from "@/lib/auth/browser";
 import { AccountSummary, CreditPlansDialog } from "./chat/account";
 import {
+  exhaustedNotice,
+  hasManagedBilling,
+  pricingPath,
+  type ExhaustedNotice,
+  type PricingReason,
+} from "./chat/upgrade";
+import {
   clearAuthContinuation,
   continuationFromSearch,
   continuationPath,
@@ -64,7 +67,6 @@ import {
   ManageChatDialog,
 } from "./chat/dialogs";
 import {
-  formatCredits,
   initials,
   isRecord,
   nullableString,
@@ -995,16 +997,6 @@ function authViewFromClaims(data: unknown): AuthView {
   };
 }
 
-function formatUsageReset(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Beginn des nächsten Abrechnungszeitraums";
-  return new Intl.DateTimeFormat("de-DE", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(date);
-}
-
 class ProcessedRequestError extends Error {
   constructor(
     message: string,
@@ -1335,6 +1327,11 @@ export function ChatWorkspace({
     },
     [activeProject?.id],
   );
+
+  /** Zur einzigen Preisliste, mit dem Grund, damit sie sagen kann, warum. */
+  const openPricing = useCallback((reason: PricingReason) => {
+    window.location.assign(new URL(pricingPath(reason), window.location.origin).toString());
+  }, []);
 
   const refreshAuth = useCallback(async () => {
     const claims = await ensureGuestSession();
@@ -2893,9 +2890,18 @@ export function ChatWorkspace({
                   }
                   isAccountUser={isAccountUser}
                   onRename={isAccountUser ? updateAccountName : undefined}
+                  managesBilling={hasManagedBilling(usage)}
                   onMoreCredits={() => {
                     setAccountMenuOpen(false);
                     setSidebarOpen(false);
+                    // Laufende Abos brauchen Kundenportal, Team und Limit —
+                    // die stehen im Dialog. Wer noch im kostenlosen Start
+                    // ist, hat dort nichts zu verwalten und will Tarife sehen.
+                    if (hasManagedBilling(usage)) {
+                      setPlansOpen(true);
+                      void runPlanTeamRequest({ method: "GET" }, null);
+                      return;
+                    }
                     window.location.assign(
                       new URL("/preise", window.location.origin).toString(),
                     );
@@ -3130,11 +3136,7 @@ export function ChatWorkspace({
                     onUpdateBrief={(message) => void sendMessage(message)}
                     busy={Boolean(pendingAssistant)}
                     onSaveSearch={saveCurrentSearch}
-                    onNeedCredits={() => {
-                      window.location.assign(
-                        new URL("/preise", window.location.origin).toString(),
-                      );
-                    }}
+                    onNeedCredits={() => openPricing("recherche")}
                     selectedProfileId={selectedProfileId}
                     onOpenDetails={() => {
                       // Opened on purpose, so a following result keeps it open.
@@ -3228,33 +3230,11 @@ export function ChatWorkspace({
               das Guthaben aufgebraucht ist — und für einen Gast ist das der
               Zeitpunkt, ein Konto anzulegen, keine Fehlermeldung. */}
           {usage && freeUsageExhausted ? (
-            isAccountUser ? (
-              <p className="composer-credit-status is-exhausted" role="status">
-                Ihr Monatsguthaben ist aufgebraucht. Sie können weiter schreiben;
-                XPORTAL speichert und gleicht Ihre Angaben regelbasiert ab. Neues
-                Guthaben gibt es ab {formatUsageReset(usage.credits.periodEnd)}.
-              </p>
-            ) : (
-              <div className="composer-credit-status is-exhausted" role="status">
-                <p>
-                  Ihr kostenloses Guthaben ist aufgebraucht. Mit einem Konto
-                  erhalten Sie {formatCredits(ACCOUNT_MONTHLY_CREDITS)} Credits
-                  im Monat — bei {BRIEF_ANALYSIS_CREDITS} Credits pro Projektanalyse
-                  reicht das für{" "}
-                  {formatCredits(
-                    Math.floor(ACCOUNT_MONTHLY_CREDITS / BRIEF_ANALYSIS_CREDITS),
-                  )}{" "}
-                  Anfragen.
-                </p>
-                <button
-                  type="button"
-                  className="composer-signup"
-                  onClick={() => openAuth("generic")}
-                >
-                  Konto erstellen
-                </button>
-              </div>
-            )
+            <ExhaustedCreditStatus
+              notice={exhaustedNotice(usage, isAccountUser)}
+              onSignup={() => openAuth("generic")}
+              onPricing={() => openPricing("guthaben")}
+            />
           ) : null}
           <p className="composer-disclosure">
             Daten werden nicht zum Trainieren von Modellen verwendet.
@@ -3373,6 +3353,31 @@ export function assistantAttribution(): {
   // attribution stays truthful when one project contains both AI and fallback
   // turns; the adjacent analysis trace identifies the actual provider state.
   return { ariaLabel: "Nachricht von XPORTAL", author: "XPORTAL", badge: null };
+}
+
+function ExhaustedCreditStatus({
+  notice,
+  onSignup,
+  onPricing,
+}: {
+  notice: ExhaustedNotice;
+  onSignup: () => void;
+  onPricing: () => void;
+}) {
+  return (
+    <div className="composer-credit-status is-exhausted" role="status">
+      <p>{notice.text}</p>
+      {notice.action ? (
+        <button
+          type="button"
+          className="composer-signup"
+          onClick={notice.action.kind === "signup" ? onSignup : onPricing}
+        >
+          {notice.action.label}
+        </button>
+      ) : null}
+    </div>
+  );
 }
 
 function MessageBubble({ message }: { message: ConversationMessage }) {

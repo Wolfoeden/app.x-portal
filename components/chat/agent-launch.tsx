@@ -2,8 +2,15 @@
 
 import { useEffect, useState } from "react";
 
-import { EXTERNAL_SEARCH_CREDITS } from "@/lib/ai/credit-policy";
+import {
+  EXTERNAL_SEARCH_CREDITS,
+  affordableCount,
+  countLabel,
+} from "@/lib/ai/credit-policy";
+import { START_CREDITS } from "@/lib/billing/plans";
 import { IconSpark } from "@/components/icons";
+
+import { entryMonthlyEuro } from "./upgrade";
 
 /**
  * Der Einstieg in die Websuche, wenn der Katalog nichts hergibt.
@@ -53,11 +60,16 @@ function label(state: AgentLaunchState): string {
 function note(state: AgentLaunchState): string {
   switch (state.kind) {
     case "login":
-      return "Sucht öffentlich weiter · nur mit Konto";
+      // Der Grund, sich jetzt anzumelden, gehört neben den Knopf: Das
+      // kostenlose Startguthaben trägt mehrere Läufe.
+      return `Kostenloses Konto · ${START_CREDITS} Start-Credits reichen für ${countLabel(
+        affordableCount(START_CREDITS, "research"),
+        "research",
+      )}`;
     case "loading":
       return `${EXTERNAL_SEARCH_CREDITS} Credits`;
     case "insufficient":
-      return `${EXTERNAL_SEARCH_CREDITS} Credits nötig · ${state.remaining} verfügbar`;
+      return `${EXTERNAL_SEARCH_CREDITS} Credits nötig · ${state.remaining} verfügbar · Monatstarife ab ${entryMonthlyEuro()} € netto`;
     default:
       return `${EXTERNAL_SEARCH_CREDITS} Credits · bei Fehlschlag kostenlos`;
   }

@@ -4,7 +4,8 @@ import { JsonLd } from "@/components/JsonLd";
 import { ProjectLink, Questions } from "./MarketingPage";
 import { MARKETING_PAGE } from "@/lib/seo";
 import { breadcrumbStructuredData } from "@/lib/structured-data";
-import { BRIEF_ANALYSIS_CREDITS, CREDIT_PLANS } from "@/lib/ai/credit-policy";
+import { BRIEF_ANALYSIS_CREDITS, CREDIT_PLANS, countLabel, roundedExampleCount } from "@/lib/ai/credit-policy";
+import { PUBLIC_PRICING_PLANS, START_CREDITS, type FixedMonthlyPlan } from "@/lib/billing/plans";
 import styles from "./landing.module.css";
 
 function StepIcon({ kind }: { kind: "brief" | "profiles" | "conversation" }) {
@@ -13,6 +14,45 @@ function StepIcon({ kind }: { kind: "brief" | "profiles" | "conversation" }) {
     {kind === "profiles" ? <><rect x="7" y="17" width="23" height="35" rx="4" /><rect x="34" y="9" width="23" height="43" rx="4" /><circle cx="18.5" cy="28" r="4" /><path d="M12 43c0-9 13-9 13 0" /><circle cx="45.5" cy="23" r="4" /><path d="M39 37c0-9 13-9 13 0m-13 9 4 4 8-9" /></> : null}
     {kind === "conversation" ? <><path d="M10 11h32a5 5 0 0 1 5 5v17a5 5 0 0 1-5 5H24L12 48V38h-2a5 5 0 0 1-5-5V16a5 5 0 0 1 5-5Z" /><path d="M47 25h7a5 5 0 0 1 5 5v16a5 5 0 0 1-5 5v8L43 51H32m-17-29h22m-22 8h15" /></> : null}
   </svg>;
+}
+
+const MONTHLY_PLANS: readonly FixedMonthlyPlan[] = PUBLIC_PRICING_PLANS.flatMap((plan) =>
+  plan.billingModel === "fixed_monthly" ? [plan] : [],
+);
+const ENTRY_EURO = Math.min(...MONTHLY_PLANS.map((plan) => plan.euro));
+
+/**
+ * Der Preis gehört auf die Startseite. Wer hier entscheidet, ob sich der
+ * Versuch lohnt, fragt zuerst, was es danach kostet — und fand bisher nur eine
+ * FAQ-Zeile. Die Zahlen kommen aus demselben Katalog wie die Preisseite; die
+ * vollständige Liste bleibt dort.
+ */
+function PricingTeaser() {
+  return (
+    <section className={styles.pricing} aria-labelledby="preise-title">
+      <div className={styles.explanation}>
+        <p className={styles.eyebrow}>Preise</p>
+        <h2 id="preise-title">Kostenlos testen.<br />Bezahlen, wenn es sich lohnt.</h2>
+        <p>Die Analyse Ihres Projekts ist ohne Anmeldung möglich. Mit einem kostenlosen Konto erhalten Sie einmalig {START_CREDITS} Start-Credits. Wer regelmäßig sucht, wählt einen Monatstarif – monatlich kündbar.</p>
+        <Link className={styles.textLink} href={MARKETING_PAGE.pricing.path}>Alle Tarife vergleichen <span aria-hidden="true">↗</span></Link>
+      </div>
+      <ul className={styles.planList}>
+        <li>
+          <div><strong>Kostenloser Start</strong><span>{START_CREDITS} Credits einmalig · reicht für {countLabel(roundedExampleCount(START_CREDITS, "research"), "research")}</span></div>
+          <p><strong>0 €</strong></p>
+        </li>
+        {MONTHLY_PLANS.map((plan) => (
+          <li key={plan.id} className={plan.recommended ? styles.planRecommended : undefined}>
+            <div>
+              <strong>{plan.label}{plan.recommended ? <em>Empfohlen</em> : null}</strong>
+              <span>{plan.monthlyCredits.toLocaleString("de-DE")} Credits / Monat · {"rund " + countLabel(roundedExampleCount(plan.monthlyCredits, "research"), "research")}</span>
+            </div>
+            <p><strong>{plan.euro} €</strong><span>netto / Monat</span></p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 }
 
 export function FreelancerLanding() {
@@ -25,7 +65,11 @@ export function FreelancerLanding() {
           <h1>Freelancer finden.<br /><span>Termin buchen.</span></h1>
           <p className={styles.lead}>Projektbeschreibung bei XPORTAL einfügen, passende Profile prüfen und – bei vorhandenem Terminlink – direkt ein Erstgespräch buchen.</p>
           <div className={styles.actions}><ProjectLink>Projekt jetzt einfügen</ProjectLink><a className={styles.textLink} href="#ablauf">So funktioniert’s <span aria-hidden="true">↓</span></a></div>
-          <p className={styles.startNote}><span aria-hidden="true">✓</span> Analyse ohne Anmeldung · Termin mit Konto</p>
+          <ul className={styles.startNotes}>
+            <li><span aria-hidden="true">✓</span> Analyse kostenlos und ohne Anmeldung</li>
+            <li><span aria-hidden="true">✓</span> Termin buchen mit kostenlosem Konto</li>
+            <li><span aria-hidden="true">✓</span> Monatstarife ab {ENTRY_EURO} € netto, <Link href={MARKETING_PAGE.pricing.path}>monatlich kündbar</Link></li>
+          </ul>
         </div>
         <figure className={styles.heroFigure}>
           <div className={styles.figureLabel}><span>Projekttext einfügen</span><span aria-hidden="true">→</span><span>Match erhalten</span></div>
@@ -56,6 +100,8 @@ export function FreelancerLanding() {
       <section className={styles.fields} aria-labelledby="felder-title"><div><p className={styles.eyebrow}>Zum Beispiel für</p><h2 id="felder-title">Was möchten Sie umsetzen?</h2></div><ul><li>Softwareentwicklung</li><li>SAP &amp; Integration</li><li>KI &amp; Automatisierung</li><li>Anforderungen &amp; Prozesse</li></ul><Link className={styles.textLink} href={MARKETING_PAGE.it.path}>IT-Projekt konkretisieren <span aria-hidden="true">↗</span></Link></section>
 
       <section className={styles.conversation} aria-labelledby="auswahl-title"><Image src="/images/landing/project-conversation.webp" alt="Auftraggeber und Freelancer besprechen gemeinsam eine Projektbeschreibung am Tisch." width={1536} height={1024} sizes="(max-width: 760px) calc(100vw - 40px), (max-width: 1260px) 44vw, 520px" loading="lazy" /><div className={styles.explanation}><p className={styles.eyebrow}>Vom Match ins Gespräch</p><h2 id="auswahl-title">Passendes Profil gefunden?<br />Termin direkt buchen.</h2><p>Nach der Anmeldung öffnen Sie bei Profilen mit Terminlink die externe Terminseite und wählen selbst einen freien Slot. Erfahrung, Honorar und Verfügbarkeit klären Sie anschließend gemeinsam.</p><ProjectLink>Projekt jetzt einfügen</ProjectLink></div></section>
+
+      <PricingTeaser />
 
       <section className={styles.faq} id="fragen" aria-labelledby="fragen-title"><div><p className={styles.eyebrow}>Kurz beantwortet</p><h2 id="fragen-title">Noch Fragen?</h2><Link className={styles.textLink} href={MARKETING_PAGE.how.path}>Alle Details zum Ablauf <span aria-hidden="true">↗</span></Link></div><Questions items={[
         { question: "Kann ich ohne Anmeldung starten?", answer: <p>Ja. Beschreiben Sie Ihr Projekt als Gast. Für das dauerhafte Speichern und weitere Schritte mit einem ausgewählten Profil können Sie anschließend ein Konto erstellen.</p> },
