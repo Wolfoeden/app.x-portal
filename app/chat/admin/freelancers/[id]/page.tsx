@@ -10,6 +10,8 @@ import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { decisionDefaultsFromApplication } from "@/lib/freelancer/application";
 import { getApplication } from "@/lib/freelancer/applications-data";
+import { PROFILE_FEEDBACK_LABELS } from "@/lib/freelancer/profile-feedback";
+import { loadProfileFeedbackSummary } from "@/lib/freelancer/profile-feedback-data";
 import {
   APPLICATION_STATUS_LABELS,
   AVAILABILITY_LABELS,
@@ -70,6 +72,11 @@ export default async function FreelancerApplicationDetailPage({
 
   const { id } = await params;
   const application = await getApplication(id);
+  // Nur für veröffentlichte Profile. Ein Fehler beim Lesen darf die Prüfseite
+  // nicht verhindern; er steht dann als Hinweis im Abschnitt.
+  const feedback = application?.published_profile_id
+    ? await loadProfileFeedbackSummary(application.published_profile_id).catch(() => null)
+    : [];
   if (!application) notFound();
 
   await writeAuditEvent({
@@ -217,6 +224,27 @@ export default async function FreelancerApplicationDetailPage({
                 </div>
               ) : null}
             </dl>
+
+            {application.published_profile_id ? (
+              <>
+                <h3>Rückmeldungen aus Suchen</h3>
+                {feedback === null ? (
+                  <p className={styles.hint}>Rückmeldungen konnten nicht geladen werden.</p>
+                ) : feedback.length ? (
+                  <ul className={styles.feedbackList}>
+                    {feedback.map(({ reason, count }) => (
+                      <li key={reason}>
+                        {count}× {PROFILE_FEEDBACK_LABELS[reason]}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className={styles.hint}>
+                    Noch keine Suche hat dieses Profil als unpassend markiert.
+                  </p>
+                )}
+              </>
+            ) : null}
 
             <h3>Kurzprofil</h3>
             <p className={styles.summaryText}>

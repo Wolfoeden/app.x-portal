@@ -28,7 +28,15 @@ import {
   draftChanges,
   MODE_OPTIONS,
   type BriefDraft,
+  type BriefDraftField,
 } from "./brief-editor";
+import {
+  PROFILE_FEEDBACK_LABELS,
+  PROFILE_FEEDBACK_REASONS,
+  PROFILE_FEEDBACK_REFINEMENT,
+  type DismissedProfile,
+  type ProfileFeedbackReason,
+} from "@/lib/freelancer/profile-feedback";
 import { factPreview } from "./fact-preview";
 import { shouldHighlightProfile } from "./profile-fit";
 import { joinGerman, profilePresentation, type RequirementEvidence } from "./profile-presentation";
@@ -267,6 +275,9 @@ export function ResultSection({
   onToggleProfileFocus,
   onUpdateBrief,
   busy = false,
+  dismissedProfiles = [],
+  onDismissProfile,
+  onRestoreProfile,
 }: {
   brief: StructuredBrief | null;
   projectId: string | null;
@@ -301,8 +312,24 @@ export function ResultSection({
   onUpdateBrief?: (message: string) => void;
   /** Waehrend eine Antwort laeuft, startet keine zweite Suche. */
   busy?: boolean;
+  /** In dieser Suche als unpassend markierte Profile, samt Grund. */
+  dismissedProfiles?: readonly DismissedProfile[];
+  onDismissProfile?: (profile: FreelancerProfileResult, reason: ProfileFeedbackReason) => void;
+  onRestoreProfile?: (profileId: string) => void;
 }) {
   const launchState = agentLaunchState(isAccountUser, creditsRemaining);
+  // „Passt nicht" blendet ein Profil in dieser Suche aus. Sind alle
+  // Vorschläge verworfen, gilt die Auswahl für den Nutzer als leer — dann
+  // stehen dieselben Wege offen wie ohne Treffer, die Recherche eingeschlossen.
+  const dismissedIds = new Set(dismissedProfiles.map((entry) => entry.profileId));
+  const resultProfiles = [...profiles, ...partialProfiles];
+  const dismissedHere = dismissedProfiles.flatMap((entry) => {
+    const profile = resultProfiles.find((candidate) => candidate.id === entry.profileId);
+    return profile ? [{ ...entry, profile }] : [];
+  });
+  const shownProfiles = profiles.filter((profile) => !dismissedIds.has(profile.id));
+  const shownPartials = partialProfiles.filter((profile) => !dismissedIds.has(profile.id));
+  const allRankedDismissed = profiles.length > 0 && shownProfiles.length === 0;
   /**
    * Die Karte erscheint nur, wenn sie etwas sagt, das nicht schon oben steht.
    *
@@ -315,9 +342,10 @@ export function ResultSection({
    * ein Altergebnis ohne Einstufung.
    */
   const showNoMatchCard =
-    matchingStatus === "needs_clarification" ||
-    analysisMode === "fallback" ||
-    matchingStatus !== "no_reliable_match";
+    !allRankedDismissed &&
+    (matchingStatus === "needs_clarification" ||
+      analysisMode === "fallback" ||
+      matchingStatus !== "no_reliable_match");
   /**
    * Die Karten zeigen zuerst nur, was die Entscheidung braucht: Belege, offene
    * Punkte, Honorar und die Gesprächsaktion. Ausgeklappt ist immer hoechstens
@@ -332,13 +360,15 @@ export function ResultSection({
   const resultHeading =
     matchingStatus === "needs_clarification"
       ? "Bitte konkretisieren Sie die Anforderung"
-      : matchingStatus === "no_reliable_match"
-        ? partialProfiles.length
-          ? `${partialProfiles.length} ${partialProfiles.length === 1 ? "Profil" : "Profile"} mit Überschneidungen – wichtige Punkte offen`
-          : "Noch kein passendes Profil für diese Kombination"
-        : profiles.length
-          ? `${profiles.length} ${profiles.length === 1 ? "Profil für Ihr Projekt" : "Profile für Ihr Projekt"}`
-          : "Kein gespeichertes internes Ergebnis";
+      : allRankedDismissed
+        ? "Alle Vorschläge als unpassend markiert"
+        : matchingStatus === "no_reliable_match"
+          ? shownPartials.length
+            ? `${shownPartials.length} ${shownPartials.length === 1 ? "Profil" : "Profile"} mit Überschneidungen – wichtige Punkte offen`
+            : "Noch kein passendes Profil für diese Kombination"
+          : shownProfiles.length
+            ? `${shownProfiles.length} ${shownProfiles.length === 1 ? "Profil für Ihr Projekt" : "Profile für Ihr Projekt"}`
+            : "Kein gespeichertes internes Ergebnis";
   return (
     <section className="result-section" aria-label="Suchergebnis">
       <div className="shortlist-heading">
@@ -346,17 +376,26 @@ export function ResultSection({
           <p className="eyebrow">Ihre Auswahl</p>
           <h2>{resultHeading}</h2>
         </div>
-        {profiles.length ? (
+        {shownProfiles.length ? (
           <span className="result-count">Maximal 3 Ergebnisse</span>
-        ) : partialProfiles.length ? (
+        ) : shownPartials.length ? (
           <span className="result-count is-warning">Keine Empfehlung</span>
         ) : null}
       </div>
       {brief ? <BriefSummaryLine brief={brief} onOpenDetails={onOpenDetails} /> : null}
-      {profiles.length ? (
+      {dismissedHere.length ? (
+        <DismissedProfilesPanel
+          dismissed={dismissedHere}
+          brief={brief}
+          busy={busy}
+          onRestore={onRestoreProfile}
+          onUpdateBrief={onUpdateBrief}
+        />
+      ) : null}
+      {shownProfiles.length ? (
         <>
           <ProfileStack
-            profiles={profiles.slice(0, 3)}
+            profiles={shownProfiles.slice(0, 3)}
             focused={profileFocus}
             onToggleFocus={onToggleProfileFocus}
             renderCard={(profile, index) => (
@@ -372,6 +411,7 @@ export function ResultSection({
                 onRequestBooking={() => onRequestBooking(profile)}
                 saved={savedFreelancerIds.includes(profile.id)}
                 onToggleSave={() => onToggleSave(profile)}
+                onDismiss={onDismissProfile ? (reason) => onDismissProfile(profile, reason) : undefined}
                 collapsed={cardsCollapsible && expandedProfileId !== profile.id}
                 onToggleCollapsed={
                   cardsCollapsible
@@ -390,9 +430,9 @@ export function ResultSection({
           {/* Teiltreffer stehen vor den Suchkriterien: erst ihre Abweichungen
               zeigen, ob sich ein Gespräch lohnt oder eine Vorgabe geändert
               werden sollte. */}
-          {partialProfiles.length ? (
+          {shownPartials.length ? (
             <div className="profile-list partial-profile-list">
-              {partialProfiles.slice(0, 2).map((profile, index) => (
+              {shownPartials.slice(0, 2).map((profile, index) => (
                 <ProfileCard
                   key={profile.id}
                   profile={profile}
@@ -406,6 +446,7 @@ export function ResultSection({
                   onRequestBooking={() => onRequestBooking(profile)}
                   saved={savedFreelancerIds.includes(profile.id)}
                   onToggleSave={() => onToggleSave(profile)}
+                  onDismiss={onDismissProfile ? (reason) => onDismissProfile(profile, reason) : undefined}
                   collapsed={expandedProfileId !== profile.id}
                   onToggleCollapsed={() => setExpandedProfileId((current) => current === profile.id ? null : profile.id)}
                 />
@@ -434,7 +475,7 @@ export function ResultSection({
             </div>
           ) : null}
           <div className="search-recovery">
-            <p>{partialProfiles.length ? "Passt keines dieser Profile? Ihre Anfrage bleibt erhalten." : "Ihre Anfrage bleibt erhalten."}</p>
+            <p>{shownPartials.length ? "Passt keines dieser Profile? Ihre Anfrage bleibt erhalten." : "Ihre Anfrage bleibt erhalten."}</p>
             <div className="no-match-actions" aria-label="Nächste Schritte">
               {canEditCriteria ? (
                 <button
@@ -469,8 +510,9 @@ export function ResultSection({
               Zeile, und wenn der Katalog keinen belastbaren Treffer hat — bei
               einem großen Teil der Suchen —, ist sie der einzige Weg, der
               doch noch zu einem Freelancer führt. */}
-          {matchingStatus === "no_reliable_match" &&
-          (analysis?.externalSearchAvailable ?? true) &&
+          {((matchingStatus === "no_reliable_match" &&
+            (analysis?.externalSearchAvailable ?? true)) ||
+            allRankedDismissed) &&
           externalSearch?.mode !== "openai" ? (
             <section className="recovery-research" aria-labelledby="recovery-research-title">
               <p className="recovery-research-title" id="recovery-research-title">
@@ -1018,6 +1060,7 @@ export function ProfileCard({
   onRequestBooking,
   saved,
   onToggleSave,
+  onDismiss,
   collapsed = false,
   onToggleCollapsed,
 }: {
@@ -1032,6 +1075,8 @@ export function ProfileCard({
   onRequestBooking: () => void;
   saved: boolean;
   onToggleSave: () => void;
+  /** „Passt nicht" mit Grund. Ohne Handler gibt es den Knopf nicht. */
+  onDismiss?: (reason: ProfileFeedbackReason) => void;
   /** Nur Kopf und Aktionen zeigen — der Text bleibt zu. */
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
@@ -1278,12 +1323,114 @@ export function ProfileCard({
               </button>
           </div>
           <p className="profile-booking-hint">{bookingAction.hint}</p>
+          {onDismiss ? <ProfileDismiss displayName={profile.displayName} onDismiss={onDismiss} /> : null}
         </footer>
       </div>
     </article>
   );
 }
 
+
+/**
+ * „Passt nicht" und der Grund dazu.
+ *
+ * Zwei Schritte statt eines Daumens: Der Grund entscheidet, was danach
+ * passiert — welches Kriterium angeboten wird und was der Betreiber am
+ * Profil prüfen sollte. Ohne Grund bliebe nur „weg damit".
+ */
+function ProfileDismiss({
+  displayName,
+  onDismiss,
+}: {
+  displayName: string;
+  onDismiss: (reason: ProfileFeedbackReason) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  if (!open) {
+    return (
+      <button
+        className="profile-dismiss-toggle"
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label={`${displayName} passt nicht`}
+      >
+        Passt nicht
+      </button>
+    );
+  }
+  return (
+    <fieldset className="profile-dismiss">
+      <legend>Warum passt {displayName} nicht?</legend>
+      <div className="profile-dismiss-reasons">
+        {PROFILE_FEEDBACK_REASONS.map((reason) => (
+          <button key={reason} type="button" onClick={() => onDismiss(reason)}>
+            {PROFILE_FEEDBACK_LABELS[reason]}
+          </button>
+        ))}
+      </div>
+      <button className="profile-dismiss-cancel" type="button" onClick={() => setOpen(false)}>
+        Abbrechen
+      </button>
+    </fieldset>
+  );
+}
+
+/**
+ * Was ausgeblendet wurde, und der Weg, die Suche zu schärfen.
+ *
+ * Der jüngste Grund mit einem passenden Kriterium öffnet den Editor genau an
+ * diesem Feld. Die Suche startet erst auf „Übernehmen und neu suchen" — eine
+ * Suche kostet Guthaben und darf nicht als Nebenwirkung eines Klicks
+ * entstehen.
+ */
+function DismissedProfilesPanel({
+  dismissed,
+  brief,
+  busy,
+  onRestore,
+  onUpdateBrief,
+}: {
+  dismissed: ReadonlyArray<DismissedProfile & { profile: FreelancerProfileResult }>;
+  brief: StructuredBrief | null;
+  busy: boolean;
+  onRestore?: (profileId: string) => void;
+  onUpdateBrief?: (message: string) => void;
+}) {
+  const latest = [...dismissed].reverse().find((entry) => PROFILE_FEEDBACK_REFINEMENT[entry.reason]);
+  const refinement = latest ? PROFILE_FEEDBACK_REFINEMENT[latest.reason] : null;
+  const focusField = refinement?.field as BriefDraftField | undefined;
+  return (
+    <div className="dismissed-profiles" role="status">
+      <ul>
+        {dismissed.map(({ profileId, reason, profile }) => (
+          <li key={profileId}>
+            <span>
+              <strong>{profile.displayName}</strong> ausgeblendet · {PROFILE_FEEDBACK_LABELS[reason]}
+            </span>
+            {onRestore ? (
+              <button type="button" onClick={() => onRestore(profileId)}>
+                Rückgängig
+              </button>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      {refinement && focusField && brief && onUpdateBrief ? (
+        <div className="dismissed-refine">
+          <p>{refinement.hint}</p>
+          <BriefEditor
+            brief={brief}
+            busy={busy}
+            onUpdate={onUpdateBrief}
+            compact
+            fields={[focusField]}
+            autoFocusField={focusField}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function FactGroup({ label, facts, verified = false }: { label: string; facts: string[]; verified?: boolean }) {
   const [open, setOpen] = useState(false);
@@ -1318,16 +1465,31 @@ function FactGroup({ label, facts, verified = false }: { label: string; facts: s
  * auf ausdrueckliche Anweisung: Enter, Strg+S oder der Knopf unten. Eine Suche
  * kostet Guthaben, sie darf nicht als Nebenwirkung eines Klicks entstehen.
  */
+const COMPACT_FIELDS: readonly BriefDraftField[] = [
+  "hardRequirements",
+  "coreRequirements",
+  "optionalRequirements",
+  "mode",
+  "startWindow",
+  "budgetOrRate",
+];
+
 function BriefEditor({
   brief,
   busy,
   onUpdate,
   compact = false,
+  fields,
+  autoFocusField,
 }: {
   brief: StructuredBrief;
   busy: boolean;
   onUpdate: (message: string) => void;
   compact?: boolean;
+  /** Nur diese Felder zeigen, etwa das eine, das ein Grund anspricht. */
+  fields?: readonly BriefDraftField[];
+  /** Das Feld, in dem der Cursor steht, wenn der Editor aufgeht. */
+  autoFocusField?: BriefDraftField;
 }) {
   const base = useMemo(() => briefToDraft(brief), [brief]);
   const [draft, setDraft] = useState<BriefDraft>(base);
@@ -1363,8 +1525,11 @@ function BriefEditor({
   return (
     <div className="brief-editor" onKeyDown={onKeyDown}>
       <div className="brief-editor-fields">
-        {BRIEF_FIELDS.filter(({ field }) => !compact || ["hardRequirements", "coreRequirements", "optionalRequirements", "mode", "startWindow", "budgetOrRate"].includes(field)).map(({ field, label, hint, multiline, placeholder }) => {
-          const id = `${compact ? "recovery" : "brief"}-field-${field}`;
+        {BRIEF_FIELDS.filter(({ field }) =>
+          fields ? fields.includes(field) : !compact || COMPACT_FIELDS.includes(field),
+        ).map(({ field, label, hint, multiline, placeholder }) => {
+          const id = `${fields ? "refine" : compact ? "recovery" : "brief"}-field-${field}`;
+          const autoFocus = autoFocusField === field;
           const changed = changes.some((change) => change.field === field);
           return (
             <div className={`brief-field${changed ? " is-changed" : ""}`} key={field}>
@@ -1375,6 +1540,7 @@ function BriefEditor({
               {field === "mode" ? (
                 <select
                   id={id}
+                  autoFocus={autoFocus}
                   value={draft.mode}
                   onChange={(event) => setDraft({ ...draft, mode: event.target.value })}
                 >
@@ -1385,6 +1551,7 @@ function BriefEditor({
               ) : multiline ? (
                 <textarea
                   id={id}
+                  autoFocus={autoFocus}
                   rows={2}
                   value={draft[field]}
                   placeholder={placeholder}
@@ -1393,6 +1560,7 @@ function BriefEditor({
               ) : (
                 <input
                   id={id}
+                  autoFocus={autoFocus}
                   type="text"
                   value={draft[field]}
                   placeholder={placeholder}

@@ -10,13 +10,14 @@ import {
   FreelancerProfileSchema,
   type LabeledFact,
 } from "./profile";
+import { roleFamilyLabels, roleFit } from "./role-taxonomy";
 import { skillFamilyKey, skillTerms } from "./skill-taxonomy";
 import {
   deriveRequirementGroups,
   hasAmbiguousSkillConnectors,
 } from "./requirements";
 
-export const MATCHING_RULE_VERSION = "freelancer-match-v14" as const;
+export const MATCHING_RULE_VERSION = "freelancer-match-v15" as const;
 export const MATCHING_SCORE_VERSION = "freelancer-score-v2" as const;
 
 /**
@@ -29,6 +30,7 @@ export const READABLE_RULE_VERSIONS = [
   "freelancer-match-v12",
   "freelancer-match-v13",
   "freelancer-match-v14",
+  "freelancer-match-v15",
 ] as const;
 export const READABLE_SCORE_VERSIONS = [
   "freelancer-score-v1",
@@ -46,6 +48,14 @@ export const MAX_PARTIAL_MATCHES = 2 as const;
  * context evidence (descending), verified core-skill matches (descending),
  * available-from date (ascending, unknown last), normalized display name
  * (ascending), and profile id (ascending).
+ *
+ * Changes from v14:
+ *
+ * - A profile whose role family contradicts the requested one (see
+ *   `role-taxonomy.ts`) is no longer reliable. It keeps its place in the
+ *   ordering and can still appear as a partial match, with the deviation as a
+ *   stated gap. Before, a "SAP Engineer" request recommended a test-management
+ *   profile because its skills listed SAP.
  *
  * Changes from v9:
  *
@@ -1033,6 +1043,21 @@ export function evaluateProfile(
     knownGaps.push("Projektverfügbarkeit ist nicht bestätigt; der Booking-Kalender ist verfügbar.");
   }
 
+  // v15: Die Rolle ist keine weitere Fähigkeit, sondern die Frage, ob jemand
+  // diese Art von Arbeit überhaupt macht (lib/domain/role-taxonomy.ts). Sie
+  // entscheidet nur darüber, ob ein Profil als verlässlich empfohlen wird —
+  // nie über die Reihenfolge und nie darüber, ob es als Teiltreffer mit
+  // offenem Punkt sichtbar bleibt. Nennt eine Seite keine erkennbare Rolle,
+  // wirkt sie nicht: fehlende Angaben sind kein Beleg gegen jemanden.
+  const rolle = roleFit(brief.projectTitle ?? null, profile.role);
+  if (rolle.kind === "match") {
+    matchReasons.push(`Rolle passt: ${profile.role}.`);
+  } else if (rolle.kind === "mismatch") {
+    knownGaps.push(
+      `Rolle weicht ab: gesucht ${roleFamilyLabels(rolle.requested)}, das Profil ist ${profile.role}.`,
+    );
+  }
+
   const skillGroups = requirementGroups.filter(
     (group) => group.category === "skill",
   );
@@ -1395,7 +1420,8 @@ export function evaluateProfile(
     eligible &&
     coverageAssessments.length > 0 &&
     allHardRequirementsSatisfied &&
-    coreCoverageBasisPoints >= MINIMUM_CORE_COVERAGE_BASIS_POINTS;
+    coreCoverageBasisPoints >= MINIMUM_CORE_COVERAGE_BASIS_POINTS &&
+    rolle.kind !== "mismatch";
 
   return ProfileEvaluationSchema.parse({
     eligible,

@@ -925,3 +925,6 @@
     flex: 1 1 150px;
   }
 }
+
+.feedbackList { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; padding: 0; list-style: none; }
+.feedbackList li { padding: 5px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-soft); font-size: var(--fs-2xs); }

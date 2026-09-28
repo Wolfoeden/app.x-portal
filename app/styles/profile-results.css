@@ -133,3 +133,28 @@
   .recovery-editor .brief-field textarea,
   .recovery-editor .brief-field select { font-size: 16px; }
 }
+
+/* „Passt nicht": leise unter den Aktionen, erst auf Klick die Gründe. */
+.profile-dismiss-toggle {
+  justify-self: start; margin: 2px 0 0; padding: 4px 0; border: 0; background: none;
+  color: var(--muted); font: inherit; font-size: var(--fs-2xs); text-decoration: underline;
+  text-underline-offset: 3px; cursor: pointer;
+}
+.profile-dismiss-toggle:hover { color: var(--ink); }
+.profile-dismiss { display: grid; gap: 8px; margin: 6px 0 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); }
+.profile-dismiss legend { padding: 0 4px; color: var(--ink); font-size: var(--fs-xs); font-weight: 650; }
+.profile-dismiss-reasons { display: flex; flex-wrap: wrap; gap: 6px; }
+.profile-dismiss-reasons button {
+  padding: 6px 11px; border: 1px solid var(--border-strong); border-radius: var(--radius-pill);
+  background: var(--surface); color: var(--ink); font: inherit; font-size: var(--fs-2xs); font-weight: 600; cursor: pointer;
+}
+.profile-dismiss-reasons button:hover { border-color: var(--ink); }
+.profile-dismiss-cancel { justify-self: start; padding: 2px 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: var(--fs-2xs); cursor: pointer; }
+
+.dismissed-profiles { display: grid; gap: 10px; margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-raised); }
+.dismissed-profiles ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.dismissed-profiles li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; color: var(--ink-soft); font-size: var(--fs-xs); }
+.dismissed-profiles li button { padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-size: var(--fs-2xs); font-weight: 650; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.dismissed-refine { display: grid; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
+.dismissed-refine > p { margin: 0; color: var(--muted); font-size: var(--fs-xs); line-height: 1.5; }
+.dismissed-refine .brief-editor-fields { grid-template-columns: minmax(0, 1fr); }
