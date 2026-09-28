@@ -5,6 +5,7 @@ import { deliverEmail } from "@/lib/email/deliver";
 import { logEvent } from "@/lib/security/request";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
+import { followUpDue, type PlacementOutcome } from "./follow-up-rules";
 import {
   declineForClient,
   introductionForClient,
@@ -108,6 +109,33 @@ export type PlacementRequestRow = {
   freelancerRole: string;
   freelancerReachable: boolean;
   hasCalendar: boolean;
+  /** Was Kunde, Freelancer oder Betreiber zum Ausgang gesagt haben. */
+  outcome: PlacementOutcome | null;
+  outcomeSource: "client" | "freelancer" | "operator" | null;
+  followUpCount: number;
+  lastFollowUpAt: string | null;
+  /** 1 oder 2, wenn eine Nachfrage fällig ist. */
+  followUpDue: 1 | 2 | null;
+  engagement: {
+    dayRateMinor: number | null;
+    projectDays: number | null;
+    startsOn: string | null;
+    feeMinor: number | null;
+    feeStatus: "open" | "invoiced" | "paid" | "waived" | null;
+    invoiceReference: string | null;
+    termsVersion: string | null;
+  } | null;
+};
+
+type EngagementRow = {
+  intro_booking_id: string | null;
+  day_rate_minor: number | null;
+  project_days: number | null;
+  starts_on: string | null;
+  fee_minor: number | null;
+  fee_status: "open" | "invoiced" | "paid" | "waived" | null;
+  invoice_reference: string | null;
+  terms_version: string | null;
 };
 
 type BookingRow = {
@@ -119,6 +147,10 @@ type BookingRow = {
   project_id: string;
   owner_user_id: string;
   freelancer_profile_id: string;
+  outcome?: PlacementOutcome | null;
+  outcome_source?: "client" | "freelancer" | "operator" | null;
+  follow_up_count?: number;
+  last_follow_up_at?: string | null;
 };
 
 type ProfileRow = {
@@ -130,11 +162,14 @@ type ProfileRow = {
 };
 
 /** Die letzten Anfragen, offene zuerst. Für die Admin-Seite. */
-export async function listPlacementRequests(limit = 100): Promise<PlacementRequestRow[]> {
+export async function listPlacementRequests(
+  limit = 100,
+  now = new Date(),
+): Promise<PlacementRequestRow[]> {
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
     .from("intro_bookings")
-    .select("id,status,requested_at,confirmed_at,cancelled_at,project_id,owner_user_id,freelancer_profile_id")
+    .select("id,status,requested_at,confirmed_at,cancelled_at,project_id,owner_user_id,freelancer_profile_id,outcome,outcome_source,follow_up_count,last_follow_up_at")
     .order("requested_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
@@ -145,12 +180,20 @@ export async function listPlacementRequests(limit = 100): Promise<PlacementReque
   const profileIds = [...new Set(bookings.map((row) => row.freelancer_profile_id))];
   const ownerIds = [...new Set(bookings.map((row) => row.owner_user_id))];
 
-  const [projects, profiles] = await Promise.all([
+  const [projects, profiles, engagements] = await Promise.all([
     admin.from("projects").select("id,title").in("id", projectIds),
     admin.from("freelancer_profiles").select("id,display_name,role_title,booking_url,owner_user_id").in("id", profileIds),
+    admin
+      .from("engagements")
+      .select("intro_booking_id,day_rate_minor,project_days,starts_on,fee_minor,fee_status,invoice_reference,terms_version")
+      .in("intro_booking_id", bookings.map((row) => row.id)),
   ]);
   if (projects.error) throw projects.error;
   if (profiles.error) throw profiles.error;
+  if (engagements.error) throw engagements.error;
+  const engagementByIntro = new Map(
+    ((engagements.data ?? []) as EngagementRow[]).map((row) => [row.intro_booking_id, row]),
+  );
   const titleById = new Map(
     ((projects.data ?? []) as { id: string; title: string | null }[]).map((row) => [row.id, row.title]),
   );
@@ -172,6 +215,8 @@ export async function listPlacementRequests(limit = 100): Promise<PlacementReque
   const rows = bookings.map((row): PlacementRequestRow => {
     const profile = profileById.get(row.freelancer_profile_id);
     const client = clientById.get(row.owner_user_id);
+    const engagement = engagementByIntro.get(row.id) ?? null;
+    const followUpCount = row.follow_up_count ?? 0;
     return {
       id: row.id,
       status: row.status,
@@ -186,6 +231,31 @@ export async function listPlacementRequests(limit = 100): Promise<PlacementReque
       freelancerRole: profile?.role_title ?? "",
       freelancerReachable: reachableById.get(row.freelancer_profile_id) ?? false,
       hasCalendar: Boolean(httpsUrl(profile?.booking_url)),
+      outcome: row.outcome ?? null,
+      outcomeSource: row.outcome_source ?? null,
+      followUpCount,
+      lastFollowUpAt: row.last_follow_up_at ?? null,
+      followUpDue: followUpDue(
+        {
+          status: row.status,
+          confirmedAt: row.confirmed_at,
+          outcome: row.outcome ?? null,
+          followUpCount,
+          hasEngagement: Boolean(engagement),
+        },
+        now,
+      ),
+      engagement: engagement
+        ? {
+            dayRateMinor: engagement.day_rate_minor,
+            projectDays: engagement.project_days,
+            startsOn: engagement.starts_on,
+            feeMinor: engagement.fee_minor,
+            feeStatus: engagement.fee_status,
+            invoiceReference: engagement.invoice_reference,
+            termsVersion: engagement.terms_version,
+          }
+        : null,
     };
   });
   // Was auf den Betreiber wartet, steht oben; danach nach Zeit.
@@ -293,6 +363,7 @@ export async function approvePlacementRequest(id: string, siteUrl: string) {
     freelancerNotified,
     clientNotified,
     hasCalendar: Boolean(bookingUrl),
+    clientUserId: booking.owner_user_id,
   };
 }
 
@@ -326,5 +397,5 @@ export async function declinePlacementRequest(id: string, reason: string | null,
     clientNotified = result.delivered;
     if (!result.delivered) logEvent("placement_decline_mail_failed", { requestId: booking.id, reason: result.reason });
   }
-  return { clientNotified };
+  return { clientNotified, clientUserId: booking.owner_user_id };
 }

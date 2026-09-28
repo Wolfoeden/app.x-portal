@@ -5,6 +5,9 @@ const mocks = vi.hoisted(() => ({
   approve: vi.fn(),
   decline: vi.fn(),
   audit: vi.fn(),
+  engagement: vi.fn(),
+  noEngagement: vi.fn(),
+  feeStatus: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -14,6 +17,11 @@ vi.mock("@/lib/placement/requests", () => ({
   declinePlacementRequest: mocks.decline,
 }));
 vi.mock("@/lib/audit/write", () => ({ writeAuditEvent: mocks.audit }));
+vi.mock("@/lib/placement/engagements", () => ({
+  recordEngagement: mocks.engagement,
+  recordNoEngagement: mocks.noEngagement,
+  recordFeeStatus: mocks.feeStatus,
+}));
 
 import { POST } from "@/app/api/admin/introductions/[id]/route";
 
@@ -38,6 +46,8 @@ beforeEach(() => {
   mocks.approve.mockResolvedValue({ freelancerReachable: true, freelancerNotified: true, clientNotified: true, hasCalendar: true });
   mocks.decline.mockResolvedValue({ clientNotified: true });
   mocks.audit.mockResolvedValue("trace");
+  mocks.engagement.mockResolvedValue({ feeMinor: 355_200, termsVersion: "v1", clientUserId: "client-1" });
+  mocks.feeStatus.mockResolvedValue({ feeMinor: 355_200, clientUserId: "client-1" });
 });
 
 afterEach(() => {
@@ -84,5 +94,33 @@ describe("POST /api/admin/introductions/[id]", () => {
 
     expect(response.status).toBe(404);
     expect(mocks.approve).not.toHaveBeenCalled();
+  });
+
+  it("records an engagement in euros and logs the fee with the client", async () => {
+    const response = await call({ action: "record_engagement", dayRate: 592, projectDays: 60, startsOn: "2026-11-02" });
+
+    expect(response.status).toBe(200);
+    expect(mocks.engagement).toHaveBeenCalledWith(ID, { dayRateMinor: 59_200, projectDays: 60, startsOn: "2026-11-02" });
+    expect(mocks.audit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "placement_engaged",
+        metadata: expect.objectContaining({ clientUserId: "client-1", feeMinor: 355_200 }),
+      }),
+    );
+  });
+
+  it("rejects an engagement without a proper start date", async () => {
+    const response = await call({ action: "record_engagement", dayRate: 592, projectDays: 60, startsOn: "morgen" });
+
+    expect(response.status).toBe(400);
+    expect(mocks.engagement).not.toHaveBeenCalled();
+  });
+
+  it("marks a fee as paid", async () => {
+    const response = await call({ action: "paid" });
+
+    expect(response.status).toBe(200);
+    expect(mocks.feeStatus).toHaveBeenCalledWith(ID, { status: "paid" });
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ action: "placement_fee_paid" }));
   });
 });

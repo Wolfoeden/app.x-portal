@@ -105,6 +105,7 @@ describe("introducing a client to a freelancer", () => {
       freelancerNotified: true,
       clientNotified: true,
       hasCalendar: true,
+      clientUserId: "client-1",
     });
     const update = mocks.updates[0];
     expect(update.values).toMatchObject({ status: "ready_to_book", booking_url: "https://calendly.com/mira" });
@@ -147,7 +148,7 @@ describe("introducing a client to a freelancer", () => {
 
     const result = await declinePlacementRequest(REQUEST, "Sie ist bis Dezember ausgebucht.", "https://x-portal.eu");
 
-    expect(result).toEqual({ clientNotified: true });
+    expect(result).toEqual({ clientNotified: true, clientUserId: "client-1" });
     expect(mocks.updates[0].values).toMatchObject({ status: "cancelled" });
     expect(mocks.deliver.mock.calls[0][0].text).toContain("bis Dezember ausgebucht");
   });

@@ -9,8 +9,10 @@ import {
 import { appPath } from "@/lib/app-path";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { PLACEMENT_TERMS, placementRequestsEnabled } from "@/lib/placement/config";
+import { PLACEMENT_OUTCOME_LABELS } from "@/lib/placement/follow-up-rules";
 import { listPlacementRequests, type PlacementRequestRow } from "@/lib/placement/requests";
 
+import { EngagementPanel, FollowUpsButton } from "./EngagementPanel";
 import { RequestActions } from "./RequestActions";
 import styles from "./vermittlungen.module.css";
 
@@ -22,6 +24,9 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 const dateTime = new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" });
+
+const SOURCE_LABELS = { client: "Kunde", freelancer: "Freelancer", operator: "Betreiber" } as const;
+const INTRODUCED = new Set(["ready_to_book", "booked", "completed"]);
 
 const STATUS_LABELS: Record<PlacementRequestRow["status"], string> = {
   requested: "Angefragt",
@@ -55,6 +60,26 @@ function RequestCard({ row }: { row: PlacementRequestRow }) {
         </div>
         <div><dt>Kalender</dt><dd>{row.hasCalendar ? "Link hinterlegt" : "kein Link"}</dd></div>
         {row.confirmedAt ? <div><dt>Vorgestellt</dt><dd>{dateTime.format(new Date(row.confirmedAt))}</dd></div> : null}
+        {INTRODUCED.has(row.status) ? (
+          <div>
+            <dt>Rückmeldung</dt>
+            <dd>
+              {row.outcome
+                ? `${PLACEMENT_OUTCOME_LABELS[row.outcome]}${row.outcomeSource ? ` (${SOURCE_LABELS[row.outcomeSource]})` : ""}`
+                : "noch keine"}
+            </dd>
+          </div>
+        ) : null}
+        {INTRODUCED.has(row.status) ? (
+          <div>
+            <dt>Nachfragen</dt>
+            <dd className={row.followUpDue ? styles.missing : undefined}>
+              {row.followUpCount} von 2
+              {row.lastFollowUpAt ? `, zuletzt ${dateTime.format(new Date(row.lastFollowUpAt))}` : ""}
+              {row.followUpDue ? " · fällig" : ""}
+            </dd>
+          </div>
+        ) : null}
       </dl>
       {open ? (
         <RequestActions
@@ -63,6 +88,7 @@ function RequestCard({ row }: { row: PlacementRequestRow }) {
           freelancerReachable={row.freelancerReachable}
         />
       ) : null}
+      {INTRODUCED.has(row.status) ? <EngagementPanel row={row} /> : null}
     </article>
   );
 }
@@ -85,6 +111,7 @@ export default async function PlacementRequestsPage() {
   const rows = await listPlacementRequests();
   const open = rows.filter((row) => row.status === "manual_review");
   const done = rows.filter((row) => row.status !== "manual_review");
+  const due = rows.filter((row) => row.followUpDue).length;
 
   return (
     <AdminSurface label="Administration · Vermittlungen">
@@ -104,6 +131,8 @@ export default async function PlacementRequestsPage() {
         </p>
       ) : null}
 
+      <FollowUpsButton due={due} />
+
       <AdminSectionHeader title={`Wartet auf Vorstellung (${open.length})`} />
       {open.length ? (
         <div className={styles.list}>{open.map((row) => <RequestCard key={row.id} row={row} />)}</div>
@@ -111,7 +140,10 @@ export default async function PlacementRequestsPage() {
         <p className={styles.empty}>Keine offene Anfrage.</p>
       )}
 
-      <AdminSectionHeader title={`Bearbeitet (${done.length})`} description="Die letzten 100 Anfragen." />
+      <AdminSectionHeader
+        title={`Bearbeitet (${done.length})`}
+        description="Die letzten 100 Anfragen. Nach der Vorstellung hier Beauftragung, Rechnung und Zahlung festhalten."
+      />
       {done.length ? (
         <div className={styles.list}>{done.map((row) => <RequestCard key={row.id} row={row} />)}</div>
       ) : (

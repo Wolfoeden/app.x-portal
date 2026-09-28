@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   declineForClient,
+  engagementReportedNotice,
+  followUpForClient,
+  followUpForFreelancer,
   introductionForClient,
   introductionForFreelancer,
   placementRequestNotice,
@@ -78,5 +81,43 @@ describe("placement emails", () => {
     expect(mail.text).toContain("Guten Tag,");
     expect(mail.text).toContain("derzeit nicht vorstellen. Sie ist bis Dezember ausgebucht.");
     expect(mail.text).toContain("weitere passende Profile");
+  });
+});
+
+describe("follow-up emails", () => {
+  const links = {
+    engaged: "https://x-portal.eu/vermittlung/antwort?t=abc&a=engaged",
+    talking: "https://x-portal.eu/vermittlung/antwort?t=abc&a=talking",
+    no_engagement: "https://x-portal.eu/vermittlung/antwort?t=abc&a=no_engagement",
+  };
+
+  it("asks the client with three links and repeats the fee", () => {
+    const mail = followUpForClient({ ...PARTIES, round: 1, links });
+
+    expect(mail.subject).toBe("Kurze Frage zu Mira Falk");
+    expect(mail.text).toContain("vor zwei Wochen haben wir Ihnen Mira Falk");
+    for (const link of Object.values(links)) expect(mail.text).toContain(link);
+    expect(mail.text).toContain("10 % des vereinbarten Honorars der ersten 3 Monate");
+  });
+
+  it("asks the freelancer later with the client's name and keeps it free for them", () => {
+    const mail = followUpForFreelancer({ ...PARTIES, round: 2, links });
+
+    expect(mail.text).toContain("vor gut sechs Wochen haben wir Ihnen Erika Muster");
+    expect(mail.text).toContain("kostenlos");
+  });
+
+  it("tells the operator what to capture after a reported engagement", () => {
+    const mail = engagementReportedNotice({
+      siteUrl: "https://x-portal.eu",
+      role: "freelancer",
+      clientEmail: "erika@firma.example",
+      freelancerName: "Mira Falk",
+      projectTitle: null,
+    });
+
+    expect(mail.subject).toBe("Beauftragung gemeldet: Mira Falk");
+    expect(mail.text).toContain("Der Freelancer meldet");
+    expect(mail.text).toContain("Tagessatz, Projekttage und Start");
   });
 });

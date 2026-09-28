@@ -32,6 +32,10 @@ describe("revenue funnel", () => {
       "signup_funnel_pricing_viewed",
       "billing_checkout_started",
       "billing_subscription_paid",
+      "placement_terms_accepted",
+      "placement_introduced",
+      "placement_engaged",
+      "placement_fee_paid",
     ]);
   });
 
@@ -125,5 +129,60 @@ describe("revenue funnel", () => {
 
     expect(funnel.steps.map((entry) => entry.people)).toEqual([0, 0, 0, 0, 0, 0, 0]);
     expect(funnel.steps.every((entry) => entry.detail === null)).toBe(true);
+  });
+
+  it("counts placement requests per request and sums agreed and paid fees", () => {
+    const funnel = buildRevenueFunnel(
+      [
+        { ...row("placement_terms_accepted", "client-1"), target_id: "req-1" },
+        { ...row("placement_terms_accepted", "client-2"), target_id: "req-2" },
+        { ...row("placement_introduced", "admin-1", { clientUserId: "client-1" }), target_id: "req-1" },
+        { ...row("placement_engaged", "admin-1", { clientUserId: "client-1", feeMinor: 355_200 }), target_id: "req-1" },
+        { ...row("placement_fee_paid", "admin-1", { clientUserId: "client-1", feeMinor: 355_200 }), target_id: "req-1" },
+      ],
+      new Set(["admin-1"]),
+      false,
+      { placement: true },
+    );
+
+    expect(funnel.steps.map((entry) => entry.key)).toEqual([
+      "search_started",
+      "result_seen",
+      "registration_started",
+      "signup_confirmed",
+      "placement_requested",
+      "placement_introduced",
+      "placement_engaged",
+      "placement_fee_paid",
+      "pricing_viewed",
+      "checkout_started",
+      "subscription_paid",
+    ]);
+    expect(step(funnel, "placement_requested")?.people).toBe(2);
+    // Vorstellen und Beauftragen trägt der Betreiber ein; sie zählen trotzdem.
+    expect(step(funnel, "placement_introduced")?.people).toBe(1);
+    expect(step(funnel, "placement_engaged")?.detail?.replace(/\u00a0/gu, " ")).toBe("3.552,00 € Honorar vereinbart");
+    expect(step(funnel, "placement_fee_paid")?.detail?.replace(/\u00a0/gu, " ")).toBe("3.552,00 € eingegangen");
+  });
+
+  it("leaves out placements of internal test clients", () => {
+    const funnel = buildRevenueFunnel(
+      [
+        { ...row("placement_terms_accepted", "admin-1"), target_id: "req-1" },
+        { ...row("placement_introduced", "admin-1", { clientUserId: "admin-1" }), target_id: "req-1" },
+      ],
+      new Set(["admin-1"]),
+      false,
+      { placement: true },
+    );
+
+    expect(step(funnel, "placement_requested")?.people).toBe(0);
+    expect(step(funnel, "placement_introduced")?.people).toBe(0);
+  });
+
+  it("shows no placement stages while the switch is off", () => {
+    const funnel = buildRevenueFunnel([], new Set());
+
+    expect(funnel.steps.some((entry) => entry.key.startsWith("placement_"))).toBe(false);
   });
 });

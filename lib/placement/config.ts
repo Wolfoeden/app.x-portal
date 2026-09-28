@@ -61,12 +61,21 @@ export function clientBookingUrl(
   return `${siteUrl.replace(/\/+$/u, "")}/api/freelancers/${profileId}/book`;
 }
 
-/** Das Honorar für einen Einsatz, in Cent. Tagessatz in Cent, Tage ganzzahlig. */
-export function placementFeeCents(dayRateCents: number, projectDays: number): number {
+/**
+ * Das Honorar für einen Einsatz, in Cent. Tagessatz in Cent, Tage ganzzahlig.
+ *
+ * Es gilt die Fassung, der der Kunde bei der Anfrage zugestimmt hat. Ändern
+ * sich die Bedingungen später, bleibt eine alte Anfrage bei ihren Zahlen.
+ */
+export function placementFeeCents(
+  dayRateCents: number,
+  projectDays: number,
+  terms: { feePercent: number; maxFeeDays: number } = PLACEMENT_TERMS,
+): number {
   if (!Number.isFinite(dayRateCents) || dayRateCents <= 0) return 0;
   if (!Number.isFinite(projectDays) || projectDays <= 0) return 0;
-  const days = Math.min(Math.floor(projectDays), PLACEMENT_TERMS.maxFeeDays);
-  return Math.round((dayRateCents * days * PLACEMENT_TERMS.feePercent) / 100);
+  const days = Math.min(Math.floor(projectDays), terms.maxFeeDays);
+  return Math.round((dayRateCents * days * terms.feePercent) / 100);
 }
 
 /** Die drei Sätze, die bei jeder Anfrage über dem Häkchen stehen. */
