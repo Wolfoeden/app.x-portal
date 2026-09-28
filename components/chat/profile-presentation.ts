@@ -1,4 +1,6 @@
 import { skillFamilyKey } from "@/lib/domain/skill-taxonomy";
+
+import { availabilityNotice, AVAILABILITY_CONFIRMED_REASON, type AvailabilityNotice } from "./availability";
 import type {
   FreelancerProfileResult,
   StructuredBrief,
@@ -35,6 +37,10 @@ export type ProfilePresentation = {
   /** Open points that no other line of the card already shows. */
   openPoints: string[];
   start: { text: string; conflict: boolean } | null;
+  /** The availability badge, with the date the statement was made. */
+  availability: AvailabilityNotice;
+  /** The matcher's reasons, with the undated availability claim dated or dropped. */
+  reasons: string[];
 };
 
 const PRIORITY_ORDER: Readonly<Record<Priority, number>> = { hard: 0, core: 1, optional: 2 };
@@ -88,6 +94,7 @@ function startLabel(window: string): string {
 export function profilePresentation(
   profile: FreelancerProfileResult,
   brief?: StructuredBrief | null,
+  now: Date = new Date(),
 ): ProfilePresentation {
   const tagsByKey = new Map<string, string>();
   for (const tag of profile.skillTags) {
@@ -177,7 +184,15 @@ export function profilePresentation(
       ? { text: "Start nach Abstimmung", conflict: false }
       : null;
 
-  return { evidence, highlights, additional, skills, openPoints, start };
+  const availability = availabilityNotice(profile.availabilityStatus, profile.availabilityUpdatedAt, now);
+  if (availability.openPoint) openPoints.push(availability.openPoint);
+  const reasons = profile.matchReasons.flatMap((reason) =>
+    reason === AVAILABILITY_CONFIRMED_REASON
+      ? availability.reason ? [availability.reason] : []
+      : [reason],
+  );
+
+  return { evidence, highlights, additional, skills, openPoints, start, availability, reasons };
 }
 
 /** "a", "a und b", "a, b und c". */

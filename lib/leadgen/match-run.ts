@@ -138,6 +138,7 @@ function factsFor(profile: {
   availability: {
     status: "available" | "limited" | "unavailable" | "unknown";
     availableFrom: string | null;
+    checkedAt?: string | null;
   };
   hourlyRate: { amount: number; currency: string } | null;
 }): MatchFacts {
@@ -150,6 +151,7 @@ function factsFor(profile: {
     location: profile.location?.value ?? null,
     availabilityStatus: profile.availability.status,
     availableFrom: profile.availability.availableFrom,
+    availabilityCheckedAt: profile.availability.checkedAt ?? null,
     hourlyRate: profile.hourlyRate,
   };
 }

@@ -1782,6 +1782,13 @@ dd.is-unknown,
   color: var(--muted);
 }
 
+/* Eine alte Angabe ist kein Nein, aber auch kein bestätigtes Ja. */
+.availability.stale {
+  border: 1px dashed var(--amber-border);
+  background: transparent;
+  color: var(--amber);
+}
+
 .intro-badge {
   border: 1px solid var(--border);
   color: var(--ink-soft);

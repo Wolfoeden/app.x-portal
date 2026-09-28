@@ -16,6 +16,11 @@ import type { FreelancerProfileResult, StructuredBrief } from "@/components/chat
 const [strategist, integrator] = automationProfiles;
 const [workflows, developer] = automationPartialProfiles;
 
+// Die Vorschau-Profile tragen feste Verfügbarkeitsdaten vom August. Die
+// offenen Punkte hier sollen nicht davon abhängen, an welchem Tag der Test
+// läuft; das Alter der Angabe prüft tests/presentation/availability.test.ts.
+const FIXTURE_NOW = new Date("2026-08-25T12:00:00.000Z");
+
 function card(profile: FreelancerProfileResult, brief: StructuredBrief | null, collapsed = true) {
   return renderToStaticMarkup(createElement(ProfileCard, {
     profile, brief, position: 1,
@@ -123,7 +128,7 @@ describe("profile evidence for the request", () => {
 
 describe("open points on the card", () => {
   it("drops what a skill line, the rate or the start already shows", () => {
-    const result = profilePresentation(developer, automationStrictBrief);
+    const result = profilePresentation(developer, automationStrictBrief, FIXTURE_NOW);
 
     expect(result.openPoints).toEqual([
       "Projektverfügbarkeit ist begrenzt; den genauen Zeitraum beim Termin abstimmen.",
@@ -138,7 +143,7 @@ describe("open points on the card", () => {
       "Weitere Rahmenbedingung ist im Profil nicht bestätigt: kurzfristig.",
       "Vor-Ort-Termine in Berlin sind nicht bestätigt.",
       "Explizit zwingender Arbeitsmodus wird nicht unterstützt: on-site.",
-    ] }, automationBrief);
+    ] }, automationBrief, FIXTURE_NOW);
 
     expect(result.openPoints).toEqual([
       "Vor-Ort-Termine in Berlin sind nicht bestätigt.",
@@ -157,7 +162,7 @@ describe("open points on the card", () => {
     const later = profilePresentation({
       ...strategist,
       knownGaps: ["Bestätigte Verfügbarkeit beginnt nach dem gewünschten Startfenster; im Erstgespräch abstimmen."],
-    }, automationBrief);
+    }, automationBrief, FIXTURE_NOW);
     const confirmed = profilePresentation({
       ...strategist,
       knownGaps: [],
