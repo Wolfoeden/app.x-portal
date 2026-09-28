@@ -1,5 +1,7 @@
 import type { Metadata, MetadataRoute } from "next";
 
+import { START_CREDITS } from "@/lib/billing/plans";
+
 /** Public URLs, metadata and crawler policy share this registry. */
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/u, "") ||
@@ -64,7 +66,7 @@ export const MARKETING_PAGE = {
     path: "/preise",
     label: "Preise & Credits",
     title: "Preise & Credits: Basic, Pro, Business und Enterprise | XPORTAL",
-    description: "XPORTAL kostenlos mit 300 Start-Credits testen. Danach Basic, Pro oder Business monatlich nutzen – oder Enterprise nach tatsächlichem Credit-Verbrauch abrechnen.",
+    description: `XPORTAL kostenlos mit ${START_CREDITS} Start-Credits testen. Danach Basic, Pro oder Business monatlich nutzen – oder Enterprise nach tatsächlichem Credit-Verbrauch abrechnen.`,
     priority: 0.9,
     changeFrequency: "monthly",
   },

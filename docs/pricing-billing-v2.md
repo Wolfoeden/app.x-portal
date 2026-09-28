@@ -9,14 +9,17 @@ confirmation import this catalogue. `CREDIT_PRICES` in
 
 | Plan id | Billing | Net price | Credits |
 |---|---|---:|---:|
-| `trial` | one-time grant | EUR 0 | 300 once |
+| `trial` | one-time grant | EUR 0 | 90 once |
 | `basic` | fixed monthly | EUR 9 | 500/month |
 | `pro` | fixed monthly | EUR 19 | 1,250/month |
 | `business` | fixed monthly | EUR 50 | 4,000/month |
 | `enterprise_flex` | metered | EUR 0 base fee | EUR 0.02/consumed credit |
 
-`guest` remains a small technical one-time allowance and is not a public
-tariff. `free` and `enterprise` stay readable compatibility ids. The migration
+`guest` remains a small technical one-time allowance (30 credits) and is not
+a public tariff. Since 2026-09-28 new guests receive 30 and new accounts 90
+credits (previously 100 and 300); existing balances are unchanged because
+`get_ai_credit_snapshot` sets the total only when an account is created or a
+guest converts. `free` and `enterprise` stay readable compatibility ids. The migration
 changes active `free` rows to `trial` without granting credits and changes
 active `enterprise` rows to `enterprise_legacy`. The latter retains the exact
 historic EUR 50 / 3,000-credit contract.

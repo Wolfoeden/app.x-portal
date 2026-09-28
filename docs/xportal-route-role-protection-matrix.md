@@ -26,7 +26,7 @@ Basis: `e36d9e24e8beb41ccc8887dc3b78a529252f7c74` · 12. September 2026
 
 | Rolle | Einstieg und geschützte Funktion | Autorisierung | Abnahme |
 |---|---|---|---|
-| Gast | `/chat`: Projekttext, strukturierter Brief, interner Match, transparente Lücken, 100 Credits | anonyme Sitzung; kein Speichern/Kontakt/Agentennutzen | A-JOURNEY, A-REG, A-VISUAL, A-PROOF, M-A11Y-FOKUS |
+| Gast | `/chat`: Projekttext, strukturierter Brief, interner Match, transparente Lücken, 30 Credits einmalig | anonyme Sitzung; kein Speichern/Kontakt/Agentennutzen | A-JOURNEY, A-REG, A-VISUAL, A-PROOF, M-A11Y-FOKUS |
 | Konto | `/chat`, `/mein-team`: Projekte, Merkliste, Kontostand | bestätigtes Konto; Besitzprüfung serverseitig | A-JOURNEY, A-REG, A-VISUAL |
 | Monatspläne / Enterprise Flex | Konto → Guthaben oder laufender Verbrauch, Teamzuordnung zum Billing Owner, sichere Checkout-/Anfragewege | Konto + Unternehmereigenschaft; Stripe zusätzlich nur mit konfigurierter Payment-Link-ID | A-JOURNEY, A-REG, A-PROOF, M-COMMERCIAL |
 | Freelancer | `/freelancer/apply`: Bewerbung, CV/Avatar, Status, Profilpflege, Metriken | Gast sieht Auth-Gate; eigenes Konto sieht nur eigenes Profil | A-JOURNEY, A-REG, A-VISUAL, A-PROOF |

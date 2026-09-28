@@ -21,7 +21,7 @@ const routes = [
   { Component: ItPage, page: MARKETING_PAGE.it, metadata: itMetadata, required: ["IT-Freelancer", "React", "SAP", "Verfügbarkeit"] },
   { Component: MatchingPage, page: MARKETING_PAGE.matching, metadata: matchingMetadata, required: ["regelbasiert", "KI-gestütztes", "Nicht belegt"] },
   { Component: HowPage, page: MARKETING_PAGE.how, metadata: howMetadata, required: ["Requirement Extraction", "Credits", "Informationslücken"] },
-  { Component: PricingPage, page: MARKETING_PAGE.pricing, metadata: pricingMetadata, required: ["Ein Guthaben", "Empfohlen", "Nach Nutzung", "300 Start-Credits"] },
+  { Component: PricingPage, page: MARKETING_PAGE.pricing, metadata: pricingMetadata, required: ["Ein Guthaben", "Empfohlen", "Nach Nutzung", `${START_CREDITS} Start-Credits`] },
 ];
 
 describe("marketing pages rendered on the server", () => {

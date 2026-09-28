@@ -39,7 +39,7 @@ export function entryMonthlyEuro(): number {
   );
 }
 
-/** „10 AI-Agent-Recherchen oder 100 Analysen" — in Leistungen, nicht in Credits. */
+/** „3 AI-Agent-Recherchen oder 30 Analysen" — in Leistungen, nicht in Credits. */
 export function startCreditOutcome(): string {
   return `${countLabel(affordableCount(START_CREDITS, "research"), "research")} oder ${countLabel(
     affordableCount(START_CREDITS, "project_brief"),
@@ -65,8 +65,8 @@ function formatDate(value: string): string | null {
 /**
  * Was unter dem Eingabefeld steht, wenn das Guthaben aufgebraucht ist.
  *
- * Drei Lagen, drei verschiedene Wahrheiten. Vorher bekam ein Gast „300
- * Credits im Monat" versprochen, obwohl das Startguthaben einmalig ist, und
+ * Drei Lagen, drei verschiedene Wahrheiten. Vorher bekam ein Gast das
+ * Startguthaben „im Monat" versprochen, obwohl das Startguthaben einmalig ist, und
  * ein Konto im kostenlosen Start las „Neues Guthaben gibt es ab …" — für ein
  * Guthaben, das sich nie wieder auffüllt. Beides führte ins Leere: der eine
  * erwartete eine Auffüllung, die nicht kommt, der andere sah keinen Weg weiter.

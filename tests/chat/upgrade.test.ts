@@ -17,8 +17,8 @@ import { CREDIT_PLANS, START_CREDITS } from "@/lib/billing/plans";
 function usage(planId: string, extra: Partial<AiUsageSnapshot["credits"]> = {}): AiUsageSnapshot {
   return {
     credits: {
-      total: 300,
-      used: 300,
+      total: 90,
+      used: 90,
       reserved: 0,
       remaining: 0,
       periodEnd: "2026-10-01T00:00:00.000Z",
@@ -107,7 +107,7 @@ describe("research launch notes", () => {
     );
 
   it("gives a guest the reason to sign up next to the button", () => {
-    expect(render({ kind: "login" })).toContain(`${START_CREDITS} Start-Credits reichen für 10 AI-Agent-Recherchen`);
+    expect(render({ kind: "login" })).toContain(`${START_CREDITS} Start-Credits reichen für 3 AI-Agent-Recherchen`);
   });
 
   it("shows the entry price when the balance is too small", () => {
@@ -119,7 +119,7 @@ describe("example volumes", () => {
   it("rounds down to steps of five so no page promises more than a plan carries", async () => {
     const { roundedExampleCount } = await import("@/lib/ai/credit-policy");
 
-    expect(roundedExampleCount(START_CREDITS, "research")).toBe(10);
+    expect(roundedExampleCount(START_CREDITS, "research")).toBe(3);
     expect(roundedExampleCount(CREDIT_PLANS.basic.monthlyCredits, "research")).toBe(15);
     expect(roundedExampleCount(CREDIT_PLANS.pro.monthlyCredits, "research")).toBe(40);
     expect(roundedExampleCount(90, "research")).toBe(3);

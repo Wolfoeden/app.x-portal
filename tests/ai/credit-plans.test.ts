@@ -6,9 +6,10 @@ import { PUBLIC_PRICING_PLANS, START_CREDITS, meteredNetCents } from "@/lib/bill
 describe("Pricing- und Billingmodell", () => {
   it("vergibt Start-Credits einmalig statt als Monatskontingent", () => {
     expect(CREDIT_PLANS.trial.billingModel).toBe("one_time");
-    expect(CREDIT_PLANS.trial.grantCredits).toBe(300);
+    expect(CREDIT_PLANS.trial.grantCredits).toBe(90);
     expect(CREDIT_PLANS.trial.monthlyCredits).toBe(0);
-    expect(START_CREDITS).toBe(300);
+    expect(START_CREDITS).toBe(90);
+    expect(CREDIT_PLANS.guest.grantCredits).toBeLessThan(START_CREDITS);
   });
 
   it("definiert die drei Monatspläne zentral", () => {

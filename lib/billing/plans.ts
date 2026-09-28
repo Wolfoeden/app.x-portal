@@ -43,11 +43,19 @@ export type MeteredPlan = PlanBase & {
 export type CreditPlan = OneTimeCreditPlan | FixedMonthlyPlan | MeteredPlan;
 
 export const CREDIT_PLANS = {
+  /**
+   * Das Startguthaben ist so bemessen, dass es zum Ausprobieren reicht und
+   * die Bezahlschranke erreichbar bleibt. Bis zum 28.09.2026 lagen Gäste bei
+   * 100 und Konten bei 300 Credits: Neun von zehn Gästen verbrauchten höchstens
+   * 26, und kein Konto hat sein Guthaben je aufgebraucht — der Weg zu einem
+   * Tarif kam damit nie in Sicht. Bestehende Konten behalten ihr Guthaben;
+   * die Werte gelten für neu angelegte Zugänge.
+   */
   guest: {
     id: "guest",
     label: "Gastzugang",
     billingModel: "one_time",
-    grantCredits: 100,
+    grantCredits: 30,
     monthlyCredits: 0,
     priceNetCents: 0,
     purchasable: false,
@@ -59,7 +67,7 @@ export const CREDIT_PLANS = {
     id: "trial",
     label: "Kostenloser Start",
     billingModel: "one_time",
-    grantCredits: 300,
+    grantCredits: 90,
     monthlyCredits: 0,
     priceNetCents: 0,
     purchasable: false,
