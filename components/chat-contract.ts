@@ -401,6 +401,7 @@ export interface ChatApiPaths {
   adminFreelancers?: string;
   /** Explicit, separately disclosed web search offered only after no reliable internal match. */
   freelancerSearch: string;
+  profileFeedback: string;
   emailLogin: string;
   emailRegister: string;
   providerLogin: string;
@@ -422,6 +423,7 @@ export const defaultChatApiPaths: ChatApiPaths = {
   adminUsage: appPath("/chat/admin/ai-usage"),
   adminFreelancers: appPath("/chat/admin/freelancers"),
   freelancerSearch: appPath("/api/freelancer-search"),
+  profileFeedback: appPath("/api/profile-feedback"),
   emailLogin: appPath("/api/auth/login"),
   emailRegister: appPath("/api/auth/register"),
   providerLogin: appPath("/auth/sign-in"),

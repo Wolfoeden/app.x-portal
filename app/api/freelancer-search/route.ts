@@ -48,6 +48,13 @@ const InputSchema = z
     // their RFC version bits were not normalized.
     projectId: PostgresUuidSchema,
     requestId: z.string().trim().min(8).max(160),
+    /**
+     * Profile, die der Nutzer in diesem Projekt als unpassend markiert hat.
+     * Sie zählen nicht als verlässlicher Treffer: Wer alle Vorschläge
+     * verworfen hat, darf öffentlich weitersuchen. Die Kosten trägt der
+     * Nutzer selbst, eine Freigabe über fremde Konten entsteht daraus nicht.
+     */
+    excludedProfileIds: z.array(PostgresUuidSchema).max(50).optional(),
   })
   .strict();
 
@@ -232,7 +239,10 @@ export async function POST(request: Request) {
 
     // Search is only the explicit fallback after the current curated catalog
     // produced no eligible profile. This check prevents paid duplicate work.
-    const internalProfiles = await fetchActiveBookableRealProfiles(admin);
+    const excluded = new Set(input.excludedProfileIds ?? []);
+    const internalProfiles = (await fetchActiveBookableRealProfiles(admin)).filter(
+      (profile) => !excluded.has(profile.id),
+    );
     const internalShortlist = buildShortlist(brief, internalProfiles);
     if (internalShortlist.status !== "no_reliable_match") {
       await writeAuditEvent({

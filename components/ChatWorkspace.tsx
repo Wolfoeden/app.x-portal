@@ -39,6 +39,12 @@ import {
   saveAccountName,
   signOut as signOutAccount,
 } from "@/lib/auth/browser";
+import {
+  DISMISSED_PROFILES_STORAGE_KEY,
+  readDismissedProfiles,
+  type DismissedProfile,
+  type ProfileFeedbackReason,
+} from "@/lib/freelancer/profile-feedback";
 import { AccountSummary, CreditPlansDialog } from "./chat/account";
 import {
   exhaustedNotice,
@@ -1167,6 +1173,18 @@ export function ChatWorkspace({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [team, setTeam] = useState<SavedFreelancer[]>([]);
+  // „Passt nicht" je Projekt, im Browser gehalten. Der Server bekommt die
+  // Rückmeldung getrennt; ausgeblendet wird nur in der eigenen Ansicht.
+  const [dismissedByProject, setDismissedByProject] = useState<
+    Record<string, DismissedProfile[]>
+  >(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      return readDismissedProfiles(window.localStorage.getItem(DISMISSED_PROFILES_STORAGE_KEY));
+    } catch {
+      return {};
+    }
+  });
   // Starts true: an account always loads its team on mount, and setting the
   // flag inside the effect would be a synchronous state change during render.
   const [teamLoading, setTeamLoading] = useState(!preview);
@@ -1326,6 +1344,70 @@ export function ChatWorkspace({
       setAuthOpen(true);
     },
     [activeProject?.id],
+  );
+
+  const storeDismissed = useCallback(
+    (update: (current: Record<string, DismissedProfile[]>) => Record<string, DismissedProfile[]>) => {
+      setDismissedByProject((current) => {
+        const next = update(current);
+        try {
+          window.localStorage.setItem(DISMISSED_PROFILES_STORAGE_KEY, JSON.stringify(next));
+        } catch {
+          // Ohne Speicher bleibt die Auswahl bis zum Neuladen ausgeblendet.
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
+  const sendProfileFeedback = useCallback(
+    (profileId: string, reason: ProfileFeedbackReason, kind: "unsuitable" | "withdrawn") => {
+      if (preview) return;
+      // Eine verlorene Rückmeldung darf die Ansicht nicht aufhalten.
+      void fetch(apiPaths.profileFeedback, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profileId, reason, kind }),
+      }).catch(() => undefined);
+    },
+    [apiPaths.profileFeedback, preview],
+  );
+
+  const dismissProfile = useCallback(
+    (profile: FreelancerProfileResult, reason: ProfileFeedbackReason) => {
+      const projectId = activeProject?.id;
+      if (!projectId) return;
+      storeDismissed((current) => ({
+        ...current,
+        [projectId]: [
+          ...(current[projectId] ?? []).filter((entry) => entry.profileId !== profile.id),
+          { profileId: profile.id, reason },
+        ],
+      }));
+      if (selectedProfileId === profile.id) setSelectedProfileId(null);
+      sendProfileFeedback(profile.id, reason, "unsuitable");
+    },
+    [activeProject?.id, selectedProfileId, sendProfileFeedback, storeDismissed],
+  );
+
+  const restoreProfile = useCallback(
+    (profileId: string) => {
+      const projectId = activeProject?.id;
+      if (!projectId) return;
+      const entry = (dismissedByProject[projectId] ?? []).find(
+        (candidate) => candidate.profileId === profileId,
+      );
+      storeDismissed((current) => ({
+        ...current,
+        [projectId]: (current[projectId] ?? []).filter(
+          (candidate) => candidate.profileId !== profileId,
+        ),
+      }));
+      if (entry) sendProfileFeedback(profileId, entry.reason, "withdrawn");
+    },
+    [activeProject?.id, dismissedByProject, sendProfileFeedback, storeDismissed],
   );
 
   /** Zur einzigen Preisliste, mit dem Grund, damit sie sagen kann, warum. */
@@ -2154,6 +2236,11 @@ export function ChatWorkspace({
         body: JSON.stringify({
           projectId,
           requestId,
+          // Was der Nutzer als unpassend verworfen hat, zählt für die
+          // Entscheidung, ob der Katalog noch etwas Verlässliches hat.
+          excludedProfileIds: (dismissedByProject[projectId] ?? []).map(
+            (entry) => entry.profileId,
+          ),
         }),
       });
       if (!response.ok) {
@@ -3150,6 +3237,11 @@ export function ChatWorkspace({
                       isAccountUser ? team.map((member) => member.profile.id) : []
                     }
                     onToggleSave={(profile) => void toggleSavedFreelancer(profile)}
+                    dismissedProfiles={
+                      activeProject ? dismissedByProject[activeProject.id] ?? [] : []
+                    }
+                    onDismissProfile={dismissProfile}
+                    onRestoreProfile={restoreProfile}
                     onSelect={requestProfileSelection}
                     onContact={(profile) => {
                       setSelectedProfileId(profile.id);

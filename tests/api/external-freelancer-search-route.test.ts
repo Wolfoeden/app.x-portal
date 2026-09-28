@@ -291,6 +291,29 @@ describe("POST /api/freelancer-search", () => {
     );
   });
 
+  it("counts profiles the user dismissed as unsuitable out of the internal check", async () => {
+    const kept = { id: "00000000-0000-4000-8000-0000000000a1" };
+    const dismissed = { id: "00000000-0000-4000-8000-0000000000a2" };
+    mocks.fetchProfiles.mockResolvedValueOnce([kept, dismissed]);
+    const withExclusion = new Request("https://x-portal.eu/api/freelancer-search", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: "https://x-portal.eu",
+        "x-forwarded-for": "203.0.113.5",
+      },
+      body: JSON.stringify({
+        projectId: PROJECT_ID,
+        requestId: "search-request-1",
+        excludedProfileIds: [dismissed.id],
+      }),
+    });
+
+    await POST(withExclusion);
+
+    expect(mocks.buildShortlist).toHaveBeenCalledWith(expect.anything(), [kept]);
+  });
+
   it("does not spend when the internal brief still needs clarification", async () => {
     mocks.buildShortlist.mockReturnValue({
       status: "needs_clarification",
