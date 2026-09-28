@@ -203,6 +203,34 @@ describe("Vorbereiten: der Abgleich", () => {
     expect(body).not.toContain(PROFIL.displayName);
   });
 
+  it("zeigt die Suche, mit der das Profil gefunden wurde, und einen Buchungsweg", async () => {
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
+
+    await runLeadPreparePass({ senderEmail: "info@x-portal.eu" });
+
+    const body = mocks.saveDraft.mock.calls[0][0].body as string;
+    expect(body).toContain("So haben wir Ihre Ausschreibung abgeglichen:");
+    expect(body).toMatch(/✓ React\s+im Profil belegt/u);
+    expect(body).toContain(
+      `https://x-portal.eu/api/freelancers/${PROFIL.id}/book?via=lead`,
+    );
+    expect(body).not.toContain("Beta");
+  });
+
+  it("bietet bei einem Profil mit Freigabe keinen direkten Buchungsweg an", async () => {
+    mocks.profiles.mockResolvedValue([
+      { ...PROFIL, introPolicy: { ...PROFIL.introPolicy, type: "premium" as const } },
+    ]);
+    mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
+
+    await runLeadPreparePass({ senderEmail: "info@x-portal.eu" });
+
+    expect(mocks.saveDraft).toHaveBeenCalledTimes(1);
+    const body = mocks.saveDraft.mock.calls[0][0].body as string;
+    expect(body).toContain("Das Profil mit vollständiger Begründung ansehen:");
+    expect(body).not.toContain("/book?via=lead");
+  });
+
   it("archiviert ohne Treffer und vermerkt die Nachfrage", async () => {
     mocks.leads.mockResolvedValue({ data: [lead({ id: 2, text: OHNE_TREFFER })], error: null });
 

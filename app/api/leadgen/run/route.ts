@@ -10,7 +10,10 @@ import {
   runLeadPreparePass,
   runLeadSendPass,
 } from "@/lib/leadgen/match-run";
-import { LEAD_BULK_SEND_LIMIT } from "@/lib/leadgen/limits";
+import {
+  LEAD_BULK_SEND_LIMIT,
+  SCHEDULED_LEAD_SEND_ENABLED,
+} from "@/lib/leadgen/limits";
 import {
   assertSameOrigin,
   readJsonWithLimit,
@@ -110,6 +113,14 @@ export async function POST(request: Request) {
 
     const mode = input.mode ?? "send";
     modus = mode;
+
+    // Der Zeitplan verschickt zurzeit nicht selbst; siehe
+    // SCHEDULED_LEAD_SEND_ENABLED. Der Aufruf bleibt ein Erfolg, damit der
+    // Zeitgeber nichts meldet, und hinterlässt kein Protokoll: Er kommt alle
+    // zehn Minuten und hätte nichts zu berichten.
+    if (mode === "send" && auth.actor === "scheduler" && !SCHEDULED_LEAD_SEND_ENABLED) {
+      return NextResponse.json({ mode, sent: 0, stoppedBy: "manual_only" });
+    }
     const from =
       process.env.EMAIL_FROM?.trim() || process.env.SMTP_USER?.trim() || null;
     // Strenger als der reine SMTP-Zugang, wie im Einzelversand: Ohne

@@ -277,6 +277,12 @@ export function buildLeadEmail(input: LeadMessageInput): string {
  * bewusst an ein zuvor angezeigtes Profil gebunden ist. Rolle, belegte
  * Kompetenzen, Arbeitsweise und Verfügbarkeit tragen die Nachricht ohnehin.
  *
+ * Seit dem 28. September 2026 führt die Nachricht trotzdem direkt zum
+ * Kalender des Profils (`leadBookingUrl`), auf Romans Wunsch: Wer die
+ * Eckdaten und den Abgleich gelesen hat, soll ohne Umweg über ein Konto
+ * einen Termin wählen können. Der Name bleibt draußen; die Buchungsseite
+ * zeigt ihn erst dem, der sie aufruft.
+ *
  * Kein Modelltext: Was hier steht, kommt vollständig aus dem Profil und aus
  * dem Ergebnis von `buildShortlist()`. Ein Modell könnte hier nichts
  * hinzufügen, aber einiges erfinden.
@@ -338,6 +344,101 @@ function eckdaten(fakten: MatchFacts): string[] {
   return zeilen.map(([k, v]) => `  ${(k + ":").padEnd(breite + 2)}${v}`);
 }
 
+/**
+ * Eine Anforderung aus der Ausschreibung und was das Profil dazu belegt.
+ *
+ * Strukturell statt als Import aus dem Matching: Die Nachricht braucht nur
+ * diese Felder, und so bleibt sie ohne die Rangliste prüfbar.
+ */
+export type RequirementCheck = {
+  category: "skill" | "language" | "work_mode" | "location" | "qualification" | "contractual";
+  priority: "hard" | "core" | "optional";
+  operator: "all_of" | "any_of";
+  values: readonly string[];
+  status: "satisfied" | "contradicted" | "unknown";
+  evidence: "verified" | "self_reported" | "structured" | "unknown";
+};
+
+const MAX_ABGLEICH_ZEILEN = 6;
+
+const KATEGORIE_PRAEFIX: Readonly<Partial<Record<RequirementCheck["category"], string>>> = {
+  language: "Sprache: ",
+  work_mode: "Arbeitsweise: ",
+  location: "Ort: ",
+};
+
+function abgleichErgebnis(check: RequirementCheck): string {
+  if (check.status === "contradicted") return "passt nicht";
+  if (check.status === "unknown") return "nicht belegt – im Erstgespräch klären";
+  if (check.evidence === "verified") return "im Profil belegt";
+  if (check.evidence === "self_reported") return "laut Profil";
+  return "passt";
+}
+
+/**
+ * Der Abgleich in Zeilen: was die Ausschreibung verlangt und was das Profil
+ * dazu hergibt. Das ist die Suche, mit der XPORTAL das Profil gefunden hat —
+ * der Empfänger sieht, warum es passt, und ebenso, was offen ist.
+ *
+ * Muss- und Kernanforderungen zuerst, ergänzende danach; vertragliche
+ * Bedingungen bleiben draußen, weil sie ins Gespräch gehören und nicht in
+ * eine erste Nachricht. Höchstens sechs Zeilen, damit die Nachricht lesbar
+ * bleibt.
+ */
+export function requirementLines(checks: readonly RequirementCheck[]): string[] {
+  const rang = { hard: 0, core: 1, optional: 2 } as const;
+  const zeilen = checks
+    .filter((check) => check.category !== "contractual" && check.values.length > 0)
+    .sort((a, b) => rang[a.priority] - rang[b.priority])
+    .slice(0, MAX_ABGLEICH_ZEILEN)
+    .map((check) => {
+      const werte = check.values.join(check.operator === "any_of" ? " oder " : ", ");
+      const label = `${KATEGORIE_PRAEFIX[check.category] ?? ""}${werte}${
+        check.priority === "optional" ? " (optional)" : ""
+      }`;
+      const zeichen =
+        check.status === "satisfied" ? "✓" : check.status === "contradicted" ? "✗" : "?";
+      return { zeichen, label, ergebnis: abgleichErgebnis(check) };
+    });
+  const breite = Math.max(0, ...zeilen.map((zeile) => zeile.label.length));
+  return zeilen.map(
+    ({ zeichen, label, ergebnis }) => `  ${zeichen} ${label.padEnd(breite + 2)}${ergebnis}`,
+  );
+}
+
+/**
+ * Der direkte Weg zum Kalender des Freelancers, ohne Anmeldung.
+ *
+ * Er führt über die eigene Domain und nicht auf die Buchungsseite selbst:
+ * `/api/freelancers/<id>/book` prüft, ob das Profil noch aktiv und buchbar
+ * ist, zählt den Klick und leitet erst dann weiter. `via=lead` ordnet den
+ * Klick der Akquise-Mail zu. Die Sperre für den Stapelversand lässt nur Links
+ * auf x-portal.eu durch, und genau so einer ist es.
+ */
+export function leadBookingUrl(input: {
+  origin: string;
+  profileId: string;
+}): string | null {
+  try {
+    const url = new URL(
+      `/api/freelancers/${encodeURIComponent(input.profileId)}/book`,
+      input.origin,
+    );
+    url.searchParams.set("via", "lead");
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+/** „und 1 weiteres kommt infrage" / „und 2 weitere kommen infrage". */
+function weitereProfile(anzahl: number): string {
+  if (anzahl <= 0) return "";
+  return anzahl === 1
+    ? ", dazu kommt 1 weiteres infrage"
+    : `, dazu kommen ${anzahl} weitere infrage`;
+}
+
 export function buildMatchEmail(input: {
   recipientName: string | null;
   company: string | null;
@@ -349,24 +450,39 @@ export function buildMatchEmail(input: {
   /** Wie viele Profile die Rangliste als verlässlich passend geführt hat. */
   matchCount: number;
   best: MatchFacts;
+  /** Die Anforderungen aus der Ausschreibung, geprüft am besten Profil. */
+  requirements?: readonly RequirementCheck[];
+  /** Direkter Buchungsweg über x-portal.eu; fehlt, wenn das Profil keinen hat. */
+  bookingUrl?: string | null;
   ctaUrl: string;
 }): string {
   const weitere = input.matchCount - 1;
+  const abgleich = requirementLines(input.requirements ?? []);
   return [
     salutation(input.recipientName, input.company),
     "",
-    `für Ihre Ausschreibung „${input.headline}" ist auf XPORTAL ein Profil eingetragen, das die dort genannten Anforderungen abdeckt${weitere > 0 ? `, und ${weitere} weitere kommen infrage` : ""}.`,
+    `für Ihre Ausschreibung „${input.headline}" haben wir auf XPORTAL ein passendes Profil gefunden${weitereProfile(weitere)}.`,
     "",
-    "Die Eckdaten:",
+    "Das Profil:",
     "",
     ...eckdaten(input.best),
+    ...(abgleich.length
+      ? ["", "So haben wir Ihre Ausschreibung abgeglichen:", "", ...abgleich]
+      : []),
+    ...(input.bookingUrl
+      ? [
+          "",
+          "Erstgespräch direkt im Kalender buchen, ohne Anmeldung:",
+          input.bookingUrl,
+        ]
+      : []),
     "",
     weitere > 0
-      ? "Vollständige Profile ansehen und ein Erstgespräch buchen:"
-      : "Vollständiges Profil ansehen und ein Erstgespräch buchen:",
+      ? "Alle passenden Profile mit vollständiger Begründung ansehen:"
+      : "Das Profil mit vollständiger Begründung ansehen:",
     input.ctaUrl,
     "",
-    "Während der Beta kostenlos.",
+    "Das Ansehen der Profile ist kostenlos. Der Termin ist ein Erstgespräch, noch keine Beauftragung.",
     "",
     "Viele Grüße",
     `${SENDER_PERSON} — XPORTAL`,

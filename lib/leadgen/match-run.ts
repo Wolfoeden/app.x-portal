@@ -39,6 +39,7 @@ import {
 import {
   buildMatchEmail,
   buildMatchSubject,
+  leadBookingUrl,
   leadSearchUrl,
   type MatchFacts,
 } from "@/lib/leadgen/outreach-message";
@@ -385,6 +386,7 @@ export async function runLeadPreparePass(
       matchCount: shortlist.matches.length,
       headline,
     });
+    const best = shortlist.matches[0];
     const body = buildMatchEmail({
       recipientName: lead.recipient_name,
       company: lead.company,
@@ -394,7 +396,18 @@ export async function runLeadPreparePass(
       headline,
       matchCount: shortlist.matches.length,
       ctaUrl,
-      best: factsFor(shortlist.matches[0].profile),
+      best: factsFor(best.profile),
+      // Die Suche, mit der das Profil gefunden wurde: Anforderung für
+      // Anforderung, samt dem, was offen ist.
+      requirements: best.requirementAssessments ?? [],
+      // Nur für direkt buchbare Profile mit Kalender. Ein Profil mit
+      // Freigabe durch den Betreiber („premium") bekommt keinen Weg an ihr
+      // vorbei. Der Link führt über die eigene Domain, die beim Klick erneut
+      // prüft, ob das Profil noch buchbar ist.
+      bookingUrl:
+        best.profile.introPolicy.type === "free" && best.profile.introPolicy.bookingUrl
+          ? leadBookingUrl({ origin, profileId: best.profile.id })
+          : null,
     });
 
     if (!options.dryRun) {
