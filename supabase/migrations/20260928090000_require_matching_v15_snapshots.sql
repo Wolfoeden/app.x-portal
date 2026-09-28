@@ -7,9 +7,14 @@
 -- These constraints must name v15 explicitly, otherwise new shortlists would
 -- silently stop requiring the audit snapshots that v11 through v14 require.
 -- Until this migration runs, v15 rows are written unchecked; nothing fails.
+--
+-- Idempotent on purpose: production migrations are applied through the
+-- Supabase connector with their own version numbers, so a later
+-- `supabase db push` may run this file again. It must then be a no-op.
 
 alter table public.shortlists
-  drop constraint shortlists_v11_through_v14_decision_required_check,
+  drop constraint if exists shortlists_v11_through_v14_decision_required_check,
+  drop constraint if exists shortlists_v11_through_v15_decision_required_check,
   add constraint shortlists_v11_through_v15_decision_required_check
     check (
       matching_rule_version not in (
@@ -23,7 +28,8 @@ alter table public.shortlists
     );
 
 alter table public.matches
-  drop constraint matches_v11_through_v14_evaluation_required_check,
+  drop constraint if exists matches_v11_through_v14_evaluation_required_check,
+  drop constraint if exists matches_v11_through_v15_evaluation_required_check,
   add constraint matches_v11_through_v15_evaluation_required_check
     check (
       matching_rule_version not in (
