@@ -43,7 +43,7 @@ export function versandDetail(
 export type SchrittEingabe = {
   /** Leads, die der nächste Abgleichlauf anfassen würde. */
   abzugleichen: number;
-  /** Fertige Entwürfe, die auf das Versandfenster warten. */
+  /** Fertige Entwürfe, die auf die Freigabe durch den Betreiber warten. */
   vorbereitet: number;
   verschicktHeute: number;
   tagesmenge: number;

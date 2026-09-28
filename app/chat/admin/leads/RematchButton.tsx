@@ -113,8 +113,8 @@ export function RematchButton({ archiviert }: { archiviert: number }) {
           ) : null}
           {!nurNachsehen && ergebnis.revived > 0 ? (
             <p>
-              Die Entwürfe schreibt der nächste Abgleich; verschickt wird erst
-              im Versandfenster.
+              Die Entwürfe schreibt der nächste Abgleich; verschickt wird erst,
+              wenn Sie sie freigeben.
             </p>
           ) : null}
         </div>

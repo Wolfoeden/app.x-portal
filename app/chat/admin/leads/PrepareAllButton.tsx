@@ -58,7 +58,7 @@ export function PrepareAllButton({ offen }: { offen: number }) {
     if (
       !window.confirm(
         `Alle offenen Leads werden gegen den Katalog gehalten.\n\n` +
-          `Treffer bekommen einen Entwurf, der auf das Versandfenster wartet. ` +
+          `Treffer bekommen einen Entwurf, der auf Ihre Freigabe wartet. ` +
           `Leads ohne Treffer wandern ins Archiv und zählen als offene ` +
           `Nachfrage.\n\nEs wird dabei nichts verschickt.`,
       )

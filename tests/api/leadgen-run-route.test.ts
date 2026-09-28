@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const flags = vi.hoisted(() => ({ scheduledSend: false }));
+
 const mocks = vi.hoisted(() => ({
   audit: vi.fn(),
   currentUser: vi.fn(),
@@ -16,6 +18,15 @@ vi.mock("@/lib/auth/current-user", () => ({
 vi.mock("@/lib/email/deliver", () => ({
   promotionalDeliveryConfigured: mocks.configured,
 }));
+vi.mock("@/lib/leadgen/limits", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/leadgen/limits")>();
+  return {
+    ...actual,
+    get SCHEDULED_LEAD_SEND_ENABLED() {
+      return flags.scheduledSend;
+    },
+  };
+});
 vi.mock("@/lib/leadgen/match-run", () => ({
   runLeadPreparePass: mocks.prepare,
   runLeadSendPass: mocks.send,
@@ -68,6 +79,7 @@ function browserAnfrage(body: unknown = {}, origin = "https://x-portal.eu"): Req
 
 beforeEach(() => {
   vi.clearAllMocks();
+  flags.scheduledSend = false;
   process.env.LEADGEN_RUN_SECRET = TOKEN;
   process.env.EMAIL_FROM = "info@x-portal.eu";
   mocks.audit.mockResolvedValue(undefined);
@@ -79,11 +91,28 @@ beforeEach(() => {
 
 describe("POST /api/leadgen/run", () => {
   it("verschickt, wenn kein Modus angegeben ist", async () => {
-    const response = await POST(schedulerAnfrage());
+    const response = await POST(browserAnfrage());
 
     expect(response.status).toBe(200);
     expect(mocks.send).toHaveBeenCalledTimes(1);
     expect(mocks.prepare).not.toHaveBeenCalled();
+  });
+
+  it("lässt den Zeitplan nicht selbst verschicken, solange der Versand von Hand geht", async () => {
+    const response = await POST(schedulerAnfrage({ mode: "send" }));
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload).toEqual({ mode: "send", sent: 0, stoppedBy: "manual_only" });
+    expect(mocks.send).not.toHaveBeenCalled();
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it("gleicht nach Zeitplan weiter ab, auch wenn der Versand von Hand geht", async () => {
+    const response = await POST(schedulerAnfrage({ mode: "prepare" }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.prepare).toHaveBeenCalledTimes(1);
   });
 
   it("gleicht ab, wenn der Modus prepare heißt", async () => {
@@ -98,6 +127,7 @@ describe("POST /api/leadgen/run", () => {
   });
 
   it("bindet nur den Versand des Zeitgebers an das Fenster", async () => {
+    flags.scheduledSend = true;
     await POST(schedulerAnfrage({ mode: "send" }));
 
     expect(mocks.send).toHaveBeenCalledWith(

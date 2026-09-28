@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { appPath } from "@/lib/app-path";
+import { writeAuditEvent } from "@/lib/audit/write";
 import { isAllowedBookingHost } from "@/lib/freelancer/booking-hosts";
 import {
   loadBookingDestination,
@@ -46,6 +47,18 @@ export async function GET(
         eventType: "booking_click",
         source: "booking_link",
       }).catch(() => undefined);
+      // Der Link aus der Akquise-Mail trägt `via=lead`. Das Profilereignis
+      // kennt nur eine Quelle, deshalb steht die Zuordnung zur Mail im
+      // Protokoll: so zeigt sich, ob die Mails zu Terminen führen.
+      if (new URL(request.url).searchParams.get("via") === "lead") {
+        void writeAuditEvent({
+          actorUserId: null,
+          action: "lead_email_booking_click",
+          targetType: "freelancer_profile",
+          targetId: parsed.data,
+          outcome: "success",
+        }).catch(() => undefined);
+      }
     }
     // Ein bekannter Buchungsdienst wird direkt erreicht. Alles andere geht
     // über eine Seite, die das Ziel zeigt, statt dass x-portal.eu als

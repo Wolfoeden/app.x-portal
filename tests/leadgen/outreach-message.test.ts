@@ -6,11 +6,15 @@ import {
 } from "@/lib/legal/policy";
 import {
   buildLeadEmail,
+  buildMatchEmail,
   firmenname,
+  leadBookingUrl,
   leadSearchUrl,
+  requirementLines,
   salutation,
   stripSalutationAndSignoff,
   unattendedBodyIssue,
+  type RequirementCheck,
 } from "@/lib/leadgen/outreach-message";
 
 describe("Recruiter-Einstieg", () => {
@@ -217,5 +221,69 @@ describe("Sperre für den unbeaufsichtigten Stapelversand", () => {
     expect(
       unattendedBodyIssue(`Schreiben Sie mir an ${ABSENDER}.`, ABSENDER),
     ).toBeNull();
+  });
+});
+
+describe("Treffer-Mail", () => {
+  const PROFIL_ID = "11111111-1111-4111-8111-111111111111";
+  const checks: RequirementCheck[] = [
+    { category: "skill", priority: "core", operator: "all_of", values: ["Python"], status: "satisfied", evidence: "verified" },
+    { category: "skill", priority: "hard", operator: "all_of", values: ["React"], status: "satisfied", evidence: "self_reported" },
+    { category: "skill", priority: "core", operator: "all_of", values: ["Directus"], status: "unknown", evidence: "unknown" },
+    { category: "work_mode", priority: "hard", operator: "all_of", values: ["remote"], status: "satisfied", evidence: "structured" },
+    { category: "contractual", priority: "hard", operator: "all_of", values: ["ANÜ"], status: "unknown", evidence: "unknown" },
+  ];
+  const mail = (matchCount: number, bookingUrl: string | null = leadBookingUrl({ origin: "https://x-portal.eu", profileId: PROFIL_ID })) =>
+    buildMatchEmail({
+      recipientName: null,
+      company: "Beispiel GmbH",
+      senderEmail: "info@x-portal.eu",
+      sourceUrl: "https://example.invalid/projekt/1",
+      unsubscribeUrl: "https://x-portal.eu/unsubscribe?t=abc",
+      headline: "Data Scientist (Python, Directus, React)",
+      matchCount,
+      best: {
+        role: "Data Scientist",
+        verifiedSkills: ["Python"],
+        workModes: ["remote"],
+        location: null,
+        availabilityStatus: "available",
+        availableFrom: null,
+        hourlyRate: null,
+      },
+      requirements: checks,
+      bookingUrl,
+      ctaUrl: "https://x-portal.eu/chat?q=Data+Scientist&entry=recruiter",
+    });
+
+  it("zeigt Muss-Anforderungen zuerst und lässt Vertragliches weg", () => {
+    const zeilen = requirementLines(checks);
+
+    expect(zeilen[0]).toMatch(/✓ React\s+laut Profil/u);
+    expect(zeilen.some((zeile) => /✓ Arbeitsweise: remote\s+passt/u.test(zeile))).toBe(true);
+    expect(zeilen.some((zeile) => /✓ Python\s+im Profil belegt/u.test(zeile))).toBe(true);
+    expect(zeilen.some((zeile) => /\? Directus\s+nicht belegt – im Erstgespräch klären/u.test(zeile))).toBe(true);
+    expect(zeilen.join("\n")).not.toContain("ANÜ");
+  });
+
+  it("verspricht keine kostenlose Beta mehr und zählt grammatisch richtig", () => {
+    expect(mail(2)).not.toContain("Beta");
+    expect(mail(2)).toContain("dazu kommt 1 weiteres infrage");
+    expect(mail(3)).toContain("dazu kommen 2 weitere infrage");
+    expect(mail(1)).not.toContain("infrage");
+  });
+
+  it("führt ohne Anmeldung über die eigene Domain zum Kalender", () => {
+    const text = mail(1);
+
+    expect(text).toContain("Erstgespräch direkt im Kalender buchen, ohne Anmeldung:");
+    expect(text).toContain(`https://x-portal.eu/api/freelancers/${PROFIL_ID}/book?via=lead`);
+    // Der Buchungsweg besteht die Sperre für den Stapelversand.
+    const buchung = text.split("\n").find((zeile) => zeile.includes("/book?via=lead")) ?? "";
+    expect(unattendedBodyIssue(buchung, "info@x-portal.eu")).toBeNull();
+  });
+
+  it("lässt den Buchungsweg weg, wenn es keinen gibt", () => {
+    expect(mail(1, null)).not.toContain("im Kalender buchen");
   });
 });
