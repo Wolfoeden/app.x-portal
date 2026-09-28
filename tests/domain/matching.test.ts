@@ -795,4 +795,64 @@ Kernkompetenzen:
     expect(shortlist.matches).toHaveLength(1);
     expect(shortlist.matches[0]?.coreCoverage).toBe(75);
   });
+
+  describe("Rolle (v15)", () => {
+    const sapBrief = applyBriefPatch(
+      parseFallbackBrief("SAP freelancer, remote", { now }),
+      { projectTitle: "SAP Engineer (Joule/SAP AI)", requiredSkills: ["SAP"] },
+    );
+    const sapSkill = { value: "SAP", source: "verified" as const };
+
+    it("empfiehlt kein Testprofil für eine SAP-Rolle, nur weil SAP als Skill dasteht", () => {
+      const tester = {
+        ...profileFixtures[0]!,
+        id: "00000000-0000-4000-8000-000000000101",
+        displayName: "Tessa Test",
+        role: "Testmanagement / QA",
+        skillTags: [sapSkill],
+      };
+
+      const evaluation = evaluateProfile(sapBrief, tester);
+      const shortlist = buildShortlist(sapBrief, [tester]);
+
+      expect(evaluation.eligible).toBe(true);
+      expect(evaluation.reliable).toBe(false);
+      expect(evaluation.knownGaps).toContain(
+        "Rolle weicht ab: gesucht KI, SAP, das Profil ist Testmanagement / QA.",
+      );
+      expect(shortlist.matches).toHaveLength(0);
+      // Sichtbar bleibt es — als Teiltreffer mit dem offenen Punkt.
+      expect(shortlist.partialMatches.map((match) => match.profile.displayName)).toEqual([
+        "Tessa Test",
+      ]);
+    });
+
+    it("empfiehlt ein SAP-Profil für dieselbe Rolle und nennt den Grund", () => {
+      const berater = {
+        ...profileFixtures[0]!,
+        id: "00000000-0000-4000-8000-000000000102",
+        displayName: "Sven SAP",
+        role: "SAP-S/4HANA- & Anforderungsmanagement-Berater",
+        skillTags: [sapSkill],
+      };
+
+      const evaluation = evaluateProfile(sapBrief, berater);
+
+      expect(evaluation.reliable).toBe(true);
+      expect(evaluation.matchReasons).toContain(
+        "Rolle passt: SAP-S/4HANA- & Anforderungsmanagement-Berater.",
+      );
+    });
+
+    it("ändert nichts, wenn der Projekttitel keine Rolle nennt", () => {
+      const brief = applyBriefPatch(sapBrief, { projectTitle: "Neues Projekt" });
+      const tester = {
+        ...profileFixtures[0]!,
+        role: "Testmanagement / QA",
+        skillTags: [sapSkill],
+      };
+
+      expect(evaluateProfile(brief, tester).reliable).toBe(true);
+    });
+  });
 });
