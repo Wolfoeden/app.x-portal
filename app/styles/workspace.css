@@ -1782,6 +1782,13 @@ dd.is-unknown,
   color: var(--muted);
 }
 
+/* Eine alte Angabe ist kein Nein, aber auch kein bestätigtes Ja. */
+.availability.stale {
+  border: 1px dashed var(--amber-border);
+  background: transparent;
+  color: var(--amber);
+}
+
 .intro-badge {
   border: 1px solid var(--border);
   color: var(--ink-soft);
@@ -3463,6 +3470,88 @@ dd.is-unknown,
 
 .contact-dialog {
   padding: 25px;
+}
+
+/* Anfrage im Vermittlungsmodell: drei Sätze, ein Häkchen, ein Knopf. */
+.placement-form,
+.placement-status {
+  display: grid;
+  gap: 14px;
+  padding-top: 18px;
+}
+
+.placement-status {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--fs-xs);
+  line-height: 1.55;
+}
+
+.placement-status p {
+  margin: 0;
+}
+
+.placement-terms {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.placement-terms li {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 6px;
+  color: var(--ink);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+
+.placement-terms li span {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.placement-privacy {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+  line-height: 1.5;
+}
+
+.placement-consent {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 9px;
+  cursor: pointer;
+  color: var(--ink);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+
+.placement-consent input {
+  width: 17px;
+  height: 17px;
+  margin-top: 1px;
+  cursor: pointer;
+  accent-color: var(--ink);
+}
+
+.placement-consent a {
+  color: var(--ink);
+  text-underline-offset: 3px;
+}
+
+.placement-dialog .confirmation-state {
+  margin-top: 18px;
 }
 
 .contact-dialog-header {

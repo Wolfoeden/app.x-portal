@@ -295,6 +295,12 @@ export type MatchFacts = {
   location: string | null;
   availabilityStatus: "available" | "limited" | "unavailable" | "unknown";
   availableFrom: string | null;
+  /**
+   * Wann der Freelancer die Verfügbarkeit zuletzt angegeben hat. Ohne das
+   * Datum las sich „verfügbar“ wie eine Zusage von heute, auch wenn die
+   * Angabe Wochen alt war.
+   */
+  availabilityCheckedAt?: string | null;
   hourlyRate: { amount: number; currency: string } | null;
 };
 
@@ -326,11 +332,17 @@ function eckdaten(fakten: MatchFacts): string[] {
   if (arbeitsweise.length) zeilen.push(["Arbeitsweise", arbeitsweise.join(" · ")]);
 
   const ab = datumDe(fakten.availableFrom);
-  zeilen.push([
-    "Verfügbarkeit",
+  const stand =
+    fakten.availabilityStatus === "unknown"
+      ? null
+      : datumDe(fakten.availabilityCheckedAt?.slice(0, 10) ?? null);
+  const verfuegbarkeit =
     ab && fakten.availabilityStatus !== "unknown"
       ? `${VERFUEGBARKEIT[fakten.availabilityStatus]} ab ${ab}`
-      : VERFUEGBARKEIT[fakten.availabilityStatus],
+      : VERFUEGBARKEIT[fakten.availabilityStatus];
+  zeilen.push([
+    "Verfügbarkeit",
+    stand ? `${verfuegbarkeit} (Stand ${stand})` : verfuegbarkeit,
   ]);
 
   zeilen.push([

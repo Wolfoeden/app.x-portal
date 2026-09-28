@@ -1,10 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   audit: vi.fn(),
   destination: vi.fn(),
   event: vi.fn(),
   rateLimit: vi.fn(),
+  currentUser: vi.fn(),
+  allowed: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -16,6 +18,8 @@ vi.mock("@/lib/freelancer/profile-data", () => ({
 vi.mock("@/lib/security/shared-rate-limit", () => ({
   consumeRateLimit: mocks.rateLimit,
 }));
+vi.mock("@/lib/auth/current-user", () => ({ getCurrentUser: mocks.currentUser }));
+vi.mock("@/lib/placement/requests", () => ({ placementBookingAllowed: mocks.allowed }));
 
 import { GET } from "@/app/api/freelancers/[id]/book/route";
 
@@ -36,6 +40,12 @@ beforeEach(() => {
     displayName: "Beispiel",
     url: "https://calendly.com/beispiel",
   });
+  mocks.currentUser.mockResolvedValue(null);
+  mocks.allowed.mockResolvedValue(false);
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 describe("GET /api/freelancers/[id]/book", () => {
@@ -80,5 +90,41 @@ describe("GET /api/freelancers/[id]/book", () => {
 
     expect(response.status).toBe(404);
     expect(mocks.audit).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/freelancers/[id]/book im Vermittlungsmodell", () => {
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
+  });
+
+  // Der Kalender vor der Vorstellung wäre der Weg an der Anfrage vorbei.
+  it("schickt ohne Vorstellung zur Anfrage statt in den Kalender", async () => {
+    const response = await aufruf("?via=lead");
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("https://x-portal.eu/chat?booking=request");
+    expect(mocks.destination).not.toHaveBeenCalled();
+    expect(mocks.event).not.toHaveBeenCalled();
+  });
+
+  it("öffnet den Kalender nach der Vorstellung", async () => {
+    const kunde = { id: "kunde", isAdmin: false, isAnonymous: false };
+    mocks.currentUser.mockResolvedValue(kunde);
+    mocks.allowed.mockResolvedValue(true);
+
+    const response = await aufruf();
+
+    expect(mocks.allowed).toHaveBeenCalledWith(kunde, PROFIL_ID);
+    expect(response.headers.get("location")).toBe("https://calendly.com/beispiel");
+  });
+
+  it("bleibt ohne Schalter beim direkten Weg", async () => {
+    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "false");
+
+    const response = await aufruf();
+
+    expect(mocks.allowed).not.toHaveBeenCalled();
+    expect(response.headers.get("location")).toBe("https://calendly.com/beispiel");
   });
 });

@@ -10,6 +10,8 @@ import type {
   ShortlistMatch,
 } from "@/lib/domain";
 import { normalizeAvatarUrl } from "@/lib/freelancer/avatar-limits";
+import { clientBookingUrl } from "@/lib/placement/config";
+import { SITE_URL } from "@/lib/seo";
 
 import { detectRequestLanguage } from "./request-language";
 
@@ -191,7 +193,7 @@ export function presentSavedProfile(
   profile: FreelancerProfile,
 ): FreelancerProfileResult {
   const firstMode = profile.workModes[0] ?? "unknown";
-  const bookingUrl = profile.introPolicy.bookingUrl;
+  const bookingUrl = clientBookingUrl(profile.id, profile.introPolicy.bookingUrl, SITE_URL);
   const facts: ProfileFact[] = [
     ...profile.qualifications,
     ...profile.contractualCapabilities,
@@ -245,7 +247,7 @@ export function presentMatch(match: ShortlistMatch): FreelancerProfileResult {
   // A partial result keeps its booking URL. It is still labelled as not
   // recommended everywhere it appears, but the reader decides whether to make
   // contact; withholding the link decided that for them.
-  const bookingUrl = profile.introPolicy.bookingUrl;
+  const bookingUrl = clientBookingUrl(profile.id, profile.introPolicy.bookingUrl, SITE_URL);
 
   return {
     id: profile.id,

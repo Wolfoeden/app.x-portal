@@ -1,3 +1,5 @@
+import { placementRequestsEnabled } from "@/lib/placement/config";
+
 export type AuthIntent =
   | "generic"
   | "save_profile"
@@ -144,6 +146,14 @@ export function authIntentCopy(intent: AuthIntent) {
         afterConfirmation: "Danach öffnet sich der Kontaktweg zu diesem Profil.",
       };
     case "book_profile":
+      if (placementRequestsEnabled()) {
+        return {
+          eyebrow: "Anfrage fortsetzen",
+          title: "E-Mail bestätigen und Freelancer anfragen",
+          body: "Ihre Anfrage und das gewählte Profil bleiben erhalten. Nach der Bestätigung per E-Mail senden Sie die Anfrage, und XPORTAL stellt Sie vor. Kostenlos bis zur Beauftragung.",
+          afterConfirmation: "Danach senden Sie die Anfrage zu diesem Profil.",
+        };
+      }
       return {
         eyebrow: "Termin fortsetzen",
         title: "E-Mail bestätigen und Terminweg öffnen",

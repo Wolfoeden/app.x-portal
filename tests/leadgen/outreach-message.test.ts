@@ -286,4 +286,33 @@ describe("Treffer-Mail", () => {
   it("lässt den Buchungsweg weg, wenn es keinen gibt", () => {
     expect(mail(1, null)).not.toContain("im Kalender buchen");
   });
+
+  // „verfügbar“ ohne Datum las sich wie eine Zusage von heute.
+  it("nennt den Stand der Verfügbarkeit, sobald er bekannt ist", () => {
+    const mitStand = (availabilityStatus: "available" | "unknown") =>
+      buildMatchEmail({
+        recipientName: null,
+        company: "Beispiel GmbH",
+        senderEmail: "info@x-portal.eu",
+        sourceUrl: "https://example.invalid/projekt/1",
+        unsubscribeUrl: "https://x-portal.eu/unsubscribe?t=abc",
+        headline: "Data Scientist",
+        matchCount: 1,
+        best: {
+          role: "Data Scientist",
+          verifiedSkills: [],
+          workModes: [],
+          location: null,
+          availabilityStatus,
+          availableFrom: "2026-10-01",
+          availabilityCheckedAt: "2026-09-21T08:00:00.000Z",
+          hourlyRate: null,
+        },
+        ctaUrl: "https://x-portal.eu/chat",
+      });
+
+    expect(mitStand("available")).toMatch(/Verfügbarkeit:\s+verfügbar ab 01\.10\.2026 \(Stand 21\.09\.2026\)/u);
+    expect(mitStand("unknown")).toMatch(/Verfügbarkeit:\s+Verfügbarkeit auf Anfrage\n/u);
+    expect(mail(1)).toMatch(/Verfügbarkeit:\s+verfügbar\n/u);
+  });
 });

@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  bookingActionState,
   cvActionState,
   navigateToCvDownload,
   ProfileCard,
@@ -199,5 +200,25 @@ describe("CV download request", () => {
     navigateToCvDownload("https://storage.example/signed/cv.pdf", { assign });
     expect(assign).toHaveBeenCalledOnce();
     expect(assign).toHaveBeenCalledWith("https://storage.example/signed/cv.pdf");
+  });
+});
+
+describe("booking button in the placement model", () => {
+  it("asks for an introduction instead of opening a calendar, with or without an account", () => {
+    const account = bookingActionState({ bookingUrl: null }, true, true);
+    const guest = bookingActionState({ bookingUrl: "https://x-portal.eu/api/freelancers/p/book" }, false, true);
+
+    expect(account).toEqual({
+      kind: "request",
+      label: "Freelancer anfragen",
+      hint: "Kostenlos bis zur Beauftragung · XPORTAL stellt Sie vor",
+      disabled: false,
+    });
+    expect(guest.kind).toBe("request");
+    expect(guest.hint).toContain("kein Passwort");
+  });
+
+  it("keeps the direct booking when the switch is off", () => {
+    expect(bookingActionState({ bookingUrl: "https://calendly.com/x" }, true, false).kind).toBe("bookable");
   });
 });

@@ -72,6 +72,8 @@ import {
   CreateProjectDialog,
   ManageChatDialog,
 } from "./chat/dialogs";
+import { PlacementDialog } from "./chat/placement-dialog";
+import { placementRequestsEnabled } from "@/lib/placement/config";
 import {
   initials,
   isRecord,
@@ -1710,6 +1712,19 @@ export function ChatWorkspace({
             return;
           }
         }
+        // Von `/api/freelancers/<id>/book` hierher geschickt: Im
+        // Vermittlungsmodell öffnet sich ein Kalender erst nach der Vorstellung.
+        if (searchParams.get("booking") === "request") {
+          showToast(
+            "Termine laufen über eine Anfrage: Öffnen Sie Ihr Projekt und wählen Sie beim Profil „Freelancer anfragen“. Kostenlos bis zur Beauftragung.",
+            "neutral",
+          );
+          searchParams.delete("booking");
+          const cleanUrl = `${window.location.pathname}${
+            searchParams.size ? `?${searchParams.toString()}` : ""
+          }${window.location.hash}`;
+          window.history.replaceState({}, "", cleanUrl);
+        }
         const authError = searchParams.get("auth_error");
         if (authError) {
           showToast(
@@ -2414,13 +2429,21 @@ export function ChatWorkspace({
   };
 
   const requestBooking = (profile: FreelancerProfileResult) => {
-    if (!profile.bookingUrl) return;
+    // Im Vermittlungsmodell ist der Knopf eine Anfrage, auch ohne Kalender:
+    // Er öffnet den Anfrage-Dialog, für Gäste nach der Anmeldung.
+    const placement = placementRequestsEnabled();
+    if (!placement && !profile.bookingUrl) return;
     if (!isAccountUser) {
       setPendingBookingProfileId(profile.id);
       openAuth(
         "book_profile",
         createAuthContinuation("book_profile", activeProject?.id, profile.id),
       );
+      return;
+    }
+    if (placement) {
+      setSelectedProfileId(profile.id);
+      setContactOpen(true);
       return;
     }
     // The link navigates to the redirect route that records the click. This
@@ -3398,10 +3421,20 @@ export function ChatWorkspace({
       ) : null}
 
       {contactOpen && selectedProfile ? (
-        <ContactDialog
-          profile={selectedProfile}
-          onClose={() => setContactOpen(false)}
-        />
+        placementRequestsEnabled() ? (
+          <PlacementDialog
+            profile={selectedProfile}
+            projectId={activeProject?.id ?? null}
+            introductionsPath={apiPaths.introductions}
+            preview={preview}
+            onClose={() => setContactOpen(false)}
+          />
+        ) : (
+          <ContactDialog
+            profile={selectedProfile}
+            onClose={() => setContactOpen(false)}
+          />
+        )
       ) : null}
 
       {deleteOpen ? (

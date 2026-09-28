@@ -14,6 +14,7 @@ import {
   recordLeadMatch,
 } from "@/lib/leadgen/demand";
 import { extractProjectBrief } from "@/lib/openai/brief";
+import { placementRequestsEnabled } from "@/lib/placement/config";
 import {
   claimPreparedDraft,
   discardPreparedDraft,
@@ -138,6 +139,7 @@ function factsFor(profile: {
   availability: {
     status: "available" | "limited" | "unavailable" | "unknown";
     availableFrom: string | null;
+    checkedAt?: string | null;
   };
   hourlyRate: { amount: number; currency: string } | null;
 }): MatchFacts {
@@ -150,6 +152,7 @@ function factsFor(profile: {
     location: profile.location?.value ?? null,
     availabilityStatus: profile.availability.status,
     availableFrom: profile.availability.availableFrom,
+    availabilityCheckedAt: profile.availability.checkedAt ?? null,
     hourlyRate: profile.hourlyRate,
   };
 }
@@ -403,9 +406,12 @@ export async function runLeadPreparePass(
       // Nur für direkt buchbare Profile mit Kalender. Ein Profil mit
       // Freigabe durch den Betreiber („premium") bekommt keinen Weg an ihr
       // vorbei. Der Link führt über die eigene Domain, die beim Klick erneut
-      // prüft, ob das Profil noch buchbar ist.
+      // prüft, ob das Profil noch buchbar ist. Im Vermittlungsmodell gibt es
+      // keinen Kalender vor der Vorstellung; die Mail führt dann zur Suche.
       bookingUrl:
-        best.profile.introPolicy.type === "free" && best.profile.introPolicy.bookingUrl
+        !placementRequestsEnabled() &&
+        best.profile.introPolicy.type === "free" &&
+        best.profile.introPolicy.bookingUrl
           ? leadBookingUrl({ origin, profileId: best.profile.id })
           : null,
     });

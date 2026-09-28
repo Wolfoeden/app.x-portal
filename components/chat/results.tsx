@@ -37,13 +37,14 @@ import {
   type DismissedProfile,
   type ProfileFeedbackReason,
 } from "@/lib/freelancer/profile-feedback";
+import { placementRequestsEnabled } from "@/lib/placement/config";
+
 import { factPreview } from "./fact-preview";
 import { shouldHighlightProfile } from "./profile-fit";
 import { joinGerman, profilePresentation, type RequirementEvidence } from "./profile-presentation";
 
 import type {
   AiAnalysisTrace,
-  AvailabilityStatus,
   CvAccess,
   ExternalFreelancerSearchResponse,
   FreelancerProfileResult,
@@ -160,13 +161,6 @@ function modeLabel(mode: ProjectMode) {
   if (mode === "on-site") return "Vor Ort";
   if (mode === "hybrid") return "Hybrid";
   return "Nicht angegeben";
-}
-
-function availabilityLabel(status: AvailabilityStatus) {
-  if (status === "available") return "Grundsätzlich verfügbar";
-  if (status === "limited") return "Begrenzt verfügbar";
-  if (status === "unavailable") return "Nicht verfügbar";
-  return "Verfügbarkeit offen";
 }
 
 function presentUnknownFields(fields: string[]) {
@@ -999,7 +993,7 @@ export function navigateToCvDownload(
 }
 
 export type BookingActionState = {
-  kind: "login_required" | "bookable" | "unavailable";
+  kind: "login_required" | "bookable" | "unavailable" | "request";
   label: string;
   hint: string;
   disabled: boolean;
@@ -1009,11 +1003,25 @@ export type BookingActionState = {
  * Booking used to be a bare link straight to the freelancer's calendar, so a
  * guest left the product without the selection ever being recorded. A guest is
  * now taken through the sign-in first and returns to this exact profile.
+ *
+ * Im Vermittlungsmodell führt der Knopf immer zur Anfrage, auch ohne
+ * Kalender: Die Vorstellung übernimmt dann der Betreiber.
  */
 export function bookingActionState(
   profile: Pick<FreelancerProfileResult, "bookingUrl">,
   isAccountUser: boolean,
+  placement: boolean = placementRequestsEnabled(),
 ): BookingActionState {
+  if (placement) {
+    return {
+      kind: "request",
+      label: "Freelancer anfragen",
+      hint: isAccountUser
+        ? "Kostenlos bis zur Beauftragung · XPORTAL stellt Sie vor"
+        : "Kostenlos bis zur Beauftragung · E-Mail bestätigen, kein Passwort nötig",
+      disabled: false,
+    };
+  }
   // Without a calendar there is no other way to request a conversation, so
   // the button says so instead of promising one.
   if (!profile.bookingUrl) {
@@ -1144,7 +1152,7 @@ export function ProfileCard({
                     : "Alternative"}
               </span>
             ) : null}
-            <span className={`availability ${profile.availabilityStatus}`}>{availabilityLabel(profile.availabilityStatus)}</span>
+            <span className={`availability ${presentation.availability.tone}`} title={presentation.availability.title ?? undefined}>{presentation.availability.label}</span>
           </div>
         </header>
 
@@ -1210,12 +1218,12 @@ export function ProfileCard({
         {presentation.evidence.length ? (
           <div className="profile-tags">{presentation.skills.map((skill) => <span key={skill}>{skill}</span>)}</div>
         ) : null}
-        {profile.matchReasons.length ? (
+        {presentation.reasons.length ? (
           <div className="match-column reasons">
             <h4><span aria-hidden="true"><IconCheck size={13} /></span> Im Profil belegt</h4>
-            <ul>{profile.matchReasons.slice(0, 3).map((reason) => <li key={reason}>{reason}</li>)}</ul>
-            {profile.matchReasons.length > 3 ? (
-              <details className="profile-more"><summary>{profile.matchReasons.length - 3} weitere Belege</summary><ul>{profile.matchReasons.slice(3).map((reason) => <li key={reason}>{reason}</li>)}</ul></details>
+            <ul>{presentation.reasons.slice(0, 3).map((reason) => <li key={reason}>{reason}</li>)}</ul>
+            {presentation.reasons.length > 3 ? (
+              <details className="profile-more"><summary>{presentation.reasons.length - 3} weitere Belege</summary><ul>{presentation.reasons.slice(3).map((reason) => <li key={reason}>{reason}</li>)}</ul></details>
             ) : null}
           </div>
         ) : null}
@@ -1231,7 +1239,7 @@ export function ProfileCard({
           <DetailTerm label="Arbeitsmodus" value={profile.remoteMode === "unknown" ? null : modeLabel(profile.remoteMode)} />
           <DetailTerm label="Ort" value={profile.location} />
           <DetailTerm label="Honorar" value={profile.rate} />
-          <DetailTerm label="Verfügbarkeit geprüft" value={profile.availabilityUpdatedAt ? formatDateTime(profile.availabilityUpdatedAt) : null} />
+          <DetailTerm label="Verfügbarkeit angegeben" value={profile.availabilityUpdatedAt ? formatDateTime(profile.availabilityUpdatedAt) : null} />
         </dl>
 
         {profile.referenceStatus ? (
