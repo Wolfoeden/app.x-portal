@@ -1,12 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   deliver: vi.fn(),
   booking: vi.fn(),
+  audit: vi.fn(),
+  inserted: [] as unknown[],
 }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/email/deliver", () => ({ deliverEmail: mocks.deliver }));
+vi.mock("@/lib/audit/write", () => ({ writeAuditEvent: mocks.audit }));
 vi.mock("@/lib/auth/current-user", () => ({
   requireCurrentUser: async () => ({
     id: "11111111-1111-4111-8111-111111111111",
@@ -26,6 +29,12 @@ function tabelle(antwort: () => unknown) {
   const kette: Record<string, unknown> = {};
   const proxy: unknown = new Proxy(kette, {
     get(_ziel, name) {
+      if (name === "insert") {
+        return (zeile: unknown) => {
+          mocks.inserted.push(zeile);
+          return proxy;
+        };
+      }
       // Die Kette selbst muss abwartbar sein: Das Update auf `projects`
       // endet auf `.eq()` und wird direkt awaited, ohne `single()`.
       if (name === "then") {
@@ -101,10 +110,10 @@ vi.mock("@/lib/domain", () => ({
   FreelancerProfileSchema: { parse: (wert: unknown) => wert },
 }));
 
-import { POST } from "@/app/api/introductions/route";
+import { GET, POST } from "@/app/api/introductions/route";
 import { contactInbox } from "@/lib/contact/messages";
 
-function anfrage() {
+function anfrage(extra: Record<string, unknown> = {}) {
   return new Request("https://x-portal.eu/api/introductions", {
     method: "POST",
     headers: {
@@ -115,6 +124,7 @@ function anfrage() {
       projectId: "33333333-3333-4333-8333-333333333333",
       profileId: "22222222-2222-4222-8222-222222222222",
       idempotencyKey: "wiederholbar-1234",
+      ...extra,
     }),
   }) as never;
 }
@@ -209,5 +219,111 @@ describe("Vorstellungsanfrage meldet sich beim Betreiber", () => {
     expect(response.status).toBe(200);
     const payload = (await response.json()) as { introduction: { id: string } };
     expect(payload.introduction.id).toBe("55555555-5555-4555-8555-555555555555");
+  });
+});
+
+describe("Anfrage im Vermittlungsmodell", () => {
+  const VERSION = "vermittlung-2026-09-entwurf-1";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.inserted.length = 0;
+    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test";
+    mocks.deliver.mockResolvedValue({ delivered: true });
+    mocks.audit.mockResolvedValue("trace");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("nimmt ohne Zustimmung zur aktuellen Fassung keine Anfrage an", async () => {
+    const ohne = await POST(anfrage());
+    const alt = await POST(anfrage({ placementTermsVersion: "vermittlung-alt" }));
+
+    expect(ohne.status).toBe(409);
+    expect(alt.status).toBe(409);
+    expect(mocks.inserted).toEqual([]);
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it("legt die Anfrage zur Vorstellung an und hält die Zustimmung vorher fest", async () => {
+    mocks.booking
+      .mockReturnValueOnce({ data: null, error: null })
+      .mockReturnValueOnce({
+        data: { id: "66666666-6666-4666-8666-666666666666", status: "manual_review", requested_at: new Date().toISOString() },
+        error: null,
+      });
+
+    const response = await POST(anfrage({ placementTermsVersion: VERSION }));
+    expect(response.status).toBe(200);
+
+    // Die Zustimmung steht im Protokoll, bevor die Anfrage existiert.
+    expect(mocks.audit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "placement_terms_accepted",
+        targetType: "intro_booking",
+        required: true,
+        metadata: expect.objectContaining({ version: VERSION, feePercent: 10 }),
+      }),
+    );
+    const zeile = mocks.inserted[0] as Record<string, unknown>;
+    expect(zeile).toMatchObject({
+      status: "manual_review",
+      intro_policy_snapshot: "manual_approval",
+      booking_url: null,
+    });
+    expect(zeile.id).toBe(mocks.audit.mock.calls[0][0].targetId);
+
+    const nachricht = mocks.deliver.mock.calls[0][0];
+    expect(nachricht.subject).toBe("Vermittlungsanfrage: Mira Falk");
+    expect(nachricht.text).toContain("/chat/admin/vermittlungen");
+    expect(nachricht.text).toContain("Freelancer-E-Mail: fehlt");
+  });
+
+  // Der bisherige Upsert hätte eine schon vorgestellte Anfrage beim zweiten
+  // Klick wieder auf „wartet“ gesetzt.
+  it("überschreibt eine bestehende Anfrage nicht", async () => {
+    mocks.booking.mockReturnValueOnce({
+      data: { id: "66666666-6666-4666-8666-666666666666", status: "ready_to_book", requested_at: "2026-09-20T10:00:00.000Z" },
+      error: null,
+    });
+
+    const response = await POST(anfrage({ placementTermsVersion: VERSION }));
+    const payload = (await response.json()) as { introduction: { status: string } };
+
+    expect(payload.introduction.status).toBe("ready_to_book");
+    expect(mocks.inserted).toEqual([]);
+    expect(mocks.audit).not.toHaveBeenCalled();
+    expect(mocks.deliver).not.toHaveBeenCalled();
+  });
+
+  it("meldet den Stand einer Anfrage für den Dialog", async () => {
+    mocks.booking.mockReturnValueOnce({
+      data: { id: "66666666-6666-4666-8666-666666666666", status: "manual_review", requested_at: "2026-09-28T10:00:00.000Z", confirmed_at: null },
+      error: null,
+    });
+
+    const response = await GET(
+      new Request(
+        "https://x-portal.eu/api/introductions?projectId=33333333-3333-4333-8333-333333333333&profileId=22222222-2222-4222-8222-222222222222",
+      ),
+    );
+    const payload = (await response.json()) as { introduction: { status: string } };
+
+    expect(payload.introduction.status).toBe("manual_review");
+  });
+
+  it("gibt es ohne Schalter nicht", async () => {
+    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "false");
+
+    const response = await GET(
+      new Request(
+        "https://x-portal.eu/api/introductions?projectId=33333333-3333-4333-8333-333333333333&profileId=22222222-2222-4222-8222-222222222222",
+      ),
+    );
+
+    expect(response.status).toBe(404);
   });
 });

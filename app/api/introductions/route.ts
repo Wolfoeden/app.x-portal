@@ -1,15 +1,22 @@
+import { randomUUID } from "node:crypto";
+
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { requireCurrentUser } from "@/lib/auth/current-user";
+import { writeAuditEvent } from "@/lib/audit/write";
+import { requireCurrentUser, type CurrentUser } from "@/lib/auth/current-user";
 import { contactInbox } from "@/lib/contact/messages";
 import { deliverEmail } from "@/lib/email/deliver";
 import { FreelancerProfileSchema } from "@/lib/domain";
+import { PLACEMENT_TERMS, placementRequestsEnabled } from "@/lib/placement/config";
+import { placementRequestNotice } from "@/lib/placement/messages";
+import { freelancerContactEmail } from "@/lib/placement/requests";
 import {
   assertSameOrigin,
   logEvent,
   readJsonWithLimit,
 } from "@/lib/security/request";
+import { SITE_URL } from "@/lib/seo";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 const IntroductionInputSchema = z
@@ -17,8 +24,186 @@ const IntroductionInputSchema = z
     projectId: z.string().uuid(),
     profileId: z.string().uuid(),
     idempotencyKey: z.string().trim().min(8).max(160),
+    /** Nur im Vermittlungsmodell: die Fassung, der zugestimmt wurde. */
+    placementTermsVersion: z.string().trim().min(1).max(80).optional(),
   })
   .strict();
+
+const LookupSchema = z.object({
+  projectId: z.string().uuid(),
+  profileId: z.string().uuid(),
+});
+
+/**
+ * Der Stand einer Anfrage, für den Anfrage-Dialog: nichts, wartet, vorgestellt
+ * oder abgelehnt. Nur im Vermittlungsmodell; vorher gab es nichts abzufragen.
+ */
+export async function GET(request: Request) {
+  if (!placementRequestsEnabled()) return new Response(null, { status: 404 });
+  try {
+    const params = new URL(request.url).searchParams;
+    const input = LookupSchema.parse({
+      projectId: params.get("projectId"),
+      profileId: params.get("profileId"),
+    });
+    const user = await requireCurrentUser();
+    if (user.isAnonymous) return NextResponse.json({ introduction: null });
+
+    const { data, error } = await createAdminSupabaseClient()
+      .from("intro_bookings")
+      .select("id,status,requested_at,confirmed_at")
+      .eq("owner_user_id", user.id)
+      .eq("project_id", input.projectId)
+      .eq("freelancer_profile_id", input.profileId)
+      .order("requested_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    const row = data as
+      | { id: string; status: string; requested_at: string; confirmed_at: string | null }
+      | null;
+    return NextResponse.json({
+      introduction: row
+        ? { id: row.id, status: row.status, requestedAt: row.requested_at, confirmedAt: row.confirmed_at }
+        : null,
+    });
+  } catch (error) {
+    if (error instanceof Response) return error;
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: "Die Auswahl ist ungültig." }, { status: 400 });
+    }
+    return NextResponse.json({ error: "Der Stand der Anfrage ist gerade nicht abrufbar." }, { status: 503 });
+  }
+}
+
+/**
+ * Eine Anfrage im Vermittlungsmodell.
+ *
+ * Anders als der bisherige Weg: Ohne Zustimmung zur aktuellen Fassung der
+ * Vermittlungsbedingungen gibt es keine Anfrage; jede Anfrage wartet auf die
+ * Vorstellung durch den Betreiber; der Kalender wird erst danach freigegeben;
+ * und eine bestehende Anfrage wird nie überschrieben. Der bisherige Upsert
+ * hätte eine schon vorgestellte Anfrage beim zweiten Klick wieder auf
+ * „wartet“ gesetzt.
+ */
+async function placementRequest(
+  input: z.infer<typeof IntroductionInputSchema>,
+  user: CurrentUser,
+  admin: ReturnType<typeof createAdminSupabaseClient>,
+  profile: { displayName: string; role: string },
+  matchId: string,
+) {
+  if (input.placementTermsVersion !== PLACEMENT_TERMS.version) {
+    return NextResponse.json(
+      { error: "Bitte stimmen Sie den Vermittlungsbedingungen zu." },
+      { status: 409 },
+    );
+  }
+
+  // Begrenzt verfügbar oder offen ist kein Grund, die Anfrage abzuweisen;
+  // genau das klärt die Vorstellung.
+  const { data: currentProfile, error: profileError } = await admin
+    .from("freelancer_profiles")
+    .select("id,owner_user_id,profile_status,availability_status")
+    .eq("id", input.profileId)
+    .eq("profile_status", "active")
+    .neq("availability_status", "unavailable")
+    .maybeSingle();
+  if (profileError) throw profileError;
+  if (!currentProfile) {
+    throw new Response("Dieses Profil ist aktuell nicht verfügbar.", { status: 409 });
+  }
+
+  const { data: existing, error: existingError } = await admin
+    .from("intro_bookings")
+    .select("id,status,requested_at")
+    .eq("owner_user_id", user.id)
+    .eq("project_id", input.projectId)
+    .eq("freelancer_profile_id", input.profileId)
+    .neq("status", "cancelled")
+    .order("requested_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (existingError) throw existingError;
+  if (existing) {
+    return NextResponse.json({
+      introduction: { id: existing.id, status: existing.status, requestedAt: existing.requested_at },
+      message: "Zu diesem Profil liegt Ihre Anfrage bereits vor.",
+    });
+  }
+
+  // Erst die Zustimmung, dann die Anfrage: Es darf keine Anfrage geben, zu der
+  // die Fassung der Bedingungen fehlt. Scheitert das Protokoll, scheitert die
+  // Anfrage, und der Kunde kann es erneut versuchen.
+  const id = randomUUID();
+  const timestamp = new Date().toISOString();
+  await writeAuditEvent({
+    actorUserId: user.id,
+    action: "placement_terms_accepted",
+    targetType: "intro_booking",
+    targetId: id,
+    outcome: "success",
+    metadata: {
+      version: PLACEMENT_TERMS.version,
+      feePercent: PLACEMENT_TERMS.feePercent,
+      feeMonths: PLACEMENT_TERMS.feeMonths,
+      maxFeeDays: PLACEMENT_TERMS.maxFeeDays,
+      protectionMonths: PLACEMENT_TERMS.protectionMonths,
+      acceptedAt: timestamp,
+    },
+    required: true,
+  });
+
+  const { data: booking, error: bookingError } = await admin
+    .from("intro_bookings")
+    .insert({
+      id,
+      project_id: input.projectId,
+      owner_user_id: user.id,
+      freelancer_profile_id: input.profileId,
+      match_id: matchId,
+      intro_policy_snapshot: "manual_approval",
+      status: "manual_review",
+      booking_provider: "manual",
+      booking_url: null,
+      idempotency_key: `placement:${input.projectId}:${input.profileId}:${Date.now()}`,
+      explicit_confirmation_at: timestamp,
+    })
+    .select("id,status,requested_at")
+    .single();
+  if (bookingError) throw bookingError;
+
+  const { error: updateError } = await admin
+    .from("projects")
+    .update({ status: "intro_requested" })
+    .eq("id", input.projectId)
+    .eq("owner_user_id", user.id);
+  if (updateError) throw updateError;
+
+  const [projectRow, freelancerEmail] = await Promise.all([
+    admin.from("projects").select("title").eq("id", input.projectId).maybeSingle(),
+    freelancerContactEmail(admin, input.profileId, currentProfile.owner_user_id ?? null).catch(() => null),
+  ]);
+  const notice = placementRequestNotice({
+    siteUrl: SITE_URL,
+    clientEmail: user.email,
+    freelancerName: profile.displayName,
+    freelancerRole: profile.role,
+    projectTitle: (projectRow.data as { title?: string | null } | null)?.title ?? null,
+    requestId: booking.id,
+    freelancerReachable: Boolean(freelancerEmail),
+  });
+  const meldung = await deliverEmail({ to: contactInbox(), ...notice, kind: "transactional" });
+  if (!meldung.delivered) {
+    logEvent("intro_notification_failed", { bookingId: booking.id, reason: meldung.reason });
+  }
+
+  return NextResponse.json({
+    introduction: { id: booking.id, status: booking.status, requestedAt: booking.requested_at },
+    message:
+      "Ihre Anfrage ist eingegangen. Roman Dering stellt Sie vor und meldet sich per E-Mail, meist innerhalb eines Werktags.",
+  });
+}
 
 export async function POST(request: Request) {
   try {
@@ -67,6 +252,9 @@ export async function POST(request: Request) {
     }
 
     const profile = FreelancerProfileSchema.parse(match.profile_snapshot);
+    if (placementRequestsEnabled()) {
+      return await placementRequest(input, user, admin, profile, match.id);
+    }
     const { data: currentProfile, error: profileError } = await admin
       .from("freelancer_profiles")
       .select(

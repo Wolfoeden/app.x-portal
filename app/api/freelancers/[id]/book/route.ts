@@ -5,7 +5,10 @@ import { z } from "zod";
 
 import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
+import { getCurrentUser } from "@/lib/auth/current-user";
 import { isAllowedBookingHost } from "@/lib/freelancer/booking-hosts";
+import { placementRequestsEnabled } from "@/lib/placement/config";
+import { placementBookingAllowed } from "@/lib/placement/requests";
 import {
   loadBookingDestination,
   recordFreelancerProfileEvent,
@@ -29,6 +32,19 @@ export async function GET(
     const { id: rawId } = await context.params;
     const parsed = IdSchema.safeParse(rawId);
     if (!parsed.success) return new Response("Nicht gefunden.", { status: 404 });
+
+    // Im Vermittlungsmodell öffnet sich der Kalender erst nach der
+    // Vorstellung. Wer vorher hier landet — aus einem alten Link, einer
+    // Lead-Mail oder von Hand —, wird zur Anfrage geschickt.
+    if (placementRequestsEnabled()) {
+      const user = await getCurrentUser().catch(() => null);
+      if (!(await placementBookingAllowed(user, parsed.data))) {
+        return NextResponse.redirect(
+          new URL(appPath("/chat?booking=request"), request.url),
+          302,
+        );
+      }
+    }
 
     const destination = await loadBookingDestination(parsed.data);
     if (!destination) return new Response("Nicht gefunden.", { status: 404 });

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   applyBriefPatch,
@@ -112,6 +112,24 @@ describe("chat presentation", () => {
     expect(result.recommendationRole).toBe("primary");
     expect(result.fitScore).not.toBeNull();
     expect(result.coreCoverage).toBe(100);
+  });
+
+  // Im Vermittlungsmodell verlässt die Kalenderadresse den Server nicht; der
+  // Browser bekommt nur den eigenen Link, der erst nach der Vorstellung
+  // weiterleitet.
+  it("sends only the guarded booking route once the placement switch is on", () => {
+    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://x-portal.eu");
+    try {
+      const brief = makeBrief({ requiredSkills: ["React"], language: "German", workMode: "remote" });
+      const match = buildShortlist(brief, [profileFixtures[0]!]).matches[0];
+      const result = presentMatch(match!);
+
+      expect(result.bookingUrl).toBe(`https://x-portal.eu/api/freelancers/${profileFixtures[0]!.id}/book`);
+      expect(JSON.stringify(result)).not.toContain("calendly.com");
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("keeps a historical match visible without exposing a stale booking link", () => {

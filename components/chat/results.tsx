@@ -37,6 +37,8 @@ import {
   type DismissedProfile,
   type ProfileFeedbackReason,
 } from "@/lib/freelancer/profile-feedback";
+import { placementRequestsEnabled } from "@/lib/placement/config";
+
 import { factPreview } from "./fact-preview";
 import { shouldHighlightProfile } from "./profile-fit";
 import { joinGerman, profilePresentation, type RequirementEvidence } from "./profile-presentation";
@@ -991,7 +993,7 @@ export function navigateToCvDownload(
 }
 
 export type BookingActionState = {
-  kind: "login_required" | "bookable" | "unavailable";
+  kind: "login_required" | "bookable" | "unavailable" | "request";
   label: string;
   hint: string;
   disabled: boolean;
@@ -1001,11 +1003,25 @@ export type BookingActionState = {
  * Booking used to be a bare link straight to the freelancer's calendar, so a
  * guest left the product without the selection ever being recorded. A guest is
  * now taken through the sign-in first and returns to this exact profile.
+ *
+ * Im Vermittlungsmodell führt der Knopf immer zur Anfrage, auch ohne
+ * Kalender: Die Vorstellung übernimmt dann der Betreiber.
  */
 export function bookingActionState(
   profile: Pick<FreelancerProfileResult, "bookingUrl">,
   isAccountUser: boolean,
+  placement: boolean = placementRequestsEnabled(),
 ): BookingActionState {
+  if (placement) {
+    return {
+      kind: "request",
+      label: "Freelancer anfragen",
+      hint: isAccountUser
+        ? "Kostenlos bis zur Beauftragung · XPORTAL stellt Sie vor"
+        : "Kostenlos bis zur Beauftragung · E-Mail bestätigen, kein Passwort nötig",
+      disabled: false,
+    };
+  }
   // Without a calendar there is no other way to request a conversation, so
   // the button says so instead of promising one.
   if (!profile.bookingUrl) {

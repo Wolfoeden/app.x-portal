@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { BrandMark } from "@/components/BrandMark";
+import { placementRequestsEnabled } from "@/lib/placement/config";
 
 import styles from "./admin-nav.module.css";
 
@@ -20,6 +21,10 @@ const GROUPS = [
   {
     label: "Arbeit",
     links: [
+      // Nur mit eingeschaltetem Vermittlungsmodell; vorher gibt es dort nichts.
+      ...(placementRequestsEnabled()
+        ? [{ href: "/chat/admin/vermittlungen", label: "Vermittlungen" }]
+        : []),
       { href: "/chat/admin/freelancers", label: "Bewerbungen" },
       { href: "/chat/admin/leads", label: "Leads" },
       { href: "/chat/admin/demand", label: "Nachfrage" },
