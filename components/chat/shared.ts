@@ -11,7 +11,7 @@ export const GOOGLE_AUTH_ENABLED =
 export const MICROSOFT_AUTH_ENABLED =
   process.env.NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED === "true";
 
-export type AuthDialogMode = "login" | "register" | "recover" | "set-password";
+export type AuthDialogMode = "login" | "register" | "link" | "recover" | "set-password";
 
 export type ToastState = {
   id: number;

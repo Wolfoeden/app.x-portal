@@ -24,8 +24,8 @@ describe("auth error messages", () => {
       "register",
     );
 
-    expect(message).not.toContain("Prüfen Sie E-Mail und Passwort");
-    expect(message).toContain("nicht an Ihrem Passwort");
+    expect(message).not.toContain("Prüfen Sie die E-Mail-Adresse");
+    expect(message).toContain("Versand gerade gestört");
   });
 
   /**
@@ -82,7 +82,33 @@ describe("auth error messages", () => {
   it("keeps a mode-specific fallback when nothing more precise is known", () => {
     expect(authErrorMessage(new Error("boom"), "recover")).toContain("Wiederherstellungslink");
     expect(authErrorMessage(new Error("boom"), "set-password")).toContain("neue Passwort");
-    expect(authErrorMessage(new Error("boom"), "register")).toContain("Prüfen Sie E-Mail und Passwort");
+    expect(authErrorMessage(new Error("boom"), "register")).toContain("Bestätigungslink");
+    expect(authErrorMessage(new Error("boom"), "link")).toContain("Anmeldelink");
+  });
+
+  // Supabase lässt je Adresse einen Link pro Minute zu. Wer doppelt klickt,
+  // hat schon einen gültigen Link und soll nicht die Schreibweise prüfen.
+  it("tells a second request within a minute that a link is already on its way", () => {
+    const message = authErrorMessage(
+      authError({
+        status: 429,
+        code: "over_email_send_rate_limit",
+        message: "For security purposes, you can only request this after 42 seconds.",
+      }),
+      "register",
+    );
+
+    expect(message).toContain("bereits unterwegs");
+    expect(message).not.toContain("Schreibweise");
+  });
+
+  it("still treats the hourly sending limit as a service-side failure", () => {
+    const message = authErrorMessage(
+      authError({ status: 429, code: "over_email_send_rate_limit", message: "Email rate limit exceeded" }),
+      "register",
+    );
+
+    expect(message).toContain("Versand gerade gestört");
   });
 
   it("survives a thrown value that is not an Error", () => {

@@ -173,9 +173,21 @@ async function consumeEmailAuthState(state: string | null) {
   }
 }
 
+/**
+ * Ein Konto ohne Passwort: E-Mail eingeben, Link öffnen, weiter.
+ *
+ * Vorher verlangte der Termin ein Konto mit Passwort und Wiederholung. Von 18
+ * Personen, die die Registrierung begannen, kamen 5 durch (Stand 28.09.2026).
+ * Ein Passwort schützt hier nichts, was der Bestätigungslink nicht ohnehin
+ * schützt: Wer die Mail öffnen kann, kann auch jedes Passwort zurücksetzen.
+ *
+ * `signInWithOtp` legt ein neues Konto an und sendet die Bestätigung; für eine
+ * Adresse mit Konto sendet es einen Anmeldelink. Beides endet auf derselben
+ * Seite, die den Gastarbeitsplatz überträgt. Die Metadaten gelten nur für ein
+ * neues Konto — ein bestehendes hat den AGB schon zugestimmt.
+ */
 export async function registerEmailAccount(
   email: string,
-  password: string,
   displayName: string,
   consent: { termsAcceptedAt: string; marketingEmails: boolean },
   requestedDestination?: string,
@@ -185,10 +197,10 @@ export async function registerEmailAccount(
   await prepareGuestClaim();
   const destination = authDestination(requestedDestination);
   const state = await prepareEmailAuthState();
-  const { data, error } = await supabase.auth.signUp({
+  const { error } = await supabase.auth.signInWithOtp({
     email,
-    password,
     options: {
+      shouldCreateUser: true,
       emailRedirectTo: `${siteUrl()}${appPath("/auth/complete")}?next=${encodeURIComponent(destination)}&state=${encodeURIComponent(state)}`,
       // Die Einwilligung entsteht in derselben Schreiboperation wie das Konto.
       // Es gibt damit kein Fenster, in dem ein Konto ohne den Nachweis
@@ -206,13 +218,44 @@ export async function registerEmailAccount(
     },
   });
   if (error) throw error;
-
-  if (data.session) {
-    await claimPreparedGuestWorkspace();
-    return { confirmationRequired: false } as const;
-  }
-
   return { confirmationRequired: true } as const;
+}
+
+/**
+ * Anmelden ohne Passwort, nur für ein bestehendes Konto.
+ *
+ * Ein Konto ohne Passwort braucht diesen Weg; über „Passwort vergessen“ ginge
+ * es auch, sagt aber das Falsche. Ein neues Konto entsteht hier nicht, weil
+ * dafür die Zustimmung zu den AGB fehlt.
+ *
+ * Gibt es zur Adresse kein Konto, lehnt Supabase ab. Die Oberfläche sagt dann
+ * dasselbe wie bei Erfolg, damit sich nicht abfragen lässt, welche Adressen
+ * ein Konto haben.
+ */
+export async function requestSignInLink(email: string, requestedDestination?: string) {
+  const supabase = getBrowserSupabaseClient();
+  await ensureGuestSession();
+  await prepareGuestClaim();
+  const destination = authDestination(requestedDestination);
+  const state = await prepareEmailAuthState();
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      shouldCreateUser: false,
+      emailRedirectTo: `${siteUrl()}${appPath("/auth/complete")}?next=${encodeURIComponent(destination)}&state=${encodeURIComponent(state)}`,
+    },
+  });
+  if (error && !isUnknownAccountRejection(error)) throw error;
+}
+
+function isUnknownAccountRejection(error: unknown) {
+  if (typeof error !== "object" || error === null) return false;
+  const { code, message } = error as { code?: unknown; message?: unknown };
+  return (
+    code === "otp_disabled" ||
+    code === "user_not_found" ||
+    (typeof message === "string" && message.toLowerCase().includes("signups not allowed"))
+  );
 }
 
 export async function signInExistingAccount(email: string, password: string) {

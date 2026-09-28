@@ -134,36 +134,42 @@ export function authIntentCopy(intent: AuthIntent) {
         eyebrow: "Profil merken",
         title: "Auswahl mit einem Konto sichern",
         body: "Ihre Anfrage und das gewählte Profil bleiben erhalten. Nach der Anmeldung wird das Profil Ihrer Merkliste hinzugefügt.",
+        afterConfirmation: "Danach steht das Profil auf Ihrer Merkliste.",
       };
     case "contact_profile":
       return {
         eyebrow: "Kontakt fortsetzen",
         title: "Konto erstellen und Profil kontaktieren",
         body: "Ihre Anfrage und das gewählte Profil bleiben erhalten. Danach öffnen wir den Kontaktweg – eine Nachricht wird nicht automatisch versendet.",
+        afterConfirmation: "Danach öffnet sich der Kontaktweg zu diesem Profil.",
       };
     case "book_profile":
       return {
         eyebrow: "Termin fortsetzen",
-        title: "Konto erstellen und Terminweg öffnen",
-        body: "Ihre Anfrage und das gewählte Profil bleiben erhalten. Danach öffnen wir den Terminweg – es wird nichts automatisch gebucht.",
+        title: "E-Mail bestätigen und Terminweg öffnen",
+        body: "Ihre Anfrage und das gewählte Profil bleiben erhalten. Nach der Bestätigung per E-Mail öffnen wir den Terminweg – es wird nichts automatisch gebucht.",
+        afterConfirmation: "Danach öffnet sich der Terminweg zu diesem Profil.",
       };
     case "save_search":
       return {
         eyebrow: "Suche sichern",
         title: "Suche mit einem Konto speichern",
         body: "Der Projektabgleich bleibt erhalten und steht Ihnen nach der Anmeldung dauerhaft zur Verfügung.",
+        afterConfirmation: "Danach ist die Suche Ihrem Konto zugeordnet.",
       };
     case "external_research":
       return {
         eyebrow: "Externe Recherche",
         title: "Konto erstellen und Recherche vorbereiten",
         body: "Ihre Anfrage bleibt erhalten. Die Recherche kostet 30 Credits und startet erst, wenn Sie sie nach der Anmeldung ausdrücklich bestätigen.",
+        afterConfirmation: "Danach können Sie die Recherche starten.",
       };
     default:
       return {
         eyebrow: "Arbeit sichern",
         title: "Konto erstellen und direkt fortfahren",
         body: "Ihre Anfrage bleibt erhalten und wird nach der Anmeldung wieder geöffnet.",
+        afterConfirmation: "Danach geht es an dieser Stelle weiter.",
       };
   }
 }

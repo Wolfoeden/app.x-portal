@@ -1028,7 +1028,7 @@ export function bookingActionState(
     return {
       kind: "login_required",
       label: "Erstgespräch vereinbaren",
-      hint: "Mit Konto zur Terminseite · Sie wählen und buchen den Termin selbst.",
+      hint: "E-Mail bestätigen, kein Passwort nötig · Sie wählen und buchen den Termin selbst.",
       disabled: false,
     };
   }

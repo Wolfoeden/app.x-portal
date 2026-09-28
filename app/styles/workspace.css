@@ -3304,6 +3304,20 @@ dd.is-unknown,
   color: var(--ink);
 }
 
+.login-alternatives {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+}
+
+.auth-passwordless-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+  line-height: 1.45;
+}
+
 .form-error {
   margin: 5px 0 0;
   border-radius: var(--radius-xs);
@@ -3418,6 +3432,33 @@ dd.is-unknown,
   padding: 0 13px;
   font-size: var(--fs-2xs);
   font-weight: 650;
+}
+
+.confirmation-state .confirmation-hint {
+  margin-top: -6px;
+  color: var(--muted);
+}
+
+.confirmation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.confirmation-state .confirmation-resend {
+  border: 1px solid var(--green-border);
+  background: #fff;
+  color: var(--ink);
+}
+
+.confirmation-state .confirmation-resend:disabled {
+  cursor: default;
+  color: var(--muted);
+}
+
+.confirmation-state .form-error {
+  margin-top: 12px;
 }
 
 .contact-dialog {

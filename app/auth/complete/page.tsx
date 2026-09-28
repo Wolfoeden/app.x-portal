@@ -72,7 +72,7 @@ export default function CompleteEmailAuthPage() {
           <p>
             {failed
               ? "Sie werden sicher zur Anmeldung zurückgeführt. Fordern Sie dort bei Bedarf einen neuen Link an."
-              : "Einen Moment bitte. Danach können Sie Ihr Passwort sicher festlegen."}
+              : "Einen Moment bitte. Danach geht es an der Stelle weiter, an der Sie aufgehört haben."}
           </p>
         </PublicDocumentIntro>
 

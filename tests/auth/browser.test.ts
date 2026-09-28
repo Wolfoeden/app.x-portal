@@ -5,7 +5,7 @@ const auth = {
   signInAnonymously: vi.fn(),
   linkIdentity: vi.fn(),
   signInWithOAuth: vi.fn(),
-  signUp: vi.fn(),
+  signInWithOtp: vi.fn(),
   signInWithPassword: vi.fn(),
   updateUser: vi.fn(),
   refreshSession: vi.fn(),
@@ -23,6 +23,7 @@ import {
   completeEmailAuthSession,
   registerEmailAccount,
   requestPasswordRecovery,
+  requestSignInLink,
   saveAccountName,
   startOauthUpgrade,
 } from "@/lib/auth/browser";
@@ -40,7 +41,7 @@ describe("browser authentication journeys", () => {
     });
     auth.linkIdentity.mockResolvedValue({ data: {}, error: null });
     auth.signInWithOAuth.mockResolvedValue({ data: {}, error: null });
-    auth.signUp.mockResolvedValue({ data: { session: null, user: {} }, error: null });
+    auth.signInWithOtp.mockResolvedValue({ data: { session: null, user: null }, error: null });
     auth.resetPasswordForEmail.mockResolvedValue({ data: {}, error: null });
     auth.setSession.mockResolvedValue({ data: { session: {} }, error: null });
     auth.exchangeCodeForSession.mockResolvedValue({
@@ -167,17 +168,18 @@ describe("browser authentication journeys", () => {
     });
   });
 
-  it("creates an email account with an explicit password and confirmation callback", async () => {
-    const result = await registerEmailAccount("user@example.com", "secure-password", "Erika Mustermann", {
+  it("creates an email account without a password, confirmed by link", async () => {
+    const result = await registerEmailAccount("user@example.com", "Erika Mustermann", {
       termsAcceptedAt: "2026-08-31T10:00:00.000Z",
       marketingEmails: false,
     });
 
     expect(result).toEqual({ confirmationRequired: true });
-    expect(auth.signUp).toHaveBeenCalledWith({
+    expect(fetch).toHaveBeenCalledWith("/api/auth/prepare-claim", expect.objectContaining({ method: "POST" }));
+    expect(auth.signInWithOtp).toHaveBeenCalledWith({
       email: "user@example.com",
-      password: "secure-password",
       options: {
+        shouldCreateUser: true,
         emailRedirectTo: "https://x-portal.eu/auth/complete?next=%2Fchat&state=email-state",
         data: {
           display_name: "Erika Mustermann",
@@ -192,12 +194,12 @@ describe("browser authentication journeys", () => {
   });
 
   it("records an opt-in for optional email on the new account", async () => {
-    await registerEmailAccount("user@example.com", "secure-password", "Erika Mustermann", {
+    await registerEmailAccount("user@example.com", "Erika Mustermann", {
       termsAcceptedAt: "2026-08-31T10:00:00.000Z",
       marketingEmails: true,
     });
 
-    expect(auth.signUp).toHaveBeenCalledWith(
+    expect(auth.signInWithOtp).toHaveBeenCalledWith(
       expect.objectContaining({
         options: expect.objectContaining({
           data: {
@@ -220,12 +222,12 @@ describe("browser authentication journeys", () => {
       },
     });
 
-    await registerEmailAccount("freelancer@example.com", "secure-password", "Erika Mustermann", {
+    await registerEmailAccount("freelancer@example.com", "Erika Mustermann", {
       termsAcceptedAt: "2026-08-31T10:00:00.000Z",
       marketingEmails: false,
     });
 
-    expect(auth.signUp).toHaveBeenCalledWith(
+    expect(auth.signInWithOtp).toHaveBeenCalledWith(
       expect.objectContaining({
         options: expect.objectContaining({
           emailRedirectTo:
@@ -235,22 +237,58 @@ describe("browser authentication journeys", () => {
     );
   });
 
-  it("claims the guest workspace immediately when email confirmation is disabled", async () => {
-    auth.signUp.mockResolvedValueOnce({ data: { session: {}, user: {} }, error: null });
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(new Response(JSON.stringify({ prepared: true }), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ state: "email-state" }), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ claimed: true }), { status: 200 }));
+  it("surfaces a failed confirmation email instead of claiming success", async () => {
+    const failure = Object.assign(new Error("Error sending confirmation email"), {
+      status: 500,
+      code: "unexpected_failure",
+    });
+    auth.signInWithOtp.mockResolvedValueOnce({ data: { session: null, user: null }, error: failure });
 
     await expect(
-      registerEmailAccount("user@example.com", "secure-password", "Erika Mustermann", {
+      registerEmailAccount("user@example.com", "Erika Mustermann", {
         termsAcceptedAt: "2026-08-31T10:00:00.000Z",
         marketingEmails: false,
       }),
-    ).resolves.toEqual({
-      confirmationRequired: false,
+    ).rejects.toBe(failure);
+  });
+
+  // Ein Konto ohne Passwort meldet sich per Link an. Ein neues Konto darf
+  // dabei nicht entstehen: Die Zustimmung zu den AGB fehlt auf diesem Weg.
+  it("sends a sign-in link only to an existing account", async () => {
+    await requestSignInLink("user@example.com", "/chat?resume=book_profile");
+
+    expect(auth.signInWithOtp).toHaveBeenCalledWith({
+      email: "user@example.com",
+      options: {
+        shouldCreateUser: false,
+        emailRedirectTo:
+          "https://x-portal.eu/auth/complete?next=%2Fchat&state=email-state",
+      },
     });
-    expect(fetch).toHaveBeenLastCalledWith("/api/auth/claim", expect.objectContaining({ method: "POST" }));
+  });
+
+  // Die Oberfläche antwortet für jede Adresse gleich, damit sich nicht
+  // abfragen lässt, zu welcher Adresse ein Konto besteht.
+  it("does not reveal that an address has no account", async () => {
+    auth.signInWithOtp.mockResolvedValueOnce({
+      data: { session: null, user: null },
+      error: Object.assign(new Error("Signups not allowed for otp"), {
+        status: 422,
+        code: "otp_disabled",
+      }),
+    });
+
+    await expect(requestSignInLink("unknown@example.com")).resolves.toBeUndefined();
+  });
+
+  it("still reports a sign-in link that could not be sent", async () => {
+    const failure = Object.assign(new Error("Error sending magic link email"), {
+      status: 500,
+      code: "unexpected_failure",
+    });
+    auth.signInWithOtp.mockResolvedValueOnce({ data: { session: null, user: null }, error: failure });
+
+    await expect(requestSignInLink("user@example.com")).rejects.toBe(failure);
   });
 
   it("saves the account name and renews the token that carries it", async () => {
