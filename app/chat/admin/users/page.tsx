@@ -7,6 +7,8 @@ import {
   AdminSectionHeader,
   AdminSurface,
 } from "@/components/admin/AdminDataPrimitives";
+import { getRevenueFunnel } from "@/lib/admin/revenue-funnel";
+import type { RevenueFunnel } from "@/lib/admin/revenue-funnel-model";
 import {
   getAdminUserMetrics,
   type AdminAccountRow,
@@ -74,6 +76,37 @@ function percent(part: number, total: number): string {
   return `${Math.round((part / total) * 100)} %`;
 }
 
+const BILLING_STEPS = new Set(["checkout_started", "subscription_paid"]);
+
+/**
+ * Personen je Stufe als Balken. Der längste Balken ist die größte Stufe —
+ * meistens die Suche —, damit der Abfall zur Zahlung sichtbar wird.
+ */
+function RevenueFunnelView({ funnel }: { funnel: RevenueFunnel }) {
+  const max = funnel.steps.reduce((highest, step) => Math.max(highest, step.people), 0);
+  return (
+    <div className={styles.funnel}>
+      {funnel.steps.map((step) => (
+        <div
+          className={styles.funnelStep}
+          key={step.key}
+          data-stage={BILLING_STEPS.has(step.key) ? "billing" : "product"}
+        >
+          <span className={styles.funnelLabel}>{step.label}</span>
+          <span className={styles.funnelTrack} aria-hidden="true">
+            <span
+              className={styles.funnelBar}
+              style={{ width: `${max ? (step.people / max) * 100 : 0}%` }}
+            />
+          </span>
+          <span className={styles.funnelCount}>{numberFormat.format(step.people)}</span>
+          {step.detail ? <p className={styles.funnelDetail}>{step.detail}</p> : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function AccountTable({
   rows,
   now,
@@ -137,6 +170,11 @@ export default async function AdminUsersPage() {
 
   const metrics = await getAdminUserMetrics();
   const now = Date.parse(metrics.generatedAt);
+  // Der Trichter ergänzt die Seite. Fällt er aus, bleiben die Kontozahlen
+  // stehen, und die Seite sagt, dass er fehlt.
+  const funnel = await getRevenueFunnel(new Set(metrics.excludedUserIds)).catch(
+    () => null,
+  );
 
   await writeAuditEvent({
     actorUserId: currentUser.id,
@@ -212,6 +250,24 @@ export default async function AdminUsersPage() {
             },
           ]}
         />
+
+        <AdminSectionHeader
+          title="Weg zum Umsatz"
+          description={`Personen je Stufe in den letzten ${funnel?.windowDays ?? 30} Tagen. Die Stufen bis zur Preisseite misst der Browser, Checkout und Zahlung der Server. Preisseite, Checkout und Zahlung werden seit dem 28.09.2026 gemessen.`}
+        />
+        {funnel ? (
+          <>
+            {funnel.truncated ? (
+              <p className={styles.warning}>
+                Mehr Messpunkte, als in einem Durchlauf gelesen werden. Die Zahlen
+                sind eine Untergrenze.
+              </p>
+            ) : null}
+            <RevenueFunnelView funnel={funnel} />
+          </>
+        ) : (
+          <p className={styles.empty}>Der Trichter konnte gerade nicht geladen werden.</p>
+        )}
 
         <AdminSectionHeader
           title="Aktive Nutzer"

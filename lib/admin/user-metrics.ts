@@ -31,6 +31,8 @@ export type AdminUserMetrics = {
   activityWindowDays: number;
   /** Internal/test accounts removed before every aggregate is calculated. */
   excludedAccounts: number;
+  /** Their ids, so other reports on the page exclude the same accounts. */
+  excludedUserIds: string[];
   totals: {
     accounts: number;
     registered: number;
@@ -190,11 +192,11 @@ export function buildUserMetrics(input: {
   let registered = 0;
   let guests = 0;
   let registeredNeverWrote = 0;
-  let excludedAccounts = 0;
+  const excludedUserIds: string[] = [];
 
   for (const account of input.accounts) {
     if (account.admin || isPlatformAnalyticsExcludedEmail(account.email)) {
-      excludedAccounts += 1;
+      excludedUserIds.push(account.id);
       continue;
     }
     const kind: AdminAccountKind = account.anonymous ? "guest" : "registered";
@@ -245,9 +247,10 @@ export function buildUserMetrics(input: {
   return {
     generatedAt: input.now.toISOString(),
     activityWindowDays: ACTIVITY_WINDOW_DAYS,
-    excludedAccounts,
+    excludedAccounts: excludedUserIds.length,
+    excludedUserIds,
     totals: {
-      accounts: input.accounts.length - excludedAccounts,
+      accounts: input.accounts.length - excludedUserIds.length,
       registered,
       guests,
       registeredNeverWrote,

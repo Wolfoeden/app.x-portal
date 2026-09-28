@@ -209,6 +209,71 @@
   border-radius: 3px;
 }
 
+/* --- Weg zum Umsatz --- */
+
+.funnel {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 8px;
+  border: 1px solid #e2e2dc;
+  border-radius: 12px;
+  background: #fff;
+  padding: 14px 16px;
+}
+
+.funnelStep {
+  display: grid;
+  grid-template-columns: minmax(150px, 210px) minmax(120px, 1fr) 48px;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 6px 0;
+  font-size: 13px;
+}
+
+.funnelStep + .funnelStep {
+  border-top: 1px solid #f0f0ea;
+}
+
+.funnelLabel {
+  color: #20201e;
+}
+
+.funnelTrack {
+  position: relative;
+  height: 12px;
+  border-radius: 4px;
+  background: #efefe9;
+  overflow: hidden;
+}
+
+.funnelBar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 4px;
+  background: #1d6b5f;
+}
+
+.funnelStep[data-stage="billing"] .funnelBar {
+  background: #b8892a;
+}
+
+.funnelCount {
+  color: #20201e;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  text-align: right;
+}
+
+.funnelDetail {
+  grid-column: 2 / -1;
+  margin: 0;
+  color: #6d6d67;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 /* --- Tabellen --- */
 
 .tableWrap {
@@ -363,6 +428,19 @@
 
   .days {
     overflow-x: auto;
+  }
+
+  .funnelStep {
+    grid-template-columns: minmax(0, 1fr) 40px;
+  }
+
+  .funnelTrack {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .funnelDetail {
+    grid-column: 1 / -1;
   }
 
   .tableWrap {

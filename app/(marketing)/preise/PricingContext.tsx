@@ -1,7 +1,8 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 
+import { trackFunnelEvent } from "@/components/chat/funnel-events";
 import { isPricingReason, type PricingReason } from "@/components/chat/upgrade";
 import { CREDIT_PRICES, countLabel, roundedExampleCount } from "@/lib/ai/credit-policy";
 import { CREDIT_PLANS } from "@/lib/billing/plans";
@@ -43,6 +44,12 @@ const COPY: Readonly<Record<PricingReason, { title: string; body: string }>> = {
 
 export function PricingContext() {
   const reason = useSyncExternalStore(subscribe, readReason, readReasonOnServer);
+  // Ein Messpunkt je Aufruf der Seite, mit dem Anlass: „recherche“ und
+  // „guthaben“ kommen aus der App, „direkt“ von überall sonst. So zeigt der
+  // Trichter, ob die Preisseite von leeren Credits oder aus Neugier kommt.
+  useEffect(() => {
+    trackFunnelEvent("pricing_viewed", readReason() ?? "direkt");
+  }, []);
   if (!reason) return null;
   const copy = COPY[reason];
   return (
