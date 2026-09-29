@@ -197,7 +197,8 @@ describe("the showcase panel", () => {
 
   it("names the count, links each profile page and makes no availability promise", () => {
     const html = renderToStaticMarkup(createElement(RegisteredShowcasePanel, { initial: showcase }));
-    expect(html).toContain(showcaseHeading(8).replace("&", "&amp;"));
+    expect(showcaseHeading(8)).toBe("8 selbst angemeldete Profile für KI-Agenten & Automatisierung");
+    expect(html).toContain("8 selbst angemeldete Profile für KI-Agenten &amp; Automatisierung");
     expect(html).toContain(`/profil/${agent.id}?via=shortcut`);
     expect(html).toContain("Dazu 7 weitere.");
     expect(html).toContain("Selbst registriert und von XPORTAL freigegeben.");
