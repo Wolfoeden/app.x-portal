@@ -283,6 +283,34 @@ describe("Treffer-Mail", () => {
     expect(unattendedBodyIssue(buchung, "info@x-portal.eu")).toBeNull();
   });
 
+  // Der Name steht nicht in der Mail, aber auf der Profilseite, die der
+  // Empfänger selbst aufruft.
+  it("verlinkt die Profilseite, ohne den Namen in die Mail zu setzen", () => {
+    const text = buildMatchEmail({
+      recipientName: null,
+      company: "Beispiel GmbH",
+      senderEmail: "info@x-portal.eu",
+      sourceUrl: "https://example.invalid/projekt/1",
+      unsubscribeUrl: "https://x-portal.eu/unsubscribe?t=abc",
+      headline: "Data Scientist",
+      matchCount: 1,
+      best: {
+        role: "Data Scientist",
+        verifiedSkills: [],
+        workModes: [],
+        location: null,
+        availabilityStatus: "available",
+        availableFrom: null,
+        hourlyRate: null,
+      },
+      profileUrl: `https://x-portal.eu/profil/${PROFIL_ID}?via=lead`,
+      ctaUrl: "https://x-portal.eu/chat",
+    });
+
+    expect(text).toContain("Das vollständige Profil:");
+    expect(text).toContain(`https://x-portal.eu/profil/${PROFIL_ID}?via=lead`);
+  });
+
   it("lässt den Buchungsweg weg, wenn es keinen gibt", () => {
     expect(mail(1, null)).not.toContain("im Kalender buchen");
   });

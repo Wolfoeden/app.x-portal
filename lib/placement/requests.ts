@@ -3,6 +3,7 @@ import "server-only";
 import { accountNameFromMetadata } from "@/lib/auth/account-name";
 import { deliverEmail } from "@/lib/email/deliver";
 import { logEvent } from "@/lib/security/request";
+import { profileUrl } from "@/lib/profile/profile-link";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 import { followUpDue, type PlacementOutcome } from "./follow-up-rules";
@@ -351,7 +352,12 @@ export async function approvePlacementRequest(id: string, siteUrl: string) {
   if (client.email) {
     const result = await deliverEmail({
       to: client.email,
-      ...introductionForClient({ ...parties, bookingUrl, freelancerNotified }),
+      ...introductionForClient({
+        ...parties,
+        bookingUrl,
+        freelancerNotified,
+        profileUrl: profileUrl(siteUrl, profile.id, "intro"),
+      }),
       kind: "transactional",
     });
     clientNotified = result.delivered;

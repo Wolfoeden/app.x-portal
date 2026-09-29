@@ -38,6 +38,7 @@ import {
   type ProfileFeedbackReason,
 } from "@/lib/freelancer/profile-feedback";
 import { placementRequestsEnabled } from "@/lib/placement/config";
+import { profilePath } from "@/lib/profile/profile-link";
 
 import { factPreview } from "./fact-preview";
 import { shouldHighlightProfile } from "./profile-fit";
@@ -1272,6 +1273,7 @@ export function ProfileCard({
             ) : null}
           </div>
           <button className="secondary-action" type="button" onClick={selected ? onContact : onSelect}>Kontaktwege anzeigen</button>
+          <ProfileShare profileId={profile.id} projectId={projectId} />
         </div>
         </>
         )}
@@ -1338,6 +1340,34 @@ export function ProfileCard({
   );
 }
 
+
+/**
+ * Das Profil als eigene Seite: öffnen, um es ohne den Chat zu zeigen, oder
+ * den Link kopieren, um es weiterzugeben. Der kopierte Link trägt kein
+ * Projekt; wer ihn bekommt, sieht nur das Profil.
+ */
+function ProfileShare({ profileId, projectId }: { profileId: string; projectId: string | null }) {
+  const [copy, setCopy] = useState<"idle" | "copied" | "failed">("idle");
+  const ownPage = `${profilePath(profileId, "chat")}${projectId ? `&projekt=${encodeURIComponent(projectId)}` : ""}`;
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}${appPath(profilePath(profileId, "share"))}`);
+      setCopy("copied");
+    } catch {
+      setCopy("failed");
+    }
+  };
+  return (
+    <>
+      <a className="secondary-action" href={appPath(ownPage)} target="_blank" rel="noopener noreferrer">
+        Profilseite öffnen
+      </a>
+      <button className="secondary-action" type="button" onClick={() => void copyLink()}>
+        {copy === "copied" ? <><IconCheck size={13} /> Link kopiert</> : copy === "failed" ? "Kopieren nicht möglich" : "Link kopieren"}
+      </button>
+    </>
+  );
+}
 
 /**
  * „Passt nicht" und der Grund dazu.

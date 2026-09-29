@@ -60,7 +60,12 @@ export function placementRequestNotice(input: {
 
 /** An den Kunden, sobald die Vorstellung freigegeben ist. */
 export function introductionForClient(
-  input: IntroductionParties & { bookingUrl: string | null; freelancerNotified: boolean },
+  input: IntroductionParties & {
+    bookingUrl: string | null;
+    freelancerNotified: boolean;
+    /** Die Profilseite, zum Nachlesen und Weitergeben. */
+    profileUrl?: string | null;
+  },
 ): Message {
   const t = PLACEMENT_TERMS;
   return {
@@ -71,6 +76,7 @@ export function introductionForClient(
       `wie angefragt stellen wir Ihnen ${input.freelancerName} vor (${input.freelancerRole}).`,
       "",
       `Projekt: ${project(input.projectTitle)}`,
+      ...(input.profileUrl ? [`Profil: ${input.profileUrl}`] : []),
       "",
       ...(input.bookingUrl
         ? ["Das Erstgespräch wählen Sie direkt im Kalender:", input.bookingUrl]

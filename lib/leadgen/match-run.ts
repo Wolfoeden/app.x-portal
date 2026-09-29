@@ -15,6 +15,7 @@ import {
 } from "@/lib/leadgen/demand";
 import { extractProjectBrief } from "@/lib/openai/brief";
 import { placementRequestsEnabled } from "@/lib/placement/config";
+import { profileUrl } from "@/lib/profile/profile-link";
 import {
   claimPreparedDraft,
   discardPreparedDraft,
@@ -403,6 +404,7 @@ export async function runLeadPreparePass(
       // Die Suche, mit der das Profil gefunden wurde: Anforderung für
       // Anforderung, samt dem, was offen ist.
       requirements: best.requirementAssessments ?? [],
+      profileUrl: profileUrl(origin, best.profile.id, "lead"),
       // Nur für direkt buchbare Profile mit Kalender. Ein Profil mit
       // Freigabe durch den Betreiber („premium") bekommt keinen Weg an ihr
       // vorbei. Der Link führt über die eigene Domain, die beim Klick erneut
