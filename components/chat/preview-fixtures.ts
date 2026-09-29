@@ -210,16 +210,16 @@ export const previewUsage: AiUsageSnapshot = {
  * actually produce, so the preview shows states production can reach.
  */
 export const automationRequest =
-  "Wir wollen wiederkehrende Abläufe mit KI automatisieren: KI-Agenten oder n8n-Workflows bauen und ein LLM an unsere Bestandssysteme anbinden, perspektivisch auch RAG auf unsere eigenen Dokumente. Projektbasis, remote, Start kurzfristig.";
+  "Wir wollen wiederkehrende Abläufe mit KI automatisieren: Workflow-Automatisierungen bauen und ein LLM an unsere Bestandssysteme anbinden, perspektivisch auch RAG auf unsere eigenen Dokumente. Projektbasis, remote, Start kurzfristig.";
 
 /** The same request with n8n as a must and a fixed day-rate ceiling. */
 export const automationStrictRequest = `${automationRequest} n8n ist zwingend. Maximal 500 € pro Tag.`;
 
 export const automationBrief: StructuredBrief = {
   ...previewBrief,
-  projectTitle: "KI-Automatisierung mit KI-Agenten oder n8n und LLM-Anbindung",
-  summary: "KI-Agenten oder n8n-Workflows und LLM-Anbindung an bestehende Systeme. RAG perspektivisch.",
-  requiredSkills: ["n8n", "Large Language Models", "AI Agents"],
+  projectTitle: "KI-Workflow-Automatisierung mit LLM-Anbindung",
+  summary: "Workflow-Automatisierungen und LLM-Anbindung an bestehende Systeme. RAG perspektivisch.",
+  requiredSkills: ["Large Language Models"],
   optionalSkills: ["RAG"],
   mode: "remote",
   location: null,
@@ -230,7 +230,6 @@ export const automationBrief: StructuredBrief = {
   availabilityRequirement: null,
   unknownFields: ["duration", "budget"],
   requirementGroups: [
-    { id: "skill:core:any_of:n8n|ai-agents", category: "skill", priority: "core", operator: "any_of", values: ["n8n", "AI Agents"] },
     { id: "skill:core:all_of:large-language-models", category: "skill", priority: "core", operator: "all_of", values: ["Large Language Models"] },
     { id: "skill:optional:all_of:rag", category: "skill", priority: "optional", operator: "all_of", values: ["RAG"] },
     { id: "work_mode:core:all_of:remote", category: "work_mode", priority: "core", operator: "all_of", values: ["remote"] },
@@ -239,20 +238,20 @@ export const automationBrief: StructuredBrief = {
 
 export const automationStrictBrief: StructuredBrief = {
   ...automationBrief,
+  requiredSkills: ["n8n", "Large Language Models"],
   budgetOrRate: "max. 500 € / Tag",
   unknownFields: ["duration"],
-  requirementGroups: automationBrief.requirementGroups.map((group) =>
-    group.values.includes("n8n")
-      ? { ...group, id: "skill:hard:all_of:n8n", priority: "hard", operator: "all_of", values: ["n8n"] }
-      : group,
-  ),
+  requirementGroups: [
+    { id: "skill:hard:all_of:n8n", category: "skill", priority: "hard", operator: "all_of", values: ["n8n"] },
+    ...automationBrief.requirementGroups,
+  ],
 };
 
 function competencies(values: readonly string[]) {
   return values.map((value) => ({ label: "Selbstauskunft", value: `Kompetenz: ${value}`, verification: "self-reported" as const }));
 }
 
-/** Two recommended profiles: both name n8n and an LLM competence. */
+/** Two recommended profiles: both name an LLM competence (and n8n, for the strict request). */
 export const automationProfiles: FreelancerProfileResult[] = [
   {
     ...previewProfiles[0],
@@ -270,7 +269,7 @@ export const automationProfiles: FreelancerProfileResult[] = [
     availabilityStatus: "available",
     matchReasons: [
       "Projektverfügbarkeit ist aktuell bestätigt.",
-      "Belegte Kernkompetenzen: n8n, Large Language Models.",
+      "Belegte Kernkompetenzen: Large Language Models.",
       "Arbeitsmodus passend: remote.",
       "Optionale Kompetenzen passend: RAG.",
     ],
@@ -291,7 +290,7 @@ export const automationProfiles: FreelancerProfileResult[] = [
     referenceStatus: "Selbstauskunft",
     availabilityStatus: "limited",
     matchReasons: [
-      "Belegte Kernkompetenzen: n8n, Large Language Models.",
+      "Belegte Kernkompetenzen: Large Language Models.",
       "Arbeitsmodus passend: remote.",
     ],
     knownGaps: [

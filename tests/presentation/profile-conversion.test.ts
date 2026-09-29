@@ -34,12 +34,11 @@ describe("profile evidence for the request", () => {
   // Im Live-Audit stand n8n beim Hauptvorschlag erst hinter zwei Aufklappstufen,
   // vorne Strategie und Coaching.
   it("names the requested n8n competency first, in the client's wording", () => {
-    const result = profilePresentation(strategist, automationBrief);
+    const result = profilePresentation(strategist, automationStrictBrief);
 
-    // Der Shortcut fragt „KI-Agenten oder n8n“: eine Alternative, die n8n erfüllt.
-    expect(result.highlights).toEqual(["n8n oder AI Agents", "Large Language Models"]);
+    expect(result.highlights).toEqual(["n8n", "Large Language Models"]);
     expect(result.evidence.map((row) => [row.requirement, row.status])).toEqual([
-      ["n8n oder AI Agents", "listed"],
+      ["n8n", "listed"],
       ["Large Language Models", "listed"],
       ["RAG", "listed"],
     ]);
@@ -90,11 +89,11 @@ describe("profile evidence for the request", () => {
   it("only calls a skill checked when XPORTAL verified that very competency", () => {
     const verified = profilePresentation(
       { ...integrator, facts: [{ label: "Geprüft", value: "Kompetenz: n8n", verification: "verified" }] },
-      automationBrief,
+      automationStrictBrief,
     );
     const elsewhere = profilePresentation(
       { ...integrator, facts: [{ label: "Geprüft", value: "Referenzprojekt mit n8n", verification: "verified" }] },
-      automationBrief,
+      automationStrictBrief,
     );
 
     expect(verified.evidence[0].verified).toBe(true);
@@ -184,8 +183,8 @@ describe("profile card first reading level", () => {
   it("shows evidence, price, mode and start before the full profile is opened", () => {
     const markup = card(integrator, automationBrief);
 
-    expect(markup).toContain("n8n oder AI Agents und Large Language Models im Profil genannt");
-    expect(markup).toContain("Zusätzlich im Profil: Make, API integration, Python");
+    expect(markup).toContain("Large Language Models im Profil genannt");
+    expect(markup).toContain("Zusätzlich im Profil: n8n, Make, API integration");
     expect(markup).toContain("Als „LLM“ angegeben");
     expect(markup).toContain("Im Erstgespräch klären");
     expect(markup).toContain("850 € / Tag");

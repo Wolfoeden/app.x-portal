@@ -5,10 +5,10 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { loadRegisteredShowcase } from "./registered-showcase";
 
 /**
- * „KI-Agenten oder n8n-Workflows“ statt nur n8n: Wer Agenten baut und kein n8n
- * nennt, fiel bisher als Teiltreffer durch, obwohl genau diese Freelancer sich
- * für KI-Automatisierung angemeldet haben. Das „oder“ macht daraus eine
- * Alternative, die eines von beiden erfüllt; das LLM bleibt Kern, RAG optional.
+ * Der KI-Brief nennt kein einzelnes Werkzeug mehr. Mit „n8n-Workflows“ fiel
+ * durch, wer Agenten, Make oder Zapier baut und kein n8n nennt — genau die
+ * Freelancer, die sich für KI-Automatisierung angemeldet haben. Kern bleibt das
+ * LLM, RAG ist optional.
  *
  * `showcase` zeigt unter dem Brief, wer sich für das Thema selbst angemeldet
  * hat (components/chat/registered-showcase.tsx).
@@ -17,7 +17,7 @@ const suggestions = [
   {
     label: "KI & Automatisierung",
     draftPrefix:
-      "Wir wollen wiederkehrende Abläufe mit KI automatisieren: KI-Agenten oder n8n-Workflows bauen und ein LLM an unsere Bestandssysteme anbinden, perspektivisch auch RAG auf unsere eigenen Dokumente. Projektbasis, remote, Start kurzfristig.",
+      "Wir wollen wiederkehrende Abläufe mit KI automatisieren: Workflow-Automatisierungen bauen und ein LLM an unsere Bestandssysteme anbinden, perspektivisch auch RAG auf unsere eigenen Dokumente. Projektbasis, remote, Start kurzfristig.",
     intro:
       "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Was Sie nicht erwähnen, ergänze ich nicht.",
     showcase: "automation",

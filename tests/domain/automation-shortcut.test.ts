@@ -5,7 +5,7 @@ import { buildDeterministicBrief, reconcileAiBrief } from "@/lib/openai/brief";
 import { automationRequest } from "@/components/chat/preview-fixtures";
 import { profileFixtures } from "./fixtures";
 
-const request = "Wir wollen wiederkehrende Abläufe mit KI automatisieren: KI-Agenten oder n8n-Workflows bauen und ein LLM an unsere Bestandssysteme anbinden, perspektivisch auch RAG auf unsere eigenen Dokumente. Projektbasis, remote, Start kurzfristig.";
+const request = "Wir wollen wiederkehrende Abläufe mit KI automatisieren: Workflow-Automatisierungen bauen und ein LLM an unsere Bestandssysteme anbinden, perspektivisch auch RAG auf unsere eigenen Dokumente. Projektbasis, remote, Start kurzfristig.";
 
 function automationProfile(id: string, displayName: string, role: string, skills: string[]) {
   return FreelancerProfileSchema.parse({
@@ -32,16 +32,14 @@ describe("automation shortcut semantics", () => {
     expect(automationRequest).toBe(request);
   });
 
-  it("accepts AI agents or n8n as one core alternative, keeps the LLM core and future RAG optional", () => {
+  it("names no single workflow tool, keeps the LLM core and future RAG optional", () => {
     const brief = buildDeterministicBrief({ originalRequest: request });
-    expect(brief.requiredSkills).toEqual(expect.arrayContaining(["n8n", "AI Agents", "Large Language Models"]));
+    expect(brief.requiredSkills).toEqual(["Large Language Models"]);
     expect(brief.requiredSkills).not.toContain("RAG");
     expect(brief.optionalSkills).toContain("RAG");
     expect(brief.schemaVersion).toBe(2);
     if (brief.schemaVersion === 2) {
-      const alternative = brief.requirementGroups.find((group) => group.values.includes("n8n"));
-      expect(alternative).toMatchObject({ priority: "core", operator: "any_of" });
-      expect(alternative?.values).toEqual(expect.arrayContaining(["n8n", "AI Agents"]));
+      expect(brief.requirementGroups.some((group) => group.values.includes("n8n"))).toBe(false);
       expect(brief.requirementGroups.find((group) => group.values.includes("Large Language Models"))?.priority).toBe("core");
       expect(brief.requirementGroups.find((group) => group.values.includes("RAG"))?.priority).toBe("optional");
     }
@@ -55,10 +53,10 @@ describe("automation shortcut semantics", () => {
     expect(corrected.optionalSkills).toContain("RAG");
   });
 
-  // Vorher fiel ein Agenten-Profil ohne n8n auf 50 % Kernabdeckung und damit
-  // unter die Empfehlungsschwelle, auch wenn es für KI-Automatisierung
-  // angemeldet war.
-  it("recommends agent builders without n8n next to n8n automators", () => {
+  // Mit „n8n-Workflows“ im Brief fiel ein Agenten-Profil ohne n8n auf 50 %
+  // Kernabdeckung und damit unter die Empfehlungsschwelle, auch wenn es für
+  // KI-Automatisierung angemeldet war.
+  it("recommends agent builders and n8n automators alike", () => {
     const brief = buildDeterministicBrief({ originalRequest: request });
     const shortlist = buildShortlist(brief, [
       automationProfile("00000000-0000-4000-8000-0000000000a1", "Agent Englisch", "KI / Full Stack / Cloud", ["AI Agents", "MCP", "LLM", "RAG"]),
