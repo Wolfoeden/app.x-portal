@@ -79,7 +79,7 @@ export function FreelancerLanding() {
       </header>
 
       <section className={styles.process} id="ablauf" aria-labelledby="ablauf-title">
-        <div className={styles.sectionHead}><p className={styles.eyebrow}>Von der Ausschreibung zum Termin</p><h2 id="ablauf-title">Kopieren. Einfügen. Buchen.</h2></div>
+        <div className={styles.sectionHead}><p className={styles.eyebrow}>Von der Ausschreibung zum Termin</p><h2 id="ablauf-title">Einfügen. Buchen.</h2></div>
         <ol className={styles.steps}>
           <li><div className={styles.stepTop}><StepIcon kind="brief" /><span>01</span></div><h3>Projekttext kopieren</h3><p>Nehmen Sie die Beschreibung aus Ihrer bestehenden Ausschreibung.</p></li>
           <li><div className={styles.stepTop}><StepIcon kind="profiles" /><span>02</span></div><h3>Bei XPORTAL einfügen</h3><p>XPORTAL erkennt Anforderungen und schlägt passende Profile vor.</p></li>

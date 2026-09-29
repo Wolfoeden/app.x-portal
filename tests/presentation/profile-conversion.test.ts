@@ -36,9 +36,10 @@ describe("profile evidence for the request", () => {
   it("names the requested n8n competency first, in the client's wording", () => {
     const result = profilePresentation(strategist, automationBrief);
 
-    expect(result.highlights).toEqual(["n8n", "Large Language Models"]);
+    // Der Shortcut fragt „KI-Agenten oder n8n“: eine Alternative, die n8n erfüllt.
+    expect(result.highlights).toEqual(["n8n oder AI Agents", "Large Language Models"]);
     expect(result.evidence.map((row) => [row.requirement, row.status])).toEqual([
-      ["n8n", "listed"],
+      ["n8n oder AI Agents", "listed"],
       ["Large Language Models", "listed"],
       ["RAG", "listed"],
     ]);
@@ -117,7 +118,11 @@ describe("profile evidence for the request", () => {
   });
 
   it("falls back to the flat skill lists of historical briefs", () => {
-    const result = profilePresentation(integrator, { ...automationBrief, requirementGroups: [] });
+    const result = profilePresentation(integrator, {
+      ...automationBrief,
+      requiredSkills: ["n8n", "Large Language Models"],
+      requirementGroups: [],
+    });
 
     expect(result.evidence.map((row) => `${row.priority}:${row.requirement}`)).toEqual([
       "core:n8n",
@@ -179,7 +184,7 @@ describe("profile card first reading level", () => {
   it("shows evidence, price, mode and start before the full profile is opened", () => {
     const markup = card(integrator, automationBrief);
 
-    expect(markup).toContain("n8n und Large Language Models im Profil genannt");
+    expect(markup).toContain("n8n oder AI Agents und Large Language Models im Profil genannt");
     expect(markup).toContain("Zusätzlich im Profil: Make, API integration, Python");
     expect(markup).toContain("Als „LLM“ angegeben");
     expect(markup).toContain("Im Erstgespräch klären");

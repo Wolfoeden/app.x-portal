@@ -8,7 +8,8 @@
 
 export const PROFILE_PATH_PREFIX = "/profil";
 
-export const PROFILE_LINK_SOURCES = ["lead", "intro", "share", "chat"] as const;
+/** `shortcut`: aus der Liste selbst angemeldeter Profile unter einem Chat-Shortcut. */
+export const PROFILE_LINK_SOURCES = ["lead", "intro", "share", "chat", "shortcut"] as const;
 export type ProfileLinkSource = (typeof PROFILE_LINK_SOURCES)[number];
 
 export function isProfileLinkSource(value: unknown): value is ProfileLinkSource {

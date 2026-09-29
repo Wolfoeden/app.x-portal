@@ -45,6 +45,7 @@ import {
   type DismissedProfile,
   type ProfileFeedbackReason,
 } from "@/lib/freelancer/profile-feedback";
+import type { RegisteredShowcase } from "@/lib/freelancer/showcase";
 import { AccountSummary, CreditPlansDialog } from "./chat/account";
 import {
   exhaustedNotice,
@@ -81,6 +82,7 @@ import {
   type AuthDialogMode,
   type ToastState,
 } from "./chat/shared";
+import { RegisteredShowcasePanel } from "./chat/registered-showcase";
 import { ProjectDetails, ResultSection, SavedProfileList } from "./chat/results";
 import {
   SidebarChatList,
@@ -293,6 +295,8 @@ interface ChatWorkspaceProps {
      * der Katalog nichts hergibt. Er gehoert deshalb in die Vorschau.
      */
     resultState?: "ranked" | "no_match" | "searching";
+    /** Selbst angemeldete Profile für den Shortcut, ohne Datenbank. */
+    showcase?: RegisteredShowcase;
   };
 }
 
@@ -1156,6 +1160,8 @@ export function ChatWorkspace({
     previewResultState === "searching" ? "searching" : "idle",
   );
   const [draft, setDraft] = useState("");
+  /** Die Shortcut-Nachricht, unter der die selbst angemeldeten Profile stehen. */
+  const [guideShowcaseMessageId, setGuideShowcaseMessageId] = useState<string | null>(null);
   const [pendingAssistant, setPendingAssistant] = useState<PendingAssistant | null>(null);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [pendingProfileId, setPendingProfileId] = useState<string | null>(null);
@@ -1976,6 +1982,7 @@ export function ChatWorkspace({
   }, []);
 
   const startGuidedRequest = (suggestion: GuidedSuggestion) => {
+    const introId = makeId("assistant-guide");
     setActiveProject(null);
     setBrief(null);
     setProfiles([]);
@@ -1991,12 +1998,13 @@ export function ChatWorkspace({
     setPendingAssistant(null);
     setMessages([
       {
-        id: makeId("assistant-guide"),
+        id: introId,
         role: "assistant",
         content: suggestion.intro,
         createdAt: new Date().toISOString(),
       },
     ]);
+    setGuideShowcaseMessageId(suggestion.showcase ? introId : null);
     setDraft(suggestion.draftPrefix);
     requestAnimationFrame(() => {
       const textarea = composerRef.current;
@@ -2814,6 +2822,14 @@ export function ChatWorkspace({
       )
     : projectCollections;
   const emptyChat = !isTeamView && messages.length === 0 && !pendingAssistant;
+  // Nur solange der Shortcut-Hinweis allein steht: Mit dem Absenden beginnt
+  // der Abgleich, und dessen Ergebnis soll nicht mit der Liste konkurrieren.
+  const showGuideShowcase =
+    guideShowcaseMessageId !== null &&
+    messages.length === 1 &&
+    messages[0]?.id === guideShowcaseMessageId &&
+    !pendingAssistant &&
+    !hasResult;
 
   return (
     <div
@@ -3207,6 +3223,9 @@ export function ChatWorkspace({
                 {messages.map((message) => (
                   <MessageBubble key={message.id} message={message} />
                 ))}
+                {showGuideShowcase ? (
+                  <RegisteredShowcasePanel initial={previewData?.showcase} />
+                ) : null}
                 {pendingAssistant ? (
                   <PendingMessage
                     pending={pendingAssistant}

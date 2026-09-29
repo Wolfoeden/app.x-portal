@@ -2,13 +2,25 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 
+import { loadRegisteredShowcase } from "./registered-showcase";
+
+/**
+ * „KI-Agenten oder n8n-Workflows“ statt nur n8n: Wer Agenten baut und kein n8n
+ * nennt, fiel bisher als Teiltreffer durch, obwohl genau diese Freelancer sich
+ * für KI-Automatisierung angemeldet haben. Das „oder“ macht daraus eine
+ * Alternative, die eines von beiden erfüllt; das LLM bleibt Kern, RAG optional.
+ *
+ * `showcase` zeigt unter dem Brief, wer sich für das Thema selbst angemeldet
+ * hat (components/chat/registered-showcase.tsx).
+ */
 const suggestions = [
   {
     label: "KI & Automatisierung",
     draftPrefix:
-      "Wir wollen wiederkehrende Abläufe mit KI automatisieren: n8n-Workflows bauen und ein LLM an unsere Bestandssysteme anbinden, perspektivisch auch RAG auf unsere eigenen Dokumente. Projektbasis, remote, Start kurzfristig.",
+      "Wir wollen wiederkehrende Abläufe mit KI automatisieren: KI-Agenten oder n8n-Workflows bauen und ein LLM an unsere Bestandssysteme anbinden, perspektivisch auch RAG auf unsere eigenen Dokumente. Projektbasis, remote, Start kurzfristig.",
     intro:
       "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Was Sie nicht erwähnen, ergänze ich nicht.",
+    showcase: "automation",
   },
   {
     label: "SAP",
@@ -16,6 +28,7 @@ const suggestions = [
       "Wir suchen Unterstützung im SAP-Umfeld: SAP S/4HANA, Anbindung an unsere bestehenden Systeme und Begleitung der Migration. Erfahrung mit SAP FI/CO oder SAP HCM ist willkommen. Projektbasis, remote möglich, Start in den nächsten Wochen.",
     intro:
       "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Was Sie nicht erwähnen, ergänze ich nicht.",
+    showcase: null,
   },
 ] as const;
 
@@ -166,7 +179,13 @@ export function SuggestionGrid({
   return (
     <div className="suggestion-grid" aria-label="Beispielanfragen">
       {suggestions.map((suggestion) => (
-        <button key={suggestion.label} type="button" onClick={() => onSuggestion(suggestion)}>
+        <button
+          key={suggestion.label}
+          type="button"
+          onClick={() => onSuggestion(suggestion)}
+          onPointerEnter={suggestion.showcase ? () => void loadRegisteredShowcase() : undefined}
+          onFocus={suggestion.showcase ? () => void loadRegisteredShowcase() : undefined}
+        >
           <span className="suggestion-label">{suggestion.label}</span>
         </button>
       ))}

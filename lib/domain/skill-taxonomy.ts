@@ -285,6 +285,22 @@ export const SKILL_TAXONOMY: readonly SkillDefinition[] = [
     ],
   },
   {
+    canonical: "AI Agents",
+    aliases: [
+      "ai agents",
+      "ai agent",
+      "ai-agents",
+      "ai-agent",
+      "ki-agenten",
+      "ki agenten",
+      "ki-agent",
+      "ki agent",
+      "agentic ai",
+      "llm agents",
+      "llm-agenten",
+    ],
+  },
+  {
     canonical: "Image AI",
     aliases: [
       "image ai",

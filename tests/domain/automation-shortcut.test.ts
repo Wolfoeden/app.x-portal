@@ -1,20 +1,47 @@
 import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
-import { applyBriefPatch, evaluateProfile, parseFallbackBrief } from "@/lib/domain";
+import { applyBriefPatch, buildShortlist, evaluateProfile, FreelancerProfileSchema, parseFallbackBrief } from "@/lib/domain";
 import { buildDeterministicBrief, reconcileAiBrief } from "@/lib/openai/brief";
+import { automationRequest } from "@/components/chat/preview-fixtures";
 import { profileFixtures } from "./fixtures";
 
-const request = "Wir wollen wiederkehrende Abläufe mit KI automatisieren: n8n-Workflows bauen und ein LLM an unsere Bestandssysteme anbinden, perspektivisch auch RAG auf unsere eigenen Dokumente. Projektbasis, remote, Start kurzfristig.";
+const request = "Wir wollen wiederkehrende Abläufe mit KI automatisieren: KI-Agenten oder n8n-Workflows bauen und ein LLM an unsere Bestandssysteme anbinden, perspektivisch auch RAG auf unsere eigenen Dokumente. Projektbasis, remote, Start kurzfristig.";
+
+function automationProfile(id: string, displayName: string, role: string, skills: string[]) {
+  return FreelancerProfileSchema.parse({
+    ...profileFixtures[0],
+    id,
+    displayName,
+    role,
+    workModes: ["remote"],
+    skillTags: skills.map((value) => ({ value, source: "self_reported" })),
+    qualifications: [],
+    contractualCapabilities: [],
+    hourlyRate: null,
+    dayRate: null,
+    minimumProjectBudget: null,
+  });
+}
+
 describe("automation shortcut semantics", () => {
-  it("keeps n8n and LLM core while treating future RAG as optional", () => {
+  it("is the brief the chat shortcut writes into the composer", async () => {
+    const source = await import("node:fs/promises").then((fs) =>
+      fs.readFile(new URL("../../components/chat/welcome.tsx", import.meta.url), "utf8"),
+    );
+    expect(source).toContain(request);
+    expect(automationRequest).toBe(request);
+  });
+
+  it("accepts AI agents or n8n as one core alternative, keeps the LLM core and future RAG optional", () => {
     const brief = buildDeterministicBrief({ originalRequest: request });
-    expect(brief.requiredSkills).toContain("n8n");
-    expect(brief.requiredSkills).toContain("Large Language Models");
+    expect(brief.requiredSkills).toEqual(expect.arrayContaining(["n8n", "AI Agents", "Large Language Models"]));
     expect(brief.requiredSkills).not.toContain("RAG");
     expect(brief.optionalSkills).toContain("RAG");
     expect(brief.schemaVersion).toBe(2);
     if (brief.schemaVersion === 2) {
-      expect(brief.requirementGroups.find((group) => group.values.includes("n8n"))?.priority).toBe("core");
+      const alternative = brief.requirementGroups.find((group) => group.values.includes("n8n"));
+      expect(alternative).toMatchObject({ priority: "core", operator: "any_of" });
+      expect(alternative?.values).toEqual(expect.arrayContaining(["n8n", "AI Agents"]));
       expect(brief.requirementGroups.find((group) => group.values.includes("Large Language Models"))?.priority).toBe("core");
       expect(brief.requirementGroups.find((group) => group.values.includes("RAG"))?.priority).toBe("optional");
     }
@@ -26,6 +53,26 @@ describe("automation shortcut semantics", () => {
     });
     expect(corrected.requiredSkills).not.toContain("RAG");
     expect(corrected.optionalSkills).toContain("RAG");
+  });
+
+  // Vorher fiel ein Agenten-Profil ohne n8n auf 50 % Kernabdeckung und damit
+  // unter die Empfehlungsschwelle, auch wenn es für KI-Automatisierung
+  // angemeldet war.
+  it("recommends agent builders without n8n next to n8n automators", () => {
+    const brief = buildDeterministicBrief({ originalRequest: request });
+    const shortlist = buildShortlist(brief, [
+      automationProfile("00000000-0000-4000-8000-0000000000a1", "Agent Englisch", "KI / Full Stack / Cloud", ["AI Agents", "MCP", "LLM", "RAG"]),
+      automationProfile("00000000-0000-4000-8000-0000000000a2", "Agent Deutsch", "KI-Entwicklung", ["KI-Agenten", "Large Language Models"]),
+      automationProfile("00000000-0000-4000-8000-0000000000a3", "Workflow n8n", "Automatisierung & Systemintegration", ["n8n", "Make", "LLM"]),
+      automationProfile("00000000-0000-4000-8000-0000000000a4", "Nur Zapier", "Workflow-Automatisierung", ["Make", "Zapier"]),
+    ]);
+    expect(shortlist.status).toBe("ranked");
+    expect(shortlist.matches.map((match) => match.profile.displayName).sort()).toEqual([
+      "Agent Deutsch",
+      "Agent Englisch",
+      "Workflow n8n",
+    ]);
+    expect(shortlist.matches.every((match) => match.coreCoverage === 100)).toBe(true);
   });
   it("assesses structured work mode and start only once without dropping other constraints", () => {
     const brief = parseFallbackBrief("React remote, Start kurzfristig");
