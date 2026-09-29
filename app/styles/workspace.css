@@ -2285,6 +2285,14 @@ dd.is-unknown,
   background: var(--surface);
 }
 
+/* „Profilseite öffnen“ ist ein Link, sieht aber aus wie die Knöpfe daneben. */
+a.secondary-action {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ink);
+  text-decoration: none;
+}
+
 .secondary-action:hover {
   background: var(--surface-soft);
 }

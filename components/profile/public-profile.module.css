@@ -1,0 +1,404 @@
+/* Die Profilkarte auf /profil/<id>. Farben und Radien kommen aus
+   foundation.css, damit sie zur Karte im Chat passt. */
+
+.page {
+  display: grid;
+  gap: 18px;
+  width: min(100% - 32px, 820px);
+  padding-block: clamp(32px, 6vw, 64px);
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.aside {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  padding: 18px 22px;
+}
+
+.aside h2 {
+  margin: 0 0 4px;
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.aside p {
+  max-width: 520px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.card {
+  display: grid;
+  gap: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(24, 24, 23, 0.05);
+}
+
+.head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 14px;
+}
+
+.avatar {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ink) center / cover no-repeat;
+  color: #fff;
+  font-family: var(--font-serif);
+  font-size: 19px;
+}
+
+.identity h1 {
+  margin: 2px 0 0;
+  color: var(--ink);
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.identity p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.availability,
+.verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.availability {
+  background: #eeeeea;
+  color: var(--muted);
+}
+
+.availability[data-tone="available"] {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.availability[data-tone="limited"] {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.availability[data-tone="stale"] {
+  border: 1px dashed var(--amber-border);
+  background: transparent;
+  color: var(--amber);
+}
+
+.verified {
+  border: 1px solid var(--green-border);
+  color: var(--green);
+}
+
+.keyFacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 0;
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* Der Trennpunkt hängt am Ende des vorigen Eintrags, damit er beim
+   Umbrechen nicht am Zeilenanfang steht. */
+.keyFacts span:not(:last-child)::after {
+  content: "·";
+  margin: 0 8px;
+  color: #b9b9b2;
+}
+
+.rate {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.summary {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.summary[data-expanded="true"] {
+  display: block;
+  -webkit-line-clamp: unset;
+}
+
+.skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.skills li {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fafaf7;
+  padding: 4px 10px;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.skills li.more {
+  border-style: dashed;
+  background: transparent;
+  color: var(--muted);
+}
+
+.openPoint {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: var(--amber);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.openPoint span {
+  margin-top: 2px;
+}
+
+.details {
+  display: grid;
+  gap: 18px;
+  border-top: 1px solid var(--border);
+  padding-top: 18px;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.factGroup h3 {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.factGroup ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.factGroup li {
+  display: flex;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.factGroup[data-verified="true"] li span {
+  margin-top: 2px;
+  color: var(--green);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px 18px;
+  margin: 0;
+}
+
+.grid div {
+  display: grid;
+  gap: 2px;
+}
+
+.grid dt {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.grid dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.footer {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.primary,
+.secondary,
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  cursor: pointer;
+  border-radius: 10px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+/* Zwei Klassen, damit die Linkfarbe der Rechtsseiten (.xlegal a) den
+   Knopf nicht überschreibt. */
+.card .primary,
+.aside .secondary {
+  text-decoration: none;
+}
+
+.card .primary {
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: #fff;
+}
+
+.primary:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.secondary,
+.aside .secondary {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.toggle {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  padding: 0 4px;
+}
+
+.toggle span {
+  display: inline-grid;
+  transition: transform 0.15s ease;
+}
+
+.toggle span[data-expanded="true"] {
+  transform: rotate(180deg);
+}
+
+.primary:focus-visible,
+.secondary:focus-visible,
+.toggle:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.url {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  user-select: all;
+}
+
+@media (max-width: 640px) {
+  .card {
+    padding: 18px;
+  }
+
+  .head {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .badges {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .identity h1 {
+    font-size: 22px;
+  }
+
+  .toggle {
+    margin-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toggle span {
+    transition: none;
+  }
+}

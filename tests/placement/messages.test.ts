@@ -53,6 +53,17 @@ describe("placement emails", () => {
     expect(mail.text).toContain("ebenfalls erhalten");
   });
 
+  it("links the profile page so the client can read and pass it on", () => {
+    const mail = introductionForClient({
+      ...PARTIES,
+      bookingUrl: null,
+      freelancerNotified: false,
+      profileUrl: "https://x-portal.eu/profil/p1?via=intro",
+    });
+
+    expect(mail.text).toContain("Profil: https://x-portal.eu/profil/p1?via=intro");
+  });
+
   it("does not claim the freelancer was told when no mail went out", () => {
     const mail = introductionForClient({ ...PARTIES, bookingUrl: null, freelancerNotified: false });
 

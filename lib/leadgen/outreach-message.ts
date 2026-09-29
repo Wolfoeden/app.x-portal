@@ -466,6 +466,11 @@ export function buildMatchEmail(input: {
   requirements?: readonly RequirementCheck[];
   /** Direkter Buchungsweg über x-portal.eu; fehlt, wenn das Profil keinen hat. */
   bookingUrl?: string | null;
+  /**
+   * Die Profilseite des besten Treffers. Dort steht der Name, den die Mail
+   * selbst nicht nennt; wer ihn sehen will, ruft die Seite auf.
+   */
+  profileUrl?: string | null;
   ctaUrl: string;
 }): string {
   const weitere = input.matchCount - 1;
@@ -481,6 +486,7 @@ export function buildMatchEmail(input: {
     ...(abgleich.length
       ? ["", "So haben wir Ihre Ausschreibung abgeglichen:", "", ...abgleich]
       : []),
+    ...(input.profileUrl ? ["", "Das vollständige Profil:", input.profileUrl] : []),
     ...(input.bookingUrl
       ? [
           "",
