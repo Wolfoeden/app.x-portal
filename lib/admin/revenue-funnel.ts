@@ -1,5 +1,6 @@
 import "server-only";
 
+import { placementRequestsEnabled } from "@/lib/placement/config";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 import {
@@ -29,7 +30,7 @@ export async function getRevenueFunnel(
   for (let offset = 0; offset < ROW_MAX; offset += PAGE_SIZE) {
     const { data, error } = await admin
       .from("audit_events")
-      .select("id,action,actor_user_id,metadata")
+      .select("id,action,actor_user_id,target_id,metadata")
       .in("action", [...REVENUE_FUNNEL_ACTIONS])
       .gte("occurred_at", since)
       .order("occurred_at", { ascending: false })
@@ -40,5 +41,7 @@ export async function getRevenueFunnel(
     if (page.length < PAGE_SIZE) break;
     if (offset + PAGE_SIZE >= ROW_MAX) truncated = true;
   }
-  return buildRevenueFunnel(rows, excludedUserIds, truncated);
+  return buildRevenueFunnel(rows, excludedUserIds, truncated, {
+    placement: placementRequestsEnabled(),
+  });
 }

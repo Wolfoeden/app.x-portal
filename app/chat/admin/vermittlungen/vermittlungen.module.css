@@ -195,3 +195,54 @@
   font-size: 13px;
   text-align: center;
 }
+
+.engagement {
+  display: grid;
+  gap: 10px;
+  border-top: 1px dashed #e2e2dc;
+  padding-top: 12px;
+}
+
+.formTitle {
+  margin: 0;
+  color: #20201e;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px 14px;
+}
+
+.inline .reason {
+  flex: 1 1 160px;
+}
+
+.preview {
+  margin: 0;
+  color: #1d6b5f;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fee {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.followUps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 0 0 22px;
+  border: 1px solid #e2e2dc;
+  border-radius: 12px;
+  background: #fff;
+  padding: 12px 16px;
+  color: #51534c;
+  font-size: 13px;
+}

@@ -265,10 +265,23 @@ affected card and rank below confirmed availability. `version` increments on
 every profile update and the availability timestamp refreshes when status or
 availability changes.
 
-`intro_policy` remains either `free` or `manual_approval` for future commercial
-flows. In this release, every eligible real profile with a booking URL exposes
-that URL directly and no payment or manual approval blocks the meeting. No
-booking-specific Stripe, bank-transfer, charge, invoice or fee field exists.
+`intro_policy` remains either `free` or `manual_approval`. Without the placement
+switch (`NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED`), every eligible real profile
+with a booking URL exposes that URL directly and no payment or manual approval
+blocks the meeting.
+
+With the switch on (`lib/placement/`), a client requests an introduction and
+accepts the placement terms; the consent is an append-only
+`placement_terms_accepted` audit event. Every request waits in
+`intro_bookings.status = 'manual_review'` until the operator introduces
+(`ready_to_book`) or declines (`cancelled`). `intro_bookings.outcome`,
+`outcome_source`, `follow_up_count` and `last_follow_up_at` hold the answers to
+the follow-ups after 14 and 45 days. A hire is one `engagements` row per
+introduction with `day_rate_minor`, `project_days`, `starts_on`, the resulting
+`fee_minor` under `terms_version`, and `fee_status` (`open`, `invoiced`, `paid`,
+`waived`) with `invoice_reference`, `invoiced_at` and `paid_at`. The invoice
+itself is issued outside the application (Stripe invoice or bookkeeping).
+
 Account subscriptions are tracked separately on `user_ai_credit_accounts`;
 Stripe remains the invoice and payment-history system of record.
 

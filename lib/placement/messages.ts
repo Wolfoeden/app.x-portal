@@ -113,6 +113,93 @@ export function introductionForFreelancer(
   };
 }
 
+export type AnswerLinks = { engaged: string; talking: string; no_engagement: string };
+
+function answerLines(links: AnswerLinks): string[] {
+  return [
+    "Ein Klick genügt:",
+    "",
+    "Ja, beauftragt:",
+    links.engaged,
+    "",
+    "Noch im Gespräch:",
+    links.talking,
+    "",
+    "Nein, keine Zusammenarbeit:",
+    links.no_engagement,
+  ];
+}
+
+/** Nach „Guten Tag …,“ geht der Brief klein weiter. */
+function sinceIntroduction(round: 1 | 2): string {
+  return round === 1 ? "vor zwei Wochen" : "vor gut sechs Wochen";
+}
+
+/** Nachfrage an den Kunden, 14 und 45 Tage nach der Vorstellung. */
+export function followUpForClient(
+  input: Omit<IntroductionParties, "clientEmail"> & { round: 1 | 2; links: AnswerLinks },
+): Message {
+  const t = PLACEMENT_TERMS;
+  return {
+    subject: `Kurze Frage zu ${input.freelancerName}`,
+    text: [
+      greeting(input.clientName),
+      "",
+      `${sinceIntroduction(input.round)} haben wir Ihnen ${input.freelancerName} für „${project(input.projectTitle)}“ vorgestellt. Kam es zur Zusammenarbeit?`,
+      "",
+      ...answerLines(input.links),
+      "",
+      `Bei einer Beauftragung fällt das Vermittlungshonorar an (${t.feePercent} % des vereinbarten Honorars der ersten ${t.feeMonths} Monate). Wir melden uns dann mit den Einzelheiten.`,
+      `Vermittlungsbedingungen: ${input.siteUrl}${PLACEMENT_TERMS_PATH}`,
+      "",
+      ...SIGNATURE,
+    ].join("\n"),
+  };
+}
+
+/** Nachfrage an den Freelancer, zur selben Zeit. */
+export function followUpForFreelancer(
+  input: IntroductionParties & { round: 1 | 2; links: AnswerLinks },
+): Message {
+  return {
+    subject: `Kurze Frage zur Anfrage über XPORTAL: ${project(input.projectTitle)}`,
+    text: [
+      greeting(input.freelancerName),
+      "",
+      `${sinceIntroduction(input.round)} haben wir Ihnen ${input.clientName?.trim() || input.clientEmail} für „${project(input.projectTitle)}“ vorgestellt. Kam es zur Zusammenarbeit?`,
+      "",
+      ...answerLines(input.links),
+      "",
+      "Die Vermittlung bleibt für Sie kostenlos.",
+      "",
+      ...SIGNATURE,
+    ].join("\n"),
+  };
+}
+
+/** An den Betreiber, wenn jemand „beauftragt“ meldet. */
+export function engagementReportedNotice(input: {
+  siteUrl: string;
+  role: "client" | "freelancer";
+  clientEmail: string | null;
+  freelancerName: string;
+  projectTitle: string | null;
+}): Message {
+  return {
+    subject: `Beauftragung gemeldet: ${input.freelancerName}`,
+    text: [
+      `${input.role === "client" ? "Der Kunde" : "Der Freelancer"} meldet eine Beauftragung.`,
+      "",
+      `Freelancer: ${input.freelancerName}`,
+      `Kunde: ${input.clientEmail ?? "unbekannt"}`,
+      `Projekt: ${project(input.projectTitle)}`,
+      "",
+      "Bitte Tagessatz, Projekttage und Start erfragen und die Beauftragung erfassen; daraus ergibt sich das Honorar:",
+      `${input.siteUrl}/chat/admin/vermittlungen`,
+    ].join("\n"),
+  };
+}
+
 /** An den Kunden, wenn keine Vorstellung möglich ist. */
 export function declineForClient(input: {
   siteUrl: string;

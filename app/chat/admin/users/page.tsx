@@ -76,7 +76,14 @@ function percent(part: number, total: number): string {
   return `${Math.round((part / total) * 100)} %`;
 }
 
-const BILLING_STEPS = new Set(["checkout_started", "subscription_paid"]);
+const BILLING_STEPS = new Set([
+  "checkout_started",
+  "subscription_paid",
+  "placement_requested",
+  "placement_introduced",
+  "placement_engaged",
+  "placement_fee_paid",
+]);
 
 /**
  * Personen je Stufe als Balken. Der längste Balken ist die größte Stufe —

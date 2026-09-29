@@ -24,16 +24,30 @@ const CLIENT_STEPS = [
   { key: "pricing_viewed", label: "Preisseite geöffnet" },
 ] as const;
 
+/**
+ * Die Stufen des Vermittlungsmodells. Gezählt wird je Anfrage, nicht je
+ * Person: Ein Kunde kann mehrere Freelancer anfragen, und jede Anfrage kann
+ * ein Honorar bringen.
+ */
+const PLACEMENT_STEPS = [
+  { key: "placement_requested", action: "placement_terms_accepted", label: "Vermittlung angefragt" },
+  { key: "placement_introduced", action: "placement_introduced", label: "Vorgestellt" },
+  { key: "placement_engaged", action: "placement_engaged", label: "Beauftragt" },
+  { key: "placement_fee_paid", action: "placement_fee_paid", label: "Vermittlungshonorar bezahlt" },
+] as const;
+
 export const REVENUE_FUNNEL_ACTIONS = [
   ...CLIENT_STEPS.map((step) => `signup_funnel_${step.key}`),
   BILLING_FUNNEL_ACTIONS.checkoutStarted,
   BILLING_FUNNEL_ACTIONS.subscriptionPaid,
+  ...PLACEMENT_STEPS.map((step) => step.action),
 ] as const;
 
 export type RevenueFunnelRow = {
   id: string;
   action: string;
   actor_user_id: string | null;
+  target_id?: string | null;
   metadata: Record<string, unknown> | null;
 };
 
@@ -82,12 +96,16 @@ export function buildRevenueFunnel(
   rows: readonly RevenueFunnelRow[],
   excludedUserIds: ReadonlySet<string>,
   truncated = false,
+  options: { placement?: boolean } = {},
 ): RevenueFunnel {
   const people = new Map<string, Set<string>>();
   const pricingReasons = new Map<string, Set<string>>();
   const checkoutLoginRequired = new Set<string>();
   const renewals = new Set<string>();
   const paidPlans = new Map<string, number>();
+  const agreedFees = new Map<string, number>();
+  const paidFees = new Map<string, number>();
+  const placementAction = new Map<string, string>(PLACEMENT_STEPS.map((step) => [step.action, step.key]));
 
   const add = (key: string, person: string) => {
     const set = people.get(key) ?? new Set<string>();
@@ -96,7 +114,26 @@ export function buildRevenueFunnel(
   };
 
   for (const row of rows) {
-    if (row.actor_user_id && excludedUserIds.has(row.actor_user_id)) continue;
+    if (row.actor_user_id && excludedUserIds.has(row.actor_user_id)) {
+      // Vorstellen, Beauftragung und Zahlung trägt der Betreiber ein; dann
+      // entscheidet der Kunde der Anfrage, ob die Zeile zählt.
+      if (!placementAction.has(row.action) || row.action === "placement_terms_accepted") continue;
+    }
+    const clientUserId = text(row.metadata?.clientUserId);
+    if (clientUserId && excludedUserIds.has(clientUserId)) continue;
+
+    const placementKey = placementAction.get(row.action);
+    if (placementKey) {
+      const request = `request:${row.target_id ?? row.id}`;
+      add(placementKey, request);
+      const fee = row.metadata?.feeMinor;
+      if (typeof fee === "number" && fee > 0) {
+        if (placementKey === "placement_engaged") agreedFees.set(request, fee);
+        if (placementKey === "placement_fee_paid") paidFees.set(request, fee);
+      }
+      continue;
+    }
+
     const person = personKey(row);
 
     if (row.action.startsWith("signup_funnel_")) {
@@ -135,19 +172,43 @@ export function buildRevenueFunnel(
 
   const count = (key: string) => people.get(key)?.size ?? 0;
   const newMonthlyNetCents = [...paidPlans.values()].reduce((sum, cents) => sum + cents, 0);
+  const sum = (values: Map<string, number>) => [...values.values()].reduce((total, cents) => total + cents, 0);
+  const agreed = sum(agreedFees);
+  const paid = sum(paidFees);
 
   const pricingDetail = [...pricingReasons.entries()]
     .sort((left, right) => right[1].size - left[1].size)
     .map(([reason, set]) => `${numberFormat.format(set.size)} ${PRICING_REASON_LABELS[reason] ?? reason}`)
     .join(" · ");
 
+  const placementSteps: RevenueFunnelStep[] = options.placement
+    ? PLACEMENT_STEPS.map((step) => ({
+        key: step.key,
+        label: step.label,
+        people: count(step.key),
+        detail:
+          step.key === "placement_engaged" && agreed
+            ? `${euroFormat.format(agreed / 100)} Honorar vereinbart`
+            : step.key === "placement_fee_paid" && paid
+              ? `${euroFormat.format(paid / 100)} eingegangen`
+              : null,
+      }))
+    : [];
+
+  const clientSteps: RevenueFunnelStep[] = CLIENT_STEPS.map((step) => ({
+    key: step.key,
+    label: step.label,
+    people: count(step.key),
+    detail: step.key === "pricing_viewed" && pricingDetail ? pricingDetail : null,
+  }));
+  // Die Vermittlung folgt auf das Konto; die Preisseite und das Abo sind der
+  // zweite Weg zum Umsatz und stehen danach.
+  const afterSignup = clientSteps.findIndex((step) => step.key === "signup_confirmed") + 1;
+
   const steps: RevenueFunnelStep[] = [
-    ...CLIENT_STEPS.map((step) => ({
-      key: step.key,
-      label: step.label,
-      people: count(step.key),
-      detail: step.key === "pricing_viewed" && pricingDetail ? pricingDetail : null,
-    })),
+    ...clientSteps.slice(0, afterSignup),
+    ...placementSteps,
+    ...clientSteps.slice(afterSignup),
     {
       key: "checkout_started",
       label: "Stripe-Checkout geöffnet",
