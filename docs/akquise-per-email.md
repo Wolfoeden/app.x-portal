@@ -239,13 +239,16 @@ Diese drei Punkte kann kein Code entscheiden.
 
 ### Stufe 0 — Aufräumen (ein Tag)
 
-- **Den Schritt „AUFRÄUMEN" aus der Anweisung der Routine streichen.** Er
-  steht in der neuen Fassung unten nicht mehr. Die Löschfristen setzt
+- **Den Schritt „AUFRÄUMEN" aus der Anweisung der Routine streichen.**
+  *Erledigt am 29.09.2026 mit der neuen Anweisung (Anhang A).* Die Löschfristen setzt
   `run_leadgen_cleanup()` durch: 30 Tage für nicht angeschriebene Leads, ein
   Jahr für angeschriebene, der Anzeigentext wird nach 30 Tagen geleert.
 - **Der Routine nur die Werkzeuge lassen, die sie braucht.** Heute hängen an
   ihr Stripe, Google Drive und Claude_Code_Remote (Letzteres mit Zugriff auf
   die Routinen selbst). Nötig ist nur Supabase, plus WebFetch und WebSearch.
+  *Offen:* Die Connectoren lassen sich über das Routinen-Werkzeug nicht
+  ändern, nur Name, Zeitplan, Modell und Anweisung. Der Betreiber entfernt
+  sie in den Einstellungen der Routine auf claude.ai.
 - **`outreach-agent` stilllegen:** den Cron `outreach-agent-tick` abmelden,
   danach die Edge Function löschen. `outreach_config`, `outreach_log` und die
   RPCs `outreach_*` später in einer Migration entfernen.
@@ -440,7 +443,7 @@ höchstens, ob eine Fassung gar keine Antwort bringt.
 | Schritt | Aufwand | hängt ab von |
 |---|---|---|
 | Stufe 0 Aufräumen, Werkzeuge der Routine | S | — |
-| Stufe 1 neue Anweisung der Routine | S | Entscheidung des Betreibers |
+| Stufe 1 neue Anweisung der Routine | erledigt | — |
 | Stufe 1 Migration der Hilfstabellen + Frist | S | — |
 | Stufe 1 Golden-Fälle, Skill-Synonyme | M | neue Anzeigentexte |
 | Stufe 2 Doppelschutz | M | — |
@@ -454,9 +457,6 @@ höchstens, ob eine Fassung gar keine Antwort bringt.
 
 ## Was nur der Betreiber beantworten kann
 
-- Soll die neue Anweisung (Anhang A) so in die Routine? Die Anweisung
-  verbietet der Routine ausdrücklich, sich selbst zu ändern. Das bleibt eine
-  Entscheidung des Betreibers.
 - Wie sind die 65 Profile ohne Konto in den Bestand gekommen?
 - Wie weit ist die rechtliche Prüfung der Vermittlungsbedingungen und der
   Akquise-Mail?
@@ -468,7 +468,9 @@ höchstens, ob eine Fassung gar keine Antwort bringt.
 ## Anhang A — Neue Anweisung der Routine
 
 Ersetzt die bisherige Anweisung von „X-Portal Lead Gen – freelancermap.de AI
-(Mo-Fr, 2x/Tag, Supabase)" vollständig. Zeitplan und Modell bleiben. Geändert
+(Mo-Fr, 2x/Tag, Supabase)" vollständig. **Eingesetzt am 29.09.2026 um 08:06
+UTC** auf Romans Zusage; der erste Lauf damit ist der um 12:20 UTC. Zeitplan
+und Modell bleiben. Geändert
 gegenüber der alten Fassung:
 
 - Detailseite und Anforderungen;
