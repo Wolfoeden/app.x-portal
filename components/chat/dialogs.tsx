@@ -44,6 +44,7 @@ import {
 } from "../icons";
 import { authErrorMessage, isServiceSideAuthFailure } from "./auth-errors";
 import { authIntentCopy, type AuthIntent } from "./auth-continuation";
+import type { CheckoutDialogCopy } from "./checkout-intent";
 import {
   GOOGLE_AUTH_ENABLED,
   initials,
@@ -97,6 +98,7 @@ export function Modal({ titleId, onClose, children, size = "default" }: { titleI
 export function AuthDialog({
   initialMode,
   intent = "generic",
+  checkout = null,
   profileName,
   projectTitle,
   destination = "/chat",
@@ -106,6 +108,8 @@ export function AuthDialog({
 }: {
   initialMode: AuthDialogMode;
   intent?: AuthIntent;
+  /** Ein Tarif, den ein Gast buchen wollte: Der Dialog zeigt ihn und geht danach zu Stripe. */
+  checkout?: CheckoutDialogCopy | null;
   profileName?: string;
   projectTitle?: string;
   destination?: string;
@@ -128,7 +132,8 @@ export function AuthDialog({
   const [marketingEmails, setMarketingEmails] = useState(false);
   const [busy, setBusy] = useState<"google" | "microsoft" | "email" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const intentCopy = authIntentCopy(intent);
+  const intentCopy = checkout ?? authIntentCopy(intent);
+  const plan = checkout?.plan ?? null;
   const destinationForMode = (currentMode: AuthDialogMode) => {
     const separator = destination.includes("?") ? "&" : "?";
     return `${destination}${separator}authflow=${currentMode}`;
@@ -235,7 +240,7 @@ export function AuthDialog({
                 ? "Anmelden ohne Passwort"
                 : mode === "register"
                   ? intentCopy.title
-                  : "Anmelden und direkt fortfahren"}
+                  : checkout?.loginTitle ?? "Anmelden und direkt fortfahren"}
         </h2>
         <p>
           {mode === "set-password"
@@ -246,6 +251,12 @@ export function AuthDialog({
                 ? "Wir senden einen Anmeldelink an die Adresse Ihres Kontos. Ihre aktuelle Anfrage bleibt dabei erhalten."
                 : intentCopy.body}
         </p>
+        {plan && (mode === "login" || mode === "register") ? (
+          <div className="auth-profile-context auth-plan-summary">
+            <strong>{plan.label} · {plan.price}</strong>
+            <ul>{plan.points.map((point) => <li key={point}>{point}</li>)}</ul>
+          </div>
+        ) : null}
         {profileName && (intent === "book_profile" || intent === "contact_profile") ? (
           <div className="auth-profile-context"><strong>{profileName}</strong>{projectTitle ? <span>{projectTitle}</span> : null}</div>
         ) : null}

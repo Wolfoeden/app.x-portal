@@ -112,6 +112,8 @@ describe("chat presentation", () => {
     expect(result.recommendationRole).toBe("primary");
     expect(result.fitScore).not.toBeNull();
     expect(result.coreCoverage).toBe(100);
+    // Audit F05: das angegebene Startdatum erreicht die Karte.
+    expect(result.availableFrom).toBe(premiumProfile.availability.availableFrom);
   });
 
   // Im Vermittlungsmodell verlässt die Kalenderadresse den Server nicht; der

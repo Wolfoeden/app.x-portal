@@ -167,15 +167,23 @@ describe("open points on the card", () => {
       ...strategist,
       knownGaps: ["Bestätigte Verfügbarkeit beginnt nach dem gewünschten Startfenster; im Erstgespräch abstimmen."],
     }, automationBrief, FIXTURE_NOW);
-    const confirmed = profilePresentation({
+    const confirmedProfile = {
       ...strategist,
       knownGaps: [],
       matchReasons: ["Verfügbarkeit ist im angegebenen Startfenster bestätigt."],
-    }, { ...automationBrief, startWindow: "Start im Oktober" });
+    };
+    const october = { ...automationBrief, startWindow: "Start im Oktober" };
+    const confirmed = profilePresentation(confirmedProfile, october, FIXTURE_NOW);
+    // Audit F06: Eine Angabe aus dem August ist im Oktober keine Zusage mehr.
+    const confirmedLater = profilePresentation(confirmedProfile, october, new Date("2026-09-30T12:00:00.000Z"));
 
     expect(later.start).toEqual({ text: "Start kurzfristig: laut Profil später verfügbar", conflict: true });
     expect(later.openPoints).toEqual([]);
-    expect(confirmed.start).toEqual({ text: "Start im Oktober bestätigt", conflict: false });
+    expect(confirmed.start).toEqual({ text: "Start im Oktober: laut Profil möglich (Angabe vom 24.08.2026)", conflict: false });
+    expect(confirmedLater.start).toEqual({
+      text: "Start im Oktober: laut Angabe vom 24.08.2026 möglich, noch zu bestätigen",
+      conflict: false,
+    });
   });
 });
 

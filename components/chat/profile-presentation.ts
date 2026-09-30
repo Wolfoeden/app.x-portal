@@ -1,4 +1,5 @@
 import { skillFamilyKey } from "@/lib/domain/skill-taxonomy";
+import { placementRequestsEnabled } from "@/lib/placement/config";
 
 import { availabilityNotice, AVAILABILITY_CONFIRMED_REASON, type AvailabilityNotice } from "./availability";
 import type {
@@ -174,17 +175,32 @@ export function profilePresentation(
     return true;
   });
 
+  const availability = availabilityNotice(profile.availabilityStatus, profile.availabilityUpdatedAt, now, {
+    availableFrom: profile.availableFrom ?? null,
+    confirmedBy: placementRequestsEnabled() ? "introduction" : "call",
+  });
+
+  // Der Start stammt aus der Angabe des Freelancers, nicht aus einer Prüfung
+  // durch XPORTAL. Die Karte nennt deshalb Quelle und Stand; eine alte Angabe
+  // gilt nicht als Zusage (Audit F06: „Start im November bestätigt“ bei
+  // einem Datenstand aus dem August).
   const start = startWindow
     ? profile.knownGaps.some((gap) => START_LATER.test(gap))
       ? { text: `${startLabel(startWindow)}: laut Profil später verfügbar`, conflict: true }
       : profile.matchReasons.includes(START_CONFIRMED)
-        ? { text: `${startLabel(startWindow)} bestätigt`, conflict: false }
+        ? {
+            text: availability.stale
+              ? `${startLabel(startWindow)}: laut Angabe vom ${availability.statedOn} möglich, noch zu bestätigen`
+              : availability.statedOn
+                ? `${startLabel(startWindow)}: laut Profil möglich (Angabe vom ${availability.statedOn})`
+                : `${startLabel(startWindow)}: laut Profil möglich`,
+            conflict: false,
+          }
         : { text: `${startLabel(startWindow)}: noch zu klären`, conflict: false }
     : brief
       ? { text: "Start nach Abstimmung", conflict: false }
       : null;
 
-  const availability = availabilityNotice(profile.availabilityStatus, profile.availabilityUpdatedAt, now);
   if (availability.openPoint) openPoints.push(availability.openPoint);
   const reasons = profile.matchReasons.flatMap((reason) =>
     reason === AVAILABILITY_CONFIRMED_REASON
