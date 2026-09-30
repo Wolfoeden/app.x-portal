@@ -113,7 +113,7 @@ export function formatWholeEuro(cents: number): string {
 export function placementTermsSummary(): string[] {
   const t = PLACEMENT_TERMS;
   return [
-    "Suche, Vorstellung und Erstgespräch sind kostenlos.",
+    "Anfrage, Vorstellung und Erstgespräch sind kostenlos und brauchen kein Abo.",
     `Beauftragen Sie den Freelancer, zahlen Sie einmalig ${t.feePercent} % des vereinbarten Honorars für die ersten ${t.feeMonths} Monate (höchstens ${t.maxFeeDays} Projekttage), zuzüglich Umsatzsteuer.`,
     `Das gilt für Beauftragungen innerhalb von ${t.protectionMonths} Monaten nach der Vorstellung, auch wenn der Vertrag später oder für ein anderes Projekt zustande kommt.`,
   ];

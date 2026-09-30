@@ -11,7 +11,7 @@ import HowPage, { metadata as howMetadata } from "@/app/(marketing)/wie-funktion
 import MarketingLayout from "@/app/(marketing)/layout";
 import { CreditSummary } from "@/components/marketing/CreditSummary";
 import { CREDIT_PLANS, CREDIT_PRICES } from "@/lib/ai/credit-policy";
-import { PUBLIC_PRICING_PLANS, START_CREDITS } from "@/lib/billing/plans";
+import { GUEST_TRIAL_CREDITS, PUBLIC_PRICING_PLANS, START_CREDITS } from "@/lib/billing/plans";
 import { SKILL_TAXONOMY } from "@/lib/domain/skill-taxonomy";
 import { MARKETING_CATEGORIES } from "@/lib/marketing-categories";
 import { MARKETING_PAGE, MARKETING_PAGES, absoluteUrl, pageMetadata } from "@/lib/seo";
@@ -21,7 +21,7 @@ const routes = [
   { Component: ItPage, page: MARKETING_PAGE.it, metadata: itMetadata, required: ["IT-Freelancer", "React", "SAP", "Verfügbarkeit"] },
   { Component: MatchingPage, page: MARKETING_PAGE.matching, metadata: matchingMetadata, required: ["regelbasiert", "KI-gestütztes", "Nicht belegt"] },
   { Component: HowPage, page: MARKETING_PAGE.how, metadata: howMetadata, required: ["Requirement Extraction", "Credits", "Informationslücken"] },
-  { Component: PricingPage, page: MARKETING_PAGE.pricing, metadata: pricingMetadata, required: ["Ein Guthaben", "Empfohlen", "Nach Nutzung", `${START_CREDITS} Start-Credits`] },
+  { Component: PricingPage, page: MARKETING_PAGE.pricing, metadata: pricingMetadata, required: ["Ein Guthaben", "Empfohlen", "Nach Nutzung", `${START_CREDITS} Credits mit kostenlosem Konto`, `Ohne Konto: ${GUEST_TRIAL_CREDITS} Credits`, "nicht addiert"] },
 ];
 
 describe("marketing pages rendered on the server", () => {

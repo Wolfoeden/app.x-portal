@@ -93,7 +93,7 @@ export function introductionForClient(
         ? ["", `${input.freelancerName} hat Ihre Anfrage mit Ihrem Namen und Ihrer E-Mail-Adresse ebenfalls erhalten.`]
         : []),
       "",
-      `Suche, Vorstellung und Erstgespräch sind kostenlos. Beauftragen Sie ${input.freelancerName}, fällt einmalig das Vermittlungshonorar an: ${t.feePercent} % des vereinbarten Honorars der ersten ${t.feeMonths} Monate, höchstens ${t.maxFeeDays} Projekttage. Bitte geben Sie uns Bescheid, wenn es zur Zusammenarbeit kommt; eine Antwort auf diese E-Mail genügt.`,
+      `Vorstellung und Erstgespräch sind kostenlos. Beauftragen Sie ${input.freelancerName}, fällt einmalig das Vermittlungshonorar an: ${t.feePercent} % des vereinbarten Honorars der ersten ${t.feeMonths} Monate, höchstens ${t.maxFeeDays} Projekttage. Bitte geben Sie uns Bescheid, wenn es zur Zusammenarbeit kommt; eine Antwort auf diese E-Mail genügt.`,
       "",
       `Vermittlungsbedingungen: ${input.siteUrl}${PLACEMENT_TERMS_PATH}`,
       "",

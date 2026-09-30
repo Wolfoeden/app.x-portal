@@ -9,12 +9,14 @@ import {
 } from "@/lib/ai/credit-policy";
 import {
   CREDIT_PLANS,
+  GUEST_TRIAL_CREDITS,
   PUBLIC_PRICING_PLANS,
   START_CREDITS,
   effectiveCreditPriceCents,
   meteredNetCents,
   type FixedMonthlyPlan,
 } from "@/lib/billing/plans";
+import { CREDIT_RULES } from "@/lib/billing/credit-rules";
 import { ENTERPRISE_CONTACT } from "@/lib/billing/payment-links";
 import {
   PLACEMENT_TERMS,
@@ -146,12 +148,20 @@ const PRICING_QUESTIONS = [
     answer: <p>Sie können weiter schreiben; XPORTAL speichert Ihre Angaben und gleicht sie regelbasiert ab. KI-Analysen und AI-Agent-Recherchen sind wieder möglich, sobald das nächste Kontingent beginnt oder Sie in einen größeren Tarif wechseln. Nicht verbrauchte Monatscredits werden nicht in den Folgemonat übertragen.</p>,
   },
   {
-    question: "Kostet ein fehlgeschlagener Recherche-Lauf Credits?",
-    answer: <p>Nein. Scheitert eine AI-Agent-Recherche technisch, wird nichts belastet. Ein abgeschlossener Lauf kostet {CREDIT_PRICES.research.credits} Credits – auch dann, wenn die öffentlichen Quellen keine passenden Profile hergeben.</p>,
+    question: "Kostet ein fehlgeschlagener Lauf Credits?",
+    answer: <p>Nein. Fällt die KI-Analyse aus, übernimmt die Basisanalyse Ihre Angaben, und es wird nichts belastet. Scheitert eine AI-Agent-Recherche technisch, ebenfalls nicht. Ein abgeschlossener Recherche-Lauf kostet {CREDIT_PRICES.research.credits} Credits – auch dann, wenn die öffentlichen Quellen keine passenden Profile hergeben.</p>,
+  },
+  {
+    question: "Was passiert mit dem Gastguthaben, wenn ich ein Konto anlege?",
+    answer: <p>{CREDIT_RULES.guest} {CREDIT_RULES.account} {CREDIT_RULES.noRefill}</p>,
+  },
+  {
+    question: "Brauche ich ein Abo, um einen Freelancer anzufragen?",
+    answer: <p>Nein. {CREDIT_RULES.placementWithoutPlan} Bei einer Beauftragung über XPORTAL fällt das <Link href={PLACEMENT_TERMS_PATH}>Vermittlungshonorar</Link> an, unabhängig vom Tarif.</p>,
   },
   {
     question: "Sind Freelancer-Honorare im Preis enthalten?",
-    answer: <p>Nein. Der Tarif deckt die Nutzung von XPORTAL ab. Honorar, Verfügbarkeit und Vertrag vereinbaren Sie direkt mit dem Freelancer.</p>,
+    answer: <p>Nein. Der Tarif deckt die Nutzung von XPORTAL ab. Honorar, Verfügbarkeit und Vertrag vereinbaren Sie direkt mit dem Freelancer; kommt es über XPORTAL zur Beauftragung, gilt zusätzlich das Vermittlungshonorar.</p>,
   },
   {
     question: "Wer kann einen Tarif buchen?",
@@ -188,6 +198,41 @@ function PlacementSection() {
   );
 }
 
+/**
+ * Drei Kostenarten, klar getrennt (Audit F02): Vermittlung nur bei
+ * Beauftragung, KI-Nutzung über Credits mit Startguthaben, Monatstarife nur
+ * für regelmäßige Nutzung. Wer anfragt, braucht kein Abo.
+ */
+function CostTypes() {
+  const entry = Math.min(...PUBLIC_PRICING_PLANS.flatMap((plan) => (plan.billingModel === "fixed_monthly" ? [plan.euro] : [])));
+  return (
+    <section className={styles.actionSection} aria-labelledby="cost-types-title">
+      <div className={styles.sectionIntro}>
+        <p className={styles.eyebrow}>Was kostet was</p>
+        <h2 id="cost-types-title">Drei Kostenarten, klar getrennt.</h2>
+        <p>{CREDIT_RULES.placementWithoutPlan}</p>
+      </div>
+      <div className={styles.actionGrid}>
+        <article>
+          <p>Vermittlung</p>
+          <strong>0 € bis zur Beauftragung</strong>
+          <span>Danach einmalig {PLACEMENT_TERMS.feePercent} % des Honorars der ersten {PLACEMENT_TERMS.feeMonths} Monate, per Rechnung.</span>
+        </article>
+        <article>
+          <p>KI-Analysen und Recherchen</p>
+          <strong>{GUEST_TRIAL_CREDITS} / {START_CREDITS} Credits frei</strong>
+          <span>Ohne Konto {GUEST_TRIAL_CREDITS}, mit kostenlosem Konto {START_CREDITS} insgesamt, einmalig. Analyse {CREDIT_PRICES.project_brief.credits}, Recherche {CREDIT_PRICES.research.credits} Credits; fällt die KI aus, nichts.</span>
+        </article>
+        <article>
+          <p>Monatstarif</p>
+          <strong>ab {entry} € netto</strong>
+          <span>Nur für regelmäßige Analysen und Recherchen; monatlich kündbar. Ein Vermittlungshonorar kommt bei einer Beauftragung gegebenenfalls hinzu.</span>
+        </article>
+      </div>
+    </section>
+  );
+}
+
 export default function PricingPage() {
   const placement = placementRequestsEnabled();
   return (
@@ -202,10 +247,14 @@ export default function PricingPage() {
         <div>
           <p className={styles.eyebrow}>Preise &amp; Credits</p>
           <h1>Ein Guthaben.<br /><span>Klare Kosten.</span></h1>
-          <p className={styles.lead}>Starten Sie kostenlos mit {START_CREDITS} Credits. Danach wählen Sie ein monatliches Kontingent – oder zahlen im Enterprise-Tarif ausschließlich nach tatsächlicher Nutzung.</p>
+          <p className={styles.lead}>
+            {placement
+              ? `Anfrage und Vorstellung sind kostenlos; bezahlt wird erst bei einer Beauftragung. Für KI-Analysen gibt es ein Startguthaben: ${GUEST_TRIAL_CREDITS} Credits ohne Konto, ${START_CREDITS} insgesamt mit kostenlosem Konto. Danach wählen Sie ein monatliches Kontingent – oder zahlen im Enterprise-Tarif nach tatsächlicher Nutzung.`
+              : `Starten Sie kostenlos: ${GUEST_TRIAL_CREDITS} Credits ohne Konto, ${START_CREDITS} insgesamt mit kostenlosem Konto. Danach wählen Sie ein monatliches Kontingent – oder zahlen im Enterprise-Tarif ausschließlich nach tatsächlicher Nutzung.`}
+          </p>
           <div className={styles.heroActions}>
             <Link href="/chat" prefetch={false} className={styles.primaryAction}>Kostenlos starten <span aria-hidden="true">↗</span></Link>
-            <p><strong>{START_CREDITS} Start-Credits kostenlos</strong><span>Einmalig. Keine automatische monatliche Auffüllung.</span></p>
+            <p><strong>{START_CREDITS} Credits mit kostenlosem Konto</strong><span>Einmalig, insgesamt; das Gastguthaben ({GUEST_TRIAL_CREDITS}) wird ersetzt, nicht addiert.</span></p>
           </div>
         </div>
         <aside className={styles.creditThesis} aria-label="Ein Credit-System für alle Leistungen">
@@ -218,6 +267,7 @@ export default function PricingPage() {
         </aside>
       </header>
 
+      {placement ? <CostTypes /> : null}
       {placement ? <PlacementSection /> : null}
 
       <section className={styles.planSection} aria-label="Tarife">
@@ -260,7 +310,7 @@ export default function PricingPage() {
       </section>
 
       <section className={styles.finalCta}>
-        <div><p className={styles.eyebrow}>Kostenlos testen</p><h2>{START_CREDITS} Credits. Einmalig. Ohne Abo.</h2><p>Erleben Sie XPORTAL zuerst am eigenen Projekt und wählen Sie danach den passenden Abrechnungsweg.</p></div>
+        <div><p className={styles.eyebrow}>Kostenlos testen</p><h2>{START_CREDITS} Credits mit Konto. Einmalig. Ohne Abo.</h2><p>Erleben Sie XPORTAL zuerst am eigenen Projekt und wählen Sie danach den passenden Abrechnungsweg.</p></div>
         <Link href="/chat" prefetch={false} className={styles.primaryAction}>Kostenlos starten <span aria-hidden="true">↗</span></Link>
       </section>
       <nav className={styles.related} aria-label="Passend zum Thema">
