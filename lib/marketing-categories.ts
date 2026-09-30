@@ -22,8 +22,8 @@ export const MARKETING_CATEGORIES = [
   },
   {
     title: "KI & Automatisierung",
-    description: "Sprachmodelle, Dokumentensuche und automatisierte Geschäftsprozesse als konkrete Aufgabe beschreiben.",
-    skills: catalogSkills(["Large Language Models", "RAG", "Business Process Automation"]),
+    description: "KI-Agenten, Sprachmodelle, Dokumentensuche und automatisierte Geschäftsprozesse als konkrete Aufgabe beschreiben.",
+    skills: catalogSkills(["AI Agents", "Large Language Models", "RAG", "Business Process Automation"]),
   },
   {
     title: "Softwareentwicklung",

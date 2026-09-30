@@ -14,6 +14,11 @@ NEXT_PUBLIC_SITE_URL = "https://x-portal.eu"
 # Keep this production-only so deploy previews never advertise an OAuth route
 # whose temporary hostname is not explicitly allowlisted.
 NEXT_PUBLIC_AUTH_GOOGLE_ENABLED = "true"
+# Vermittlungsmodell (lib/placement/config.ts): Kunden fragen Freelancer über
+# XPORTAL an, 10 % Honorar bei Beauftragung, Rechnung über Stripe. Die
+# Vermittlungsbedingungen sind seit dem 30.09.2026 freigegeben. Wirkt beim
+# nächsten Build; zum Abschalten hier auf "false" setzen.
+NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED = "true"
 
 [[plugins]]
 package = "@netlify/plugin-nextjs"

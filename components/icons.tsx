@@ -238,3 +238,58 @@ export function IconCalendar(props: IconProps) {
     </Glyph>
   );
 }
+
+/** Collapses and expands the chat sidebar. */
+export function IconSidebar(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <rect x="3" y="4.5" width="18" height="15" rx="2.5" />
+      <path d="M9.5 4.5v15" />
+    </Glyph>
+  );
+}
+
+/** "Neuer Chat": a blank sheet with a pen, as in common chat apps. */
+export function IconCompose(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M11.5 4.5H7A2.5 2.5 0 0 0 4.5 7v10A2.5 2.5 0 0 0 7 19.5h10a2.5 2.5 0 0 0 2.5-2.5v-4.5" />
+      <path d="M17.7 4.3a1.8 1.8 0 0 1 2.5 2.5L13 14l-3.2.7.7-3.2 7.2-7.2Z" />
+    </Glyph>
+  );
+}
+
+export function IconBookmark(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M6.5 5.5a1.5 1.5 0 0 1 1.5-1.5h8a1.5 1.5 0 0 1 1.5 1.5V20L12 16.5 6.5 20V5.5Z" />
+    </Glyph>
+  );
+}
+
+export function IconFolderPlus(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M20.5 11V9a1.5 1.5 0 0 0-1.5-1.5h-8L9 5H5a1.5 1.5 0 0 0-1.5 1.5v11A1.5 1.5 0 0 0 5 19h7" />
+      <path d="M18 14.5v6M15 17.5h6" />
+    </Glyph>
+  );
+}
+
+export function IconUser(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <circle cx="12" cy="8.5" r="3.5" />
+      <path d="M5 19.5a7 7 0 0 1 14 0" />
+    </Glyph>
+  );
+}
+
+/** Three dots: opens a row's actions. */
+export function IconMore(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M5.5 12h.01M12 12h.01M18.5 12h.01" strokeWidth={2.75} />
+    </Glyph>
+  );
+}

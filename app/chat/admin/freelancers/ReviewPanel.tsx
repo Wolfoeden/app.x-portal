@@ -44,6 +44,7 @@ export type ReviewDefaults = {
   availabilityStatus: AvailabilityStatus;
   availabilityFrom: string;
   bookingUrl: string;
+  seeking: "projects" | "employment" | "both";
   introPolicy: "free" | "manual_approval";
   verificationStatus:
     | "unverified"
@@ -181,6 +182,7 @@ export function ReviewPanel({
                     availabilityStatus: form.availabilityStatus,
                     availabilityFrom: form.availabilityFrom,
                     bookingUrl: form.bookingUrl,
+                    seeking: form.seeking,
                     introPolicy: form.introPolicy,
                     verificationStatus: form.verificationStatus,
                     referencesSummary: form.referencesSummary,
@@ -453,7 +455,18 @@ export function ReviewPanel({
           <span>Terminbuchung, Prüfstatus und Kundenzugriff</span>
         </div>
         <label className={`${styles.field} ${styles.full}`}>
-          <span>Terminlink (Pflicht für die Freigabe)</span>
+          <span>Sucht</span>
+          <select
+            value={form.seeking}
+            onChange={(event) => update("seeking", event.target.value as ReviewDefaults["seeking"])}
+          >
+            <option value="projects">Freelance-Projekte</option>
+            <option value="both">Projekte oder Festanstellung</option>
+            <option value="employment">Nur Festanstellung (erscheint nicht in der Freelancer-Suche)</option>
+          </select>
+        </label>
+        <label className={`${styles.field} ${styles.full}`}>
+          <span>Terminlink (optional)</span>
           <input
             value={form.bookingUrl}
             onChange={(event) => update("bookingUrl", event.target.value)}
@@ -573,11 +586,12 @@ export function ReviewPanel({
       </label>
 
       {!form.bookingUrl ? (
-        <div className={`${styles.callout} ${styles.warning}`}>
-          <strong>Terminlink fehlt</strong>
+        <div className={styles.callout}>
+          <strong>Ohne Terminlink</strong>
           <span>
-            Ohne HTTPS-Terminlink wird das Profil im Matching herausgefiltert.
-            Fordern Sie den Link an oder tragen Sie ihn hier ein.
+            Kunden fragen das Profil über XPORTAL an, und Sie stellen per Mail
+            vor. Dafür braucht es eine E-Mail-Adresse des Freelancers; mit
+            Terminlink wählt der Kunde danach selbst einen Slot.
           </span>
         </div>
       ) : null}

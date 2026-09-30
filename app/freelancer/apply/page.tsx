@@ -12,6 +12,8 @@ import type {
 } from "@/lib/freelancer/portal";
 
 import { ApplyForm } from "./ApplyForm";
+import { RememberReferral } from "./RememberReferral";
+import { REFERRAL_PATTERN } from "@/lib/freelancer/limits";
 import {
   FreelancerApplicationStatus,
   FreelancerAuthGate,
@@ -62,17 +64,24 @@ const previewMetrics: FreelancerMetrics = {
 export default async function FreelancerApplyPage({
   searchParams,
 }: {
-  searchParams: Promise<{ preview?: string; e?: string | string[] }>;
+  searchParams: Promise<{ preview?: string; e?: string | string[]; quelle?: string | string[] }>;
 }) {
   const params = await searchParams;
   const preview =
     process.env.NODE_ENV === "development" && params.preview === "1";
+  // Das Bewerbungsformular ohne Anmeldung ansehen, nur in der Entwicklung.
+  const formPreview =
+    process.env.NODE_ENV === "development" && params.preview === "form";
 
   // Das Kennzeichen aus der Einladung wird beim **Aufruf** eingelöst, nicht
   // erst beim Absenden. Sonst ließe sich bei einer Einladung ohne Anmeldung
   // nicht unterscheiden, ob die Nachricht nicht ankam oder das Formular
   // abschreckte — und das sind zwei verschiedene Probleme.
   const inviteToken = Array.isArray(params.e) ? params.e[0] : params.e;
+  // `?quelle=arbeitsagentur`: woher die Bewerbung kommt, damit sich der
+  // Zulauf einer Quelle zählen lässt.
+  const rawReferral = (Array.isArray(params.quelle) ? params.quelle[0] : params.quelle)?.trim().toLowerCase();
+  const referral = rawReferral && REFERRAL_PATTERN.test(rawReferral) ? rawReferral : null;
   const invite = preview ? null : await openInvite(inviteToken);
 
   const user = preview ? null : await getCurrentUser();
@@ -96,7 +105,7 @@ export default async function FreelancerApplyPage({
           <h1>
             {portalState?.kind === "profile" || preview
               ? "Ihr Freelancer-Profil."
-              : "Werden Sie Teil des geprüften Netzwerks."}
+              : "Werden Sie Teil des XPORTAL-Netzwerks."}
           </h1>
           <p>
             {portalState?.kind === "profile" || preview
@@ -105,6 +114,14 @@ export default async function FreelancerApplyPage({
           </p>
         </header>
 
+        {referral ? <RememberReferral referral={referral} /> : null}
+        {referral === "arbeitsagentur" ? (
+          <p className={styles.welcome}>
+            Willkommen! Sie kommen über die Agentur für Arbeit. Die Anmeldung ist
+            für Sie kostenlos. Sie können Freelance-Projekte, eine Festanstellung
+            oder beides suchen; das fragen wir im Formular als Erstes.
+          </p>
+        ) : null}
         {invite && !invite.alreadyConverted ? (
           <p className={styles.invited}>
             Schön, dass Sie da sind, {invite.fullName.split(/\s+/u)[0]}.
@@ -130,6 +147,8 @@ export default async function FreelancerApplyPage({
             metrics={previewMetrics}
             preview
           />
+        ) : formPreview ? (
+          <ApplyForm referral={referral} />
         ) : !user || user.isAnonymous ? (
           <FreelancerAuthGate />
         ) : portalState?.kind === "profile" ? (
@@ -145,13 +164,13 @@ export default async function FreelancerApplyPage({
             />
             {portalState.status === "rejected" ? (
               <div className={styles.reapply}>
-                <ApplyForm accountEmail={user.email ?? ""} inviteToken={invite ? inviteToken ?? null : null} />
+                <ApplyForm accountEmail={user.email ?? ""} inviteToken={invite ? inviteToken ?? null : null} referral={referral} />
               </div>
             ) : null}
           </>
         ) : (
           <>
-            <ApplyForm accountEmail={user.email ?? ""} inviteToken={invite ? inviteToken ?? null : null} />
+            <ApplyForm accountEmail={user.email ?? ""} inviteToken={invite ? inviteToken ?? null : null} referral={referral} />
           </>
         )}
 

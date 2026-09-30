@@ -8,11 +8,13 @@ const mocks = vi.hoisted(() => ({
   getUserById: vi.fn(),
   deliver: vi.fn(),
   writeAuditEvent: vi.fn(),
+  placementPaid: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/email/deliver", () => ({ deliverEmail: mocks.deliver }));
 vi.mock("@/lib/audit/write", () => ({ writeAuditEvent: mocks.writeAuditEvent }));
+vi.mock("@/lib/placement/invoices", () => ({ recordPlacementInvoicePaid: mocks.placementPaid }));
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminSupabaseClient: () => ({
     rpc: mocks.rpc,
@@ -115,6 +117,30 @@ afterEach(() => {
 });
 
 describe("POST /api/stripe/webhook", () => {
+  it("verbucht eine bezahlte Vermittlungsrechnung ohne Abo einmal", async () => {
+    const INTRO = "22222222-2222-4222-8222-222222222222";
+    mocks.placementPaid.mockResolvedValueOnce({ introId: INTRO, clientUserId: ACCOUNT, feeMinor: 355_200 });
+    const paid = event("invoice.paid", { id: "in_9", customer: "cus_9", subscription: null, metadata: { xportal_kind: "placement_fee" } }, "evt_p1");
+
+    const first = await POST(request(paid));
+    expect(first.status).toBe(200);
+    expect(await first.json()).toEqual({ received: true, recorded: true });
+    expect(mocks.placementPaid).toHaveBeenCalledWith("in_9");
+    expect(mocks.writeAuditEvent).toHaveBeenCalledWith(expect.objectContaining({
+      action: "placement_fee_paid",
+      targetId: INTRO,
+      metadata: { clientUserId: ACCOUNT, feeMinor: 355_200, via: "stripe" },
+    }));
+    expect(mocks.rpc).not.toHaveBeenCalled();
+
+    mocks.writeAuditEvent.mockClear();
+    mocks.placementPaid.mockResolvedValueOnce(null);
+    const again = await POST(request(paid));
+    expect(await again.json()).toEqual({ received: true, recorded: false });
+    expect(mocks.writeAuditEvent).not.toHaveBeenCalled();
+  });
+
+
   it("verarbeitet die verifizierten Produktions-IDs ohne Deployment-Schalter", async () => {
     delete process.env.STRIPE_PRO_PAYMENT_LINK_ID;
     delete process.env.STRIPE_PRO_PRICE_ID;

@@ -5,6 +5,7 @@ import {
   previewAnalysis,
   previewAuth,
   previewBrief,
+  previewCollections,
   previewGuestAuth,
   previewMessages,
   previewProfiles,
@@ -15,6 +16,7 @@ import {
   automationProfiles,
   automationReplies,
   automationRequest,
+  automationShowcase,
   automationStrictBrief,
   automationStrictRequest,
 } from "@/components/chat/preview-fixtures";
@@ -112,6 +114,8 @@ export default async function ChatPreviewPage({
         },
         usage: usageFixture(params.credits),
         resultState: state === "empty" ? "ranked" : state === "partial" ? "no_match" : state,
+        showcase: automationShowcase,
+        collections: previewCollections,
       }}
     />
   );

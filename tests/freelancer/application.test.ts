@@ -143,23 +143,23 @@ describe("freelancer application input", () => {
     expect(input.availabilityFrom).toBeNull();
   });
 
-  it("requires a booking link at submission, not just at publication", () => {
-    // Matching filters on an HTTPS booking URL. Accepting an application
-    // without one only defers the dead end to the review screen, where the
-    // operator cannot supply a link only the applicant knows.
-    for (const value of ["", "   ", "calendly.com/joerg", "mailto:j@example.com"]) {
+  it("takes the booking link as optional, but only as a complete HTTPS address", () => {
+    // Since the placement model a client asks through XPORTAL and the
+    // operator introduces by mail, so a calendar is no longer a condition.
+    // A link that is given must still work.
+    for (const value of ["   ", "calendly.com/joerg", "mailto:j@example.com", "http://calendly.com/joerg"]) {
       expect(
         FreelancerApplicationInputSchema.safeParse(
           applicationPayload({ bookingUrl: value }),
         ).success,
       ).toBe(false);
     }
+    const empty = FreelancerApplicationInputSchema.parse(applicationPayload({ bookingUrl: "" }));
+    expect(empty.bookingUrl).toBeNull();
 
     const withoutField = { ...applicationPayload() } as Record<string, unknown>;
     delete withoutField.bookingUrl;
-    expect(
-      FreelancerApplicationInputSchema.safeParse(withoutField).success,
-    ).toBe(false);
+    expect(FreelancerApplicationInputSchema.parse(withoutField).bookingUrl).toBeNull();
   });
 
   it("refuses a non-HTTPS booking link", () => {
@@ -234,11 +234,8 @@ describe("publish decision", () => {
     ).toBe(false);
   });
 
-  it("requires an HTTPS booking link", () => {
-    expect(
-      PublishDecisionSchema.safeParse(decisionPayload({ bookingUrl: "" }))
-        .success,
-    ).toBe(false);
+  it("publishes without a booking link, but never with an insecure one", () => {
+    expect(PublishDecisionSchema.parse(decisionPayload({ bookingUrl: "" })).bookingUrl).toBeNull();
     expect(
       PublishDecisionSchema.safeParse(
         decisionPayload({ bookingUrl: "http://calendly.com/joerg" }),
@@ -404,6 +401,8 @@ describe("reviewer defaults", () => {
     cv_size_bytes: null,
     consent_at: "2026-08-19T10:00:00.000Z",
     source: "apply_form",
+    seeking: "projects",
+    referral: null,
     review_notes: null,
     reviewed_by_user_id: null,
     reviewed_at: null,
@@ -420,5 +419,34 @@ describe("reviewer defaults", () => {
     expect(defaults.verifiedFacts).toEqual([]);
     expect(defaults.slug).toBe("joerg-mueller");
     expect(defaults.bookingUrl).toBe("https://calendly.com/joerg-mueller/30min");
+  });
+});
+
+describe("what an applicant is looking for", () => {
+  it("defaults to freelance projects and keeps the source of the application", () => {
+    const parsed = FreelancerApplicationInputSchema.parse(applicationPayload({ referral: " Arbeitsagentur " }));
+    expect(parsed.seeking).toBe("projects");
+    expect(parsed.referral).toBe("arbeitsagentur");
+    const insert = applicationInsertFromInput(parsed, { submittedByUserId: null, consentAt: "2026-09-30T08:00:00.000Z" });
+    expect(insert).toMatchObject({ seeking: "projects", referral: "arbeitsagentur" });
+  });
+
+  it("drops a source that is not a plain key instead of refusing the application", () => {
+    const parsed = FreelancerApplicationInputSchema.parse(applicationPayload({ referral: "<script>" }));
+    expect(parsed.referral).toBeNull();
+  });
+
+  it("does not ask someone looking for a permanent job for a day rate", () => {
+    const withoutRates = applicationPayload({ hourlyRate: "", dayRate: "" });
+    expect(FreelancerApplicationInputSchema.safeParse(withoutRates).success).toBe(false);
+    const employment = FreelancerApplicationInputSchema.parse({ ...withoutRates, seeking: "employment" });
+    expect(employment.seeking).toBe("employment");
+    const insert = applicationInsertFromInput(employment, { submittedByUserId: null, consentAt: "2026-09-30T08:00:00.000Z" });
+    expect(insert).toMatchObject({ hourly_rate_minor: null, day_rate_minor: null, currency: null });
+  });
+
+  it("carries the choice into the published profile", () => {
+    const decision = PublishDecisionSchema.parse(decisionPayload({ seeking: "both" }));
+    expect(profileInsertFromDecision(decision, { slug: "joerg-mueller", checkedAt: "2026-09-30T08:00:00.000Z" }).seeking).toBe("both");
   });
 });

@@ -27,6 +27,33 @@
 .stepTop > span { color: var(--muted-light); font-size: 13px; font-variant-numeric: tabular-nums; }
 .steps h3 { font-size: 19px; letter-spacing: -.025em; font-weight: 650; }
 .steps p { max-width: 285px; color: var(--muted); font-size: 15px; line-height: 1.65; margin: 9px 0 0; }
+/* Ablauf als Video: links schmal die Schritte als Kapitel, rechts breit die
+   Animation.
+
+   Das Video ist 1920 × 1280 und trägt links eine eigene Schrittliste (Text
+   bis 34 % der Breite). Die animierten Karten liegen über alle 13,5 s
+   zwischen 37 % und 99 % der Breite und 16 % bis 95 % der Höhe. Gezeigt wird
+   der Ausschnitt 35,5–99 % × 13–96 % (1219 × 1062 px): Das Video wird dafür
+   auf 157,5 % der Rahmenbreite vergrößert und nach links oben verschoben.
+   `object-fit` allein kann nur eine Achse beschneiden und hätte entweder die
+   Liste im Video oder den leeren Rand oben und unten mitgezeigt. */
+.processLayout { display: grid; grid-template-columns: minmax(220px, 3.4fr) minmax(0, 8.6fr); gap: 36px; align-items: center; max-width: 1120px; margin: 36px auto 0; }
+.processVideo { position: relative; order: 2; aspect-ratio: 1219 / 1062; margin: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 18px; background: #eaf1ed; box-shadow: 0 24px 60px rgba(24, 24, 23, .08); }
+.processVideo video { position: absolute; top: -15.67%; left: -55.91%; display: block; width: 157.48%; max-width: none; height: auto; aspect-ratio: 3 / 2; background: #eaf1ed; }
+.processLayout .videoSteps { order: 1; grid-template-columns: 1fr; gap: 6px; margin: 0; }
+.processLayout .videoSteps li + li { padding-left: 0; border-left: none; }
+.stepButton { display: grid; width: 100%; height: 100%; align-content: start; padding: 14px 14px 16px; border: 0; border-radius: 12px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background-color 150ms ease; }
+.stepButton:hover { background: var(--surface-soft); }
+.stepButton:focus-visible { outline: 2px solid var(--landing-green); outline-offset: 2px; }
+.stepActive .stepButton { background: var(--landing-mint); }
+.stepProgress { display: block; height: 3px; margin-bottom: 14px; overflow: hidden; border-radius: 3px; background: var(--border); }
+.stepProgress > span { display: block; height: 100%; background: var(--landing-green); transform: scaleX(0); transform-origin: left center; }
+.stepDone .stepProgress > span { transform: scaleX(1); }
+.stepActive .stepProgress > span { transform: scaleX(var(--step-progress, 0)); }
+.videoSteps .stepTop { margin-bottom: 10px; padding-right: 0; }
+.videoSteps .stepTop svg { width: 34px; height: 34px; }
+.stepTitle { color: var(--ink); font-size: 17px; font-weight: 650; letter-spacing: -.02em; }
+.stepText { margin-top: 6px; color: var(--muted); font-size: 14px; line-height: 1.55; }
 .evidence { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 72px; background: var(--surface-soft); border-radius: 24px; padding: 48px; }
 .explanation > p:not(.eyebrow) { color: var(--ink-soft); font-size: 17px; line-height: 1.7; margin: 23px 0 18px; max-width: 420px; }
 .example { margin: 0; }
@@ -54,6 +81,15 @@
 .fields h2 { font-size: 27px; }
 .fields ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; list-style: none; padding: 0; margin: 23px 0 10px; }
 .fields li { border: 1px solid var(--border-strong); border-radius: 8px; padding: 11px 16px; font-size: 14px; }
+.fieldsLead { max-width: 520px; margin: 12px auto 0; color: var(--muted); font-size: 16px; line-height: 1.6; }
+.fields .themeList { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; max-width: 980px; margin: 28px auto 12px; text-align: left; }
+.fields .themeList li { border: 0; border-radius: 0; padding: 0; font-size: inherit; }
+.themeLink { display: grid; height: 100%; align-content: start; gap: 6px; border: 1px solid var(--border-strong); border-radius: 14px; background: var(--surface); padding: 18px 20px; color: var(--ink); text-decoration: none; transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease; }
+.themeLink strong { font-size: 17px; font-weight: 650; letter-spacing: -.02em; }
+.themeLink > span { color: var(--muted); font-size: 14px; line-height: 1.55; }
+.themeLink em { margin-top: 6px; color: var(--landing-green); font-size: 14px; font-style: normal; font-weight: 600; }
+.themeLink:hover { border-color: var(--landing-green); box-shadow: 0 10px 28px rgba(24, 24, 23, .07); transform: translateY(-1px); }
+.themeLink:focus-visible { outline: 2px solid var(--landing-green); outline-offset: 2px; }
 .conversation { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 64px; padding: 14px 0 64px; }
 .conversation img { display: block; width: 100%; height: auto; border-radius: 24px; }
 .conversation .explanation > a { margin-top: 4px; }
@@ -63,9 +99,11 @@
 .closing { display: flex; justify-content: space-between; align-items: center; gap: 32px; padding: 35px 38px; margin: 10px 0 55px; border-radius: 20px; background: var(--landing-mint); }
 .closing h2 { font-size: 28px; }
 .closing p { margin: 9px 0 0; color: var(--muted); }
-@media (max-width: 1000px) { .main { padding: 0 28px; } .hero { gap: 28px; padding-top: 50px; } .hero h1 { font-size: 48px; } .evidence { gap: 35px; padding: 32px; } .conversation { gap: 35px; } .steps { gap: 22px; } .steps li + li { padding-left: 22px; } }
+@media (max-width: 1000px) { .processLayout { grid-template-columns: minmax(200px, 4fr) minmax(0, 8fr); gap: 24px; } .main { padding: 0 28px; } .hero { gap: 28px; padding-top: 50px; } .hero h1 { font-size: 48px; } .evidence { gap: 35px; padding: 32px; } .conversation { gap: 35px; } .steps { gap: 22px; } .steps li + li { padding-left: 22px; } }
 @media (max-width: 760px) { .main { padding: 0 20px; } .hero { grid-template-columns: 1fr; padding: 40px 0; gap: 30px; } .hero h1 { font-size: clamp(44px, 9vw, 62px); } .lead { max-width: 580px; font-size: 17px; } .heroFigure { width: 100%; max-width: 580px; justify-self: center; } .heroFigure img { margin: 8px 0 0; } .heroFigure { padding: 20px 0; } .figureLabel { padding: 0 24px; } .process { padding: 34px 0 40px; } .sectionHead { text-align: left; } .steps { grid-template-columns: 1fr; gap: 23px; margin-top: 28px; } .steps li { display: grid; grid-template-columns: 64px 1fr; column-gap: 17px; } .steps li + li { border-left: none; border-top: 1px solid var(--border); padding: 23px 0 0; } .stepTop { grid-row: span 2; flex-direction: column; padding: 0; gap: 8px; margin: 0; align-self: start; } .steps h3 { align-self: end; } .steps p { max-width: none; margin-top: 5px; } .evidence { grid-template-columns: 1fr; padding: 28px 22px; gap: 28px; } .explanation > p:not(.eyebrow) { max-width: none; font-size: 16px; } .fields { padding: 40px 0; } .fields li { font-size: 13px; padding: 10px 12px; } .conversation { grid-template-columns: 1fr; gap: 28px; padding-bottom: 40px; } .conversation img { max-width: 580px; justify-self: center; } .faq { grid-template-columns: 1fr; gap: 25px; padding: 35px 0; } .closing { align-items: flex-start; flex-direction: column; padding: 28px 24px; margin-bottom: 35px; } }
-@media (prefers-reduced-motion: reduce) { .main * { scroll-behavior: auto; } }
+@media (max-width: 760px) { .fields .themeList { grid-template-columns: 1fr; gap: 10px; margin-top: 20px; } .fieldsLead { font-size: 15px; } .themeLink { padding: 15px 16px; } }
+@media (max-width: 760px) { .processLayout { grid-template-columns: 1fr; gap: 12px; margin-top: 22px; } .processVideo { order: 0; border-radius: 12px; } .processLayout .videoSteps { order: 0; gap: 4px; } .processLayout .videoSteps li { display: block; } .processLayout .videoSteps li + li { border-top: none; padding: 0; } .stepButton { grid-template-columns: 44px 1fr; column-gap: 14px; padding: 12px 10px; } .stepProgress { grid-column: 1 / -1; margin-bottom: 12px; } .videoSteps .stepTop { grid-row: span 2; margin: 0; } .videoSteps .stepTop svg { width: 36px; height: 36px; } .stepTitle { align-self: end; font-size: 17px; } .stepText { margin-top: 3px; } }
+@media (prefers-reduced-motion: reduce) { .main * { scroll-behavior: auto; } .themeLink, .stepButton { transition: none; } .themeLink:hover { transform: none; } }
 
 .startNotes { display: grid; gap: 6px; list-style: none; margin: 16px 0 0; padding: 0; color: var(--muted); font-size: 13px; }
 .startNotes span { color: var(--landing-green); margin-right: 5px; font-weight: 700; }
@@ -83,3 +121,8 @@
 .planList p span { color: var(--muted); font-size: 12px; }
 .planRecommended { border-color: var(--green-border) !important; background: linear-gradient(90deg, var(--landing-mint), var(--surface) 70%) !important; }
 @media (max-width: 760px) { .pricing { grid-template-columns: 1fr; gap: 28px; padding: 38px 0; } .planList li { padding: 14px 16px; } }
+
+/* Die Vermittlung steht über den Credit-Tarifen: Sie ist das Angebot, die
+   Tarife sind für Recherche und Analysen. */
+.planList li.planPlacement { border-color: var(--landing-green); background: var(--landing-mint); }
+.planPlacement a { color: var(--landing-green); }

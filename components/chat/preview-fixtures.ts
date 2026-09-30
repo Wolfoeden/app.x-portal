@@ -3,10 +3,12 @@ import type {
   AiUsageSnapshot,
   ConversationMessage,
   FreelancerProfileResult,
+  ProjectCollectionItem,
   ProjectListItem,
   SessionResponse,
   StructuredBrief,
 } from "../chat-contract";
+import type { RegisteredShowcase } from "@/lib/freelancer/showcase";
 
 export const previewAuth: SessionResponse = {
   authenticated: true,
@@ -48,6 +50,17 @@ export const previewProjects: ProjectListItem[] = [
     collectionId: null,
     status: "closed",
   },
+  {
+    id: "preview-collected",
+    title: "SAP BTP Integration für Rechnungseingang",
+    updatedAt: "2026-08-10T09:00:00.000Z",
+    collectionId: "preview-collection",
+    status: "matching",
+  },
+];
+
+export const previewCollections: ProjectCollectionItem[] = [
+  { id: "preview-collection", name: "Digitalisierung 2027", updatedAt: "2026-08-10T09:00:00.000Z" },
 ];
 
 export const previewMessages: ConversationMessage[] = [
@@ -209,16 +222,16 @@ export const previewUsage: AiUsageSnapshot = {
  * actually produce, so the preview shows states production can reach.
  */
 export const automationRequest =
-  "Wir wollen wiederkehrende Abläufe mit KI automatisieren: n8n-Workflows bauen und ein LLM an unsere Bestandssysteme anbinden, perspektivisch auch RAG auf unsere eigenen Dokumente. Projektbasis, remote, Start kurzfristig.";
+  "Wir wollen wiederkehrende Abläufe mit KI automatisieren: Workflow-Automatisierungen bauen und ein LLM an unsere Bestandssysteme anbinden, perspektivisch auch RAG auf unsere eigenen Dokumente. Projektbasis, remote, Start kurzfristig.";
 
 /** The same request with n8n as a must and a fixed day-rate ceiling. */
 export const automationStrictRequest = `${automationRequest} n8n ist zwingend. Maximal 500 € pro Tag.`;
 
 export const automationBrief: StructuredBrief = {
   ...previewBrief,
-  projectTitle: "KI-Automatisierung mit n8n und LLM-Anbindung",
-  summary: "n8n-Workflows und LLM-Anbindung an bestehende Systeme. RAG perspektivisch.",
-  requiredSkills: ["n8n", "Large Language Models"],
+  projectTitle: "KI-Workflow-Automatisierung mit LLM-Anbindung",
+  summary: "Workflow-Automatisierungen und LLM-Anbindung an bestehende Systeme. RAG perspektivisch.",
+  requiredSkills: ["Large Language Models"],
   optionalSkills: ["RAG"],
   mode: "remote",
   location: null,
@@ -229,7 +242,6 @@ export const automationBrief: StructuredBrief = {
   availabilityRequirement: null,
   unknownFields: ["duration", "budget"],
   requirementGroups: [
-    { id: "skill:core:all_of:n8n", category: "skill", priority: "core", operator: "all_of", values: ["n8n"] },
     { id: "skill:core:all_of:large-language-models", category: "skill", priority: "core", operator: "all_of", values: ["Large Language Models"] },
     { id: "skill:optional:all_of:rag", category: "skill", priority: "optional", operator: "all_of", values: ["RAG"] },
     { id: "work_mode:core:all_of:remote", category: "work_mode", priority: "core", operator: "all_of", values: ["remote"] },
@@ -238,18 +250,20 @@ export const automationBrief: StructuredBrief = {
 
 export const automationStrictBrief: StructuredBrief = {
   ...automationBrief,
+  requiredSkills: ["n8n", "Large Language Models"],
   budgetOrRate: "max. 500 € / Tag",
   unknownFields: ["duration"],
-  requirementGroups: automationBrief.requirementGroups.map((group) =>
-    group.values.includes("n8n") ? { ...group, id: "skill:hard:all_of:n8n", priority: "hard" } : group,
-  ),
+  requirementGroups: [
+    { id: "skill:hard:all_of:n8n", category: "skill", priority: "hard", operator: "all_of", values: ["n8n"] },
+    ...automationBrief.requirementGroups,
+  ],
 };
 
 function competencies(values: readonly string[]) {
   return values.map((value) => ({ label: "Selbstauskunft", value: `Kompetenz: ${value}`, verification: "self-reported" as const }));
 }
 
-/** Two recommended profiles: both name n8n and an LLM competence. */
+/** Two recommended profiles: both name an LLM competence (and n8n, for the strict request). */
 export const automationProfiles: FreelancerProfileResult[] = [
   {
     ...previewProfiles[0],
@@ -267,7 +281,7 @@ export const automationProfiles: FreelancerProfileResult[] = [
     availabilityStatus: "available",
     matchReasons: [
       "Projektverfügbarkeit ist aktuell bestätigt.",
-      "Belegte Kernkompetenzen: n8n, Large Language Models.",
+      "Belegte Kernkompetenzen: Large Language Models.",
       "Arbeitsmodus passend: remote.",
       "Optionale Kompetenzen passend: RAG.",
     ],
@@ -288,7 +302,7 @@ export const automationProfiles: FreelancerProfileResult[] = [
     referenceStatus: "Selbstauskunft",
     availabilityStatus: "limited",
     matchReasons: [
-      "Belegte Kernkompetenzen: n8n, Large Language Models.",
+      "Belegte Kernkompetenzen: Large Language Models.",
       "Arbeitsmodus passend: remote.",
     ],
     knownGaps: [
@@ -370,3 +384,20 @@ export const automationReplies = {
   noMatch:
     "Der interne Profilabgleich ist abgeschlossen. Derzeit erfüllt kein aktives, direkt buchbares Profil zugleich alle Muss-Kriterien und mindestens 70 % der Kernanforderungen. Kennzeichnen Sie ein genanntes Kriterium im Chat als Muss, flexibel oder optional. Wenn das interne Ergebnis danach weiterhin nicht ausreicht, können Sie die getrennte externe Recherche für 30 Credits ausdrücklich starten.",
 } as const;
+
+/**
+ * Selbst angemeldete Profile unter dem Shortcut „KI & Automatisierung“ —
+ * fiktiv, nur für `/chat/preview?state=empty`.
+ */
+export const automationShowcase: RegisteredShowcase = {
+  theme: "automation",
+  total: 7,
+  profiles: [
+    { id: "preview-showcase-1", displayName: "Kim Beispiel", role: "KI / Full Stack / Cloud", avatarUrl: null, skills: ["AI Agents", "LLM", "RAG"] },
+    { id: "preview-showcase-2", displayName: "Jo Beispiel", role: "Automatisierung & Systemintegration", avatarUrl: null, skills: ["n8n", "Make", "LLM"] },
+    { id: "preview-showcase-3", displayName: "Sam Beispiel", role: "Workflow-Automatisierung", avatarUrl: null, skills: ["n8n", "Zapier", "Make"] },
+    { id: "preview-showcase-4", displayName: "Alex Beispiel", role: "KI-Strategieberater & KI-Coach", avatarUrl: null, skills: ["N8n", "Large Language Models", "RAG"] },
+    { id: "preview-showcase-5", displayName: "Robin Beispiel", role: "KI-Agenten-Entwicklung", avatarUrl: null, skills: ["KI-Agenten", "LangChain", "Python"] },
+    { id: "preview-showcase-6", displayName: "Toni Beispiel", role: "Prozessautomatisierung", avatarUrl: null, skills: ["Power Automate", "SharePoint", "Microsoft 365"] },
+  ],
+};

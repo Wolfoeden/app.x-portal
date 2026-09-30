@@ -68,14 +68,23 @@ describe("sidebar hierarchy", () => {
     expect(markup).not.toContain('href="/agent"');
   });
 
-  it("keeps chat search behind a magnifier next to the brand", () => {
+  it("offers chat search as a row below Neuer Chat, the input only on demand", () => {
     const markup = renderToStaticMarkup(createElement(ChatWorkspace));
+    const newChat = markup.indexOf('data-sidebar-primary="new-chat"');
+    const search = markup.indexOf('class="sidebar-row sidebar-search-toggle"');
 
     expect(markup).toContain("<span>X PORTAL</span></a>");
-    expect(markup).toContain(
-      '</a><button class="icon-button sidebar-search-toggle" type="button" aria-label="Chats durchsuchen">',
-    );
+    expect(search).toBeGreaterThan(newChat);
+    expect(markup).toContain('<span class="sidebar-row-label">Chats durchsuchen</span>');
     expect(markup).not.toContain('aria-label="Gespeicherte Chats durchsuchen"');
+  });
+
+  it("lists projects before chats and lets the desktop sidebar collapse", () => {
+    const markup = renderToStaticMarkup(createElement(ChatWorkspace));
+
+    expect(markup.indexOf(">Projekte</p>")).toBeGreaterThan(-1);
+    expect(markup.indexOf(">Projekte</p>")).toBeLessThan(markup.indexOf(">Chats</p>"));
+    expect(markup).toContain('aria-label="Seitenleiste schließen" aria-expanded="true"');
   });
 
   it("shows one flat chat history without dates or workflow labels", () => {

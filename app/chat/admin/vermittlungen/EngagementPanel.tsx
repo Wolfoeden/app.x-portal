@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { appPath } from "@/lib/app-path";
-import { PLACEMENT_TERMS, placementFeeCents } from "@/lib/placement/config";
+import { grossCents, PLACEMENT_TERMS, PLACEMENT_VAT_PERCENT, placementFeeCents } from "@/lib/placement/config";
 import type { PlacementRequestRow } from "@/lib/placement/requests";
 
 import styles from "./vermittlungen.module.css";
@@ -36,7 +36,7 @@ async function post(requestId: string, body: Record<string, unknown>) {
  * Rechnung und Zahlung. Der Betrag wird hier nur vorgerechnet; maßgeblich ist
  * die Berechnung auf dem Server mit der Fassung, der der Kunde zugestimmt hat.
  */
-export function EngagementPanel({ row }: { row: PlacementRequestRow }) {
+export function EngagementPanel({ row, invoicingReady }: { row: PlacementRequestRow; invoicingReady: boolean }) {
   const router = useRouter();
   const [dayRate, setDayRate] = useState("");
   const [projectDays, setProjectDays] = useState("");
@@ -76,22 +76,43 @@ export function EngagementPanel({ row }: { row: PlacementRequestRow }) {
             </dd>
           </div>
         </dl>
+        {engagement.invoiceUrl || engagement.invoicePdfUrl ? (
+          <p className={styles.invoiceLinks}>
+            {engagement.billingCompany ? <span>An {engagement.billingCompany}{engagement.billingEmail ? ` (${engagement.billingEmail})` : ""}</span> : null}
+            {engagement.invoiceDueOn ? <span>fällig {date.format(new Date(`${engagement.invoiceDueOn}T00:00:00`))}</span> : null}
+            {engagement.invoiceUrl ? <a href={engagement.invoiceUrl} target="_blank" rel="noopener noreferrer">Rechnung ansehen</a> : null}
+            {engagement.invoicePdfUrl ? <a href={engagement.invoicePdfUrl} target="_blank" rel="noopener noreferrer">PDF</a> : null}
+          </p>
+        ) : null}
         {engagement.feeStatus === "open" ? (
-          <div className={styles.inline}>
-            <label className={styles.reason}>
-              <span>Rechnungsnummer</span>
-              <input id={`invoice-${row.id}`} value={reference} maxLength={120} onChange={(event) => setReference(event.target.value)} />
-            </label>
-            <button type="button" className={styles.primary} disabled={busy || !reference.trim()} onClick={() => void act({ action: "invoiced", reference: reference.trim() })}>
-              Rechnung gestellt
-            </button>
-          </div>
+          <InvoiceForm
+            row={row}
+            feeMinor={engagement.feeMinor ?? 0}
+            invoicingReady={invoicingReady}
+            busy={busy}
+            onIssue={(billing) => act({ action: "issue_invoice", billing })}
+          />
+        ) : null}
+        {engagement.feeStatus === "open" ? (
+          <details className={styles.manualInvoice}>
+            <summary>Rechnung außerhalb von Stripe gestellt?</summary>
+            <div className={styles.inline}>
+              <label className={styles.reason}>
+                <span>Rechnungsnummer</span>
+                <input id={`invoice-${row.id}`} value={reference} maxLength={120} onChange={(event) => setReference(event.target.value)} />
+              </label>
+              <button type="button" className={styles.secondary} disabled={busy || !reference.trim()} onClick={() => void act({ action: "invoiced", reference: reference.trim() })}>
+                Als gestellt eintragen
+              </button>
+            </div>
+          </details>
         ) : null}
         {engagement.feeStatus === "open" || engagement.feeStatus === "invoiced" ? (
           <div className={styles.buttons}>
             <button type="button" className={styles.secondary} disabled={busy} onClick={() => void act({ action: "paid" })}>
-              Als bezahlt markieren
+              {engagement.viaStripe ? "Zahlung von Hand verbuchen" : "Als bezahlt markieren"}
             </button>
+            {engagement.viaStripe ? <span className={styles.hint}>Zahlungen über Stripe werden automatisch verbucht.</span> : null}
           </div>
         ) : null}
         {error ? <p className={styles.error} role="alert">{error}</p> : null}
@@ -142,6 +163,100 @@ export function EngagementPanel({ row }: { row: PlacementRequestRow }) {
         ) : null}
       </div>
       {error ? <p className={styles.error} role="alert">{error}</p> : null}
+    </form>
+  );
+}
+
+type Billing = {
+  company: string;
+  contact: string;
+  email: string;
+  street: string;
+  postalCode: string;
+  city: string;
+  country: "DE";
+  vatId: string;
+};
+
+/**
+ * Rechnungsanschrift erfassen und die Rechnung über Stripe erstellen.
+ *
+ * Die E-Mail ist mit dem Konto des Kunden vorbelegt; viele Firmen wollen die
+ * Rechnung aber an die Buchhaltung. Vor dem Versand steht der Betrag brutto
+ * in einer Rückfrage, denn eine gestellte Rechnung lässt sich nur noch
+ * stornieren, nicht ändern.
+ */
+function InvoiceForm({
+  row,
+  feeMinor,
+  invoicingReady,
+  busy,
+  onIssue,
+}: {
+  row: PlacementRequestRow;
+  feeMinor: number;
+  invoicingReady: boolean;
+  busy: boolean;
+  onIssue: (billing: Billing) => Promise<void>;
+}) {
+  const [billing, setBilling] = useState<Billing>({
+    company: "",
+    contact: row.clientName ?? "",
+    email: row.clientEmail ?? "",
+    street: "",
+    postalCode: "",
+    city: "",
+    country: "DE",
+    vatId: "",
+  });
+  const field = (key: Exclude<keyof Billing, "country">) => ({
+    id: `billing-${key}-${row.id}`,
+    value: billing[key],
+    onChange: (event: { target: { value: string } }) => setBilling((current) => ({ ...current, [key]: event.target.value })),
+  });
+  const complete = Boolean(
+    billing.company.trim() && billing.email.trim() && billing.street.trim() && /^\d{5}$/u.test(billing.postalCode.trim()) && billing.city.trim(),
+  );
+
+  if (!invoicingReady) {
+    return (
+      <p className={styles.hint}>
+        Rechnungen über Stripe sind noch nicht eingerichtet (STRIPE_SECRET_KEY in Netlify).
+        Bis dahin die Rechnung von Hand stellen und unten die Nummer eintragen.
+      </p>
+    );
+  }
+
+  return (
+    <form
+      className={styles.invoiceForm}
+      onSubmit={(event) => {
+        event.preventDefault();
+        const gross = euro.format(grossCents(feeMinor) / 100);
+        if (!window.confirm(`Rechnung über ${gross} brutto an ${billing.email.trim()} erstellen und senden?`)) return;
+        void onIssue(billing);
+      }}
+    >
+      <p className={styles.formTitle}>Rechnung über Stripe</p>
+      <div className={styles.billingGrid}>
+        <label className={styles.reason}><span>Firma</span><input {...field("company")} autoComplete="organization" required /></label>
+        <label className={styles.reason}><span>Ansprechpartner (optional)</span><input {...field("contact")} autoComplete="name" /></label>
+        <label className={styles.reason}><span>E-Mail für die Rechnung</span><input {...field("email")} type="email" autoComplete="email" required /></label>
+        <label className={styles.reason}><span>Straße und Hausnummer</span><input {...field("street")} autoComplete="address-line1" required /></label>
+        <label className={styles.reason}><span>PLZ</span><input {...field("postalCode")} inputMode="numeric" autoComplete="postal-code" maxLength={5} required /></label>
+        <label className={styles.reason}><span>Ort</span><input {...field("city")} autoComplete="address-level2" required /></label>
+        <label className={styles.reason}><span>USt-IdNr. (optional)</span><input {...field("vatId")} placeholder="DE123456789" /></label>
+        <p className={styles.country}>Land: Deutschland. Rechnungen ins Ausland bitte von Hand stellen.</p>
+      </div>
+      <p className={styles.preview}>
+        {euro.format(feeMinor / 100)} netto + {PLACEMENT_VAT_PERCENT} % USt. = {euro.format(grossCents(feeMinor) / 100)} brutto,
+        zahlbar in {PLACEMENT_TERMS.paymentDays} Tagen. Stripe vergibt die Rechnungsnummer und schickt die Rechnung per Mail.
+      </p>
+      <div className={styles.buttons}>
+        <button type="submit" className={styles.primary} disabled={busy || !complete}>
+          {busy ? "Wird erstellt …" : "Rechnung erstellen und senden"}
+        </button>
+      </div>
     </form>
   );
 }

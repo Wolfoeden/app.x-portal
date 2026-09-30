@@ -749,3 +749,73 @@
   font-size: 14px;
   line-height: 1.55;
 }
+
+/* Was die Person sucht: Freelance-Projekte, Festanstellung oder beides. */
+.seeking {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 18px;
+  border: 0;
+  padding: 0;
+}
+
+.seeking legend {
+  margin-bottom: 8px;
+  color: #33434b;
+  font-size: var(--fs-xs);
+  font-weight: 650;
+}
+
+.seekingOption {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  border: 1px solid #d9e2e7;
+  border-radius: 10px;
+  background: #fff;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+
+.seekingOption[data-checked="true"] {
+  border-color: #1d6b5f;
+  background: #f1f8f5;
+}
+
+.seekingOption input {
+  margin-top: 3px;
+  accent-color: #1d6b5f;
+}
+
+.seekingOption span {
+  display: grid;
+  gap: 2px;
+}
+
+.seekingOption strong {
+  color: #20201e;
+  font-size: var(--fs-xs);
+}
+
+.seekingOption small {
+  color: #52636c;
+  font-size: var(--fs-2xs);
+  line-height: 1.45;
+}
+
+.welcome {
+  border: 1px solid #cce3d6;
+  border-radius: 12px;
+  background: #e9f5ed;
+  padding: 14px 16px;
+  color: #2f5443;
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+}
+
+@media (max-width: 760px) {
+  .seeking {
+    grid-template-columns: 1fr;
+  }
+}

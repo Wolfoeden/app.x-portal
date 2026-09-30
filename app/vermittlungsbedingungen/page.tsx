@@ -9,7 +9,13 @@ import {
   PublicHeader,
 } from "@/components/public/PublicChrome";
 import { Notice } from "@/components/ui/Primitives";
-import { PLACEMENT_TERMS, placementRequestsEnabled } from "@/lib/placement/config";
+import {
+  formatWholeEuro,
+  PLACEMENT_EXAMPLE,
+  PLACEMENT_TERMS,
+  placementExampleFeeCents,
+  placementRequestsEnabled,
+} from "@/lib/placement/config";
 
 export const metadata: Metadata = {
   title: "Vermittlungsbedingungen | XPORTAL",
@@ -102,8 +108,15 @@ export default function PlacementTermsPage() {
               gesetzlichen Umsatzsteuer.
             </p>
             <p>
-              Beispiel: Bei einem Tagessatz von 600 € und 60 Projekttagen in den
-              ersten drei Monaten beträgt das Honorar 3.600 € netto.
+              Beispiel: Bei einem Tagessatz von{" "}
+              {formatWholeEuro(PLACEMENT_EXAMPLE.dayRateCents)} und{" "}
+              {PLACEMENT_EXAMPLE.projectDays} Projekttagen in den ersten{" "}
+              {t.feeMonths} Monaten beträgt das Honorar{" "}
+              {formatWholeEuro(placementExampleFeeCents())} netto.
+            </p>
+            <p>
+              Ein gebuchter Termin oder ein Erstgespräch allein löst kein
+              Honorar aus.
             </p>
           </div>
         </section>

@@ -10,6 +10,7 @@ import { appPath } from "@/lib/app-path";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { PLACEMENT_TERMS, placementRequestsEnabled } from "@/lib/placement/config";
 import { PLACEMENT_OUTCOME_LABELS } from "@/lib/placement/follow-up-rules";
+import { placementInvoicingReady } from "@/lib/placement/invoices";
 import { listPlacementRequests, type PlacementRequestRow } from "@/lib/placement/requests";
 
 import { EngagementPanel, FollowUpsButton } from "./EngagementPanel";
@@ -37,7 +38,7 @@ const STATUS_LABELS: Record<PlacementRequestRow["status"], string> = {
   cancelled: "Abgelehnt",
 };
 
-function RequestCard({ row }: { row: PlacementRequestRow }) {
+function RequestCard({ row, invoicingReady }: { row: PlacementRequestRow; invoicingReady: boolean }) {
   const open = row.status === "manual_review";
   return (
     <article className={styles.card} data-open={open}>
@@ -88,7 +89,7 @@ function RequestCard({ row }: { row: PlacementRequestRow }) {
           freelancerReachable={row.freelancerReachable}
         />
       ) : null}
-      {INTRODUCED.has(row.status) ? <EngagementPanel row={row} /> : null}
+      {INTRODUCED.has(row.status) ? <EngagementPanel row={row} invoicingReady={invoicingReady} /> : null}
     </article>
   );
 }
@@ -109,6 +110,7 @@ export default async function PlacementRequestsPage() {
   if (!currentUser.isAdmin) notFound();
 
   const rows = await listPlacementRequests();
+  const invoicingReady = placementInvoicingReady();
   const open = rows.filter((row) => row.status === "manual_review");
   const done = rows.filter((row) => row.status !== "manual_review");
   const due = rows.filter((row) => row.followUpDue).length;
@@ -135,7 +137,7 @@ export default async function PlacementRequestsPage() {
 
       <AdminSectionHeader title={`Wartet auf Vorstellung (${open.length})`} />
       {open.length ? (
-        <div className={styles.list}>{open.map((row) => <RequestCard key={row.id} row={row} />)}</div>
+        <div className={styles.list}>{open.map((row) => <RequestCard key={row.id} row={row} invoicingReady={invoicingReady} />)}</div>
       ) : (
         <p className={styles.empty}>Keine offene Anfrage.</p>
       )}
@@ -145,7 +147,7 @@ export default async function PlacementRequestsPage() {
         description="Die letzten 100 Anfragen. Nach der Vorstellung hier Beauftragung, Rechnung und Zahlung festhalten."
       />
       {done.length ? (
-        <div className={styles.list}>{done.map((row) => <RequestCard key={row.id} row={row} />)}</div>
+        <div className={styles.list}>{done.map((row) => <RequestCard key={row.id} row={row} invoicingReady={invoicingReady} />)}</div>
       ) : (
         <p className={styles.empty}>Noch nichts bearbeitet.</p>
       )}

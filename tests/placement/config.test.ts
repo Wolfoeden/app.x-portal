@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   PLACEMENT_TERMS,
   clientBookingUrl,
+  formatWholeEuro,
+  placementExampleFeeCents,
   placementFeeCents,
   placementRequestsEnabled,
   placementTermsSummary,
@@ -52,5 +54,12 @@ describe("placement model settings", () => {
       "https://x-portal.eu/api/freelancers/p1/book",
     );
     expect(clientBookingUrl("p1", null, "https://x-portal.eu")).toBeNull();
+  });
+});
+
+describe("the worked example", () => {
+  it("comes to 900 € net for 15 project days at 600 €", () => {
+    expect(placementExampleFeeCents()).toBe(90_000);
+    expect(formatWholeEuro(placementExampleFeeCents()).replace(/\s/gu, " ")).toBe("900 €");
   });
 });

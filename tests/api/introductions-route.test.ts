@@ -223,7 +223,7 @@ describe("Vorstellungsanfrage meldet sich beim Betreiber", () => {
 });
 
 describe("Anfrage im Vermittlungsmodell", () => {
-  const VERSION = "vermittlung-2026-09-entwurf-1";
+  const VERSION = "vermittlung-2026-09-1";
 
   beforeEach(() => {
     vi.clearAllMocks();

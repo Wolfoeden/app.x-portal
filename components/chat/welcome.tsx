@@ -2,24 +2,12 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 
-const suggestions = [
-  {
-    label: "KI & Automatisierung",
-    draftPrefix:
-      "Wir wollen wiederkehrende Abläufe mit KI automatisieren: n8n-Workflows bauen und ein LLM an unsere Bestandssysteme anbinden, perspektivisch auch RAG auf unsere eigenen Dokumente. Projektbasis, remote, Start kurzfristig.",
-    intro:
-      "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Was Sie nicht erwähnen, ergänze ich nicht.",
-  },
-  {
-    label: "SAP",
-    draftPrefix:
-      "Wir suchen Unterstützung im SAP-Umfeld: SAP S/4HANA, Anbindung an unsere bestehenden Systeme und Begleitung der Migration. Erfahrung mit SAP FI/CO oder SAP HCM ist willkommen. Projektbasis, remote möglich, Start in den nächsten Wochen.",
-    intro:
-      "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Was Sie nicht erwähnen, ergänze ich nicht.",
-  },
-] as const;
+import { EXAMPLE_BRIEFS, type ExampleBrief } from "./example-briefs";
+import { loadRegisteredShowcase } from "./registered-showcase";
 
-export type GuidedSuggestion = (typeof suggestions)[number];
+const suggestions = EXAMPLE_BRIEFS;
+
+export type GuidedSuggestion = ExampleBrief;
 
 /** Anrede für Gäste und für Konten, zu denen kein Name bekannt ist. */
 const FALLBACK_ADDRESSEE = "Recruiter";
@@ -166,7 +154,13 @@ export function SuggestionGrid({
   return (
     <div className="suggestion-grid" aria-label="Beispielanfragen">
       {suggestions.map((suggestion) => (
-        <button key={suggestion.label} type="button" onClick={() => onSuggestion(suggestion)}>
+        <button
+          key={suggestion.label}
+          type="button"
+          onClick={() => onSuggestion(suggestion)}
+          onPointerEnter={suggestion.showcase ? () => void loadRegisteredShowcase() : undefined}
+          onFocus={suggestion.showcase ? () => void loadRegisteredShowcase() : undefined}
+        >
           <span className="suggestion-label">{suggestion.label}</span>
         </button>
       ))}

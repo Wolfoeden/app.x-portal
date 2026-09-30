@@ -95,3 +95,18 @@
 
 @media (max-width: 1180px) { .trust { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 760px) { .context { align-items: flex-start; flex-direction: column; gap: 10px; } .trust { grid-template-columns: 1fr; } .faq { grid-template-columns: 1fr; gap: 20px; } }
+
+/* Vermittlung: das Angebot vor den Credit-Tarifen. */
+.placement { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(260px, .8fr); gap: clamp(32px, 6vw, 90px); align-items: start; border-top: 1px solid var(--border); padding: 56px 0 60px; }
+.placement h2 { margin: 0 0 18px; font-size: clamp(30px, 3.4vw, 44px); line-height: 1.08; letter-spacing: -.045em; font-weight: 600; }
+.placement ul { display: grid; gap: 10px; margin: 0 0 20px; padding-left: 20px; color: var(--ink-soft); font-size: 16px; line-height: 1.6; }
+.placementLink { color: var(--ink); font-size: 14px; font-weight: 600; text-underline-offset: 4px; }
+.placement aside { display: grid; gap: 12px; border: 1px solid var(--green-border); border-radius: 18px; background: var(--green-soft); padding: 22px 24px; }
+.placement aside > p { margin: 0; color: var(--green); font-size: var(--fs-2xs); font-weight: 650; letter-spacing: .12em; text-transform: uppercase; }
+.placement dl { display: grid; gap: 8px; margin: 0; }
+.placement dl div { display: flex; justify-content: space-between; gap: 14px; border-bottom: 1px solid var(--green-border); padding-bottom: 8px; font-size: 15px; }
+.placement dl div:last-child { border-bottom: 0; font-weight: 650; }
+.placement dt { color: var(--ink-soft); }
+.placement dd { margin: 0; font-variant-numeric: tabular-nums; }
+.placement aside > span { color: var(--muted); font-size: var(--fs-xs); line-height: 1.55; }
+@media (max-width: 760px) { .placement { grid-template-columns: 1fr; padding: 40px 0; } }

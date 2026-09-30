@@ -21,6 +21,10 @@ import {
   type AvailabilityStatus,
   type CvMimeType,
   type WorkMode,
+  REFERRAL_PATTERN,
+  SEEKING_LABELS,
+  SEEKING_OPTIONS,
+  type Seeking,
 } from "@/lib/freelancer/limits";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 
@@ -67,11 +71,40 @@ const tagClasses = {
   optional: styles.optional,
 };
 
+/** Wo die Herkunft den Umweg über die Anmeldung überdauert. */
+export const REFERRAL_STORAGE_KEY = "xportal.apply-referral.v1";
+const REFERRAL_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+function rememberedReferral(): string | null {
+  try {
+    const raw = window.localStorage.getItem(REFERRAL_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { referral?: unknown; at?: unknown };
+    return typeof parsed.referral === "string" &&
+      REFERRAL_PATTERN.test(parsed.referral) &&
+      typeof parsed.at === "number" &&
+      Date.now() - parsed.at < REFERRAL_MAX_AGE_MS
+      ? parsed.referral
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+const SEEKING_HINTS: Readonly<Record<Seeking, string>> = {
+  projects: "Sie arbeiten selbstständig und suchen Projekte.",
+  employment: "Sie suchen eine feste Stelle.",
+  both: "Sie sind für beides offen.",
+};
+
 export function ApplyForm({
   accountEmail = "",
   inviteToken = null,
+  referral = null,
 }: {
   accountEmail?: string;
+  /** `?quelle=` der Seite, etwa `arbeitsagentur`; sonst die gemerkte. */
+  referral?: string | null;
   /**
    * Das Kennzeichen aus der Einladung. Es reist mit dem Formular mit, damit
    * die Anmeldung dem recherchierten Kandidaten zugeordnet werden kann —
@@ -79,6 +112,14 @@ export function ApplyForm({
    */
   inviteToken?: string | null;
 }) {
+  const [seeking, setSeeking] = useState<Seeking>("projects");
+  // Nach einer Anmeldung per E-Mail-Link fehlt `?quelle=` in der Adresse;
+  // dann gilt, was die Seite beim ersten Besuch gemerkt hat. Die Herkunft
+  // wird nicht angezeigt, der Unterschied zwischen Server und Browser ist
+  // also unsichtbar.
+  const [source] = useState<string | null>(() =>
+    referral ?? (typeof window === "undefined" ? null : rememberedReferral()),
+  );
   const [fullName, setFullName] = useState("");
   const [contactEmail, setContactEmail] = useState(accountEmail);
   const [contactPhone, setContactPhone] = useState("");
@@ -115,7 +156,7 @@ export function ApplyForm({
   const [issues, setIssues] = useState<SubmitIssue[]>([]);
 
   const bookingUrlInvalid =
-    bookingUrlTouched && !isUsableBookingUrl(bookingUrl);
+    bookingUrlTouched && Boolean(bookingUrl.trim()) && !isUsableBookingUrl(bookingUrl);
 
   function toggleWorkMode(mode: WorkMode) {
     setWorkModes((current) =>
@@ -205,14 +246,14 @@ export function ApplyForm({
       setFormError("Bitte mindestens eine Arbeitsform auswählen.");
       return;
     }
-    if (!hourlyRate && !dayRate) {
+    if (seeking !== "employment" && !hourlyRate && !dayRate) {
       setFormError("Bitte Stundensatz oder Tagessatz angeben.");
       return;
     }
-    if (!isUsableBookingUrl(bookingUrl)) {
+    if (bookingUrl.trim() && !isUsableBookingUrl(bookingUrl)) {
       setBookingUrlTouched(true);
       setFormError(
-        "Ohne Terminlink können wir Sie nicht aufnehmen. Bitte geben Sie eine vollständige HTTPS-Adresse an, zum Beispiel https://calendly.com/ihr-name/30min",
+        "Der Terminlink ist unvollständig. Bitte eine vollständige HTTPS-Adresse angeben, zum Beispiel https://calendly.com/ihr-name/30min, oder das Feld leer lassen.",
       );
       return;
     }
@@ -241,7 +282,9 @@ export function ApplyForm({
           currency,
           availabilityStatus,
           availabilityFrom,
-          bookingUrl,
+          bookingUrl: bookingUrl.trim(),
+          seeking,
+          referral: source,
           applicantNote,
           cv,
           consent,
@@ -301,6 +344,25 @@ export function ApplyForm({
           Diese Angaben sehen nur wir. Öffentlich sichtbar wird später nur Ihr
           freigegebenes Profil.
         </p>
+
+        <fieldset className={styles.seeking}>
+          <legend>Was suchen Sie?</legend>
+          {SEEKING_OPTIONS.map((option) => (
+            <label key={option} className={styles.seekingOption} data-checked={seeking === option}>
+              <input
+                type="radio"
+                name="seeking"
+                value={option}
+                checked={seeking === option}
+                onChange={() => setSeeking(option)}
+              />
+              <span>
+                <strong>{SEEKING_LABELS[option]}</strong>
+                <small>{SEEKING_HINTS[option]}</small>
+              </span>
+            </label>
+          ))}
+        </fieldset>
 
         <div className={styles.grid}>
           <label className={styles.field}>
@@ -546,8 +608,9 @@ export function ApplyForm({
           </label>
 
           <span className={`${styles.hint} ${styles.full}`}>
-            Mindestens einer der beiden Sätze ist erforderlich. Beträge netto,
-            ohne Umsatzsteuer.
+            {seeking === "employment"
+              ? "Bei einer Festanstellung freiwillig. Beträge netto, ohne Umsatzsteuer."
+              : "Mindestens einer der beiden Sätze ist erforderlich. Beträge netto, ohne Umsatzsteuer."}
           </span>
 
           <label
@@ -555,7 +618,7 @@ export function ApplyForm({
               bookingUrlInvalid ? styles.invalid : ""
             }`}
           >
-            <span>Terminlink für ein Erstgespräch</span>
+            <span>Terminlink für ein Erstgespräch (optional)</span>
             <input
               value={bookingUrl}
               onChange={(event) => setBookingUrl(event.target.value)}
@@ -564,7 +627,6 @@ export function ApplyForm({
               inputMode="url"
               placeholder="https://calendly.com/ihr-name/30min"
               maxLength={1000}
-              required
               aria-invalid={bookingUrlInvalid}
             />
             {bookingUrlInvalid ? (
@@ -576,13 +638,12 @@ export function ApplyForm({
           </label>
 
           <div className={`${styles.callout} ${styles.full}`}>
-            <strong>Ohne Terminlink geht es nicht</strong>
+            <strong>Kein Kalender? Kein Problem.</strong>
             <span>
-              Kunden buchen das Erstgespräch direkt über diesen Link — ein
-              Profil ohne funktionierenden Terminlink wird bei uns niemandem
-              vorgeschlagen. Wenn Sie noch keinen haben: Calendly, Cal.com und
+              Kunden fragen Sie über XPORTAL an, und wir stellen Sie per Mail
+              vor. Mit Terminlink wählt der Kunde nach der Vorstellung direkt
+              einen freien Slot, das geht schneller. Calendly, Cal.com und
               TidyCal sind in wenigen Minuten eingerichtet und kostenlos.
-              Bitte prüfe den Link vor dem Absenden einmal selbst im Browser.
             </span>
           </div>
         </div>

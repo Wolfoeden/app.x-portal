@@ -61,7 +61,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   return {
     title: profile ? `${profile.displayName} · ${profile.role} | XPORTAL` : "Profil | XPORTAL",
     description: profile
-      ? `${profile.role} im geprüften Freelancer-Verzeichnis von XPORTAL.`
+      ? `${profile.role} im Freelancer-Verzeichnis von XPORTAL.`
       : "Freelancer-Profil bei XPORTAL.",
     // Der Link ist zum Teilen da, nicht für den Suchindex: Wer ein Profil
     // sieht, soll es über eine Mail, eine Suche oder einen Kollegen sehen.
@@ -135,7 +135,10 @@ export default async function ProfilePage({ params, searchParams }: Params & Sea
     <div className="xlegal" lang="de">
       <PublicHeader context="Freelancer-Profil" />
       <main className={`xlegal-document ${styles.page}`}>
-        <p className={styles.eyebrow}>Geprüftes Freelancer-Verzeichnis</p>
+        {/* „Geprüft“ versprach mehr, als XPORTAL tut: Profile werden vor der
+            Freigabe gesichtet, ihre Angaben aber nicht unabhängig geprüft —
+            so steht es auch in den FAQ der Startseite. */}
+        <p className={styles.eyebrow}>Von XPORTAL freigegebenes Profil</p>
         <PublicProfileCard
           profile={profile}
           action={action}

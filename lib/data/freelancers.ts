@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { avatarImageUrl } from "@/lib/freelancer/avatar-limits";
+import { placementRequestsEnabled } from "@/lib/placement/config";
 import {
   FreelancerProfileSchema,
   type FactSource,
@@ -222,16 +223,29 @@ export function mapFreelancerProfileRow(
   });
 }
 
+/**
+ * Die Profile, die das Matching sieht.
+ *
+ * Ohne Vermittlungsmodell nur mit HTTPS-Terminlink: Der Knopf auf der Karte
+ * führt direkt in den Kalender, ohne ihn gäbe es keinen Weg zum Gespräch. Mit
+ * dem Modell fragt der Kunde über XPORTAL an, und die Vorstellung läuft per
+ * Mail — dann zählt auch ein Profil ohne Kalender.
+ *
+ * Wer nur eine Festanstellung sucht (`seeking = employment`), ist kein
+ * Freelancer und erscheint hier nicht.
+ */
 export async function fetchActiveBookableRealProfiles(
   supabase: SupabaseClient,
 ): Promise<FreelancerProfile[]> {
-  const { data, error } = await supabase
+  const requestsViaXportal = placementRequestsEnabled();
+  const base = supabase
     .from("freelancer_profiles")
     .select(FREELANCER_PROFILE_SELECT)
     .eq("profile_status", "active")
     .eq("demo_status", "real")
-    .not("booking_url", "is", null)
-    .in("availability_status", ["available", "limited", "unknown"]);
+    .neq("seeking", "employment");
+  const query = requestsViaXportal ? base : base.not("booking_url", "is", null);
+  const { data, error } = await query.in("availability_status", ["available", "limited", "unknown"]);
 
   if (error) throw error;
   return (data as FreelancerProfileRow[])
@@ -240,7 +254,7 @@ export async function fetchActiveBookableRealProfiles(
         row.profile_status === "active" &&
         row.demo_status === "real" &&
         row.availability_status !== "unavailable" &&
-        isSecureBookingUrl(row.booking_url),
+        (requestsViaXportal ? row.booking_url === null || isSecureBookingUrl(row.booking_url) : isSecureBookingUrl(row.booking_url)),
     )
     .map(mapFreelancerProfileRow);
 }

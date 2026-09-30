@@ -10,7 +10,9 @@
  * Alles hängt an einem Schalter. Ist er aus, bleibt der bisherige Weg — der
  * Terminknopf führt direkt in den Kalender des Freelancers — unverändert.
  * Eingeschaltet werden darf er erst, wenn die Bedingungen rechtlich geprüft
- * sind; bis dahin steht über ihnen sichtbar „Entwurf“.
+ * sind; bis dahin steht über ihnen sichtbar „Entwurf“. Am 30.09.2026 als
+ * geprüft und freigegeben bestätigt; eingeschaltet für die Produktion in
+ * netlify.toml.
  *
  * Die Datei ist bewusst ohne Serverabhängigkeit: Oberfläche und Routen lesen
  * dieselben Zahlen.
@@ -27,9 +29,9 @@ export function placementRequestsEnabled(): boolean {
 
 export const PLACEMENT_TERMS = {
   /** Wird bei jeder Zustimmung gespeichert. Neue Fassung, neue Kennung. */
-  version: "vermittlung-2026-09-entwurf-1",
+  version: "vermittlung-2026-09-1",
   /** `approved` erst nach der rechtlichen Prüfung. */
-  status: "draft" as "draft" | "approved",
+  status: "approved" as "draft" | "approved",
   /** Prozent des Auftragswerts. */
   feePercent: 10,
   /** Welcher Zeitraum der Zusammenarbeit zählt. */
@@ -41,6 +43,18 @@ export const PLACEMENT_TERMS = {
   /** Zahlungsziel der Rechnung. */
   paymentDays: 14,
 } as const;
+
+/**
+ * Umsatzsteuer auf das Honorar. XPORTAL ist umsatzsteuerpflichtig
+ * (USt-IdNr. im Impressum); die Rechnungserstellung nimmt nur einen
+ * Stripe-Steuersatz mit genau diesem Satz, siehe lib/placement/invoices.ts.
+ */
+export const PLACEMENT_VAT_PERCENT = 19;
+
+/** Brutto aus netto, in Cent, kaufmännisch gerundet. */
+export function grossCents(netCents: number): number {
+  return netCents + Math.round((netCents * PLACEMENT_VAT_PERCENT) / 100);
+}
 
 export const PLACEMENT_TERMS_PATH = "/vermittlungsbedingungen";
 
@@ -76,6 +90,23 @@ export function placementFeeCents(
   if (!Number.isFinite(projectDays) || projectDays <= 0) return 0;
   const days = Math.min(Math.floor(projectDays), terms.maxFeeDays);
   return Math.round((dayRateCents * days * terms.feePercent) / 100);
+}
+
+/**
+ * Das Rechenbeispiel auf Preisseite, Startseite und in den Bedingungen: ein
+ * Tagessatz nahe am Median der Profile und ein Einsatz von 15 Projekttagen in
+ * den ersten Monaten, also 900 € Honorar. Eine Stelle, damit alle Seiten
+ * dieselben Zahlen nennen.
+ */
+export const PLACEMENT_EXAMPLE = { dayRateCents: 60_000, projectDays: 15 } as const;
+
+export function placementExampleFeeCents(): number {
+  return placementFeeCents(PLACEMENT_EXAMPLE.dayRateCents, PLACEMENT_EXAMPLE.projectDays);
+}
+
+/** Ganze Euro ohne Nachkommastellen, wie in den Beispielen: „900 €“. */
+export function formatWholeEuro(cents: number): string {
+  return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(cents / 100);
 }
 
 /** Die drei Sätze, die bei jeder Anfrage über dem Häkchen stehen. */

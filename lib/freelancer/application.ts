@@ -22,6 +22,8 @@ import {
   CV_MAX_BYTES,
   CV_MIME_TYPES,
   INTRO_POLICIES,
+  REFERRAL_PATTERN,
+  SEEKING_OPTIONS,
   MAX_FACTS_PER_COLUMN,
   MAX_INDUSTRIES,
   MAX_LANGUAGES,
@@ -34,6 +36,7 @@ import {
   type AvailabilityStatus,
   type CurrencyCode,
   type IntroPolicy,
+  type Seeking,
   type VerificationStatus,
   type WorkMode,
 } from "./limits";
@@ -107,11 +110,16 @@ const rateShape = {
   currency: z.enum(CURRENCIES).default("EUR"),
 };
 
-/** Rates and currency travel together in `freelancer_profiles`. */
+/**
+ * Rates and currency travel together in `freelancer_profiles`. Wer nur eine
+ * Festanstellung sucht, hat keinen Stunden- oder Tagessatz; für ihn ist die
+ * Angabe freiwillig.
+ */
 function assertRatePairing(
-  value: { hourlyRate: number | null; dayRate: number | null },
+  value: { hourlyRate: number | null; dayRate: number | null; seeking?: Seeking },
   context: z.RefinementCtx,
 ) {
+  if (value.seeking === "employment") return;
   if (value.hourlyRate === null && value.dayRate === null) {
     context.addIssue({
       code: "custom",
@@ -145,10 +153,17 @@ export const FreelancerApplicationInputSchema = z
     ...rateShape,
     availabilityStatus: z.enum(AVAILABILITY_STATUSES).default("unknown"),
     availabilityFrom: optionalDate,
-    // Required, not optional: matching filters on an HTTPS booking URL, so an
-    // application without one could never become a findable profile. Only the
-    // applicant knows their own scheduling link, so this is their field to fill.
-    bookingUrl: httpsUrl(),
+    // Optional since the placement model: without a calendar the client asks
+    // through XPORTAL and the operator introduces both sides by mail.
+    bookingUrl: optionalHttpsUrl,
+    seeking: z.enum(SEEKING_OPTIONS).default("projects"),
+    referral: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .max(40)
+      .nullish()
+      .transform((value) => (value && REFERRAL_PATTERN.test(value) ? value : null)),
     applicantNote: optionalText(2_000),
     cv: z
       .object({
@@ -230,7 +245,7 @@ export type ApplicationInsert = {
   currency: CurrencyCode | null;
   availability_status: AvailabilityStatus;
   availability_from: string | null;
-  booking_url: string;
+  booking_url: string | null;
   applicant_note: string | null;
   cv_storage_path: string | null;
   cv_original_filename: string | null;
@@ -238,6 +253,8 @@ export type ApplicationInsert = {
   cv_size_bytes: number | null;
   consent_at: string;
   source: "apply_form";
+  seeking: Seeking;
+  referral: string | null;
 };
 
 export function applicationInsertFromInput(
@@ -275,6 +292,8 @@ export function applicationInsertFromInput(
     cv_size_bytes: input.cv?.sizeBytes ?? null,
     consent_at: context.consentAt,
     source: "apply_form",
+    seeking: input.seeking,
+    referral: input.referral,
   };
 }
 
@@ -289,7 +308,7 @@ export type ApplicationRow = ApplicationInsert & {
 };
 
 export const APPLICATION_COLUMNS =
-  "id,status,submitted_by_user_id,full_name,contact_email,contact_phone,website_url,role_title,experience_summary,skills,languages,qualifications,industries,location_text,work_modes,hourly_rate_minor,day_rate_minor,currency,availability_status,availability_from,booking_url,applicant_note,cv_storage_path,cv_original_filename,cv_mime_type,cv_size_bytes,consent_at,source,review_notes,reviewed_by_user_id,reviewed_at,published_profile_id,created_at,updated_at";
+  "id,status,submitted_by_user_id,full_name,contact_email,contact_phone,website_url,role_title,experience_summary,skills,languages,qualifications,industries,location_text,work_modes,hourly_rate_minor,day_rate_minor,currency,availability_status,availability_from,booking_url,applicant_note,cv_storage_path,cv_original_filename,cv_mime_type,cv_size_bytes,consent_at,source,review_notes,reviewed_by_user_id,reviewed_at,published_profile_id,created_at,updated_at,seeking,referral";
 
 export function slugFromName(displayName: string): string {
   const base = displayName
@@ -330,9 +349,10 @@ export const PublishDecisionSchema = z
     ...rateShape,
     availabilityStatus: z.enum(AVAILABILITY_STATUSES),
     availabilityFrom: optionalDate,
-    // Required: a profile without an HTTPS booking URL is filtered out of every
-    // shortlist, so publishing one would look successful and change nothing.
-    bookingUrl: httpsUrl(),
+    // Optional: with the placement model on, a profile without a calendar is
+    // still matched; requests reach it through the operator.
+    bookingUrl: optionalHttpsUrl,
+    seeking: z.enum(SEEKING_OPTIONS).default("projects"),
     introPolicy: z.enum(INTRO_POLICIES).default("free"),
     verificationStatus: z
       .enum(VERIFICATION_STATUSES)
@@ -429,7 +449,8 @@ export type ProfileInsert = {
   availability_from: string | null;
   availability_updated_at: string;
   intro_policy: IntroPolicy;
-  booking_url: string;
+  booking_url: string | null;
+  seeking: Seeking;
   demo_status: "real";
 };
 
@@ -482,6 +503,7 @@ export function profileInsertFromDecision(
     availability_updated_at: context.checkedAt,
     intro_policy: decision.introPolicy,
     booking_url: decision.bookingUrl,
+    seeking: decision.seeking,
     demo_status: "real",
   };
 }
@@ -504,7 +526,8 @@ export function decisionDefaultsFromApplication(row: ApplicationRow) {
     currency: row.currency ?? "EUR",
     availabilityStatus: row.availability_status,
     availabilityFrom: row.availability_from ?? "",
-    bookingUrl: row.booking_url,
+    bookingUrl: row.booking_url ?? "",
+    seeking: row.seeking ?? "projects",
     introPolicy: "free" as const,
     verificationStatus: "identity_checked" as const,
     referencesSummary: "",

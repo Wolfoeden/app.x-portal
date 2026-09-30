@@ -4,5 +4,7 @@
   "clientCssGzipTotalBytes": 48000,
   "clientCssGzipLargestBytes": 22000,
   "publicAssetsTotalBytes": 250000,
-  "publicAssetLargestBytes": 150000
+  "publicAssetLargestBytes": 150000,
+  "publicVideoTotalBytes": 2400000,
+  "publicVideoLargestBytes": 1300000
 }

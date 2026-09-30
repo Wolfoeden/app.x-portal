@@ -3,12 +3,14 @@ import { z } from "zod";
 
 import { writeAuditEvent } from "@/lib/audit/write";
 import { requireAdminUser } from "@/lib/auth/current-user";
+import { StripeRequestError } from "@/lib/billing/stripe-api";
 import { placementRequestsEnabled } from "@/lib/placement/config";
 import {
   recordEngagement,
   recordFeeStatus,
   recordNoEngagement,
 } from "@/lib/placement/engagements";
+import { BillingDetailsSchema, issuePlacementInvoice } from "@/lib/placement/invoices";
 import {
   approvePlacementRequest,
   declinePlacementRequest,
@@ -46,6 +48,7 @@ const ActionSchema = z.discriminatedUnion("action", [
     .strict(),
   z.object({ action: z.literal("no_engagement") }).strict(),
   z.object({ action: z.literal("invoiced"), reference: z.string().trim().min(1).max(120) }).strict(),
+  z.object({ action: z.literal("issue_invoice"), billing: BillingDetailsSchema }).strict(),
   z.object({ action: z.literal("paid") }).strict(),
 ]);
 
@@ -64,7 +67,7 @@ export async function POST(
     assertSameOrigin(request);
     const [{ id: rawId }, admin] = await Promise.all([context.params, requireAdminUser()]);
     const id = z.string().uuid().parse(rawId);
-    const input = ActionSchema.parse(await readJsonWithLimit(request, 1_000));
+    const input = ActionSchema.parse(await readJsonWithLimit(request, 4_000));
     const audit = (action: string, metadata: Record<string, string | number | boolean | null>) =>
       writeAuditEvent({
         actorUserId: admin.id,
@@ -112,6 +115,17 @@ export async function POST(
         await audit("placement_fee_invoiced", { clientUserId: result.clientUserId, feeMinor: result.feeMinor });
         return NextResponse.json(result);
       }
+      case "issue_invoice": {
+        const result = await issuePlacementInvoice(id, input.billing);
+        await audit("placement_fee_invoiced", {
+          clientUserId: result.clientUserId,
+          feeMinor: result.feeMinor,
+          totalMinor: result.totalMinor,
+          invoiceNumber: result.number,
+          via: "stripe",
+        });
+        return NextResponse.json(result);
+      }
       case "paid": {
         const result = await recordFeeStatus(id, { status: "paid" });
         await audit("placement_fee_paid", { clientUserId: result.clientUserId, feeMinor: result.feeMinor });
@@ -119,9 +133,20 @@ export async function POST(
       }
     }
   } catch (error) {
-    if (error instanceof Response) return error;
+    if (error instanceof Response) {
+      // Die Domänenfehler tragen ihren Grund als Text; die Oberfläche liest JSON.
+      const message = await error.text().catch(() => "");
+      return NextResponse.json({ error: message || "Die Aktion ist nicht möglich." }, { status: error.status });
+    }
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: "Ungültige Aktion." }, { status: 400 });
+      const field = error.issues[0];
+      return NextResponse.json(
+        { error: field?.path.includes("billing") ? `Rechnungsanschrift: ${field.message}` : "Ungültige Aktion." },
+        { status: 400 },
+      );
+    }
+    if (error instanceof StripeRequestError) {
+      return NextResponse.json({ error: `Stripe: ${error.message}` }, { status: error.status >= 500 ? 503 : 502 });
     }
     return NextResponse.json(
       { error: "Die Anfrage konnte gerade nicht bearbeitet werden." },

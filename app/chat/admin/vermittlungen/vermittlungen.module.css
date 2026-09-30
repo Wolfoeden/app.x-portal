@@ -246,3 +246,57 @@
   color: #51534c;
   font-size: 13px;
 }
+
+/* Rechnung über Stripe */
+.invoiceForm {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.billingGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px 14px;
+}
+
+.billingGrid .reason input {
+  width: 100%;
+}
+
+.country,
+.hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.country {
+  align-self: end;
+}
+
+.invoiceLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.invoiceLinks a {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.manualInvoice summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.manualInvoice[open] summary {
+  margin-bottom: 8px;
+}

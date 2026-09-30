@@ -125,6 +125,13 @@ export type PlacementRequestRow = {
     feeStatus: "open" | "invoiced" | "paid" | "waived" | null;
     invoiceReference: string | null;
     termsVersion: string | null;
+    /** Stripe-Rechnung: Link zur Rechnungsseite, PDF, Fälligkeit. */
+    invoiceUrl: string | null;
+    invoicePdfUrl: string | null;
+    invoiceDueOn: string | null;
+    viaStripe: boolean;
+    billingCompany: string | null;
+    billingEmail: string | null;
   } | null;
 };
 
@@ -137,6 +144,12 @@ type EngagementRow = {
   fee_status: "open" | "invoiced" | "paid" | "waived" | null;
   invoice_reference: string | null;
   terms_version: string | null;
+  invoice_url: string | null;
+  invoice_pdf_url: string | null;
+  invoice_due_on: string | null;
+  stripe_invoice_id: string | null;
+  billing_company: string | null;
+  billing_email: string | null;
 };
 
 type BookingRow = {
@@ -186,7 +199,9 @@ export async function listPlacementRequests(
     admin.from("freelancer_profiles").select("id,display_name,role_title,booking_url,owner_user_id").in("id", profileIds),
     admin
       .from("engagements")
-      .select("intro_booking_id,day_rate_minor,project_days,starts_on,fee_minor,fee_status,invoice_reference,terms_version")
+      .select(
+        "intro_booking_id,day_rate_minor,project_days,starts_on,fee_minor,fee_status,invoice_reference,terms_version,invoice_url,invoice_pdf_url,invoice_due_on,stripe_invoice_id,billing_company,billing_email",
+      )
       .in("intro_booking_id", bookings.map((row) => row.id)),
   ]);
   if (projects.error) throw projects.error;
@@ -255,6 +270,12 @@ export async function listPlacementRequests(
             feeStatus: engagement.fee_status,
             invoiceReference: engagement.invoice_reference,
             termsVersion: engagement.terms_version,
+            invoiceUrl: engagement.invoice_url ?? null,
+            invoicePdfUrl: engagement.invoice_pdf_url ?? null,
+            invoiceDueOn: engagement.invoice_due_on ?? null,
+            viaStripe: Boolean(engagement.stripe_invoice_id),
+            billingCompany: engagement.billing_company ?? null,
+            billingEmail: engagement.billing_email ?? null,
           }
         : null,
     };

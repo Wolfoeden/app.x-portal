@@ -1,6 +1,7 @@
 "use client";
 
 import type { ProjectListItem } from "../chat-contract";
+import { IconMore } from "../icons";
 
 export function sidebarAccountButtonClassName(isAccountUser: boolean): string {
   return `sidebar-account-button${isAccountUser ? "" : " is-guest-login"}`;
@@ -58,7 +59,7 @@ export function SidebarChatList({
             onClick={() => onManage(chat)}
             aria-label={`${chat.title} verwalten`}
           >
-            •••
+            <IconMore size={18} />
           </button>
         </li>
       ))}
