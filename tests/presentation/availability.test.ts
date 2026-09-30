@@ -21,7 +21,36 @@ describe("availability with its date", () => {
       title: "Angabe vom 21.09.2026",
       reason: "Als verfügbar angegeben am 21.09.2026.",
       openPoint: null,
+      statedOn: "21.09.2026",
+      stale: false,
     });
+  });
+
+  // Audit F05: Ein Status sagt über das konkrete Projekt wenig; ein
+  // angegebenes Startdatum schon.
+  it("names a start date in the future instead of the bare status", () => {
+    expect(availabilityNotice("available", "2026-09-21T08:00:00.000Z", NOW, { availableFrom: "2026-11-01" }).label)
+      .toBe("Frei ab 01.11. · Stand 21.09.");
+    expect(availabilityNotice("limited", "2026-09-21T08:00:00.000Z", NOW, { availableFrom: "2027-01-15" }).label)
+      .toBe("Begrenzt frei ab 15.01.2027 · Stand 21.09.");
+    expect(availabilityNotice("available", null, NOW, { availableFrom: "2026-11-01" }).label).toBe("Frei ab 01.11.");
+  });
+
+  it("keeps the status once the start date has passed or is not a date", () => {
+    expect(availabilityNotice("available", "2026-09-21T08:00:00.000Z", NOW, { availableFrom: "2026-09-01" }).label)
+      .toBe("Verfügbar · Stand 21.09.");
+    expect(availabilityNotice("available", "2026-09-21T08:00:00.000Z", NOW, { availableFrom: "demnächst" }).label)
+      .toBe("Verfügbar · Stand 21.09.");
+    expect(availabilityNotice("unavailable", "2026-09-21T08:00:00.000Z", NOW, { availableFrom: "2026-11-01" }).label)
+      .toBe("Nicht verfügbar · Stand 21.09.");
+  });
+
+  it("says XPORTAL confirms an old statement before the introduction when it introduces", () => {
+    const notice = availabilityNotice("available", "2026-08-08T12:00:00.000Z", NOW, { confirmedBy: "introduction" });
+    expect(notice.stale).toBe(true);
+    expect(notice.openPoint).toBe(
+      "Verfügbarkeit zuletzt am 08.08.2026 angegeben; XPORTAL bestätigt sie vor der Vorstellung.",
+    );
   });
 
   // Am 28.09.2026 stammte die Angabe bei 56 von 68 aktiven Profilen aus der

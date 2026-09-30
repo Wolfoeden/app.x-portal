@@ -43,6 +43,21 @@ export type AvailabilityNotice = {
   reason: string | null;
   /** Ein offener Punkt für das Erstgespräch, wenn die Angabe alt ist. */
   openPoint: string | null;
+  /** Der Tag der Angabe, z. B. „21.09.2026“; `null` ohne Datum. */
+  statedOn: string | null;
+  /** Älter als {@link AVAILABILITY_FRESH_DAYS} Tage: vor einer Zusage bestätigen. */
+  stale: boolean;
+};
+
+export type AvailabilityOptions = {
+  /** Das angegebene Startdatum des Freelancers (ISO-Datum), falls es eines gibt. */
+  availableFrom?: string | null;
+  /**
+   * Wer eine alte Angabe bestätigt. Im Vermittlungsmodell prüft XPORTAL die
+   * Verfügbarkeit vor der Vorstellung (Audit F05); sonst klärt es der Kunde
+   * im Erstgespräch.
+   */
+  confirmedBy?: "call" | "introduction";
 };
 
 function validDate(value: string | null): Date | null {
@@ -66,24 +81,39 @@ function fullDate(date: Date): string {
   }).format(date);
 }
 
+/**
+ * „Frei ab 01.11.“ statt „Verfügbar“, wenn der Freelancer ein Startdatum in
+ * der Zukunft angegeben hat: Der Status allein sagt über das konkrete
+ * Projekt wenig (Audit F05).
+ */
+function statusLabelFor(status: AvailabilityStatus, availableFrom: string | null | undefined, now: Date): string {
+  const from = availableFrom && /^\d{4}-\d{2}-\d{2}$/u.test(availableFrom) ? validDate(`${availableFrom}T00:00:00`) : null;
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (!from || from <= today || (status !== "available" && status !== "limited")) return STATUS_LABELS[status];
+  return `${status === "limited" ? "Begrenzt frei" : "Frei"} ab ${dayMonth(from, now)}`;
+}
+
 export function availabilityNotice(
   status: AvailabilityStatus,
   updatedAt: string | null,
   now: Date = new Date(),
+  options: AvailabilityOptions = {},
 ): AvailabilityNotice {
   const date = validDate(updatedAt);
-  const statusLabel = STATUS_LABELS[status];
+  const statusLabel = statusLabelFor(status, options.availableFrom, now);
   const reason = status === "available" ? AVAILABILITY_CONFIRMED_REASON : null;
 
   // „Offen“ hat keinen Stand, und ohne Datum lässt sich keiner nennen. Ein
   // „verfügbar“ ohne Datum bleibt deshalb vorsichtig formuliert.
   if (status === "unknown" || !date) {
     return {
-      label: status === "available" ? "Grundsätzlich verfügbar" : statusLabel,
+      label: status === "available" && statusLabel === STATUS_LABELS.available ? "Grundsätzlich verfügbar" : statusLabel,
       tone: status,
       title: null,
       reason,
       openPoint: null,
+      statedOn: null,
+      stale: false,
     };
   }
 
@@ -99,6 +129,8 @@ export function availabilityNotice(
       title,
       reason: status === "available" ? `Als verfügbar angegeben am ${fullDate(date)}.` : null,
       openPoint: null,
+      statedOn: fullDate(date),
+      stale: false,
     };
   }
 
@@ -107,6 +139,11 @@ export function availabilityNotice(
     tone: "stale",
     title,
     reason: null,
-    openPoint: `Verfügbarkeit zuletzt am ${fullDate(date)} angegeben; im Erstgespräch bestätigen lassen.`,
+    openPoint:
+      options.confirmedBy === "introduction"
+        ? `Verfügbarkeit zuletzt am ${fullDate(date)} angegeben; XPORTAL bestätigt sie vor der Vorstellung.`
+        : `Verfügbarkeit zuletzt am ${fullDate(date)} angegeben; im Erstgespräch bestätigen lassen.`,
+    statedOn: fullDate(date),
+    stale: true,
   };
 }

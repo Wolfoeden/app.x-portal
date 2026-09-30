@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { appPath } from "@/lib/app-path";
+import { placementRequestsEnabled } from "@/lib/placement/config";
 import type { ProfilePageAction } from "@/lib/profile/profile-link";
 
 import type { FreelancerProfileResult, ProjectMode } from "../chat-contract";
@@ -64,7 +65,10 @@ export function PublicProfileCard({
   const [expanded, setExpanded] = useState(expandedByDefault);
   const [requestOpen, setRequestOpen] = useState(false);
   const [copy, setCopy] = useState<"idle" | "copied" | "failed">("idle");
-  const availability = availabilityNotice(profile.availabilityStatus, profile.availabilityUpdatedAt);
+  const availability = availabilityNotice(profile.availabilityStatus, profile.availabilityUpdatedAt, new Date(), {
+    availableFrom: profile.availableFrom ?? null,
+    confirmedBy: placementRequestsEnabled() ? "introduction" : "call",
+  });
   const skills = [...new Set(profile.skillTags)];
   const shownSkills = skills.slice(0, SKILLS_IN_SUMMARY);
   const hiddenSkills = skills.length - shownSkills.length;

@@ -87,6 +87,8 @@ export interface FreelancerProfileResult {
   rate: string | null;
   availabilityStatus: AvailabilityStatus;
   availabilityUpdatedAt: string | null;
+  /** Das angegebene Startdatum (ISO-Datum). Fehlt bei älteren gespeicherten Ergebnissen. */
+  availableFrom?: string | null;
   matchReasons: string[];
   knownGaps: string[];
   /** Null on historical matches whose evaluation was never stored. */
