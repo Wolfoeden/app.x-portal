@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
   booking: vi.fn(),
   audit: vi.fn(),
   inserted: [] as unknown[],
+  anonymous: false,
+  rateAllowed: true,
 }));
 
 vi.mock("server-only", () => ({}));
@@ -13,10 +15,13 @@ vi.mock("@/lib/audit/write", () => ({ writeAuditEvent: mocks.audit }));
 vi.mock("@/lib/auth/current-user", () => ({
   requireCurrentUser: async () => ({
     id: "11111111-1111-4111-8111-111111111111",
-    email: "kundin@example.invalid",
-    isAnonymous: false,
+    email: mocks.anonymous ? null : "kundin@example.invalid",
+    isAnonymous: mocks.anonymous,
     isAdmin: false,
   }),
+}));
+vi.mock("@/lib/security/shared-rate-limit", () => ({
+  consumeRateLimit: async () => ({ allowed: mocks.rateAllowed, retryAfterSeconds: 60 }),
 }));
 
 /**
@@ -325,5 +330,84 @@ describe("Anfrage im Vermittlungsmodell", () => {
     );
 
     expect(response.status).toBe(404);
+  });
+});
+
+describe("Anfrage ohne Konto", () => {
+  const VERSION = "vermittlung-2026-09-1";
+  const gast = { email: "Einkauf@Firma.example", company: "Firma GmbH", name: "Erika Muster" };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.inserted.length = 0;
+    mocks.anonymous = true;
+    mocks.rateAllowed = true;
+    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test";
+    mocks.deliver.mockResolvedValue({ delivered: true });
+    mocks.audit.mockResolvedValue("trace");
+  });
+
+  afterEach(() => {
+    mocks.anonymous = false;
+    vi.unstubAllEnvs();
+  });
+
+  it("nimmt die Anfrage eines Gastes mit E-Mail und Firma an", async () => {
+    mocks.booking
+      .mockReturnValueOnce({ data: null, error: null, count: 0 })
+      .mockReturnValueOnce({ data: null, error: null })
+      .mockReturnValueOnce({
+        data: { id: "77777777-7777-4777-8777-777777777777", status: "manual_review", requested_at: new Date().toISOString() },
+        error: null,
+      });
+
+    const response = await POST(anfrage({ placementTermsVersion: VERSION, guestContact: gast }));
+    expect(response.status).toBe(200);
+
+    expect(mocks.inserted[0]).toMatchObject({
+      contact_email: "einkauf@firma.example",
+      contact_company: "Firma GmbH",
+      contact_name: "Erika Muster",
+      status: "manual_review",
+    });
+    expect(mocks.audit.mock.calls[0][0].metadata).toMatchObject({ guest: true, company: "Firma GmbH" });
+    const meldung = mocks.deliver.mock.calls[0][0];
+    expect(meldung.text).toContain("einkauf@firma.example");
+    expect(meldung.text).toContain("Firma: Firma GmbH · Erika Muster");
+    expect(meldung.text).toContain("Ohne Konto angefragt");
+  });
+
+  it("verlangt vom Gast E-Mail und Firma", async () => {
+    const response = await POST(anfrage({ placementTermsVersion: VERSION }));
+    expect(response.status).toBe(400);
+    expect(mocks.inserted).toEqual([]);
+  });
+
+  it("weist einen ausgefüllten Honigtopf ab", async () => {
+    const response = await POST(
+      anfrage({ placementTermsVersion: VERSION, guestContact: { ...gast, website: "https://spam.example" } }),
+    );
+    expect(response.status).toBe(400);
+    expect(mocks.inserted).toEqual([]);
+  });
+
+  it("begrenzt Anfragen ohne Konto auf drei am Tag", async () => {
+    mocks.booking.mockReturnValueOnce({ data: null, error: null, count: 3 });
+    const response = await POST(anfrage({ placementTermsVersion: VERSION, guestContact: gast }));
+    expect(response.status).toBe(429);
+    expect(mocks.inserted).toEqual([]);
+  });
+
+  it("begrenzt Anfragen ohne Konto je Adresse", async () => {
+    mocks.rateAllowed = false;
+    const response = await POST(anfrage({ placementTermsVersion: VERSION, guestContact: gast }));
+    expect(response.status).toBe(429);
+  });
+
+  it("bleibt ohne Vermittlungsmodell bei der Anmeldung", async () => {
+    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "false");
+    const response = await POST(anfrage({ guestContact: gast }));
+    expect(response.status).toBe(409);
   });
 });

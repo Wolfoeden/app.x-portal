@@ -33,6 +33,8 @@ const SIGNATURE = ["Viele Grüße", "Roman Dering", "XPORTAL"];
 export function placementRequestNotice(input: {
   siteUrl: string;
   clientEmail: string | null;
+  /** Nur bei einer Anfrage ohne Konto: was der Gast angegeben hat. */
+  guest?: { company: string; name: string | null } | null;
   freelancerName: string;
   freelancerRole: string;
   projectTitle: string | null;
@@ -46,6 +48,12 @@ export function placementRequestNotice(input: {
       "",
       `Freelancer: ${input.freelancerName} — ${input.freelancerRole}`,
       `Anfragende Person: ${input.clientEmail ?? "unbekannt"}`,
+      ...(input.guest
+        ? [
+            `Firma: ${input.guest.company}${input.guest.name ? ` · ${input.guest.name}` : ""}`,
+            "Ohne Konto angefragt: Die E-Mail-Adresse ist nicht bestätigt. Vor der Vorstellung kurz prüfen.",
+          ]
+        : []),
       `Projekt: ${project(input.projectTitle)}`,
       `Vermittlungsbedingungen: ${PLACEMENT_TERMS.version} (zugestimmt)`,
       input.freelancerReachable
@@ -119,31 +127,19 @@ export function introductionForFreelancer(
   };
 }
 
-export type AnswerLinks = { engaged: string; talking: string; no_engagement: string };
-
-function answerLines(links: AnswerLinks): string[] {
-  return [
-    "Ein Klick genügt:",
-    "",
-    "Ja, beauftragt:",
-    links.engaged,
-    "",
-    "Noch im Gespräch:",
-    links.talking,
-    "",
-    "Nein, keine Zusammenarbeit:",
-    links.no_engagement,
-  ];
-}
-
 /** Nach „Guten Tag …,“ geht der Brief klein weiter. */
 function sinceIntroduction(round: 1 | 2): string {
   return round === 1 ? "vor zwei Wochen" : "vor gut sechs Wochen";
 }
 
-/** Nachfrage an den Kunden, 14 und 45 Tage nach der Vorstellung. */
+/**
+ * Hinweis an den Kunden, 14 und 45 Tage nach der Vorstellung.
+ *
+ * Die Frage selbst steht in „Gespräche“; die Mail sagt nur, dass sie wartet,
+ * und führt mit einem Link ohne Anmeldung dorthin.
+ */
 export function followUpForClient(
-  input: Omit<IntroductionParties, "clientEmail"> & { round: 1 | 2; links: AnswerLinks },
+  input: Omit<IntroductionParties, "clientEmail"> & { round: 1 | 2; link: string },
 ): Message {
   const t = PLACEMENT_TERMS;
   return {
@@ -151,9 +147,10 @@ export function followUpForClient(
     text: [
       greeting(input.clientName),
       "",
-      `${sinceIntroduction(input.round)} haben wir Ihnen ${input.freelancerName} für „${project(input.projectTitle)}“ vorgestellt. Kam es zur Zusammenarbeit?`,
+      `${sinceIntroduction(input.round)} haben wir Ihnen ${input.freelancerName} für „${project(input.projectTitle)}“ vorgestellt. In Ihren Gesprächen bei XPORTAL wartet dazu eine kurze Frage: Kam es zur Beauftragung?`,
       "",
-      ...answerLines(input.links),
+      "Antworten mit einem Klick:",
+      input.link,
       "",
       `Bei einer Beauftragung fällt das Vermittlungshonorar an (${t.feePercent} % des vereinbarten Honorars der ersten ${t.feeMonths} Monate). Wir melden uns dann mit den Einzelheiten.`,
       `Vermittlungsbedingungen: ${input.siteUrl}${PLACEMENT_TERMS_PATH}`,
@@ -163,18 +160,19 @@ export function followUpForClient(
   };
 }
 
-/** Nachfrage an den Freelancer, zur selben Zeit. */
+/** Derselbe Hinweis an den Freelancer, zur selben Zeit. */
 export function followUpForFreelancer(
-  input: IntroductionParties & { round: 1 | 2; links: AnswerLinks },
+  input: IntroductionParties & { round: 1 | 2; link: string },
 ): Message {
   return {
     subject: `Kurze Frage zur Anfrage über XPORTAL: ${project(input.projectTitle)}`,
     text: [
       greeting(input.freelancerName),
       "",
-      `${sinceIntroduction(input.round)} haben wir Ihnen ${input.clientName?.trim() || input.clientEmail} für „${project(input.projectTitle)}“ vorgestellt. Kam es zur Zusammenarbeit?`,
+      `${sinceIntroduction(input.round)} haben wir Ihnen ${input.clientName?.trim() || input.clientEmail} für „${project(input.projectTitle)}“ vorgestellt. In Ihren Gesprächen bei XPORTAL wartet dazu eine kurze Frage: Kam es zur Beauftragung?`,
       "",
-      ...answerLines(input.links),
+      "Antworten mit einem Klick:",
+      input.link,
       "",
       "Die Vermittlung bleibt für Sie kostenlos.",
       "",

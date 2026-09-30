@@ -1,6 +1,5 @@
 import "server-only";
 
-import { accountNameFromMetadata } from "@/lib/auth/account-name";
 import { contactInbox } from "@/lib/contact/messages";
 import { deliverEmail } from "@/lib/email/deliver";
 import { logEvent } from "@/lib/security/request";
@@ -8,7 +7,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 import {
   answerTokensConfigured,
-  answerUrl,
+  conversationUrl,
   mintAnswerToken,
   readAnswerToken,
   type AnswerRole,
@@ -17,15 +16,15 @@ import { PLACEMENT_TERMS, placementFeeCents } from "./config";
 import {
   followUpDue,
   outcomeReplaces,
+  roleQuestionDue,
   type PlacementOutcome,
 } from "./follow-up-rules";
 import {
   engagementReportedNotice,
   followUpForClient,
   followUpForFreelancer,
-  type AnswerLinks,
 } from "./messages";
-import { freelancerContactEmail, INTRODUCED_STATUSES } from "./requests";
+import { clientContact, freelancerContactEmail, INTRODUCED_STATUSES } from "./requests";
 
 type Admin = ReturnType<typeof createAdminSupabaseClient>;
 
@@ -47,10 +46,24 @@ type IntroRow = {
   confirmed_at: string | null;
   outcome: PlacementOutcome | null;
   follow_up_count: number;
+  contact_email?: string | null;
+  contact_name?: string | null;
+  contact_company?: string | null;
+  client_outcome?: PlacementOutcome | null;
+  client_outcome_at?: string | null;
+  freelancer_outcome?: PlacementOutcome | null;
+  freelancer_outcome_at?: string | null;
 };
 
 const INTRO_COLUMNS =
-  "id,status,project_id,owner_user_id,freelancer_profile_id,confirmed_at,outcome,follow_up_count";
+  "id,status,project_id,owner_user_id,freelancer_profile_id,confirmed_at,outcome,follow_up_count,contact_email,contact_name,contact_company,client_outcome,client_outcome_at,freelancer_outcome,freelancer_outcome_at";
+
+/** Was diese Seite zuletzt gesagt hat, und wann. */
+function answerOf(row: IntroRow, role: AnswerRole) {
+  return role === "client"
+    ? { answer: row.client_outcome ?? null, answeredAt: row.client_outcome_at ?? null }
+    : { answer: row.freelancer_outcome ?? null, answeredAt: row.freelancer_outcome_at ?? null };
+}
 
 async function loadIntroduced(admin: Admin, id: string): Promise<IntroRow> {
   const { data, error } = await admin.from("intro_bookings").select(INTRO_COLUMNS).eq("id", id).maybeSingle();
@@ -193,22 +206,9 @@ export async function recordFeeStatus(
   return { feeMinor: engagement.fee_minor ?? 0, clientUserId: intro.owner_user_id };
 }
 
-async function contact(admin: Admin, userId: string) {
-  const { data } = await admin.auth.admin.getUserById(userId);
-  return {
-    email: data?.user?.email?.trim() || null,
-    name: accountNameFromMetadata(data?.user?.user_metadata),
-  };
-}
-
-function links(siteUrl: string, requestId: string, role: AnswerRole): AnswerLinks | null {
+function hintLink(siteUrl: string, requestId: string, role: AnswerRole): string | null {
   const token = mintAnswerToken(requestId, role);
-  if (!token) return null;
-  return {
-    engaged: answerUrl(siteUrl, token, "engaged"),
-    talking: answerUrl(siteUrl, token, "talking"),
-    no_engagement: answerUrl(siteUrl, token, "no_engagement"),
-  };
+  return token ? conversationUrl(siteUrl, token) : null;
 }
 
 type FollowUpRow = IntroRow & { hasEngagement: boolean };
@@ -238,24 +238,38 @@ async function followUpCandidates(admin: Admin): Promise<FollowUpRow[]> {
 /** Wie viele Nachfragen heute fällig sind. Für die Admin-Seite. */
 export async function countDueFollowUps(now = new Date()): Promise<number> {
   const rows = await followUpCandidates(createAdminSupabaseClient());
-  return rows.filter((row) =>
-    followUpDue(
-      {
-        status: row.status,
-        confirmedAt: row.confirmed_at,
-        outcome: row.outcome,
-        followUpCount: row.follow_up_count,
-        hasEngagement: row.hasEngagement,
-      },
+  return rows.filter((row) => followUpDue(candidateOf(row), now)).length;
+}
+
+function candidateOf(row: FollowUpRow) {
+  return {
+    status: row.status,
+    confirmedAt: row.confirmed_at,
+    outcome: row.outcome,
+    followUpCount: row.follow_up_count,
+    hasEngagement: row.hasEngagement,
+    clientAnswer: row.client_outcome ?? null,
+    freelancerAnswer: row.freelancer_outcome ?? null,
+  };
+}
+
+/** Ob die Frage an diese Seite gerade offen ist. */
+function questionOpen(row: FollowUpRow, role: AnswerRole, now: Date): boolean {
+  return (
+    roleQuestionDue(
+      { status: row.status, confirmedAt: row.confirmed_at, hasEngagement: row.hasEngagement, ...answerOf(row, role) },
       now,
-    ),
-  ).length;
+    ) !== null
+  );
 }
 
 /**
- * Alle fälligen Nachfragen verschicken.
+ * Alle fälligen Hinweise verschicken, einmal am Tag über den Zeitplan und bei
+ * Bedarf von Hand aus dem Admin.
  *
- * Der Zähler steigt nur, wenn er noch auf dem alten Wert steht. Laufen zwei
+ * Die Frage selbst steht in „Gespräche“; die Mail weist nur darauf hin. Jede
+ * Seite bekommt den Hinweis nur, solange ihre eigene Frage offen ist. Der
+ * Zähler steigt nur, wenn er noch auf dem alten Wert steht: Laufen zwei
  * Durchgänge gleichzeitig, verschickt nur einer.
  */
 export async function sendDueFollowUps(siteUrl: string, now = new Date()) {
@@ -268,16 +282,7 @@ export async function sendDueFollowUps(siteUrl: string, now = new Date()) {
   let failed = 0;
 
   for (const row of rows) {
-    const round = followUpDue(
-      {
-        status: row.status,
-        confirmedAt: row.confirmed_at,
-        outcome: row.outcome,
-        followUpCount: row.follow_up_count,
-        hasEngagement: row.hasEngagement,
-      },
-      now,
-    );
+    const round = followUpDue(candidateOf(row), now);
     if (!round) continue;
 
     const { data: claimed, error } = await admin
@@ -291,7 +296,7 @@ export async function sendDueFollowUps(siteUrl: string, now = new Date()) {
     if (!claimed) continue;
 
     const [client, profile, project] = await Promise.all([
-      contact(admin, row.owner_user_id),
+      clientContact(admin, row),
       admin
         .from("freelancer_profiles")
         .select("display_name,role_title,owner_user_id")
@@ -306,18 +311,18 @@ export async function sendDueFollowUps(siteUrl: string, now = new Date()) {
     }
     const parties = {
       siteUrl,
-      clientName: client.name,
+      clientName: client.name ?? client.company,
       clientEmail: client.email,
       freelancerName: profileRow.display_name,
       freelancerRole: profileRow.role_title,
       projectTitle: (project.data as { title: string | null } | null)?.title ?? null,
     };
 
-    const clientLinks = links(siteUrl, row.id, "client");
-    if (clientLinks) {
+    const clientLink = questionOpen(row, "client", now) ? hintLink(siteUrl, row.id, "client") : null;
+    if (clientLink) {
       const result = await deliverEmail({
         to: client.email,
-        ...followUpForClient({ ...parties, round, links: clientLinks }),
+        ...followUpForClient({ ...parties, round, link: clientLink }),
         kind: "transactional",
       });
       if (result.delivered) sent += 1;
@@ -327,12 +332,14 @@ export async function sendDueFollowUps(siteUrl: string, now = new Date()) {
       }
     }
 
-    const freelancerEmail = await freelancerContactEmail(admin, row.freelancer_profile_id, profileRow.owner_user_id).catch(() => null);
-    const freelancerLinks = links(siteUrl, row.id, "freelancer");
-    if (freelancerEmail && freelancerLinks) {
+    const freelancerLink = questionOpen(row, "freelancer", now) ? hintLink(siteUrl, row.id, "freelancer") : null;
+    const freelancerEmail = freelancerLink
+      ? await freelancerContactEmail(admin, row.freelancer_profile_id, profileRow.owner_user_id).catch(() => null)
+      : null;
+    if (freelancerEmail && freelancerLink) {
       const result = await deliverEmail({
         to: freelancerEmail,
-        ...followUpForFreelancer({ ...parties, round, links: freelancerLinks }),
+        ...followUpForFreelancer({ ...parties, round, link: freelancerLink }),
         kind: "transactional",
       });
       if (result.delivered) sent += 1;
@@ -367,35 +374,47 @@ export async function describeAnswerRequest(token: string) {
 }
 
 /**
- * Eine Antwort speichern. Meldet jemand „beauftragt“, geht eine Mail an den
+ * Eine Antwort speichern, aus „Gespräche“ oder über den Link aus der Mail.
+ *
+ * Die Antwort dieser Seite steht immer für sich (`client_outcome` bzw.
+ * `freelancer_outcome`). Der zusammengefasste Stand `outcome` ändert sich nur
+ * nach `outcomeReplaces`. Meldet jemand „beauftragt“, geht eine Mail an den
  * Betreiber: Er erfragt dann Tagessatz, Tage und Start und erfasst die
  * Beauftragung.
  */
-export async function recordAnswer(token: string, answer: PlacementOutcome, siteUrl: string) {
-  const parsed = readAnswerToken(token);
-  if (!parsed) throw new Response("Dieser Link ist ungültig.", { status: 404 });
+export async function recordRoleAnswer(
+  requestId: string,
+  role: AnswerRole,
+  answer: PlacementOutcome,
+  siteUrl: string,
+) {
   const admin = createAdminSupabaseClient();
-  const intro = await loadIntroduced(admin, parsed.requestId);
+  const intro = await loadIntroduced(admin, requestId);
   const hasEngagement = Boolean(await engagementFor(admin, intro.id));
-  if (!outcomeReplaces(intro.outcome, answer, hasEngagement)) {
-    return { recorded: false, requestId: intro.id, clientUserId: intro.owner_user_id, role: parsed.role };
+  if (hasEngagement) {
+    return { recorded: false, requestId: intro.id, clientUserId: intro.owner_user_id, role };
   }
+  const now = new Date().toISOString();
+  const previous = answerOf(intro, role).answer;
+  const replaces = outcomeReplaces(intro.outcome, answer, hasEngagement);
+  const values: Record<string, unknown> =
+    role === "client"
+      ? { client_outcome: answer, client_outcome_at: now }
+      : { freelancer_outcome: answer, freelancer_outcome_at: now };
+  if (replaces) Object.assign(values, { outcome: answer, outcome_source: role, outcome_reported_at: now });
 
-  const { error } = await admin
-    .from("intro_bookings")
-    .update({ outcome: answer, outcome_source: parsed.role, outcome_reported_at: new Date().toISOString() })
-    .eq("id", intro.id);
+  const { error } = await admin.from("intro_bookings").update(values).eq("id", intro.id);
   if (error) throw error;
 
-  if (answer === "engaged" && intro.outcome !== "engaged") {
+  if (answer === "engaged" && previous !== "engaged") {
     const [client, profile, project] = await Promise.all([
-      contact(admin, intro.owner_user_id),
+      clientContact(admin, intro),
       admin.from("freelancer_profiles").select("display_name").eq("id", intro.freelancer_profile_id).maybeSingle(),
       admin.from("projects").select("title").eq("id", intro.project_id).maybeSingle(),
     ]);
     const notice = engagementReportedNotice({
       siteUrl,
-      role: parsed.role,
+      role,
       clientEmail: client.email,
       freelancerName: (profile.data as { display_name?: string } | null)?.display_name ?? "Unbekanntes Profil",
       projectTitle: (project.data as { title?: string | null } | null)?.title ?? null,
@@ -403,5 +422,12 @@ export async function recordAnswer(token: string, answer: PlacementOutcome, site
     const result = await deliverEmail({ to: contactInbox(), ...notice, kind: "transactional" });
     if (!result.delivered) logEvent("placement_outcome_notice_failed", { requestId: intro.id, reason: result.reason });
   }
-  return { recorded: true, requestId: intro.id, clientUserId: intro.owner_user_id, role: parsed.role };
+  return { recorded: true, requestId: intro.id, clientUserId: intro.owner_user_id, role };
+}
+
+/** Die Antwort über den Link aus der Mail: Vorgang und Seite stehen im Token. */
+export async function recordAnswer(token: string, answer: PlacementOutcome, siteUrl: string) {
+  const parsed = readAnswerToken(token);
+  if (!parsed) throw new Response("Dieser Link ist ungültig.", { status: 404 });
+  return recordRoleAnswer(parsed.requestId, parsed.role, answer, siteUrl);
 }

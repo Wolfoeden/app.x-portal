@@ -6,6 +6,7 @@ import {
   previewAuth,
   previewBrief,
   previewCollections,
+  previewConversations,
   previewGuestAuth,
   previewMessages,
   previewProfiles,
@@ -95,8 +96,11 @@ export default async function ChatPreviewPage({
         },
       ];
 
+  const view = params.view === "conversations" ? "conversations" : "chat";
+
   return (
     <ChatWorkspace
+      view={view}
       previewData={{
         auth: authParam === "guest" ? previewGuestAuth : previewAuth,
         projects: automation
@@ -116,6 +120,7 @@ export default async function ChatPreviewPage({
         resultState: state === "empty" ? "ranked" : state === "partial" ? "no_match" : state,
         showcase: automationShowcase,
         collections: previewCollections,
+        conversations: previewConversations,
       }}
     />
   );

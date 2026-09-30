@@ -34,8 +34,11 @@ function processSteps(placement: boolean) {
   return [
     { title: "Projekttext kopieren", text: "Nehmen Sie die Beschreibung aus Ihrer bestehenden Ausschreibung.", icon: <StepIcon kind="brief" />, startsAt: 0 },
     { title: "Bei XPORTAL einfügen", text: "XPORTAL erkennt Anforderungen und schlägt passende Profile vor.", icon: <StepIcon kind="profiles" />, startsAt: 3.5 },
+    // Der tatsächliche Weg im Vermittlungsmodell: anfragen, XPORTAL prüft und
+    // stellt vor, erst danach der Termin. Eine Buchung ohne Anfrage gibt es
+    // dort nicht, also verspricht die Seite auch keine.
     placement
-      ? { title: "Erstgespräch buchen", text: "Profil anfragen, XPORTAL stellt Sie vor. Mit Terminlink wählen Sie danach selbst einen freien Slot.", icon: <StepIcon kind="conversation" />, startsAt: 8.7 }
+      ? { title: "Freelancer anfragen", text: "Auch ohne Konto. XPORTAL prüft die Verfügbarkeit und stellt Sie per E-Mail vor; danach vereinbaren Sie das Erstgespräch.", icon: <StepIcon kind="conversation" />, startsAt: 8.7 }
       : { title: "Erstgespräch buchen", text: "Passendes Profil prüfen und bei vorhandenem Terminlink einen freien Slot wählen.", icon: <StepIcon kind="conversation" />, startsAt: 8.7 },
   ];
 }
@@ -107,7 +110,7 @@ export function FreelancerLanding() {
       <header className={styles.hero}>
         <div className={styles.heroCopy}>
           <p className={styles.eyebrow}>Für Recruiter mit fertiger Projektanzeige</p>
-          <h1>Freelancer finden.<br /><span>Termin buchen.</span></h1>
+          <h1>Freelancer finden.<br /><span>{placement ? "Kostenlos anfragen." : "Termin buchen."}</span></h1>
           <p className={styles.lead}>
             {placement
               ? "Projektbeschreibung bei XPORTAL einfügen, passende Profile prüfen und den Freelancer anfragen. XPORTAL stellt Sie vor; bezahlt wird nur, wenn Sie beauftragen."
@@ -118,7 +121,7 @@ export function FreelancerLanding() {
             <li><span aria-hidden="true">✓</span> Analyse kostenlos und ohne Anmeldung</li>
             {placement ? (
               <>
-                <li><span aria-hidden="true">✓</span> Anfrage und Vorstellung kostenlos</li>
+                <li><span aria-hidden="true">✓</span> Anfrage ohne Konto, Vorstellung kostenlos</li>
                 <li><span aria-hidden="true">✓</span> {PLACEMENT_TERMS.feePercent} % Honorar nur bei Beauftragung, <Link href={PLACEMENT_TERMS_PATH}>Bedingungen</Link></li>
               </>
             ) : (
@@ -137,7 +140,7 @@ export function FreelancerLanding() {
       </header>
 
       <section className={styles.process} id="ablauf" aria-labelledby="ablauf-title">
-        <div className={styles.sectionHead}><p className={styles.eyebrow}>Von der Ausschreibung zum Termin</p><h2 id="ablauf-title">Einfügen. Buchen.</h2></div>
+        <div className={styles.sectionHead}><p className={styles.eyebrow}>Von der Ausschreibung zum Erstgespräch</p><h2 id="ablauf-title">{placement ? "Einfügen. Anfragen." : "Einfügen. Buchen."}</h2></div>
         <ProcessVideo steps={processSteps(placement)} />
       </section>
 
@@ -179,7 +182,7 @@ export function FreelancerLanding() {
       </section>
 
       <section className={styles.conversation} aria-labelledby="auswahl-title"><Image src="/images/landing/project-conversation.webp" alt="Auftraggeber und Freelancer besprechen gemeinsam eine Projektbeschreibung am Tisch." width={1536} height={1024} sizes="(max-width: 760px) calc(100vw - 40px), (max-width: 1260px) 44vw, 520px" loading="lazy" /><div className={styles.explanation}><p className={styles.eyebrow}>Vom Match ins Gespräch</p>{placement ? (
-        <><h2 id="auswahl-title">Passendes Profil gefunden?<br />Anfragen, wir stellen vor.</h2><p>Mit einem Klick fragen Sie den Freelancer an. XPORTAL stellt Sie beide per Mail vor; mit Terminlink wählen Sie danach selbst einen freien Slot. Erfahrung, Honorar und Verfügbarkeit klären Sie im Gespräch. Kommt es zur Beauftragung, berechnen wir einmalig {PLACEMENT_TERMS.feePercent} % des Honorars der ersten {PLACEMENT_TERMS.feeMonths} Monate.</p></>
+        <><h2 id="auswahl-title">Passendes Profil gefunden?<br />Anfragen, wir stellen vor.</h2><p>Mit einem Klick fragen Sie den Freelancer an, auch ohne Konto. XPORTAL prüft die Verfügbarkeit und stellt Sie beide per Mail vor; mit Terminlink wählen Sie danach selbst einen freien Slot. Den Stand sehen Sie unter „Gespräche“. Erfahrung, Honorar und Verfügbarkeit klären Sie im Gespräch. Kommt es zur Beauftragung, berechnen wir einmalig {PLACEMENT_TERMS.feePercent} % des Honorars der ersten {PLACEMENT_TERMS.feeMonths} Monate.</p></>
       ) : (
         <><h2 id="auswahl-title">Passendes Profil gefunden?<br />Termin direkt buchen.</h2><p>Nach der Anmeldung öffnen Sie bei Profilen mit Terminlink die externe Terminseite und wählen selbst einen freien Slot. Erfahrung, Honorar und Verfügbarkeit klären Sie anschließend gemeinsam.</p></>
       )}<ProjectLink>Projekt jetzt einfügen</ProjectLink></div></section>

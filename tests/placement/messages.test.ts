@@ -96,23 +96,21 @@ describe("placement emails", () => {
 });
 
 describe("follow-up emails", () => {
-  const links = {
-    engaged: "https://x-portal.eu/vermittlung/antwort?t=abc&a=engaged",
-    talking: "https://x-portal.eu/vermittlung/antwort?t=abc&a=talking",
-    no_engagement: "https://x-portal.eu/vermittlung/antwort?t=abc&a=no_engagement",
-  };
+  const link = "https://x-portal.eu/gespraeche?t=abc";
 
-  it("asks the client with three links and repeats the fee", () => {
-    const mail = followUpForClient({ ...PARTIES, round: 1, links });
+  it("points the client to the question in Gespräche and repeats the fee", () => {
+    const mail = followUpForClient({ ...PARTIES, round: 1, link });
 
     expect(mail.subject).toBe("Kurze Frage zu Mira Falk");
     expect(mail.text).toContain("vor zwei Wochen haben wir Ihnen Mira Falk");
-    for (const link of Object.values(links)) expect(mail.text).toContain(link);
+    expect(mail.text).toContain("In Ihren Gesprächen bei XPORTAL wartet dazu eine kurze Frage");
+    expect(mail.text).toContain(link);
+    expect(mail.text).not.toContain("/vermittlung/antwort");
     expect(mail.text).toContain("10 % des vereinbarten Honorars der ersten 3 Monate");
   });
 
   it("asks the freelancer later with the client's name and keeps it free for them", () => {
-    const mail = followUpForFreelancer({ ...PARTIES, round: 2, links });
+    const mail = followUpForFreelancer({ ...PARTIES, round: 2, link });
 
     expect(mail.text).toContain("vor gut sechs Wochen haben wir Ihnen Erika Muster");
     expect(mail.text).toContain("kostenlos");

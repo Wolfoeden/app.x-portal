@@ -328,6 +328,19 @@
   white-space: nowrap;
 }
 
+.sidebar-row-badge {
+  margin-left: auto;
+  min-width: 20px;
+  border-radius: var(--radius-pill);
+  background: var(--ink);
+  padding: 0 6px;
+  color: #fff;
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  line-height: 20px;
+  text-align: center;
+}
+
 .sidebar-row-hint,
 .sidebar-row-count,
 .collection-title small,
@@ -584,6 +597,7 @@
   .is-collapsed .sidebar-secondary-nav,
   .is-collapsed .sidebar-row-hint,
   .is-collapsed .sidebar-row-count,
+  .is-collapsed .sidebar-row-badge,
   .is-collapsed .sidebar-account-copy,
   .is-collapsed .sidebar-plan-link,
   .is-collapsed .sidebar-resize-handle {
@@ -3444,6 +3458,201 @@ a.secondary-action {
   margin-top: 18px;
 }
 
+.placement-next {
+  margin: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  padding: 10px 12px;
+  color: var(--ink-soft);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+
+.placement-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.placement-fields label {
+  display: grid;
+  gap: 5px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.placement-fields small {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.placement-field-wide {
+  grid-column: 1 / -1;
+}
+
+.placement-trap {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+@media (max-width: 560px) {
+  .placement-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Gespräche ------------------------------------------------------------ */
+
+.conversation-list {
+  display: grid;
+  gap: 12px;
+}
+
+.conversation-card {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  padding: 16px 18px;
+}
+
+.conversation-card.has-question {
+  border-color: var(--ink);
+}
+
+.conversation-card header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+}
+
+.conversation-card h2 {
+  margin: 2px 0 0;
+  font-size: var(--fs-md);
+  font-weight: 650;
+}
+
+.conversation-card header p,
+.conversation-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+
+.conversation-role {
+  color: var(--muted-light);
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.conversation-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.conversation-steps li {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  align-items: center;
+  gap: 1px 7px;
+  font-size: var(--fs-xs);
+}
+
+.conversation-steps li > span {
+  display: grid;
+  grid-row: span 2;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+}
+
+.conversation-steps li[data-state="done"] > span {
+  border-color: var(--green);
+  background: var(--green);
+  color: #fff;
+}
+
+.conversation-steps li[data-state="current"] > span {
+  border-color: var(--ink);
+}
+
+.conversation-steps small {
+  color: var(--muted);
+}
+
+.conversation-question {
+  display: grid;
+  gap: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  padding: 12px 14px;
+}
+
+.conversation-question p {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.conversation-question small {
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+}
+
+.conversation-answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.conversation-report summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+.conversation-report .conversation-answers {
+  margin-top: 10px;
+}
+
+.conversation-note button {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+}
+
+@media (max-width: 560px) {
+  .conversation-steps {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Merkliste und Gespräche brauchen mobil denselben Rand wie der Chat. */
+@media (max-width: 860px) {
+  .team-page {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+}
+
 .contact-dialog-header {
   padding: 2px 45px 19px 1px;
   border-bottom: 1px solid var(--border);
@@ -4183,7 +4392,8 @@ a.secondary-action {
 .project-dialog h2 { margin: 0; font-size: var(--fs-xl); letter-spacing: -.035em; }
 .project-dialog > p { margin: 0; color: var(--muted); line-height: 1.55; }
 .project-dialog > label { font-size: var(--fs-sm); font-weight: 650; }
-.project-dialog > input {
+.project-dialog > input,
+.placement-fields input {
   min-height: 46px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);

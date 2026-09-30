@@ -26,7 +26,6 @@ export const dynamic = "force-dynamic";
 
 const dateTime = new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" });
 
-const SOURCE_LABELS = { client: "Kunde", freelancer: "Freelancer", operator: "Betreiber" } as const;
 const INTRODUCED = new Set(["ready_to_book", "booked", "completed"]);
 
 const STATUS_LABELS: Record<PlacementRequestRow["status"], string> = {
@@ -37,6 +36,15 @@ const STATUS_LABELS: Record<PlacementRequestRow["status"], string> = {
   completed: "Gespräch geführt",
   cancelled: "Abgelehnt",
 };
+
+/**
+ * Beide Seiten werden getrennt gefragt. Sagt eine „beauftragt“ und die andere
+ * „nein“, ist das der Fall, in dem ein Honorar verloren gehen kann.
+ */
+function answersConflict(row: PlacementRequestRow): boolean {
+  const answers = [row.clientAnswer, row.freelancerAnswer];
+  return answers.includes("engaged") && answers.includes("no_engagement");
+}
 
 function RequestCard({ row, invoicingReady }: { row: PlacementRequestRow; invoicingReady: boolean }) {
   const open = row.status === "manual_review";
@@ -51,7 +59,15 @@ function RequestCard({ row, invoicingReady }: { row: PlacementRequestRow; invoic
       </header>
       <dl className={styles.facts}>
         <div><dt>Projekt</dt><dd>{row.projectTitle ?? "ohne Titel"}</dd></div>
-        <div><dt>Kunde</dt><dd>{row.clientName ? `${row.clientName}, ` : ""}{row.clientEmail ?? "ohne E-Mail"}</dd></div>
+        <div>
+          <dt>Kunde</dt>
+          <dd className={row.clientIsGuest ? styles.missing : undefined}>
+            {row.clientCompany ? `${row.clientCompany}, ` : ""}
+            {row.clientName ? `${row.clientName}, ` : ""}
+            {row.clientEmail ?? "ohne E-Mail"}
+            {row.clientIsGuest ? " · ohne Konto, E-Mail unbestätigt" : ""}
+          </dd>
+        </div>
         <div><dt>Angefragt</dt><dd>{dateTime.format(new Date(row.requestedAt))}</dd></div>
         <div>
           <dt>Freelancer erreichbar</dt>
@@ -64,10 +80,11 @@ function RequestCard({ row, invoicingReady }: { row: PlacementRequestRow; invoic
         {INTRODUCED.has(row.status) ? (
           <div>
             <dt>Rückmeldung</dt>
-            <dd>
-              {row.outcome
-                ? `${PLACEMENT_OUTCOME_LABELS[row.outcome]}${row.outcomeSource ? ` (${SOURCE_LABELS[row.outcomeSource]})` : ""}`
-                : "noch keine"}
+            <dd className={answersConflict(row) ? styles.missing : undefined}>
+              Kunde: {row.clientAnswer ? PLACEMENT_OUTCOME_LABELS[row.clientAnswer] : "noch keine"}
+              {" · "}Freelancer: {row.freelancerAnswer ? PLACEMENT_OUTCOME_LABELS[row.freelancerAnswer] : "noch keine"}
+              {row.outcomeSource === "operator" && row.outcome ? ` · Betreiber: ${PLACEMENT_OUTCOME_LABELS[row.outcome]}` : ""}
+              {answersConflict(row) ? " · Widerspruch, bitte klären" : ""}
             </dd>
           </div>
         ) : null}

@@ -90,6 +90,7 @@ export const NON_INDEXABLE_PREFIXES = [
   "/api/",
   "/chat/admin/",
   "/mein-team",
+  "/gespraeche",
   "/booking/",
   "/auth/",
   // Consistent with the existing noindex headers for /chat/* in netlify.toml.
