@@ -248,6 +248,11 @@ export interface AiAnalysisStep {
 
 export interface AiAnalysisTrace {
   provider: AiAnalysisProviderStatus;
+  /**
+   * Nur nach einer Basisanalyse: Angaben aus dem Text, die nicht sicher
+   * übernommen wurden (z. B. „Startdatum“). Leer, wenn nichts aufgefallen ist.
+   */
+  reviewNeeded?: string[] | null;
   /** Diagnostic input only; the UI renders fixed public milestones. */
   steps: AiAnalysisStep[];
   externalSearchAvailable: boolean;

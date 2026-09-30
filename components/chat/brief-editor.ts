@@ -12,6 +12,8 @@
  * im Verlauf — sonst aendert sich die Trefferliste, ohne dass im Gespraech
  * ersichtlich waere, warum.
  */
+import { BRIEF_EDIT_MARKER } from "@/lib/domain/brief-edit-marker";
+
 import type { ProjectMode, StructuredBrief } from "../chat-contract";
 
 export type BriefDraftField =
@@ -171,7 +173,7 @@ export function composeBriefUpdateMessage(changes: BriefChange[]): string {
     return `- ${label}: ${value}`;
   });
   return [
-    "Ich habe die Projektdaten angepasst. Bitte suche mit diesem Stand erneut:",
+    `${BRIEF_EDIT_MARKER} Bitte suche mit diesem Stand erneut:`,
     ...lines,
   ].join("\n");
 }
