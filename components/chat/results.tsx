@@ -88,6 +88,7 @@ import { EXTERNAL_SEARCH_CREDITS } from "@/lib/ai/credit-policy";
 
 import { AgentLaunchPanel, agentLaunchState } from "./agent-launch";
 import { initials, isRecord, nullableString } from "./shared";
+import { profileCheck, VERIFICATION_HELP } from "./verification";
 
 const observedProfileCards = new Set<string>();
 
@@ -1100,6 +1101,7 @@ export function ProfileCard({
 }) {
   const verifiedFacts = profile.facts.filter((fact) => fact.verification === "verified");
   const selfReportedFacts = profile.facts.filter((fact) => fact.verification === "self-reported");
+  const check = profileCheck(profile.referenceStatus);
   const isPartial = profile.recommendationRole === "partial";
   const presentation = profilePresentation(profile, brief);
   const cvAction = cvActionState(profile, isAccountUser);
@@ -1243,6 +1245,14 @@ export function ProfileCard({
           ) : null}
           <FactGroup label="Vom Freelancer angegeben" facts={selfReportedFacts.map((fact) => fact.value)} />
         </div>
+        <details className="verification-help">
+          <summary>Was bedeuten die Kennzeichnungen?</summary>
+          <dl>
+            {VERIFICATION_HELP.map((entry) => (
+              <div key={entry.term}><dt>{entry.term}</dt><dd>{entry.text}</dd></div>
+            ))}
+          </dl>
+        </details>
 
         <dl className="profile-meta-grid">
           <DetailTerm label="Arbeitsmodus" value={profile.remoteMode === "unknown" ? null : modeLabel(profile.remoteMode)} />
@@ -1251,9 +1261,9 @@ export function ProfileCard({
           <DetailTerm label="Verfügbarkeit angegeben" value={profile.availabilityUpdatedAt ? formatDateTime(profile.availabilityUpdatedAt) : null} />
         </dl>
 
-        {profile.referenceStatus ? (
-          <p className={`reference-note ${profile.referenceStatus === "Verifiziert" ? "is-verified" : "is-unverified"}`}>
-            <span aria-hidden="true">{profile.referenceStatus === "Verifiziert" ? <IconCheck size={12} /> : <IconInfo size={12} />}</span> Referenzstatus: {profile.referenceStatus}
+        {check ? (
+          <p className={`reference-note ${check.verified ? "is-verified" : "is-unverified"}`}>
+            <span aria-hidden="true">{check.verified ? <IconCheck size={12} /> : <IconInfo size={12} />}</span> {check.text}
           </p>
         ) : null}
 

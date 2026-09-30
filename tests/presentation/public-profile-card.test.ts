@@ -40,7 +40,8 @@ describe("profile card on its own page", () => {
     expect(markup).toContain("Testing");
     expect(markup).not.toContain("GraphQL");
     expect(markup).toContain("+2 weitere");
-    expect(markup).toContain("Referenzen geprüft");
+    expect(markup).toContain("Profil geprüft");
+    expect(markup).not.toContain("Referenzen geprüft");
   });
 
   // Die Karte ist gekürzt: Belege und Details stehen erst im aufgeklappten Profil.

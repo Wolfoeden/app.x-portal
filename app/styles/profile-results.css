@@ -159,3 +159,7 @@
 .dismissed-refine { display: grid; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
 .dismissed-refine > p { margin: 0; color: var(--muted); font-size: var(--fs-xs); line-height: 1.5; }
 .dismissed-refine .brief-editor-fields { grid-template-columns: minmax(0, 1fr); }
+.verification-help summary { cursor: pointer; color: var(--muted); font-size: var(--fs-xs); }
+.verification-help dl { display: grid; gap: 8px; margin: 8px 0 0; }
+.verification-help dt { font-size: var(--fs-xs); font-weight: 600; }
+.verification-help dd { margin: 2px 0 0; color: var(--muted); font-size: var(--fs-xs); }
