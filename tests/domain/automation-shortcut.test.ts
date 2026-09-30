@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 import { applyBriefPatch, buildShortlist, evaluateProfile, FreelancerProfileSchema, parseFallbackBrief } from "@/lib/domain";
 import { buildDeterministicBrief, reconcileAiBrief } from "@/lib/openai/brief";
+import { exampleBrief } from "@/components/chat/example-briefs";
 import { automationRequest } from "@/components/chat/preview-fixtures";
 import { profileFixtures } from "./fixtures";
 
@@ -24,11 +25,8 @@ function automationProfile(id: string, displayName: string, role: string, skills
 }
 
 describe("automation shortcut semantics", () => {
-  it("is the brief the chat shortcut writes into the composer", async () => {
-    const source = await import("node:fs/promises").then((fs) =>
-      fs.readFile(new URL("../../components/chat/welcome.tsx", import.meta.url), "utf8"),
-    );
-    expect(source).toContain(request);
+  it("is the brief the chat shortcut writes into the composer", () => {
+    expect(exampleBrief("ki-automatisierung")?.draftPrefix).toBe(request);
     expect(automationRequest).toBe(request);
   });
 

@@ -2,37 +2,12 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 
+import { EXAMPLE_BRIEFS, type ExampleBrief } from "./example-briefs";
 import { loadRegisteredShowcase } from "./registered-showcase";
 
-/**
- * Der KI-Brief nennt kein einzelnes Werkzeug mehr. Mit „n8n-Workflows“ fiel
- * durch, wer Agenten, Make oder Zapier baut und kein n8n nennt — genau die
- * Freelancer, die sich für KI-Automatisierung angemeldet haben. Kern bleibt das
- * LLM, RAG ist optional.
- *
- * `showcase` zeigt unter dem Brief, wer sich für das Thema selbst angemeldet
- * hat (components/chat/registered-showcase.tsx).
- */
-const suggestions = [
-  {
-    label: "KI & Automatisierung",
-    draftPrefix:
-      "Wir wollen wiederkehrende Abläufe mit KI automatisieren: Workflow-Automatisierungen bauen und ein LLM an unsere Bestandssysteme anbinden, perspektivisch auch RAG auf unsere eigenen Dokumente. Projektbasis, remote, Start kurzfristig.",
-    intro:
-      "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Was Sie nicht erwähnen, ergänze ich nicht.",
-    showcase: "automation",
-  },
-  {
-    label: "SAP",
-    draftPrefix:
-      "Wir suchen Unterstützung im SAP-Umfeld: SAP S/4HANA, Anbindung an unsere bestehenden Systeme und Begleitung der Migration. Erfahrung mit SAP FI/CO oder SAP HCM ist willkommen. Projektbasis, remote möglich, Start in den nächsten Wochen.",
-    intro:
-      "Ein Beispiel-Brief steht im Eingabefeld — passen Sie ihn an oder schicken Sie ihn direkt ab. Was Sie nicht erwähnen, ergänze ich nicht.",
-    showcase: null,
-  },
-] as const;
+const suggestions = EXAMPLE_BRIEFS;
 
-export type GuidedSuggestion = (typeof suggestions)[number];
+export type GuidedSuggestion = ExampleBrief;
 
 /** Anrede für Gäste und für Konten, zu denen kein Name bekannt ist. */
 const FALLBACK_ADDRESSEE = "Recruiter";

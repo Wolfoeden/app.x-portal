@@ -1,7 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { JsonLd } from "@/components/JsonLd";
+import { EXAMPLE_BRIEFS, exampleBriefPath, type ExampleBriefKey } from "@/components/chat/example-briefs";
 import { ProjectLink, Questions } from "./MarketingPage";
+import { ProcessVideo } from "./ProcessVideo";
 import { MARKETING_PAGE } from "@/lib/seo";
 import { breadcrumbStructuredData } from "@/lib/structured-data";
 import { BRIEF_ANALYSIS_CREDITS, CREDIT_PLANS, countLabel, roundedExampleCount } from "@/lib/ai/credit-policy";
@@ -15,6 +17,22 @@ function StepIcon({ kind }: { kind: "brief" | "profiles" | "conversation" }) {
     {kind === "conversation" ? <><path d="M10 11h32a5 5 0 0 1 5 5v17a5 5 0 0 1-5 5H24L12 48V38h-2a5 5 0 0 1-5-5V16a5 5 0 0 1 5-5Z" /><path d="M47 25h7a5 5 0 0 1 5 5v16a5 5 0 0 1-5 5v8L43 51H32m-17-29h22m-22 8h15" /></> : null}
   </svg>;
 }
+
+/**
+ * Die Schritte sind die Kapitel des Ablauf-Videos; `startsAt` ist die Sekunde,
+ * ab der das Video den Schritt zeigt (public/videos/ablauf.webm, 13,5 s).
+ */
+const PROCESS_STEPS = [
+  { title: "Projekttext kopieren", text: "Nehmen Sie die Beschreibung aus Ihrer bestehenden Ausschreibung.", icon: <StepIcon kind="brief" />, startsAt: 0 },
+  { title: "Bei XPORTAL einfügen", text: "XPORTAL erkennt Anforderungen und schlägt passende Profile vor.", icon: <StepIcon kind="profiles" />, startsAt: 3.5 },
+  { title: "Erstgespräch buchen", text: "Passendes Profil prüfen und bei vorhandenem Terminlink einen freien Slot wählen.", icon: <StepIcon kind="conversation" />, startsAt: 8.7 },
+];
+
+/** Was ein Beispiel auf der Landingpage verspricht, in einem Satz. */
+const EXAMPLE_TEASERS: Readonly<Record<ExampleBriefKey, string>> = {
+  "ki-automatisierung": "Workflows automatisieren, ein LLM anbinden, RAG auf eigene Dokumente.",
+  anforderungen: "Anforderungen aufnehmen, Prozesse analysieren, Umsetzung abstimmen.",
+};
 
 const MONTHLY_PLANS: readonly FixedMonthlyPlan[] = PUBLIC_PRICING_PLANS.flatMap((plan) =>
   plan.billingModel === "fixed_monthly" ? [plan] : [],
@@ -80,24 +98,45 @@ export function FreelancerLanding() {
 
       <section className={styles.process} id="ablauf" aria-labelledby="ablauf-title">
         <div className={styles.sectionHead}><p className={styles.eyebrow}>Von der Ausschreibung zum Termin</p><h2 id="ablauf-title">Einfügen. Buchen.</h2></div>
-        <ol className={styles.steps}>
-          <li><div className={styles.stepTop}><StepIcon kind="brief" /><span>01</span></div><h3>Projekttext kopieren</h3><p>Nehmen Sie die Beschreibung aus Ihrer bestehenden Ausschreibung.</p></li>
-          <li><div className={styles.stepTop}><StepIcon kind="profiles" /><span>02</span></div><h3>Bei XPORTAL einfügen</h3><p>XPORTAL erkennt Anforderungen und schlägt passende Profile vor.</p></li>
-          <li><div className={styles.stepTop}><StepIcon kind="conversation" /><span>03</span></div><h3>Erstgespräch buchen</h3><p>Passendes Profil prüfen und bei vorhandenem Terminlink einen freien Slot wählen.</p></li>
-        </ol>
+        <ProcessVideo steps={PROCESS_STEPS} />
       </section>
 
       <section className={styles.evidence} id="begruendung" aria-labelledby="begruendung-title">
         <div className={styles.explanation}><p className={styles.eyebrow}>Mehr als eine Ergebnisliste</p><h2 id="begruendung-title">Sehen, warum<br />es passen könnte.</h2><p>XPORTAL stellt Ihre Anforderungen den Profilangaben gegenüber. Passende Skills und fehlende Informationen werden sichtbar.</p><Link className={styles.textLink} href={MARKETING_PAGE.matching.path}>Mehr zum KI-Matching <span aria-hidden="true">↗</span></Link></div>
         <figure className={styles.example}>
           <figcaption>So lesen Sie ein Ergebnis <span>Illustratives Beispiel · kein reales Profil</span></figcaption>
-          <div className={styles.brief}><span>Ihr Projekt</span><p>„React-Entwicklung, remote.<br />Start im Oktober.“</p></div>
+          <div className={styles.brief}><span>Ihr Projekt</span><p>„KI-Automatisierung, remote.<br />Start im November.“</p></div>
           <div className={styles.connector} aria-hidden="true">↓</div>
-          <div className={styles.profile}><div className={styles.profileHead}><span className={styles.avatar} aria-hidden="true">R</span><div><strong>React-Entwicklung</strong><span>Beispielprofil</span></div></div><dl><div><dt>React</dt><dd className={styles.match}><span aria-hidden="true">✓</span> Im Profil genannt</dd></div><div><dt>Remote</dt><dd className={styles.match}><span aria-hidden="true">✓</span> Arbeitsmodus passt</dd></div><div><dt>Start im Oktober</dt><dd className={styles.open}><span aria-hidden="true">?</span> Noch zu klären</dd></div></dl></div>
+          <div className={styles.profile}><div className={styles.profileHead}><span className={styles.avatar} aria-hidden="true">K</span><div><strong>KI-Automatisierung</strong><span>Beispielprofil</span></div></div><dl><div><dt>Automatisierung</dt><dd className={styles.match}><span aria-hidden="true">✓</span> Im Profil genannt</dd></div><div><dt>Remote</dt><dd className={styles.match}><span aria-hidden="true">✓</span> Arbeitsmodus passt</dd></div><div><dt>Start im November</dt><dd className={styles.open}><span aria-hidden="true">?</span> Noch zu klären</dd></div></dl></div>
         </figure>
       </section>
 
-      <section className={styles.fields} aria-labelledby="felder-title"><div><p className={styles.eyebrow}>Zum Beispiel für</p><h2 id="felder-title">Was möchten Sie umsetzen?</h2></div><ul><li>Softwareentwicklung</li><li>SAP &amp; Integration</li><li>KI &amp; Automatisierung</li><li>Anforderungen &amp; Prozesse</li></ul><Link className={styles.textLink} href={MARKETING_PAGE.it.path}>IT-Projekt konkretisieren <span aria-hidden="true">↗</span></Link></section>
+      {/* Früher vier Etiketten, die wie Knöpfe aussahen und nirgendwohin
+          führten. Jetzt öffnet jedes Thema den Chat mit einem Beispielprojekt —
+          nur Themen, die der Profilbestand trägt; alles andere über den eigenen
+          Text. */}
+      <section className={styles.fields} aria-labelledby="felder-title">
+        <div><p className={styles.eyebrow}>Direkt ausprobieren</p><h2 id="felder-title">Was möchten Sie umsetzen?</h2><p className={styles.fieldsLead}>Ein Klick öffnet ein Beispielprojekt, ohne Anmeldung. Anpassen, abschicken, passende Profile sehen.</p></div>
+        <ul className={styles.themeList}>
+          {EXAMPLE_BRIEFS.map((example) => (
+            <li key={example.key}>
+              <Link className={styles.themeLink} href={exampleBriefPath(example.key)} prefetch={false}>
+                <strong>{example.label}</strong>
+                <span>{EXAMPLE_TEASERS[example.key]}</span>
+                <em>Beispiel öffnen <span aria-hidden="true">→</span></em>
+              </Link>
+            </li>
+          ))}
+          <li>
+            <Link className={styles.themeLink} href="/chat" prefetch={false}>
+              <strong>Eigene Ausschreibung</strong>
+              <span>Softwareentwicklung, SAP oder ein anderes IT-Projekt: Text einfügen.</span>
+              <em>Projekt einfügen <span aria-hidden="true">→</span></em>
+            </Link>
+          </li>
+        </ul>
+        <Link className={styles.textLink} href={MARKETING_PAGE.it.path}>IT-Projekt konkretisieren <span aria-hidden="true">↗</span></Link>
+      </section>
 
       <section className={styles.conversation} aria-labelledby="auswahl-title"><Image src="/images/landing/project-conversation.webp" alt="Auftraggeber und Freelancer besprechen gemeinsam eine Projektbeschreibung am Tisch." width={1536} height={1024} sizes="(max-width: 760px) calc(100vw - 40px), (max-width: 1260px) 44vw, 520px" loading="lazy" /><div className={styles.explanation}><p className={styles.eyebrow}>Vom Match ins Gespräch</p><h2 id="auswahl-title">Passendes Profil gefunden?<br />Termin direkt buchen.</h2><p>Nach der Anmeldung öffnen Sie bei Profilen mit Terminlink die externe Terminseite und wählen selbst einen freien Slot. Erfahrung, Honorar und Verfügbarkeit klären Sie anschließend gemeinsam.</p><ProjectLink>Projekt jetzt einfügen</ProjectLink></div></section>
 

@@ -45,7 +45,13 @@ const chunkFiles = await filesBelow(chunksDirectory).catch(() => {
 });
 const javascript = await gzipMetrics(chunkFiles.filter((file) => file.endsWith(".js")));
 const css = await gzipMetrics(chunkFiles.filter((file) => file.endsWith(".css")));
-const publicAssets = await rawMetrics(await filesBelow(path.join(repositoryRoot, "public")));
+// Videos laden erst, wenn ihr Abschnitt ins Bild kommt (`preload="none"`), und
+// gehören deshalb nicht in das Budget des ersten Seitenaufbaus. Sie bekommen
+// ein eigenes, damit eine unkomprimierte Datei trotzdem auffällt.
+const videosDirectory = path.join(repositoryRoot, "public", "videos");
+const publicFiles = await filesBelow(path.join(repositoryRoot, "public"));
+const publicAssets = await rawMetrics(publicFiles.filter((file) => !file.startsWith(videosDirectory + path.sep)));
+const publicVideos = await rawMetrics(publicFiles.filter((file) => file.startsWith(videosDirectory + path.sep)));
 
 const checks = [
   ["Client-JavaScript gesamt (gzip)", javascript.total, budget.clientJavaScriptGzipTotalBytes],
@@ -54,6 +60,8 @@ const checks = [
   ["Groesstes Client-CSS (gzip)", css.largest, budget.clientCssGzipLargestBytes],
   ["Public Assets gesamt", publicAssets.total, budget.publicAssetsTotalBytes],
   ["Groesstes Public Asset", publicAssets.largest, budget.publicAssetLargestBytes],
+  ["Videos gesamt", publicVideos.total, budget.publicVideoTotalBytes],
+  ["Groesstes Video", publicVideos.largest, budget.publicVideoLargestBytes],
 ];
 
 let failed = false;

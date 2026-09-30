@@ -93,6 +93,7 @@ import {
   publicProgressLabel,
   usageSummary,
 } from "./chat/usage-presentation";
+import { exampleBrief } from "./chat/example-briefs";
 import {
   type GuidedSuggestion,
   SuggestionGrid,
@@ -1243,6 +1244,7 @@ export function ChatWorkspace({
   const mobileMenuRef = useRef<HTMLButtonElement>(null);
   const sidebarWasOpenRef = useRef(false);
   const startNewProjectRef = useRef<(() => void) | null>(null);
+  const startGuidedRequestRef = useRef<((suggestion: GuidedSuggestion) => void) | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
@@ -1840,6 +1842,22 @@ export function ChatWorkspace({
           }${window.location.hash}`;
           window.history.replaceState({}, "", cleanUrl);
         }
+        /**
+         * Ein Beispiel von der Landingpage (`?beispiel=ki-automatisierung`):
+         * wirkt wie ein Klick auf den Shortcut. Nicht, wenn der Link zugleich
+         * ein Projekt öffnet oder einen eigenen Text mitbringt.
+         */
+        if (workspaceView === "chat" && searchParams.has("beispiel")) {
+          const example = exampleBrief(searchParams.get("beispiel"));
+          searchParams.delete("beispiel");
+          const cleanUrl = `${window.location.pathname}${
+            searchParams.size ? `?${searchParams.toString()}` : ""
+          }${window.location.hash}`;
+          window.history.replaceState({}, "", cleanUrl);
+          if (example && !requestedProjectId && !prefill?.trim()) {
+            startGuidedRequestRef.current?.(example);
+          }
+        }
         const refreshRecovery = sessionStorage.getItem(REFRESH_RECOVERY_KEY);
         if (refreshRecovery) {
           sessionStorage.removeItem(REFRESH_RECOVERY_KEY);
@@ -2012,6 +2030,12 @@ export function ChatWorkspace({
       textarea?.setSelectionRange(textarea.value.length, textarea.value.length);
     });
   };
+
+  // Der Link-Einstieg `?beispiel=` läuft im Start-Effekt, der vor dieser
+  // Funktion steht; er erreicht sie über den Ref.
+  useEffect(() => {
+    startGuidedRequestRef.current = startGuidedRequest;
+  });
 
   const finishChatResponse = useCallback(
     (result: ChatResponse) => {
