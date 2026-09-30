@@ -8,7 +8,14 @@ import { MARKETING_PAGE } from "@/lib/seo";
 import { breadcrumbStructuredData } from "@/lib/structured-data";
 import { BRIEF_ANALYSIS_CREDITS, CREDIT_PLANS, countLabel, roundedExampleCount } from "@/lib/ai/credit-policy";
 import { PUBLIC_PRICING_PLANS, START_CREDITS, type FixedMonthlyPlan } from "@/lib/billing/plans";
-import { PLACEMENT_TERMS, PLACEMENT_TERMS_PATH, placementRequestsEnabled } from "@/lib/placement/config";
+import {
+  formatWholeEuro,
+  PLACEMENT_EXAMPLE,
+  PLACEMENT_TERMS,
+  PLACEMENT_TERMS_PATH,
+  placementExampleFeeCents,
+  placementRequestsEnabled,
+} from "@/lib/placement/config";
 import styles from "./landing.module.css";
 
 function StepIcon({ kind }: { kind: "brief" | "profiles" | "conversation" }) {
@@ -184,7 +191,7 @@ export function FreelancerLanding() {
         { question: "Was kostet die Suche?", answer: <p>Der technische Gaststart enthält {CREDIT_PLANS.guest.grantCredits} einmalige Credits; nach der Kontoerstellung stehen einmalig {CREDIT_PLANS.trial.grantCredits} Start-Credits bereit. Eine Projektanalyse verbraucht {BRIEF_ANALYSIS_CREDITS} Credits. Kontingente und weitere Aktionen finden Sie auf der <Link href={MARKETING_PAGE.pricing.path}>Preisseite</Link>. Freelancer-Honorare sind separat.</p> },
         { question: "Ist ein passender Freelancer garantiert?", answer: <p>Nein. Ergebnisse hängen von Ihren Anforderungen und den vorhandenen Profilen ab. Profilangaben sind nicht automatisch unabhängig geprüft. Verfügbarkeit, Honorar und offene Fragen klären Sie vor einer Zusammenarbeit. Auch kein passendes Ergebnis wird ausgewiesen.</p> },
         placement
-          ? { question: "Was kostet die Vermittlung?", answer: <p>Suche, Anfrage, Vorstellung und Erstgespräch sind kostenlos. Beauftragen Sie den Freelancer, zahlen Sie einmalig {PLACEMENT_TERMS.feePercent} % des vereinbarten Honorars für die ersten {PLACEMENT_TERMS.feeMonths} Monate (höchstens {PLACEMENT_TERMS.maxFeeDays} Projekttage), zuzüglich Umsatzsteuer, per Rechnung mit {PLACEMENT_TERMS.paymentDays} Tagen Zahlungsziel. Einzelheiten stehen in den <Link href={PLACEMENT_TERMS_PATH}>Vermittlungsbedingungen</Link>.</p> }
+          ? { question: "Was kostet die Vermittlung?", answer: <p>Suche, Anfrage, Vorstellung und Erstgespräch sind kostenlos. Beauftragen Sie den Freelancer, zahlen Sie einmalig {PLACEMENT_TERMS.feePercent} % des vereinbarten Honorars für die ersten {PLACEMENT_TERMS.feeMonths} Monate (höchstens {PLACEMENT_TERMS.maxFeeDays} Projekttage), zuzüglich Umsatzsteuer, per Rechnung mit {PLACEMENT_TERMS.paymentDays} Tagen Zahlungsziel. Beispiel: {formatWholeEuro(PLACEMENT_EXAMPLE.dayRateCents)} Tagessatz und {PLACEMENT_EXAMPLE.projectDays} Projekttage ergeben {formatWholeEuro(placementExampleFeeCents())} netto. Die Rechnung kommt erst nach der Beauftragung, nicht für einen gebuchten Termin. Einzelheiten stehen in den <Link href={PLACEMENT_TERMS_PATH}>Vermittlungsbedingungen</Link>.</p> }
           : { question: "Was bedeutet „direkt buchen“?", answer: <p>Nach der Anmeldung öffnen Sie bei einem Profil mit Terminlink den hinterlegten Buchungskalender und wählen selbst einen freien Slot. Ohne Terminlink ist die direkte Buchung derzeit nicht verfügbar. Der Termin ist ein Erstgespräch und noch keine Beauftragung.</p> },
       ]} /></section>
       <section className={styles.closing} aria-labelledby="start-title"><div><h2 id="start-title">Projektanzeige schon fertig?</h2><p>Kopieren, einfügen und passende Freelancer sehen.</p></div><ProjectLink>Projekt jetzt einfügen</ProjectLink></section>

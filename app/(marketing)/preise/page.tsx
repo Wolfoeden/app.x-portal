@@ -19,7 +19,9 @@ import { ENTERPRISE_CONTACT } from "@/lib/billing/payment-links";
 import {
   PLACEMENT_TERMS,
   PLACEMENT_TERMS_PATH,
-  placementFeeCents,
+  formatWholeEuro,
+  PLACEMENT_EXAMPLE,
+  placementExampleFeeCents,
   placementRequestsEnabled,
   placementTermsSummary,
 } from "@/lib/placement/config";
@@ -157,18 +159,12 @@ const PRICING_QUESTIONS = [
   },
 ] as const;
 
-/** Rechenbeispiel mit einem runden Tagessatz nahe am Median der Profile. */
-const EXAMPLE_DAY_RATE_CENTS = 60_000;
-const EXAMPLE_DAYS = PLACEMENT_TERMS.maxFeeDays;
-
 /**
  * Das Vermittlungsmodell als eigener Abschnitt über den Credit-Tarifen: Suche
  * und Anfrage sind kostenlos, bezahlt wird bei Beauftragung. Die Tarife
  * bleiben für Analysen und KI-Recherchen.
  */
 function PlacementSection() {
-  const euro = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
-  const fee = placementFeeCents(EXAMPLE_DAY_RATE_CENTS, EXAMPLE_DAYS) / 100;
   return (
     <section className={styles.placement} aria-labelledby="placement-title">
       <div>
@@ -182,11 +178,11 @@ function PlacementSection() {
       <aside aria-label="Rechenbeispiel">
         <p>Rechenbeispiel</p>
         <dl>
-          <div><dt>Tagessatz des Freelancers</dt><dd>{euro.format(EXAMPLE_DAY_RATE_CENTS / 100)}</dd></div>
-          <div><dt>Projekttage in {PLACEMENT_TERMS.feeMonths} Monaten</dt><dd>{EXAMPLE_DAYS}</dd></div>
-          <div><dt>Honorar, {PLACEMENT_TERMS.feePercent} %, einmalig</dt><dd>{euro.format(fee)} netto</dd></div>
+          <div><dt>Tagessatz des Freelancers</dt><dd>{formatWholeEuro(PLACEMENT_EXAMPLE.dayRateCents)}</dd></div>
+          <div><dt>Projekttage in den ersten {PLACEMENT_TERMS.feeMonths} Monaten</dt><dd>{PLACEMENT_EXAMPLE.projectDays}</dd></div>
+          <div><dt>Honorar, {PLACEMENT_TERMS.feePercent} %, einmalig</dt><dd>{formatWholeEuro(placementExampleFeeCents())} netto</dd></div>
         </dl>
-        <span>Rechnung nach Projektstart, {PLACEMENT_TERMS.paymentDays} Tage Zahlungsziel. Kommt keine Beauftragung zustande, kostet die Vermittlung nichts.</span>
+        <span>Die Rechnung kommt erst, wenn Sie den Freelancer beauftragt haben, nicht schon für Termin oder Erstgespräch. {PLACEMENT_TERMS.paymentDays} Tage Zahlungsziel. Kommt keine Beauftragung zustande, kostet die Vermittlung nichts.</span>
       </aside>
     </section>
   );

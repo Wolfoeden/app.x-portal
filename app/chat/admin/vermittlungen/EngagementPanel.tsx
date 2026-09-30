@@ -221,7 +221,7 @@ function InvoiceForm({
   if (!invoicingReady) {
     return (
       <p className={styles.hint}>
-        Rechnungen über Stripe sind noch nicht eingerichtet (STRIPE_SECRET_KEY und STRIPE_PLACEMENT_TAX_RATE_ID in Netlify).
+        Rechnungen über Stripe sind noch nicht eingerichtet (STRIPE_SECRET_KEY in Netlify).
         Bis dahin die Rechnung von Hand stellen und unten die Nummer eintragen.
       </p>
     );

@@ -35,8 +35,9 @@ describe("public copy with the placement model on", () => {
     const html = renderToStaticMarkup(createElement(PricingPage));
     expect(html).toContain("Kostenlos suchen.");
     expect(html).toContain("Zahlen bei Beauftragung.");
-    // 600 € × 60 Tage × 10 %
-    expect(html).toMatch(/3\.600\s€ netto/u);
+    // 600 € × 15 Projekttage × 10 %
+    expect(html).toMatch(/900\s€ netto/u);
+    expect(html).toContain("nicht schon für Termin oder Erstgespräch");
     expect(html.indexOf("placement-title")).toBeLessThan(html.indexOf('aria-label="Tarife"'));
     expect(PLACEMENT_TERMS.status).toBe("approved");
   });

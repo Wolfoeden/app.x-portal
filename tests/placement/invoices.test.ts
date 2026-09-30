@@ -63,6 +63,7 @@ type Call = { method: string; path: string; body: URLSearchParams; idempotency: 
 let calls: Call[] = [];
 let invoiceState: Row;
 let taxRate: Row;
+let accountTaxRates: Row[];
 
 function respond(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -76,6 +77,12 @@ function stripeFetch() {
     const headers = new Headers(init?.headers);
     calls.push({ method: init?.method ?? "GET", path, body, idempotency: headers.get("idempotency-key") });
     if (path.startsWith("/tax_rates/")) return respond(taxRate);
+    if (path === "/tax_rates" && (init?.method ?? "GET") === "GET") return respond({ data: accountTaxRates });
+    if (path === "/tax_rates") {
+      const created = { id: "txr_created", active: true, percentage: Number(body.get("percentage")), inclusive: body.get("inclusive") === "true", country: body.get("country") };
+      accountTaxRates.push(created);
+      return respond(created);
+    }
     if (path === "/customers") return respond({ id: "cus_test1" });
     if (path === "/invoices") return respond({ ...invoiceState, id: "in_test1" });
     if (path === "/invoiceitems") {
@@ -117,6 +124,7 @@ beforeEach(() => {
   };
   invoiceState = { id: "in_test1", status: "draft", number: null, hosted_invoice_url: null, invoice_pdf: null, due_date: null, subtotal: 0, total: 0 };
   taxRate = { active: true, percentage: 19, inclusive: false, country: "DE" };
+  accountTaxRates = [];
   vi.stubGlobal("fetch", stripeFetch());
 });
 
@@ -215,10 +223,33 @@ describe("issuing a placement invoice through Stripe", () => {
     expect(calls).toHaveLength(0);
   });
 
-  it("explains a missing Stripe configuration instead of calling Stripe", async () => {
-    vi.stubEnv("STRIPE_PLACEMENT_TAX_RATE_ID", "");
-    await expect(issuePlacementInvoice(INTRO, billing)).rejects.toThrow(/STRIPE_PLACEMENT_TAX_RATE_ID/u);
+  it("explains a missing Stripe key instead of calling Stripe", async () => {
+    vi.stubEnv("STRIPE_SECRET_KEY", "");
+    await expect(issuePlacementInvoice(INTRO, billing)).rejects.toThrow(/STRIPE_SECRET_KEY/u);
     expect(calls).toHaveLength(0);
+  });
+
+  it("uses the account's 19 % German VAT rate when no rate is configured", async () => {
+    vi.stubEnv("STRIPE_PLACEMENT_TAX_RATE_ID", "");
+    accountTaxRates = [
+      { id: "txr_inclusive", active: true, percentage: 19, inclusive: true, country: "DE" },
+      { id: "txr_de19", active: true, percentage: 19, inclusive: false, country: "DE" },
+    ];
+    await issuePlacementInvoice(INTRO, billing);
+    expect(calls[0]).toMatchObject({ method: "GET", path: "/tax_rates" });
+    expect(calls.find((call) => call.path === "/invoices")?.body.get("default_tax_rates[0]")).toBe("txr_de19");
+    expect(calls.some((call) => call.method === "POST" && call.path === "/tax_rates")).toBe(false);
+  });
+
+  it("creates the 19 % German VAT rate once when the account has none", async () => {
+    vi.stubEnv("STRIPE_PLACEMENT_TAX_RATE_ID", "");
+    await issuePlacementInvoice(INTRO, billing);
+    const create = calls.find((call) => call.method === "POST" && call.path === "/tax_rates")!;
+    expect(create.body.get("percentage")).toBe("19");
+    expect(create.body.get("inclusive")).toBe("false");
+    expect(create.body.get("country")).toBe("DE");
+    expect(create.idempotency).toBe("xportal-placement-vat-19-de");
+    expect(calls.find((call) => call.path === "/invoices")?.body.get("default_tax_rates[0]")).toBe("txr_created");
   });
 });
 

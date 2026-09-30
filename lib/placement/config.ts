@@ -46,9 +46,8 @@ export const PLACEMENT_TERMS = {
 
 /**
  * Umsatzsteuer auf das Honorar. XPORTAL ist umsatzsteuerpflichtig
- * (USt-IdNr. im Impressum); der Stripe-Steuersatz aus
- * STRIPE_PLACEMENT_TAX_RATE_ID muss genau diesen Satz haben, das prüft die
- * Rechnungserstellung vor jeder Rechnung.
+ * (USt-IdNr. im Impressum); die Rechnungserstellung nimmt nur einen
+ * Stripe-Steuersatz mit genau diesem Satz, siehe lib/placement/invoices.ts.
  */
 export const PLACEMENT_VAT_PERCENT = 19;
 
@@ -91,6 +90,23 @@ export function placementFeeCents(
   if (!Number.isFinite(projectDays) || projectDays <= 0) return 0;
   const days = Math.min(Math.floor(projectDays), terms.maxFeeDays);
   return Math.round((dayRateCents * days * terms.feePercent) / 100);
+}
+
+/**
+ * Das Rechenbeispiel auf Preisseite, Startseite und in den Bedingungen: ein
+ * Tagessatz nahe am Median der Profile und ein Einsatz von 15 Projekttagen in
+ * den ersten Monaten, also 900 € Honorar. Eine Stelle, damit alle Seiten
+ * dieselben Zahlen nennen.
+ */
+export const PLACEMENT_EXAMPLE = { dayRateCents: 60_000, projectDays: 15 } as const;
+
+export function placementExampleFeeCents(): number {
+  return placementFeeCents(PLACEMENT_EXAMPLE.dayRateCents, PLACEMENT_EXAMPLE.projectDays);
+}
+
+/** Ganze Euro ohne Nachkommastellen, wie in den Beispielen: „900 €“. */
+export function formatWholeEuro(cents: number): string {
+  return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(cents / 100);
 }
 
 /** Die drei Sätze, die bei jeder Anfrage über dem Häkchen stehen. */

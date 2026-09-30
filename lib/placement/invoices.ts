@@ -26,8 +26,12 @@ import { PLACEMENT_TERMS, PLACEMENT_VAT_PERCENT } from "./config";
  */
 
 /** Ob der Admin Rechnungen über Stripe anbieten kann. */
+/**
+ * Nur der API-Schlüssel ist Pflicht. Den Steuersatz findet oder legt die
+ * Rechnungserstellung selbst an, siehe `verifiedTaxRate`.
+ */
 export function placementInvoicingReady(): boolean {
-  return Boolean(process.env.STRIPE_SECRET_KEY?.trim() && process.env.STRIPE_PLACEMENT_TAX_RATE_ID?.trim());
+  return Boolean(process.env.STRIPE_SECRET_KEY?.trim());
 }
 
 const trimmed = (max: number) => z.string().trim().min(1).max(max);
@@ -106,29 +110,67 @@ export function placementInvoiceLine(input: {
   ).slice(0, 500);
 }
 
-function taxRateId(): string {
-  const id = process.env.STRIPE_PLACEMENT_TAX_RATE_ID?.trim();
-  if (!id || !/^txr_[A-Za-z0-9]+$/u.test(id)) {
-    throw new StripeRequestError(503, "not_configured", "Der Stripe-Steuersatz fehlt (STRIPE_PLACEMENT_TAX_RATE_ID).");
-  }
-  return id;
-}
+type TaxRate = {
+  id: string;
+  active: boolean;
+  percentage: number;
+  inclusive: boolean;
+  country: string | null;
+  jurisdiction?: string | null;
+};
 
-/** Eine falsch eingerichtete Umsatzsteuer darf nie auf eine Rechnung kommen. */
+const isPlacementVat = (rate: TaxRate) =>
+  rate.active && !rate.inclusive && rate.percentage === PLACEMENT_VAT_PERCENT;
+
+/**
+ * Eine falsch eingerichtete Umsatzsteuer darf nie auf eine Rechnung kommen.
+ *
+ * Ist STRIPE_PLACEMENT_TAX_RATE_ID gesetzt, gilt genau dieser Satz, und er
+ * muss passen. Sonst nimmt die Rechnung den aktiven, exklusiven 19-%-Satz für
+ * Deutschland aus dem Stripe-Konto und legt ihn beim ersten Mal an. So braucht
+ * die Einrichtung nur den API-Schlüssel.
+ */
 async function verifiedTaxRate(): Promise<string> {
-  const id = taxRateId();
-  const rate = await stripeRequest<{ active: boolean; percentage: number; inclusive: boolean; country: string | null }>(
-    "GET",
-    `/tax_rates/${id}`,
-  );
-  if (!rate.active || rate.inclusive || rate.percentage !== PLACEMENT_VAT_PERCENT) {
-    throw new StripeRequestError(
-      503,
-      "tax_rate_mismatch",
-      `Der Stripe-Steuersatz ${id} muss aktiv, exklusiv und ${PLACEMENT_VAT_PERCENT} % sein.`,
-    );
+  const configured = process.env.STRIPE_PLACEMENT_TAX_RATE_ID?.trim();
+  if (configured) {
+    if (!/^txr_[A-Za-z0-9]+$/u.test(configured)) {
+      throw new StripeRequestError(503, "not_configured", "STRIPE_PLACEMENT_TAX_RATE_ID ist keine Steuersatz-ID (txr_…).");
+    }
+    const rate = await stripeRequest<TaxRate>("GET", `/tax_rates/${configured}`);
+    if (!isPlacementVat(rate)) {
+      throw new StripeRequestError(
+        503,
+        "tax_rate_mismatch",
+        `Der Stripe-Steuersatz ${configured} muss aktiv, exklusiv und ${PLACEMENT_VAT_PERCENT} % sein.`,
+      );
+    }
+    return configured;
   }
-  return id;
+
+  const { data } = await stripeRequest<{ data: TaxRate[] }>("GET", "/tax_rates", { active: "true", limit: 100 });
+  const existing = data.find(
+    (rate) => isPlacementVat(rate) && (rate.country === "DE" || rate.jurisdiction === "DE"),
+  );
+  if (existing) return existing.id;
+
+  const created = await stripeRequest<TaxRate>(
+    "POST",
+    "/tax_rates",
+    {
+      display_name: "USt.",
+      description: `Umsatzsteuer ${PLACEMENT_VAT_PERCENT} % auf das Vermittlungshonorar`,
+      percentage: PLACEMENT_VAT_PERCENT,
+      inclusive: "false",
+      country: "DE",
+      jurisdiction: "DE",
+      tax_type: "vat",
+    },
+    { idempotencyKey: `xportal-placement-vat-${PLACEMENT_VAT_PERCENT}-de` },
+  );
+  if (!isPlacementVat(created)) {
+    throw new StripeRequestError(503, "tax_rate_mismatch", "Stripe hat den Steuersatz nicht wie angefordert angelegt.");
+  }
+  return created.id;
 }
 
 /**
