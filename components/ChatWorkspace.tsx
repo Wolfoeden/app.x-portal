@@ -42,6 +42,7 @@ import {
   saveAccountName,
   signOut as signOutAccount,
 } from "@/lib/auth/browser";
+import type { CheckoutPlanId } from "@/lib/billing/payment-links";
 import {
   DISMISSED_PROFILES_STORAGE_KEY,
   readDismissedProfiles,
@@ -68,6 +69,7 @@ import {
   type AuthContinuation,
   type AuthIntent,
 } from "./chat/auth-continuation";
+import { checkoutDialogCopy, checkoutPlanFrom } from "./chat/checkout-intent";
 import { rememberFunnelEntry, trackFunnelEvent } from "./chat/funnel-events";
 import {
   AuthDialog,
@@ -1163,6 +1165,8 @@ export function ChatWorkspace({
   // The profile the open dialog is about, taken from its own continuation.
   const [authProfileId, setAuthProfileId] = useState<string | null>(null);
   const [authDestination, setAuthDestination] = useState("/chat");
+  // Der Tarif, den ein Gast auf der Preisseite buchen wollte (Audit F03).
+  const [authCheckoutPlan, setAuthCheckoutPlan] = useState<CheckoutPlanId | null>(null);
   const [projects, setProjects] = useState<ProjectListItem[]>(previewData?.projects ?? []);
   const [projectCollections, setProjectCollections] = useState<ProjectCollectionItem[]>(previewData?.collections ?? []);
   const [activeProject, setActiveProject] = useState<ProjectListItem | null>(previewData?.projects[0] ?? null);
@@ -1382,6 +1386,7 @@ export function ChatWorkspace({
       storeAuthContinuation(next);
       trackFunnelEvent("registration_started", intent);
       setAuthIntent(intent);
+      setAuthCheckoutPlan(null);
       setAuthProfileId(next.profileId);
       setAuthDestination(continuationPath(next));
       setAuthInitialMode(mode);
@@ -1736,16 +1741,14 @@ export function ChatWorkspace({
         const view = await loadWorkspace();
         if (!alive) return;
         const searchParams = new URLSearchParams(window.location.search);
-        const requestedCheckout = searchParams.get("checkout");
-        if (
-          requestedCheckout === "basic" ||
-          requestedCheckout === "pro" ||
-          requestedCheckout === "business"
-        ) {
+        const requestedCheckout = checkoutPlanFrom(searchParams.get("checkout"));
+        if (requestedCheckout) {
           if (view.anonymous) {
             setAuthIntent("generic");
+            setAuthCheckoutPlan(requestedCheckout);
             setAuthDestination(`/chat?checkout=${requestedCheckout}`);
-            setAuthInitialMode("login");
+            // Wer auf der Preisseite bucht, hat meist noch kein Konto.
+            setAuthInitialMode("register");
             setAuthOpen(true);
           } else {
             window.location.assign(
@@ -2602,12 +2605,8 @@ export function ChatWorkspace({
     );
     setAuthOpen(false);
     const searchParams = new URLSearchParams(window.location.search);
-    const requestedCheckout = searchParams.get("checkout");
-    if (
-      requestedCheckout === "basic" ||
-      requestedCheckout === "pro" ||
-      requestedCheckout === "business"
-    ) {
+    const requestedCheckout = checkoutPlanFrom(searchParams.get("checkout"));
+    if (requestedCheckout) {
       window.location.assign(
         new URL(`/api/billing/checkout?plan=${requestedCheckout}`, window.location.origin).toString(),
       );
@@ -3592,6 +3591,7 @@ export function ChatWorkspace({
         <AuthDialog
           initialMode={authInitialMode}
           intent={authIntent}
+          checkout={authCheckoutPlan ? checkoutDialogCopy(authCheckoutPlan) : null}
           profileName={
             authProfileId
               ? [...profiles, ...partialProfiles].find((profile) => profile.id === authProfileId)?.displayName
@@ -3599,7 +3599,22 @@ export function ChatWorkspace({
           }
           projectTitle={brief?.projectTitle}
           destination={authDestination}
-          onClose={() => setAuthOpen(false)}
+          onClose={() => {
+            setAuthOpen(false);
+            if (authCheckoutPlan) {
+              // Abgebrochen: Eine spätere Anmeldung aus anderem Anlass soll
+              // nicht doch noch zur Zahlung führen.
+              setAuthCheckoutPlan(null);
+              setAuthDestination("/chat");
+              const params = new URLSearchParams(window.location.search);
+              params.delete("checkout");
+              window.history.replaceState(
+                {},
+                "",
+                `${window.location.pathname}${params.size ? `?${params.toString()}` : ""}${window.location.hash}`,
+              );
+            }
+          }}
           onAuthenticated={(mode) => void handleAuthenticated(mode)}
           showToast={showToast}
         />

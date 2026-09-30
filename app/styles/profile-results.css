@@ -117,6 +117,7 @@
 
 .auth-profile-context { display: grid; gap: 4px; margin: 12px 0 18px; border-radius: 9px; background: var(--surface-raised); padding: 12px 14px; }
 .auth-profile-context span { color: var(--muted); font-size: var(--fs-xs); }
+.auth-plan-summary ul { display: grid; gap: 3px; margin: 0; padding-left: 18px; color: var(--muted); font-size: var(--fs-xs); }
 
 @media (max-width: 620px) {
   .result-section .profile-card { grid-template-columns: minmax(0, 1fr); }
