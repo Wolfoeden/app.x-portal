@@ -90,6 +90,7 @@ import {
 } from "./chat/shared";
 import { RegisteredShowcasePanel } from "./chat/registered-showcase";
 import { ProjectDetails, ResultSection, SavedProfileList } from "./chat/results";
+import { resultScroll, type ShownResult } from "./chat/result-scroll";
 import {
   SidebarChatList,
   sidebarAccountButtonClassName,
@@ -1282,6 +1283,9 @@ export function ChatWorkspace({
   const startNewProjectRef = useRef<(() => void) | null>(null);
   const startGuidedRequestRef = useRef<((suggestion: GuidedSuggestion) => void) | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const messageListRef = useRef<HTMLDivElement>(null);
+  // Das Ergebnis, zu dessen Überschrift zuletzt gescrollt wurde.
+  const shownResultRef = useRef<ShownResult>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const externalSearchRequestIdsRef = useRef(new Map<string, string>());
@@ -1984,8 +1988,18 @@ export function ChatWorkspace({
   }, [draft]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, pendingAssistant, profiles, partialProfiles]);
+    const section = messageListRef.current?.querySelector<HTMLElement>(".result-section") ?? null;
+    const next = resultScroll(shownResultRef.current, {
+      pending: Boolean(pendingAssistant),
+      hasResult,
+      resultKey: `${matchingStatus ?? ""}|${[...profiles, ...partialProfiles].map((profile) => profile.id).join(",")}`,
+      messages: messages.length,
+      sectionShown: Boolean(section),
+    });
+    shownResultRef.current = next.shown;
+    if (next.target === "result") section?.scrollIntoView({ behavior: "smooth", block: "start" });
+    else if (next.target === "end") endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, pendingAssistant, profiles, partialProfiles, hasResult, matchingStatus, workspaceLoading]);
 
   const startNewProject = () => {
     // Any view that is not the chat lives on its own route, so opening a chat
@@ -3382,7 +3396,7 @@ export function ChatWorkspace({
                 ready={!workspaceLoading}
               />
             ) : (
-              <div className="message-list">
+              <div className="message-list" ref={messageListRef}>
                 {messages.map((message) => (
                   <MessageBubble key={message.id} message={message} />
                 ))}
