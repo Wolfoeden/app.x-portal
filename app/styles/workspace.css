@@ -1378,6 +1378,7 @@
   display: grid;
   gap: 18px;
   margin-left: 41px;
+  scroll-margin-top: 12px;
 }
 
 .profile-card,

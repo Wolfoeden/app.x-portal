@@ -8,6 +8,7 @@ import type { ProfilePageAction } from "@/lib/profile/profile-link";
 
 import type { FreelancerProfileResult, ProjectMode } from "../chat-contract";
 import { availabilityNotice } from "../chat/availability";
+import { profileCheck } from "../chat/verification";
 import { PlacementDialog } from "../chat/placement-dialog";
 import { initials } from "../chat/shared";
 import { IconArrowRight, IconCheck, IconChevronDown, IconInfo } from "../icons";
@@ -74,7 +75,7 @@ export function PublicProfileCard({
   const hiddenSkills = skills.length - shownSkills.length;
   const verifiedFacts = profile.facts.filter((fact) => fact.verification === "verified").map((fact) => fact.value);
   const selfReportedFacts = profile.facts.filter((fact) => fact.verification === "self-reported").map((fact) => fact.value);
-  const verifiedReferences = profile.referenceStatus === "Verifiziert";
+  const check = profileCheck(profile.referenceStatus);
   const keyFacts = [
     profile.rate ?? "Honorar auf Anfrage",
     MODE_LABELS[profile.remoteMode],
@@ -109,8 +110,8 @@ export function PublicProfileCard({
           <span className={styles.availability} data-tone={availability.tone} title={availability.title ?? undefined}>
             {availability.label}
           </span>
-          {verifiedReferences ? (
-            <span className={styles.verified}><IconCheck size={12} /> Referenzen geprüft</span>
+          {check?.verified ? (
+            <span className={styles.verified}><IconCheck size={12} /> Profil geprüft</span>
           ) : null}
         </div>
       </header>
@@ -153,7 +154,7 @@ export function PublicProfileCard({
               <dt>Verfügbarkeit angegeben</dt>
               <dd>{profile.availabilityUpdatedAt ? dateFormat.format(new Date(profile.availabilityUpdatedAt)) : "nicht angegeben"}</dd>
             </div>
-            <div><dt>Referenzen</dt><dd>{profile.referenceStatus ?? "nicht angegeben"}</dd></div>
+            <div><dt>Profilprüfung</dt><dd>{check?.text ?? "nicht angegeben"}</dd></div>
           </dl>
           <p className={styles.note}>
             Den Lebenslauf sehen Sie mit einem Konto in dem Projekt, in dem XPORTAL Ihnen das Profil vorgeschlagen hat.

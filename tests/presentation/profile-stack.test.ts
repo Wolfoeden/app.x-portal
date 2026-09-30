@@ -206,7 +206,21 @@ describe("results without a recommendation", () => {
 
     expect(markup).not.toContain('<details class="recovery-research"');
     expect(markup).toContain("prüft jeden Treffer an seiner Quelle");
-    expect(markup).toContain("Scheitert der Lauf technisch, wird nichts belastet.");
+    expect(markup).toContain("technisch gescheitert: kostenlos");
+  });
+
+  // Audit F09: Aufwand, Quellen, erwartetes Ergebnis, Kosten bei Nulltreffern
+  // und nächste Handlung vor dem Start.
+  it("says before the start how long it takes, where it looks, what comes back, what it costs and what next", () => {
+    const markup = partial({ partialProfiles: [] });
+
+    expect(markup).toContain('<dl class="research-facts">');
+    expect(markup).toContain("<dt>Dauer</dt><dd>etwa eine Minute</dd>");
+    expect(markup).toContain("Berufsnetzwerke wie LinkedIn, Freelancer-Marktplätze");
+    expect(markup).toContain("bis zu 3 Profile mit Link zur Quelle, nicht von XPORTAL geprüft");
+    expect(markup).toContain("30 Credits, auch wenn nichts Passendes gefunden wird");
+    expect(markup).toContain("<dt>Danach</dt>");
+    expect(markup.indexOf("research-facts")).toBeLessThan(markup.indexOf("agent-pill"));
   });
 
   it("asks for a missing requirement in the chat when the request needs clarification", () => {

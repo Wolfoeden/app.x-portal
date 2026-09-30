@@ -26,6 +26,36 @@ import { entryMonthlyEuro } from "./upgrade";
  * gerade gearbeitet wird.
  */
 
+/**
+ * Was vor dem Start feststehen muss (Audit F09): Aufwand, Quellen, erwartetes
+ * Ergebnis, Kosten auch ohne Treffer und der nächste Schritt. Fünf kurze
+ * Zeilen statt eines Prospekts. Die Obergrenze entspricht
+ * MAX_EXTERNAL_FREELANCER_RESULTS in lib/openai/external-freelancer-search.ts
+ * (dort serverseitig, hier ohne den Import in den Browser zu ziehen).
+ */
+export const RESEARCH_MAX_RESULTS = 3;
+
+export const RESEARCH_FACTS: ReadonlyArray<{ term: string; text: string }> = [
+  { term: "Dauer", text: "etwa eine Minute" },
+  { term: "Quellen", text: "eigene Websites, Berufsnetzwerke wie LinkedIn, Freelancer-Marktplätze" },
+  { term: "Ergebnis", text: `bis zu ${RESEARCH_MAX_RESULTS} Profile mit Link zur Quelle, nicht von XPORTAL geprüft` },
+  {
+    term: "Kosten",
+    text: `${EXTERNAL_SEARCH_CREDITS} Credits, auch wenn nichts Passendes gefunden wird; technisch gescheitert: kostenlos`,
+  },
+  { term: "Danach", text: "Angaben an der Quelle prüfen und dort Kontakt aufnehmen" },
+];
+
+export function ResearchFacts() {
+  return (
+    <dl className="research-facts">
+      {RESEARCH_FACTS.map((fact) => (
+        <div key={fact.term}><dt>{fact.term}</dt><dd>{fact.text}</dd></div>
+      ))}
+    </dl>
+  );
+}
+
 export type AgentLaunchState =
   | { kind: "ready"; remaining: number }
   | { kind: "login" }
