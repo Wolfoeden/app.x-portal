@@ -409,6 +409,33 @@ export interface ChatApiPaths {
   exportData: string;
   deleteData: string;
   introductions: string;
+  /** „Gespräche“: Anfragen als Kunde und Anfragen an das eigene Profil. */
+  conversations: string;
+}
+
+export type ConversationAnswer = "engaged" | "talking" | "no_engagement";
+
+/**
+ * Ein Eintrag in „Gespräche“. `role` sagt, auf welcher Seite der Betrachter
+ * steht: als Kunde, der angefragt hat, oder als Freelancer, der vorgestellt
+ * wurde. `question` ist 1 oder 2, wenn XPORTAL gerade nachfragt, ob es zur
+ * Beauftragung kam.
+ */
+export interface ConversationItem {
+  id: string;
+  role: "client" | "freelancer";
+  projectTitle: string | null;
+  counterpartName: string;
+  counterpartDetail: string | null;
+  profileId: string;
+  stage: "requested" | "introduced" | "declined";
+  requestedAt: string;
+  introducedAt: string | null;
+  answer: ConversationAnswer | null;
+  answeredAt: string | null;
+  engagementRecorded: boolean;
+  question: 1 | 2 | null;
+  hasCalendar: boolean;
 }
 
 export const defaultChatApiPaths: ChatApiPaths = {
@@ -431,4 +458,5 @@ export const defaultChatApiPaths: ChatApiPaths = {
   exportData: appPath("/api/account/export"),
   deleteData: appPath("/api/account/delete"),
   introductions: appPath("/api/introductions"),
+  conversations: appPath("/api/conversations"),
 };

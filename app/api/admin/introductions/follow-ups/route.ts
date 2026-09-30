@@ -1,3 +1,5 @@
+import { timingSafeEqual } from "node:crypto";
+
 import { NextResponse } from "next/server";
 
 import { writeAuditEvent } from "@/lib/audit/write";
@@ -10,25 +12,48 @@ import { SITE_URL } from "@/lib/seo";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+function secretMatches(provided: string, expected: string): boolean {
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
 /**
- * Die fälligen Nachfragen verschicken, per Knopf auf der Admin-Seite.
- *
- * Bewusst noch ohne Zeitgeber: Bei heutiger Menge ist ein Klick am Tag
- * genug, und der Betreiber sieht, was rausgeht. Ein Zeitgeber kann später
- * dieselbe Funktion aufrufen.
+ * Wer die Hinweise auslöst: der tägliche Zeitplan mit seinem Geheimnis
+ * (`x-placement-run-token`, siehe
+ * `20261001100000_vermittlung_nachfassen_zeitplan.sql`) oder der Betreiber
+ * per Knopf im Admin.
+ */
+async function actor(request: Request): Promise<string | null> {
+  const expected = process.env.PLACEMENT_RUN_SECRET?.trim();
+  const provided = request.headers.get("x-placement-run-token")?.trim();
+  if (provided) {
+    if (!expected || expected.length < 32 || !secretMatches(provided, expected)) {
+      throw NextResponse.json({ error: "Ungültiges Token." }, { status: 401 });
+    }
+    return null;
+  }
+  // Nur der Browser-Weg schickt einen Ursprung mit.
+  assertSameOrigin(request);
+  const admin = await requireAdminUser();
+  return admin.id;
+}
+
+/**
+ * Die fälligen Hinweise verschicken: Die Frage, ob es zur Beauftragung kam,
+ * steht in „Gespräche“; die Mail führt nur dorthin.
  */
 export async function POST(request: Request) {
   if (!placementRequestsEnabled()) return new Response(null, { status: 404 });
   try {
-    assertSameOrigin(request);
-    const admin = await requireAdminUser();
+    const actorUserId = await actor(request);
     const result = await sendDueFollowUps(SITE_URL);
     await writeAuditEvent({
-      actorUserId: admin.id,
+      actorUserId,
       action: "placement_follow_ups_sent",
       targetType: "intro_booking",
       outcome: "success",
-      metadata: result,
+      metadata: { ...result, via: actorUserId ? "admin" : "scheduler" },
     });
     return NextResponse.json(result);
   } catch (error) {

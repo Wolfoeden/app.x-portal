@@ -179,8 +179,38 @@ describe("follow-ups", () => {
     expect(claim.filters).toContainEqual(["follow_up_count", 0]);
     const [toClient, toFreelancer] = mocks.deliver.mock.calls.map(([message]) => message);
     expect(toClient.to).toBe("erika@firma.example");
-    expect(toClient.text).toContain("/vermittlung/antwort?t=");
+    expect(toClient.text).toContain("https://x-portal.eu/gespraeche?t=");
+    expect(toClient.text).toContain("In Ihren Gesprächen bei XPORTAL wartet");
     expect(toFreelancer.to).toBe("mira@example.org");
+  });
+
+  // Der Kunde sagt „nein“, der Freelancer hat noch nicht geantwortet: Genau
+  // dieser Widerspruch zählt fürs Honorar, also wird nur der Freelancer
+  // weiter gefragt.
+  it("keeps asking the side that has not answered yet", async () => {
+    given("intro_bookings", [{ ...INTRO, outcome: "no_engagement", client_outcome: "no_engagement", client_outcome_at: "2026-10-05T10:00:00.000Z" }], { id: REQUEST });
+    given("engagements", []);
+    given("freelancer_profiles", { display_name: "Mira Falk", role_title: "Data Engineer", owner_user_id: "freelancer-1" });
+    given("projects", { title: "Datenplattform" });
+
+    const result = await sendDueFollowUps("https://x-portal.eu", new Date("2026-10-16T10:00:00.000Z"));
+
+    expect(result).toEqual({ sent: 1, failed: 0 });
+    expect(mocks.deliver.mock.calls.map(([message]) => message.to)).toEqual(["mira@example.org"]);
+  });
+
+  it("reaches a guest who asked without an account at the address they gave", async () => {
+    mocks.users.set("guest-1", { email: null });
+    given("intro_bookings", [{ ...INTRO, owner_user_id: "guest-1", contact_email: "einkauf@firma.example", contact_company: "Firma GmbH" }], { id: REQUEST });
+    given("engagements", []);
+    given("freelancer_profiles", { display_name: "Mira Falk", role_title: "Data Engineer", owner_user_id: "freelancer-1" });
+    given("projects", { title: "Datenplattform" });
+
+    await sendDueFollowUps("https://x-portal.eu", new Date("2026-10-16T10:00:00.000Z"));
+
+    const [toClient, toFreelancer] = mocks.deliver.mock.calls.map(([message]) => message);
+    expect(toClient.to).toBe("einkauf@firma.example");
+    expect(toFreelancer.text).toContain("Firma GmbH");
   });
 
   it("sends nothing before 14 days", async () => {
@@ -215,16 +245,42 @@ describe("answers from the email", () => {
     expect(mocks.deliver.mock.calls[0][0].subject).toBe("Beauftragung gemeldet: Mira Falk");
   });
 
-  it("keeps a reported engagement when a later answer says otherwise", async () => {
+  it("keeps a reported engagement when a later answer says otherwise, but stores what each side said", async () => {
     const token = mintAnswerToken(REQUEST, "freelancer")!;
-    given("intro_bookings", { ...INTRO, outcome: "engaged" });
+    given("intro_bookings", { ...INTRO, outcome: "engaged", client_outcome: "engaged" });
     given("engagements", null);
 
-    const result = await recordAnswer(token, "talking", "https://x-portal.eu");
+    await recordAnswer(token, "talking", "https://x-portal.eu");
+
+    const update = writesTo("intro_bookings")[0].values as Record<string, unknown>;
+    expect(update).toMatchObject({ freelancer_outcome: "talking" });
+    expect(update).not.toHaveProperty("outcome");
+    expect(mocks.deliver).not.toHaveBeenCalled();
+  });
+
+  it("records the client's own answer next to the combined outcome", async () => {
+    const token = mintAnswerToken(REQUEST, "client")!;
+    given("intro_bookings", INTRO);
+    given("engagements", null);
+
+    await recordAnswer(token, "no_engagement", "https://x-portal.eu");
+
+    expect(writesTo("intro_bookings")[0].values).toMatchObject({
+      client_outcome: "no_engagement",
+      outcome: "no_engagement",
+      outcome_source: "client",
+    });
+  });
+
+  it("changes nothing once the engagement is recorded", async () => {
+    const token = mintAnswerToken(REQUEST, "client")!;
+    given("intro_bookings", INTRO);
+    given("engagements", { id: "engagement-1", fee_status: "open", fee_minor: 1 });
+
+    const result = await recordAnswer(token, "no_engagement", "https://x-portal.eu");
 
     expect(result.recorded).toBe(false);
     expect(writesTo("intro_bookings")).toEqual([]);
-    expect(mocks.deliver).not.toHaveBeenCalled();
   });
 
   it("rejects a forged link", async () => {

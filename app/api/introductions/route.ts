@@ -13,11 +13,27 @@ import { placementRequestNotice } from "@/lib/placement/messages";
 import { freelancerContactEmail } from "@/lib/placement/requests";
 import {
   assertSameOrigin,
+  getClientIp,
   logEvent,
   readJsonWithLimit,
 } from "@/lib/security/request";
+import { consumeRateLimit } from "@/lib/security/shared-rate-limit";
 import { SITE_URL } from "@/lib/seo";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+
+/**
+ * Anfrage ohne Konto: Wer als Gast anfragt, gibt E-Mail und Firma an, damit
+ * XPORTAL vorstellen und nachfragen kann. `website` ist ein Honigtopf; Menschen
+ * sehen das Feld nicht, Formular-Bots füllen es.
+ */
+const GuestContactSchema = z
+  .object({
+    email: z.string().trim().toLowerCase().max(320).email(),
+    company: z.string().trim().min(2).max(200),
+    name: z.string().trim().max(120).optional().transform((value) => value || null),
+    website: z.string().max(200).optional(),
+  })
+  .strict();
 
 const IntroductionInputSchema = z
   .object({
@@ -26,8 +42,16 @@ const IntroductionInputSchema = z
     idempotencyKey: z.string().trim().min(8).max(160),
     /** Nur im Vermittlungsmodell: die Fassung, der zugestimmt wurde. */
     placementTermsVersion: z.string().trim().min(1).max(80).optional(),
+    guestContact: GuestContactSchema.optional(),
   })
   .strict();
+
+type GuestContact = { email: string; company: string; name: string | null };
+
+/** Wie viele Anfragen ohne Konto in 24 Stunden: je Gast und je Adresse. */
+const GUEST_REQUESTS_PER_DAY = 3;
+const GUEST_REQUESTS_PER_IP_PER_DAY = 10;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const LookupSchema = z.object({
   projectId: z.string().uuid(),
@@ -47,7 +71,6 @@ export async function GET(request: Request) {
       profileId: params.get("profileId"),
     });
     const user = await requireCurrentUser();
-    if (user.isAnonymous) return NextResponse.json({ introduction: null });
 
     const { data, error } = await createAdminSupabaseClient()
       .from("intro_bookings")
@@ -92,6 +115,7 @@ async function placementRequest(
   admin: ReturnType<typeof createAdminSupabaseClient>,
   profile: { displayName: string; role: string },
   matchId: string,
+  guest: GuestContact | null,
 ) {
   if (input.placementTermsVersion !== PLACEMENT_TERMS.version) {
     return NextResponse.json(
@@ -150,6 +174,7 @@ async function placementRequest(
       maxFeeDays: PLACEMENT_TERMS.maxFeeDays,
       protectionMonths: PLACEMENT_TERMS.protectionMonths,
       acceptedAt: timestamp,
+      ...(guest ? { guest: true, contactEmail: guest.email, company: guest.company } : {}),
     },
     required: true,
   });
@@ -168,6 +193,9 @@ async function placementRequest(
       booking_url: null,
       idempotency_key: `placement:${input.projectId}:${input.profileId}:${Date.now()}`,
       explicit_confirmation_at: timestamp,
+      ...(guest
+        ? { contact_email: guest.email, contact_company: guest.company, contact_name: guest.name }
+        : {}),
     })
     .select("id,status,requested_at")
     .single();
@@ -186,7 +214,8 @@ async function placementRequest(
   ]);
   const notice = placementRequestNotice({
     siteUrl: SITE_URL,
-    clientEmail: user.email,
+    clientEmail: guest?.email ?? user.email,
+    guest: guest ? { company: guest.company, name: guest.name } : null,
     freelancerName: profile.displayName,
     freelancerRole: profile.role,
     projectTitle: (projectRow.data as { title?: string | null } | null)?.title ?? null,
@@ -201,8 +230,58 @@ async function placementRequest(
   return NextResponse.json({
     introduction: { id: booking.id, status: booking.status, requestedAt: booking.requested_at },
     message:
-      "Ihre Anfrage ist eingegangen. Roman Dering stellt Sie vor und meldet sich per E-Mail, meist innerhalb eines Werktags.",
+      "Ihre Anfrage ist eingegangen. XPORTAL prüft die Verfügbarkeit, stellt Sie vor und meldet sich per E-Mail. Den Stand sehen Sie unter „Gespräche“.",
   });
+}
+
+/**
+ * Darf dieser Gast jetzt ohne Konto anfragen? Nur im Vermittlungsmodell, mit
+ * gültigen Angaben, leerem Honigtopf und innerhalb der Grenzen je Gast und je
+ * Adresse. Die Zählung je Gast steht in der Datenbank, damit ein Kaltstart
+ * sie nicht zurücksetzt.
+ */
+async function guestContactFor(
+  request: Request,
+  input: z.infer<typeof IntroductionInputSchema>,
+  user: CurrentUser,
+  admin: ReturnType<typeof createAdminSupabaseClient>,
+): Promise<GuestContact> {
+  if (!placementRequestsEnabled()) {
+    throw new Response(JSON.stringify({ error: "Bitte melden Sie sich an, um die Auswahl zu bestätigen." }), {
+      status: 409,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  const contact = input.guestContact;
+  if (!contact) {
+    throw new Response(JSON.stringify({ error: "Bitte geben Sie Ihre E-Mail-Adresse und Ihre Firma an." }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  if (contact.website) {
+    logEvent("guest_request_honeypot", { userId: user.id });
+    throw new Response(JSON.stringify({ error: "Die Anfrage konnte nicht gesendet werden." }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const tooMany = new Response(
+    JSON.stringify({ error: "Sie haben heute schon mehrere Anfragen gesendet. Bitte versuchen Sie es morgen erneut oder legen Sie ein Konto an." }),
+    { status: 429, headers: { "Content-Type": "application/json" } },
+  );
+  const ipLimit = await consumeRateLimit(`guest-placement-ip:${getClientIp(request)}`, GUEST_REQUESTS_PER_IP_PER_DAY, DAY_MS);
+  if (!ipLimit.allowed) throw tooMany;
+  const { count, error } = await admin
+    .from("intro_bookings")
+    .select("id", { count: "exact", head: true })
+    .eq("owner_user_id", user.id)
+    .gte("requested_at", new Date(Date.now() - DAY_MS).toISOString());
+  if (error) throw error;
+  if ((count ?? 0) >= GUEST_REQUESTS_PER_DAY) throw tooMany;
+
+  return { email: contact.email, company: contact.company, name: contact.name };
 }
 
 export async function POST(request: Request) {
@@ -212,7 +291,7 @@ export async function POST(request: Request) {
       await readJsonWithLimit(request, 4_000),
     );
     const user = await requireCurrentUser();
-    if (user.isAnonymous) {
+    if (user.isAnonymous && !placementRequestsEnabled()) {
       return NextResponse.json(
         { error: "Bitte melden Sie sich an, um die Auswahl zu bestätigen." },
         { status: 409 },
@@ -253,7 +332,8 @@ export async function POST(request: Request) {
 
     const profile = FreelancerProfileSchema.parse(match.profile_snapshot);
     if (placementRequestsEnabled()) {
-      return await placementRequest(input, user, admin, profile, match.id);
+      const guest = user.isAnonymous ? await guestContactFor(request, input, user, admin) : null;
+      return await placementRequest(input, user, admin, profile, match.id, guest);
     }
     const { data: currentProfile, error: profileError } = await admin
       .from("freelancer_profiles")

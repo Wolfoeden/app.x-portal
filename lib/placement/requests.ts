@@ -87,12 +87,41 @@ export async function freelancerContactEmail(
   return email || null;
 }
 
-async function clientContact(admin: Admin, userId: string) {
-  const { data } = await admin.auth.admin.getUserById(userId);
-  const user = data?.user;
+/** Die Anfrage aus Sicht der Kontaktdaten: Konto und, ohne Konto, die Angaben des Gastes. */
+export type ClientRef = {
+  owner_user_id: string;
+  contact_email?: string | null;
+  contact_name?: string | null;
+  contact_company?: string | null;
+};
+
+export type ClientContact = {
+  email: string | null;
+  name: string | null;
+  company: string | null;
+  /** Ohne bestätigtes Konto: die Anfrage kam von einem Gast. */
+  guest: boolean;
+};
+
+/**
+ * Wie XPORTAL den Kunden erreicht: über sein Konto, sonst über die Angaben,
+ * die ein Gast bei der Anfrage gemacht hat.
+ */
+export async function clientContact(admin: Admin, ref: ClientRef): Promise<ClientContact> {
+  const { data } = await admin.auth.admin.getUserById(ref.owner_user_id);
+  return clientContactFrom(data?.user ?? null, ref);
+}
+
+function clientContactFrom(
+  user: { email?: string | null; user_metadata?: unknown } | null,
+  ref: ClientRef,
+): ClientContact {
+  const accountEmail = user?.email?.trim() || null;
   return {
-    email: user?.email?.trim() || null,
-    name: accountNameFromMetadata(user?.user_metadata),
+    email: accountEmail ?? (ref.contact_email?.trim() || null),
+    name: accountNameFromMetadata(user?.user_metadata) ?? (ref.contact_name?.trim() || null),
+    company: ref.contact_company?.trim() || null,
+    guest: !accountEmail,
   };
 }
 
@@ -105,6 +134,9 @@ export type PlacementRequestRow = {
   projectTitle: string | null;
   clientEmail: string | null;
   clientName: string | null;
+  clientCompany: string | null;
+  /** Ohne Konto angefragt; erreichbar nur über die angegebene E-Mail. */
+  clientIsGuest: boolean;
   freelancerId: string;
   freelancerName: string;
   freelancerRole: string;
@@ -113,6 +145,9 @@ export type PlacementRequestRow = {
   /** Was Kunde, Freelancer oder Betreiber zum Ausgang gesagt haben. */
   outcome: PlacementOutcome | null;
   outcomeSource: "client" | "freelancer" | "operator" | null;
+  /** Was jede Seite für sich gesagt hat; sie können sich widersprechen. */
+  clientAnswer: PlacementOutcome | null;
+  freelancerAnswer: PlacementOutcome | null;
   followUpCount: number;
   lastFollowUpAt: string | null;
   /** 1 oder 2, wenn eine Nachfrage fällig ist. */
@@ -165,6 +200,11 @@ type BookingRow = {
   outcome_source?: "client" | "freelancer" | "operator" | null;
   follow_up_count?: number;
   last_follow_up_at?: string | null;
+  contact_email?: string | null;
+  contact_name?: string | null;
+  contact_company?: string | null;
+  client_outcome?: PlacementOutcome | null;
+  freelancer_outcome?: PlacementOutcome | null;
 };
 
 type ProfileRow = {
@@ -183,7 +223,7 @@ export async function listPlacementRequests(
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
     .from("intro_bookings")
-    .select("id,status,requested_at,confirmed_at,cancelled_at,project_id,owner_user_id,freelancer_profile_id,outcome,outcome_source,follow_up_count,last_follow_up_at")
+    .select("id,status,requested_at,confirmed_at,cancelled_at,project_id,owner_user_id,freelancer_profile_id,outcome,outcome_source,follow_up_count,last_follow_up_at,contact_email,contact_name,contact_company,client_outcome,freelancer_outcome")
     .order("requested_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
@@ -215,8 +255,13 @@ export async function listPlacementRequests(
   );
   const profileById = new Map(((profiles.data ?? []) as ProfileRow[]).map((row) => [row.id, row]));
 
-  const [clients, reachable] = await Promise.all([
-    Promise.all(ownerIds.map(async (id) => [id, await clientContact(admin, id)] as const)),
+  const [owners, reachable] = await Promise.all([
+    Promise.all(
+      ownerIds.map(async (id) => {
+        const { data } = await admin.auth.admin.getUserById(id);
+        return [id, data?.user ?? null] as const;
+      }),
+    ),
     Promise.all(
       profileIds.map(async (id) => {
         const profile = profileById.get(id);
@@ -225,12 +270,12 @@ export async function listPlacementRequests(
       }),
     ),
   ]);
-  const clientById = new Map(clients);
+  const ownerById = new Map(owners);
   const reachableById = new Map(reachable);
 
   const rows = bookings.map((row): PlacementRequestRow => {
     const profile = profileById.get(row.freelancer_profile_id);
-    const client = clientById.get(row.owner_user_id);
+    const client = clientContactFrom(ownerById.get(row.owner_user_id) ?? null, row);
     const engagement = engagementByIntro.get(row.id) ?? null;
     const followUpCount = row.follow_up_count ?? 0;
     return {
@@ -240,8 +285,10 @@ export async function listPlacementRequests(
       confirmedAt: row.confirmed_at,
       cancelledAt: row.cancelled_at,
       projectTitle: titleById.get(row.project_id) ?? null,
-      clientEmail: client?.email ?? null,
-      clientName: client?.name ?? null,
+      clientEmail: client.email,
+      clientName: client.name,
+      clientCompany: client.company,
+      clientIsGuest: client.guest,
       freelancerId: row.freelancer_profile_id,
       freelancerName: profile?.display_name ?? "Unbekanntes Profil",
       freelancerRole: profile?.role_title ?? "",
@@ -249,6 +296,8 @@ export async function listPlacementRequests(
       hasCalendar: Boolean(httpsUrl(profile?.booking_url)),
       outcome: row.outcome ?? null,
       outcomeSource: row.outcome_source ?? null,
+      clientAnswer: row.client_outcome ?? null,
+      freelancerAnswer: row.freelancer_outcome ?? null,
       followUpCount,
       lastFollowUpAt: row.last_follow_up_at ?? null,
       followUpDue: followUpDue(
@@ -258,6 +307,8 @@ export async function listPlacementRequests(
           outcome: row.outcome ?? null,
           followUpCount,
           hasEngagement: Boolean(engagement),
+          clientAnswer: row.client_outcome ?? null,
+          freelancerAnswer: row.freelancer_outcome ?? null,
         },
         now,
       ),
@@ -291,7 +342,7 @@ export async function listPlacementRequests(
 async function loadOpenRequest(admin: Admin, id: string) {
   const { data, error } = await admin
     .from("intro_bookings")
-    .select("id,status,requested_at,confirmed_at,cancelled_at,project_id,owner_user_id,freelancer_profile_id")
+    .select("id,status,requested_at,confirmed_at,cancelled_at,project_id,owner_user_id,freelancer_profile_id,contact_email,contact_name,contact_company")
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
@@ -346,7 +397,7 @@ export async function approvePlacementRequest(id: string, siteUrl: string) {
   if (!updated) throw new Response("Diese Anfrage ist schon bearbeitet.", { status: 409 });
 
   const [client, freelancerEmail] = await Promise.all([
-    clientContact(admin, booking.owner_user_id),
+    clientContact(admin, booking),
     freelancerContactEmail(admin, profile.id, profile.owner_user_id).catch(() => null),
   ]);
   const parties = {
@@ -407,7 +458,7 @@ export async function declinePlacementRequest(id: string, reason: string | null,
   if (error) throw error;
   if (!updated) throw new Response("Diese Anfrage ist schon bearbeitet.", { status: 409 });
 
-  const client = await clientContact(admin, booking.owner_user_id);
+  const client = await clientContact(admin, booking);
   let clientNotified = false;
   if (client.email) {
     const result = await deliverEmail({

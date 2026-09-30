@@ -32,7 +32,18 @@ export type FollowUpCandidate = {
   outcome: PlacementOutcome | null;
   followUpCount: number;
   hasEngagement: boolean;
+  /**
+   * Die Antworten beider Seiten, sobald sie getrennt gespeichert werden. Dann
+   * gilt: Nachgefragt wird, solange eine Seite noch offen ist. Sagt der Kunde
+   * „nein“, der Freelancer aber nichts, wird der Freelancer weiter gefragt;
+   * genau dieser Widerspruch ist für das Honorar wichtig.
+   */
+  clientAnswer?: PlacementOutcome | null;
+  freelancerAnswer?: PlacementOutcome | null;
 };
+
+const settled = (answer: PlacementOutcome | null | undefined) =>
+  answer === "engaged" || answer === "no_engagement";
 
 /**
  * Welche Nachfrage fällig ist: 1, 2 oder keine.
@@ -45,7 +56,11 @@ export type FollowUpCandidate = {
 export function followUpDue(candidate: FollowUpCandidate, now: Date): 1 | 2 | null {
   if (!INTRODUCED.has(candidate.status) || !candidate.confirmedAt) return null;
   if (candidate.hasEngagement) return null;
-  if (candidate.outcome === "engaged" || candidate.outcome === "no_engagement") return null;
+  if (candidate.clientAnswer !== undefined || candidate.freelancerAnswer !== undefined) {
+    if (settled(candidate.clientAnswer) && settled(candidate.freelancerAnswer)) return null;
+  } else if (settled(candidate.outcome)) {
+    return null;
+  }
   const introducedAt = new Date(candidate.confirmedAt).getTime();
   if (Number.isNaN(introducedAt)) return null;
   const next = candidate.followUpCount;
@@ -70,4 +85,35 @@ export function outcomeReplaces(
   if (hasEngagement) return false;
   if (current === "engaged") return next === "engaged";
   return true;
+}
+
+export type RoleQuestion = {
+  status: string;
+  confirmedAt: string | null;
+  /** Was diese Seite zuletzt gesagt hat, und wann. */
+  answer: PlacementOutcome | null;
+  answeredAt: string | null;
+  hasEngagement: boolean;
+};
+
+/**
+ * Ob in „Gespräche“ eine Frage an diese Seite offen ist: 1, 2 oder keine.
+ *
+ * Jede Seite wird für sich gefragt. 14 Tage nach der Vorstellung die erste
+ * Frage, und wer bis zum 45. Tag nichts oder „noch im Gespräch“ gesagt hat,
+ * bekommt die zweite. Eine klare Antwort dieser Seite oder eine erfasste
+ * Beauftragung schließt die Frage.
+ */
+export function roleQuestionDue(input: RoleQuestion, now: Date): 1 | 2 | null {
+  if (!INTRODUCED.has(input.status) || !input.confirmedAt || input.hasEngagement) return null;
+  if (settled(input.answer)) return null;
+  const introducedAt = new Date(input.confirmedAt).getTime();
+  if (Number.isNaN(introducedAt)) return null;
+  const first = introducedAt + FOLLOW_UP_DAYS[0] * DAY_MS;
+  const second = introducedAt + FOLLOW_UP_DAYS[1] * DAY_MS;
+  const time = now.getTime();
+  if (time < first) return null;
+  if (input.answer === null) return time >= second ? 2 : 1;
+  const answeredAt = input.answeredAt ? new Date(input.answeredAt).getTime() : 0;
+  return time >= second && answeredAt < second ? 2 : null;
 }

@@ -21,6 +21,7 @@ import {
   IconArrowUp,
   IconBookmark,
   IconCheck,
+  IconChat,
   IconChevronDown,
   IconClose,
   IconCompose,
@@ -75,6 +76,7 @@ import {
   CreateProjectDialog,
   ManageChatDialog,
 } from "./chat/dialogs";
+import { ConversationsPage } from "./chat/conversations";
 import { PlacementDialog } from "./chat/placement-dialog";
 import { placementRequestsEnabled } from "@/lib/placement/config";
 import {
@@ -119,6 +121,8 @@ import {
   type FreelancerProfileResult,
   type MatchingStatus,
   type ProjectDetailResponse,
+  type ConversationAnswer,
+  type ConversationItem,
   type ProjectCollectionItem,
   type ProjectListItem,
   type ProjectMode,
@@ -292,7 +296,7 @@ type PendingAssistant = {
 
 interface ChatWorkspaceProps {
   apiPaths?: Partial<ChatApiPaths>;
-  view?: "chat" | "team";
+  view?: "chat" | "team" | "conversations";
   /** Development-only visual fixture; its presence disables all data loading. */
   previewData?: {
     auth: SessionResponse;
@@ -314,6 +318,7 @@ interface ChatWorkspaceProps {
     /** Selbst angemeldete Profile für den Shortcut, ohne Datenbank. */
     showcase?: RegisteredShowcase;
     collections?: ProjectCollectionItem[];
+    conversations?: ConversationItem[];
   };
 }
 
@@ -1198,6 +1203,10 @@ export function ChatWorkspace({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [team, setTeam] = useState<SavedFreelancer[]>([]);
+  const [conversations, setConversations] = useState<ConversationItem[]>(previewData?.conversations ?? []);
+  const [conversationsLoading, setConversationsLoading] = useState(!preview && workspaceView === "conversations");
+  const [conversationsError, setConversationsError] = useState<string | null>(null);
+  const [conversationLinkInvalid, setConversationLinkInvalid] = useState(false);
   // „Passt nicht" je Projekt, im Browser gehalten. Der Server bekommt die
   // Rückmeldung getrennt; ausgeblendet wird nur in der eigenen Ansicht.
   const [dismissedByProject, setDismissedByProject] = useState<
@@ -1270,6 +1279,8 @@ export function ChatWorkspace({
   const resumeHandledRef = useRef(false);
 
   const isTeamView = workspaceView === "team";
+  const isConversationsView = workspaceView === "conversations";
+  const openQuestions = conversations.filter((item) => item.question).length;
   // The Merkliste opens the contact dialog for saved profiles too, and those
   // are not part of the current chat's result.
   const selectedProfile =
@@ -2412,6 +2423,70 @@ export function ChatWorkspace({
     }
   };
 
+  /**
+   * „Gespräche“ laden: die eigenen Anfragen und, mit `?t=` aus dem
+   * Mail-Hinweis, das Gespräch hinter dem Link. Der Zähler in der
+   * Seitenleiste braucht die Liste auf jeder Seite, nicht nur auf der eigenen.
+   */
+  const loadConversations = useCallback(async () => {
+    if (preview || !placementRequestsEnabled()) return;
+    const token = new URLSearchParams(window.location.search).get("t");
+    const url = token ? `${apiPaths.conversations}?t=${encodeURIComponent(token)}` : apiPaths.conversations;
+    try {
+      const response = await fetch(url, { credentials: "same-origin", headers: { Accept: "application/json" } });
+      if (!response.ok) throw new Error("conversations_unavailable");
+      const payload: unknown = await response.json();
+      if (isRecord(payload) && Array.isArray(payload.conversations)) {
+        setConversations(payload.conversations as ConversationItem[]);
+        setConversationLinkInvalid(payload.linkInvalid === true);
+        setConversationsError(null);
+      }
+    } catch {
+      setConversationsError("Ihre Gespräche sind gerade nicht abrufbar. Bitte laden Sie die Seite gleich neu.");
+    } finally {
+      setConversationsLoading(false);
+    }
+  }, [apiPaths.conversations, preview]);
+
+  useEffect(() => {
+    if (preview || workspaceLoading) return;
+    let alive = true;
+    void (async () => {
+      await Promise.resolve();
+      if (alive) await loadConversations();
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [loadConversations, preview, workspaceLoading, isAccountUser]);
+
+  const answerConversation = async (item: ConversationItem, answer: ConversationAnswer) => {
+    if (preview) {
+      setConversations((current) =>
+        current.map((entry) =>
+          entry.id === item.id && entry.role === item.role
+            ? { ...entry, answer, answeredAt: new Date().toISOString(), question: null }
+            : entry,
+        ),
+      );
+      return;
+    }
+    const token = new URLSearchParams(window.location.search).get("t");
+    try {
+      const response = await fetch(apiPaths.conversations, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ requestId: item.id, answer, ...(token ? { token } : {}) }),
+      });
+      if (!response.ok) throw new Error("answer_failed");
+      showToast("Danke, Ihre Antwort ist gespeichert.", "neutral");
+      await loadConversations();
+    } catch {
+      showToast("Die Antwort konnte gerade nicht gespeichert werden. Bitte versuchen Sie es erneut.", "error");
+    }
+  };
+
   // The sidebar shows the team size everywhere, and the team page needs the
   // profiles themselves. Both wait until the session is known to be an account,
   // because the endpoint answers a guest with an empty list.
@@ -2428,7 +2503,10 @@ export function ChatWorkspace({
   }, [isAccountUser, loadTeam, preview]);
 
   const requestProfileSelection = (profile: FreelancerProfileResult) => {
-    if (!isAccountUser) {
+    // Im Vermittlungsmodell fragen Gäste ohne Konto an; der Dialog fragt
+    // dann nach E-Mail und Firma. 18 von 30 Suchenden wollten anfragen, 5
+    // haben die Registrierung davor geschafft.
+    if (!isAccountUser && !placementRequestsEnabled()) {
       setPendingProfileId(profile.id);
       openAuth(
         "contact_profile",
@@ -2483,7 +2561,7 @@ export function ChatWorkspace({
     // Er öffnet den Anfrage-Dialog, für Gäste nach der Anmeldung.
     const placement = placementRequestsEnabled();
     if (!placement && !profile.bookingUrl) return;
-    if (!isAccountUser) {
+    if (!isAccountUser && !placement) {
       setPendingBookingProfileId(profile.id);
       openAuth(
         "book_profile",
@@ -2959,6 +3037,25 @@ export function ChatWorkspace({
               <span className="sidebar-row-label">Chats durchsuchen</span>
             </button>
           )}
+          {placementRequestsEnabled() ? (
+            <a
+              className={`sidebar-row${isConversationsView ? " is-active" : ""}`}
+              href="/gespraeche"
+              aria-current={isConversationsView ? "page" : undefined}
+              onClick={() => setSidebarOpen(false)}
+              data-sidebar-primary="conversations"
+              title={railSidebar ? "Gespräche" : undefined}
+            >
+              <IconChat size={18} />
+              <span className="sidebar-row-label">Gespräche</span>
+              {openQuestions ? (
+                <span className="sidebar-row-badge">
+                  {openQuestions}
+                  <span className="sr-only"> offene {openQuestions === 1 ? "Frage" : "Fragen"}</span>
+                </span>
+              ) : null}
+            </a>
+          ) : null}
           <a
             className={`sidebar-row${isTeamView ? " is-active" : ""}`}
             href="/mein-team"
@@ -3197,16 +3294,30 @@ export function ChatWorkspace({
             der Unterhaltung, damit die Profilkarten ihre Breite bekommen.
             Die Merkliste behält ihre Beschriftung: Sie ist eine eigene Ansicht
             und hat in der Leiste keine Entsprechung. */}
-        <header className={`topbar${isTeamView ? "" : " is-bare"}`}>
+        <header className={`topbar${isTeamView || isConversationsView ? "" : " is-bare"}`}>
           <div className="topbar-left">
             <button ref={mobileMenuRef} className="icon-button mobile-menu" type="button" onClick={() => setSidebarOpen(true)} aria-label="Projekte öffnen"><IconMenu size={18} /></button>
             <div>
               {isTeamView ? <p className="topbar-title">Merkliste</p> : null}
+              {isConversationsView ? <p className="topbar-title">Gespräche</p> : null}
             </div>
           </div>
         </header>
 
-        {isTeamView ? (
+        {isConversationsView ? (
+          <div className="view-scroll">
+            <ConversationsPage
+              items={conversations}
+              loading={conversationsLoading}
+              error={conversationsError}
+              linkInvalid={conversationLinkInvalid}
+              isAccountUser={isAccountUser}
+              onAnswer={answerConversation}
+              onSignup={() => openAuth("generic")}
+            />
+            <LegalFooter />
+          </div>
+        ) : isTeamView ? (
           <div className="view-scroll">
             <section className="team-page" aria-label="Merkliste">
               <header className="team-page-header">
@@ -3494,6 +3605,8 @@ export function ChatWorkspace({
             projectId={activeProject?.id ?? null}
             introductionsPath={apiPaths.introductions}
             preview={preview}
+            guest={!isAccountUser}
+            onRequested={() => void loadConversations()}
             onClose={() => setContactOpen(false)}
           />
         ) : (

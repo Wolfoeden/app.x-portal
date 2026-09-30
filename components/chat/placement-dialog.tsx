@@ -50,18 +50,25 @@ export function PlacementDialog({
   projectId,
   introductionsPath,
   preview = false,
+  guest = false,
+  onRequested,
   onClose,
 }: {
   profile: FreelancerProfileResult;
   projectId: string | null;
   introductionsPath: string;
   preview?: boolean;
+  /** Ohne Konto: Der Dialog fragt nach E-Mail und Firma statt nach einer Registrierung. */
+  guest?: boolean;
+  /** Nach dem Absenden, damit „Gespräche“ die neue Anfrage zeigt. */
+  onRequested?: () => void;
   onClose: () => void;
 }) {
   const [view, setView] = useState<View>(
     projectId ? (preview ? { kind: "form" } : { kind: "loading" }) : { kind: "no_project" },
   );
   const [accepted, setAccepted] = useState(false);
+  const [contact, setContact] = useState({ email: "", company: "", name: "", website: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -106,6 +113,16 @@ export function PlacementDialog({
           profileId: profile.id,
           idempotencyKey: `placement:${projectId}:${profile.id}`,
           placementTermsVersion: PLACEMENT_TERMS.version,
+          ...(guest
+            ? {
+                guestContact: {
+                  email: contact.email,
+                  company: contact.company,
+                  ...(contact.name.trim() ? { name: contact.name } : {}),
+                  ...(contact.website ? { website: contact.website } : {}),
+                },
+              }
+            : {}),
         }),
       });
       const body = (await response.json().catch(() => ({}))) as {
@@ -117,6 +134,7 @@ export function PlacementDialog({
         return;
       }
       setView(viewFor(body.introduction ?? { id: "", status: "manual_review" }));
+      onRequested?.();
     } catch {
       setError("Die Anfrage konnte gerade nicht gesendet werden. Bitte versuchen Sie es erneut.");
     } finally {
@@ -160,8 +178,62 @@ export function PlacementDialog({
                 <li key={line}><span aria-hidden="true"><IconCheck size={13} /></span>{line}</li>
               ))}
             </ul>
+            <p className="placement-next">
+              <strong>So geht es weiter:</strong> XPORTAL prüft, ob {profile.displayName} verfügbar ist, und stellt
+              Sie beide per E-Mail vor. Danach vereinbaren Sie das Erstgespräch. Den Stand sehen Sie jederzeit unter
+              „Gespräche“.
+            </p>
+            {guest ? (
+              <div className="placement-fields">
+                <label>
+                  <span>Geschäftliche E-Mail</span>
+                  <input
+                    type="email"
+                    autoComplete="email"
+                    required
+                    maxLength={320}
+                    value={contact.email}
+                    onChange={(event) => setContact((current) => ({ ...current, email: event.target.value }))}
+                  />
+                </label>
+                <label>
+                  <span>Firma</span>
+                  <input
+                    type="text"
+                    autoComplete="organization"
+                    required
+                    minLength={2}
+                    maxLength={200}
+                    value={contact.company}
+                    onChange={(event) => setContact((current) => ({ ...current, company: event.target.value }))}
+                  />
+                </label>
+                <label className="placement-field-wide">
+                  <span>Ihr Name <small>(optional)</small></span>
+                  <input
+                    type="text"
+                    autoComplete="name"
+                    maxLength={120}
+                    value={contact.name}
+                    onChange={(event) => setContact((current) => ({ ...current, name: event.target.value }))}
+                  />
+                </label>
+                {/* Für Menschen unsichtbar; ein Bot, der alles ausfüllt, verrät sich hier. */}
+                <input
+                  className="placement-trap"
+                  type="text"
+                  name="website"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  aria-hidden="true"
+                  value={contact.website}
+                  onChange={(event) => setContact((current) => ({ ...current, website: event.target.value }))}
+                />
+              </div>
+            ) : null}
             <p className="placement-privacy">
               Bei der Vorstellung erhält {profile.displayName} Ihren Namen, Ihre E-Mail-Adresse und den Titel Ihres Projekts.
+              {guest ? " Ein Konto brauchen Sie dafür nicht." : ""}
             </p>
             <label className="placement-consent">
               <input
@@ -180,7 +252,11 @@ export function PlacementDialog({
             {error ? <p className="form-error" role="alert">{error}</p> : null}
             <div className="dialog-actions">
               <button className="secondary-action" type="button" onClick={onClose} disabled={busy}>Abbrechen</button>
-              <button className="primary-action" type="submit" disabled={busy || !accepted}>
+              <button
+                className="primary-action"
+                type="submit"
+                disabled={busy || !accepted || (guest && (!contact.email.trim() || contact.company.trim().length < 2))}
+              >
                 {busy ? "Wird gesendet …" : "Anfrage senden"}
               </button>
             </div>
@@ -192,10 +268,12 @@ export function PlacementDialog({
             <span aria-hidden="true"><IconCheck size={16} /></span>
             <h3>Ihre Anfrage liegt vor</h3>
             <p>
-              Roman Dering stellt Sie {profile.displayName} vor und schreibt Ihnen per E-Mail, meist innerhalb
-              eines Werktags. Danach wählen Sie den Termin für das Erstgespräch.
+              XPORTAL prüft die Verfügbarkeit von {profile.displayName} und stellt Sie per E-Mail vor. Danach
+              vereinbaren Sie das Erstgespräch. Den Stand finden Sie unter „Gespräche“ in der Seitenleiste.
             </p>
-            <button type="button" onClick={onClose}>Verstanden</button>
+            <a className="booking-link-action" href={appPath("/gespraeche")}>
+              Zu Ihren Gesprächen <IconArrowRight size={13} />
+            </a>
           </div>
         ) : null}
 

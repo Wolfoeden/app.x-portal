@@ -33,6 +33,24 @@ Vorerst nur Empfänger in Deutschland. Rechnungen ins Ausland (Reverse Charge)
 von Hand stellen und unter „Rechnung außerhalb von Stripe gestellt?“ mit der
 Nummer eintragen.
 
+## Anfrage ohne Konto und „Gespräche“
+
+- Gäste fragen im Chat ohne Registrierung an: E-Mail, Firma, optional Name,
+  Zustimmung zu den Bedingungen. Höchstens drei Anfragen je Gast und zehn je
+  Adresse am Tag; ein Honigtopf-Feld hält Formular-Bots ab. Im Admin steht
+  dann „ohne Konto, E-Mail unbestätigt“: vor der Vorstellung kurz prüfen.
+- „Gespräche“ (`/gespraeche`, Seitenleiste) zeigt Kunden ihre Anfragen und
+  Freelancern mit Konto die Anfragen an ihr Profil, sobald vorgestellt wurde.
+- 14 Tage nach der Vorstellung fragt XPORTAL dort **jede Seite für sich**, ob
+  es zur Beauftragung kam; bei „noch im Gespräch“ nach 45 Tagen noch einmal.
+  Beide Antworten stehen im Admin, ein Widerspruch („ja“ gegen „nein“) ist
+  markiert.
+- Per Mail geht nur ein kurzer Hinweis mit Link (ohne Anmeldung) zu diesem
+  Gespräch. Der Zeitplan `xportal-placement-follow-ups` (pg_cron, täglich
+  06:52 UTC) ruft dafür `/api/admin/introductions/follow-ups` mit dem
+  Geheimnis `placement_run_token` aus dem Supabase-Vault auf; in Netlify
+  steht dasselbe als `PLACEMENT_RUN_SECRET`. Der Knopf im Admin bleibt.
+
 ## Einrichtung (einmalig)
 
 **In Stripe**
