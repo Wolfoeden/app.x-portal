@@ -19,18 +19,20 @@ import { LegalFooter } from "@/components/LegalFooter";
 import {
   IconAlertCircle,
   IconArrowUp,
-  IconChat,
+  IconBookmark,
   IconCheck,
   IconChevronDown,
-  IconChevronRight,
   IconClose,
+  IconCompose,
   IconFolder,
+  IconFolderPlus,
   IconInfo,
   IconMenu,
   IconPanelRight,
-  IconPlus,
   IconSearch,
+  IconSidebar,
   IconSpark,
+  IconUser,
 } from "@/components/icons";
 import { accountNameFromMetadata, shownAccountName } from "@/lib/auth/account-name";
 import {
@@ -137,11 +139,14 @@ const SIDEBAR_MIN_WIDTH = 224;
 const SIDEBAR_MAX_WIDTH = 480;
 const SIDEBAR_DEFAULT_WIDTH = 288;
 const SIDEBAR_WIDTH_STORAGE_KEY = "xportal.sidebar-width.v2";
+const SIDEBAR_COLLAPSED_STORAGE_KEY = "xportal.sidebar-collapsed.v1";
+/** Width of the icon rail the desktop sidebar collapses to. */
+const SIDEBAR_RAIL_WIDTH = 60;
 
 function clampSidebarWidth(value: number): number {
   return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, Math.round(value)));
 }
-type SidebarPreferences = { width: number };
+type SidebarPreferences = { width: number; collapsed: boolean };
 
 /**
  * The saved sidebar layout, modelled as the external store it actually is.
@@ -153,6 +158,7 @@ type SidebarPreferences = { width: number };
  */
 const SERVER_SIDEBAR_PREFERENCES: SidebarPreferences = {
   width: SIDEBAR_DEFAULT_WIDTH,
+  collapsed: false,
 };
 
 let sidebarPreferences: SidebarPreferences = SERVER_SIDEBAR_PREFERENCES;
@@ -169,6 +175,7 @@ function readStoredSidebarPreferences(): SidebarPreferences {
       width: Number.isFinite(storedWidth)
         ? clampSidebarWidth(storedWidth)
         : SIDEBAR_DEFAULT_WIDTH,
+      collapsed: window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "1",
     };
   } catch {
     // Blocked or full storage must never stop the workspace from rendering.
@@ -196,6 +203,7 @@ function writeSidebarPreferences(next: SidebarPreferences, persist = true) {
   if (persist) {
     try {
       window.localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(next.width));
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, next.collapsed ? "1" : "0");
     } catch {
       // The preference is a convenience, never a requirement.
     }
@@ -258,8 +266,15 @@ function useSidebarWidth() {
     });
   }, []);
 
+  /** Desktop only: the mobile sidebar is an off-canvas panel either way. */
+  const setSidebarCollapsed = useCallback((collapsed: boolean) => {
+    writeSidebarPreferences({ ...sidebarPreferences, collapsed });
+  }, []);
+
   return {
     sidebarWidth: preferences.width,
+    sidebarCollapsed: preferences.collapsed,
+    setSidebarCollapsed,
     startSidebarResize,
     resetSidebarWidth,
     isResizingSidebar,
@@ -298,6 +313,7 @@ interface ChatWorkspaceProps {
     resultState?: "ranked" | "no_match" | "searching";
     /** Selbst angemeldete Profile für den Shortcut, ohne Datenbank. */
     showcase?: RegisteredShowcase;
+    collections?: ProjectCollectionItem[];
   };
 }
 
@@ -1140,7 +1156,7 @@ export function ChatWorkspace({
   const [authProfileId, setAuthProfileId] = useState<string | null>(null);
   const [authDestination, setAuthDestination] = useState("/chat");
   const [projects, setProjects] = useState<ProjectListItem[]>(previewData?.projects ?? []);
-  const [projectCollections, setProjectCollections] = useState<ProjectCollectionItem[]>([]);
+  const [projectCollections, setProjectCollections] = useState<ProjectCollectionItem[]>(previewData?.collections ?? []);
   const [activeProject, setActiveProject] = useState<ProjectListItem | null>(previewData?.projects[0] ?? null);
   const [messages, setMessages] = useState<ConversationMessage[]>(previewData?.messages ?? []);
   const [brief, setBrief] = useState<StructuredBrief | null>(previewData?.brief ?? null);
@@ -1225,6 +1241,8 @@ export function ChatWorkspace({
   const [workspaceLoading, setWorkspaceLoading] = useState(!preview);
   const {
     sidebarWidth,
+    sidebarCollapsed,
+    setSidebarCollapsed,
     startSidebarResize,
     resetSidebarWidth,
     isResizingSidebar,
@@ -2855,10 +2873,13 @@ export function ChatWorkspace({
     !pendingAssistant &&
     !hasResult;
 
+  // Eingeklappt wird nur die Desktop-Leiste; mobil bleibt sie ein Panel.
+  const railSidebar = sidebarCollapsed && !mobileLayout;
+
   return (
     <div
       className={`app-shell ${detailsOpen ? "" : "details-hidden"}${emptyChat ? " is-empty-chat" : ""}${profileFocus ? " is-profile-focus" : ""}${isResizingSidebar ? " is-resizing-sidebar" : ""}`}
-      style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
+      style={{ "--sidebar-width": `${railSidebar ? SIDEBAR_RAIL_WIDTH : sidebarWidth}px` } as CSSProperties}
     >
       <a className="skip-link" href="#chat-composer">
         Direkt zur Nachricht
@@ -2866,7 +2887,7 @@ export function ChatWorkspace({
 
       <aside
         ref={projectSidebarRef}
-        className={`project-sidebar ${sidebarOpen ? "is-open" : ""}`}
+        className={`project-sidebar${sidebarOpen ? " is-open" : ""}${railSidebar ? " is-collapsed" : ""}`}
         aria-label="Projekte"
         aria-hidden={mobileLayout && !sidebarOpen ? true : undefined}
         aria-modal={mobileLayout ? sidebarOpen : undefined}
@@ -2874,11 +2895,40 @@ export function ChatWorkspace({
         inert={mobileLayout && !sidebarOpen ? true : undefined}
         onKeyDown={trapSidebarFocus}
       >
-        <div className="sidebar-scroll">
         <div className="sidebar-top">
-          {chatSearchOpen ? (
+          <a className="product-mark" href="/freelancer-finden" aria-label="XPORTAL Produktseite">
+            <span>X PORTAL</span>
+          </a>
+          <button
+            className="icon-button sidebar-collapse"
+            type="button"
+            onClick={() => setSidebarCollapsed(!railSidebar)}
+            aria-label={railSidebar ? "Seitenleiste öffnen" : "Seitenleiste schließen"}
+            aria-expanded={!railSidebar}
+            title={railSidebar ? "Seitenleiste öffnen" : "Seitenleiste schließen"}
+          ><IconSidebar size={18} /></button>
+          <button data-sidebar-close className="icon-button sidebar-close" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schließen"><IconClose size={18} /></button>
+        </div>
+
+        <div className="sidebar-scroll">
+        {/* Die Reihen tragen ihre Beschriftung auch in der eingeklappten
+            Leiste: `sidebar-row-label` wird dort nur optisch ausgeblendet,
+            damit Screenreader die Schaltflächen weiter benennen können. */}
+        <nav className="sidebar-primary-nav" aria-label="Hauptnavigation">
+          <button
+            className="sidebar-row"
+            type="button"
+            onClick={startNewProject}
+            data-sidebar-primary="new-chat"
+            title={railSidebar ? "Neuer Chat" : undefined}
+          >
+            <IconCompose size={18} />
+            <span className="sidebar-row-label">Neuer Chat</span>
+            <span className="sidebar-row-hint" aria-hidden="true">{newChatShortcut}</span>
+          </button>
+          {chatSearchOpen && !railSidebar ? (
             <div className="sidebar-chat-search" role="search">
-              <span aria-hidden="true"><IconSearch size={14} /></span>
+              <IconSearch size={18} />
               <input
                 type="search"
                 value={chatSearchQuery}
@@ -2896,54 +2946,79 @@ export function ChatWorkspace({
               <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={closeChatSearch} aria-label="Suche schließen"><IconClose size={14} /></button>
             </div>
           ) : (
-            <div className="sidebar-brand">
-              <a className="product-mark" href="/freelancer-finden" aria-label="XPORTAL Produktseite">
-                <span>X PORTAL</span>
-              </a>
-              <button className="icon-button sidebar-search-toggle" type="button" onClick={() => setChatSearchOpen(true)} aria-label="Chats durchsuchen"><IconSearch size={16} /></button>
-            </div>
+            <button
+              className="sidebar-row sidebar-search-toggle"
+              type="button"
+              onClick={() => {
+                setSidebarCollapsed(false);
+                setChatSearchOpen(true);
+              }}
+              title={railSidebar ? "Chats durchsuchen" : undefined}
+            >
+              <IconSearch size={18} />
+              <span className="sidebar-row-label">Chats durchsuchen</span>
+            </button>
           )}
-          <button data-sidebar-close className="icon-button sidebar-close" type="button" onClick={() => setSidebarOpen(false)} aria-label="Projektleiste schließen"><IconClose size={18} /></button>
-        </div>
-
-        <nav className="sidebar-primary-nav" aria-label="Hauptnavigation">
-          <button
-            className="sidebar-primary-button is-new-chat"
-            type="button"
-            onClick={startNewProject}
-            data-sidebar-primary="new-chat"
-          >
-            <span className="sidebar-primary-icon" aria-hidden="true"><IconPlus size={16} /></span>
-            <span>Neuer Chat</span>
-            <span className="new-chat-key" aria-hidden="true">{newChatShortcut}</span>
-          </button>
           <a
-            className={`sidebar-primary-button${isTeamView ? " is-active" : ""}`}
+            className={`sidebar-row${isTeamView ? " is-active" : ""}`}
             href="/mein-team"
             aria-current={isTeamView ? "page" : undefined}
             onClick={() => setSidebarOpen(false)}
             data-sidebar-primary="team"
+            title={railSidebar ? "Merkliste" : undefined}
           >
-            <span className="sidebar-primary-icon" aria-hidden="true"><IconFolder size={16} /></span>
-            <span>Merkliste</span>
+            <IconBookmark size={18} />
+            <span className="sidebar-row-label">Merkliste</span>
             {isAccountUser && team.length ? (
-              <span className="sidebar-primary-count" aria-hidden="true">{team.length}</span>
-            ) : (
-              <span className="sidebar-primary-chevron" aria-hidden="true"><IconChevronRight size={14} /></span>
-            )}
+              <span className="sidebar-row-count" aria-hidden="true">{team.length}</span>
+            ) : null}
           </a>
         </nav>
 
         <nav className="project-nav" aria-label="Gespeicherte Chats">
+          <p className="nav-label">Projekte</p>
+          {normalizedChatSearch ? null : (
+            <button className="sidebar-row" type="button" onClick={() => setCreateProjectOpen(true)}>
+              <IconFolderPlus size={18} />
+              <span className="sidebar-row-label">Neues Projekt</span>
+            </button>
+          )}
+          {workspaceLoading ? (
+            <SidebarSkeleton rows={1} />
+          ) : visibleCollections.length ? (
+            visibleCollections.map((collection) => {
+              const chats = visibleProjects.filter((project) => project.collectionId === collection.id);
+              return (
+                <section className="collection-group" key={collection.id} aria-label={`Projekt ${collection.name}`}>
+                  <div className="collection-title">
+                    <IconFolder size={18} />
+                    <span className="sidebar-row-label">{collection.name}</span>
+                    <small>{chats.length}</small>
+                  </div>
+                  {chats.length ? (
+                    <SidebarChatList
+                      chats={chats}
+                      activeProjectId={activeProject?.id ?? null}
+                      loadingProjectId={loadingProjectId}
+                      onOpen={openProjectFromSidebar}
+                      onPrefetch={prefetchProject}
+                      onManage={setManageChat}
+                    />
+                  ) : null}
+                </section>
+              );
+            })
+          ) : normalizedChatSearch ? (
+            <p className="sidebar-section-empty">Keine passenden Chats in Projekten.</p>
+          ) : null}
+
           <p className="nav-label">Chats</p>
           {workspaceLoading ? (
             <SidebarSkeleton rows={4} />
           ) : unassignedChats.length === 0 ? (
-            <div className="empty-projects">
-              <span aria-hidden="true"><IconChat size={22} /></span>
-              <p>{normalizedChatSearch ? "Keine passenden freien Chats" : "Noch keine freien Chats"}</p>
-              <small>{normalizedChatSearch ? "Passen Sie den Suchbegriff an." : "Neue Unterhaltungen erscheinen automatisch hier."}</small>
-            </div>
+            <p className="sidebar-section-empty">
+              {normalizedChatSearch ? "Keine passenden Chats." : "Neue Unterhaltungen erscheinen hier."}
+            </p>
           ) : (
             <SidebarChatList
               chats={unassignedChats}
@@ -2954,76 +3029,21 @@ export function ChatWorkspace({
               onManage={setManageChat}
             />
           )}
-
-          <div className="sidebar-section-heading">
-            <p className="nav-label">In Projekten</p>
-            <button type="button" onClick={() => setCreateProjectOpen(true)}><IconPlus size={13} /> Projekt</button>
-          </div>
-          {workspaceLoading ? (
-            <SidebarSkeleton rows={2} />
-          ) : visibleCollections.length === 0 ? (
-            <p className="sidebar-section-empty">{normalizedChatSearch ? "Keine passenden Chats in Projekten." : "Erstellen Sie ein Projekt und speichern Sie mehrere Chats darin."}</p>
-          ) : (
-            <div className="collection-list">
-              {visibleCollections.map((collection) => {
-                const chats = visibleProjects.filter((project) => project.collectionId === collection.id);
-                return (
-                  <section className="collection-group" key={collection.id} aria-label={`Projekt ${collection.name}`}>
-                    <div className="collection-title"><span aria-hidden="true"><IconChevronDown size={14} /></span>{collection.name}<small>{chats.length}</small></div>
-                    {chats.length ? (
-                      <SidebarChatList
-                        chats={chats}
-                        activeProjectId={activeProject?.id ?? null}
-                        loadingProjectId={loadingProjectId}
-                        onOpen={openProjectFromSidebar}
-                        onPrefetch={prefetchProject}
-                        onManage={setManageChat}
-                      />
-                    ) : <p className="collection-empty">Noch keine Chats</p>}
-                  </section>
-                );
-              })}
-            </div>
-          )}
         </nav>
 
-        <div className="sidebar-secondary-nav">
-          <a
-            className="sidebar-apply-link"
-            href="/wie-funktioniert-xportal"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <span className="sidebar-apply-icon" aria-hidden="true">
-              <IconInfo size={15} />
-            </span>
-            <span className="sidebar-apply-copy">
-              <strong>So funktioniert XPORTAL</strong>
-              <small>Matching, Grenzen und Credits</small>
-            </span>
-            <span className="sidebar-apply-chevron" aria-hidden="true">
-              <IconChevronRight size={15} />
-            </span>
+        {/* Freelancer sind die andere Seite des Marktplatzes, aber nicht das
+            Publikum dieses Arbeitsbereichs. Zwei leise Reihen am Ende halten
+            den Einstieg auffindbar, ohne mit der Suche zu konkurrieren. */}
+        <nav className="sidebar-secondary-nav" aria-label="Mehr zu XPORTAL">
+          <a className="sidebar-row" href="/wie-funktioniert-xportal" onClick={() => setSidebarOpen(false)}>
+            <IconInfo size={18} />
+            <span className="sidebar-row-label">So funktioniert XPORTAL</span>
           </a>
-          {/* Freelancers are the other half of the marketplace, but not the
-              audience this workspace is built for. A quiet, permanent row keeps
-              the entry findable without competing with the search flow. */}
-          <a
-            className="sidebar-apply-link"
-            href="/freelancer/apply"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <span className="sidebar-apply-icon" aria-hidden="true">
-              <IconPlus size={15} />
-            </span>
-            <span className="sidebar-apply-copy">
-              <strong>{freelancerEntry.label}</strong>
-              <small>{freelancerEntry.hint}</small>
-            </span>
-            <span className="sidebar-apply-chevron" aria-hidden="true">
-              <IconChevronRight size={15} />
-            </span>
+          <a className="sidebar-row" href="/freelancer/apply" onClick={() => setSidebarOpen(false)} title={freelancerEntry.hint}>
+            <IconUser size={18} />
+            <span className="sidebar-row-label">{freelancerEntry.label}</span>
           </a>
-        </div>
+        </nav>
         </div>
 
         <div className="sidebar-footer">
@@ -3117,7 +3137,7 @@ export function ChatWorkspace({
               }}
             >
               <span className="sidebar-account-avatar" aria-hidden="true">
-                {accountName ? initials(accountName) : "G"}
+                {accountName ? initials(accountName) : <IconUser size={16} />}
               </span>
               <span className="sidebar-account-copy">
                 <strong>{accountName ?? "Anmelden"}</strong>
@@ -3129,8 +3149,12 @@ export function ChatWorkspace({
                       : "Projekte dauerhaft speichern"}
                 </span>
               </span>
-              <span className="sidebar-account-more" aria-hidden="true">•••</span>
             </button>
+            {/* Wie der Upgrade-Knopf in Chat-Apps: nur im kostenlosen Start,
+                ein eigener Link neben dem Konto statt eines Knopfs darin. */}
+            {isAccountUser && usage && !hasManagedBilling(usage) ? (
+              <a className="sidebar-plan-link" href="/preise" onClick={() => setSidebarOpen(false)}>Tarife</a>
+            ) : null}
           </div>
         </div>
         {/* Separator and control in one: drag to resize, double-click to

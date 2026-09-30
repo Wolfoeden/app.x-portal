@@ -3,6 +3,7 @@ import type {
   AiUsageSnapshot,
   ConversationMessage,
   FreelancerProfileResult,
+  ProjectCollectionItem,
   ProjectListItem,
   SessionResponse,
   StructuredBrief,
@@ -49,6 +50,17 @@ export const previewProjects: ProjectListItem[] = [
     collectionId: null,
     status: "closed",
   },
+  {
+    id: "preview-collected",
+    title: "SAP BTP Integration für Rechnungseingang",
+    updatedAt: "2026-08-10T09:00:00.000Z",
+    collectionId: "preview-collection",
+    status: "matching",
+  },
+];
+
+export const previewCollections: ProjectCollectionItem[] = [
+  { id: "preview-collection", name: "Digitalisierung 2027", updatedAt: "2026-08-10T09:00:00.000Z" },
 ];
 
 export const previewMessages: ConversationMessage[] = [

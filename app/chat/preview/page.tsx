@@ -5,6 +5,7 @@ import {
   previewAnalysis,
   previewAuth,
   previewBrief,
+  previewCollections,
   previewGuestAuth,
   previewMessages,
   previewProfiles,
@@ -114,6 +115,7 @@ export default async function ChatPreviewPage({
         usage: usageFixture(params.credits),
         resultState: state === "empty" ? "ranked" : state === "partial" ? "no_match" : state,
         showcase: automationShowcase,
+        collections: previewCollections,
       }}
     />
   );
