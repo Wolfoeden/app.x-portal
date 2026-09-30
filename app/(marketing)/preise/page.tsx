@@ -16,6 +16,13 @@ import {
   type FixedMonthlyPlan,
 } from "@/lib/billing/plans";
 import { ENTERPRISE_CONTACT } from "@/lib/billing/payment-links";
+import {
+  PLACEMENT_TERMS,
+  PLACEMENT_TERMS_PATH,
+  placementFeeCents,
+  placementRequestsEnabled,
+  placementTermsSummary,
+} from "@/lib/placement/config";
 import { BUSINESS_ONLY_NOTICE } from "@/lib/legal/policy";
 import { MARKETING_PAGE, MARKETING_PAGES, pageMetadata } from "@/lib/seo";
 import { breadcrumbStructuredData } from "@/lib/structured-data";
@@ -150,7 +157,43 @@ const PRICING_QUESTIONS = [
   },
 ] as const;
 
+/** Rechenbeispiel mit einem runden Tagessatz nahe am Median der Profile. */
+const EXAMPLE_DAY_RATE_CENTS = 60_000;
+const EXAMPLE_DAYS = PLACEMENT_TERMS.maxFeeDays;
+
+/**
+ * Das Vermittlungsmodell als eigener Abschnitt über den Credit-Tarifen: Suche
+ * und Anfrage sind kostenlos, bezahlt wird bei Beauftragung. Die Tarife
+ * bleiben für Analysen und KI-Recherchen.
+ */
+function PlacementSection() {
+  const euro = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+  const fee = placementFeeCents(EXAMPLE_DAY_RATE_CENTS, EXAMPLE_DAYS) / 100;
+  return (
+    <section className={styles.placement} aria-labelledby="placement-title">
+      <div>
+        <p className={styles.eyebrow}>Vermittlung</p>
+        <h2 id="placement-title">Kostenlos suchen.<br />Zahlen bei Beauftragung.</h2>
+        <ul>
+          {placementTermsSummary().map((sentence) => <li key={sentence}>{sentence}</li>)}
+        </ul>
+        <Link href={PLACEMENT_TERMS_PATH} className={styles.placementLink}>Vermittlungsbedingungen lesen <span aria-hidden="true">↗</span></Link>
+      </div>
+      <aside aria-label="Rechenbeispiel">
+        <p>Rechenbeispiel</p>
+        <dl>
+          <div><dt>Tagessatz des Freelancers</dt><dd>{euro.format(EXAMPLE_DAY_RATE_CENTS / 100)}</dd></div>
+          <div><dt>Projekttage in {PLACEMENT_TERMS.feeMonths} Monaten</dt><dd>{EXAMPLE_DAYS}</dd></div>
+          <div><dt>Honorar, {PLACEMENT_TERMS.feePercent} %, einmalig</dt><dd>{euro.format(fee)} netto</dd></div>
+        </dl>
+        <span>Rechnung nach Projektstart, {PLACEMENT_TERMS.paymentDays} Tage Zahlungsziel. Kommt keine Beauftragung zustande, kostet die Vermittlung nichts.</span>
+      </aside>
+    </section>
+  );
+}
+
 export default function PricingPage() {
+  const placement = placementRequestsEnabled();
   return (
     <main id="main-content" className={styles.main} tabIndex={-1}>
       <JsonLd data={breadcrumbStructuredData(MARKETING_PAGE.pricing)} />
@@ -178,6 +221,8 @@ export default function PricingPage() {
           </ul>
         </aside>
       </header>
+
+      {placement ? <PlacementSection /> : null}
 
       <section className={styles.planSection} aria-label="Tarife">
         <div className={styles.cards}>

@@ -10,6 +10,8 @@ import type { FixedMonthlyPlan } from "@/lib/billing/plans";
 import { verifyStripeSignature } from "@/lib/billing/stripe-signature";
 import { deliverEmail } from "@/lib/email/deliver";
 import { TERMS_VERSION } from "@/lib/legal/policy";
+import { writeAuditEvent } from "@/lib/audit/write";
+import { recordPlacementInvoicePaid } from "@/lib/placement/invoices";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { logEvent } from "@/lib/security/request";
 
@@ -232,6 +234,32 @@ export async function POST(request: Request) {
   }
 
   const admin = createAdminSupabaseClient();
+
+  // Rechnungen über das Vermittlungshonorar haben kein Abo. Sie tragen ihre
+  // Herkunft in den Metadaten (lib/placement/invoices.ts) und werden hier
+  // verbucht, bevor die Abo-Zuordnung sie als unbekannt verwirft.
+  const invoiceMetadata = record(object.metadata);
+  if (eventType === "invoice.paid" && invoiceMetadata?.xportal_kind === "placement_fee") {
+    const invoice = stripeId(object.id, "in");
+    if (!invoice) return NextResponse.json({ error: "Rechnung unvollständig." }, { status: 400 });
+    try {
+      const paid = await recordPlacementInvoicePaid(invoice);
+      if (paid?.introId) {
+        await writeAuditEvent({
+          actorUserId: null,
+          action: "placement_fee_paid",
+          targetType: "intro_booking",
+          targetId: paid.introId,
+          outcome: "success",
+          metadata: { clientUserId: paid.clientUserId, feeMinor: paid.feeMinor, via: "stripe" },
+        });
+      }
+      logEvent("stripe_webhook_placement_paid", { eventId, recorded: Boolean(paid) });
+      return NextResponse.json({ received: true, recorded: Boolean(paid) });
+    } catch {
+      return NextResponse.json({ error: "Zahlung nicht verbucht." }, { status: 503 });
+    }
+  }
 
   if (eventType === "checkout.session.completed") {
     const reference = object.client_reference_id;

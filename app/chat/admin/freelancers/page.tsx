@@ -22,6 +22,8 @@ import {
   AVAILABILITY_LABELS,
   type ApplicationStatus,
   type AvailabilityStatus,
+  REFERRAL_PATTERN,
+  SEEKING_LABELS,
 } from "@/lib/freelancer/limits";
 
 import styles from "./freelancers.module.css";
@@ -73,7 +75,7 @@ function isApplicationStatus(value: string): value is ApplicationStatus {
 export default async function FreelancerApplicationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; quelle?: string }>;
 }) {
   const currentUser = await getCurrentUser();
   if (!currentUser || currentUser.isAnonymous) {
@@ -87,9 +89,13 @@ export default async function FreelancerApplicationsPage({
       ? params.status
       : undefined;
 
-  const [applications, counts] = await Promise.all([
-    listApplications({ status: activeStatus }),
+  const activeReferral =
+    params.quelle && REFERRAL_PATTERN.test(params.quelle) ? params.quelle : undefined;
+
+  const [applications, counts, agencyApplications] = await Promise.all([
+    listApplications({ status: activeStatus, referral: activeReferral }),
     countApplicationsByStatus(),
+    listApplications({ referral: "arbeitsagentur", limit: 1000 }),
   ]);
 
   await writeAuditEvent({
@@ -97,7 +103,7 @@ export default async function FreelancerApplicationsPage({
     action: "freelancer_applications_admin_viewed",
     targetType: "freelancer_application",
     outcome: "success",
-    metadata: { filter: activeStatus ?? "all", listed: applications.length },
+    metadata: { filter: activeStatus ?? "all", referral: activeReferral ?? null, listed: applications.length },
     required: true,
   });
 
@@ -163,6 +169,13 @@ export default async function FreelancerApplicationsPage({
               {APPLICATION_STATUS_LABELS[status]} <b>{counts[status]}</b>
             </Link>
           ))}
+          {/* Der Zulauf über die Agentur für Arbeit, als eigener Stapel. */}
+          <Link
+            href="/chat/admin/freelancers?quelle=arbeitsagentur"
+            className={`${styles.tab} ${activeReferral === "arbeitsagentur" ? styles.tabActive : ""}`}
+          >
+            Agentur für Arbeit <b>{agencyApplications.length}</b>
+          </Link>
         </nav>
 
         <AdminSectionHeader
@@ -196,6 +209,10 @@ export default async function FreelancerApplicationsPage({
                         </Link>
                         <div className={styles.muted}>{row.contact_email}</div>
                         <div className={styles.candidateRole}>{row.role_title}</div>
+                        <div className={styles.chips}>
+                          <span className={styles.chip}>{SEEKING_LABELS[row.seeking] ?? SEEKING_LABELS.projects}</span>
+                          {row.referral ? <span className={styles.chip}>über {row.referral === "arbeitsagentur" ? "Agentur für Arbeit" : row.referral}</span> : null}
+                        </div>
                         {row.location_text ? (
                           <div className={styles.muted}>{row.location_text}</div>
                         ) : null}
@@ -231,17 +248,19 @@ export default async function FreelancerApplicationsPage({
                           <span data-ready={Boolean(row.cv_storage_path)}>
                             {row.cv_storage_path ? "CV vorhanden" : "CV fehlt"}
                           </span>
-                          <span data-ready={Boolean(row.booking_url)}>
-                            {row.booking_url ? "Terminlink" : "Terminlink fehlt"}
+                          <span data-ready={true}>
+                            {row.booking_url ? "Terminlink" : "Vorstellung per Mail"}
                           </span>
                           <span
                             data-ready={Boolean(
-                              row.hourly_rate_minor || row.day_rate_minor,
+                              row.seeking === "employment" || row.hourly_rate_minor || row.day_rate_minor,
                             )}
                           >
-                            {row.hourly_rate_minor || row.day_rate_minor
-                              ? "Honorar gesetzt"
-                              : "Honorar fehlt"}
+                            {row.seeking === "employment"
+                              ? "Festanstellung"
+                              : row.hourly_rate_minor || row.day_rate_minor
+                                ? "Honorar gesetzt"
+                                : "Honorar fehlt"}
                           </span>
                         </div>
                       </td>

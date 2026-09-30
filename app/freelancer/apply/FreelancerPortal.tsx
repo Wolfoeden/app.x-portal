@@ -535,7 +535,7 @@ export function FreelancerDashboard({
             </label>
             <label className={styles.field}>
               <span>Buchungslink</span>
-              <input type="url" value={profile.bookingUrl} onChange={(event) => update("bookingUrl", event.target.value)} pattern="https://.*" required />
+              <input type="url" value={profile.bookingUrl} onChange={(event) => update("bookingUrl", event.target.value)} pattern="https://.*" placeholder="optional, z. B. https://calendly.com/ihr-name/30min" />
             </label>
             <label className={`${styles.field} ${styles.full}`}>
               <span>Über mich</span>

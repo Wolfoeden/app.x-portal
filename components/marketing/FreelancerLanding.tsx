@@ -8,6 +8,7 @@ import { MARKETING_PAGE } from "@/lib/seo";
 import { breadcrumbStructuredData } from "@/lib/structured-data";
 import { BRIEF_ANALYSIS_CREDITS, CREDIT_PLANS, countLabel, roundedExampleCount } from "@/lib/ai/credit-policy";
 import { PUBLIC_PRICING_PLANS, START_CREDITS, type FixedMonthlyPlan } from "@/lib/billing/plans";
+import { PLACEMENT_TERMS, PLACEMENT_TERMS_PATH, placementRequestsEnabled } from "@/lib/placement/config";
 import styles from "./landing.module.css";
 
 function StepIcon({ kind }: { kind: "brief" | "profiles" | "conversation" }) {
@@ -22,11 +23,15 @@ function StepIcon({ kind }: { kind: "brief" | "profiles" | "conversation" }) {
  * Die Schritte sind die Kapitel des Ablauf-Videos; `startsAt` ist die Sekunde,
  * ab der das Video den Schritt zeigt (public/videos/ablauf.webm, 13,5 s).
  */
-const PROCESS_STEPS = [
-  { title: "Projekttext kopieren", text: "Nehmen Sie die Beschreibung aus Ihrer bestehenden Ausschreibung.", icon: <StepIcon kind="brief" />, startsAt: 0 },
-  { title: "Bei XPORTAL einfügen", text: "XPORTAL erkennt Anforderungen und schlägt passende Profile vor.", icon: <StepIcon kind="profiles" />, startsAt: 3.5 },
-  { title: "Erstgespräch buchen", text: "Passendes Profil prüfen und bei vorhandenem Terminlink einen freien Slot wählen.", icon: <StepIcon kind="conversation" />, startsAt: 8.7 },
-];
+function processSteps(placement: boolean) {
+  return [
+    { title: "Projekttext kopieren", text: "Nehmen Sie die Beschreibung aus Ihrer bestehenden Ausschreibung.", icon: <StepIcon kind="brief" />, startsAt: 0 },
+    { title: "Bei XPORTAL einfügen", text: "XPORTAL erkennt Anforderungen und schlägt passende Profile vor.", icon: <StepIcon kind="profiles" />, startsAt: 3.5 },
+    placement
+      ? { title: "Erstgespräch buchen", text: "Profil anfragen, XPORTAL stellt Sie vor. Mit Terminlink wählen Sie danach selbst einen freien Slot.", icon: <StepIcon kind="conversation" />, startsAt: 8.7 }
+      : { title: "Erstgespräch buchen", text: "Passendes Profil prüfen und bei vorhandenem Terminlink einen freien Slot wählen.", icon: <StepIcon kind="conversation" />, startsAt: 8.7 },
+  ];
+}
 
 /** Was ein Beispiel auf der Landingpage verspricht, in einem Satz. */
 const EXAMPLE_TEASERS: Readonly<Record<ExampleBriefKey, string>> = {
@@ -45,16 +50,29 @@ const ENTRY_EURO = Math.min(...MONTHLY_PLANS.map((plan) => plan.euro));
  * FAQ-Zeile. Die Zahlen kommen aus demselben Katalog wie die Preisseite; die
  * vollständige Liste bleibt dort.
  */
-function PricingTeaser() {
+function PricingTeaser({ placement }: { placement: boolean }) {
   return (
     <section className={styles.pricing} aria-labelledby="preise-title">
       <div className={styles.explanation}>
         <p className={styles.eyebrow}>Preise</p>
         <h2 id="preise-title">Kostenlos testen.<br />Bezahlen, wenn es sich lohnt.</h2>
-        <p>Die Analyse Ihres Projekts ist ohne Anmeldung möglich. Mit einem kostenlosen Konto erhalten Sie einmalig {START_CREDITS} Start-Credits. Wer regelmäßig sucht, wählt einen Monatstarif – monatlich kündbar.</p>
+        <p>
+          {placement
+            ? `Suche, Anfrage und Vorstellung sind kostenlos; bezahlt wird erst, wenn Sie einen Freelancer beauftragen. Für KI-Analysen und Recherchen erhalten Sie mit einem kostenlosen Konto einmalig ${START_CREDITS} Start-Credits, danach gibt es Monatstarife – monatlich kündbar.`
+            : `Die Analyse Ihres Projekts ist ohne Anmeldung möglich. Mit einem kostenlosen Konto erhalten Sie einmalig ${START_CREDITS} Start-Credits. Wer regelmäßig sucht, wählt einen Monatstarif – monatlich kündbar.`}
+        </p>
         <Link className={styles.textLink} href={MARKETING_PAGE.pricing.path}>Alle Tarife vergleichen <span aria-hidden="true">↗</span></Link>
       </div>
       <ul className={styles.planList}>
+        {placement ? (
+          <li className={styles.planPlacement}>
+            <div>
+              <strong>Vermittlung</strong>
+              <span>Suche, Anfrage und Vorstellung kostenlos · einmalig {PLACEMENT_TERMS.feePercent} % des Honorars der ersten {PLACEMENT_TERMS.feeMonths} Monate, nur bei Beauftragung · <Link href={PLACEMENT_TERMS_PATH}>Bedingungen</Link></span>
+            </div>
+            <p><strong>{PLACEMENT_TERMS.feePercent} %</strong><span>bei Beauftragung</span></p>
+          </li>
+        ) : null}
         <li>
           <div><strong>Kostenloser Start</strong><span>{START_CREDITS} Credits einmalig · reicht für {countLabel(roundedExampleCount(START_CREDITS, "research"), "research")}</span></div>
           <p><strong>0 €</strong></p>
@@ -74,6 +92,8 @@ function PricingTeaser() {
 }
 
 export function FreelancerLanding() {
+  // Wird beim Build eingesetzt, wie überall beim Vermittlungsmodell.
+  const placement = placementRequestsEnabled();
   return (
     <main id="main-content" className={styles.main} tabIndex={-1}>
       <JsonLd data={breadcrumbStructuredData(MARKETING_PAGE.find)} />
@@ -81,12 +101,25 @@ export function FreelancerLanding() {
         <div className={styles.heroCopy}>
           <p className={styles.eyebrow}>Für Recruiter mit fertiger Projektanzeige</p>
           <h1>Freelancer finden.<br /><span>Termin buchen.</span></h1>
-          <p className={styles.lead}>Projektbeschreibung bei XPORTAL einfügen, passende Profile prüfen und – bei vorhandenem Terminlink – direkt ein Erstgespräch buchen.</p>
+          <p className={styles.lead}>
+            {placement
+              ? "Projektbeschreibung bei XPORTAL einfügen, passende Profile prüfen und den Freelancer anfragen. XPORTAL stellt Sie vor; bezahlt wird nur, wenn Sie beauftragen."
+              : "Projektbeschreibung bei XPORTAL einfügen, passende Profile prüfen und – bei vorhandenem Terminlink – direkt ein Erstgespräch buchen."}
+          </p>
           <div className={styles.actions}><ProjectLink>Projekt jetzt einfügen</ProjectLink><a className={styles.textLink} href="#ablauf">So funktioniert’s <span aria-hidden="true">↓</span></a></div>
           <ul className={styles.startNotes}>
             <li><span aria-hidden="true">✓</span> Analyse kostenlos und ohne Anmeldung</li>
-            <li><span aria-hidden="true">✓</span> Termin buchen mit kostenlosem Konto</li>
-            <li><span aria-hidden="true">✓</span> Monatstarife ab {ENTRY_EURO} € netto, <Link href={MARKETING_PAGE.pricing.path}>monatlich kündbar</Link></li>
+            {placement ? (
+              <>
+                <li><span aria-hidden="true">✓</span> Anfrage und Vorstellung kostenlos</li>
+                <li><span aria-hidden="true">✓</span> {PLACEMENT_TERMS.feePercent} % Honorar nur bei Beauftragung, <Link href={PLACEMENT_TERMS_PATH}>Bedingungen</Link></li>
+              </>
+            ) : (
+              <>
+                <li><span aria-hidden="true">✓</span> Termin buchen mit kostenlosem Konto</li>
+                <li><span aria-hidden="true">✓</span> Monatstarife ab {ENTRY_EURO} € netto, <Link href={MARKETING_PAGE.pricing.path}>monatlich kündbar</Link></li>
+              </>
+            )}
           </ul>
         </div>
         <figure className={styles.heroFigure}>
@@ -98,7 +131,7 @@ export function FreelancerLanding() {
 
       <section className={styles.process} id="ablauf" aria-labelledby="ablauf-title">
         <div className={styles.sectionHead}><p className={styles.eyebrow}>Von der Ausschreibung zum Termin</p><h2 id="ablauf-title">Einfügen. Buchen.</h2></div>
-        <ProcessVideo steps={PROCESS_STEPS} />
+        <ProcessVideo steps={processSteps(placement)} />
       </section>
 
       <section className={styles.evidence} id="begruendung" aria-labelledby="begruendung-title">
@@ -138,15 +171,21 @@ export function FreelancerLanding() {
         <Link className={styles.textLink} href={MARKETING_PAGE.it.path}>IT-Projekt konkretisieren <span aria-hidden="true">↗</span></Link>
       </section>
 
-      <section className={styles.conversation} aria-labelledby="auswahl-title"><Image src="/images/landing/project-conversation.webp" alt="Auftraggeber und Freelancer besprechen gemeinsam eine Projektbeschreibung am Tisch." width={1536} height={1024} sizes="(max-width: 760px) calc(100vw - 40px), (max-width: 1260px) 44vw, 520px" loading="lazy" /><div className={styles.explanation}><p className={styles.eyebrow}>Vom Match ins Gespräch</p><h2 id="auswahl-title">Passendes Profil gefunden?<br />Termin direkt buchen.</h2><p>Nach der Anmeldung öffnen Sie bei Profilen mit Terminlink die externe Terminseite und wählen selbst einen freien Slot. Erfahrung, Honorar und Verfügbarkeit klären Sie anschließend gemeinsam.</p><ProjectLink>Projekt jetzt einfügen</ProjectLink></div></section>
+      <section className={styles.conversation} aria-labelledby="auswahl-title"><Image src="/images/landing/project-conversation.webp" alt="Auftraggeber und Freelancer besprechen gemeinsam eine Projektbeschreibung am Tisch." width={1536} height={1024} sizes="(max-width: 760px) calc(100vw - 40px), (max-width: 1260px) 44vw, 520px" loading="lazy" /><div className={styles.explanation}><p className={styles.eyebrow}>Vom Match ins Gespräch</p>{placement ? (
+        <><h2 id="auswahl-title">Passendes Profil gefunden?<br />Anfragen, wir stellen vor.</h2><p>Mit einem Klick fragen Sie den Freelancer an. XPORTAL stellt Sie beide per Mail vor; mit Terminlink wählen Sie danach selbst einen freien Slot. Erfahrung, Honorar und Verfügbarkeit klären Sie im Gespräch. Kommt es zur Beauftragung, berechnen wir einmalig {PLACEMENT_TERMS.feePercent} % des Honorars der ersten {PLACEMENT_TERMS.feeMonths} Monate.</p></>
+      ) : (
+        <><h2 id="auswahl-title">Passendes Profil gefunden?<br />Termin direkt buchen.</h2><p>Nach der Anmeldung öffnen Sie bei Profilen mit Terminlink die externe Terminseite und wählen selbst einen freien Slot. Erfahrung, Honorar und Verfügbarkeit klären Sie anschließend gemeinsam.</p></>
+      )}<ProjectLink>Projekt jetzt einfügen</ProjectLink></div></section>
 
-      <PricingTeaser />
+      <PricingTeaser placement={placement} />
 
       <section className={styles.faq} id="fragen" aria-labelledby="fragen-title"><div><p className={styles.eyebrow}>Kurz beantwortet</p><h2 id="fragen-title">Noch Fragen?</h2><Link className={styles.textLink} href={MARKETING_PAGE.how.path}>Alle Details zum Ablauf <span aria-hidden="true">↗</span></Link></div><Questions items={[
         { question: "Kann ich ohne Anmeldung starten?", answer: <p>Ja. Beschreiben Sie Ihr Projekt als Gast. Für das dauerhafte Speichern und weitere Schritte mit einem ausgewählten Profil können Sie anschließend ein Konto erstellen.</p> },
         { question: "Was kostet die Suche?", answer: <p>Der technische Gaststart enthält {CREDIT_PLANS.guest.grantCredits} einmalige Credits; nach der Kontoerstellung stehen einmalig {CREDIT_PLANS.trial.grantCredits} Start-Credits bereit. Eine Projektanalyse verbraucht {BRIEF_ANALYSIS_CREDITS} Credits. Kontingente und weitere Aktionen finden Sie auf der <Link href={MARKETING_PAGE.pricing.path}>Preisseite</Link>. Freelancer-Honorare sind separat.</p> },
         { question: "Ist ein passender Freelancer garantiert?", answer: <p>Nein. Ergebnisse hängen von Ihren Anforderungen und den vorhandenen Profilen ab. Profilangaben sind nicht automatisch unabhängig geprüft. Verfügbarkeit, Honorar und offene Fragen klären Sie vor einer Zusammenarbeit. Auch kein passendes Ergebnis wird ausgewiesen.</p> },
-        { question: "Was bedeutet „direkt buchen“?", answer: <p>Nach der Anmeldung öffnen Sie bei einem Profil mit Terminlink den hinterlegten Buchungskalender und wählen selbst einen freien Slot. Ohne Terminlink ist die direkte Buchung derzeit nicht verfügbar. Der Termin ist ein Erstgespräch und noch keine Beauftragung.</p> },
+        placement
+          ? { question: "Was kostet die Vermittlung?", answer: <p>Suche, Anfrage, Vorstellung und Erstgespräch sind kostenlos. Beauftragen Sie den Freelancer, zahlen Sie einmalig {PLACEMENT_TERMS.feePercent} % des vereinbarten Honorars für die ersten {PLACEMENT_TERMS.feeMonths} Monate (höchstens {PLACEMENT_TERMS.maxFeeDays} Projekttage), zuzüglich Umsatzsteuer, per Rechnung mit {PLACEMENT_TERMS.paymentDays} Tagen Zahlungsziel. Einzelheiten stehen in den <Link href={PLACEMENT_TERMS_PATH}>Vermittlungsbedingungen</Link>.</p> }
+          : { question: "Was bedeutet „direkt buchen“?", answer: <p>Nach der Anmeldung öffnen Sie bei einem Profil mit Terminlink den hinterlegten Buchungskalender und wählen selbst einen freien Slot. Ohne Terminlink ist die direkte Buchung derzeit nicht verfügbar. Der Termin ist ein Erstgespräch und noch keine Beauftragung.</p> },
       ]} /></section>
       <section className={styles.closing} aria-labelledby="start-title"><div><h2 id="start-title">Projektanzeige schon fertig?</h2><p>Kopieren, einfügen und passende Freelancer sehen.</p></div><ProjectLink>Projekt jetzt einfügen</ProjectLink></section>
     </main>

@@ -121,3 +121,8 @@
 .planList p span { color: var(--muted); font-size: 12px; }
 .planRecommended { border-color: var(--green-border) !important; background: linear-gradient(90deg, var(--landing-mint), var(--surface) 70%) !important; }
 @media (max-width: 760px) { .pricing { grid-template-columns: 1fr; gap: 28px; padding: 38px 0; } .planList li { padding: 14px 16px; } }
+
+/* Die Vermittlung steht über den Credit-Tarifen: Sie ist das Angebot, die
+   Tarife sind für Recherche und Analysen. */
+.planList li.planPlacement { border-color: var(--landing-green); background: var(--landing-mint); }
+.planPlacement a { color: var(--landing-green); }

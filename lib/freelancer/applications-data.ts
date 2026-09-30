@@ -16,7 +16,7 @@ import {
 } from "./application";
 
 const LIST_COLUMNS =
-  "id,status,full_name,contact_email,role_title,location_text,skills,hourly_rate_minor,day_rate_minor,currency,availability_status,booking_url,cv_storage_path,created_at,reviewed_at,published_profile_id";
+  "id,status,full_name,contact_email,role_title,location_text,skills,hourly_rate_minor,day_rate_minor,currency,availability_status,booking_url,cv_storage_path,created_at,reviewed_at,published_profile_id,seeking,referral";
 
 export type ApplicationListItem = {
   id: string;
@@ -35,10 +35,14 @@ export type ApplicationListItem = {
   created_at: string;
   reviewed_at: string | null;
   published_profile_id: string | null;
+  seeking: "projects" | "employment" | "both";
+  referral: string | null;
 };
 
 export async function listApplications(options?: {
   status?: ApplicationStatus;
+  /** Nur Bewerbungen aus einer Quelle, etwa `arbeitsagentur`. */
+  referral?: string;
   limit?: number;
 }): Promise<ApplicationListItem[]> {
   const admin = createAdminSupabaseClient();
@@ -49,6 +53,7 @@ export async function listApplications(options?: {
     .limit(options?.limit ?? 200);
 
   if (options?.status) query = query.eq("status", options.status);
+  if (options?.referral) query = query.eq("referral", options.referral);
 
   const { data, error } = await query;
   if (error) throw error;

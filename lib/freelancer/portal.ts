@@ -88,7 +88,8 @@ export const FreelancerProfileUpdateSchema = z
     currency: z.enum(CURRENCIES),
     availabilityStatus: z.enum(AVAILABILITY_STATUSES),
     availabilityFrom: optionalDate,
-    bookingUrl: secureUrl,
+    // Kann-Angabe: Ohne Kalender fragen Kunden über XPORTAL an.
+    bookingUrl: z.union([z.literal(""), secureUrl]).nullish().transform((value) => value || null),
     profileStatus: z.enum(["active", "paused"]),
     version: z.number().int().positive(),
   })

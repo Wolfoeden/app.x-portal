@@ -75,6 +75,10 @@ describe("freelancer database mapping", () => {
         calls.push(["not", column, operator, value]);
         return query;
       },
+      neq(column: string, value: unknown) {
+        calls.push(["neq", column, value]);
+        return query;
+      },
       in(column: string, values: unknown[]) {
         calls.push(["in", column, values]);
         return Promise.resolve({

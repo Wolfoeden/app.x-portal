@@ -10,7 +10,9 @@
  * Alles hängt an einem Schalter. Ist er aus, bleibt der bisherige Weg — der
  * Terminknopf führt direkt in den Kalender des Freelancers — unverändert.
  * Eingeschaltet werden darf er erst, wenn die Bedingungen rechtlich geprüft
- * sind; bis dahin steht über ihnen sichtbar „Entwurf“.
+ * sind; bis dahin steht über ihnen sichtbar „Entwurf“. Am 30.09.2026 als
+ * geprüft und freigegeben bestätigt; eingeschaltet für die Produktion in
+ * netlify.toml.
  *
  * Die Datei ist bewusst ohne Serverabhängigkeit: Oberfläche und Routen lesen
  * dieselben Zahlen.
@@ -27,9 +29,9 @@ export function placementRequestsEnabled(): boolean {
 
 export const PLACEMENT_TERMS = {
   /** Wird bei jeder Zustimmung gespeichert. Neue Fassung, neue Kennung. */
-  version: "vermittlung-2026-09-entwurf-1",
+  version: "vermittlung-2026-09-1",
   /** `approved` erst nach der rechtlichen Prüfung. */
-  status: "draft" as "draft" | "approved",
+  status: "approved" as "draft" | "approved",
   /** Prozent des Auftragswerts. */
   feePercent: 10,
   /** Welcher Zeitraum der Zusammenarbeit zählt. */
@@ -41,6 +43,19 @@ export const PLACEMENT_TERMS = {
   /** Zahlungsziel der Rechnung. */
   paymentDays: 14,
 } as const;
+
+/**
+ * Umsatzsteuer auf das Honorar. XPORTAL ist umsatzsteuerpflichtig
+ * (USt-IdNr. im Impressum); der Stripe-Steuersatz aus
+ * STRIPE_PLACEMENT_TAX_RATE_ID muss genau diesen Satz haben, das prüft die
+ * Rechnungserstellung vor jeder Rechnung.
+ */
+export const PLACEMENT_VAT_PERCENT = 19;
+
+/** Brutto aus netto, in Cent, kaufmännisch gerundet. */
+export function grossCents(netCents: number): number {
+  return netCents + Math.round((netCents * PLACEMENT_VAT_PERCENT) / 100);
+}
 
 export const PLACEMENT_TERMS_PATH = "/vermittlungsbedingungen";
 

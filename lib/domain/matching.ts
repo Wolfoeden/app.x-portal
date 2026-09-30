@@ -10,6 +10,8 @@ import {
   FreelancerProfileSchema,
   type LabeledFact,
 } from "./profile";
+import { placementRequestsEnabled } from "@/lib/placement/config";
+
 import { roleFamilyLabels, roleFit } from "./role-taxonomy";
 import { skillFamilyKey, skillTerms } from "./skill-taxonomy";
 import {
@@ -1016,7 +1018,9 @@ export function evaluateProfile(
   if (profile.demoStatus !== "real") {
     rejectionReasons.push("Profil ist kein reales Produktionsprofil.");
   }
-  if (!secureBookingUrl(profile)) {
+  // Im Vermittlungsmodell fragt der Kunde über XPORTAL an, und die Vorstellung
+  // läuft per Mail; ein Kalender ist dann Komfort, keine Voraussetzung.
+  if (!secureBookingUrl(profile) && !placementRequestsEnabled()) {
     rejectionReasons.push("Profil hat keinen sicheren direkten Booking-Link.");
   }
 
