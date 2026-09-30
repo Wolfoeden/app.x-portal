@@ -86,7 +86,7 @@ const unknownFieldLabels: Readonly<Record<string, string>> = {
 };
 import { EXTERNAL_SEARCH_CREDITS } from "@/lib/ai/credit-policy";
 
-import { AgentLaunchPanel, agentLaunchState } from "./agent-launch";
+import { AgentLaunchPanel, agentLaunchState, ResearchFacts } from "./agent-launch";
 import { initials, isRecord, nullableString } from "./shared";
 import { profileCheck, VERIFICATION_HELP } from "./verification";
 
@@ -523,8 +523,9 @@ export function ResultSection({
                 Öffentlich weitersuchen · {EXTERNAL_SEARCH_CREDITS} Credits
               </p>
               <p className="recovery-research-lead">
-                Der Recherche-Agent sucht in öffentlichen Quellen nach Freelancern für genau diese Anforderungen, prüft jeden Treffer an seiner Quelle und zeigt ihn mit Link. Scheitert der Lauf technisch, wird nichts belastet.
+                Der Recherche-Agent sucht in öffentlichen Quellen nach Freelancern für genau diese Anforderungen, prüft jeden Treffer an seiner Quelle und zeigt ihn mit Link.
               </p>
+              <ResearchFacts />
               <AgentLaunchPanel
                 state={launchState}
                 searching={externalSearchState === "searching"}
@@ -844,7 +845,7 @@ function ExternalSearchResults({
           })}
         </div>
       ) : (
-        <p className="external-empty">Auch in der Websuche wurde kein Profil gefunden, dessen öffentliche Quellen sich belegen ließen.</p>
+        <p className="external-empty">Auch in der Websuche wurde kein Profil gefunden, dessen öffentliche Quellen sich belegen ließen. Nächster Schritt: ein Muss-Kriterium lockern und neu abgleichen.</p>
       )}
       <details className="external-trace">
         <summary>Rechercheprozess anzeigen</summary>
