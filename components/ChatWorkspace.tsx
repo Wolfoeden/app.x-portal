@@ -12,7 +12,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { EXTERNAL_SEARCH_CREDITS } from "@/lib/ai/credit-policy";
+import { BRIEF_ANALYSIS_CREDITS, EXTERNAL_SEARCH_CREDITS } from "@/lib/ai/credit-policy";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { openCookieSettings } from "@/components/CookieConsent";
 import { LegalFooter } from "@/components/LegalFooter";
@@ -629,6 +629,9 @@ export function normalizeAnalysisTrace(value: unknown): AiAnalysisTrace | undefi
     },
     steps,
     externalSearchAvailable: value.externalSearchAvailable === true,
+    reviewNeeded: Array.isArray(value.reviewNeeded)
+      ? value.reviewNeeded.flatMap((entry) => (typeof entry === "string" && entry.trim() ? [entry.trim()] : [])).slice(0, 8)
+      : null,
   };
 }
 
@@ -1175,7 +1178,9 @@ export function ChatWorkspace({
     preview ? (previewNoMatch ? "no_reliable_match" : "ranked") : null,
   );
   const [hasResult, setHasResult] = useState(preview);
-  const [analysisMode, setAnalysisMode] = useState<"ai" | "fallback" | null>(preview ? "ai" : null);
+  const [analysisMode, setAnalysisMode] = useState<"ai" | "fallback" | null>(
+    preview ? (previewData?.analysis.provider.fallback ? "fallback" : "ai") : null,
+  );
   const [analysisTrace, setAnalysisTrace] = useState<AiAnalysisTrace | null>(previewData?.analysis ?? null);
   const [externalSearch, setExternalSearch] = useState<ExternalFreelancerSearchResponse | null>(null);
   const [externalSearchState, setExternalSearchState] = useState<"idle" | "searching" | "error">(
@@ -3530,6 +3535,8 @@ export function ChatWorkspace({
             />
           ) : null}
           <p className="composer-disclosure">
+            {/* Der Preis steht vor dem Absenden, nicht erst im Kontostand danach (Audit F01). */}
+            Eine Projektanalyse kostet {usage?.credits.creditsPerRequest ?? BRIEF_ANALYSIS_CREDITS} Credits; ist die KI nicht verfügbar, nichts.{" "}
             Daten werden nicht zum Trainieren von Modellen verwendet.
             <span className="composer-legal">
               <a href="/imprint">Impressum</a>

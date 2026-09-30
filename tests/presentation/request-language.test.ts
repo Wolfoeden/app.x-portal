@@ -60,7 +60,8 @@ describe("presentBrief language handling", () => {
 
     const result = presentBrief(brief);
 
-    expect(result.languages).toEqual(["French"]);
+    // Angezeigt wird die deutsche Bezeichnung (Audit F06).
+    expect(result.languages).toEqual(["Französisch"]);
     expect(result.languageSource).toBe("required");
   });
 
@@ -72,7 +73,7 @@ describe("presentBrief language handling", () => {
 
     const result = presentBrief(brief);
 
-    expect(result.languages).toEqual(["German"]);
+    expect(result.languages).toEqual(["Deutsch"]);
     expect(result.languageSource).toBe("detected");
   });
 

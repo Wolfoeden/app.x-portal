@@ -217,3 +217,35 @@ describe("results without a recommendation", () => {
     expect(markup).not.toContain("Öffentlich weitersuchen");
   });
 });
+
+describe("result section after a basic analysis (audit F01)", () => {
+  const fallbackAnalysis = {
+    provider: {
+      configured: true,
+      attempted: true,
+      succeeded: false,
+      fallback: true,
+      requestedTransport: "direct_openai" as const,
+      actualTransport: null,
+      requestedModel: "gpt-5.4-nano",
+      actualModel: null,
+      failureCategory: "timeout" as const,
+    },
+    steps: [],
+    externalSearchAvailable: false,
+    reviewNeeded: ["Startdatum", "Budget oder Tagessatz"],
+  };
+
+  it("names the details to check above the list and marks the selection as provisional", () => {
+    const markup = section({ analysis: fallbackAnalysis, analysisMode: "fallback" });
+    const notice = markup.indexOf("Bitte prüfen Sie diese Angaben vor der Auswahl.");
+    expect(notice).toBeGreaterThan(-1);
+    expect(markup).toContain("Wir konnten Startdatum und Budget oder Tagessatz nicht zuverlässig übernehmen.");
+    expect(markup).toContain("vorläufig");
+    expect(notice).toBeLessThan(markup.indexOf("Anna Keller"));
+  });
+
+  it("stays quiet after a normal analysis", () => {
+    expect(section()).not.toContain("Bitte prüfen Sie diese Angaben");
+  });
+});

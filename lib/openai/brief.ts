@@ -20,6 +20,8 @@ import {
   type OpenAiDiagnosticStatus,
 } from "@/lib/openai/diagnostics";
 import { createOpenAiClient } from "@/lib/openai/provider";
+import { followedByRateUnit } from "@/lib/domain/brief-phrases";
+import { applyConfirmedFields } from "@/lib/domain/confirmed-fields";
 import { requirementPriority } from "@/lib/domain/requirements";
 
 /**
@@ -934,6 +936,10 @@ function explicitTotalBudget(source: string): ProjectBrief["budget"] {
   const rawAmount = leading?.[2] ?? trailing?.[1];
   const rawCurrency = leading?.[1] ?? leading?.[3] ?? trailing?.[2];
   if (!rawAmount || !rawCurrency) return null;
+  // „Budget: 800 €/Tag“ ist ein Tagessatz, kein Gesamtbudget.
+  if (leading && leading.index !== undefined && followedByRateUnit(source.slice(leading.index + leading[0].length))) {
+    return null;
+  }
   const amount = parseEvidenceNumber(rawAmount);
   const parsedCurrency = currencyFromEvidence(rawCurrency);
   if (amount === null || !parsedCurrency) return null;
@@ -1068,6 +1074,18 @@ export function buildDeterministicBrief(
     "originalRequest" | "latestMessage" | "previousBrief"
   >,
   now = new Date(),
+): ProjectBrief {
+  // Bestätigte Werte aus dem Formular gelten auch dann, wenn die
+  // Basisanalyse sie im Text nicht gefunden hätte (Audit F01).
+  return applyConfirmedFields(buildParsedBrief(input, now), input.latestMessage, now);
+}
+
+function buildParsedBrief(
+  input: Pick<
+    ExtractProjectBriefInput,
+    "originalRequest" | "latestMessage" | "previousBrief"
+  >,
+  now: Date,
 ): ProjectBrief {
   const previous = input.previousBrief
     ? ProjectBriefSchema.parse(input.previousBrief)
@@ -1581,10 +1599,11 @@ export async function extractProjectBrief(
       return fallbackResult(deterministic, "invalid_output", provider, true);
     }
 
-    const brief = reconcileAiBrief(
-      deterministic,
-      candidate.data,
+    // Was im Formular bestätigt wurde, hat Vorrang vor der Lesart des Modells.
+    const brief = applyConfirmedFields(
+      reconcileAiBrief(deterministic, candidate.data, parsedInput.latestMessage),
       parsedInput.latestMessage,
+      options.now,
     );
     return {
       brief,

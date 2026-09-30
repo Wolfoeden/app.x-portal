@@ -3504,6 +3504,29 @@ a.secondary-action {
   }
 }
 
+/* Nach einer Basisanalyse: was vor der Auswahl zu prüfen ist. */
+.fallback-review {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  margin: 12px 0;
+  border: 1px solid var(--amber-border);
+  border-radius: var(--radius-sm);
+  background: var(--amber-raised);
+  padding: 12px 14px;
+}
+
+.fallback-review p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+
+.fallback-review .brief-editor {
+  width: 100%;
+}
+
 /* Gespräche ------------------------------------------------------------ */
 
 .conversation-list {

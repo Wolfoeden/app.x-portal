@@ -8,6 +8,15 @@ import {
   createProjectBriefV2,
 } from "./brief";
 import {
+  followedByRateUnit,
+  OPTIONAL_SUFFIX,
+  parseCapacityPhrase,
+  parseDurationPhrase,
+  parseLanguageLevels,
+  parseRatePhrase,
+  parseStartPhrase,
+} from "./brief-phrases";
+import {
   DEFAULT_SKILL_ALIASES,
   DEFAULT_SKILL_CATALOG,
 } from "./skill-taxonomy";
@@ -129,10 +138,22 @@ const NEGATION_MARKER =
 
 function classifySkillMention(
   prefix: string,
+  suffix = "",
 ): "excluded" | "optional" | "required" {
   if (NEGATION_MARKER.test(prefix)) return "excluded";
   if (OPTIONAL_MARKER.test(prefix)) return "optional";
+  // „Next.js ist optional“: die Einschränkung steht hinter dem Skill.
+  if (OPTIONAL_SUFFIX.test(suffix)) return "optional";
   return "required";
+}
+
+function suffixAfter(text: string, match: RegExpExecArray): string {
+  const end = match.index + match[0].length;
+  // Das Muster schließt ein Trennzeichen hinter dem Skill mit ein; es gehört
+  // zum Rest („ (optional)“, „, wünschenswert“).
+  const last = match[0].slice(-1);
+  const start = /[\p{L}\p{N}]/u.test(last) ? end : end - 1;
+  return text.slice(start, start + 40);
 }
 
 function parseSkills(
@@ -154,7 +175,7 @@ function parseSkills(
     if (!match || match.index === undefined) continue;
 
     const prefix = text.slice(Math.max(0, match.index - 55), match.index);
-    buckets[classifySkillMention(prefix)].push(skill);
+    buckets[classifySkillMention(prefix, suffixAfter(text, match))].push(skill);
   }
 
   for (const [canonical, aliases] of Object.entries(DEFAULT_SKILL_ALIASES)) {
@@ -167,7 +188,7 @@ function parseSkills(
       if (!match || match.index === undefined) continue;
 
       const prefix = text.slice(Math.max(0, match.index - 55), match.index);
-      buckets[classifySkillMention(prefix)].push(canonical);
+      buckets[classifySkillMention(prefix, suffixAfter(text, match))].push(canonical);
       break;
     }
   }
@@ -263,7 +284,7 @@ function parseNumericToken(value: string): number | null {
 }
 
 function parseDuration(text: string): ProjectDuration | null {
-  const match = /(?:\bfor|\bfür|\bdauer\s*[:=]?|\bdauert?)\s*(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|ein|eine|einen|zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn|elf|zwölf)\s*(hours?|stunden?|days?|tage?n?|weeks?|wochen?|months?|monate?n?)\b/iu.exec(text);
+  const match = /(?:\bfor|\bfür|\bdauer\s*[:=]?|\bdauert?)\s*(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|ein|eine|einen|zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn|elf|zwölf)\s*(hours?|stunden?|days?|tage?n?|weeks?|wochen?|months?|monate?n?)\b(?!\s*(?:\/|pro|je|die|in der|per)\s*(?:woche|week))/iu.exec(text);
   if (!match?.[1] || !match[2]) return null;
   const value = parseNumericToken(match[1]);
   if (value === null) return null;
@@ -306,6 +327,8 @@ function parseBudget(text: string): MoneyRange | null {
   const match = pattern.exec(text);
   if (!match?.[2] || match.index === undefined) return null;
   if (isInstructionToInvent(text.slice(Math.max(0, match.index - 35), match.index))) return null;
+  // „Budget: 800 €/Tag“ ist ein Tagessatz, kein Gesamtbudget.
+  if (followedByRateUnit(text.slice(match.index + match[0].length))) return null;
 
   const currency = currencyFromToken(match[1] || match[3] || match[5] || "");
   const first = parseAmount(match[2]);
@@ -384,11 +407,15 @@ export function parseFallbackBrief(
 
   const now = options.now ?? new Date();
   const skills = parseSkills(originalRequest, options.skillCatalog ?? DEFAULT_SKILL_CATALOG);
-  const startWindow = parseStartWindow(originalRequest, now);
+  const startWindow = parseStartWindow(originalRequest, now) ?? parseStartPhrase(originalRequest, now);
   const availabilityRequirement = startWindow?.raw ?? null;
+  const languageLevels = parseLanguageLevels(originalRequest);
+  const capacity = parseCapacityPhrase(originalRequest);
   const constraints = canonicalList([
     ...(parseLabeledList(originalRequest, ["constraints", "einschränkungen"]) ?? []),
     ...(parseAllocationConstraint(originalRequest) ?? []),
+    ...(capacity ? [capacity] : []),
+    ...languageLevels.map((entry) => entry.requirement),
     ...(parseBehaviouralConstraints(originalRequest) ?? []),
   ]);
   const explicitContractualRequirements = parseLabeledList(originalRequest, ["contract terms", "contractual requirements", "vertragsanforderungen"]);
@@ -399,13 +426,16 @@ export function parseFallbackBrief(
     requiredSkills: skills.required,
     optionalSkills: skills.optional,
     excludedSkills: skills.excluded,
-    language: parseLanguage(originalRequest, options.languageAliases ?? DEFAULT_LANGUAGE_ALIASES),
+    language:
+      parseLanguage(originalRequest, options.languageAliases ?? DEFAULT_LANGUAGE_ALIASES) ??
+      languageLevels[0]?.language ??
+      null,
     workMode: parseWorkMode(originalRequest),
     location: parseLocation(originalRequest),
     startWindow,
-    duration: parseDuration(originalRequest),
+    duration: parseDuration(originalRequest) ?? parseDurationPhrase(originalRequest),
     budget: parseBudget(originalRequest),
-    rate: parseRate(originalRequest),
+    rate: parseRatePhrase(originalRequest) ?? parseRate(originalRequest),
     constraints,
     qualifications: canonicalList([
       ...(parseLabeledList(originalRequest, ["qualifications", "qualifikationen"]) ?? []),

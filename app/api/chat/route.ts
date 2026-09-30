@@ -10,6 +10,8 @@ import type {
 import { writeAuditEvent } from "@/lib/audit/write";
 import { executeTrackedAiRequest } from "@/lib/ai/gateway";
 import { BRIEF_ANALYSIS_CREDITS } from "@/lib/ai/credit-policy";
+import { unreadConditions } from "@/lib/domain/brief-phrases";
+import { briefAnalysisResult } from "@/lib/openai/brief-billing";
 import { currentPeriodEndIso, getAccountPlanId } from "@/lib/ai/quota";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { attachFreelancerCvAccess } from "@/lib/data/freelancer-cvs";
@@ -142,6 +144,31 @@ function catalogVersion(profiles: readonly { id: string; dataVersion: string }[]
 }
 
 function assistantText(
+  status: Shortlist["status"],
+  resultCount: number,
+  partialResultCount: number,
+  isFollowUp: boolean,
+  clarificationCode: Shortlist["clarificationCode"],
+  openCoreRequirements: readonly string[],
+  requestText: string,
+  /** Nur nach einer Basisanalyse: was im Text steht, aber nicht übernommen wurde. */
+  review: { fallback: boolean; unread: readonly string[] } = { fallback: false, unread: [] },
+): string {
+  const text = matchingText(status, resultCount, partialResultCount, isFollowUp, clarificationCode, openCoreRequirements, requestText);
+  if (!review.fallback || status === "needs_clarification") return text;
+  // Nach einem Ausfall der KI ist die Auswahl vorläufig: Die Treffer sollen
+  // nicht passender wirken, als die ausgewerteten Angaben es tragen (F01).
+  const check = review.unread.length
+    ? ` Bitte prüfen Sie diese Angaben vor der Auswahl: Wir konnten ${joinList(review.unread)} nicht zuverlässig übernehmen. Ergänzen oder bestätigen Sie sie in der Projektübersicht; anschließend aktualisieren wir die Suche. Ihre Beschreibung bleibt erhalten.`
+    : " Bitte prüfen Sie Start, Budget, Umfang und Sprache in der Projektübersicht, bevor Sie auswählen.";
+  return `Vorläufige Auswahl: Die KI-Analyse war gerade nicht verfügbar, die Basisanalyse hat Ihre Angaben übernommen.${check} ${text}`;
+}
+
+function joinList(items: readonly string[]): string {
+  return items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} und ${items.at(-1)}`;
+}
+
+function matchingText(
   status: Shortlist["status"],
   resultCount: number,
   partialResultCount: number,
@@ -495,39 +522,7 @@ async function processChatRequest(
                 ...extractionInput,
                 allowProvider: providerAllowed,
               });
-              return {
-                value: extraction,
-                providerAttempted: extraction.providerAttempted,
-                providerUsageDefinitelyZero:
-                  extraction.providerFailure === "auth_error" ||
-                  extraction.providerFailure === "billing_or_quota" ||
-                  extraction.providerFailure === "rate_limit" ||
-                  extraction.providerFailure === "permission" ||
-                  extraction.providerFailure === "model_unavailable",
-                outcome:
-                  extraction.mode === "openai"
-                    ? ("succeeded" as const)
-                    : extraction.fallbackReason === "provider_timeout"
-                      ? ("timeout" as const)
-                      : ("provider_error" as const),
-                usage:
-                  extraction.provider &&
-                  Number.isSafeInteger(extraction.provider.inputTokens) &&
-                  Number.isSafeInteger(extraction.provider.outputTokens)
-                  ? {
-                      requestedModel: extraction.provider.requestedModel,
-                      actualModel: extraction.provider.model,
-                      providerResponseId: extraction.provider.responseId,
-                      inputTokens: extraction.provider.inputTokens!,
-                      cachedInputTokens:
-                        extraction.provider.cachedInputTokens ?? 0,
-                      cacheWriteTokens:
-                        extraction.provider.cacheWriteTokens ?? 0,
-                      outputTokens: extraction.provider.outputTokens!,
-                      totalTokens: extraction.provider.totalTokens,
-                    }
-                  : undefined,
-              };
+              return briefAnalysisResult(extraction);
             },
           })
         : {
@@ -546,6 +541,12 @@ async function processChatRequest(
             creditsCharged: null,
           };
     const extraction = tracked.value;
+    // Nach einer Basisanalyse: Angaben, die im Text stehen, aber nicht im
+    // Steckbrief angekommen sind. Sie stehen vor der Ergebnisliste.
+    const reviewNeeded =
+      extraction.mode === "fallback"
+        ? unreadConditions(extraction.brief.originalRequest, extraction.brief)
+        : [];
     const quota = tracked.quota;
     const providerSucceeded = Boolean(extraction.provider);
     const analysisCompleted = extraction.mode === "openai";
@@ -643,6 +644,7 @@ async function processChatRequest(
       existing
         ? `${existing.original_request}\n${input.message}`
         : input.message,
+      { fallback: extraction.mode === "fallback", unread: reviewNeeded },
     );
     const assistantClientMessageId = `assistant-${requestKey}`;
     const { data: insertedAssistant, error: assistantError } = await admin
@@ -803,6 +805,7 @@ async function processChatRequest(
               : null,
             failureCategory,
           },
+          reviewNeeded: extraction.mode === "fallback" ? reviewNeeded : null,
           steps: [
             {
               label: "Anforderungen mit Nano strukturiert",
@@ -820,7 +823,9 @@ async function processChatRequest(
             {
               label:
                 shortlist.status === "ranked"
-                  ? "Verlässliche Matches vorbereitet"
+                  ? extraction.mode === "fallback"
+                    ? "Vorläufige Auswahl vorbereitet"
+                    : "Verlässliche Matches vorbereitet"
                   : shortlist.status === "needs_clarification"
                     ? "Rückfrage erforderlich"
                     : shortlist.partialMatches.length

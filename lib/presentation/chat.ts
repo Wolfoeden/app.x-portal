@@ -9,6 +9,7 @@ import type {
   ProjectBrief,
   ShortlistMatch,
 } from "@/lib/domain";
+import { isLanguageLevel, languageLabel } from "@/lib/domain/brief-phrases";
 import { normalizeAvatarUrl } from "@/lib/freelancer/avatar-limits";
 import { clientBookingUrl } from "@/lib/placement/config";
 import { SITE_URL } from "@/lib/seo";
@@ -101,6 +102,13 @@ export function presentBrief(brief: ProjectBrief): StructuredBrief {
     ? null
     : detectRequestLanguage(brief.originalRequest);
   const language = brief.language ?? detectedLanguage;
+  // Deutsch statt „German“, und mit Niveau, wenn eines genannt ist: „Deutsch
+  // C1“ stand vorher nur als „German“ in der Übersicht (Audit F01/F06). Das
+  // Niveau steht dann nicht noch einmal unter den Rahmenbedingungen.
+  const levels = (brief.constraints ?? []).filter(isLanguageLevel);
+  const languageText = language
+    ? levels.find((level) => level.startsWith(`${languageLabel(language)} `)) ?? languageLabel(language)
+    : null;
 
   return {
     projectTitle: brief.projectTitle ?? "Freelancer-Anfrage",
@@ -109,14 +117,14 @@ export function presentBrief(brief: ProjectBrief): StructuredBrief {
     summary: briefSummary(brief),
     requiredSkills: brief.requiredSkills ?? [],
     optionalSkills: brief.optionalSkills ?? [],
-    languages: language ? [language] : [],
+    languages: languageText ? [languageText] : [],
     languageSource: brief.language ? "required" : detectedLanguage ? "detected" : null,
     mode: presentMode(brief.workMode),
     location: brief.location,
     startWindow: brief.startWindow?.raw ?? null,
     duration: brief.duration?.raw ?? null,
     budgetOrRate: formatMoney(brief.rate) ?? formatMoney(brief.budget),
-    constraints: brief.constraints ?? [],
+    constraints: (brief.constraints ?? []).filter((constraint) => !(languageText && constraint === languageText)),
     qualifications: brief.qualifications ?? [],
     availabilityRequirement: brief.availabilityRequirement,
     contractualRequirements: brief.contractualRequirements ?? [],

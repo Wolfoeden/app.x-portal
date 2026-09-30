@@ -1,7 +1,9 @@
 import Link from "next/link";
 
 import { CREDIT_PRICES } from "@/lib/ai/credit-policy";
+import { CREDIT_RULES } from "@/lib/billing/credit-rules";
 import {
+  GUEST_TRIAL_CREDITS,
   PUBLIC_PRICING_PLANS,
   START_CREDITS,
   meteredNetCents,
@@ -21,8 +23,8 @@ export function CreditSummary() {
   return (
     <div className={styles.creditSummary}>
       <p>
-        <strong>{number.format(START_CREDITS)} Start-Credits werden einmalig vergeben.</strong>{" "}
-        Sie füllen sich nicht monatlich neu auf. Danach wählen Sie ein monatliches
+        <strong>{CREDIT_RULES.account}</strong>{" "}
+        {CREDIT_RULES.guest} {CREDIT_RULES.noRefill} Danach wählen Sie ein monatliches
         Kontingent oder Enterprise-Abrechnung nach tatsächlicher Nutzung.
       </p>
       <div className={styles.tableWrap} tabIndex={0} role="region" aria-label="Kontingente und Preise">
@@ -30,7 +32,8 @@ export function CreditSummary() {
           <caption>Kontingente und Preise</caption>
           <thead><tr><th scope="col">Tarif</th><th scope="col">Preis netto</th><th scope="col">Credits</th><th scope="col">Abrechnung</th></tr></thead>
           <tbody>
-            <tr><th scope="row">Kostenloser Start</th><td>0 €</td><td>{number.format(START_CREDITS)} einmalig</td><td>Kein Abo</td></tr>
+            <tr><th scope="row">Ohne Konto</th><td>0 €</td><td>{number.format(GUEST_TRIAL_CREDITS)} einmalig</td><td>Kein Abo</td></tr>
+            <tr><th scope="row">Kostenloses Konto</th><td>0 €</td><td>{number.format(START_CREDITS)} einmalig, insgesamt</td><td>Kein Abo</td></tr>
             {PUBLIC_PRICING_PLANS.map((plan) => (
               <tr key={plan.id} data-plan={plan.id}>
                 <th scope="row">{plan.label}</th>

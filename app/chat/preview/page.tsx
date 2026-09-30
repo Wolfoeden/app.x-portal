@@ -115,6 +115,14 @@ export default async function ChatPreviewPage({
         analysis: {
           ...previewAnalysis,
           externalSearchAvailable: state !== "ranked" && state !== "empty",
+          // `?fallback=1`: Ergebnis nach einer Basisanalyse, mit dem Hinweis,
+          // was vor der Auswahl zu prüfen ist (Audit F01).
+          ...(params.fallback === "1"
+            ? {
+                provider: { ...previewAnalysis.provider, succeeded: false, fallback: true, actualModel: null, failureCategory: "timeout" as const },
+                reviewNeeded: ["Startdatum", "Budget oder Tagessatz", "Wochenumfang"],
+              }
+            : {}),
         },
         usage: usageFixture(params.credits),
         resultState: state === "empty" ? "ranked" : state === "partial" ? "no_match" : state,

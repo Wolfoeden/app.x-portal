@@ -6,8 +6,9 @@ import { ProjectLink, Questions } from "./MarketingPage";
 import { ProcessVideo } from "./ProcessVideo";
 import { MARKETING_PAGE } from "@/lib/seo";
 import { breadcrumbStructuredData } from "@/lib/structured-data";
-import { BRIEF_ANALYSIS_CREDITS, CREDIT_PLANS, countLabel, roundedExampleCount } from "@/lib/ai/credit-policy";
-import { PUBLIC_PRICING_PLANS, START_CREDITS, type FixedMonthlyPlan } from "@/lib/billing/plans";
+import { BRIEF_ANALYSIS_CREDITS, countLabel, roundedExampleCount } from "@/lib/ai/credit-policy";
+import { CREDIT_RULES } from "@/lib/billing/credit-rules";
+import { GUEST_TRIAL_CREDITS, PUBLIC_PRICING_PLANS, START_CREDITS, type FixedMonthlyPlan } from "@/lib/billing/plans";
 import {
   formatWholeEuro,
   PLACEMENT_EXAMPLE,
@@ -68,7 +69,7 @@ function PricingTeaser({ placement }: { placement: boolean }) {
         <h2 id="preise-title">Kostenlos testen.<br />Bezahlen, wenn es sich lohnt.</h2>
         <p>
           {placement
-            ? `Suche, Anfrage und Vorstellung sind kostenlos; bezahlt wird erst, wenn Sie einen Freelancer beauftragen. Für KI-Analysen und Recherchen erhalten Sie mit einem kostenlosen Konto einmalig ${START_CREDITS} Start-Credits, danach gibt es Monatstarife – monatlich kündbar.`
+            ? `Suche, Anfrage und Vorstellung sind kostenlos; bezahlt wird erst, wenn Sie einen Freelancer beauftragen. Für KI-Analysen und Recherchen gibt es ein Startguthaben: ${GUEST_TRIAL_CREDITS} Credits ohne Konto, ${START_CREDITS} insgesamt mit kostenlosem Konto. Danach gibt es Monatstarife – monatlich kündbar.`
             : `Die Analyse Ihres Projekts ist ohne Anmeldung möglich. Mit einem kostenlosen Konto erhalten Sie einmalig ${START_CREDITS} Start-Credits. Wer regelmäßig sucht, wählt einen Monatstarif – monatlich kündbar.`}
         </p>
         <Link className={styles.textLink} href={MARKETING_PAGE.pricing.path}>Alle Tarife vergleichen <span aria-hidden="true">↗</span></Link>
@@ -191,7 +192,7 @@ export function FreelancerLanding() {
 
       <section className={styles.faq} id="fragen" aria-labelledby="fragen-title"><div><p className={styles.eyebrow}>Kurz beantwortet</p><h2 id="fragen-title">Noch Fragen?</h2><Link className={styles.textLink} href={MARKETING_PAGE.how.path}>Alle Details zum Ablauf <span aria-hidden="true">↗</span></Link></div><Questions items={[
         { question: "Kann ich ohne Anmeldung starten?", answer: <p>Ja. Beschreiben Sie Ihr Projekt als Gast. Für das dauerhafte Speichern und weitere Schritte mit einem ausgewählten Profil können Sie anschließend ein Konto erstellen.</p> },
-        { question: "Was kostet die Suche?", answer: <p>Der technische Gaststart enthält {CREDIT_PLANS.guest.grantCredits} einmalige Credits; nach der Kontoerstellung stehen einmalig {CREDIT_PLANS.trial.grantCredits} Start-Credits bereit. Eine Projektanalyse verbraucht {BRIEF_ANALYSIS_CREDITS} Credits. Kontingente und weitere Aktionen finden Sie auf der <Link href={MARKETING_PAGE.pricing.path}>Preisseite</Link>. Freelancer-Honorare sind separat.</p> },
+        { question: "Was kostet die Suche?", answer: <p>{CREDIT_RULES.guest} {CREDIT_RULES.account} Eine Projektanalyse verbraucht {BRIEF_ANALYSIS_CREDITS} Credits; fällt die KI aus, nichts. Kontingente und weitere Aktionen finden Sie auf der <Link href={MARKETING_PAGE.pricing.path}>Preisseite</Link>. Freelancer-Honorare sind separat.</p> },
         { question: "Ist ein passender Freelancer garantiert?", answer: <p>Nein. Ergebnisse hängen von Ihren Anforderungen und den vorhandenen Profilen ab. Profilangaben sind nicht automatisch unabhängig geprüft. Verfügbarkeit, Honorar und offene Fragen klären Sie vor einer Zusammenarbeit. Auch kein passendes Ergebnis wird ausgewiesen.</p> },
         placement
           ? { question: "Was kostet die Vermittlung?", answer: <p>Suche, Anfrage, Vorstellung und Erstgespräch sind kostenlos. Beauftragen Sie den Freelancer, zahlen Sie einmalig {PLACEMENT_TERMS.feePercent} % des vereinbarten Honorars für die ersten {PLACEMENT_TERMS.feeMonths} Monate (höchstens {PLACEMENT_TERMS.maxFeeDays} Projekttage), zuzüglich Umsatzsteuer, per Rechnung mit {PLACEMENT_TERMS.paymentDays} Tagen Zahlungsziel. Beispiel: {formatWholeEuro(PLACEMENT_EXAMPLE.dayRateCents)} Tagessatz und {PLACEMENT_EXAMPLE.projectDays} Projekttage ergeben {formatWholeEuro(placementExampleFeeCents())} netto. Die Rechnung kommt erst nach der Beauftragung, nicht für einen gebuchten Termin. Einzelheiten stehen in den <Link href={PLACEMENT_TERMS_PATH}>Vermittlungsbedingungen</Link>.</p> }

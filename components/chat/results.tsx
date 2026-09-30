@@ -378,6 +378,14 @@ export function ResultSection({
         ) : null}
       </div>
       {brief ? <BriefSummaryLine brief={brief} onOpenDetails={onOpenDetails} /> : null}
+      {analysisMode === "fallback" && matchingStatus !== "needs_clarification" ? (
+        <FallbackReview
+          reviewNeeded={analysis?.reviewNeeded ?? []}
+          brief={canEditCriteria ? brief : null}
+          busy={busy}
+          onUpdateBrief={onUpdateBrief}
+        />
+      ) : null}
       {dismissedHere.length ? (
         <DismissedProfilesPanel
           dismissed={dismissedHere}
@@ -1511,6 +1519,56 @@ const COMPACT_FIELDS: readonly BriefDraftField[] = [
   "startWindow",
   "budgetOrRate",
 ];
+
+const REVIEW_FIELDS: Readonly<Record<string, BriefDraftField>> = {
+  Startdatum: "startWindow",
+  Dauer: "duration",
+  "Budget oder Tagessatz": "budgetOrRate",
+  Wochenumfang: "availabilityRequirement",
+  Sprachniveau: "languages",
+};
+
+/**
+ * Nach einer Basisanalyse steht vor der Liste, was zu prüfen ist, statt nur
+ * in einem Hinweis, der nach Sekunden verschwindet. Die Auswahl ist dann
+ * vorläufig; die betroffenen Felder lassen sich gleich hier bestätigen, und
+ * was dort steht, gilt beim nächsten Abgleich als bestätigt (Audit F01).
+ */
+function FallbackReview({
+  reviewNeeded,
+  brief,
+  busy,
+  onUpdateBrief,
+}: {
+  reviewNeeded: readonly string[];
+  brief: StructuredBrief | null;
+  busy: boolean;
+  onUpdateBrief?: (message: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const fields = reviewNeeded.flatMap((label) => (REVIEW_FIELDS[label] ? [REVIEW_FIELDS[label]] : []));
+  const shown: readonly BriefDraftField[] = fields.length ? fields : Object.values(REVIEW_FIELDS);
+  return (
+    <div className="fallback-review" role="note">
+      <p>
+        <strong>Bitte prüfen Sie diese Angaben vor der Auswahl.</strong>{" "}
+        {reviewNeeded.length
+          ? `Wir konnten ${joinGerman([...reviewNeeded])} nicht zuverlässig übernehmen.`
+          : "Die KI-Analyse war nicht verfügbar; die Basisanalyse hat Ihre Angaben übernommen."}{" "}
+        Ihre Beschreibung bleibt erhalten. Ergänzen oder bestätigen Sie die Felder; anschließend aktualisieren
+        wir die Suche. Die Auswahl darunter ist bis dahin vorläufig.
+      </p>
+      {brief && onUpdateBrief ? (
+        <>
+          <button className="secondary-action" type="button" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
+            Angaben prüfen <IconChevronDown size={14} />
+          </button>
+          {open ? <BriefEditor brief={brief} busy={busy} onUpdate={onUpdateBrief} fields={shown} autoFocusField={shown[0]} /> : null}
+        </>
+      ) : null}
+    </div>
+  );
+}
 
 function BriefEditor({
   brief,
