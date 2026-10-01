@@ -11,6 +11,7 @@ import type {
 } from "@/lib/domain";
 import { isLanguageLevel, languageLabel } from "@/lib/domain/brief-phrases";
 import { normalizeAvatarUrl } from "@/lib/freelancer/avatar-limits";
+import { presentProfileLanguage, presentProfileLanguages } from "./profile-language";
 import { clientBookingUrl } from "@/lib/placement/config";
 import { SITE_URL } from "@/lib/seo";
 
@@ -144,16 +145,22 @@ export function presentBrief(brief: ProjectBrief): StructuredBrief {
   };
 }
 
+/** „Sprache: German“ → „Sprache: Deutsch“; andere Angaben bleiben wörtlich. */
+function presentFact(value: string): string {
+  const language = /^Sprache:\s*(.+)$/u.exec(value);
+  return language ? `Sprache: ${presentProfileLanguage(language[1]!)}` : value;
+}
+
 function profileFacts(match: ShortlistMatch): ProfileFact[] {
   return [
     ...match.verifiedFacts.map((value) => ({
       label: "Geprüft",
-      value,
+      value: presentFact(value),
       verification: "verified" as const,
     })),
     ...match.selfReportedFacts.map((value) => ({
       label: "Selbstauskunft",
-      value,
+      value: presentFact(value),
       verification: "self-reported" as const,
     })),
   ];
@@ -223,7 +230,7 @@ export function presentSavedProfile(
     displayName: profile.displayName,
     role: profile.role,
     skillTags: profile.skillTags.map(({ value }) => value),
-    languages: profile.languages.map(({ value }) => value),
+    languages: presentProfileLanguages(profile.languages.map(({ value }) => value)),
     location: profile.location?.value ?? null,
     remoteMode: presentMode(firstMode),
     experienceSummary: profile.experienceSummary.value,
@@ -269,7 +276,7 @@ export function presentMatch(match: ShortlistMatch): FreelancerProfileResult {
     displayName: profile.displayName,
     role: profile.role,
     skillTags: profile.skillTags.map(({ value }) => value),
-    languages: profile.languages.map(({ value }) => value),
+    languages: presentProfileLanguages(profile.languages.map(({ value }) => value)),
     location: profile.location?.value ?? null,
     remoteMode: presentMode(firstMode),
     experienceSummary: profile.experienceSummary.value,

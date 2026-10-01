@@ -135,7 +135,10 @@ const TRUST_FACTS = [
   { title: "Sichere Zahlung über Stripe", body: "Bezahlt wird im Stripe-Checkout; Kartendaten erreichen XPORTAL nicht." },
   { title: "Monatlich kündbar", body: "Zum Ende der laufenden Periode, bequem im Kundenportal." },
   { title: "Rechnung nach § 14 UStG", body: "Alle Rechnungen jederzeit im Stripe-Kundenportal." },
-  { title: "Hosting und Datenbank in der EU", body: "Ihre Projektdaten werden nicht zum KI-Training verwendet." },
+  // Nicht „Hosting und Datenbank in der EU“: Der Hosting-Dienstleister sitzt
+  // in den USA, nur die Datenbank liegt in Irland (Datenschutz, Abschnitt 9;
+  // Audit P2).
+  { title: "Datenbank in der EU", body: "Projektdaten liegen in Irland und werden nicht zum KI-Training verwendet.", link: { href: "/datenwege", label: "Welche Schritte wo laufen" } },
 ] as const;
 
 const PRICING_QUESTIONS = [
@@ -276,7 +279,12 @@ export default function PricingPage() {
           <EnterpriseCard />
         </div>
         <ul className={styles.trust} aria-label="Sicherheit und Konditionen">
-          {TRUST_FACTS.map((fact) => <li key={fact.title}><strong>{fact.title}</strong><span>{fact.body}</span></li>)}
+          {TRUST_FACTS.map((fact) => (
+            <li key={fact.title}>
+              <strong>{fact.title}</strong>
+              <span>{fact.body}{"link" in fact ? <> <Link href={fact.link.href}>{fact.link.label}</Link></> : null}</span>
+            </li>
+          ))}
         </ul>
         <p className={styles.checkoutNote}>Alle Preise netto, zuzüglich gesetzlicher Umsatzsteuer. Basic, Pro und Business sind Monatsabonnements und verlängern sich automatisch. Sie können das Abonnement über Stripe verwalten und zum Ende der laufenden Abrechnungsperiode kündigen.</p>
       </section>

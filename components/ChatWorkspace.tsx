@@ -3558,6 +3558,9 @@ export function ChatWorkspace({
               <span aria-hidden="true">·</span>
               <a href="/privacy">Datenschutz</a>
               <span aria-hidden="true">·</span>
+              {/* Wohin der Text geht, an der Stelle, an der er eingefügt wird (Audit P2). */}
+              <a href="/datenwege">Datenwege</a>
+              <span aria-hidden="true">·</span>
               <a href="/terms">AGB</a>
               <span aria-hidden="true">·</span>
               <a href="/contact">Kontakt</a>
