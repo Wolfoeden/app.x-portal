@@ -99,6 +99,7 @@ import {
 import {
   publicProgressLabel,
   usageSummary,
+  creditBreakdown,
 } from "./chat/usage-presentation";
 import { exampleBrief } from "./chat/example-briefs";
 import {
@@ -3176,6 +3177,7 @@ export function ChatWorkspace({
                   isAccountUser={isAccountUser}
                   onRename={isAccountUser ? updateAccountName : undefined}
                   managesBilling={hasManagedBilling(usage)}
+                  creditBreakdown={usage ? creditBreakdown(usage.credits) : null}
                   onMoreCredits={() => {
                     setAccountMenuOpen(false);
                     setSidebarOpen(false);
@@ -3516,7 +3518,7 @@ export function ChatWorkspace({
                 <span className="composer-placeholder" aria-hidden="true">
                   {messages.length
                     ? "Projektbeschreibung einfügen oder weitere Informationen ergänzen …"
-                    : "Welchen Freelancer suchen Sie?"}
+                    : "Projektbeschreibung einfügen …"}
                 </span>
               )}
             </div>

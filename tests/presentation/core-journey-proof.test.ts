@@ -65,7 +65,8 @@ describe("Paket 2: gemeinsamer Beweisfaden", () => {
       }),
     );
 
-    expect(guestMarkup).toMatch(/Schönen Guten (Morgen|Tag|Abend), Recruiter/u);
+    expect(guestMarkup).toMatch(/Guten (Morgen|Tag|Abend)</u);
+    expect(guestMarkup).not.toContain("Recruiter");
     expect(guestMarkup).not.toContain("Das passiert nach dem Absenden");
     expect(guestMarkup).not.toContain("Gast-Credits");
     expect(guestMarkup).not.toContain("KI strukturiert den Text. Das Matching bleibt regelbasiert.");

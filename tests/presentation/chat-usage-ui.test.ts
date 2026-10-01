@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { AccountSummary } from "@/components/chat/account";
 import { AnalysisTrace, visibleAnalysisSteps } from "@/components/chat/results";
 import { agentLaunchState } from "@/components/chat/agent-launch";
 import {
@@ -13,6 +14,7 @@ import {
   estimatedRequestsLeft,
   publicProgressLabel,
   usageSummary,
+  creditBreakdown,
 } from "@/components/chat/usage-presentation";
 
 const usage: AiUsageSnapshot = {
@@ -78,25 +80,45 @@ describe("chat usage presentation contract", () => {
     // 1,026 remaining at 21 credits per request floors to 48, never rounds up
     // into a request the balance cannot pay for.
     expect(estimatedRequestsLeft(usage.credits)).toBe(48);
-    expect(usageSummary(usage, false)).toBe("Guthaben: 1.026 Credits · 48 Anfragen");
+    expect(usageSummary(usage, false)).toBe("Guthaben: 1.026 Credits · 48 Analysen");
+  });
+
+  // Audit P2: „Anfragen“ vermischte die kostenpflichtige Analyse mit der
+  // kostenlosen Anfrage an einen Freelancer.
+  it("names analyses and research separately, each with its price", () => {
+    expect(usageSummary(usage, true)).not.toContain("Anfrage");
+    expect(creditBreakdown(usage.credits)).toBe(
+      "Reicht für 48 Analysen (je 21 Credits) oder 34 AI-Agent-Recherchen (je 30 Credits).",
+    );
+    const menu = renderToStaticMarkup(
+      createElement(AccountSummary, {
+        usage,
+        displayName: "Erika",
+        email: "erika@example.com",
+        isAccountUser: true,
+        creditBreakdown: creditBreakdown(usage.credits),
+        onMoreCredits: () => undefined,
+      }),
+    );
+    expect(menu).toContain("Reicht für 48 Analysen (je 21 Credits)");
   });
 
   it("zählt einem angemeldeten Konto die Recherchen aus demselben Guthaben vor", () => {
     // 1.026 Credits, 30 je Recherche: 34 — abgerundet, nie aufgerundet in eine
     // Recherche hinein, die das Guthaben nicht mehr trägt.
     expect(usageSummary(usage, true)).toBe(
-      "Guthaben: 1.026 Credits · 48 Anfragen · 34 AI-Agent-Recherchen",
+      "Guthaben: 1.026 Credits · 48 Analysen oder 34 AI-Agent-Recherchen",
     );
   });
 
   it("uses the singular when exactly one request remains", () => {
     const almostEmpty = { ...usage.credits, remaining: 30, used: 1_020 };
-    expect(usageSummary(usage, false)).toContain("Anfragen");
+    expect(usageSummary(usage, false)).toContain("Analysen");
     expect(usageSummary({ credits: almostEmpty }, false)).toBe(
-      "Guthaben: 30 Credits · 1 Anfrage",
+      "Guthaben: 30 Credits · 1 Analyse",
     );
     expect(usageSummary({ credits: almostEmpty }, true)).toBe(
-      "Guthaben: 30 Credits · 1 Anfrage · 1 AI-Agent-Recherche",
+      "Guthaben: 30 Credits · 1 Analyse oder 1 AI-Agent-Recherche",
     );
   });
 

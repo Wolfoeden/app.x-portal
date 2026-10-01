@@ -1,4 +1,5 @@
 import { CREDIT_PLANS } from "@/lib/billing/plans";
+import { placementRequestsEnabled } from "@/lib/placement/config";
 import type { CheckoutPlanId } from "@/lib/billing/payment-links";
 
 /**
@@ -27,6 +28,9 @@ export function checkoutSummary(planId: CheckoutPlanId) {
       `${number.format(plan.monthlyCredits)} Credits pro Monat; nicht genutzte verfallen am Monatsende.`,
       "Läuft einen Monat und verlängert sich jeweils um einen Monat. Kündbar zum Ende des laufenden Monats.",
       "Zuzüglich Umsatzsteuer. Bei Stripe sehen Sie den Gesamtbetrag, bevor Sie zahlen.",
+      ...(placementRequestsEnabled()
+        ? ["Ein Vermittlungshonorar bei einer Beauftragung über XPORTAL ist davon getrennt."]
+        : []),
     ],
   };
 }

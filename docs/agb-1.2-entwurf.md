@@ -151,10 +151,9 @@ jeweils gültigen Fassung zugeordnet bleiben.
    „Nach Nutzung“ oder „Flex“. Betrifft Preisseite, AGB §§5–6, Stripe-Produkt
    und `CREDIT_PLANS.enterprise_flex.label`. Erst nach Freigabe der AGB
    ändern, damit Vertrag und Oberfläche denselben Namen tragen.
-2. **Kontaktadresse.** Enterprise-Anfragen gehen an eine private Domain
-   (`ENTERPRISE_CONTACT.email` in `lib/billing/payment-links.ts`). Für
-   Rechnungen und Verträge eine Adresse unter der Produktdomain einrichten
-   (Audit P2).
+2. **Kontaktadresse.** Erledigt am 01.10.2026: Enterprise-Anfragen gehen
+   jetzt an `info@x-portal.eu`, dieselbe Adresse wie Impressum und Kontakt
+   (`ENTERPRISE_CONTACT.email` in `lib/billing/payment-links.ts`).
 3. **Rechenbeispiel Vermittlung.** Preisseite und Bedingungen zeigen
    600 € × 15 Tage × 10 % = 900 € netto. Das Audit rechnet zusätzlich den
    Höchstfall (800 € × 60 Tage × 10 % = 4.800 €). Ob der Höchstfall

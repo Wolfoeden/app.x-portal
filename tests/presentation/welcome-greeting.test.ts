@@ -6,6 +6,7 @@ import {
   greetingFor,
   greetingName,
   nextKeystroke,
+  WELCOME_LEAD,
   WelcomeState,
 } from "@/components/chat/welcome";
 
@@ -19,13 +20,25 @@ function keystrokes(shown: string, target: string) {
 }
 
 describe("welcome greeting", () => {
-  it("prerenders the recruiter greeting without a caret, since only the browser knows the time", () => {
+  // Audit P2: „Recruiter“ als Anrede schloss direkte Auftraggeber aus.
+  it("prerenders a plain greeting for guests without a caret, since only the browser knows the time", () => {
     const markup = renderToStaticMarkup(
       createElement(WelcomeState, { displayName: null, ready: true }),
     );
 
-    expect(markup).toContain('<span class="sr-only">Schönen Guten Tag, Recruiter</span>');
+    expect(markup).toContain('<span class="sr-only">Guten Tag</span>');
+    expect(markup).not.toContain("Recruiter");
     expect(markup).not.toContain("welcome-caret");
+  });
+
+  it("says what to enter and what comes back", () => {
+    const markup = renderToStaticMarkup(
+      createElement(WelcomeState, { displayName: null, ready: true }),
+    );
+
+    expect(markup).toContain(`<p class="welcome-lead">${WELCOME_LEAD}</p>`);
+    expect(WELCOME_LEAD).toContain("Projektbeschreibung ein");
+    expect(WELCOME_LEAD).toContain("bis zu drei passende Profile");
   });
 
   it("greets an account by first name", () => {
@@ -33,18 +46,18 @@ describe("welcome greeting", () => {
       createElement(WelcomeState, { displayName: "Erika Mustermann", ready: true }),
     );
 
-    expect(markup).toContain('<span class="sr-only">Schönen Guten Tag, Erika</span>');
+    expect(markup).toContain('<span class="sr-only">Guten Tag, Erika</span>');
   });
 
   it.each([
-    [4, "Schönen Guten Abend"],
-    [5, "Schönen Guten Morgen"],
-    [10, "Schönen Guten Morgen"],
-    [11, "Schönen Guten Tag"],
-    [17, "Schönen Guten Tag"],
-    [18, "Schönen Guten Abend"],
-    [23, "Schönen Guten Abend"],
-    [0, "Schönen Guten Abend"],
+    [4, "Guten Abend"],
+    [5, "Guten Morgen"],
+    [10, "Guten Morgen"],
+    [11, "Guten Tag"],
+    [17, "Guten Tag"],
+    [18, "Guten Abend"],
+    [23, "Guten Abend"],
+    [0, "Guten Abend"],
   ])("greets at %i o'clock with %j", (hour, expected) => {
     expect(greetingFor(hour)).toBe(expected);
   });
@@ -61,22 +74,29 @@ describe("welcome greeting", () => {
   });
 
   it("types one character per keystroke and pauses after the comma", () => {
-    const target = "Schönen Guten Morgen, Erika";
+    const target = "Guten Morgen, Erika";
     const steps = keystrokes("", target);
 
     expect(steps.map((step) => step.text)).toEqual(
       Array.from(target, (_, index) => target.slice(0, index + 1)),
     );
     const letterDelays = steps.slice(1, 7).map((step) => step.delayMs);
-    const afterComma = steps.find((step) => step.text === "Schönen Guten Morgen, ");
+    const afterComma = steps.find((step) => step.text === "Guten Morgen, ");
     expect(afterComma?.delayMs).toBeGreaterThan(Math.max(...letterDelays));
   });
 
-  it("deletes back to the shared start when the name replaces the fallback", () => {
-    const steps = keystrokes("Schönen Guten Morgen, Recruiter", "Schönen Guten Morgen, Erika");
+  it("keeps typing from the plain greeting when a name arrives", () => {
+    const steps = keystrokes("Guten Morgen", "Guten Morgen, Erika");
 
-    expect(steps).toHaveLength("Recruiter".length + "Erika".length);
-    expect(steps[8]?.text).toBe("Schönen Guten Morgen, ");
-    expect(steps.at(-1)?.text).toBe("Schönen Guten Morgen, Erika");
+    expect(steps).toHaveLength(", Erika".length);
+    expect(steps.at(-1)?.text).toBe("Guten Morgen, Erika");
+  });
+
+  it("deletes back to the shared start when the name changes", () => {
+    const steps = keystrokes("Guten Morgen, Max", "Guten Morgen, Erika");
+
+    expect(steps).toHaveLength("Max".length + "Erika".length);
+    expect(steps[2]?.text).toBe("Guten Morgen, ");
+    expect(steps.at(-1)?.text).toBe("Guten Morgen, Erika");
   });
 });

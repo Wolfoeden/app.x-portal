@@ -1,4 +1,5 @@
 import {
+  CREDIT_PRICES,
   affordableCount,
   countLabel,
 } from "@/lib/ai/credit-policy";
@@ -11,18 +12,33 @@ export function estimatedRequestsLeft(credits: CreditBalanceSnapshot): number {
   return Math.floor(credits.remaining / credits.creditsPerRequest);
 }
 
+/**
+ * Das Guthaben in Leistungen. „Anfragen“ hieß hier die kostenpflichtige
+ * Projektanalyse; dasselbe Wort steht für die kostenlose Anfrage an einen
+ * Freelancer (Audit P2, Credit-Anzeige). Gezählt werden deshalb Analysen und,
+ * wo sie möglich sind, Recherchen, getrennt.
+ */
 export function usageSummary(
   usage: AiUsageSnapshot,
   authenticated: boolean,
 ): string {
   const left = estimatedRequestsLeft(usage.credits);
   const balance = `Guthaben: ${formatCredits(usage.credits.remaining)} Credits · ${formatCredits(left)} ${
-    left === 1 ? "Anfrage" : "Anfragen"
+    left === 1 ? CREDIT_PRICES.project_brief.singular : CREDIT_PRICES.project_brief.plural
   }`;
   const searches = affordableCount(usage.credits.remaining, "research");
   return authenticated
-    ? `${balance} · ${countLabel(searches, "research")}`
+    ? `${balance} oder ${countLabel(searches, "research")}`
     : balance;
+}
+
+/** Wofür das Guthaben reicht, mit dem Preis jeder Leistung. */
+export function creditBreakdown(credits: CreditBalanceSnapshot): string {
+  const analyses = estimatedRequestsLeft(credits);
+  const searches = affordableCount(credits.remaining, "research");
+  return `Reicht für ${formatCredits(analyses)} ${
+    analyses === 1 ? CREDIT_PRICES.project_brief.singular : CREDIT_PRICES.project_brief.plural
+  } (je ${formatCredits(credits.creditsPerRequest)} Credits) oder ${countLabel(searches, "research")} (je ${CREDIT_PRICES.research.credits} Credits).`;
 }
 
 export function publicProgressLabel(label: string): string {

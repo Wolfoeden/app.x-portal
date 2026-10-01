@@ -30,9 +30,13 @@ export const ENTERPRISE_BILLING = {
   invoice: "Stripe-Zahlungsbeleg und XPORTAL-Vertragsbestätigung",
 } as const;
 
-/** The address behind "Enterprise per E-Mail anfragen"; shown publicly on /preise. */
+/**
+ * The address behind "Enterprise per E-Mail anfragen"; shown publicly on /preise.
+ * The same business address as the imprint and contact pages (audit P2: the
+ * personal domain used here before looked inconsistent with the rest).
+ */
 export const ENTERPRISE_CONTACT = {
-  email: "roman@dering.info",
+  email: "info@x-portal.eu",
 } as const;
 
 export type CheckoutPlanId = "basic" | "pro" | "business";

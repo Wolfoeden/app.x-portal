@@ -158,6 +158,7 @@ export function AccountSummary({
   isAccountUser,
   onRename,
   managesBilling = false,
+  creditBreakdown = null,
   onMoreCredits,
 }: {
   usage: AiUsageSnapshot | null;
@@ -168,6 +169,12 @@ export function AccountSummary({
   onRename?: (name: string) => Promise<void>;
   /** Laufendes Abo: der Knopf führt in die Verwaltung statt zu den Tarifen. */
   managesBilling?: boolean;
+  /**
+   * Wofür das Guthaben reicht, je Leistung mit Preis (Audit P2). Fertig
+   * berechnet übergeben: Ein Import der Rechnung hier zöge sie in jede Seite,
+   * die das Kontomenü lädt (+8 KB).
+   */
+  creditBreakdown?: string | null;
   onMoreCredits: () => void;
 }) {
   const monthly = usage?.credits ?? null;
@@ -200,6 +207,7 @@ export function AccountSummary({
           <strong>{formatCreditAmount(plan.billingModel === "metered" ? monthly.used : monthly.remaining)} Credits</strong>
           <span>{plan.billingModel === "metered" ? "im laufenden Monat verbraucht" : "verfügbar"}</span>
         </div>
+        {plan.billingModel !== "metered" && creditBreakdown ? <p className="account-credit-muted">{creditBreakdown}</p> : null}
         {plan.billingModel === "fixed_monthly" ? (
           <section className="account-credit-block" aria-label="Guthaben">
             <div className="account-credit-progress" role="progressbar" aria-valuemin={0} aria-valuemax={Math.max(monthly.total, 1)} aria-valuenow={Math.min(consumed, Math.max(monthly.total, 1))}><span style={{ width: `${progress}%` }} /></div>

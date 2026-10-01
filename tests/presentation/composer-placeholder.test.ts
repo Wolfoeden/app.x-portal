@@ -54,7 +54,9 @@ describe("composer placeholder", () => {
   });
 
   it("asks differently on an empty chat than in a running one", () => {
-    expect(render([])).toContain("Welchen Freelancer suchen Sie?");
-    expect(render(previewMessages)).toContain("Projektbeschreibung einfügen");
+    // Audit P2: Der leere Chat erwartet eine Projektbeschreibung, keine Frage.
+    expect(render([])).toContain("Projektbeschreibung einfügen …");
+    expect(render([])).not.toContain("weitere Informationen ergänzen");
+    expect(render(previewMessages)).toContain("Projektbeschreibung einfügen oder weitere Informationen ergänzen");
   });
 });
