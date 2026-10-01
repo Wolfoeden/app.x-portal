@@ -77,7 +77,7 @@ export function exhaustedNotice(
 ): ExhaustedNotice {
   if (!isAccountUser) {
     return {
-      text: `Ihr Gastguthaben ist aufgebraucht. Mit einem kostenlosen Konto erhalten Sie einmalig ${START_CREDITS} Start-Credits – genug für ${startCreditOutcome()}. Ihre bisherigen Anfragen werden übernommen.`,
+      text: `Ihr Gastguthaben ist aufgebraucht. Mit einem kostenlosen Konto haben Sie einmalig ${START_CREDITS} Credits insgesamt – genug für ${startCreditOutcome()}. Ihre bisherigen Projekte werden übernommen.`,
       action: { kind: "signup", label: "Kostenloses Konto erstellen" },
     };
   }

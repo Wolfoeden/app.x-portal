@@ -50,6 +50,21 @@ describe("booking a plan without an account", () => {
     expect(markup).not.toContain("netto pro Monat");
   });
 
+  it("separates a placement fee from the plan once placement is on", () => {
+    const previous = process.env.NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED;
+    try {
+      process.env.NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED = "true";
+      expect(checkoutSummary("basic").points.at(-1)).toBe(
+        "Ein Vermittlungshonorar bei einer Beauftragung über XPORTAL ist davon getrennt.",
+      );
+      process.env.NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED = "false";
+      expect(checkoutSummary("basic").points.join(" ")).not.toContain("Vermittlungshonorar");
+    } finally {
+      if (previous === undefined) delete process.env.NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED;
+      else process.env.NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED = previous;
+    }
+  });
+
   it("reads only the bookable monthly plans from the address", () => {
     expect(checkoutPlanFrom("basic")).toBe("basic");
     expect(checkoutPlanFrom("business")).toBe("business");

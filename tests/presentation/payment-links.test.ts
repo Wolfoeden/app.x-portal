@@ -69,6 +69,8 @@ describe("new fixed-plan checkout", () => {
 describe("enterprise contact", () => {
   it("routes the single enterprise offer through the configured address", () => {
     expect(ENTERPRISE_CONTACT.email).toMatch(/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/u);
+    // Audit P2: dieselbe geschäftliche Adresse wie Impressum und Kontakt.
+    expect(ENTERPRISE_CONTACT.email).toMatch(/@x-portal\.eu$/u);
     const pricing = readFileSync(
       new URL("../../app/(marketing)/preise/page.tsx", import.meta.url),
       "utf8",

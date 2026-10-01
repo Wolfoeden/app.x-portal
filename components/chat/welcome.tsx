@@ -9,8 +9,6 @@ const suggestions = EXAMPLE_BRIEFS;
 
 export type GuidedSuggestion = ExampleBrief;
 
-/** Anrede für Gäste und für Konten, zu denen kein Name bekannt ist. */
-const FALLBACK_ADDRESSEE = "Recruiter";
 /** Die Stunde, mit der vorgerendert wird; die Uhr des Besuchers kennt erst der Browser. */
 const PRERENDER_HOUR = 12;
 
@@ -20,12 +18,21 @@ const WORD_GAP_MS = 35;
 const COMMA_PAUSE_MS = 260;
 const DELETE_MS = 32;
 
-/** Morgens bis 11 Uhr, tagsüber bis 18 Uhr, danach bis 5 Uhr früh der Abend. */
+/**
+ * Morgens bis 11 Uhr, tagsüber bis 18 Uhr, danach bis 5 Uhr früh der Abend.
+ *
+ * Schlicht, ohne „Schönen“ und ohne „Recruiter“ als Anrede für Gäste: Die
+ * schloss direkte Auftraggeber aus (Audit, P2 Chat-Einstieg).
+ */
 export function greetingFor(hour: number): string {
-  if (hour >= 5 && hour < 11) return "Schönen Guten Morgen";
-  if (hour >= 11 && hour < 18) return "Schönen Guten Tag";
-  return "Schönen Guten Abend";
+  if (hour >= 5 && hour < 11) return "Guten Morgen";
+  if (hour >= 11 && hour < 18) return "Guten Tag";
+  return "Guten Abend";
 }
+
+/** Was hier eingegeben wird und was danach kommt, in einer Zeile. */
+export const WELCOME_LEAD =
+  "Fügen Sie Ihre Projektbeschreibung ein. Sie erhalten bis zu drei passende Profile mit Honorar und offenen Fragen.";
 
 /**
  * Der Vorname aus dem Kontonamen, wie Google oder Microsoft ihn liefern.
@@ -42,9 +49,8 @@ export function greetingName(displayName: string | null | undefined): string | n
 /**
  * Der nächste Anschlag auf dem Weg vom angezeigten zum gewünschten Text.
  *
- * Passt der angezeigte Text nicht mehr zum Ziel, etwa weil nach der Anmeldung
- * ein Vorname statt „Recruiter" dasteht, wird bis zum gemeinsamen Anfang
- * gelöscht und dann weitergetippt.
+ * Passt der angezeigte Text nicht mehr zum Ziel, wird bis zum gemeinsamen
+ * Anfang gelöscht und dann weitergetippt.
  */
 export function nextKeystroke(
   shown: string,
@@ -115,8 +121,8 @@ export function WelcomeState({
   /** Kontoname des angemeldeten Nutzers, null für Gäste. */
   displayName: string | null;
   /**
-   * Getippt wird erst, wenn feststeht, wer angemeldet ist; sonst würde
-   * „Recruiter" angetippt und wieder gelöscht. Bis dahin blinkt die Schreibmarke.
+   * Getippt wird erst, wenn feststeht, wer angemeldet ist; sonst stünde die
+   * Begrüßung kurz ohne Namen da. Bis dahin blinkt die Schreibmarke.
    */
   ready: boolean;
 }) {
@@ -124,7 +130,8 @@ export function WelcomeState({
   // Beim Öffnen festgehalten, damit die Überschrift nicht neu tippt, wenn
   // während des Schreibens die Tageszeit wechselt.
   const [openedAtHour] = useState(currentHour);
-  const greeting = `${greetingFor(hydrated ? openedAtHour : PRERENDER_HOUR)}, ${greetingName(displayName) ?? FALLBACK_ADDRESSEE}`;
+  const name = greetingName(displayName);
+  const greeting = `${greetingFor(hydrated ? openedAtHour : PRERENDER_HOUR)}${name ? `, ${name}` : ""}`;
   const { text, typing } = useTypewriter(greeting, ready && hydrated);
   // Der ungetippte Rest steht unsichtbar im Satz, damit die Zeile von Anfang
   // an ihre endgültige Breite und ihren Umbruch hat und nicht beim Tippen wandert.
@@ -142,6 +149,7 @@ export function WelcomeState({
           <span className="welcome-untyped">{untyped}</span>
         </span>
       </h1>
+      <p className="welcome-lead">{WELCOME_LEAD}</p>
     </section>
   );
 }

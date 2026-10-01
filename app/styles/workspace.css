@@ -1129,6 +1129,14 @@
   visibility: hidden;
 }
 
+.welcome-lead {
+  max-width: 560px;
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+
 /* Schreibmarke: fest, solange getippt wird, danach blinkend wie in einer
    Textverarbeitung. Ein leeres Inline-Element statt inline-block, damit sie
    mitten im Wort keinen Zeilenumbruch erlaubt. */

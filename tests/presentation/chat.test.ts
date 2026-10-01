@@ -114,6 +114,10 @@ describe("chat presentation", () => {
     expect(result.coreCoverage).toBe(100);
     // Audit F05: das angegebene Startdatum erreicht die Karte.
     expect(result.availableFrom).toBe(premiumProfile.availability.availableFrom);
+    // Audit P2: Sprachen auf Deutsch, auch in den Belegen.
+    expect(result.languages).toEqual(["Deutsch", "Englisch"]);
+    expect(result.facts.map((fact) => fact.value)).toContain("Sprache: Deutsch");
+    expect(result.facts.map((fact) => fact.value)).not.toContain("Sprache: German");
   });
 
   // Im Vermittlungsmodell verlässt die Kalenderadresse den Server nicht; der

@@ -35,7 +35,8 @@ describe("exhausted credits", () => {
   it("promises a guest the one-time start credits, never a monthly refill", () => {
     const notice = exhaustedNotice(usage("guest"), false);
 
-    expect(notice.text).toContain(`einmalig ${START_CREDITS} Start-Credits`);
+    expect(notice.text).toContain(`einmalig ${START_CREDITS} Credits insgesamt`);
+    expect(notice.text).toContain("Ihre bisherigen Projekte werden übernommen");
     expect(notice.text).not.toMatch(/im Monat|monatlich/u);
     expect(notice.action).toEqual({ kind: "signup", label: "Kostenloses Konto erstellen" });
   });

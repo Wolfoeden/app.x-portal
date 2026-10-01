@@ -6,6 +6,7 @@ import { TagInput } from "@/components/TagInput";
 import { AuthDialog } from "@/components/chat/dialogs";
 import { signOut } from "@/lib/auth/browser";
 import { appPath } from "@/lib/app-path";
+import { placementRequestsEnabled } from "@/lib/placement/config";
 import {
   AVAILABILITY_LABELS,
   AVAILABILITY_STATUSES,
@@ -51,6 +52,36 @@ function apiError(payload: unknown, fallback: string): string {
   return fallback;
 }
 
+/**
+ * Was vor der Registrierung feststehen sollte (Audit P2, Freelancer-Aufnahme):
+ * Kosten, Unterlagen, Prüfumfang und Ablauf. Die Angaben folgen dem
+ * Formular: Lebenslauf und Kalenderlink sind optional (ApplyForm.tsx,
+ * lib/freelancer/application.ts), geprüft wird jede Angabe einzeln
+ * (docs/operator-runbook.md).
+ */
+export function onboardingFacts(placement: boolean): ReadonlyArray<{ term: string; text: string }> {
+  return [
+    {
+      term: "Kosten",
+      text: placement
+        ? "Keine. Registrierung, Profil und Vermittlung sind für Sie kostenlos; das Vermittlungshonorar zahlt der Auftraggeber."
+        : "Keine. Registrierung und Profil sind für Sie kostenlos.",
+    },
+    {
+      term: "Unterlagen",
+      text: "Rolle, Kompetenzen, Sprachen, Verfügbarkeit und Honorar. Ein Lebenslauf als PDF (bis 10 MB) hilft bei der Prüfung, ein Kalenderlink ist optional.",
+    },
+    {
+      term: "Prüfung",
+      text: "XPORTAL sichtet Ihre Angaben und gleicht einzelne mit Nachweisen ab, etwa Lebenslauf oder öffentlichem Berufsprofil. Nur diese erscheinen als „Von XPORTAL geprüft“; alles andere bleibt Ihre Angabe.",
+    },
+    {
+      term: "Ablauf",
+      text: "Konto anlegen und E-Mail bestätigen, Profil in vier Abschnitten ausfüllen, Prüfung durch XPORTAL mit Rückfragen per E-Mail. Nach der Freigabe ist Ihr Profil im Matching auffindbar.",
+    },
+  ];
+}
+
 export function FreelancerAuthGate() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
@@ -65,6 +96,11 @@ export function FreelancerAuthGate() {
           der Freigabe können passende Angaben als Beleg in einem Match erscheinen;
           den Kontakt entscheidet weiterhin der Kunde.
         </p>
+        <dl className={styles.onboardingFacts}>
+          {onboardingFacts(placementRequestsEnabled()).map((fact) => (
+            <div key={fact.term}><dt>{fact.term}</dt><dd>{fact.text}</dd></div>
+          ))}
+        </dl>
         {notice ? (
           <p className={notice.tone === "error" ? styles.formError : styles.callout}>
             {notice.message}

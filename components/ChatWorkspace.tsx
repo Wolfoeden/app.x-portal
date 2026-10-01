@@ -99,6 +99,7 @@ import {
 import {
   publicProgressLabel,
   usageSummary,
+  creditBreakdown,
 } from "./chat/usage-presentation";
 import { exampleBrief } from "./chat/example-briefs";
 import {
@@ -3176,6 +3177,7 @@ export function ChatWorkspace({
                   isAccountUser={isAccountUser}
                   onRename={isAccountUser ? updateAccountName : undefined}
                   managesBilling={hasManagedBilling(usage)}
+                  creditBreakdown={usage ? creditBreakdown(usage.credits) : null}
                   onMoreCredits={() => {
                     setAccountMenuOpen(false);
                     setSidebarOpen(false);
@@ -3516,7 +3518,7 @@ export function ChatWorkspace({
                 <span className="composer-placeholder" aria-hidden="true">
                   {messages.length
                     ? "Projektbeschreibung einfügen oder weitere Informationen ergänzen …"
-                    : "Welchen Freelancer suchen Sie?"}
+                    : "Projektbeschreibung einfügen …"}
                 </span>
               )}
             </div>
@@ -3555,6 +3557,9 @@ export function ChatWorkspace({
               <a href="/imprint">Impressum</a>
               <span aria-hidden="true">·</span>
               <a href="/privacy">Datenschutz</a>
+              <span aria-hidden="true">·</span>
+              {/* Wohin der Text geht, an der Stelle, an der er eingefügt wird (Audit P2). */}
+              <a href="/datenwege">Datenwege</a>
               <span aria-hidden="true">·</span>
               <a href="/terms">AGB</a>
               <span aria-hidden="true">·</span>

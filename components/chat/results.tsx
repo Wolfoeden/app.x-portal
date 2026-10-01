@@ -68,27 +68,12 @@ import {
   IconSpark,
 } from "../icons";
 
-const unknownFieldLabels: Readonly<Record<string, string>> = {
-  projectTitle: "Projektname",
-  requiredSkills: "Pflichtkompetenzen",
-  optionalSkills: "optionale Kompetenzen",
-  language: "Sprache",
-  workMode: "Arbeitsmodus",
-  location: "Ort",
-  startWindow: "Startzeitraum",
-  duration: "Dauer",
-  budget: "Budget",
-  rate: "Honorar",
-  constraints: "Rahmenbedingungen",
-  qualifications: "Qualifikationen",
-  availabilityRequirement: "Verfügbarkeit",
-  contractualRequirements: "Vertragsanforderungen",
-};
 import { EXTERNAL_SEARCH_CREDITS } from "@/lib/ai/credit-policy";
 
 import { AgentLaunchPanel, agentLaunchState, ResearchFacts } from "./agent-launch";
 import { initials, isRecord, nullableString } from "./shared";
 import { profileCheck, VERIFICATION_HELP } from "./verification";
+import { openBriefFields } from "./open-fields";
 
 const observedProfileCards = new Set<string>();
 
@@ -163,10 +148,6 @@ function modeLabel(mode: ProjectMode) {
   if (mode === "on-site") return "Vor Ort";
   if (mode === "hybrid") return "Hybrid";
   return "Nicht angegeben";
-}
-
-function presentUnknownFields(fields: string[]) {
-  return fields.map((field) => unknownFieldLabels[field] ?? field);
 }
 
 /**
@@ -1722,7 +1703,7 @@ export function ProjectDetails({
   onContact: () => void;
   onUpdateBrief: (message: string) => void;
 }) {
-  const openFields = brief ? presentUnknownFields(brief.unknownFields) : [];
+  const openFields = brief ? openBriefFields(brief) : [];
 
   return (
     <div className="details-inner">
