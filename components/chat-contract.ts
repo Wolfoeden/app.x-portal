@@ -6,6 +6,7 @@
  */
 
 import { appPath } from "@/lib/app-path";
+import type { ProfileField } from "@/lib/profile/identity";
 
 export type ProjectMode = "remote" | "on-site" | "hybrid" | "unknown";
 export type MatchingStatus =
@@ -103,6 +104,10 @@ export interface FreelancerProfileResult {
     /** True only when the operator has explicitly unlocked direct booking. */
     readyToBook?: boolean;
   };
+  /** Fachgebiet für das Titelband der Karte; fehlt bei älteren Antworten. */
+  field?: ProfileField | null;
+  /** Freigegebene Referenznotiz des Betreibers, wenn sichtbar geschaltet. */
+  referencesSummary?: string | null;
 }
 
 export interface ProjectListItem {

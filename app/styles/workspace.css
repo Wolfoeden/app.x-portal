@@ -5390,38 +5390,103 @@ a.secondary-action {
   list-style: none;
 }
 
-/* Profilkarte: unter den Shortcuts und als Vorschau in der Bewerbung. Die
-   Fakten stehen unten bündig, damit Karten einer Reihe gleich enden. */
+/* Profilkarte: unter den Shortcuts und als Vorschau in der Bewerbung. Oben
+   das Band des Fachgebiets, darüber das Monogramm; die Fakten stehen unten
+   bündig, damit Karten einer Reihe gleich enden. */
 .showcase-card {
   display: flex;
   height: 100%;
   flex-direction: column;
-  gap: 9px;
+  gap: 10px;
+  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface);
-  padding: 14px;
+  padding-bottom: 14px;
   color: inherit;
   text-decoration: none;
   transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
 }
 
+.showcase-card > :not(.pband) {
+  margin-inline: 14px;
+}
+
 a.showcase-card:hover,
 a.showcase-card:focus-visible {
   border-color: var(--border-hover);
-  box-shadow: 0 9px 28px rgba(24, 24, 22, 0.07);
-  transform: translateY(-1px);
+  box-shadow: 0 12px 32px rgba(24, 24, 22, 0.09);
+  transform: translateY(-2px);
 }
+
+/* Band je Fachgebiet: Verlauf mit feinem Punktraster, ohne Bilddatei. */
+.pband {
+  --band-a: #ecece7;
+  --band-b: #f5f5f1;
+  --band-ink: #4a4a44;
+  display: flex;
+  min-height: 54px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.6) 1px, transparent 0) 0 0 / 9px 9px,
+    linear-gradient(120deg, var(--band-a), var(--band-b));
+  padding: 9px 12px;
+}
+
+.pband[data-field="ai"] { --band-a: #e9e2ff; --band-b: #d8ecff; --band-ink: #4b2f9e; }
+.pband[data-field="data"] { --band-a: #dbefff; --band-b: #ddf6ec; --band-ink: #0b5674; }
+.pband[data-field="frontend"] { --band-a: #ffe9d6; --band-b: #ffe2ef; --band-ink: #8c3a12; }
+.pband[data-field="software"] { --band-a: #e1e9fb; --band-b: #ecf0f6; --band-ink: #2a4787; }
+.pband[data-field="cloud"] { --band-a: #dbf1f5; --band-b: #e4eaff; --band-ink: #0f5a68; }
+.pband[data-field="sap"] { --band-a: #dde9ff; --band-b: #ebf3ff; --band-ink: #0b4ea0; }
+.pband[data-field="requirements"] { --band-a: #f3ecd8; --band-b: #e6f3e1; --band-ink: #5b4810; }
+.pband[data-field="business"] { --band-a: #fde4ea; --band-b: #fff0da; --band-ink: #8c2840; }
+
+.pband-label,
+.pband-verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.82);
+  padding: 2px 8px;
+  color: var(--band-ink);
+  font-size: var(--fs-2xs);
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.pband-verified {
+  color: var(--green);
+}
+
+/* Monogramm in einer festen Farbe je Name. */
+.pid { background-color: var(--pid, var(--ink)); }
+.pid[data-tone="0"] { --pid: #1d4f91; }
+.pid[data-tone="1"] { --pid: #0f6e5f; }
+.pid[data-tone="2"] { --pid: #6b3fa0; }
+.pid[data-tone="3"] { --pid: #a03d2c; }
+.pid[data-tone="4"] { --pid: #2e6b30; }
+.pid[data-tone="5"] { --pid: #7d4e0f; }
+.pid[data-tone="6"] { --pid: #3f4b99; }
+.pid[data-tone="7"] { --pid: #8f2f63; }
+.pid[data-tone="8"] { --pid: #1f5a73; }
+.pid[data-tone="9"] { --pid: #5d5a14; }
 
 .showcase-card-head {
   display: flex;
-  align-items: center;
-  gap: 11px;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .showcase-card .profile-avatar {
-  width: 44px;
-  height: 44px;
+  width: 52px;
+  height: 52px;
+  margin-top: -32px;
+  box-shadow: 0 0 0 3px var(--surface);
+  font-size: var(--fs-base);
 }
 
 .showcase-card-identity {
@@ -5436,7 +5501,7 @@ a.showcase-card:focus-visible {
   overflow: hidden;
   color: var(--ink);
   font-size: var(--fs-base);
-  font-weight: 650;
+  font-weight: 680;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -5446,20 +5511,37 @@ a.showcase-card:focus-visible {
   font-size: var(--fs-2xs);
 }
 
-.showcase-card-verified,
-.showcase-card-skills > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: var(--fs-2xs);
-  line-height: 1.5;
+.showcase-card-fit,
+.showcase-card-teaser {
+  display: grid;
+  gap: 6px;
 }
 
-.showcase-card-verified {
-  align-self: flex-start;
-  color: var(--green);
-  font-weight: 650;
+/* Belegleiste: ein Segment je Anforderung, voll = geprüft, hell = angegeben. */
+.fit-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  color: var(--ink-soft);
+  font-size: var(--fs-2xs);
+  font-weight: 600;
 }
+
+.fit-bar-track {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.fit-bar-track span {
+  width: 20px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--green);
+}
+
+.fit-bar-track [data-state="stated"] { background: #9ccfb0; }
+.fit-bar-track [data-state="missing"] { background: transparent; box-shadow: inset 0 0 0 1px var(--border-strong); }
 
 .showcase-card-skills {
   display: flex;
@@ -5468,11 +5550,16 @@ a.showcase-card:focus-visible {
 }
 
 .showcase-card-skills > span:not(.sr-only) {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   background: var(--surface-soft);
   padding: 1px 7px;
   color: var(--ink-soft);
+  font-size: var(--fs-2xs);
+  line-height: 1.5;
 }
 
 /* Die Muss-Kompetenz der Rolle: belegt, nicht nur verwandt. */
@@ -5488,6 +5575,31 @@ a.showcase-card:focus-visible {
   font-weight: 500;
 }
 
+.showcase-card-teaser {
+  gap: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  padding: 8px 10px;
+  color: var(--ink-soft);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+
+.showcase-card-teaser small {
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.showcase-card-teaser span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
 .showcase-card-facts {
   display: flex;
   flex-wrap: wrap;
@@ -5495,7 +5607,6 @@ a.showcase-card:focus-visible {
   justify-content: space-between;
   gap: 6px;
   margin-top: auto;
-  padding-top: 2px;
 }
 
 .showcase-card-rate {
@@ -5559,4 +5670,19 @@ a.showcase-card:hover .showcase-card-cta svg {
   .registered-showcase {
     margin-left: 0;
   }
+}
+
+/* Die Ergebniskarte trägt dasselbe Band, schmaler und über die volle Breite. */
+.profile-main > .pband {
+  min-height: 0;
+  margin: -17px -18px 12px;
+  padding: 7px 18px;
+}
+
+.profile-evidence .fit-bar {
+  margin: -2px 0 8px;
+}
+
+.profile-references {
+  margin-top: 10px;
 }

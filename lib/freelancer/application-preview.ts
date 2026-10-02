@@ -1,6 +1,8 @@
 import type { ShowcaseProfile } from "@/lib/freelancer/showcase";
 import type { AvailabilityStatus, Seeking, WorkMode } from "@/lib/freelancer/limits";
 import { placementRequestsEnabled } from "@/lib/placement/config";
+import { summaryExcerpt } from "@/lib/profile/excerpt";
+import type { ProfileField } from "@/lib/profile/identity";
 
 /**
  * Die Profilkarte, wie Kunden sie nach der Freigabe sehen, gebaut aus dem,
@@ -23,6 +25,9 @@ export type ApplicationPreviewInput = {
   availabilityFrom: string;
   bookingUrl: string;
   seeking: Seeking;
+  experienceSummary?: string;
+  /** Nur für das ausgedachte Beispiel; sonst bestimmt das Gebiet der Server. */
+  field?: ProfileField | null;
 };
 
 const PREVIEW_SKILLS = 4;
@@ -71,6 +76,9 @@ export function applicationPreviewProfile(input: ApplicationPreviewInput, now: D
     location: input.locationText.trim() || null,
     workModes: [...input.workModes],
     verified: false,
+    // Das Fachgebiet bestimmt erst der Server; die Vorschau zeigt ein neutrales Band.
+    field: input.field ?? null,
+    summaryExcerpt: summaryExcerpt(input.experienceSummary),
   };
 }
 
@@ -91,6 +99,9 @@ export function exampleApplicationPreview(now: Date): ShowcaseProfile {
       // Ohne Vermittlungsmodell zeigte die Karte sonst „kein direkter Kontaktweg“.
       bookingUrl: "https://cal.com/anna-beispiel",
       seeking: "both",
+      experienceSummary:
+        "Baut seit acht Jahren Weboberflächen für Banken und Versicherer, zuletzt ein Designsystem für 40 Produktteams.",
+      field: "frontend",
     },
     now,
   );

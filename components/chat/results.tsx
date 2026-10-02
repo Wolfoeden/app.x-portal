@@ -39,6 +39,8 @@ import {
 } from "@/lib/freelancer/profile-feedback";
 import { placementRequestsEnabled } from "@/lib/placement/config";
 import { profilePath } from "@/lib/profile/profile-link";
+import { monogramTone, PROFILE_FIELD_LABELS } from "@/lib/profile/identity";
+import { FitBar, type FitSegment } from "../profile/FitBar";
 
 import { factPreview } from "./fact-preview";
 import { shouldHighlightProfile } from "./profile-fit";
@@ -1097,6 +1099,13 @@ export function ProfileCard({
   const check = profileCheck(profile.referenceStatus);
   const isPartial = profile.recommendationRole === "partial";
   const presentation = profilePresentation(profile, brief);
+  // Optionale Wünsche zählen nicht mit: Die Leiste zeigt, was die Anfrage braucht.
+  const fitSegments: FitSegment[] = presentation.evidence
+    .filter((row) => row.priority !== "optional")
+    .map((row) => ({
+      label: row.requirement,
+      state: row.status === "missing" ? "missing" : row.verified ? "verified" : "stated",
+    }));
   const cvAction = cvActionState(profile, isAccountUser);
   const bookingAction = bookingActionState(profile, isAccountUser);
   const [cvDownloadState, setCvDownloadState] = useState<"idle" | "loading" | "error">("idle");
@@ -1138,9 +1147,17 @@ export function ProfileCard({
     >
       <div className="profile-rank" aria-label={`${isPartial ? "Teiltreffer" : "Ergebnis"} ${position}`}>{position.toString().padStart(2, "0")}</div>
       <div className="profile-main">
+        <div className="pband" data-field={profile.field ?? "none"}>
+          <span className="pband-label">{profile.field ? PROFILE_FIELD_LABELS[profile.field] : "Profil"}</span>
+          {check?.verified ? (
+            <span className="pband-verified" title={check.text}>
+              <IconCheck size={11} /> Profil geprüft
+            </span>
+          ) : null}
+        </div>
         <header className="profile-header">
           <div className="profile-identity">
-            <div className={`profile-avatar ${profile.avatarUrl ? "has-image" : ""}`} style={avatarStyle(profile.avatarUrl)} aria-hidden="true">{profile.avatarUrl ? null : initials(profile.displayName)}</div>
+            <div className={`profile-avatar pid ${profile.avatarUrl ? "has-image" : ""}`} data-tone={monogramTone(profile.displayName)} style={avatarStyle(profile.avatarUrl)} aria-hidden="true">{profile.avatarUrl ? null : initials(profile.displayName)}</div>
             <div>
               <h3>{profile.displayName}</h3>
               <p>{profile.role}</p>
@@ -1172,6 +1189,7 @@ export function ProfileCard({
             ) : null}
             <div className="profile-evidence">
               <h4>Das bringt das Profil für Ihr Projekt mit</h4>
+              <FitBar segments={fitSegments} noun={fitSegments.length === 1 ? "Anforderung" : "Anforderungen"} />
               <ul>
                 {presentation.evidence.map((row) => (
                   <li className={`profile-evidence-row is-${row.status}`} key={row.requirement}>
@@ -1189,6 +1207,12 @@ export function ProfileCard({
         ) : (
           <div className="profile-tags">{presentation.skills.map((skill) => <span key={skill}>{skill}</span>)}</div>
         )}
+        {profile.referencesSummary ? (
+          <div className="showcase-card-teaser profile-references">
+            <small>Referenzen</small>
+            <span>{profile.referencesSummary}</span>
+          </div>
+        ) : null}
         {presentation.openPoints.length ? (
           <div className="profile-conversation">
             <h4>{isPartial ? "Vor einem Gespräch prüfen" : "Im Erstgespräch klären"}</h4>

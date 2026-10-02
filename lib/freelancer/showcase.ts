@@ -5,6 +5,9 @@ import { roleFit } from "@/lib/domain/role-taxonomy";
 import { canonicalSkill } from "@/lib/domain/skill-taxonomy";
 import { normalizeAvatarUrl } from "@/lib/freelancer/avatar-limits";
 import type { WorkMode } from "@/lib/freelancer/limits";
+import { summaryExcerpt } from "@/lib/profile/excerpt";
+import { profileField } from "@/lib/profile/field";
+import type { ProfileField } from "@/lib/profile/identity";
 import { placementRequestsEnabled } from "@/lib/placement/config";
 import { formatProfileRate } from "@/lib/presentation/chat";
 
@@ -72,6 +75,12 @@ export type ShowcaseProfile = {
   workModes: WorkMode[];
   /** Profilprüfung durch XPORTAL abgeschlossen. */
   verified: boolean;
+  /** Fachgebiet für das Titelband; `null` ohne erkennbare Rolle oder Skills. */
+  field: ProfileField | null;
+  /** Der erste Satz des Kurzprofils. */
+  summaryExcerpt: string | null;
+  /** Referenznotiz des Betreibers, nur wenn freigeschaltet. */
+  referencesSummary?: string | null;
 };
 
 export type RegisteredShowcase = {
@@ -239,6 +248,8 @@ export function selectShowcase(
       location: profile.location?.value ?? null,
       workModes: [...profile.workModes],
       verified: profile.referenceStatus === "verified",
+      field: profileField(profile.role, profile.skillTags.map(({ value }) => value)),
+      summaryExcerpt: summaryExcerpt(profile.experienceSummary.value),
     })),
   };
 }

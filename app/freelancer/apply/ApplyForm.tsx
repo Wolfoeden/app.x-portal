@@ -684,6 +684,7 @@ export function ApplyForm({
               availabilityFrom,
               bookingUrl,
               seeking,
+              experienceSummary,
             },
             previewAt,
           )}

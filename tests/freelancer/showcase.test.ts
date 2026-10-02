@@ -136,6 +136,8 @@ describe("the role showcases", () => {
       location: "Berlin",
       workModes: ["remote", "hybrid"],
       verified: true,
+      field: "ai",
+      summaryExcerpt: expect.any(String),
     } satisfies ShowcaseProfile);
   });
 
@@ -282,6 +284,8 @@ describe("the showcase panel", () => {
     location: "Berlin",
     workModes: ["remote", "hybrid"],
     verified: true,
+    field: "ai",
+    summaryExcerpt: "Baut Agenten für den Kundenservice.",
     ...overrides,
   });
   const showcase: RegisteredShowcase = {

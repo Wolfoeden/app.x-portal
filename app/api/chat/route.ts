@@ -15,6 +15,7 @@ import { briefAnalysisResult } from "@/lib/openai/brief-billing";
 import { currentPeriodEndIso, getAccountPlanId } from "@/lib/ai/quota";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { attachFreelancerCvAccess } from "@/lib/data/freelancer-cvs";
+import { attachProfileExtras } from "@/lib/data/profile-extras";
 import { deriveProjectTitle, presentProject, type ProjectRow } from "@/lib/data/projects";
 import { fetchActiveBookableRealProfiles } from "@/lib/data/freelancers";
 import {
@@ -728,12 +729,12 @@ async function processChatRequest(
         admin,
         shortlist.matches.map(presentMatch),
         user.isAnonymous,
-      ),
+      ).then((profiles) => attachProfileExtras(admin, profiles)),
       attachFreelancerCvAccess(
         admin,
         shortlist.partialMatches.map(presentMatch),
         user.isAnonymous,
-      ),
+      ).then((profiles) => attachProfileExtras(admin, profiles)),
     ]);
 
     return NextResponse.json(

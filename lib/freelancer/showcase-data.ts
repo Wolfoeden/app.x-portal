@@ -3,6 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { fetchActiveBookableRealProfiles } from "@/lib/data/freelancers";
+import { fetchReferenceSummaries } from "@/lib/data/profile-extras";
 import type { FreelancerProfile } from "@/lib/domain";
 import {
   emptyShowcase,
@@ -56,6 +57,7 @@ let cached: {
   at: number;
   profiles: FreelancerProfile[];
   registered: Set<string>;
+  references: Map<string, string>;
 } | null = null;
 
 export async function loadShowcase(theme: ShowcaseTheme, now = Date.now()): Promise<RegisteredShowcase> {
@@ -66,7 +68,15 @@ export async function loadShowcase(theme: ShowcaseTheme, now = Date.now()): Prom
       fetchActiveBookableRealProfiles(admin),
       fetchRegisteredProfileIds(admin),
     ]);
-    cached = { at: now, profiles, registered };
+    // Die Notizen sind ein Zusatz: Scheitert die Abfrage, kommt die Liste ohne.
+    const references = await fetchReferenceSummaries(admin, [...registered]).catch(() => new Map<string, string>());
+    cached = { at: now, profiles, registered, references };
   }
-  return selectShowcase(theme, cached.profiles, cached.registered, new Date(now));
+  const showcase = selectShowcase(theme, cached.profiles, cached.registered, new Date(now));
+  const references = cached.references;
+  if (references.size === 0) return showcase;
+  return {
+    ...showcase,
+    profiles: showcase.profiles.map((profile) => ({ ...profile, referencesSummary: references.get(profile.id) ?? null })),
+  };
 }

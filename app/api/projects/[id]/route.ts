@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { attachFreelancerCvAccess } from "@/lib/data/freelancer-cvs";
+import { attachProfileExtras } from "@/lib/data/profile-extras";
 import {
   fetchActiveBookableRealProfiles,
   fetchRealProfilesByIds,
@@ -443,13 +444,13 @@ export async function GET(
         profiles,
         user.isAnonymous,
         hasActionableCvShortlist,
-      ),
+      ).then((list) => attachProfileExtras(admin, list)),
       attachFreelancerCvAccess(
         admin,
         partialProfiles,
         user.isAnonymous,
         hasActionableCvShortlist,
-      ),
+      ).then((list) => attachProfileExtras(admin, list)),
     ]);
 
     // External research is charged and stored separately from the internal
