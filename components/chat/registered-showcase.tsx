@@ -3,16 +3,9 @@
 import { useEffect, useState } from "react";
 
 import { appPath } from "@/lib/app-path";
-import type {
-  RegisteredShowcase,
-  ShowcaseContact,
-  ShowcaseProfile,
-  ShowcaseTheme,
-} from "@/lib/freelancer/showcase";
+import type { RegisteredShowcase, ShowcaseTheme } from "@/lib/freelancer/showcase";
 import { profilePath } from "@/lib/profile/profile-link";
-import { availabilityNotice, type AvailabilityNotice } from "./availability";
-import { IconCheck } from "../icons";
-import { initials } from "./shared";
+import { ShowcaseCard } from "./showcase-card";
 
 const pending = new Map<ShowcaseTheme, Promise<RegisteredShowcase | null>>();
 
@@ -38,97 +31,10 @@ export function loadRegisteredShowcase(theme: ShowcaseTheme): Promise<Registered
   return loading;
 }
 
-function avatarStyle(avatarUrl: string | null) {
-  return avatarUrl ? { backgroundImage: `url(${JSON.stringify(avatarUrl)})` } : undefined;
-}
-
 export function showcaseHeading(total: number, label: string): string {
   return total === 1
     ? `1 selbst angemeldetes Profil für ${label}`
     : `${total.toLocaleString("de-DE")} selbst angemeldete Profile für ${label}`;
-}
-
-const CONTACT_LABELS: Readonly<Record<ShowcaseContact, string | null>> = {
-  request: "Kontakt: Anfrage über XPORTAL",
-  calendar: "Kontakt: eigener Terminkalender",
-  none: null,
-};
-
-/**
- * Was vor einem Gespräch offen ist, aus dem, was die Karte zeigt — oder eben
- * nicht zeigen kann. Die Anforderungen eines Projekts kennt die Liste noch
- * nicht; die prüft der Abgleich.
- */
-export function showcaseOpenPoints(
-  profile: Pick<ShowcaseProfile, "rate" | "contact">,
-  availability: AvailabilityNotice,
-): string[] {
-  const points: string[] = [];
-  if (!profile.rate) points.push("Honorar nicht angegeben");
-  if (availability.tone === "unknown") points.push("Verfügbarkeit offen");
-  else if (!availability.statedOn) points.push("Verfügbarkeit ohne Datum");
-  else if (availability.stale) points.push(`Verfügbarkeit zuletzt am ${availability.statedOn} angegeben`);
-  if (profile.contact === "none") points.push("Derzeit kein direkter Kontaktweg");
-  return points;
-}
-
-function ShowcaseCard({ profile, now }: { profile: ShowcaseProfile; now: Date }) {
-  const availability = availabilityNotice(profile.availability.status, profile.availability.updatedAt, now, {
-    availableFrom: profile.availability.availableFrom,
-    confirmedBy: profile.contact === "request" ? "introduction" : "call",
-  });
-  const openPoints = showcaseOpenPoints(profile, availability);
-  const contact = CONTACT_LABELS[profile.contact];
-
-  return (
-    <a
-      href={appPath(profilePath(profile.id, "shortcut"))}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={`Profil von ${profile.displayName} öffnen: ${profile.role}`}
-    >
-      <span
-        className={profile.avatarUrl ? "profile-avatar has-image" : "profile-avatar"}
-        style={avatarStyle(profile.avatarUrl)}
-        aria-hidden="true"
-      >
-        {profile.avatarUrl ? null : initials(profile.displayName)}
-      </span>
-      <span className="registered-showcase-identity">
-        <strong>{profile.displayName}</strong>
-        <span>{profile.role}</span>
-        {profile.evidence.length ? (
-          <span className="registered-showcase-skills">
-            <span className="sr-only">Im Profil belegt: </span>
-            {profile.evidence.map((entry) => (
-              <span
-                key={entry.skill}
-                className={entry.required ? "is-required" : undefined}
-                title={entry.verified ? "Von XPORTAL geprüft" : "Vom Freelancer angegeben"}
-              >
-                {entry.required ? <IconCheck size={11} /> : null}
-                {entry.skill}
-                {entry.verified ? <small> · geprüft</small> : null}
-              </span>
-            ))}
-          </span>
-        ) : null}
-        <span className="registered-showcase-facts">
-          {profile.rate ? <span className="registered-showcase-rate">{profile.rate}</span> : null}
-          <span
-            className={`registered-showcase-availability is-${availability.tone}`}
-            title={availability.title ?? undefined}
-          >
-            {availability.label}
-          </span>
-          {contact ? <span>{contact}</span> : null}
-        </span>
-        {openPoints.length ? (
-          <span className="registered-showcase-open">Vorher klären: {openPoints.join(" · ")}</span>
-        ) : null}
-      </span>
-    </a>
-  );
 }
 
 /**
@@ -178,7 +84,7 @@ export function RegisteredShowcasePanel({
       <ul className="registered-showcase-list">
         {showcase.profiles.map((profile) => (
           <li key={profile.id}>
-            <ShowcaseCard profile={profile} now={shownAt} />
+            <ShowcaseCard profile={profile} now={shownAt} href={appPath(profilePath(profile.id, "shortcut"))} />
           </li>
         ))}
       </ul>

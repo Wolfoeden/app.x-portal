@@ -14,6 +14,7 @@ vi.mock("@/lib/data/freelancers", () => ({ fetchActiveBookableRealProfiles: mock
 vi.mock("@/lib/supabase/admin", () => ({ createAdminSupabaseClient: mocks.admin }));
 
 import { RegisteredShowcasePanel, showcaseHeading } from "@/components/chat/registered-showcase";
+import { ShowcaseCard } from "@/components/chat/showcase-card";
 import { FreelancerProfileSchema, type FreelancerProfile } from "@/lib/domain";
 import {
   emptyShowcase,
@@ -57,7 +58,12 @@ const agent = profile(ID(1), "Kim Agent", "AI Engineer", [
   "LangChain",
   "Requirements Engineering",
   "n8n",
-], { dayRate: { amount: 800, currency: "EUR" } });
+], {
+  dayRate: { amount: 800, currency: "EUR" },
+  location: { value: "Berlin", source: "self_reported" },
+  workModes: ["remote", "hybrid"],
+  referenceStatus: "verified",
+});
 const germanAgent = profile(ID(2), "Robin Agentin", "KI-Entwicklung", ["TypeScript", "React", "KI-Agenten", "RAG"]);
 const workflows = profile(ID(3), "Jo Workflow", "Automatisierung & Systemintegration", ["n8n", "Make", "LLM"]);
 const aiRoleOnly = profile(ID(4), "Alex Beratung", "KI-Beraterin", ["Workshops", "Strategie"]);
@@ -127,6 +133,9 @@ describe("the role showcases", () => {
       rate: expect.stringMatching(/^800\s€ \/ Tag$/u),
       availability: { status: "available", updatedAt: FRESH, availableFrom: null },
       contact: "calendar",
+      location: "Berlin",
+      workModes: ["remote", "hybrid"],
+      verified: true,
     } satisfies ShowcaseProfile);
   });
 
@@ -270,6 +279,9 @@ describe("the showcase panel", () => {
     rate: "800 € / Tag",
     availability: { status: "available", updatedAt: FRESH, availableFrom: null },
     contact: "calendar",
+    location: "Berlin",
+    workModes: ["remote", "hybrid"],
+    verified: true,
     ...overrides,
   });
   const showcase: RegisteredShowcase = {
@@ -283,6 +295,9 @@ describe("the showcase panel", () => {
         displayName: "Robin Agentin",
         rate: null,
         availability: { status: "available", updatedAt: STALE, availableFrom: null },
+        location: null,
+        workModes: ["remote"],
+        verified: false,
       }),
     ],
   };
@@ -306,6 +321,24 @@ describe("the showcase panel", () => {
     expect(html).toContain("800 € / Tag");
     expect(html).toContain("Verfügbar · Stand 25.09.");
     expect(html).toContain("Kontakt: eigener Terminkalender");
+    expect(html).toContain("Berlin · Remote, Hybrid");
+    expect(html).toContain("Profil geprüft");
+  });
+
+  it("shows that the card opens the profile, and reads the whole card out", () => {
+    const html = render(showcase);
+    expect(html.match(/Profil ansehen/gu)).toHaveLength(2);
+    expect(html).toContain("(öffnet in neuem Tab)");
+    expect(html).toContain('class="availability available"');
+    expect(html).not.toContain("aria-label=\"Profil von");
+  });
+
+  it("renders the same card without a link as a preview", () => {
+    const html = renderToStaticMarkup(createElement(ShowcaseCard, { profile: card({}), now: NOW, href: null }));
+    expect(html).toMatch(/^<div class="showcase-card">/u);
+    expect(html).not.toContain("<a");
+    expect(html).not.toContain("Profil ansehen");
+    expect(html).toContain("Kim Agent");
   });
 
   it("says what to clarify before a conversation and promises no fit", () => {

@@ -4,6 +4,7 @@ import type { FreelancerProfile } from "@/lib/domain";
 import { roleFit } from "@/lib/domain/role-taxonomy";
 import { canonicalSkill } from "@/lib/domain/skill-taxonomy";
 import { normalizeAvatarUrl } from "@/lib/freelancer/avatar-limits";
+import type { WorkMode } from "@/lib/freelancer/limits";
 import { placementRequestsEnabled } from "@/lib/placement/config";
 import { formatProfileRate } from "@/lib/presentation/chat";
 
@@ -66,6 +67,11 @@ export type ShowcaseProfile = {
     availableFrom: string | null;
   };
   contact: ShowcaseContact;
+  /** Ort, wie der Freelancer ihn angibt. */
+  location: string | null;
+  workModes: WorkMode[];
+  /** Profilprüfung durch XPORTAL abgeschlossen. */
+  verified: boolean;
 };
 
 export type RegisteredShowcase = {
@@ -230,6 +236,9 @@ export function selectShowcase(
         availableFrom: profile.availability.availableFrom,
       },
       contact: contactFor(profile, placement),
+      location: profile.location?.value ?? null,
+      workModes: [...profile.workModes],
+      verified: profile.referenceStatus === "verified",
     })),
   };
 }

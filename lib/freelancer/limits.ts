@@ -16,16 +16,18 @@ export const WORK_MODES = ["remote", "on_site", "hybrid"] as const;
 export type WorkMode = (typeof WORK_MODES)[number];
 
 /**
- * Was eine Person bei XPORTAL sucht. Über die Agentur für Arbeit kommen auch
- * Menschen, die eine feste Stelle suchen; sie erscheinen nicht in der
- * Freelancer-Suche, bleiben aber für die Vermittlung sichtbar.
+ * Was eine Person bei XPORTAL sucht. Über Agentur für Arbeit und Jobcenter
+ * kommen auch Menschen, die eine feste Stelle suchen oder noch nicht
+ * selbstständig sind; die Bezeichnungen schließen sie ausdrücklich ein. Wer
+ * nur eine feste Stelle sucht, erscheint nicht in der Freelancer-Suche,
+ * bleibt aber für das XPORTAL-Team sichtbar.
  */
 export const SEEKING_OPTIONS = ["projects", "employment", "both"] as const;
 export type Seeking = (typeof SEEKING_OPTIONS)[number];
 export const SEEKING_LABELS: Readonly<Record<Seeking, string>> = {
-  projects: "Freelance-Projekte",
-  employment: "Festanstellung",
-  both: "Projekte oder Festanstellung",
+  projects: "Projekte als Freelancer",
+  employment: "Eine feste Stelle",
+  both: "Beides oder noch offen",
 };
 
 /** `?quelle=` auf der Bewerbungsseite, klein, ohne Leerzeichen. */

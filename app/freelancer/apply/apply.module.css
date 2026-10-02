@@ -441,6 +441,7 @@
 }
 
 .portalCard,
+.gate,
 .dashboardHead {
   margin-top: 28px;
   border: 1px solid var(--border);
@@ -466,6 +467,7 @@
 }
 
 .portalCard h2,
+.gate h2,
 .dashboardHead h2 {
   margin: 7px 0 9px;
   font-size: clamp(22px, 3vw, 30px);
@@ -848,5 +850,134 @@
 @media (max-width: 760px) {
   .seeking {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Einstieg vor der Anmeldung: Wege und Fakten links, Beispielkarte rechts. */
+.gate {
+  display: grid;
+  gap: 28px;
+}
+
+.paths {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.paths li {
+  display: grid;
+  border-left: 3px solid #1d6b5f;
+  padding: 2px 0 2px 12px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+
+.paths strong {
+  color: var(--ink);
+}
+
+.gateActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  margin-bottom: 10px;
+}
+
+.gateLogin {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.gateExample,
+.preview {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  border-radius: 14px;
+  background: var(--surface-soft);
+  padding: 16px;
+}
+
+.gateExample h3,
+.preview h2 {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+
+.faq {
+  margin-top: 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 22px clamp(18px, 4vw, 34px) 8px;
+}
+
+.faq h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.faq details {
+  border-top: 1px solid var(--border);
+}
+
+.faq summary {
+  padding: 12px 0;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.faq details p {
+  max-width: 640px;
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* Die Vorschau der eigenen Karte: im Formular nach „Zusammenarbeit“, auf
+   breiten Bildschirmen mitlaufend daneben. */
+.preview {
+  border: 1px dashed var(--border-strong);
+  background: var(--surface);
+}
+
+@media (min-width: 880px) {
+  .gate {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    align-items: start;
+  }
+}
+
+@media (min-width: 1000px) {
+  .form {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    column-gap: 24px;
+  }
+
+  .form > section {
+    grid-column: 1;
+  }
+
+  .preview {
+    position: sticky;
+    top: 24px;
+    grid-column: 2;
+    grid-row: 1 / span 5;
+    align-self: start;
   }
 }

@@ -15,11 +15,13 @@ import { loadProfileFeedbackSummary } from "@/lib/freelancer/profile-feedback-da
 import {
   APPLICATION_STATUS_LABELS,
   AVAILABILITY_LABELS,
+  SEEKING_LABELS,
   WORK_MODE_LABELS,
   type ApplicationStatus,
   type AvailabilityStatus,
   type WorkMode,
 } from "@/lib/freelancer/limits";
+import { referralLabel } from "@/lib/freelancer/referrals";
 
 import { ReviewPanel } from "../ReviewPanel";
 import styles from "../freelancers.module.css";
@@ -144,6 +146,16 @@ export default async function FreelancerApplicationDetailPage({
                       {application.website_url}
                     </a>
                   </dd>
+                </div>
+              ) : null}
+              <div>
+                <dt>Sucht</dt>
+                <dd>{SEEKING_LABELS[application.seeking] ?? SEEKING_LABELS.projects}</dd>
+              </div>
+              {application.referral ? (
+                <div>
+                  <dt>Herkunft</dt>
+                  <dd>{referralLabel(application.referral)}</dd>
                 </div>
               ) : null}
               <div>

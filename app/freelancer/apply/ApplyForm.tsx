@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useRef, useState, type FormEvent } from "react";
 
 import { TagInput } from "@/components/TagInput";
+import { ShowcaseCard } from "@/components/chat/showcase-card";
 import { appPath } from "@/lib/app-path";
+import { applicationPreviewProfile } from "@/lib/freelancer/application-preview";
 import {
   AVAILABILITY_LABELS,
   AVAILABILITY_STATUSES,
@@ -92,9 +94,9 @@ function rememberedReferral(): string | null {
 }
 
 const SEEKING_HINTS: Readonly<Record<Seeking, string>> = {
-  projects: "Sie arbeiten selbstständig und suchen Projekte.",
-  employment: "Sie suchen eine feste Stelle.",
-  both: "Sie sind für beides offen.",
+  projects: "Sie arbeiten selbstständig oder möchten es werden.",
+  employment: "Sie suchen eine Anstellung.",
+  both: "Sie entscheiden, wenn es konkret wird.",
 };
 
 export function ApplyForm({
@@ -143,6 +145,8 @@ export function ApplyForm({
   const [applicantNote, setApplicantNote] = useState("");
   const [consent, setConsent] = useState(false);
   const [honeypot, setHoneypot] = useState("");
+  const [previewAt] = useState(() => new Date());
+  const employment = seeking === "employment";
 
   const [cv, setCv] = useState<UploadedCv | null>(null);
   const [cvStatus, setCvStatus] = useState<"idle" | "uploading">("idle");
@@ -246,7 +250,7 @@ export function ApplyForm({
       setFormError("Bitte mindestens eine Arbeitsform auswählen.");
       return;
     }
-    if (seeking !== "employment" && !hourlyRate && !dayRate) {
+    if (!employment && !hourlyRate && !dayRate) {
       setFormError("Bitte Stundensatz oder Tagessatz angeben.");
       return;
     }
@@ -277,8 +281,10 @@ export function ApplyForm({
           industries,
           locationText,
           workModes,
-          hourlyRate,
-          dayRate,
+          // Für eine feste Stelle sind die Felder ausgeblendet; was vorher
+          // darin stand, soll nicht unsichtbar mitreisen.
+          hourlyRate: employment ? "" : hourlyRate,
+          dayRate: employment ? "" : dayRate,
           currency,
           availabilityStatus,
           availabilityFrom,
@@ -325,9 +331,9 @@ export function ApplyForm({
           Projekte vorgeschlagen werden.
         </p>
         <ol>
-          <li>Wir prüfen Angaben, Lebenslauf und Referenzen.</li>
+          <li>Wir sehen uns Ihre Angaben und Ihren Lebenslauf an.</li>
           <li>Bei Rückfragen melden wir uns unter {contactEmail}.</li>
-          <li>Nach der Freigabe ist Ihr Profil im Matching auffindbar.</li>
+          <li>Nach der Freigabe melden wir uns, wenn eine Anfrage zu Ihnen passt.</li>
         </ol>
       </div>
     );
@@ -565,53 +571,60 @@ export function ApplyForm({
             />
           </label>
 
-          <label className={styles.field}>
-            <span>Stundensatz</span>
-            <input
-              value={hourlyRate}
-              onChange={(event) => setHourlyRate(event.target.value)}
-              type="number"
-              inputMode="decimal"
-              min={1}
-              step="0.01"
-              placeholder="95"
-            />
-          </label>
+          {employment ? (
+            <div className={`${styles.callout} ${styles.full}`}>
+              <strong>Für eine feste Stelle brauchen wir kein Honorar.</strong>
+              <span>Das Gehalt besprechen Sie direkt mit dem Unternehmen.</span>
+            </div>
+          ) : (
+            <>
+              <label className={styles.field}>
+                <span>Stundensatz</span>
+                <input
+                  value={hourlyRate}
+                  onChange={(event) => setHourlyRate(event.target.value)}
+                  type="number"
+                  inputMode="decimal"
+                  min={1}
+                  step="0.01"
+                  placeholder="95"
+                />
+              </label>
 
-          <label className={styles.field}>
-            <span>Tagessatz</span>
-            <input
-              value={dayRate}
-              onChange={(event) => setDayRate(event.target.value)}
-              type="number"
-              inputMode="decimal"
-              min={1}
-              step="0.01"
-              placeholder="760"
-            />
-          </label>
+              <label className={styles.field}>
+                <span>Tagessatz</span>
+                <input
+                  value={dayRate}
+                  onChange={(event) => setDayRate(event.target.value)}
+                  type="number"
+                  inputMode="decimal"
+                  min={1}
+                  step="0.01"
+                  placeholder="760"
+                />
+              </label>
 
-          <label className={styles.field}>
-            <span>Währung</span>
-            <select
-              value={currency}
-              onChange={(event) =>
-                setCurrency(event.target.value as (typeof CURRENCIES)[number])
-              }
-            >
-              {CURRENCIES.map((code) => (
-                <option key={code} value={code}>
-                  {code}
-                </option>
-              ))}
-            </select>
-          </label>
+              <label className={styles.field}>
+                <span>Währung</span>
+                <select
+                  value={currency}
+                  onChange={(event) =>
+                    setCurrency(event.target.value as (typeof CURRENCIES)[number])
+                  }
+                >
+                  {CURRENCIES.map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-          <span className={`${styles.hint} ${styles.full}`}>
-            {seeking === "employment"
-              ? "Bei einer Festanstellung freiwillig. Beträge netto, ohne Umsatzsteuer."
-              : "Mindestens einer der beiden Sätze ist erforderlich. Beträge netto, ohne Umsatzsteuer."}
-          </span>
+              <span className={`${styles.hint} ${styles.full}`}>
+                Mindestens einer der beiden Sätze ist erforderlich. Beträge netto, ohne Umsatzsteuer.
+              </span>
+            </>
+          )}
 
           <label
             className={`${styles.field} ${styles.full} ${
@@ -648,6 +661,39 @@ export function ApplyForm({
           </div>
         </div>
       </section>
+
+      <aside className={styles.preview} aria-labelledby="apply-preview-title">
+        <p className={styles.eyebrow}>Vorschau</p>
+        <h2 id="apply-preview-title">
+          {employment ? "So sieht XPORTAL Ihr Profil" : "So sehen Unternehmen Ihr Profil"}
+        </h2>
+        <ShowcaseCard
+          href={null}
+          now={previewAt}
+          profile={applicationPreviewProfile(
+            {
+              fullName,
+              roleTitle,
+              skills,
+              locationText,
+              workModes,
+              hourlyRate,
+              dayRate,
+              currency,
+              availabilityStatus,
+              availabilityFrom,
+              bookingUrl,
+              seeking,
+            },
+            previewAt,
+          )}
+        />
+        <p className={styles.hint}>
+          {employment
+            ? "Für eine feste Stelle erscheint Ihr Profil nicht in der öffentlichen Freelancer-Suche."
+            : "Sichtbar erst nach der Freigabe. Den Haken „geprüft“ setzt XPORTAL nach der Sichtung."}
+        </p>
+      </aside>
 
       <section className={styles.section}>
         <p className={styles.eyebrow}>04 · Nachweise</p>
@@ -784,12 +830,12 @@ export function ApplyForm({
             disabled={disabled || !consent || cvStatus === "uploading"}
           >
             <span>
-              {disabled ? "Wird gesendet …" : "Zur Prüfung einreichen"}
+              {disabled ? "Wird gesendet …" : "Profil zur Sichtung senden"}
             </span>
             <span aria-hidden="true">→</span>
           </button>
           <span className={styles.actionsHint}>
-            Kein Profil geht ohne unsere Freigabe live.
+            Wir sehen uns jedes Profil persönlich an, bevor es sichtbar wird.
           </span>
         </div>
       </section>

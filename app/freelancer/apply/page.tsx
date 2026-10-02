@@ -14,6 +14,7 @@ import type {
 import { ApplyForm } from "./ApplyForm";
 import { RememberReferral } from "./RememberReferral";
 import { REFERRAL_PATTERN } from "@/lib/freelancer/limits";
+import { referralWelcome } from "@/lib/freelancer/referrals";
 import {
   FreelancerApplicationStatus,
   FreelancerAuthGate,
@@ -22,9 +23,9 @@ import {
 import styles from "./apply.module.css";
 
 export const metadata: Metadata = {
-  title: "Freelancer-Portal | XPORTAL",
+  title: "Profil anlegen für Freelancer und IT-Fachkräfte | XPORTAL",
   description:
-    "Bei XPORTAL bewerben, das eigene Freelancer-Profil verwalten und Profilstatistiken ansehen.",
+    "Kostenlos ein Profil bei XPORTAL anlegen – für Freelance-Projekte, eine feste Stelle oder den Weg in die Selbstständigkeit. Bestehende Profile hier verwalten.",
   robots: { index: true, follow: true },
 };
 
@@ -89,6 +90,8 @@ export default async function FreelancerApplyPage({
     user && !user.isAnonymous
       ? await loadFreelancerPortalState(user.id)
       : null;
+  const hasProfile = portalState?.kind === "profile" || preview;
+  const welcome = referralWelcome(referral);
   const protocolStep = portalState?.kind === "application"
     ? portalState.status === "approved" ? 3 : 2
     : portalState?.kind === "profile" || preview
@@ -101,27 +104,17 @@ export default async function FreelancerApplyPage({
       <main className={styles.shell} lang="de">
       <div className={styles.inner}>
         <header className={styles.header}>
-          <p className={styles.eyebrow}>Profilverwaltung</p>
-          <h1>
-            {portalState?.kind === "profile" || preview
-              ? "Ihr Freelancer-Profil."
-              : "Werden Sie Teil des XPORTAL-Netzwerks."}
-          </h1>
+          <p className={styles.eyebrow}>{hasProfile ? "Profilverwaltung" : "Für IT-Fachkräfte"}</p>
+          <h1>{hasProfile ? "Ihr Freelancer-Profil." : "Zeigen Sie, was Sie können."}</h1>
           <p>
-            {portalState?.kind === "profile" || preview
+            {hasProfile
               ? "Hier aktualisieren Sie Ihre Angaben, steuern die Sichtbarkeit und sehen, wie Kunden mit Ihrem Profil interagieren."
-              : "Wir schlagen Kundinnen und Kunden nur Profile vor, die wir vorher selbst gesichtet haben. Nach unserer Freigabe wird Ihr Profil im Portal sichtbar."}
+              : "Legen Sie kostenlos ein Profil an – ob Sie als Freelancer arbeiten, eine feste Stelle suchen oder sich gerade selbstständig machen. XPORTAL sieht sich jedes Profil persönlich an und meldet sich, wenn eine Anfrage passt."}
           </p>
         </header>
 
         {referral ? <RememberReferral referral={referral} /> : null}
-        {referral === "arbeitsagentur" ? (
-          <p className={styles.welcome}>
-            Willkommen! Sie kommen über die Agentur für Arbeit. Die Anmeldung ist
-            für Sie kostenlos. Sie können Freelance-Projekte, eine Festanstellung
-            oder beides suchen; das fragen wir im Formular als Erstes.
-          </p>
-        ) : null}
+        {welcome && !hasProfile ? <p className={styles.welcome}>{welcome}</p> : null}
         {invite && !invite.alreadyConverted ? (
           <p className={styles.invited}>
             Schön, dass Sie da sind, {invite.fullName.split(/\s+/u)[0]}.

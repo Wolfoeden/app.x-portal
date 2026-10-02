@@ -413,6 +413,7 @@ export const agentShowcase: RegisteredShowcase = {
       rate: "95 € / Stunde",
       availability: { status: "available", updatedAt: daysAgo(6), availableFrom: null },
       contact: "calendar",
+      location: "München", workModes: ["remote", "hybrid"], verified: true,
     },
     {
       id: "preview-showcase-2",
@@ -427,6 +428,7 @@ export const agentShowcase: RegisteredShowcase = {
       rate: "800 € / Tag",
       availability: { status: "available", updatedAt: daysAgo(12), availableFrom: null },
       contact: "calendar",
+      location: "Hamburg", workModes: ["remote"], verified: false,
     },
     {
       id: "preview-showcase-3",
@@ -441,6 +443,7 @@ export const agentShowcase: RegisteredShowcase = {
       rate: null,
       availability: { status: "available", updatedAt: daysAgo(50), availableFrom: null },
       contact: "calendar",
+      location: null, workModes: ["remote", "on_site"], verified: false,
     },
   ],
 };
