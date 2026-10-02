@@ -1,3 +1,5 @@
+import { useContext } from "react";
+
 import type { ShowcaseContact, ShowcaseProfile } from "@/lib/freelancer/showcase";
 import { WORK_MODE_LABELS } from "@/lib/freelancer/limits";
 import { availabilityNotice, type AvailabilityNotice } from "./availability";
@@ -5,6 +7,7 @@ import { IconArrowRight, IconCheck } from "../icons";
 import { initials } from "./shared";
 import { FitBar, type FitSegment } from "../profile/FitBar";
 import { monogramTone, PROFILE_FIELD_LABELS } from "@/lib/profile/identity";
+import { ProfileSheetContext } from "../profile/profile-sheet";
 
 /*
  * Die Profilkarte für sich, ohne Laden und Panel: Sie steht unter den
@@ -71,6 +74,9 @@ export function ShowcaseCard({ profile, now, href }: { profile: ShowcaseProfile;
   const contact = CONTACT_LABELS[profile.contact];
   const meta = showcaseMeta(profile);
   const intro = teaser(profile);
+  // Im Chat öffnet ein Klick das Seitenpanel; Strg-/Cmd-Klick und die
+  // Bewerbungsvorschau (ohne Panel) behalten den Link.
+  const openProfile = useContext(ProfileSheetContext);
   const segments: FitSegment[] = profile.evidence.map((entry) => ({
     label: entry.skill,
     state: entry.verified ? "verified" : "stated",
@@ -139,14 +145,29 @@ export function ShowcaseCard({ profile, now, href }: { profile: ShowcaseProfile;
       {href ? (
         <span className="showcase-card-cta">
           Profil ansehen <IconArrowRight size={14} />
-          <span className="sr-only"> (öffnet in neuem Tab)</span>
+          <span className="sr-only">{openProfile ? " (öffnet die Profilansicht)" : " (öffnet in neuem Tab)"}</span>
         </span>
       ) : null}
     </>
   );
 
   return href ? (
-    <a className="showcase-card" href={href} target="_blank" rel="noopener noreferrer">
+    <a
+      className="showcase-card"
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-haspopup={openProfile ? "dialog" : undefined}
+      onClick={(event) => {
+        if (!openProfile || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        openProfile({
+          id: profile.id,
+          via: "shortcut",
+          header: { displayName: profile.displayName, role: profile.role, avatarUrl: profile.avatarUrl, field: profile.field },
+        });
+      }}
+    >
       {body}
     </a>
   ) : (

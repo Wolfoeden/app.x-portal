@@ -9,6 +9,7 @@
  */
 
 import {
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -41,6 +42,7 @@ import { placementRequestsEnabled } from "@/lib/placement/config";
 import { profilePath } from "@/lib/profile/profile-link";
 import { monogramTone, PROFILE_FIELD_LABELS } from "@/lib/profile/identity";
 import { FitBar, type FitSegment } from "../profile/FitBar";
+import { ProfileSheetContext } from "../profile/profile-sheet";
 
 import { factPreview } from "./fact-preview";
 import { shouldHighlightProfile } from "./profile-fit";
@@ -1111,6 +1113,7 @@ export function ProfileCard({
   const [cvDownloadState, setCvDownloadState] = useState<"idle" | "loading" | "error">("idle");
   const [cvDownloadError, setCvDownloadError] = useState<string | null>(null);
   const cardRef = useProfileImpression(profile, projectId);
+  const openProfile = useContext(ProfileSheetContext);
   // Einmal, nicht dauernd: eine Karte, die weiterpulsiert, liest sich als
   // Aufforderung statt als Hinweis und zieht den Blick von den Karten daneben
   // ab, die man gerade vergleichen will.
@@ -1227,16 +1230,37 @@ export function ProfileCard({
           ) : null}
         </p>
 
-        {onToggleCollapsed ? (
-          <button
-            className="profile-collapse-toggle"
-            type="button"
-            onClick={onToggleCollapsed}
-            aria-expanded={!collapsed}
-          >
-            <span aria-hidden="true"><IconChevronDown size={14} /></span>
-            {collapsed ? "Vollständiges Profil und Belege" : "Profildetails schließen"}
-          </button>
+        {onToggleCollapsed || openProfile ? (
+          <div className="profile-detail-actions">
+            {onToggleCollapsed ? (
+              <button
+                className="profile-collapse-toggle"
+                type="button"
+                onClick={onToggleCollapsed}
+                aria-expanded={!collapsed}
+              >
+                <span aria-hidden="true"><IconChevronDown size={14} /></span>
+                {collapsed ? "Belege zum Projekt" : "Belege schließen"}
+              </button>
+            ) : null}
+            {openProfile ? (
+              <button
+                className="profile-collapse-toggle is-sheet"
+                type="button"
+                aria-haspopup="dialog"
+                onClick={() =>
+                  openProfile({
+                    id: profile.id,
+                    via: "results",
+                    header: { displayName: profile.displayName, role: profile.role, avatarUrl: profile.avatarUrl ?? null, field: profile.field ?? null },
+                    result: profile,
+                  })
+                }
+              >
+                Vollständiges Profil <IconArrowRight size={13} />
+              </button>
+            ) : null}
+          </div>
         ) : null}
 
         {collapsed ? null : (

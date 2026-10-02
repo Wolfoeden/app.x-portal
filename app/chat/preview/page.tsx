@@ -18,6 +18,7 @@ import {
   automationReplies,
   automationRequest,
   agentShowcase,
+  previewDossiers,
   automationStrictBrief,
   automationStrictRequest,
 } from "@/components/chat/preview-fixtures";
@@ -127,6 +128,7 @@ export default async function ChatPreviewPage({
         usage: usageFixture(params.credits),
         resultState: state === "empty" ? "ranked" : state === "partial" ? "no_match" : state,
         showcase: agentShowcase,
+        dossiers: previewDossiers,
         collections: previewCollections,
         conversations: previewConversations,
       }}

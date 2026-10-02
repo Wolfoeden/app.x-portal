@@ -10,6 +10,7 @@ import type {
   StructuredBrief,
 } from "../chat-contract";
 import type { RegisteredShowcase } from "@/lib/freelancer/showcase";
+import type { ProfileDossier } from "@/lib/profile/dossier";
 
 export const previewAuth: SessionResponse = {
   authenticated: true,
@@ -511,3 +512,185 @@ export const previewConversations: ConversationItem[] = [
     hasCalendar: false,
   },
 ];
+
+/**
+ * Vollständige Profile für das Seitenpanel und `/profil/vorschau`, ohne
+ * Datenbank. Kim und Anna zeigen alle Teile — Projekte als Zeitleiste,
+ * Links, geprüfte und angegebene Kompetenzen —, die übrigen nur, was die
+ * Karte ohnehin weiß.
+ */
+function dossierFromResult(profile: FreelancerProfileResult, extra: Partial<ProfileDossier> = {}): ProfileDossier {
+  return {
+    id: profile.id,
+    displayName: profile.displayName,
+    role: profile.role,
+    avatarUrl: profile.avatarUrl ?? null,
+    field: profile.field ?? null,
+    location: profile.location,
+    workModes: profile.remoteMode === "on-site" ? ["on_site"] : profile.remoteMode === "unknown" ? ["remote"] : [profile.remoteMode],
+    languages: profile.languages,
+    summary: profile.experienceSummary || null,
+    referencesSummary: null,
+    skills: profile.skillTags.map((value) => ({ value, verified: false })),
+    facts: [],
+    verified: profile.referenceStatus === "Verifiziert",
+    verificationText: profile.referenceStatus === "Verifiziert" ? "Profilprüfung durch XPORTAL abgeschlossen" : "Noch nicht von XPORTAL geprüft",
+    rate: profile.rate,
+    availability: { status: profile.availabilityStatus, updatedAt: profile.availabilityUpdatedAt, availableFrom: profile.availableFrom ?? null },
+    contact: "calendar",
+    projects: [],
+    links: [],
+    ...extra,
+  };
+}
+
+const [kimCard, robinCard, joCard] = agentShowcase.profiles;
+
+export const previewDossiers: Record<string, ProfileDossier> = {
+  [kimCard!.id]: {
+    id: kimCard!.id,
+    displayName: kimCard!.displayName,
+    role: kimCard!.role,
+    avatarUrl: null,
+    field: "ai",
+    location: "München",
+    workModes: ["remote", "hybrid"],
+    languages: ["Deutsch (Muttersprache)", "Englisch (C1)"],
+    summary:
+      "Baut seit 2023 Agenten für Kundenservice und interne Wissenssuche, zuletzt mit LangChain und n8n. Davor sechs Jahre Backend-Entwicklung in Python für Versicherer und Händler. Arbeitet gern nah am Fachbereich und misst, ob ein Agent Tickets wirklich abnimmt.",
+    referencesSummary: null,
+    skills: [
+      { value: "AI Agents", verified: true },
+      { value: "Python", verified: true },
+      { value: "LangChain", verified: false },
+      { value: "n8n", verified: false },
+      { value: "RAG", verified: false },
+      { value: "Azure OpenAI", verified: false },
+    ],
+    facts: [
+      { label: "Branchen", items: [{ value: "Versicherungen", verified: true }, { value: "Handel", verified: false }] },
+      { label: "Qualifikationen", items: [{ value: "M.Sc. Informatik", verified: true }] },
+    ],
+    verified: true,
+    verificationText: "Profilprüfung durch XPORTAL abgeschlossen",
+    rate: kimCard!.rate,
+    availability: kimCard!.availability,
+    contact: "calendar",
+    projects: [
+      {
+        title: "Service-Agent für Schadenmeldungen",
+        client: "Versicherer, 4.000 Mitarbeitende",
+        industry: "Versicherungen",
+        role: "Lead Developer",
+        period: "seit 03/2025",
+        technologies: ["LangChain", "Azure OpenAI", "Python", "RAG"],
+        outcome: "Ein Agent nimmt Erstmeldungen per Chat auf und legt sie im Kernsystem an; rund ein Drittel der Meldungen läuft ohne Rückfrage durch.",
+        link: null,
+        verified: true,
+        source: "operator",
+        sourceUrl: null,
+      },
+      {
+        title: "Wissenssuche für den Innendienst",
+        client: null,
+        industry: "Handel",
+        role: "Entwickler",
+        period: "2023 – 2024",
+        technologies: ["n8n", "RAG", "PostgreSQL"],
+        outcome: "Suche über Handbücher und Tickets mit Quellenangabe, eingebunden in Teams.",
+        link: null,
+        verified: false,
+        source: "freelancer",
+        sourceUrl: null,
+      },
+    ],
+    links: [
+      { kind: "linkedin", url: "https://www.linkedin.com/in/beispiel" },
+      { kind: "github", url: "https://github.com/beispiel" },
+    ],
+  },
+  [robinCard!.id]: {
+    id: robinCard!.id,
+    displayName: robinCard!.displayName,
+    role: robinCard!.role,
+    avatarUrl: null,
+    field: "ai",
+    location: "Hamburg",
+    workModes: ["remote"],
+    languages: ["Deutsch", "Englisch"],
+    summary: "Entwickelt RAG-Assistenten für Versicherer und Behörden, vom Prototyp bis zum Betrieb.",
+    referencesSummary: "Zwei Projekte für eine Landesbehörde, Referenz liegt XPORTAL vor.",
+    skills: [{ value: "KI-Agenten", verified: false }, { value: "RAG", verified: false }, { value: "MCP", verified: false }],
+    facts: [],
+    verified: false,
+    verificationText: "Angaben laut Freelancer; Referenzen nicht geprüft",
+    rate: robinCard!.rate,
+    availability: robinCard!.availability,
+    contact: "calendar",
+    projects: [
+      {
+        title: "Antragsassistent für Förderprogramme",
+        client: null,
+        industry: "Öffentliche Verwaltung",
+        role: "Freelance-Entwickler",
+        period: "2024",
+        technologies: ["RAG", "MCP"],
+        outcome: null,
+        link: null,
+        verified: false,
+        source: "research",
+        sourceUrl: "https://www.freelancermap.de/",
+      },
+    ],
+    links: [],
+  },
+  [joCard!.id]: {
+    id: joCard!.id,
+    displayName: joCard!.displayName,
+    role: joCard!.role,
+    avatarUrl: null,
+    field: "ai",
+    location: null,
+    workModes: ["remote", "on_site"],
+    languages: ["Deutsch"],
+    summary: null,
+    referencesSummary: null,
+    skills: [{ value: "AI Agents", verified: false }, { value: "LLM", verified: false }, { value: "RAG", verified: false }],
+    facts: [],
+    verified: false,
+    verificationText: "Noch nicht von XPORTAL geprüft",
+    rate: null,
+    availability: joCard!.availability,
+    contact: "calendar",
+    projects: [],
+    links: [],
+  },
+  ...Object.fromEntries(
+    [...previewProfiles, ...automationProfiles, ...automationPartialProfiles].map((profile) => [
+      profile.id,
+      dossierFromResult(
+        profile,
+        profile.id === "preview-anna"
+          ? {
+              projects: [
+                {
+                  title: "Designsystem für ein Versicherungsportal",
+                  client: "Direktversicherer",
+                  industry: "Versicherungen",
+                  role: "Frontend Lead",
+                  period: "2024 – 2025",
+                  technologies: ["React", "TypeScript", "Storybook"],
+                  outcome: "Ein Designsystem für zwölf Produktteams; neue Formularstrecken entstehen in Tagen statt Wochen.",
+                  link: null,
+                  verified: true,
+                  source: "operator",
+                  sourceUrl: null,
+                },
+              ],
+              links: [{ kind: "website", url: "https://example.com" }],
+            }
+          : {},
+      ),
+    ]),
+  ),
+};

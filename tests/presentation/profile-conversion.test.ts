@@ -216,7 +216,7 @@ describe("profile card first reading level", () => {
     const markup = card(integrator, automationBrief);
 
     expect(markup.indexOf("Erstgespräch mit Jo Beispiel vereinbaren")).toBeLessThan(markup.indexOf(">Merken<"));
-    expect(markup.indexOf("Vollständiges Profil und Belege")).toBeLessThan(markup.indexOf("Erstgespräch mit Jo Beispiel vereinbaren"));
+    expect(markup.indexOf("Belege zum Projekt")).toBeLessThan(markup.indexOf("Erstgespräch mit Jo Beispiel vereinbaren"));
   });
 
   it("lists the competencies plainly when there is no request to relate them to", () => {

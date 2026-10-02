@@ -3,9 +3,9 @@ import Link from "next/link";
 import { after } from "next/server";
 import "@/app/styles/legal.css";
 
-import type { FreelancerProfileResult } from "@/components/chat-contract";
-import { previewProfiles } from "@/components/chat/preview-fixtures";
-import { PublicProfileCard } from "@/components/profile/PublicProfileCard";
+import { previewDossiers, previewProfiles } from "@/components/chat/preview-fixtures";
+import { ProfileDossier } from "@/components/profile/ProfileDossier";
+import { ProfilePageActions } from "@/components/profile/ProfilePageActions";
 import styles from "@/components/profile/public-profile.module.css";
 import {
   PublicDocumentIntro,
@@ -14,7 +14,7 @@ import {
 } from "@/components/public/PublicChrome";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { loadPublicProfile } from "@/lib/freelancer/public-profile";
+import { loadPublicProfileView, type PublicProfileView } from "@/lib/freelancer/public-profile";
 import { placementRequestsEnabled } from "@/lib/placement/config";
 import {
   isProfileLinkSource,
@@ -36,28 +36,30 @@ function first(value: string | string[] | undefined): string | undefined {
 
 /**
  * `/profil/vorschau` zeigt in der Entwicklung ein Beispielprofil, damit sich
- * die Karte ohne Produktionsdaten ansehen lässt — wie `/chat/preview`.
+ * die Seite ohne Produktionsdaten ansehen lässt — wie `/chat/preview`.
  */
-function previewProfile(id: string): FreelancerProfileResult | null {
+function previewView(id: string): PublicProfileView | null {
   if (process.env.NODE_ENV !== "development" || id !== "vorschau") return null;
   const base = previewProfiles[0];
+  const dossier = previewDossiers[base.id]!;
   return {
-    ...base,
-    id: "vorschau",
-    skillTags: [...base.skillTags, "GraphQL", "Storybook", "Accessibility", "AWS"],
-    experienceSummary: `${base.experienceSummary} Davor sechs Jahre in Produktteams von Handel und Logistik: Design-System aufgebaut, Frontend-Architektur auf Next.js umgestellt, Teams von vier bis acht Entwicklern fachlich geführt. Arbeitet am liebsten eng mit Produkt und Design, schreibt Tests zuerst und dokumentiert Entscheidungen im Code.`,
+    profile: { ...base, id: "vorschau" },
+    dossier: {
+      ...dossier,
+      id: "vorschau",
+      summary: `${dossier.summary ?? ""} Davor sechs Jahre in Produktteams von Handel und Logistik: Design-System aufgebaut, Frontend-Architektur auf Next.js umgestellt, Teams von vier bis acht Entwicklern fachlich geführt.`,
+    },
   };
 }
 
-async function loadProfile(id: string): Promise<FreelancerProfileResult | null> {
-  const preview = previewProfile(id);
-  if (preview) return preview;
-  return UUID.test(id) ? await loadPublicProfile(id).catch(() => null) : null;
+async function loadProfile(id: string): Promise<(PublicProfileView & { shownAt: Date }) | null> {
+  const view = previewView(id) ?? (UUID.test(id) ? await loadPublicProfileView(id).catch(() => null) : null);
+  return view ? { ...view, shownAt: new Date() } : null;
 }
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;
-  const profile = await loadProfile(id);
+  const profile = (await loadProfile(id))?.profile;
   return {
     title: profile ? `${profile.displayName} · ${profile.role} | XPORTAL` : "Profil | XPORTAL",
     description: profile
@@ -78,9 +80,9 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
  */
 export default async function ProfilePage({ params, searchParams }: Params & SearchParams) {
   const [{ id }, query] = await Promise.all([params, searchParams]);
-  const profile = await loadProfile(id);
+  const view = await loadProfile(id);
 
-  if (!profile) {
+  if (!view) {
     return (
       <div className="xlegal" lang="de">
         <PublicHeader context="Freelancer-Profil" />
@@ -109,6 +111,7 @@ export default async function ProfilePage({ params, searchParams }: Params & Sea
   const user = await getCurrentUser().catch(() => null);
   const isAccountUser = Boolean(user && !user.isAnonymous);
 
+  const { profile, dossier, shownAt } = view;
   const action = profilePageAction({
     profileId: profile.id,
     placement: placementRequestsEnabled(),
@@ -139,11 +142,14 @@ export default async function ProfilePage({ params, searchParams }: Params & Sea
             Freigabe gesichtet, ihre Angaben aber nicht unabhängig geprüft —
             so steht es auch in den FAQ der Startseite. */}
         <p className={styles.eyebrow}>Von XPORTAL freigegebenes Profil</p>
-        <PublicProfileCard
-          profile={profile}
-          action={action}
-          shareUrl={profileUrl(SITE_URL, profile.id, "share")}
-        />
+        <div className={styles.card}>
+          <ProfileDossier dossier={dossier} now={shownAt} headingLevel={1} />
+          <ProfilePageActions
+            profile={profile}
+            action={action}
+            shareUrl={profileUrl(SITE_URL, profile.id, "share")}
+          />
+        </div>
         <aside className={styles.aside}>
           <div>
             <h2>Mehrere Profile vergleichen?</h2>

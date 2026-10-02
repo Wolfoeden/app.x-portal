@@ -122,7 +122,7 @@ describe("collapsed profiles", () => {
   it("keeps the decision summary visible and the biography behind one control", () => {
     const markup = render(previewProfiles);
 
-    expect(markup).toContain("Vollständiges Profil und Belege");
+    expect(markup).toContain("Belege zum Projekt");
     expect(markup).toContain('aria-expanded="false"');
     expect(markup).toContain(previewProfiles[0].displayName);
     expect(markup).toContain("Das bringt das Profil für Ihr Projekt mit");
@@ -148,7 +148,7 @@ describe("comparing side by side", () => {
     const markup = render(previewProfiles, true);
 
     expect(markup).toContain("profile-compare-grid");
-    expect(markup).not.toContain("Vollständiges Profil und Belege");
+    expect(markup).not.toContain("Belege zum Projekt");
     expect(markup).toContain("Im Profil belegt");
     expect(markup).toContain("Kontaktwege anzeigen");
   });

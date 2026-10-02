@@ -5686,3 +5686,343 @@ a.showcase-card:hover .showcase-card-cta svg {
 .profile-references {
   margin-top: 10px;
 }
+
+.profile-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Profil-Panel: rechts angedockt, unter 720 px als Blatt von unten. */
+.modal-backdrop.is-sheet {
+  place-items: stretch end;
+  padding: 0;
+}
+
+.modal-card.is-sheet {
+  width: min(100%, 560px);
+  height: 100dvh;
+  max-height: 100dvh;
+  border-radius: 22px 0 0 22px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .modal-card.is-sheet {
+    animation: sheet-in 220ms ease-out;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+@media (max-width: 720px) {
+  .modal-backdrop.is-sheet {
+    place-items: end stretch;
+  }
+
+  .modal-card.is-sheet {
+    width: 100%;
+    height: auto;
+    max-height: 92dvh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+}
+
+.profile-sheet {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+}
+
+.profile-sheet-actions {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  padding: 14px 20px 16px;
+}
+
+.profile-sheet-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.profile-sheet-hint,
+.dossier-muted {
+  margin: 6px 0 0;
+  color: var(--muted-light);
+  font-size: var(--fs-2xs);
+  line-height: 1.5;
+}
+
+/* Detailansicht eines Profils: Panel im Chat und /profil/<id>. */
+.dossier .pband {
+  min-height: 96px;
+  padding: 14px 60px 14px 20px;
+}
+
+.dossier-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 20px 0;
+}
+
+.dossier-head .profile-avatar {
+  width: 84px;
+  height: 84px;
+  margin-top: -58px;
+  box-shadow: 0 0 0 4px var(--surface);
+  font-size: var(--fs-xl);
+}
+
+.dossier-head > div {
+  min-width: 0;
+}
+
+.dossier-head h1,
+.dossier-head h2 {
+  margin: 0;
+  font-size: var(--fs-xl);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.dossier-head p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.dossier-keyfacts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 16px 20px 0;
+}
+
+.dossier-keyfacts > div {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  padding: 8px 10px;
+}
+
+.dossier-keyfacts dt,
+.dossier-section h3 {
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+  font-weight: 680;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.dossier-keyfacts dd {
+  margin: 3px 0 0;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+}
+
+.dossier-keyfacts .availability {
+  display: inline-block;
+  white-space: normal;
+}
+
+.dossier-links,
+.dossier-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dossier-links {
+  margin: 12px 20px 0;
+}
+
+.dossier-links a,
+.dossier-chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 2px 9px;
+  color: var(--ink-soft);
+  font-size: var(--fs-xs);
+}
+
+.dossier-links a {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.dossier-chips li {
+  background: var(--surface-soft);
+}
+
+.dossier-chips li.is-verified,
+.dossier-badge.is-verified {
+  border-color: var(--green-border);
+  background: var(--green-soft);
+  color: var(--green);
+  font-weight: 600;
+}
+
+.dossier-hero {
+  padding-bottom: 16px;
+}
+
+.dossier-section {
+  border-top: 1px solid var(--border);
+  padding: 16px 20px;
+}
+
+.dossier-section h3 {
+  margin: 0 0 8px;
+}
+
+.dossier-section > p,
+.dossier-timeline p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+}
+
+.dossier-section > p.dossier-muted {
+  margin-top: 8px;
+  color: var(--muted-light);
+  font-size: var(--fs-2xs);
+}
+
+/* Projekte als Zeitleiste: Punkt je Projekt auf einer Linie. */
+.dossier-timeline {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  border-left: 2px solid var(--border);
+  padding: 0 0 0 16px;
+  list-style: none;
+}
+
+.dossier-timeline > li {
+  position: relative;
+  display: grid;
+  gap: 6px;
+}
+
+.dossier-timeline > li::before {
+  position: absolute;
+  top: 5px;
+  left: -23px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 3px var(--ink);
+  content: "";
+}
+
+.dossier-project-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-base);
+}
+
+.dossier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-soft);
+  padding: 1px 7px;
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+}
+
+.dossier-project-links {
+  display: flex;
+  gap: 14px;
+}
+
+.dossier-project-links a {
+  color: var(--ink);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.dossier-facts {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.dossier-facts > div {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 10px;
+  font-size: var(--fs-sm);
+}
+
+.dossier-facts dt {
+  color: var(--muted);
+}
+
+.dossier-facts dd {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.dossier-facts .is-verified small {
+  color: var(--green);
+}
+
+.dossier-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  border-top: 1px solid var(--border);
+  padding: 12px 20px;
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+}
+
+.dossier-loading {
+  margin: 0;
+  padding: 20px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+@media (max-width: 520px) {
+  .dossier-keyfacts {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .dossier-facts > div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+
+/* Unter dem Desktop-Zoom zählt die Sichtfeldhöhe mit (siehe oben). */
+@media (min-width: 1220px) {
+  .modal-card.is-sheet {
+    height: calc(100dvh / var(--ui-zoom));
+    max-height: calc(100dvh / var(--ui-zoom));
+  }
+}

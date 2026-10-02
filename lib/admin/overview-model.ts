@@ -187,6 +187,7 @@ const ACTIVITY_LABELS: Readonly<Record<string, string>> = {
   freelancer_application_published: "Freelancer-Profil freigegeben",
   freelancer_profile_created: "Freelancer-Profil angelegt",
   profile_page_viewed: "Profilseite aufgerufen",
+  profile_panel_opened: "Profil im Chat geöffnet",
   profile_feedback_unsuitable: "Profil als unpassend markiert",
   email_unsubscribed: "Abmeldung von E-Mails",
   leadgen_outreach_sent_manually: "Lead-Mail verschickt",
