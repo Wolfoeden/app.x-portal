@@ -2,7 +2,9 @@ import "server-only";
 
 import type { FreelancerProfileResult } from "@/components/chat-contract";
 import { fetchRealProfilesByIds } from "@/lib/data/freelancers";
-import { fetchReferenceSummaries } from "@/lib/data/profile-extras";
+import { fetchProfileLinks, fetchProjects, toDossierLinks, toDossierProject } from "@/lib/data/freelancer-projects";
+import { cardExtrasFor, fetchReferenceSummaries } from "@/lib/data/profile-extras";
+import type { ProfileLink, ProfileProject } from "@/lib/profile/project-limits";
 import { placementRequestsEnabled } from "@/lib/placement/config";
 import { presentSavedProfile } from "@/lib/presentation/chat";
 import { buildProfileDossier, type ProfileDossier } from "@/lib/profile/dossier";
@@ -25,8 +27,12 @@ export async function loadPublicProfileView(profileId: string): Promise<PublicPr
   const [profile] = await fetchRealProfilesByIds(admin, [profileId]);
   if (!profile || profile.profileStatus !== "active") return null;
   const presented = presentSavedProfile(profile);
-  // Die Referenznotiz ist ein Zusatz: Fehlt sie, bleibt das Profil vollständig.
-  const references = await fetchReferenceSummaries(admin, [profile.id]).catch(() => new Map<string, string>());
+  // Notiz, Projekte und Links sind Zusätze: Fehlt einer, bleibt das Profil vollständig.
+  const [references, projects, links] = await Promise.all([
+    fetchReferenceSummaries(admin, [profile.id]).catch(() => new Map<string, string>()),
+    fetchProjects(admin, [profile.id], { publicOnly: true }).catch(() => new Map<string, ProfileProject[]>()),
+    fetchProfileLinks(admin, [profile.id]).catch(() => new Map<string, ProfileLink[]>()),
+  ]);
   const dossier = buildProfileDossier(
     profile,
     {
@@ -34,10 +40,12 @@ export async function loadPublicProfileView(profileId: string): Promise<PublicPr
       field: presented.field ?? null,
       rate: presented.rate,
       referencesSummary: references.get(profile.id) ?? null,
+      projects: (projects.get(profile.id) ?? []).map(toDossierProject),
+      links: toDossierLinks(links.get(profile.id) ?? []),
     },
     { placement: placementRequestsEnabled() },
   );
-  return { profile: { ...presented, referencesSummary: dossier.referencesSummary }, dossier };
+  return { profile: { ...presented, ...cardExtrasFor(profile.id, references, projects) }, dossier };
 }
 
 /** Nur die Karte, für Stellen, die keine Detailansicht brauchen. */

@@ -8,6 +8,7 @@ import type { WorkMode } from "@/lib/freelancer/limits";
 import { summaryExcerpt } from "@/lib/profile/excerpt";
 import { profileField } from "@/lib/profile/field";
 import type { ProfileField } from "@/lib/profile/identity";
+import type { ProjectTeaser } from "@/lib/profile/project-limits";
 import { placementRequestsEnabled } from "@/lib/placement/config";
 import { formatProfileRate } from "@/lib/presentation/chat";
 
@@ -81,6 +82,9 @@ export type ShowcaseProfile = {
   summaryExcerpt: string | null;
   /** Referenznotiz des Betreibers, nur wenn freigeschaltet. */
   referencesSummary?: string | null;
+  /** Das Referenzprojekt für die Karte und wie viele es insgesamt gibt. */
+  highlight?: ProjectTeaser | null;
+  projectCount?: number;
 };
 
 export type RegisteredShowcase = {

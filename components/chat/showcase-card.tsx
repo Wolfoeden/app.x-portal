@@ -8,6 +8,7 @@ import { initials } from "./shared";
 import { FitBar, type FitSegment } from "../profile/FitBar";
 import { monogramTone, PROFILE_FIELD_LABELS } from "@/lib/profile/identity";
 import { ProfileSheetContext } from "../profile/profile-sheet";
+import { ProjectTeaserBlock } from "../profile/ProjectTeaserBlock";
 
 /*
  * Die Profilkarte für sich, ohne Laden und Panel: Sie steht unter den
@@ -126,7 +127,9 @@ export function ShowcaseCard({ profile, now, href }: { profile: ShowcaseProfile;
           </span>
         </span>
       ) : null}
-      {intro ? (
+      {profile.highlight ? (
+        <ProjectTeaserBlock teaser={profile.highlight} total={profile.projectCount ?? 1} />
+      ) : intro ? (
         <span className="showcase-card-teaser">
           <small>{intro.label}</small>
           <span>{intro.text}</span>

@@ -3,7 +3,9 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { fetchActiveBookableRealProfiles } from "@/lib/data/freelancers";
-import { fetchReferenceSummaries } from "@/lib/data/profile-extras";
+import { fetchProjects } from "@/lib/data/freelancer-projects";
+import { cardExtrasFor, fetchReferenceSummaries } from "@/lib/data/profile-extras";
+import type { ProfileProject } from "@/lib/profile/project-limits";
 import type { FreelancerProfile } from "@/lib/domain";
 import {
   emptyShowcase,
@@ -58,6 +60,7 @@ let cached: {
   profiles: FreelancerProfile[];
   registered: Set<string>;
   references: Map<string, string>;
+  projects: Map<string, ProfileProject[]>;
 } | null = null;
 
 export async function loadShowcase(theme: ShowcaseTheme, now = Date.now()): Promise<RegisteredShowcase> {
@@ -68,15 +71,18 @@ export async function loadShowcase(theme: ShowcaseTheme, now = Date.now()): Prom
       fetchActiveBookableRealProfiles(admin),
       fetchRegisteredProfileIds(admin),
     ]);
-    // Die Notizen sind ein Zusatz: Scheitert die Abfrage, kommt die Liste ohne.
-    const references = await fetchReferenceSummaries(admin, [...registered]).catch(() => new Map<string, string>());
-    cached = { at: now, profiles, registered, references };
+    // Notizen und Projekte sind ein Zusatz: Scheitert eine Abfrage, kommt die Liste ohne.
+    const [references, projects] = await Promise.all([
+      fetchReferenceSummaries(admin, [...registered]).catch(() => new Map<string, string>()),
+      fetchProjects(admin, [...registered], { publicOnly: true }).catch(() => new Map<string, ProfileProject[]>()),
+    ]);
+    cached = { at: now, profiles, registered, references, projects };
   }
   const showcase = selectShowcase(theme, cached.profiles, cached.registered, new Date(now));
-  const references = cached.references;
-  if (references.size === 0) return showcase;
+  const { references, projects } = cached;
+  if (references.size === 0 && projects.size === 0) return showcase;
   return {
     ...showcase,
-    profiles: showcase.profiles.map((profile) => ({ ...profile, referencesSummary: references.get(profile.id) ?? null })),
+    profiles: showcase.profiles.map((profile) => ({ ...profile, ...cardExtrasFor(profile.id, references, projects) })),
   };
 }

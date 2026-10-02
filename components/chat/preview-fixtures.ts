@@ -114,6 +114,13 @@ export const previewProfiles: FreelancerProfileResult[] = [
     cvAccess: "available",
     displayName: "Anna Keller",
     field: "frontend",
+    highlight: {
+      title: "Designsystem für ein Versicherungsportal",
+      meta: "Direktversicherer · 2024 – 2025",
+      technologies: ["React", "TypeScript", "Storybook"],
+      verified: true,
+    },
+    projectCount: 1,
     role: "Senior Frontend Engineer",
     skillTags: ["React", "TypeScript", "Next.js", "Design Systems", "SaaS", "Testing"],
     languages: ["Deutsch", "Englisch"],
@@ -423,6 +430,13 @@ export const agentShowcase: RegisteredShowcase = {
       location: "München", workModes: ["remote", "hybrid"], verified: true,
       field: "ai",
       summaryExcerpt: "Baut seit 2023 Agenten für Kundenservice und interne Wissenssuche, zuletzt mit LangChain und n8n.",
+      highlight: {
+        title: "Service-Agent für Schadenmeldungen",
+        meta: "Versicherer, 4.000 Mitarbeitende · seit 03/2025",
+        technologies: ["LangChain", "Azure OpenAI", "Python", "RAG"],
+        verified: true,
+      },
+      projectCount: 2,
     },
     {
       id: "preview-showcase-2",

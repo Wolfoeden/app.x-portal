@@ -43,6 +43,7 @@ import { profilePath } from "@/lib/profile/profile-link";
 import { monogramTone, PROFILE_FIELD_LABELS } from "@/lib/profile/identity";
 import { FitBar, type FitSegment } from "../profile/FitBar";
 import { ProfileSheetContext } from "../profile/profile-sheet";
+import { ProjectTeaserBlock } from "../profile/ProjectTeaserBlock";
 
 import { factPreview } from "./fact-preview";
 import { shouldHighlightProfile } from "./profile-fit";
@@ -1210,7 +1211,11 @@ export function ProfileCard({
         ) : (
           <div className="profile-tags">{presentation.skills.map((skill) => <span key={skill}>{skill}</span>)}</div>
         )}
-        {profile.referencesSummary ? (
+        {profile.highlight ? (
+          <div className="profile-references">
+            <ProjectTeaserBlock teaser={profile.highlight} total={profile.projectCount ?? 1} />
+          </div>
+        ) : profile.referencesSummary ? (
           <div className="showcase-card-teaser profile-references">
             <small>Referenzen</small>
             <span>{profile.referencesSummary}</span>

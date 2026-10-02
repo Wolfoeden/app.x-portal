@@ -6026,3 +6026,31 @@ a.showcase-card:hover .showcase-card-cta svg {
     max-height: calc(100dvh / var(--ui-zoom));
   }
 }
+
+/* Das Referenzprojekt auf einer Karte. */
+.showcase-card-teaser.is-project strong {
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  line-height: 1.35;
+}
+
+.showcase-card-teaser .project-teaser-tech {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.project-teaser-tech i {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  padding: 0 7px;
+  color: var(--ink-soft);
+  font-size: var(--fs-2xs);
+  font-style: normal;
+}
+
+.profile-references .showcase-card-teaser {
+  display: grid;
+}

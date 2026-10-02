@@ -103,12 +103,18 @@ Retention-Policies überprüfbar.
 - **Betroffene:** Freelancer.
 - **Datenkategorien:** Name, Kontaktadresse, Rolle, Kompetenzen, Sprachen,
   Standort, Verfügbarkeit, Sätze, Buchungsadresse, Profilbild, Lebenslauf als
-  PDF, Prüfvermerke.
+  PDF, Prüfvermerke; Referenzprojekte (Titel, Branche, Kunde nur wenn genannt
+  werden darf, Rolle, Zeitraum, Technologien, Ergebnis) und Links zu
+  öffentlichen Berufsprofilen (`freelancer_projects`, `profile_links`).
+  Projekte aus einer Online-Recherche tragen ihre Quelle und bleiben
+  unsichtbar, bis der Betreiber sie übernimmt; vor einer Veröffentlichung
+  ist die betroffene Person nach Art. 14 DSGVO zu informieren.
 - **Empfänger:** Supabase (Datenbank und private Speicher-Buckets); Kunden
   sehen ein freigegebenes Profil, den Lebenslauf nur nach gesonderter Freigabe
   und nur zu einem Profil aus dem eigenen aktuellen Ergebnis.
 - **Fristen:** Lebenslauf bis zum Widerruf oder Wegfall des Zwecks;
-  Profildaten bis zur Löschung des Profils.
+  Profildaten bis zur Löschung des Profils; Referenzprojekte werden mit dem
+  Profil gelöscht (`on delete cascade`).
 
 ### 6. Vermittlung und Buchungsanfragen
 
