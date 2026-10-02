@@ -53,21 +53,31 @@ describe("projects in the database", () => {
     expect(projects[0]).toMatchObject({ title: "A", startedOn: "2025-03", ongoing: true, technologies: [], verified: true });
   });
 
-  it("keeps the first check time for an unchanged title and records who checked", async () => {
+  it("keeps who checked first and when for an unchanged title, and records new checks", async () => {
     const { client: db, rpc } = client({
-      select: { data: [{ title: "wissenssuche", verified_at: "2026-09-01T00:00:00Z", created_at: "2026-08-01T00:00:00Z" }], error: null },
+      select: {
+        data: [{ title: "wissenssuche", verified_at: "2026-09-01T00:00:00Z", verified_by: "admin-0", created_at: "2026-08-01T00:00:00Z" }],
+        error: null,
+      },
     });
-    await replaceProjects(db, PROFILE, [project, { ...project, title: "Neu", verified: false }], "admin-1");
+    await replaceProjects(
+      db,
+      PROFILE,
+      [project, { ...project, title: "Neu", verified: false }, { ...project, title: "Frisch geprüft" }],
+      "owner-1",
+    );
     const payload = (rpc.mock.calls[0] as unknown as [string, { p_projects: Array<Record<string, unknown>> }])[1].p_projects;
     expect(payload[0]).toMatchObject({
       title: "Wissenssuche",
       started_on: "2023-02-01",
       ended_on: "2024-11-01",
       verified_at: "2026-09-01T00:00:00Z",
-      verified_by: "admin-1",
+      verified_by: "admin-0",
       created_at: "2026-08-01T00:00:00Z",
     });
     expect(payload[1]).toMatchObject({ title: "Neu", verified_at: null, verified_by: null });
+    expect(payload[2]).toMatchObject({ title: "Frisch geprüft", verified_by: "owner-1" });
+    expect(payload[2]!.verified_at).toEqual(expect.any(String));
   });
 
   it("shows a research source only for researched projects", () => {

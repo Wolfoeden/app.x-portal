@@ -30,6 +30,9 @@ import type {
   FreelancerMetrics,
 } from "@/lib/freelancer/portal";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
+import { ProjectListEditor, type ProjectEditorClasses } from "@/components/profile/ProjectListEditor";
+import { profileStrength } from "@/lib/freelancer/profile-strength";
+import type { ProfileProject } from "@/lib/profile/project-limits";
 
 import styles from "./apply.module.css";
 
@@ -269,16 +272,81 @@ function MetricCard({
   );
 }
 
+const PROJECT_EDITOR_CLASSES: ProjectEditorClasses = {
+  field: styles.field,
+  input: "",
+  textarea: "",
+  select: "",
+  button: styles.uploadButton,
+  buttonPrimary: styles.uploadButton,
+  buttonDanger: styles.textButton,
+  textLink: styles.textButton,
+  note: styles.hint,
+};
+
 export function FreelancerDashboard({
   initialProfile,
   metrics,
   preview = false,
+  initialProjects = [],
+  projectsAvailable = false,
+  seeking = "projects",
+  availabilityUpdatedAt = null,
 }: {
   initialProfile: EditableFreelancerProfile;
   metrics: FreelancerMetrics;
   preview?: boolean;
+  initialProjects?: ProfileProject[];
+  projectsAvailable?: boolean;
+  seeking?: "projects" | "employment" | "both";
+  availabilityUpdatedAt?: string | null;
 }) {
   const [profile, setProfile] = useState(initialProfile);
+  const [projects, setProjects] = useState(initialProjects);
+  const [projectNotice, setProjectNotice] = useState<Notice>(null);
+  const [projectBusy, setProjectBusy] = useState(false);
+  const [strengthAt] = useState(() => new Date());
+  // Live aus dem, was gerade im Formular steht: Wer ein Foto oder Projekt
+  // ergänzt, sieht die Zahl sofort steigen.
+  const strength = profileStrength({
+    hasPhoto: Boolean(profile.avatarUrl),
+    summaryLength: profile.experienceSummary.trim().length,
+    projects: projects.filter((project) => project.isPublic).map((project) => ({ hasOutcome: Boolean(project.outcome) })),
+    hasRate: Boolean(profile.dayRate ?? profile.hourlyRate),
+    seeking,
+    availabilityUpdatedAt,
+    skillsCount: profile.skills.length,
+    industriesCount: profile.industries.length,
+    now: strengthAt,
+  });
+
+  async function saveProjects() {
+    setProjectNotice(null);
+    if (preview) {
+      setProjectNotice({ message: "Projekte gespeichert.", tone: "success" });
+      return;
+    }
+    setProjectBusy(true);
+    try {
+      const response = await fetch(appPath("/api/freelancer/projects"), {
+        method: "PUT",
+        credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ projects }),
+      });
+      const payload = (await response.json().catch(() => null)) as { projects?: ProfileProject[]; error?: string } | null;
+      if (!response.ok || !payload?.projects) {
+        setProjectNotice({ message: apiError(payload, "Die Projekte konnten nicht gespeichert werden."), tone: "error" });
+        return;
+      }
+      setProjects(payload.projects);
+      setProjectNotice({ message: "Projekte gespeichert. Kunden sehen sie auf Karte und Profil.", tone: "success" });
+    } catch {
+      setProjectNotice({ message: "Keine Verbindung zum Server. Bitte erneut versuchen.", tone: "error" });
+    } finally {
+      setProjectBusy(false);
+    }
+  }
   const [notice, setNotice] = useState<Notice>(null);
   const [busy, setBusy] = useState<"save" | "avatar" | "delete" | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
@@ -611,6 +679,33 @@ export function FreelancerDashboard({
         </div>
       </section>
 
+      <section className={styles.strength} aria-labelledby="profile-strength-title">
+        <div>
+          <p className={styles.eyebrow}>Profilstärke</p>
+          <h2 id="profile-strength-title">
+            {strength.done} von {strength.total} · {strength.level}
+          </h2>
+          <meter min={0} max={strength.total} value={strength.done} aria-label="Profilstärke" />
+          <p>
+            {strength.next ? (
+              <>
+                <strong>Nächster Schritt: {strength.next.label}.</strong> {strength.next.hint}
+              </>
+            ) : (
+              "Ihr Profil ist vollständig. Halten Sie Verfügbarkeit und Projekte aktuell."
+            )}
+          </p>
+        </div>
+        <a
+          className={styles.uploadButton}
+          href={appPath(`/profil/${profile.id}?via=share`)}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          So sehen Kunden Ihr Profil ↗
+        </a>
+      </section>
+
       <section className={styles.metrics} aria-label="Profilstatistik">
         <MetricCard
           label="Profilaufrufe"
@@ -730,6 +825,32 @@ export function FreelancerDashboard({
           </span>
         </div>
       </form>
+
+      <section className={styles.section} aria-labelledby="projects-title">
+        <p className={styles.eyebrow}>Referenzprojekte</p>
+        <h2 id="projects-title">Woran Sie gearbeitet haben</h2>
+        <p className={styles.sectionHint}>
+          Bis zu acht Projekte. Ein von XPORTAL geprüftes oder sonst das erste steht auf Ihrer Karte; alle
+          zusammen im Profil.
+        </p>
+        {projectsAvailable || preview ? (
+          <>
+            <ProjectListEditor projects={projects} onChange={setProjects} mode="owner" classes={PROJECT_EDITOR_CLASSES} />
+            {projectNotice ? (
+              <p className={projectNotice.tone === "error" ? styles.formError : styles.callout} role={projectNotice.tone === "error" ? "alert" : "status"}>
+                {projectNotice.message}
+              </p>
+            ) : null}
+            <div className={styles.actions} style={{ marginTop: 14 }}>
+              <button className={styles.submit} type="button" disabled={projectBusy} onClick={() => void saveProjects()}>
+                {projectBusy ? "Wird gespeichert …" : "Projekte speichern"}
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className={styles.callout}>Projekte lassen sich in Kürze hier eintragen.</p>
+        )}
+      </section>
 
       <section className={`${styles.section} ${styles.dangerZone}`}>
         <p className={styles.eyebrow}>Gefahrenbereich</p>

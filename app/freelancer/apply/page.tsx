@@ -10,6 +10,7 @@ import type {
   EditableFreelancerProfile,
   FreelancerMetrics,
 } from "@/lib/freelancer/portal";
+import type { ProfileProject } from "@/lib/profile/project-limits";
 
 import { ApplyForm } from "./ApplyForm";
 import { RememberReferral } from "./RememberReferral";
@@ -54,6 +55,25 @@ const previewProfile: EditableFreelancerProfile = {
   avatarUrl: null,
   version: 3,
 };
+
+const previewProjects: ProfileProject[] = [
+  {
+    title: "Designsystem für ein Versicherungsportal",
+    client: null,
+    industry: "Versicherungen",
+    role: "Product Designer",
+    startedOn: "2024-01",
+    endedOn: "2025-02",
+    ongoing: false,
+    technologies: ["Figma", "Design Systems", "Storybook"],
+    outcome: "Ein Designsystem für zwölf Produktteams; neue Strecken entstehen in Tagen statt Wochen.",
+    link: null,
+    isPublic: true,
+    verified: true,
+    source: "operator",
+    sourceUrl: null,
+  },
+];
 
 const previewMetrics: FreelancerMetrics = {
   profileViewsTotal: 384,
@@ -139,6 +159,8 @@ export default async function FreelancerApplyPage({
             initialProfile={previewProfile}
             metrics={previewMetrics}
             preview
+            initialProjects={previewProjects}
+            availabilityUpdatedAt={new Date().toISOString()}
           />
         ) : formPreview ? (
           <ApplyForm referral={referral} />
@@ -148,6 +170,10 @@ export default async function FreelancerApplyPage({
           <FreelancerDashboard
             initialProfile={portalState.profile}
             metrics={portalState.metrics}
+            initialProjects={portalState.projects ?? []}
+            projectsAvailable={portalState.projectsAvailable ?? false}
+            seeking={portalState.seeking ?? "projects"}
+            availabilityUpdatedAt={portalState.availabilityUpdatedAt ?? null}
           />
         ) : portalState?.kind === "application" ? (
           <>

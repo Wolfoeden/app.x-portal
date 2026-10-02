@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition, type ReactNode } from "react";
 
 import { Card, cockpitStyles as styles } from "@/components/admin/Cockpit";
+import { ProjectListEditor, type ProjectEditorClasses } from "@/components/profile/ProjectListEditor";
 import { appPath } from "@/lib/app-path";
 import {
   LINK_KINDS,
@@ -14,31 +15,18 @@ import {
   type LinkKind,
   type ProfileLink,
   type ProfileProject,
-  type ProjectSource,
 } from "@/lib/profile/project-limits";
 
-const SOURCE_LABELS: Readonly<Record<ProjectSource, string>> = {
-  operator: "Betreiber",
-  freelancer: "Freelancer",
-  application: "Bewerbung",
-  research: "Online-Recherche",
-};
-
-const EMPTY_PROJECT: ProfileProject = {
-  title: "",
-  client: null,
-  industry: null,
-  role: null,
-  startedOn: null,
-  endedOn: null,
-  ongoing: false,
-  technologies: [],
-  outcome: null,
-  link: null,
-  isPublic: true,
-  verified: false,
-  source: "operator",
-  sourceUrl: null,
+const EDITOR_CLASSES: ProjectEditorClasses = {
+  field: styles.field,
+  input: styles.input,
+  textarea: styles.textarea,
+  select: styles.select,
+  button: styles.button,
+  buttonPrimary: styles.buttonPrimary,
+  buttonDanger: styles.buttonDanger,
+  textLink: styles.textLink,
+  note: styles.cardNote,
 };
 
 type Feedback = { tone: "error" | "success"; text: string } | null;
@@ -117,137 +105,6 @@ function TextField({
   );
 }
 
-function ProjectFields({
-  project,
-  index,
-  count,
-  onChange,
-  onMove,
-  onRemove,
-}: {
-  project: ProfileProject;
-  index: number;
-  count: number;
-  onChange: (next: ProfileProject) => void;
-  onMove: (direction: -1 | 1) => void;
-  onRemove: () => void;
-}) {
-  const set = <K extends keyof ProfileProject>(key: K, value: ProfileProject[K]) => onChange({ ...project, [key]: value });
-  const proposal = project.source === "research" && !project.isPublic;
-  return (
-    <fieldset style={{ display: "grid", gap: 8, minWidth: 0, border: "1px solid var(--border)", borderRadius: 10, padding: 12, margin: 0 }}>
-      <legend className={styles.tileLabel} style={{ padding: "0 4px" }}>
-        Projekt {index + 1}
-        {proposal ? " · Vorschlag aus der Recherche, noch unsichtbar" : ""}
-      </legend>
-      {proposal ? (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-          {project.sourceUrl ? (
-            <a className={styles.textLink} href={project.sourceUrl} target="_blank" rel="noopener noreferrer">
-              Quelle prüfen ↗
-            </a>
-          ) : null}
-          <button type="button" className={styles.buttonPrimary} onClick={() => set("isPublic", true)}>
-            Übernehmen
-          </button>
-          <button type="button" className={styles.button} onClick={onRemove}>
-            Verwerfen
-          </button>
-        </div>
-      ) : null}
-      <TextField label="Titel" value={project.title} max={PROJECT_LIMITS.title} onChange={(value) => set("title", value ?? "")} placeholder="Service-Agent für Schadenmeldungen" />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <TextField label="Rolle" value={project.role} max={PROJECT_LIMITS.role} onChange={(value) => set("role", value)} placeholder="Lead Developer" />
-        <TextField label="Branche" value={project.industry} max={PROJECT_LIMITS.industry} onChange={(value) => set("industry", value)} placeholder="Versicherungen" />
-      </div>
-      <TextField
-        label="Kunde (nur, wenn genannt werden darf)"
-        value={project.client}
-        max={PROJECT_LIMITS.client}
-        onChange={(value) => set("client", value)}
-        placeholder="Versicherer, 4.000 Mitarbeitende"
-      />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, alignItems: "end" }}>
-        <TextField label="Beginn" type="month" value={project.startedOn} onChange={(value) => set("startedOn", value)} />
-        <TextField label="Ende" type="month" value={project.ongoing ? null : project.endedOn} onChange={(value) => set("endedOn", value)} />
-        <label className={styles.field} style={{ flexDirection: "row", display: "flex", gap: 6, alignItems: "center", minHeight: 34 }}>
-          <input
-            type="checkbox"
-            checked={project.ongoing}
-            onChange={(event) => onChange({ ...project, ongoing: event.target.checked, endedOn: event.target.checked ? null : project.endedOn })}
-          />
-          laufend
-        </label>
-      </div>
-      <TextField
-        label="Technologien (mit Komma getrennt)"
-        value={project.technologies.join(", ")}
-        onChange={(value) =>
-          set(
-            "technologies",
-            (value ?? "")
-              .split(",")
-              .map((entry) => entry.trim())
-              .filter(Boolean),
-          )
-        }
-        placeholder="LangChain, Azure OpenAI, Python"
-      />
-      <label className={styles.field}>
-        Ergebnis (ein, zwei Sätze)
-        <textarea
-          className={styles.textarea}
-          style={{ minHeight: 64 }}
-          maxLength={PROJECT_LIMITS.outcome}
-          value={project.outcome ?? ""}
-          onChange={(event) => set("outcome", event.target.value.trim() ? event.target.value : null)}
-        />
-      </label>
-      <TextField label="Link zum Projekt (optional, https)" type="url" value={project.link} max={PROJECT_LIMITS.url} onChange={(value) => set("link", value)} />
-      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 8, alignItems: "end" }}>
-        <label className={styles.field}>
-          Quelle
-          <select className={styles.select} value={project.source} onChange={(event) => set("source", event.target.value as ProjectSource)}>
-            {(Object.keys(SOURCE_LABELS) as ProjectSource[]).map((source) => (
-              <option key={source} value={source}>
-                {SOURCE_LABELS[source]}
-              </option>
-            ))}
-          </select>
-        </label>
-        {project.source === "research" ? (
-          <TextField label="Quelle (https)" type="url" value={project.sourceUrl} max={PROJECT_LIMITS.url} onChange={(value) => set("sourceUrl", value)} />
-        ) : (
-          <span />
-        )}
-      </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 14, alignItems: "center" }}>
-        <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          <input type="checkbox" checked={project.isPublic} onChange={(event) => set("isPublic", event.target.checked)} />
-          öffentlich
-        </label>
-        <label style={{ display: "flex", gap: 6, alignItems: "center" }} title="Nur setzen, wenn ein Nachweis vorliegt (Lebenslauf, Referenz, Gespräch).">
-          <input type="checkbox" checked={project.verified} onChange={(event) => set("verified", event.target.checked)} />
-          von XPORTAL geprüft
-        </label>
-        <span style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
-          <button type="button" className={styles.button} disabled={index === 0} onClick={() => onMove(-1)} aria-label="Nach oben">
-            ↑
-          </button>
-          <button type="button" className={styles.button} disabled={index === count - 1} onClick={() => onMove(1)} aria-label="Nach unten">
-            ↓
-          </button>
-          {proposal ? null : (
-            <button type="button" className={styles.buttonDanger} onClick={onRemove}>
-              Entfernen
-            </button>
-          )}
-        </span>
-      </div>
-    </fieldset>
-  );
-}
-
 /**
  * Der Editor auf der Pflegeseite eines Profils. Jeder Abschnitt speichert
  * für sich; danach lädt die Seite neu und die Vorschau links zeigt den Stand.
@@ -278,14 +135,6 @@ export function ProfileEditor({
   const statusSave = useSave();
   const base = `/api/admin/freelancer-profiles/${profileId}`;
 
-  const move = (index: number, direction: -1 | 1) =>
-    setProjects((current) => {
-      const next = [...current];
-      const [entry] = next.splice(index, 1);
-      next.splice(index + direction, 0, entry!);
-      return next;
-    });
-
   return (
     <>
       <Card title={`Referenzprojekte (${projects.length} von ${MAX_PROJECTS})`}>
@@ -293,26 +142,8 @@ export function ProfileEditor({
           {projectsAvailable ? null : (
             <p className={styles.error}>Die Migration 20261006090000_referenzprojekte fehlt noch; Speichern geht erst danach.</p>
           )}
-          {projects.map((project, index) => (
-            <ProjectFields
-              key={index}
-              project={project}
-              index={index}
-              count={projects.length}
-              onChange={(next) => setProjects((current) => current.map((entry, position) => (position === index ? next : entry)))}
-              onMove={(direction) => move(index, direction)}
-              onRemove={() => setProjects((current) => current.filter((_, position) => position !== index))}
-            />
-          ))}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            <button
-              type="button"
-              className={styles.button}
-              disabled={projects.length >= MAX_PROJECTS}
-              onClick={() => setProjects((current) => [...current, { ...EMPTY_PROJECT }])}
-            >
-              Projekt hinzufügen
-            </button>
+          <ProjectListEditor projects={projects} onChange={setProjects} mode="admin" classes={EDITOR_CLASSES} />
+          <div>
             <button
               type="button"
               className={styles.buttonPrimary}
@@ -323,9 +154,6 @@ export function ProfileEditor({
             </button>
           </div>
           <FeedbackLine feedback={projectSave.feedback} />
-          <p className={styles.cardNote}>
-            Kundennamen nur, wenn sie genannt werden dürfen; sonst Branche und Größe. „Geprüft“ nur mit Nachweis.
-          </p>
         </div>
       </Card>
 

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { fetchProjects, projectsTableAvailable } from "@/lib/data/freelancer-projects";
+import { isHiddenProposal } from "@/lib/profile/project-merge";
 import { candidateFacts } from "./facts";
 import { MAX_FACTS_PER_COLUMN } from "./limits";
 import type {
@@ -179,10 +181,29 @@ export async function loadFreelancerPortalState(
   if (profileError) throw profileError;
   if (profile) {
     const row = profile as ProfileRow;
+    // Projekte, Suchziel und Stand der Verfügbarkeit sind Zusätze für
+    // Profilstärke und Projektliste; fehlen sie, bleibt das Dashboard nutzbar.
+    const [metrics, extra, projects, projectsAvailable] = await Promise.all([
+      loadFreelancerMetrics(row.id),
+      admin
+        .from("freelancer_profiles")
+        .select("seeking,availability_updated_at")
+        .eq("id", row.id)
+        .maybeSingle()
+        .then(({ data }) => data as { seeking?: "projects" | "employment" | "both"; availability_updated_at?: string | null } | null),
+      fetchProjects(admin, [row.id], { publicOnly: false })
+        .then((map) => (map.get(row.id) ?? []).filter((project) => !isHiddenProposal(project)))
+        .catch(() => []),
+      projectsTableAvailable(admin).catch(() => false),
+    ]);
     return {
       kind: "profile",
       profile: mapEditableProfile(row),
-      metrics: await loadFreelancerMetrics(row.id),
+      metrics,
+      projects,
+      projectsAvailable,
+      seeking: extra?.seeking ?? "projects",
+      availabilityUpdatedAt: extra?.availability_updated_at ?? null,
     };
   }
 

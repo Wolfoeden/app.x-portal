@@ -108,7 +108,9 @@ Retention-Policies überprüfbar.
   öffentlichen Berufsprofilen (`freelancer_projects`, `profile_links`).
   Projekte aus einer Online-Recherche tragen ihre Quelle und bleiben
   unsichtbar, bis der Betreiber sie übernimmt; vor einer Veröffentlichung
-  ist die betroffene Person nach Art. 14 DSGVO zu informieren.
+  ist die betroffene Person nach Art. 14 DSGVO zu informieren. Freelancer
+  pflegen ihre eigenen Projekte im Dashboard; den Vermerk „geprüft“ setzt
+  nur der Betreiber.
 - **Empfänger:** Supabase (Datenbank und private Speicher-Buckets); Kunden
   sehen ein freigegebenes Profil, den Lebenslauf nur nach gesonderter Freigabe
   und nur zu einem Profil aus dem eigenen aktuellen Ergebnis.

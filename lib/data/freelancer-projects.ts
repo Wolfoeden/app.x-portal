@@ -123,8 +123,9 @@ export async function fetchProfileLinks(
 
 /**
  * Ersetzt die Projektliste eines Profils (RPC, ein Zug). Ein Haken
- * „geprüft“ behält den Zeitpunkt der ersten Prüfung, solange das Projekt
- * gleich heißt; sonst zählt die Prüfung ab jetzt und gehört `actorId`.
+ * „geprüft“ behält Zeitpunkt und Person der ersten Prüfung, solange das
+ * Projekt gleich heißt; sonst zählt die Prüfung ab jetzt und gehört
+ * `actorId`.
  */
 export async function replaceProjects(
   admin: SupabaseClient,
@@ -134,11 +135,11 @@ export async function replaceProjects(
 ): Promise<number> {
   const { data: previous, error: readError } = await admin
     .from("freelancer_projects")
-    .select("title,verified_at,created_at")
+    .select("title,verified_at,verified_by,created_at")
     .eq("profile_id", profileId);
   if (readError) throw readError;
   const known = new Map(
-    (previous as Array<{ title: string; verified_at: string | null; created_at: string }>).map((row) => [
+    (previous as Array<{ title: string; verified_at: string | null; verified_by: string | null; created_at: string }>).map((row) => [
       row.title.trim().toLowerCase(),
       row,
     ]),
@@ -161,7 +162,8 @@ export async function replaceProjects(
       source: project.source,
       source_url: project.sourceUrl,
       verified_at: project.verified ? (before?.verified_at ?? now) : null,
-      verified_by: project.verified ? actorId : null,
+      // Wer zuerst geprüft hat, bleibt eingetragen, solange die Prüfung gilt.
+      verified_by: project.verified ? (before?.verified_at ? before.verified_by : actorId) : null,
       created_at: before?.created_at ?? now,
     };
   });
@@ -206,4 +208,15 @@ export function toDossierProject(project: ProfileProject): DossierProject {
 
 export function toDossierLinks(links: readonly ProfileLink[]): DossierLink[] {
   return links.map((link) => ({ kind: link.kind, url: link.url }));
+}
+
+let tableProbe: { at: number; available: boolean } | null = null;
+
+/** Ob die Migration eingespielt ist; fünf Minuten gemerkt. */
+export async function projectsTableAvailable(admin: SupabaseClient, now = Date.now()): Promise<boolean> {
+  if (tableProbe && now - tableProbe.at < 5 * 60_000) return tableProbe.available;
+  const { error } = await admin.from("freelancer_projects").select("id", { head: true, count: "exact" }).limit(1);
+  const available = !error || !isMissingSchema(error);
+  tableProbe = { at: now, available };
+  return available;
 }
