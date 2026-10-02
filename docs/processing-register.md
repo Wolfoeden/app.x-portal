@@ -116,6 +116,9 @@ Retention-Policies überprüfbar.
   Foto liegt bis zur Entscheidung privat unter `incoming/` und wird bei der
   Freigabe zum Profilbild oder gelöscht, ebenso bei Ablehnung und
   Neueinreichung.
+  Für bestehende Profile setzt der Betreiber ein Foto nur, wenn die Person
+  es selbst geschickt und eingewilligt hat (Häkchen, im Audit-Protokoll);
+  keine Fotos aus LinkedIn oder einer Recherche.
 - **Empfänger:** Supabase (Datenbank und private Speicher-Buckets); Kunden
   sehen ein freigegebenes Profil, den Lebenslauf nur nach gesonderter Freigabe
   und nur zu einem Profil aus dem eigenen aktuellen Ergebnis.

@@ -71,6 +71,7 @@ export function ProfileDetailView({
             status={detail.status}
             projectsAvailable={detail.projectsAvailable}
             referencesPublic={referencesPublic}
+            hasPhoto={Boolean(detail.dossier.avatarUrl)}
           />
         </div>
       </div>

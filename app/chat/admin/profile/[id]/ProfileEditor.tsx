@@ -1,11 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition, type ReactNode } from "react";
+import { useRef, useState, useTransition, type ReactNode } from "react";
 
 import { Card, cockpitStyles as styles } from "@/components/admin/Cockpit";
 import { ProjectListEditor, type ProjectEditorClasses } from "@/components/profile/ProjectListEditor";
 import { appPath } from "@/lib/app-path";
+import { AVATAR_MAX_BYTES, AVATAR_MIME_TYPES } from "@/lib/freelancer/avatar-limits";
 import {
   LINK_KINDS,
   LINK_LABELS,
@@ -16,6 +17,7 @@ import {
   type ProfileLink,
   type ProfileProject,
 } from "@/lib/profile/project-limits";
+import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 const EDITOR_CLASSES: ProjectEditorClasses = {
   field: styles.field,
@@ -37,7 +39,7 @@ function useSave() {
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
 
-  async function send(path: string, method: "PUT" | "PATCH", body: unknown, success: string): Promise<boolean> {
+  async function request<T>(path: string, method: "POST" | "PUT" | "PATCH" | "DELETE", body?: unknown): Promise<T | null> {
     setBusy(true);
     setFeedback(null);
     try {
@@ -45,25 +47,32 @@ function useSave() {
         method,
         headers: { "content-type": "application/json" },
         credentials: "same-origin",
-        body: JSON.stringify(body),
+        body: body === undefined ? undefined : JSON.stringify(body),
       });
-      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      const payload = (await response.json().catch(() => ({}))) as T & { error?: string };
       if (!response.ok) {
         setFeedback({ tone: "error", text: payload.error ?? `Fehler ${response.status}.` });
-        return false;
+        return null;
       }
-      setFeedback({ tone: "success", text: success });
-      startTransition(() => router.refresh());
-      return true;
+      return payload;
     } catch {
       setFeedback({ tone: "error", text: "Die Verbindung ist abgebrochen." });
-      return false;
+      return null;
     } finally {
       setBusy(false);
     }
   }
 
-  return { busy, feedback, send };
+  async function send(path: string, method: "PUT" | "PATCH" | "DELETE", body: unknown, success: string): Promise<boolean> {
+    if (!(await request(path, method, body))) return false;
+    setFeedback({ tone: "success", text: success });
+    startTransition(() => router.refresh());
+    return true;
+  }
+
+  const report = (text: string) => setFeedback({ tone: "error", text });
+
+  return { busy, feedback, send, request, report };
 }
 
 function FeedbackLine({ feedback }: { feedback: Feedback }) {
@@ -117,6 +126,7 @@ export function ProfileEditor({
   status,
   projectsAvailable,
   referencesPublic,
+  hasPhoto,
 }: {
   profileId: string;
   initialProjects: ProfileProject[];
@@ -125,6 +135,7 @@ export function ProfileEditor({
   status: string;
   projectsAvailable: boolean;
   referencesPublic: boolean;
+  hasPhoto: boolean;
 }) {
   const [projects, setProjects] = useState(initialProjects);
   const [links, setLinks] = useState(initialLinks);
@@ -133,7 +144,40 @@ export function ProfileEditor({
   const linkSave = useSave();
   const referenceSave = useSave();
   const statusSave = useSave();
+  const photoSave = useSave();
+  const [photoConsent, setPhotoConsent] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const photoInput = useRef<HTMLInputElement>(null);
   const base = `/api/admin/freelancer-profiles/${profileId}`;
+
+  // Ticket holen, direkt zu Storage laden, dann mit Einwilligung hinterlegen.
+  async function uploadPhoto(file: File) {
+    if (!(AVATAR_MIME_TYPES as readonly string[]).includes(file.type) || file.size > AVATAR_MAX_BYTES) {
+      photoSave.report("Erlaubt sind JPEG, PNG oder WebP bis 5 MB.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const ticket = await photoSave.request<{ bucket: string; path: string; uploadToken: string; pathToken: string }>(`${base}/photo`, "POST", {
+        mimeType: file.type,
+        sizeBytes: file.size,
+      });
+      if (!ticket) return;
+      const { error } = await getBrowserSupabaseClient()
+        .storage.from(ticket.bucket)
+        .uploadToSignedUrl(ticket.path, ticket.uploadToken, file, { contentType: file.type });
+      if (error) {
+        photoSave.report("Der Upload ist fehlgeschlagen. Bitte erneut versuchen.");
+        return;
+      }
+      if (await photoSave.send(`${base}/photo`, "PUT", { path: ticket.path, token: ticket.pathToken, consent: photoConsent }, "Foto gespeichert.")) {
+        setPhotoConsent(false);
+      }
+    } finally {
+      setUploading(false);
+      if (photoInput.current) photoInput.current.value = "";
+    }
+  }
 
   return (
     <>
@@ -208,6 +252,54 @@ export function ProfileEditor({
             </button>
           </div>
           <FeedbackLine feedback={linkSave.feedback} />
+        </div>
+      </Card>
+
+      <Card title="Foto">
+        <div className={styles.cardBody} style={{ display: "grid", gap: 8 }}>
+          <p className={styles.cardNote}>
+            {hasPhoto ? "Das Profil hat ein Foto (links in der Vorschau). " : "Noch kein Foto; Karte und Profil zeigen das Monogramm. "}
+            Nur ein Foto, das die Person selbst geschickt hat, nie eines von LinkedIn oder aus der Recherche.
+          </p>
+          <label style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+            <input type="checkbox" checked={photoConsent} onChange={(event) => setPhotoConsent(event.target.checked)} />
+            <span>Die Person hat eingewilligt, dass dieses Foto im Profil erscheint. Das wird mit dem Upload protokolliert.</span>
+          </label>
+          <input
+            ref={photoInput}
+            type="file"
+            hidden
+            accept={AVATAR_MIME_TYPES.join(",")}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void uploadPhoto(file);
+            }}
+          />
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <button
+              type="button"
+              className={styles.buttonPrimary}
+              disabled={!photoConsent || uploading || photoSave.busy}
+              onClick={() => photoInput.current?.click()}
+            >
+              {uploading ? "Wird hochgeladen …" : hasPhoto ? "Foto ersetzen" : "Foto hochladen"}
+            </button>
+            {hasPhoto ? (
+              <button
+                type="button"
+                className={styles.buttonDanger}
+                disabled={uploading || photoSave.busy}
+                onClick={() => {
+                  if (window.confirm("Foto entfernen? Karte und Profil zeigen dann wieder das Monogramm.")) {
+                    void photoSave.send(`${base}/photo`, "DELETE", undefined, "Foto entfernt.");
+                  }
+                }}
+              >
+                Foto entfernen
+              </button>
+            ) : null}
+          </div>
+          <FeedbackLine feedback={photoSave.feedback} />
         </div>
       </Card>
 

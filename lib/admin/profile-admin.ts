@@ -12,6 +12,7 @@ import {
   updateProfileLinks,
 } from "@/lib/data/freelancer-projects";
 import type { FreelancerProfile } from "@/lib/domain";
+import { attachAvatar, removeAvatar } from "@/lib/freelancer/profile-data";
 import { profileStrength, type ProfileStrength } from "@/lib/freelancer/profile-strength";
 import { placementRequestsEnabled } from "@/lib/placement/config";
 import { presentSavedProfile } from "@/lib/presentation/chat";
@@ -233,4 +234,39 @@ export async function updateAdminProfile(id: string, patch: AdminProfilePatch, a
     required: true,
   });
   return true;
+}
+
+/**
+ * Ein Foto, das die Person dem Betreiber geschickt hat, als Profilbild. Die
+ * Route verlangt das Häkchen „Einwilligung liegt vor“; das Protokoll hält
+ * fest, wer es gesetzt hat. Fotos aus LinkedIn oder einer Recherche gehören
+ * nicht hierher.
+ */
+export async function attachAdminAvatar(id: string, objectPath: string, token: string, actorId: string): Promise<string> {
+  const url = await attachAvatar({ ownerUserId: null, profileId: id, objectPath, token });
+  await writeAuditEvent({
+    actorUserId: actorId,
+    action: "freelancer_avatar_admin_set",
+    targetType: "freelancer_profile",
+    targetId: id,
+    outcome: "success",
+    metadata: { consent: "confirmed_by_operator" },
+    required: true,
+  });
+  return url;
+}
+
+export async function removeAdminAvatar(id: string, actorId: string): Promise<boolean> {
+  const removed = await removeAvatar({ profileId: id });
+  if (removed) {
+    await writeAuditEvent({
+      actorUserId: actorId,
+      action: "freelancer_avatar_admin_removed",
+      targetType: "freelancer_profile",
+      targetId: id,
+      outcome: "success",
+      required: true,
+    });
+  }
+  return removed;
 }
