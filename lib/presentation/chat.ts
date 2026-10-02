@@ -11,6 +11,7 @@ import type {
 } from "@/lib/domain";
 import { isLanguageLevel, languageLabel } from "@/lib/domain/brief-phrases";
 import { normalizeAvatarUrl } from "@/lib/freelancer/avatar-limits";
+import { profileField } from "@/lib/profile/field";
 import { presentProfileLanguage, presentProfileLanguages } from "./profile-language";
 import { clientBookingUrl } from "@/lib/placement/config";
 import { SITE_URL } from "@/lib/seo";
@@ -170,7 +171,7 @@ function formatRate(match: ShortlistMatch): string | null {
   return formatProfileRate(match.profile);
 }
 
-function formatProfileRate(profile: FreelancerProfile): string | null {
+export function formatProfileRate(profile: FreelancerProfile): string | null {
   if (profile.dayRate) {
     return `${new Intl.NumberFormat("de-DE", {
       style: "currency",
@@ -253,6 +254,7 @@ export function presentSavedProfile(
       manualApprovalRequired: !bookingUrl,
       readyToBook: Boolean(bookingUrl),
     },
+    field: profileField(profile.role, profile.skillTags.map(({ value }) => value)),
   };
 }
 
@@ -303,5 +305,6 @@ export function presentMatch(match: ShortlistMatch): FreelancerProfileResult {
       manualApprovalRequired: !bookingUrl,
       readyToBook: Boolean(bookingUrl),
     },
+    field: profileField(profile.role, profile.skillTags.map(({ value }) => value)),
   };
 }

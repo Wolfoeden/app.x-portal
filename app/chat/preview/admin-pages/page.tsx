@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { AdminNav } from "@/app/chat/admin/AdminNav";
+import { AdminNav, AdminShell } from "@/app/chat/admin/AdminNav";
 import {
   ADMIN_PREVIEW_VIEWS,
   AdminPagesPreview,
@@ -40,13 +40,16 @@ export default async function AdminPagesPreviewPage({
     : "users";
 
   return (
-    <div data-admin-surface>
-      <AdminNav
-        activeHref={`/chat/admin/${view}`}
-        disablePrefetch
-        previewMode
-      />
+    <AdminShell
+      nav={
+        <AdminNav
+          activeHref={`/chat/admin/${view}`}
+          disablePrefetch
+          previewMode
+        />
+      }
+    >
       <AdminPagesPreview view={view} />
-    </div>
+    </AdminShell>
   );
 }

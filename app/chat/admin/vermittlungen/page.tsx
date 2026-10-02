@@ -11,9 +11,17 @@ import { getCurrentUser } from "@/lib/auth/current-user";
 import { PLACEMENT_TERMS, placementRequestsEnabled } from "@/lib/placement/config";
 import { PLACEMENT_OUTCOME_LABELS } from "@/lib/placement/follow-up-rules";
 import { placementInvoicingReady } from "@/lib/placement/invoices";
+import {
+  MANDATE_STATUS_LABELS,
+  OPEN_MANDATE_STATUSES,
+  mandateAge,
+  mandateMailDraft,
+} from "@/lib/placement/mandate-model";
+import { listMandates, type MandateWithWork, type ProfileOption } from "@/lib/placement/mandates";
 import { listPlacementRequests, type PlacementRequestRow } from "@/lib/placement/requests";
 
 import { EngagementPanel, FollowUpsButton } from "./EngagementPanel";
+import { MandatePanel } from "./MandatePanel";
 import { RequestActions } from "./RequestActions";
 import styles from "./vermittlungen.module.css";
 
@@ -111,6 +119,61 @@ function RequestCard({ row, invoicingReady }: { row: PlacementRequestRow; invoic
   );
 }
 
+function MandateCard({
+  mandate,
+  profileOptions,
+  now,
+}: {
+  mandate: MandateWithWork;
+  profileOptions: ProfileOption[];
+  now: Date;
+}) {
+  const open = (OPEN_MANDATE_STATUSES as readonly string[]).includes(mandate.status);
+  return (
+    <article className={styles.card} data-open={open}>
+      <header className={styles.cardHead}>
+        <div>
+          <h3>{mandate.projectTitle ?? "Projekt ohne Titel"}</h3>
+          <p>{mandate.briefSummary ?? "Keine strukturierten Anforderungen gespeichert."}</p>
+        </div>
+        <span className={styles.status} data-status={open ? "manual_review" : "ready_to_book"}>
+          {MANDATE_STATUS_LABELS[mandate.status]}
+        </span>
+      </header>
+      <dl className={styles.facts}>
+        <div>
+          <dt>Kunde</dt>
+          <dd className={mandate.guest ? styles.missing : undefined}>
+            {mandate.contactCompany ? `${mandate.contactCompany}, ` : ""}
+            {mandate.contactName ? `${mandate.contactName}, ` : ""}
+            {mandate.contactEmail}
+            {mandate.contactPhone ? `, ${mandate.contactPhone}` : ""}
+            {mandate.guest ? " · ohne Konto, E-Mail unbestätigt" : ""}
+          </dd>
+        </div>
+        <div><dt>Eingegangen</dt><dd>{dateTime.format(new Date(mandate.createdAt))} ({mandateAge(mandate.createdAt, now)})</dd></div>
+        {mandate.note ? <div><dt>Notiz</dt><dd>{mandate.note}</dd></div> : null}
+        <div>
+          <dt>Anfragen daraus</dt>
+          <dd>
+            {mandate.requests.length
+              ? mandate.requests.map((request) => `${request.freelancerName} (${STATUS_LABELS[request.status as PlacementRequestRow["status"]] ?? request.status})`).join(", ")
+              : "noch keine"}
+          </dd>
+        </div>
+      </dl>
+      <MandatePanel
+        mandateId={mandate.id}
+        status={mandate.status}
+        candidates={mandate.candidates}
+        profileOptions={profileOptions}
+        contactEmail={mandate.contactEmail}
+        draft={mandateMailDraft(mandate)}
+      />
+    </article>
+  );
+}
+
 /**
  * Die Anfragen aus dem Vermittlungsmodell.
  *
@@ -126,7 +189,21 @@ export default async function PlacementRequestsPage() {
   }
   if (!currentUser.isAdmin) notFound();
 
-  const rows = await listPlacementRequests();
+  const now = new Date();
+  // Suchaufträge brauchen die Migration 20261003090000_suchauftraege. Fehlt
+  // sie noch, soll die Seite trotzdem die Anfragen zeigen.
+  const [rows, mandateResult] = await Promise.all([
+    listPlacementRequests(),
+    listMandates().then(
+      (value) => ({ ok: true as const, ...value }),
+      (error: unknown) => {
+        console.error("search mandates unavailable", error);
+        return { ok: false as const, mandates: [] as MandateWithWork[], profileOptions: [] as ProfileOption[] };
+      },
+    ),
+  ]);
+  const openMandates = mandateResult.mandates.filter((mandate) => (OPEN_MANDATE_STATUSES as readonly string[]).includes(mandate.status));
+  const doneMandates = mandateResult.mandates.filter((mandate) => !(OPEN_MANDATE_STATUSES as readonly string[]).includes(mandate.status));
   const invoicingReady = placementInvoicingReady();
   const open = rows.filter((row) => row.status === "manual_review");
   const done = rows.filter((row) => row.status !== "manual_review");
@@ -152,6 +229,22 @@ export default async function PlacementRequestsPage() {
 
       <FollowUpsButton due={due} />
 
+      <AdminSectionHeader
+        title={`Suchaufträge offen (${openMandates.length})`}
+        description="„XPORTAL sucht für Sie“: Der Kunde hat den Vermittlungsbedingungen zugestimmt. Freelancer zuordnen, dann unten wie jede Anfrage vorstellen."
+      />
+      {!mandateResult.ok ? (
+        <p className={styles.empty}>Suchaufträge sind noch nicht lesbar. Ist die Migration 20261003090000_suchauftraege eingespielt?</p>
+      ) : openMandates.length ? (
+        <div className={styles.list}>
+          {openMandates.map((mandate) => (
+            <MandateCard key={mandate.id} mandate={mandate} profileOptions={mandateResult.profileOptions} now={now} />
+          ))}
+        </div>
+      ) : (
+        <p className={styles.empty}>Kein offener Suchauftrag.</p>
+      )}
+
       <AdminSectionHeader title={`Wartet auf Vorstellung (${open.length})`} />
       {open.length ? (
         <div className={styles.list}>{open.map((row) => <RequestCard key={row.id} row={row} invoicingReady={invoicingReady} />)}</div>
@@ -168,6 +261,17 @@ export default async function PlacementRequestsPage() {
       ) : (
         <p className={styles.empty}>Noch nichts bearbeitet.</p>
       )}
+
+      {doneMandates.length ? (
+        <>
+          <AdminSectionHeader title={`Suchaufträge erledigt (${doneMandates.length})`} />
+          <div className={styles.list}>
+            {doneMandates.map((mandate) => (
+              <MandateCard key={mandate.id} mandate={mandate} profileOptions={mandateResult.profileOptions} now={now} />
+            ))}
+          </div>
+        </>
+      ) : null}
     </AdminSurface>
   );
 }

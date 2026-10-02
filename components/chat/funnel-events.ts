@@ -8,7 +8,8 @@ export type FunnelEvent =
   | "registration_started"
   | "signup_confirmed"
   | "continuation_completed"
-  | "pricing_viewed";
+  | "pricing_viewed"
+  | "mandate_submitted";
 
 const FUNNEL_KEY = "xportal.signup-funnel.v1";
 const ENTRY_KEY = "xportal.signup-funnel-entry.v1";

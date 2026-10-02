@@ -1,5 +1,7 @@
 import "server-only";
 
+import { fetchProjects, projectsTableAvailable } from "@/lib/data/freelancer-projects";
+import { isHiddenProposal } from "@/lib/profile/project-merge";
 import { candidateFacts } from "./facts";
 import { MAX_FACTS_PER_COLUMN } from "./limits";
 import type {
@@ -179,10 +181,29 @@ export async function loadFreelancerPortalState(
   if (profileError) throw profileError;
   if (profile) {
     const row = profile as ProfileRow;
+    // Projekte, Suchziel und Stand der Verfügbarkeit sind Zusätze für
+    // Profilstärke und Projektliste; fehlen sie, bleibt das Dashboard nutzbar.
+    const [metrics, extra, projects, projectsAvailable] = await Promise.all([
+      loadFreelancerMetrics(row.id),
+      admin
+        .from("freelancer_profiles")
+        .select("seeking,availability_updated_at")
+        .eq("id", row.id)
+        .maybeSingle()
+        .then(({ data }) => data as { seeking?: "projects" | "employment" | "both"; availability_updated_at?: string | null } | null),
+      fetchProjects(admin, [row.id], { publicOnly: false })
+        .then((map) => (map.get(row.id) ?? []).filter((project) => !isHiddenProposal(project)))
+        .catch(() => []),
+      projectsTableAvailable(admin).catch(() => false),
+    ]);
     return {
       kind: "profile",
       profile: mapEditableProfile(row),
-      metrics: await loadFreelancerMetrics(row.id),
+      metrics,
+      projects,
+      projectsAvailable,
+      seeking: extra?.seeking ?? "projects",
+      availabilityUpdatedAt: extra?.availability_updated_at ?? null,
     };
   }
 
@@ -290,6 +311,20 @@ export async function attachOwnedAvatar(input: {
   objectPath: string;
   token: string;
 }): Promise<string> {
+  return attachAvatar({ ...input, ownerUserId: input.userId });
+}
+
+/**
+ * Hinterlegt ein hochgeladenes Profilbild. Mit `ownerUserId` nur am eigenen
+ * Profil (Dashboard); mit `null` an jedem echten Profil — für den Betreiber,
+ * dessen Route Einwilligung und Protokoll verantwortet.
+ */
+export async function attachAvatar(input: {
+  ownerUserId: string | null;
+  profileId: string;
+  objectPath: string;
+  token: string;
+}): Promise<string> {
   const admin = createAdminSupabaseClient();
   if (
     !verifyAvatarObjectPath(input.profileId, input.objectPath, input.token)
@@ -297,12 +332,14 @@ export async function attachOwnedAvatar(input: {
     throw new Response("Der Bild-Upload ist ungültig.", { status: 400 });
   }
 
-  const { data: profile, error: profileError } = await admin
+  let read = admin
     .from("freelancer_profiles")
     .select("id,avatar_path,version")
-    .eq("id", input.profileId)
-    .eq("owner_user_id", input.userId)
-    .maybeSingle();
+    .eq("id", input.profileId);
+  read = input.ownerUserId
+    ? read.eq("owner_user_id", input.ownerUserId)
+    : read.eq("demo_status", "real");
+  const { data: profile, error: profileError } = await read.maybeSingle();
   if (profileError) throw profileError;
   if (!profile) throw new Response("Profil nicht gefunden.", { status: 404 });
 
@@ -315,15 +352,16 @@ export async function attachOwnedAvatar(input: {
   }
 
   const previous = profile.avatar_path as string | null;
-  const { data: updated, error: updateError } = await admin
+  let write = admin
     .from("freelancer_profiles")
     .update({
       avatar_path: input.objectPath,
       version: Number(profile.version) + 1,
     })
     .eq("id", input.profileId)
-    .eq("owner_user_id", input.userId)
-    .eq("version", profile.version)
+    .eq("version", profile.version);
+  if (input.ownerUserId) write = write.eq("owner_user_id", input.ownerUserId);
+  const { data: updated, error: updateError } = await write
     .select("avatar_path")
     .maybeSingle();
   if (updateError || !updated) {
@@ -342,22 +380,30 @@ export async function attachOwnedAvatar(input: {
 export async function removeOwnedAvatar(
   userId: string,
 ): Promise<boolean> {
+  return removeAvatar({ ownerUserId: userId });
+}
+
+/** Entfernt das Profilbild: das eigene (`ownerUserId`) oder als Betreiber eines nach `profileId`. */
+export async function removeAvatar(
+  target: { ownerUserId: string } | { profileId: string },
+): Promise<boolean> {
   const admin = createAdminSupabaseClient();
-  const { data: profile, error } = await admin
-    .from("freelancer_profiles")
-    .select("id,avatar_path,version")
-    .eq("owner_user_id", userId)
-    .maybeSingle();
+  const read = admin.from("freelancer_profiles").select("id,avatar_path,version");
+  const { data: profile, error } = await ("ownerUserId" in target
+    ? read.eq("owner_user_id", target.ownerUserId)
+    : read.eq("id", target.profileId).eq("demo_status", "real")
+  ).maybeSingle();
   if (error) throw error;
   if (!profile) throw new Response("Profil nicht gefunden.", { status: 404 });
   if (!profile.avatar_path) return false;
 
-  const { data: hidden, error: hideError } = await admin
+  let hide = admin
     .from("freelancer_profiles")
     .update({ avatar_path: null, version: Number(profile.version) + 1 })
     .eq("id", profile.id)
-    .eq("owner_user_id", userId)
-    .eq("version", profile.version)
+    .eq("version", profile.version);
+  if ("ownerUserId" in target) hide = hide.eq("owner_user_id", target.ownerUserId);
+  const { data: hidden, error: hideError } = await hide
     .select("id")
     .maybeSingle();
   if (hideError) throw hideError;

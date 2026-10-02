@@ -23,6 +23,7 @@ const FunnelEventSchema = z.object({
     "signup_confirmed",
     "continuation_completed",
     "pricing_viewed",
+    "mandate_submitted",
   ]),
   entry: z.enum(["direct", "recruiter"]),
   device: z.enum(["mobile", "desktop"]),

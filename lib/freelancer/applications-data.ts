@@ -3,17 +3,22 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { FREELANCER_CV_BUCKET } from "@/lib/data/freelancer-cvs";
+import { isMissingSchema, replaceProjects } from "@/lib/data/freelancer-projects";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 import {
   APPLICATION_COLUMNS,
+  APPLICATION_EXTRA_COLUMNS,
   profileInsertFromDecision,
+  storedApplicationProjects,
   slugFromName,
   slugWithAttempt,
   type ApplicationRow,
   type ApplicationStatus,
   type PublishDecision,
 } from "./application";
+import { AVATAR_BUCKET, avatarMimeTypeFromPath } from "./avatar-limits";
+import { mintAvatarObjectPath } from "./avatar-storage";
 
 const LIST_COLUMNS =
   "id,status,full_name,contact_email,role_title,location_text,skills,hourly_rate_minor,day_rate_minor,currency,availability_status,booking_url,cv_storage_path,created_at,reviewed_at,published_profile_id,seeking,referral";
@@ -82,17 +87,64 @@ export async function countApplicationsByStatus(): Promise<
   return counts;
 }
 
+let extrasProbe: { at: number; available: boolean } | null = null;
+
+/**
+ * Ob Projekte und Foto in Bewerbungen gespeichert werden können (Migration
+ * 20261006100000); fünf Minuten gemerkt. Ohne sie blendet das Formular beide
+ * Abschnitte aus, statt Angaben anzunehmen, die nirgends landen.
+ */
+export async function applicationExtrasAvailable(
+  admin: SupabaseClient = createAdminSupabaseClient(),
+  now = Date.now(),
+): Promise<boolean> {
+  if (extrasProbe && now - extrasProbe.at < 5 * 60_000) return extrasProbe.available;
+  const { error } = await admin
+    .from("freelancer_applications")
+    .select("photo_storage_path", { head: true, count: "exact" })
+    .limit(1);
+  const available = !error || !isMissingSchema(error);
+  extrasProbe = { at: now, available };
+  return available;
+}
+
 export async function getApplication(
   id: string,
 ): Promise<ApplicationRow | null> {
   const admin = createAdminSupabaseClient();
-  const { data, error } = await admin
-    .from("freelancer_applications")
-    .select(APPLICATION_COLUMNS)
-    .eq("id", id)
-    .maybeSingle();
+  const read = (columns: string) =>
+    admin.from("freelancer_applications").select(columns).eq("id", id).maybeSingle();
+  let { data, error } = await read(`${APPLICATION_COLUMNS},${APPLICATION_EXTRA_COLUMNS}`);
+  // Vor der Migration ohne Projekte und Foto, statt die Prüfseite zu sperren.
+  if (error && isMissingSchema(error)) ({ data, error } = await read(APPLICATION_COLUMNS));
   if (error) throw error;
-  return (data as ApplicationRow | null) ?? null;
+  return (data as unknown as ApplicationRow | null) ?? null;
+}
+
+/** Kurzlebige Adresse für das Foto einer Bewerbung, nur für die Prüfseite. */
+export async function createApplicationPhotoUrl(
+  objectPath: string,
+  expiresInSeconds = 600,
+): Promise<string | null> {
+  const admin = createAdminSupabaseClient();
+  const { data, error } = await admin.storage
+    .from(AVATAR_BUCKET)
+    .createSignedUrl(objectPath, expiresInSeconds);
+  return error ? null : data.signedUrl;
+}
+
+/** Ein Foto aus der Bewerbung, das nicht gebraucht wird, bleibt nicht liegen. */
+export async function discardApplicationPhoto(
+  admin: SupabaseClient,
+  applicationId: string,
+  objectPath: string,
+): Promise<void> {
+  await admin.storage.from(AVATAR_BUCKET).remove([objectPath]).catch(() => undefined);
+  await admin
+    .from("freelancer_applications")
+    .update({ photo_storage_path: null })
+    .eq("id", applicationId)
+    .eq("photo_storage_path", objectPath);
 }
 
 export async function createCvDownloadUrl(
@@ -166,6 +218,61 @@ async function transferCvToProfile(
   return true;
 }
 
+/**
+ * Kopiert das Foto der Bewerbung unter den Profilpfad und hinterlegt es. Wie
+ * beim Lebenslauf neu hochgeladen statt verschoben, damit Pfad und
+ * Content-Type feststehen; die Bewerbungskopie wird danach gelöscht.
+ */
+async function transferPhotoToProfile(
+  admin: SupabaseClient,
+  input: { applicationId: string; source: string; profileId: string },
+): Promise<boolean> {
+  const mimeType = avatarMimeTypeFromPath(input.source);
+  if (!mimeType) return false;
+  const { data: file, error: downloadError } = await admin.storage
+    .from(AVATAR_BUCKET)
+    .download(input.source);
+  if (downloadError || !file) return false;
+
+  const targetPath = mintAvatarObjectPath(input.profileId, mimeType);
+  const { error: uploadError } = await admin.storage
+    .from(AVATAR_BUCKET)
+    .upload(targetPath, file, { contentType: mimeType, cacheControl: "60", upsert: false });
+  if (uploadError) return false;
+
+  const { error: profileError } = await admin
+    .from("freelancer_profiles")
+    .update({ avatar_path: targetPath })
+    .eq("id", input.profileId);
+  if (profileError) {
+    await admin.storage.from(AVATAR_BUCKET).remove([targetPath]);
+    return false;
+  }
+  await discardApplicationPhoto(admin, input.applicationId, input.source);
+  return true;
+}
+
+/**
+ * Die vom Team gewählten Projekte der Bewerbung ins Profil. Der Inhalt kommt
+ * aus der gespeicherten Bewerbung, „geprüft“ aus der Entscheidung.
+ */
+async function transferProjectsToProfile(
+  admin: SupabaseClient,
+  input: { application: ApplicationRow; decision: PublishDecision; profileId: string; reviewerUserId: string },
+): Promise<number> {
+  const stored = storedApplicationProjects(input.application.reference_projects);
+  const chosen = input.decision.projects
+    .filter((entry) => stored[entry.index])
+    .map((entry) => ({ ...stored[entry.index]!, verified: entry.verified }));
+  if (!chosen.length) return 0;
+  try {
+    await replaceProjects(admin, input.profileId, chosen, input.reviewerUserId);
+    return chosen.length;
+  } catch {
+    return 0;
+  }
+}
+
 function isUniqueViolation(error: unknown): boolean {
   return (
     typeof error === "object" &&
@@ -225,6 +332,11 @@ export type PublishResult = {
   /** False when no CV was submitted or the handover did not complete. */
   cvTransferred: boolean;
   cvSubmitted: boolean;
+  /** Wie viele der gewählten Projekte im Profil angekommen sind. */
+  projectsChosen: number;
+  projectsTransferred: number;
+  photoSubmitted: boolean;
+  photoTransferred: boolean;
 };
 
 export async function publishApplication(input: {
@@ -293,11 +405,36 @@ export async function publishApplication(input: {
       .eq("id", input.application.id);
   }
 
+  // Projekte und Foto sind wie der Lebenslauf Beigaben: Scheitert die
+  // Übernahme, bleibt das Profil live und die Prüfseite sagt es.
+  const projectsTransferred = await transferProjectsToProfile(admin, {
+    application: input.application,
+    decision: input.decision,
+    profileId: profile.id,
+    reviewerUserId: input.reviewerUserId,
+  });
+
+  const photo = input.application.photo_storage_path ?? null;
+  let photoTransferred = false;
+  if (photo && input.decision.usePhoto) {
+    photoTransferred = await transferPhotoToProfile(admin, {
+      applicationId: input.application.id,
+      source: photo,
+      profileId: profile.id,
+    });
+  } else if (photo) {
+    await discardApplicationPhoto(admin, input.application.id, photo);
+  }
+
   return {
     profileId: profile.id,
     slug: profile.slug,
     cvSubmitted,
     cvTransferred,
+    projectsChosen: input.decision.projects.length,
+    projectsTransferred,
+    photoSubmitted: Boolean(photo),
+    photoTransferred,
   };
 }
 
@@ -306,6 +443,8 @@ export async function setApplicationStatus(input: {
   status: Extract<ApplicationStatus, "in_review" | "rejected" | "submitted">;
   reviewerUserId: string;
   reviewNotes: string | null;
+  /** Das Foto der Bewerbung; bei einer Ablehnung wird es gelöscht. */
+  photoStoragePath?: string | null;
 }): Promise<void> {
   const admin = createAdminSupabaseClient();
   const decided = input.status === "rejected";
@@ -328,4 +467,10 @@ export async function setApplicationStatus(input: {
     );
   }
   if (error) throw error;
+
+  // Ein Foto hat nach einer Ablehnung keinen Zweck mehr. Wird die Bewerbung
+  // wieder geöffnet, lädt die Person es im Dashboard neu hoch.
+  if (decided && input.photoStoragePath) {
+    await discardApplicationPhoto(admin, input.applicationId, input.photoStoragePath);
+  }
 }

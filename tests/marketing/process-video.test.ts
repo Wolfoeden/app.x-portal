@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
-import { EXAMPLE_BRIEFS, exampleBrief, exampleBriefPath } from "@/components/chat/example-briefs";
+import { EXAMPLE_BRIEFS, exampleBrief, exampleBriefPath, withoutUnfilledPrompts } from "@/components/chat/example-briefs";
 import { FreelancerLanding } from "@/components/marketing/FreelancerLanding";
 import { ProcessVideo, stepAt } from "@/components/marketing/ProcessVideo";
 import { buildDeterministicBrief } from "@/lib/openai/brief";
@@ -46,28 +46,49 @@ describe("the process video", () => {
   });
 });
 
-describe("example briefs shared by chat and landing page", () => {
-  it("opens each theme on the landing page as a chat example", () => {
+describe("role shortcuts shared by chat and landing page", () => {
+  it("opens each role on the landing page as a chat entry", () => {
     const html = renderToStaticMarkup(createElement(FreelancerLanding));
     for (const example of EXAMPLE_BRIEFS) {
       expect(html).toContain(`href="${exampleBriefPath(example.key)}"`);
     }
-    // SAP stays reachable through the own text, but is no longer promised
-    // as a theme next to AI: five bookable profiles, none self-registered.
-    expect(EXAMPLE_BRIEFS.map((example) => example.label)).not.toContain("SAP");
+    // SAP stays reachable through the own text, but is not offered as a role
+    // until the pool carries it: four active profiles, one recently updated.
+    expect(EXAMPLE_BRIEFS.map((example) => example.label).join(" ")).not.toMatch(/SAP|DevOps|Data/u);
     expect(html).not.toContain("SAP &amp; Integration");
   });
 
-  it("finds an example only by its key", () => {
-    expect(exampleBrief("ki-automatisierung")?.label).toBe("KI & Automatisierung");
-    expect(exampleBrief("anforderungen")?.label).toBe("Anforderungen & Prozesse");
-    expect(exampleBrief("sap")).toBeNull();
-    expect(exampleBrief(null)).toBeNull();
-    expect(exampleBriefPath("anforderungen")).toBe("/chat?beispiel=anforderungen");
+  it("offers at most three concrete roles instead of broad themes", () => {
+    expect(EXAMPLE_BRIEFS.map((example) => example.label)).toEqual([
+      "AI-Agent-Entwickler finden",
+      "React-/TypeScript-Entwickler finden",
+      "Requirements Engineer finden",
+    ]);
   });
 
-  it("parses the requirements example to requirements management as its core", () => {
-    const brief = buildDeterministicBrief({ originalRequest: exampleBrief("anforderungen")!.draftPrefix });
-    expect(brief.requiredSkills).toEqual(["Requirements Management"]);
+  it("finds a role by its key and sends the former theme links to their successor", () => {
+    expect(exampleBrief("ai-agenten")?.label).toBe("AI-Agent-Entwickler finden");
+    expect(exampleBrief("ki-automatisierung")?.key).toBe("ai-agenten");
+    expect(exampleBrief("anforderungen")?.key).toBe("requirements-engineer");
+    expect(exampleBrief("sap")).toBeNull();
+    expect(exampleBrief("constructor")).toBeNull();
+    expect(exampleBrief(null)).toBeNull();
+    expect(exampleBriefPath("react-typescript")).toBe("/chat?beispiel=react-typescript");
+  });
+
+  it("parses each unchanged entry to the role's skills as its only core and invents nothing else", () => {
+    const expected: Record<string, string[]> = {
+      "ai-agenten": ["AI Agents"],
+      "react-typescript": ["React", "TypeScript"],
+      "requirements-engineer": ["Requirements Management"],
+    };
+    for (const example of EXAMPLE_BRIEFS) {
+      const brief = buildDeterministicBrief({ originalRequest: withoutUnfilledPrompts(example.draftPrefix) });
+      expect(brief.requiredSkills).toEqual(expected[example.key]);
+      expect(brief.optionalSkills ?? []).toEqual([]);
+      expect(brief.projectTitle).toBeNull();
+      expect(brief.startWindow).toBeNull();
+      expect(brief.budget).toBeNull();
+    }
   });
 });

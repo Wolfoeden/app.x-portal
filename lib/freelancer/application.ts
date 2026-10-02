@@ -15,6 +15,9 @@
 
 import { z } from "zod";
 
+import { MAX_PROJECTS, type ProfileProject } from "@/lib/profile/project-limits";
+import { ProjectListSchema } from "@/lib/profile/project-schema";
+
 import { candidateFacts } from "./facts";
 import {
   AVAILABILITY_STATUSES,
@@ -185,6 +188,17 @@ export const FreelancerApplicationInputSchema = z
       .strict()
       .nullable()
       .default(null),
+    /** Freiwillig; „geprüft“ und Herkunft setzt der Server, nicht das Formular. */
+    projects: ProjectListSchema.default([]),
+    /** Freiwilliges Foto, hochgeladen über `/api/freelancer-applications/photo-upload`. */
+    photo: z
+      .object({
+        storagePath: z.string().trim().min(1).max(300),
+        token: z.string().trim().regex(/^[0-9a-f]{64}$/u),
+      })
+      .strict()
+      .nullable()
+      .default(null),
     consent: z.literal(true),
     /**
      * Das Kennzeichen aus einer Einladung, falls die Person über eine kam.
@@ -255,7 +269,25 @@ export type ApplicationInsert = {
   source: "apply_form";
   seeking: Seeking;
   referral: string | null;
+  /** Migration 20261006100000; ohne sie lässt die Route beide Felder weg. */
+  reference_projects: ProfileProject[];
+  photo_storage_path: string | null;
 };
+
+/** Was aus dem Formular kommt, ist eine Angabe: nie geprüft, Herkunft Bewerbung. */
+function asApplicantProject(project: ProfileProject): ProfileProject {
+  return { ...project, verified: false, source: "application", sourceUrl: null };
+}
+
+/**
+ * Die gespeicherten Projekte einer Bewerbung, erneut geprüft. Eine Zeile aus
+ * der Zeit vor der Migration oder mit kaputtem Inhalt liefert eine leere
+ * Liste statt eines Fehlers auf der Prüfseite.
+ */
+export function storedApplicationProjects(value: unknown): ProfileProject[] {
+  const parsed = ProjectListSchema.safeParse(value ?? []);
+  return parsed.success ? parsed.data.map(asApplicantProject) : [];
+}
 
 export function applicationInsertFromInput(
   input: FreelancerApplicationInput,
@@ -294,10 +326,15 @@ export function applicationInsertFromInput(
     source: "apply_form",
     seeking: input.seeking,
     referral: input.referral,
+    reference_projects: input.projects.map(asApplicantProject),
+    photo_storage_path: input.photo?.storagePath ?? null,
   };
 }
 
-export type ApplicationRow = ApplicationInsert & {
+export type ApplicationRow = Omit<ApplicationInsert, "reference_projects" | "photo_storage_path"> & {
+  /** Fehlen, solange Migration 20261006100000 nicht eingespielt ist. */
+  reference_projects?: unknown;
+  photo_storage_path?: string | null;
   id: string;
   review_notes: string | null;
   reviewed_by_user_id: string | null;
@@ -309,6 +346,9 @@ export type ApplicationRow = ApplicationInsert & {
 
 export const APPLICATION_COLUMNS =
   "id,status,submitted_by_user_id,full_name,contact_email,contact_phone,website_url,role_title,experience_summary,skills,languages,qualifications,industries,location_text,work_modes,hourly_rate_minor,day_rate_minor,currency,availability_status,availability_from,booking_url,applicant_note,cv_storage_path,cv_original_filename,cv_mime_type,cv_size_bytes,consent_at,source,review_notes,reviewed_by_user_id,reviewed_at,published_profile_id,created_at,updated_at,seeking,referral";
+
+/** Projekte und Foto (Migration 20261006100000), getrennt abfragbar. */
+export const APPLICATION_EXTRA_COLUMNS = "reference_projects,photo_storage_path";
 
 export function slugFromName(displayName: string): string {
   const base = displayName
@@ -364,6 +404,26 @@ export const PublishDecisionSchema = z
      * defaults to off — same default as `freelancer_cv_documents`.
      */
     cvDownloadable: z.boolean().default(false),
+    /**
+     * Welche Projekte aus der Bewerbung ins Profil gehen, nach Position in
+     * der Bewerbung. Den Inhalt nimmt der Server aus der gespeicherten
+     * Bewerbung, nicht aus dieser Anfrage; „geprüft“ ist die Entscheidung
+     * des Teams.
+     */
+    projects: z
+      .array(
+        z
+          .object({
+            index: z.number().int().min(0).max(MAX_PROJECTS - 1),
+            verified: z.boolean().default(false),
+          })
+          .strict(),
+      )
+      .max(MAX_PROJECTS)
+      .default([])
+      .transform((entries) => [...new Map(entries.map((entry) => [entry.index, entry])).values()]),
+    /** Das Foto aus der Bewerbung verwenden; sonst wird es gelöscht. */
+    usePhoto: z.boolean().default(false),
     verifiedFacts: z.array(z.string().trim().min(1).max(2_000)).default([]),
     slug: z
       .union([
@@ -532,6 +592,10 @@ export function decisionDefaultsFromApplication(row: ApplicationRow) {
     verificationStatus: "identity_checked" as const,
     referencesSummary: "",
     cvDownloadable: false,
+    // Alle Projekte vorgewählt, keines geprüft: Abwählen ist eine bewusste
+    // Entscheidung, „geprüft“ ebenso.
+    projects: storedApplicationProjects(row.reference_projects).map((_, index) => ({ index, verified: false })),
+    usePhoto: Boolean(row.photo_storage_path),
     verifiedFacts: [] as string[],
     slug: slugFromName(row.full_name),
     reviewNotes: row.review_notes ?? "",

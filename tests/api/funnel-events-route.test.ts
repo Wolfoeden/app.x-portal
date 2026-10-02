@@ -46,6 +46,15 @@ beforeEach(() => {
 });
 
 describe("POST /api/funnel-events", () => {
+  it("zählt einen Suchauftrag aus dem Ergebnis", async () => {
+    const response = await POST(anfrage("mandate_submitted", "no_match"));
+
+    expect(response.status).toBe(204);
+    expect(mocks.audit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "signup_funnel_mandate_submitted" }),
+    );
+  });
+
   it("zählt die Preisseite mit dem Anlass, aus dem sie geöffnet wurde", async () => {
     const response = await POST(anfrage("pricing_viewed", "recherche"));
 

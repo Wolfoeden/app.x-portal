@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import { TagInput } from "@/components/TagInput";
 import { appPath } from "@/lib/app-path";
+import { projectPeriod, type ProfileProject } from "@/lib/profile/project-limits";
 import {
   candidateFacts,
   FACT_CATEGORY_LABELS,
@@ -53,6 +54,9 @@ export type ReviewDefaults = {
     | "operator_verified";
   referencesSummary: string;
   cvDownloadable: boolean;
+  /** Projekte der Bewerbung, die ins Profil gehen, nach Position. */
+  projects: Array<{ index: number; verified: boolean }>;
+  usePhoto: boolean;
   verifiedFacts: string[];
   slug: string;
   reviewNotes: string;
@@ -81,11 +85,19 @@ export function ReviewPanel({
   applicationId,
   status,
   hasCv,
+  projects = [],
+  hasPhoto = false,
+  photoUrl = null,
   defaults,
 }: {
   applicationId: string;
   status: ApplicationStatus;
   hasCv: boolean;
+  /** Referenzprojekte aus der Bewerbung, wie eingereicht. */
+  projects?: ProfileProject[];
+  hasPhoto?: boolean;
+  /** Kurzlebige Adresse des Fotos; `null`, wenn sie nicht erzeugt werden konnte. */
+  photoUrl?: string | null;
   defaults: ReviewDefaults;
 }) {
   const router = useRouter();
@@ -100,6 +112,10 @@ export function ReviewPanel({
     slug: string;
     cvSubmitted: boolean;
     cvTransferred: boolean;
+    projectsChosen?: number;
+    projectsTransferred?: number;
+    photoSubmitted?: boolean;
+    photoTransferred?: boolean;
   } | null>(null);
 
   const facts = useMemo(
@@ -134,6 +150,17 @@ export function ReviewPanel({
       verifiedFacts: current.verifiedFacts.includes(entry)
         ? current.verifiedFacts.filter((value) => value !== entry)
         : [...current.verifiedFacts, entry],
+    }));
+  }
+
+  function chooseProject(index: number, next: { chosen: boolean; verified: boolean }) {
+    setForm((current) => ({
+      ...current,
+      projects: next.chosen
+        ? [...current.projects.filter((entry) => entry.index !== index), { index, verified: next.verified }].sort(
+            (a, b) => a.index - b.index,
+          )
+        : current.projects.filter((entry) => entry.index !== index),
     }));
   }
 
@@ -187,6 +214,8 @@ export function ReviewPanel({
                     verificationStatus: form.verificationStatus,
                     referencesSummary: form.referencesSummary,
                     cvDownloadable: form.cvDownloadable,
+                    projects: form.projects,
+                    usePhoto: hasPhoto && form.usePhoto,
                     verifiedFacts,
                     slug: form.slug,
                     reviewNotes: form.reviewNotes,
@@ -253,6 +282,22 @@ export function ReviewPanel({
                     : "noch nicht für Kunden freigegeben"
                 }).`
               : "Achtung: Der Lebenslauf konnte nicht ins Profil übernommen werden. Er liegt weiterhin bei der Bewerbung — bitte manuell nach dem Runbook anhängen."}
+          </p>
+        ) : null}
+        {published.projectsChosen ? (
+          <p>
+            {published.projectsTransferred === published.projectsChosen
+              ? `${published.projectsChosen} Referenzprojekt${published.projectsChosen === 1 ? "" : "e"} ins Profil übernommen.`
+              : "Achtung: Die Projekte konnten nicht ins Profil übernommen werden. Bitte unter Admin → Profile eintragen."}
+          </p>
+        ) : null}
+        {published.photoSubmitted ? (
+          <p>
+            {published.photoTransferred
+              ? "Foto als Profilbild übernommen."
+              : form.usePhoto
+                ? "Achtung: Das Foto konnte nicht übernommen werden."
+                : "Foto nicht verwendet und gelöscht."}
           </p>
         ) : null}
       </div>
@@ -545,6 +590,87 @@ export function ReviewPanel({
           </div>
         ) : null}
       </div>
+
+      {projects.length ? (
+        <>
+          <h3>Referenzprojekte aus der Bewerbung</h3>
+          <p className={styles.hint}>
+            Angehakte gehen ins Profil, so wie eingereicht. „Geprüft“ nur mit Nachweis (Lebenslauf,
+            Referenz, Gespräch); bearbeiten lassen sie sich danach unter Admin → Profile.
+          </p>
+          <div style={{ display: "grid", gap: 8 }}>
+            {projects.map((project, index) => {
+              const chosen = form.projects.find((entry) => entry.index === index);
+              const meta = [project.role, project.client ?? project.industry, projectPeriod(project)].filter(Boolean).join(" · ");
+              return (
+                <div key={index} style={{ display: "grid", gap: 4, border: "1px solid var(--border)", borderRadius: 10, padding: 10 }}>
+                  <strong>{project.title}</strong>
+                  {meta || !project.isPublic ? (
+                    <span className={styles.hint}>
+                      {meta}
+                      {project.isPublic ? "" : `${meta ? " · " : ""}soll nicht im Profil erscheinen`}
+                    </span>
+                  ) : null}
+                  {project.technologies.length ? <span className={styles.hint}>{project.technologies.join(", ")}</span> : null}
+                  {project.outcome ? <span>{project.outcome}</span> : null}
+                  {project.link ? (
+                    <a href={project.link} target="_blank" rel="noopener noreferrer nofollow">
+                      {project.link}
+                    </a>
+                  ) : null}
+                  <span style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
+                    <label className={styles.check}>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(chosen)}
+                        onChange={(event) => chooseProject(index, { chosen: event.target.checked, verified: false })}
+                      />
+                      übernehmen
+                    </label>
+                    <label className={styles.check}>
+                      <input
+                        type="checkbox"
+                        disabled={!chosen}
+                        checked={Boolean(chosen?.verified)}
+                        onChange={(event) => chooseProject(index, { chosen: true, verified: event.target.checked })}
+                      />
+                      von XPORTAL geprüft
+                    </label>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      ) : null}
+
+      {hasPhoto ? (
+        <>
+          <h3>Foto</h3>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 14, alignItems: "center" }}>
+            {photoUrl ? (
+              <span
+                role="img"
+                aria-label="Foto aus der Bewerbung"
+                style={{
+                  width: 72,
+                  height: 72,
+                  flex: "none",
+                  borderRadius: "50%",
+                  background: `center / cover no-repeat url(${JSON.stringify(photoUrl)})`,
+                }}
+              />
+            ) : (
+              <span className={styles.hint}>Vorschau nicht verfügbar.</span>
+            )}
+            <label className={styles.check}>
+              <input type="checkbox" checked={form.usePhoto} onChange={(event) => update("usePhoto", event.target.checked)} />
+              Als Profilbild verwenden
+            </label>
+          </div>
+          <p className={styles.hint}>Ohne Haken wird das Foto bei der Freigabe gelöscht, ebenso bei einer Ablehnung.</p>
+        </>
+      ) : null}
 
       <h3>Was haben Sie selbst geprüft?</h3>
       <p className={styles.hint}>

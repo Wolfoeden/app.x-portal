@@ -10,6 +10,7 @@ import type {
   StructuredBrief,
 } from "../chat-contract";
 import type { RegisteredShowcase } from "@/lib/freelancer/showcase";
+import type { ProfileDossier } from "@/lib/profile/dossier";
 
 export const previewAuth: SessionResponse = {
   authenticated: true,
@@ -112,6 +113,14 @@ export const previewProfiles: FreelancerProfileResult[] = [
     bookingUrl: "https://example.com/anna/termin",
     cvAccess: "available",
     displayName: "Anna Keller",
+    field: "frontend",
+    highlight: {
+      title: "Designsystem für ein Versicherungsportal",
+      meta: "Direktversicherer · 2024 – 2025",
+      technologies: ["React", "TypeScript", "Storybook"],
+      verified: true,
+    },
+    projectCount: 1,
     role: "Senior Frontend Engineer",
     skillTags: ["React", "TypeScript", "Next.js", "Design Systems", "SaaS", "Testing"],
     languages: ["Deutsch", "Englisch"],
@@ -151,6 +160,7 @@ export const previewProfiles: FreelancerProfileResult[] = [
     bookingUrl: "https://example.com/daniel/termin",
     cvAccess: "missing",
     displayName: "Daniel Weber",
+    field: "frontend",
     role: "Frontend Consultant",
     skillTags: ["React", "TypeScript", "Next.js", "Testing", "Performance"],
     languages: ["Deutsch", "Englisch"],
@@ -271,6 +281,7 @@ export const automationProfiles: FreelancerProfileResult[] = [
     id: "preview-automation-strategy",
     cvAccess: "missing",
     displayName: "Alex Beispiel",
+    field: "ai",
     role: "KI-Strategieberater & KI-Coach",
     skillTags: ["KI-Strategie", "KI-Roadmap", "AI consulting", "KI-Coaching", "Workshops", "N8n", "API integration", "Prozessautomatisierung", "Large Language Models", "RAG"],
     location: "Leipzig",
@@ -293,6 +304,7 @@ export const automationProfiles: FreelancerProfileResult[] = [
     id: "preview-automation-integration",
     cvAccess: "available",
     displayName: "Jo Beispiel",
+    field: "software",
     role: "Automatisierung & Systemintegration",
     skillTags: ["n8n", "Make", "API integration", "LLM", "Python", "PostgreSQL"],
     location: "Köln",
@@ -325,6 +337,7 @@ export const automationPartialProfiles: FreelancerProfileResult[] = [
     id: "preview-automation-workflows",
     cvAccess: "missing",
     displayName: "Sam Beispiel",
+    field: "software",
     role: "Workflow-Automatisierung",
     skillTags: ["n8n", "Zapier", "Make", "API integration", "Airtable"],
     location: "Hannover",
@@ -352,6 +365,7 @@ export const automationPartialProfiles: FreelancerProfileResult[] = [
     id: "preview-automation-development",
     cvAccess: "missing",
     displayName: "Kim Beispiel",
+    field: "ai",
     role: "KI / Full Stack / Cloud",
     skillTags: ["AI Agents", "MCP", "LLM", "RAG", "AWS", "Full Stack"],
     location: "Berlin",
@@ -386,20 +400,78 @@ export const automationReplies = {
     "Der interne Profilabgleich ist abgeschlossen. Derzeit erfüllt kein aktives, direkt buchbares Profil zugleich alle Muss-Kriterien und mindestens 70 % der Kernanforderungen. Kennzeichnen Sie ein genanntes Kriterium im Chat als Muss, flexibel oder optional. Wenn das interne Ergebnis danach weiterhin nicht ausreicht, können Sie die getrennte externe Recherche für 30 Credits ausdrücklich starten.",
 } as const;
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+const daysAgo = (days: number) => new Date(Date.now() - days * DAY_MS).toISOString();
+
 /**
- * Selbst angemeldete Profile unter dem Shortcut „KI & Automatisierung“ —
- * fiktiv, nur für `/chat/preview?state=empty`.
+ * Selbst angemeldete Profile unter dem Shortcut „AI-Agent-Entwickler finden“ —
+ * fiktiv, nur für `/chat/preview?state=empty`. Je eine Karte mit frischer und
+ * mit alter Verfügbarkeitsangabe, mit und ohne Honorar und eine geprüfte
+ * Kompetenz, damit alle Zeilen der Karte zu sehen sind.
  */
-export const automationShowcase: RegisteredShowcase = {
-  theme: "automation",
-  total: 7,
+export const agentShowcase: RegisteredShowcase = {
+  theme: "ai-agents",
+  label: "AI-Agent-Entwicklung",
+  total: 4,
   profiles: [
-    { id: "preview-showcase-1", displayName: "Kim Beispiel", role: "KI / Full Stack / Cloud", avatarUrl: null, skills: ["AI Agents", "LLM", "RAG"] },
-    { id: "preview-showcase-2", displayName: "Jo Beispiel", role: "Automatisierung & Systemintegration", avatarUrl: null, skills: ["n8n", "Make", "LLM"] },
-    { id: "preview-showcase-3", displayName: "Sam Beispiel", role: "Workflow-Automatisierung", avatarUrl: null, skills: ["n8n", "Zapier", "Make"] },
-    { id: "preview-showcase-4", displayName: "Alex Beispiel", role: "KI-Strategieberater & KI-Coach", avatarUrl: null, skills: ["N8n", "Large Language Models", "RAG"] },
-    { id: "preview-showcase-5", displayName: "Robin Beispiel", role: "KI-Agenten-Entwicklung", avatarUrl: null, skills: ["KI-Agenten", "LangChain", "Python"] },
-    { id: "preview-showcase-6", displayName: "Toni Beispiel", role: "Prozessautomatisierung", avatarUrl: null, skills: ["Power Automate", "SharePoint", "Microsoft 365"] },
+    {
+      id: "preview-showcase-1",
+      displayName: "Kim Beispiel",
+      role: "AI Engineer",
+      avatarUrl: null,
+      evidence: [
+        { skill: "AI Agents", required: true, verified: true },
+        { skill: "LangChain", required: false, verified: false },
+        { skill: "n8n", required: false, verified: false },
+      ],
+      rate: "95 € / Stunde",
+      availability: { status: "available", updatedAt: daysAgo(6), availableFrom: null },
+      contact: "calendar",
+      location: "München", workModes: ["remote", "hybrid"], verified: true,
+      field: "ai",
+      summaryExcerpt: "Baut seit 2023 Agenten für Kundenservice und interne Wissenssuche, zuletzt mit LangChain und n8n.",
+      highlight: {
+        title: "Service-Agent für Schadenmeldungen",
+        meta: "Versicherer, 4.000 Mitarbeitende · seit 03/2025",
+        technologies: ["LangChain", "Azure OpenAI", "Python", "RAG"],
+        verified: true,
+      },
+      projectCount: 2,
+    },
+    {
+      id: "preview-showcase-2",
+      displayName: "Robin Beispiel",
+      role: "KI-Entwicklung: Agenten, RAG und Automatisierung",
+      avatarUrl: null,
+      evidence: [
+        { skill: "KI-Agenten", required: true, verified: false },
+        { skill: "RAG", required: false, verified: false },
+        { skill: "MCP", required: false, verified: false },
+      ],
+      rate: "800 € / Tag",
+      availability: { status: "available", updatedAt: daysAgo(12), availableFrom: null },
+      contact: "calendar",
+      location: "Hamburg", workModes: ["remote"], verified: false,
+      field: "ai",
+      summaryExcerpt: "Entwickelt RAG-Assistenten für Versicherer und Behörden, vom Prototyp bis zum Betrieb.",
+    },
+    {
+      id: "preview-showcase-3",
+      displayName: "Jo Beispiel",
+      role: "KI / Full Stack / Cloud",
+      avatarUrl: null,
+      evidence: [
+        { skill: "AI Agents", required: true, verified: false },
+        { skill: "LLM", required: false, verified: false },
+        { skill: "RAG", required: false, verified: false },
+      ],
+      rate: null,
+      availability: { status: "available", updatedAt: daysAgo(50), availableFrom: null },
+      contact: "calendar",
+      location: null, workModes: ["remote", "on_site"], verified: false,
+      field: "ai",
+      summaryExcerpt: null,
+    },
   ],
 };
 
@@ -454,3 +526,185 @@ export const previewConversations: ConversationItem[] = [
     hasCalendar: false,
   },
 ];
+
+/**
+ * Vollständige Profile für das Seitenpanel und `/profil/vorschau`, ohne
+ * Datenbank. Kim und Anna zeigen alle Teile — Projekte als Zeitleiste,
+ * Links, geprüfte und angegebene Kompetenzen —, die übrigen nur, was die
+ * Karte ohnehin weiß.
+ */
+function dossierFromResult(profile: FreelancerProfileResult, extra: Partial<ProfileDossier> = {}): ProfileDossier {
+  return {
+    id: profile.id,
+    displayName: profile.displayName,
+    role: profile.role,
+    avatarUrl: profile.avatarUrl ?? null,
+    field: profile.field ?? null,
+    location: profile.location,
+    workModes: profile.remoteMode === "on-site" ? ["on_site"] : profile.remoteMode === "unknown" ? ["remote"] : [profile.remoteMode],
+    languages: profile.languages,
+    summary: profile.experienceSummary || null,
+    referencesSummary: null,
+    skills: profile.skillTags.map((value) => ({ value, verified: false })),
+    facts: [],
+    verified: profile.referenceStatus === "Verifiziert",
+    verificationText: profile.referenceStatus === "Verifiziert" ? "Profilprüfung durch XPORTAL abgeschlossen" : "Noch nicht von XPORTAL geprüft",
+    rate: profile.rate,
+    availability: { status: profile.availabilityStatus, updatedAt: profile.availabilityUpdatedAt, availableFrom: profile.availableFrom ?? null },
+    contact: "calendar",
+    projects: [],
+    links: [],
+    ...extra,
+  };
+}
+
+const [kimCard, robinCard, joCard] = agentShowcase.profiles;
+
+export const previewDossiers: Record<string, ProfileDossier> = {
+  [kimCard!.id]: {
+    id: kimCard!.id,
+    displayName: kimCard!.displayName,
+    role: kimCard!.role,
+    avatarUrl: null,
+    field: "ai",
+    location: "München",
+    workModes: ["remote", "hybrid"],
+    languages: ["Deutsch (Muttersprache)", "Englisch (C1)"],
+    summary:
+      "Baut seit 2023 Agenten für Kundenservice und interne Wissenssuche, zuletzt mit LangChain und n8n. Davor sechs Jahre Backend-Entwicklung in Python für Versicherer und Händler. Arbeitet gern nah am Fachbereich und misst, ob ein Agent Tickets wirklich abnimmt.",
+    referencesSummary: null,
+    skills: [
+      { value: "AI Agents", verified: true },
+      { value: "Python", verified: true },
+      { value: "LangChain", verified: false },
+      { value: "n8n", verified: false },
+      { value: "RAG", verified: false },
+      { value: "Azure OpenAI", verified: false },
+    ],
+    facts: [
+      { label: "Branchen", items: [{ value: "Versicherungen", verified: true }, { value: "Handel", verified: false }] },
+      { label: "Qualifikationen", items: [{ value: "M.Sc. Informatik", verified: true }] },
+    ],
+    verified: true,
+    verificationText: "Profilprüfung durch XPORTAL abgeschlossen",
+    rate: kimCard!.rate,
+    availability: kimCard!.availability,
+    contact: "calendar",
+    projects: [
+      {
+        title: "Service-Agent für Schadenmeldungen",
+        client: "Versicherer, 4.000 Mitarbeitende",
+        industry: "Versicherungen",
+        role: "Lead Developer",
+        period: "seit 03/2025",
+        technologies: ["LangChain", "Azure OpenAI", "Python", "RAG"],
+        outcome: "Ein Agent nimmt Erstmeldungen per Chat auf und legt sie im Kernsystem an; rund ein Drittel der Meldungen läuft ohne Rückfrage durch.",
+        link: null,
+        verified: true,
+        source: "operator",
+        sourceUrl: null,
+      },
+      {
+        title: "Wissenssuche für den Innendienst",
+        client: null,
+        industry: "Handel",
+        role: "Entwickler",
+        period: "2023 – 2024",
+        technologies: ["n8n", "RAG", "PostgreSQL"],
+        outcome: "Suche über Handbücher und Tickets mit Quellenangabe, eingebunden in Teams.",
+        link: null,
+        verified: false,
+        source: "freelancer",
+        sourceUrl: null,
+      },
+    ],
+    links: [
+      { kind: "linkedin", url: "https://www.linkedin.com/in/beispiel" },
+      { kind: "github", url: "https://github.com/beispiel" },
+    ],
+  },
+  [robinCard!.id]: {
+    id: robinCard!.id,
+    displayName: robinCard!.displayName,
+    role: robinCard!.role,
+    avatarUrl: null,
+    field: "ai",
+    location: "Hamburg",
+    workModes: ["remote"],
+    languages: ["Deutsch", "Englisch"],
+    summary: "Entwickelt RAG-Assistenten für Versicherer und Behörden, vom Prototyp bis zum Betrieb.",
+    referencesSummary: "Zwei Projekte für eine Landesbehörde, Referenz liegt XPORTAL vor.",
+    skills: [{ value: "KI-Agenten", verified: false }, { value: "RAG", verified: false }, { value: "MCP", verified: false }],
+    facts: [],
+    verified: false,
+    verificationText: "Angaben laut Freelancer; Referenzen nicht geprüft",
+    rate: robinCard!.rate,
+    availability: robinCard!.availability,
+    contact: "calendar",
+    projects: [
+      {
+        title: "Antragsassistent für Förderprogramme",
+        client: null,
+        industry: "Öffentliche Verwaltung",
+        role: "Freelance-Entwickler",
+        period: "2024",
+        technologies: ["RAG", "MCP"],
+        outcome: null,
+        link: null,
+        verified: false,
+        source: "research",
+        sourceUrl: "https://www.freelancermap.de/",
+      },
+    ],
+    links: [],
+  },
+  [joCard!.id]: {
+    id: joCard!.id,
+    displayName: joCard!.displayName,
+    role: joCard!.role,
+    avatarUrl: null,
+    field: "ai",
+    location: null,
+    workModes: ["remote", "on_site"],
+    languages: ["Deutsch"],
+    summary: null,
+    referencesSummary: null,
+    skills: [{ value: "AI Agents", verified: false }, { value: "LLM", verified: false }, { value: "RAG", verified: false }],
+    facts: [],
+    verified: false,
+    verificationText: "Noch nicht von XPORTAL geprüft",
+    rate: null,
+    availability: joCard!.availability,
+    contact: "calendar",
+    projects: [],
+    links: [],
+  },
+  ...Object.fromEntries(
+    [...previewProfiles, ...automationProfiles, ...automationPartialProfiles].map((profile) => [
+      profile.id,
+      dossierFromResult(
+        profile,
+        profile.id === "preview-anna"
+          ? {
+              projects: [
+                {
+                  title: "Designsystem für ein Versicherungsportal",
+                  client: "Direktversicherer",
+                  industry: "Versicherungen",
+                  role: "Frontend Lead",
+                  period: "2024 – 2025",
+                  technologies: ["React", "TypeScript", "Storybook"],
+                  outcome: "Ein Designsystem für zwölf Produktteams; neue Formularstrecken entstehen in Tagen statt Wochen.",
+                  link: null,
+                  verified: true,
+                  source: "operator",
+                  sourceUrl: null,
+                },
+              ],
+              links: [{ kind: "website", url: "https://example.com" }],
+            }
+          : {},
+      ),
+    ]),
+  ),
+};

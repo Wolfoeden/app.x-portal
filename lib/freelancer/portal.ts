@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ProfileProject } from "@/lib/profile/project-limits";
 
 import {
   AVAILABILITY_STATUSES,
@@ -143,6 +144,11 @@ export type FreelancerPortalState =
       kind: "profile";
       profile: EditableFreelancerProfile;
       metrics: FreelancerMetrics;
+      /** Was der Freelancer selbst sieht und bearbeitet; ohne offene Vorschläge. */
+      projects?: ProfileProject[];
+      projectsAvailable?: boolean;
+      seeking?: "projects" | "employment" | "both";
+      availabilityUpdatedAt?: string | null;
     }
   | {
       kind: "application";
