@@ -386,20 +386,62 @@ export const automationReplies = {
     "Der interne Profilabgleich ist abgeschlossen. Derzeit erfüllt kein aktives, direkt buchbares Profil zugleich alle Muss-Kriterien und mindestens 70 % der Kernanforderungen. Kennzeichnen Sie ein genanntes Kriterium im Chat als Muss, flexibel oder optional. Wenn das interne Ergebnis danach weiterhin nicht ausreicht, können Sie die getrennte externe Recherche für 30 Credits ausdrücklich starten.",
 } as const;
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+const daysAgo = (days: number) => new Date(Date.now() - days * DAY_MS).toISOString();
+
 /**
- * Selbst angemeldete Profile unter dem Shortcut „KI & Automatisierung“ —
- * fiktiv, nur für `/chat/preview?state=empty`.
+ * Selbst angemeldete Profile unter dem Shortcut „AI-Agent-Entwickler finden“ —
+ * fiktiv, nur für `/chat/preview?state=empty`. Je eine Karte mit frischer und
+ * mit alter Verfügbarkeitsangabe, mit und ohne Honorar und eine geprüfte
+ * Kompetenz, damit alle Zeilen der Karte zu sehen sind.
  */
-export const automationShowcase: RegisteredShowcase = {
-  theme: "automation",
-  total: 7,
+export const agentShowcase: RegisteredShowcase = {
+  theme: "ai-agents",
+  label: "AI-Agent-Entwicklung",
+  total: 4,
   profiles: [
-    { id: "preview-showcase-1", displayName: "Kim Beispiel", role: "KI / Full Stack / Cloud", avatarUrl: null, skills: ["AI Agents", "LLM", "RAG"] },
-    { id: "preview-showcase-2", displayName: "Jo Beispiel", role: "Automatisierung & Systemintegration", avatarUrl: null, skills: ["n8n", "Make", "LLM"] },
-    { id: "preview-showcase-3", displayName: "Sam Beispiel", role: "Workflow-Automatisierung", avatarUrl: null, skills: ["n8n", "Zapier", "Make"] },
-    { id: "preview-showcase-4", displayName: "Alex Beispiel", role: "KI-Strategieberater & KI-Coach", avatarUrl: null, skills: ["N8n", "Large Language Models", "RAG"] },
-    { id: "preview-showcase-5", displayName: "Robin Beispiel", role: "KI-Agenten-Entwicklung", avatarUrl: null, skills: ["KI-Agenten", "LangChain", "Python"] },
-    { id: "preview-showcase-6", displayName: "Toni Beispiel", role: "Prozessautomatisierung", avatarUrl: null, skills: ["Power Automate", "SharePoint", "Microsoft 365"] },
+    {
+      id: "preview-showcase-1",
+      displayName: "Kim Beispiel",
+      role: "AI Engineer",
+      avatarUrl: null,
+      evidence: [
+        { skill: "AI Agents", required: true, verified: true },
+        { skill: "LangChain", required: false, verified: false },
+        { skill: "n8n", required: false, verified: false },
+      ],
+      rate: "95 € / Stunde",
+      availability: { status: "available", updatedAt: daysAgo(6), availableFrom: null },
+      contact: "calendar",
+    },
+    {
+      id: "preview-showcase-2",
+      displayName: "Robin Beispiel",
+      role: "KI-Entwicklung: Agenten, RAG und Automatisierung",
+      avatarUrl: null,
+      evidence: [
+        { skill: "KI-Agenten", required: true, verified: false },
+        { skill: "RAG", required: false, verified: false },
+        { skill: "MCP", required: false, verified: false },
+      ],
+      rate: "800 € / Tag",
+      availability: { status: "available", updatedAt: daysAgo(12), availableFrom: null },
+      contact: "calendar",
+    },
+    {
+      id: "preview-showcase-3",
+      displayName: "Jo Beispiel",
+      role: "KI / Full Stack / Cloud",
+      avatarUrl: null,
+      evidence: [
+        { skill: "AI Agents", required: true, verified: false },
+        { skill: "LLM", required: false, verified: false },
+        { skill: "RAG", required: false, verified: false },
+      ],
+      rate: null,
+      availability: { status: "available", updatedAt: daysAgo(50), availableFrom: null },
+      contact: "calendar",
+    },
   ],
 };
 

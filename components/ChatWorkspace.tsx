@@ -49,7 +49,7 @@ import {
   type DismissedProfile,
   type ProfileFeedbackReason,
 } from "@/lib/freelancer/profile-feedback";
-import type { RegisteredShowcase } from "@/lib/freelancer/showcase";
+import type { RegisteredShowcase, ShowcaseTheme } from "@/lib/freelancer/showcase";
 import { AccountSummary, CreditPlansDialog } from "./chat/account";
 import {
   exhaustedNotice,
@@ -101,7 +101,7 @@ import {
   usageSummary,
   creditBreakdown,
 } from "./chat/usage-presentation";
-import { exampleBrief } from "./chat/example-briefs";
+import { exampleBrief, exampleBriefForText, firstGap, withoutUnfilledPrompts } from "./chat/example-briefs";
 import {
   type GuidedSuggestion,
   SuggestionGrid,
@@ -1193,8 +1193,8 @@ export function ChatWorkspace({
     previewResultState === "searching" ? "searching" : "idle",
   );
   const [draft, setDraft] = useState("");
-  /** Die Shortcut-Nachricht, unter der die selbst angemeldeten Profile stehen. */
-  const [guideShowcaseMessageId, setGuideShowcaseMessageId] = useState<string | null>(null);
+  /** Die Shortcut-Nachricht, unter der die selbst angemeldeten Profile der Rolle stehen. */
+  const [guideShowcase, setGuideShowcase] = useState<{ messageId: string; theme: ShowcaseTheme } | null>(null);
   const [pendingAssistant, setPendingAssistant] = useState<PendingAssistant | null>(null);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [pendingProfileId, setPendingProfileId] = useState<string | null>(null);
@@ -1885,7 +1885,7 @@ export function ChatWorkspace({
           window.history.replaceState({}, "", cleanUrl);
         }
         /**
-         * Ein Beispiel von der Landingpage (`?beispiel=ki-automatisierung`):
+         * Ein Rolleneinstieg von der Landingpage (`?beispiel=ai-agenten`):
          * wirkt wie ein Klick auf den Shortcut. Nicht, wenn der Link zugleich
          * ein Projekt öffnet oder einen eigenen Text mitbringt.
          */
@@ -2074,12 +2074,17 @@ export function ChatWorkspace({
         createdAt: new Date().toISOString(),
       },
     ]);
-    setGuideShowcaseMessageId(suggestion.showcase ? introId : null);
+    setGuideShowcase(suggestion.showcase ? { messageId: introId, theme: suggestion.showcase } : null);
     setDraft(suggestion.draftPrefix);
+    // Der erste Platzhalter ist markiert: Wer tippt, ersetzt ihn — die
+    // Aufgabe steht dann gleich hinter der Rolle.
     requestAnimationFrame(() => {
       const textarea = composerRef.current;
-      textarea?.focus();
-      textarea?.setSelectionRange(textarea.value.length, textarea.value.length);
+      if (!textarea) return;
+      textarea.focus();
+      const gap = firstGap(textarea.value);
+      if (gap) textarea.setSelectionRange(gap.start, gap.end);
+      else textarea.setSelectionRange(textarea.value.length, textarea.value.length);
     });
   };
 
@@ -2128,13 +2133,17 @@ export function ChatWorkspace({
       appendUser = true,
       existingClientMessageId?: string,
     ) => {
-      const text = rawText.trim();
+      // Angaben eines Shortcut-Anfangs, die noch „…“ sind, gehen nicht mit.
+      const text = withoutUnfilledPrompts(rawText);
       if (!text || pendingAssistant) return;
       if (preview) {
         showToast("Lokale Vorschau: Ihre Änderung ist vorbereitet. Es wird keine echte Suche gestartet.", "neutral");
         return;
       }
-      trackFunnelEvent("search_started");
+      // Welcher Rolleneinstieg zu einer Suche führte, damit sich je Rolle
+      // verfolgen lässt, ob aus Anfragen Kontakte und Gespräche werden.
+      const shortcut = exampleBriefForText(text);
+      trackFunnelEvent("search_started", shortcut ? `shortcut:${shortcut.key}` : null);
       const optimistic: ConversationMessage = {
         id: existingClientMessageId ?? makeId("user"),
         role: "user",
@@ -2964,9 +2973,9 @@ export function ChatWorkspace({
   // Nur solange der Shortcut-Hinweis allein steht: Mit dem Absenden beginnt
   // der Abgleich, und dessen Ergebnis soll nicht mit der Liste konkurrieren.
   const showGuideShowcase =
-    guideShowcaseMessageId !== null &&
+    guideShowcase !== null &&
     messages.length === 1 &&
-    messages[0]?.id === guideShowcaseMessageId &&
+    messages[0]?.id === guideShowcase.messageId &&
     !pendingAssistant &&
     !hasResult;
 
@@ -3403,7 +3412,7 @@ export function ChatWorkspace({
                   <MessageBubble key={message.id} message={message} />
                 ))}
                 {showGuideShowcase ? (
-                  <RegisteredShowcasePanel initial={previewData?.showcase} />
+                  <RegisteredShowcasePanel theme={guideShowcase.theme} initial={previewData?.showcase} />
                 ) : null}
                 {pendingAssistant ? (
                   <PendingMessage

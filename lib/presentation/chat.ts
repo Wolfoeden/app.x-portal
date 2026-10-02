@@ -170,7 +170,7 @@ function formatRate(match: ShortlistMatch): string | null {
   return formatProfileRate(match.profile);
 }
 
-function formatProfileRate(profile: FreelancerProfile): string | null {
+export function formatProfileRate(profile: FreelancerProfile): string | null {
   if (profile.dayRate) {
     return `${new Intl.NumberFormat("de-DE", {
       style: "currency",

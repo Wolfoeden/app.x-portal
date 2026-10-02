@@ -154,24 +154,33 @@ export function WelcomeState({
   );
 }
 
+/**
+ * Die Rolleneinstiege unter dem Eingabefeld. Nachrangig zur Hauptaktion,
+ * dem Einfügen der eigenen Projektanzeige — deshalb das „Oder“ davor.
+ */
 export function SuggestionGrid({
   onSuggestion,
 }: {
   onSuggestion: (suggestion: GuidedSuggestion) => void;
 }) {
   return (
-    <div className="suggestion-grid" aria-label="Beispielanfragen">
-      {suggestions.map((suggestion) => (
-        <button
-          key={suggestion.label}
-          type="button"
-          onClick={() => onSuggestion(suggestion)}
-          onPointerEnter={suggestion.showcase ? () => void loadRegisteredShowcase() : undefined}
-          onFocus={suggestion.showcase ? () => void loadRegisteredShowcase() : undefined}
-        >
-          <span className="suggestion-label">{suggestion.label}</span>
-        </button>
-      ))}
+    <div className="suggestion-grid" role="group" aria-labelledby="suggestion-grid-title">
+      <span className="suggestion-grid-title" id="suggestion-grid-title">Oder mit einer Rolle beginnen:</span>
+      {suggestions.map((suggestion) => {
+        const theme = suggestion.showcase;
+        const prefetch = theme ? () => void loadRegisteredShowcase(theme) : undefined;
+        return (
+          <button
+            key={suggestion.key}
+            type="button"
+            onClick={() => onSuggestion(suggestion)}
+            onPointerEnter={prefetch}
+            onFocus={prefetch}
+          >
+            <span className="suggestion-label">{suggestion.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

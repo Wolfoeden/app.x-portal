@@ -84,6 +84,8 @@
 .fieldsLead { max-width: 520px; margin: 12px auto 0; color: var(--muted); font-size: 16px; line-height: 1.6; }
 .fields .themeList { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; max-width: 980px; margin: 28px auto 12px; text-align: left; }
 .fields .themeList li { border: 0; border-radius: 0; padding: 0; font-size: inherit; }
+/* Drei Rollen in einer Reihe, die eigene Ausschreibung als Hauptweg darunter über die volle Breite. */
+.fields .themeList li:last-child { grid-column: 1 / -1; }
 .themeLink { display: grid; height: 100%; align-content: start; gap: 6px; border: 1px solid var(--border-strong); border-radius: 14px; background: var(--surface); padding: 18px 20px; color: var(--ink); text-decoration: none; transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease; }
 .themeLink strong { font-size: 17px; font-weight: 650; letter-spacing: -.02em; }
 .themeLink > span { color: var(--muted); font-size: 14px; line-height: 1.55; }

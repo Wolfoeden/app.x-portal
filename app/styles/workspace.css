@@ -1239,6 +1239,16 @@
   font-weight: 600;
 }
 
+/* „Oder mit einer Rolle beginnen:“ — die Rollen sind der Nebenweg zur
+   eingefügten Projektanzeige. */
+.suggestion-grid-title {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
 .suggestion-intro {
   margin: 0 2px 10px;
   color: var(--muted-light);
@@ -5295,8 +5305,8 @@ a.secondary-action {
 }
 .composer-credit-status.is-exhausted p { margin: 0; }
 
-/* Selbst angemeldete Profile unter dem Shortcut „KI & Automatisierung“. Auf
-   der Flucht des Antworttexts, damit die Liste zur Nachricht darüber gehört. */
+/* Selbst angemeldete Profile unter einem Rollen-Shortcut. Auf der Flucht des
+   Antworttexts, damit die Liste zur Nachricht darüber gehört. */
 .registered-showcase {
   margin-left: 41px;
   border: 1px solid var(--border);
@@ -5323,7 +5333,7 @@ a.secondary-action {
 
 .registered-showcase-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 8px;
   margin: 0;
   padding: 0;
@@ -5368,7 +5378,7 @@ a.secondary-action {
   white-space: nowrap;
 }
 
-.registered-showcase-identity > span:not(.registered-showcase-skills) {
+.registered-showcase-identity > span:not([class]) {
   color: var(--muted);
   font-size: var(--fs-xs);
   line-height: 1.4;
@@ -5381,11 +5391,65 @@ a.secondary-action {
   margin-top: 5px;
 }
 
-.registered-showcase-skills span {
+.registered-showcase-skills > span:not(.sr-only) {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   background: var(--surface-soft);
   padding: 1px 7px;
+  color: var(--ink-soft);
+  font-size: var(--fs-2xs);
+  line-height: 1.5;
+}
+
+/* Die Muss-Kompetenz der Rolle: belegt, nicht nur verwandt. */
+.registered-showcase-skills > span.is-required {
+  border-color: var(--green-soft);
+  background: var(--green-soft);
+  color: var(--green);
+  font-weight: 600;
+}
+
+.registered-showcase-skills small {
+  font-size: inherit;
+  font-weight: 500;
+}
+
+/* Honorar, Stand der Verfügbarkeit, Kontaktweg: die Fakten vor dem Gespräch. */
+.registered-showcase-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin-top: 6px;
+  color: var(--ink-soft);
+  font-size: var(--fs-2xs);
+  line-height: 1.5;
+}
+
+.registered-showcase-rate {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.registered-showcase-availability.is-available {
+  color: var(--green);
+}
+
+.registered-showcase-availability.is-limited,
+.registered-showcase-availability.is-stale {
+  color: var(--amber);
+}
+
+.registered-showcase-availability.is-unknown {
+  color: var(--muted);
+}
+
+.registered-showcase-open {
+  margin-top: 4px;
+  border-left: 2px solid var(--amber-border);
+  padding-left: 7px;
   color: var(--ink-soft);
   font-size: var(--fs-2xs);
   line-height: 1.5;
