@@ -7,7 +7,6 @@ select no_plan();
 
 select has_column('public', 'freelancer_applications', 'reference_projects', 'Projekte der Bewerbung');
 select col_not_null('public', 'freelancer_applications', 'reference_projects', 'Projekte sind nie null');
-select col_default_is('public', 'freelancer_applications', 'reference_projects', '''[]''::jsonb', 'leere Liste als Vorgabe');
 select has_column('public', 'freelancer_applications', 'photo_storage_path', 'Foto der Bewerbung');
 
 insert into public.freelancer_applications (
@@ -30,6 +29,24 @@ select is(
   (select jsonb_array_length(reference_projects) from public.freelancer_applications where id = 'fa000000-0000-4000-8000-000000000001'),
   1,
   'ein Projekt gespeichert'
+);
+
+insert into public.freelancer_applications (
+  id, full_name, contact_email, role_title, experience_summary, skills, languages, consent_at
+) values (
+  'fa000000-0000-4000-8000-000000000002',
+  'Extras Default',
+  'extras-default@example.com',
+  'Test Consultant',
+  'Database fixture used only inside this rolled-back pgTAP test.',
+  array['testing'],
+  array['de'],
+  now()
+);
+select ok(
+  (select reference_projects = '[]'::jsonb and photo_storage_path is null
+     from public.freelancer_applications where id = 'fa000000-0000-4000-8000-000000000002'),
+  'ohne Angaben: leere Liste, kein Foto'
 );
 
 select throws_ok(
