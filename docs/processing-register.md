@@ -111,6 +111,11 @@ Retention-Policies überprüfbar.
   ist die betroffene Person nach Art. 14 DSGVO zu informieren. Freelancer
   pflegen ihre eigenen Projekte im Dashboard; den Vermerk „geprüft“ setzt
   nur der Betreiber.
+  In der Bewerbung sind Referenzprojekte und Foto freiwillig
+  (`freelancer_applications.reference_projects`, `photo_storage_path`); das
+  Foto liegt bis zur Entscheidung privat unter `incoming/` und wird bei der
+  Freigabe zum Profilbild oder gelöscht, ebenso bei Ablehnung und
+  Neueinreichung.
 - **Empfänger:** Supabase (Datenbank und private Speicher-Buckets); Kunden
   sehen ein freigegebenes Profil, den Lebenslauf nur nach gesonderter Freigabe
   und nur zu einem Profil aus dem eigenen aktuellen Ergebnis.

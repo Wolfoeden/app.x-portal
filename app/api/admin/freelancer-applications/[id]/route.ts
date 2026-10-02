@@ -114,6 +114,10 @@ export async function POST(
           verifiedFactCount: parsed.data.verifiedFacts.length,
           cvTransferred: result.cvTransferred,
           cvDownloadable: parsed.data.cvDownloadable,
+          projectsChosen: result.projectsChosen,
+          projectsTransferred: result.projectsTransferred,
+          projectsVerified: parsed.data.projects.filter((entry) => entry.verified).length,
+          photoTransferred: result.photoTransferred,
           rematchExamined: wiederbelebt?.examined ?? null,
           rematchRevived: wiederbelebt?.revived ?? null,
         },
@@ -126,6 +130,10 @@ export async function POST(
         slug: result.slug,
         cvSubmitted: result.cvSubmitted,
         cvTransferred: result.cvTransferred,
+        projectsChosen: result.projectsChosen,
+        projectsTransferred: result.projectsTransferred,
+        photoSubmitted: result.photoSubmitted,
+        photoTransferred: result.photoTransferred,
       });
     }
 
@@ -152,6 +160,7 @@ export async function POST(
       status: nextStatus,
       reviewerUserId: admin.id,
       reviewNotes,
+      photoStoragePath: application.photo_storage_path ?? null,
     });
 
     await writeAuditEvent({

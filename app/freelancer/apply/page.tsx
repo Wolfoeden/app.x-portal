@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { PublicFooter, PublicHeader } from "@/components/public/PublicChrome";
 import { MatchProtocol } from "@/components/product/MatchProtocol";
+import { applicationExtrasAvailable } from "@/lib/freelancer/applications-data";
 import { loadFreelancerPortalState } from "@/lib/freelancer/profile-data";
 import { openInvite } from "@/lib/sourcing/conversion";
 import type {
@@ -111,6 +112,10 @@ export default async function FreelancerApplyPage({
       ? await loadFreelancerPortalState(user.id)
       : null;
   const hasProfile = portalState?.kind === "profile" || preview;
+  // Projekte und Foto im Formular nur, wenn die Bewerbung sie speichern kann.
+  // Die Formular-Vorschau zeigt beide Abschnitte auch ohne Datenbank.
+  const showsForm = Boolean(user && !user.isAnonymous && portalState?.kind !== "profile");
+  const extrasAvailable = formPreview || (showsForm && (await applicationExtrasAvailable().catch(() => false)));
   const welcome = referralWelcome(referral);
   const protocolStep = portalState?.kind === "application"
     ? portalState.status === "approved" ? 3 : 2
@@ -163,7 +168,7 @@ export default async function FreelancerApplyPage({
             availabilityUpdatedAt={new Date().toISOString()}
           />
         ) : formPreview ? (
-          <ApplyForm referral={referral} />
+          <ApplyForm referral={referral} extrasAvailable={extrasAvailable} />
         ) : !user || user.isAnonymous ? (
           <FreelancerAuthGate />
         ) : portalState?.kind === "profile" ? (
@@ -183,13 +188,13 @@ export default async function FreelancerApplyPage({
             />
             {portalState.status === "rejected" ? (
               <div className={styles.reapply}>
-                <ApplyForm accountEmail={user.email ?? ""} inviteToken={invite ? inviteToken ?? null : null} referral={referral} />
+                <ApplyForm accountEmail={user.email ?? ""} inviteToken={invite ? inviteToken ?? null : null} referral={referral} extrasAvailable={extrasAvailable} />
               </div>
             ) : null}
           </>
         ) : (
           <>
-            <ApplyForm accountEmail={user.email ?? ""} inviteToken={invite ? inviteToken ?? null : null} referral={referral} />
+            <ApplyForm accountEmail={user.email ?? ""} inviteToken={invite ? inviteToken ?? null : null} referral={referral} extrasAvailable={extrasAvailable} />
           </>
         )}
 

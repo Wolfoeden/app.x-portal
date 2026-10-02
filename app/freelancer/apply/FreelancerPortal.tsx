@@ -30,11 +30,12 @@ import type {
   FreelancerMetrics,
 } from "@/lib/freelancer/portal";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
-import { ProjectListEditor, type ProjectEditorClasses } from "@/components/profile/ProjectListEditor";
+import { ProjectListEditor } from "@/components/profile/ProjectListEditor";
 import { profileStrength } from "@/lib/freelancer/profile-strength";
 import type { ProfileProject } from "@/lib/profile/project-limits";
 
 import styles from "./apply.module.css";
+import { PROJECT_EDITOR_CLASSES } from "./project-editor-classes";
 
 const tagClasses = {
   field: styles.field,
@@ -271,18 +272,6 @@ function MetricCard({
     </article>
   );
 }
-
-const PROJECT_EDITOR_CLASSES: ProjectEditorClasses = {
-  field: styles.field,
-  input: "",
-  textarea: "",
-  select: "",
-  button: styles.uploadButton,
-  buttonPrimary: styles.uploadButton,
-  buttonDanger: styles.textButton,
-  textLink: styles.textButton,
-  note: styles.hint,
-};
 
 export function FreelancerDashboard({
   initialProfile,

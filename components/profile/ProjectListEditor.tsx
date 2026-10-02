@@ -286,7 +286,7 @@ export function ProjectListEditor({
       </div>
       <p className={classes.note}>
         Kundennamen nur, wenn sie genannt werden dürfen; sonst Branche und Größe.
-        {mode === "admin" ? " „Geprüft“ nur mit Nachweis." : " Eine inhaltliche Änderung setzt einen Haken „geprüft“ zurück."}
+        {mode === "admin" ? " „Geprüft“ nur mit Nachweis." : " „Geprüft“ setzt nur XPORTAL; eine inhaltliche Änderung hebt es auf."}
       </p>
     </div>
   );

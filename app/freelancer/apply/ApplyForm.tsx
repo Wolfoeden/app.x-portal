@@ -5,8 +5,12 @@ import { useRef, useState, type FormEvent } from "react";
 
 import { TagInput } from "@/components/TagInput";
 import { ShowcaseCard } from "@/components/chat/showcase-card";
+import { ProjectListEditor } from "@/components/profile/ProjectListEditor";
 import { appPath } from "@/lib/app-path";
 import { applicationPreviewProfile } from "@/lib/freelancer/application-preview";
+import { AVATAR_MAX_BYTES, AVATAR_MIME_TYPES, type AvatarMimeType } from "@/lib/freelancer/avatar-limits";
+import { profileStrength } from "@/lib/freelancer/profile-strength";
+import type { ProfileProject } from "@/lib/profile/project-limits";
 import {
   AVAILABILITY_LABELS,
   AVAILABILITY_STATUSES,
@@ -31,6 +35,7 @@ import {
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 import styles from "./apply.module.css";
+import { PROJECT_EDITOR_CLASSES } from "./project-editor-classes";
 
 type UploadedCv = {
   storagePath: string;
@@ -40,7 +45,23 @@ type UploadedCv = {
   sizeBytes: number;
 };
 
+type UploadedPhoto = { storagePath: string; token: string; previewUrl: string };
+
 type SubmitIssue = { path: string; message: string };
+
+function isAvatarMimeType(value: string): value is AvatarMimeType {
+  return (AVATAR_MIME_TYPES as readonly string[]).includes(value);
+}
+
+/** Für die Vorschau: Die CSP erlaubt `data:`-Bilder, aber keine `blob:`-Adressen. */
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
 
 const CV_ACCEPT = "application/pdf,.pdf";
 
@@ -103,8 +124,11 @@ export function ApplyForm({
   accountEmail = "",
   inviteToken = null,
   referral = null,
+  extrasAvailable = false,
 }: {
   accountEmail?: string;
+  /** Projekte und Foto lassen sich speichern (Migration 20261006100000). */
+  extrasAvailable?: boolean;
   /** `?quelle=` der Seite, etwa `arbeitsagentur`; sonst die gemerkte. */
   referral?: string | null;
   /**
@@ -148,6 +172,12 @@ export function ApplyForm({
   const [previewAt] = useState(() => new Date());
   const employment = seeking === "employment";
 
+  const [projects, setProjects] = useState<ProfileProject[]>([]);
+  const [photo, setPhoto] = useState<UploadedPhoto | null>(null);
+  const [photoStatus, setPhotoStatus] = useState<"idle" | "uploading">("idle");
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
   const [cv, setCv] = useState<UploadedCv | null>(null);
   const [cvStatus, setCvStatus] = useState<"idle" | "uploading">("idle");
   const [cvError, setCvError] = useState<string | null>(null);
@@ -158,6 +188,22 @@ export function ApplyForm({
   >("editing");
   const [formError, setFormError] = useState<string | null>(null);
   const [issues, setIssues] = useState<SubmitIssue[]>([]);
+
+  // Dieselbe Zählung wie im Dashboard; die Verfügbarkeit gilt mit dem
+  // Absenden als frisch angegeben.
+  const strength = profileStrength({
+    hasPhoto: Boolean(photo),
+    summaryLength: experienceSummary.trim().length,
+    projects: projects
+      .filter((project) => project.isPublic && project.title.trim())
+      .map((project) => ({ hasOutcome: Boolean(project.outcome) })),
+    hasRate: Boolean(hourlyRate || dayRate),
+    seeking,
+    availabilityUpdatedAt: previewAt.toISOString(),
+    skillsCount: skills.length,
+    industriesCount: industries.length,
+    now: previewAt,
+  });
 
   const bookingUrlInvalid =
     bookingUrlTouched && Boolean(bookingUrl.trim()) && !isUsableBookingUrl(bookingUrl);
@@ -233,6 +279,47 @@ export function ApplyForm({
     }
   }
 
+  async function uploadPhoto(file: File) {
+    setPhotoError(null);
+    if (file.size > AVATAR_MAX_BYTES || !isAvatarMimeType(file.type)) {
+      setPhotoError("Erlaubt sind JPEG, PNG oder WebP bis 5 MB.");
+      return;
+    }
+    setPhotoStatus("uploading");
+    try {
+      const ticketResponse = await fetch(appPath("/api/freelancer-applications/photo-upload"), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ mimeType: file.type, sizeBytes: file.size }),
+      });
+      const ticket = (await ticketResponse.json()) as {
+        bucket?: string;
+        path?: string;
+        uploadToken?: string;
+        pathToken?: string;
+        error?: string;
+      };
+      if (!ticketResponse.ok || !ticket.path || !ticket.uploadToken || !ticket.pathToken) {
+        setPhotoError(ticket.error ?? "Der Upload konnte nicht gestartet werden.");
+        return;
+      }
+      const { error } = await getBrowserSupabaseClient()
+        .storage.from(ticket.bucket ?? "freelancer-avatars")
+        .uploadToSignedUrl(ticket.path, ticket.uploadToken, file, { contentType: file.type });
+      if (error) {
+        setPhotoError("Der Upload ist fehlgeschlagen. Bitte erneut versuchen.");
+        return;
+      }
+      setPhoto({ storagePath: ticket.path, token: ticket.pathToken, previewUrl: await readAsDataUrl(file) });
+    } catch {
+      setPhotoError("Der Upload ist fehlgeschlagen. Bitte erneut versuchen.");
+    } finally {
+      setPhotoStatus("idle");
+      if (photoInputRef.current) photoInputRef.current.value = "";
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
@@ -252,6 +339,14 @@ export function ApplyForm({
     }
     if (!employment && !hourlyRate && !dayRate) {
       setFormError("Bitte Stundensatz oder Tagessatz angeben.");
+      return;
+    }
+    // Leere Projekte fallen weg; ein angefangener Titel wird gemeldet, bevor
+    // der Server das ganze Formular zurückweist.
+    const filledProjects = extrasAvailable ? projects.filter((project) => project.title.trim()) : [];
+    const shortTitle = filledProjects.findIndex((project) => project.title.trim().length < 3);
+    if (shortTitle >= 0) {
+      setFormError(`Projekt ${shortTitle + 1}: Bitte einen Titel mit mindestens drei Zeichen angeben.`);
       return;
     }
     if (bookingUrl.trim() && !isUsableBookingUrl(bookingUrl)) {
@@ -293,6 +388,8 @@ export function ApplyForm({
           referral: source,
           applicantNote,
           cv,
+          projects: filledProjects,
+          photo: extrasAvailable && photo ? { storagePath: photo.storagePath, token: photo.token } : null,
           consent,
           inviteToken,
           website: honeypot,
@@ -447,6 +544,55 @@ export function ApplyForm({
         </p>
 
         <div className={styles.grid}>
+          {extrasAvailable ? (
+            <div className={`${styles.field} ${styles.full}`}>
+              <span>
+                Foto<span className={styles.optional}> · optional</span>
+              </span>
+              <div className={styles.upload}>
+                <input
+                  ref={photoInputRef}
+                  className={styles.hiddenFile}
+                  type="file"
+                  accept={AVATAR_MIME_TYPES.join(",")}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void uploadPhoto(file);
+                  }}
+                />
+                <button
+                  type="button"
+                  className={styles.uploadButton}
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={photoStatus === "uploading"}
+                >
+                  {photoStatus === "uploading" ? "Wird hochgeladen …" : photo ? "Anderes Foto wählen" : "Foto auswählen"}
+                </button>
+                <span className={styles.uploadState}>
+                  {photo ? (
+                    <>
+                      Foto gewählt ·{" "}
+                      <button type="button" onClick={() => setPhoto(null)}>
+                        entfernen
+                      </button>
+                    </>
+                  ) : (
+                    "Ohne Foto zeigt die Karte Ihre Initialen."
+                  )}
+                </span>
+              </div>
+              <span className={styles.hint}>
+                JPEG, PNG oder WebP bis 5 MB. Freiwillig: Das Foto erscheint erst nach der Freigabe auf
+                Ihrer Profilkarte; im Dashboard können Sie es jederzeit ändern oder entfernen.
+              </span>
+              {photoError ? (
+                <span className={styles.error} role="alert">
+                  {photoError}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+
           <label className={`${styles.field} ${styles.full}`}>
             <span>Rolle / Titel</span>
             <input
@@ -685,10 +831,21 @@ export function ApplyForm({
               bookingUrl,
               seeking,
               experienceSummary,
+              avatarUrl: photo?.previewUrl ?? null,
+              projects,
             },
             previewAt,
           )}
         />
+        <div className={styles.previewStrength}>
+          <span>
+            Profilstärke <strong>{strength.done} von {strength.total}</strong>
+          </span>
+          <meter min={0} max={strength.total} value={strength.done} aria-label="Profilstärke" />
+          {strength.next ? (
+            <span className={styles.hint}>Nächster Schritt: {strength.next.label}.</span>
+          ) : null}
+        </div>
         <p className={styles.hint}>
           {employment
             ? "Für eine feste Stelle erscheint Ihr Profil nicht in der öffentlichen Freelancer-Suche."
@@ -696,8 +853,20 @@ export function ApplyForm({
         </p>
       </aside>
 
+      {extrasAvailable ? (
+        <section className={styles.section}>
+          <p className={styles.eyebrow}>04 · Referenzprojekte</p>
+          <h2>Woran haben Sie gearbeitet?</h2>
+          <p className={styles.sectionHint}>
+            Freiwillig, aber das Überzeugendste an einem Profil. Bis zu acht Projekte; das erste steht auf
+            Ihrer Karte. Ohne Haken „im Profil zeigen“ sieht ein Projekt nur unser Team.
+          </p>
+          <ProjectListEditor projects={projects} onChange={setProjects} mode="owner" classes={PROJECT_EDITOR_CLASSES} />
+        </section>
+      ) : null}
+
       <section className={styles.section}>
-        <p className={styles.eyebrow}>04 · Nachweise</p>
+        <p className={styles.eyebrow}>{extrasAvailable ? "05" : "04"} · Nachweise</p>
         <h2>Lebenslauf und Hinweise</h2>
         <p className={styles.sectionHint}>
           Der Lebenslauf dient zuerst der Prüfung. Ob er später für passende
@@ -803,8 +972,10 @@ export function ApplyForm({
         <p className={styles.consentNote}>
           XPORTAL speichert Ihre Angaben und den Lebenslauf, um die Bewerbung
           zu prüfen, und meldet sich dazu bei Ihnen. Nach der Freigabe wird Ihr
-          Profil im Portal sichtbar; der Lebenslauf wird Auftraggebern nur
-          gezeigt, wenn XPORTAL ihn zusätzlich dafür freigibt. Näheres im{" "}
+          Profil im Portal sichtbar, mit Foto und den Projekten, die Sie zum
+          Zeigen markiert haben; der Lebenslauf wird Auftraggebern nur
+          gezeigt, wenn XPORTAL ihn zusätzlich dafür freigibt. Ein nicht
+          verwendetes Foto löschen wir. Näheres im{" "}
           <Link href="/privacy">Datenschutzhinweis</Link>.
         </p>
 
@@ -828,7 +999,7 @@ export function ApplyForm({
           <button
             type="submit"
             className={styles.submit}
-            disabled={disabled || !consent || cvStatus === "uploading"}
+            disabled={disabled || !consent || cvStatus === "uploading" || photoStatus === "uploading"}
           >
             <span>
               {disabled ? "Wird gesendet …" : "Profil zur Sichtung senden"}

@@ -3,6 +3,7 @@ import type { AvailabilityStatus, Seeking, WorkMode } from "@/lib/freelancer/lim
 import { placementRequestsEnabled } from "@/lib/placement/config";
 import { summaryExcerpt } from "@/lib/profile/excerpt";
 import type { ProfileField } from "@/lib/profile/identity";
+import { pickHighlight, projectTeaser, type ProfileProject } from "@/lib/profile/project-limits";
 
 /**
  * Die Profilkarte, wie Kunden sie nach der Freigabe sehen, gebaut aus dem,
@@ -28,6 +29,10 @@ export type ApplicationPreviewInput = {
   experienceSummary?: string;
   /** Nur für das ausgedachte Beispiel; sonst bestimmt das Gebiet der Server. */
   field?: ProfileField | null;
+  /** Das gewählte Foto als `data:`-Adresse; es verlässt den Browser dafür nicht. */
+  avatarUrl?: string | null;
+  /** Die Projekte aus dem Formular; auf der Karte steht nur, was gezeigt werden soll. */
+  projects?: readonly ProfileProject[];
 };
 
 const PREVIEW_SKILLS = 4;
@@ -58,11 +63,13 @@ export function previewRate(input: Pick<ApplicationPreviewInput, "dayRate" | "ho
 }
 
 export function applicationPreviewProfile(input: ApplicationPreviewInput, now: Date): ShowcaseProfile {
+  const shown = (input.projects ?? []).filter((project) => project.isPublic && project.title.trim().length >= 3);
+  const highlight = pickHighlight(shown);
   return {
     id: "vorschau",
     displayName: input.fullName.trim() || "Ihr Name",
     role: input.roleTitle.trim() || "Ihre Rolle",
-    avatarUrl: null,
+    avatarUrl: input.avatarUrl ?? null,
     evidence: input.skills
       .slice(0, PREVIEW_SKILLS)
       .map((skill) => ({ skill, required: false, verified: false })),
@@ -79,6 +86,8 @@ export function applicationPreviewProfile(input: ApplicationPreviewInput, now: D
     // Das Fachgebiet bestimmt erst der Server; die Vorschau zeigt ein neutrales Band.
     field: input.field ?? null,
     summaryExcerpt: summaryExcerpt(input.experienceSummary),
+    highlight: highlight ? projectTeaser(highlight) : null,
+    projectCount: shown.length,
   };
 }
 
@@ -102,6 +111,24 @@ export function exampleApplicationPreview(now: Date): ShowcaseProfile {
       experienceSummary:
         "Baut seit acht Jahren Weboberflächen für Banken und Versicherer, zuletzt ein Designsystem für 40 Produktteams.",
       field: "frontend",
+      projects: [
+        {
+          title: "Designsystem für eine Direktbank",
+          client: null,
+          industry: "Banken",
+          role: "Lead Frontend",
+          startedOn: "2023-04",
+          endedOn: "2025-02",
+          ongoing: false,
+          technologies: ["React", "TypeScript", "Storybook"],
+          outcome: null,
+          link: null,
+          isPublic: true,
+          verified: false,
+          source: "application",
+          sourceUrl: null,
+        },
+      ],
     },
     now,
   );

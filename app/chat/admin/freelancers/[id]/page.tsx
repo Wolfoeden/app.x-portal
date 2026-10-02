@@ -8,8 +8,8 @@ import {
 import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { decisionDefaultsFromApplication } from "@/lib/freelancer/application";
-import { getApplication } from "@/lib/freelancer/applications-data";
+import { decisionDefaultsFromApplication, storedApplicationProjects } from "@/lib/freelancer/application";
+import { createApplicationPhotoUrl, getApplication } from "@/lib/freelancer/applications-data";
 import { PROFILE_FEEDBACK_LABELS } from "@/lib/freelancer/profile-feedback";
 import { loadProfileFeedbackSummary } from "@/lib/freelancer/profile-feedback-data";
 import {
@@ -91,6 +91,11 @@ export default async function FreelancerApplicationDetailPage({
   });
 
   const defaults = decisionDefaultsFromApplication(application);
+  // Das Foto liegt privat unter `incoming/`; die Prüfseite bekommt eine
+  // Adresse, die nach zehn Minuten verfällt.
+  const photoUrl = application.photo_storage_path
+    ? await createApplicationPhotoUrl(application.photo_storage_path).catch(() => null)
+    : null;
 
   return (
     <AdminSurface label="Administration · Bewerbung prüfen">
@@ -304,6 +309,9 @@ export default async function FreelancerApplicationDetailPage({
             applicationId={application.id}
             status={application.status}
             hasCv={Boolean(application.cv_storage_path)}
+            projects={storedApplicationProjects(application.reference_projects)}
+            hasPhoto={Boolean(application.photo_storage_path)}
+            photoUrl={photoUrl}
             defaults={defaults}
           />
         </div>
