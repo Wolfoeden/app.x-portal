@@ -1,5 +1,14 @@
 # Betriebsarten der Lead-Verarbeitung
 
+> **Stand 2. Oktober 2026: umgesetzt.** Tabelle `leadgen_automation`,
+> Prüfung in `trigger_leadgen_run(p_mode, p_source)`, Eingangs-Trigger
+> `leadgen_queue_arrival` (Migration `20261002100000_admin_cockpit.sql`),
+> Zugriff in `lib/leadgen/automation.ts`, Bedienung als Karte „Automatik“
+> auf `/chat/admin/leads` und in der Übersicht `/chat/admin`. Abweichend vom
+> Entwurf unten beginnt der Versand auf `manual` (statt `scheduled`), und die
+> Route `/api/leadgen/run` fragt die Einstellung für den Zeitgeber ein
+> zweites Mal — die frühere Konstante `SCHEDULED_LEAD_SEND_ENABLED` entfällt.
+
 Vorhaben für die Arbeitsfläche unter `/chat/admin/leads`: Der Betreiber soll
 selbst bestimmen, **wann** Leads abgeglichen und **wann** die daraus
 entstandenen Nachrichten verschickt werden — ohne dass jemand eine Migration

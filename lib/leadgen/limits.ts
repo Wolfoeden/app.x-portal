@@ -432,20 +432,8 @@ export function sendHourStart(now: Date): Date {
  */
 export const LEAD_SEND_SPACING_MS = 5_000;
 
-/**
- * Ob der Zeitplan selbst verschicken darf.
- *
- * Aus, seit dem 28. September 2026. Zwei Gründe, beide ungeklärt:
- *
- * - **Rechtlich.** Werbe-E-Mails ohne vorherige ausdrückliche Einwilligung
- *   sind nach § 7 Abs. 2 Nr. 2 UWG auch gegenüber Unternehmen grundsätzlich
- *   unzulässig. Ob die Antwort auf eine öffentliche Ausschreibung darunter
- *   fällt, ist nicht entschieden.
- * - **Inhaltlich.** Das Matching kennt die gesuchte Rolle nicht, nur Skills.
- *   Ein „SAP Engineer" bekam so ein Testmanagement-Profil angeboten.
- *
- * Bis beides geklärt ist, geht eine Akquise-Mail nur raus, wenn der Betreiber
- * sie im Adminbereich abschickt — einzeln nach Durchsicht oder als Stapel.
- * Der Abgleich läuft weiter und legt Entwürfe an; nur der Versand wartet.
- */
-export const SCHEDULED_LEAD_SEND_ENABLED = false;
+// Ob der Zeitplan selbst verschicken darf, entscheidet seit dem 2. Oktober
+// 2026 die Betriebsart im Adminbereich (lib/leadgen/automation.ts) statt einer
+// Konstante. Sie beginnt auf „nur nach Freigabe“: Ob Werbe-E-Mails als Antwort
+// auf eine öffentliche Ausschreibung unter § 7 Abs. 2 Nr. 2 UWG fallen, ist
+// nicht entschieden.

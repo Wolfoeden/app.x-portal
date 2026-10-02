@@ -204,8 +204,32 @@ Retention-Policies überprüfbar.
   Ein Widerspruch beendet die Frist sofort.
 - **Entscheidung eines Menschen:** Jede Nachricht wird durch einen Klick des
   Betreibers ausgelöst, im Einzelfall oder als ausdrücklich bestätigter
-  Stapel von höchstens 20 Nachrichten. Es gibt keinen Zeitplan und keinen
-  Automatismus, der ohne diesen Klick verschickt.
+  Stapel. Einen automatischen Versand nach Zeitplan gibt es nur, wenn der
+  Betreiber ihn im Adminbereich nach einer Bestätigung mit Hinweis auf § 7
+  UWG einschaltet (`leadgen_automation.send_mode = 'scheduled'`); die
+  Vorgabe ist `manual`, jede Änderung steht im Audit-Protokoll
+  (`leadgen_automation_updated`).
+
+### 12. Eigene Akquise: Kontakte (Recruiter und Auftraggeber)
+
+- **Zweck:** Pflege von Ansprechpartnern bei Personalberatungen und
+  Auftraggebern, die regelmäßig Projekte besetzen, für die persönliche
+  Ansprache durch den Betreiber.
+- **Rechtsgrundlage:** Art. 6 Abs. 1 lit. f DSGVO. Die Ansprache selbst
+  richtet sich nach § 7 UWG; XPORTAL verschickt an diese Kontakte nichts
+  automatisch, der Betreiber schreibt einzeln aus seinem Postfach.
+- **Betroffene:** Ansprechpartner der Unternehmen.
+- **Datenkategorien:** Firma, Name, Funktion, Region, Themenbezug,
+  geschäftliche E-Mail-Adresse samt Art und Quelle, Projektlink, Notizen,
+  Stufe, Wiedervorlage, Verlauf (`crm_contacts`, `crm_contact_events`).
+- **Herkunft:** öffentliche Ausschreibungen und Unternehmensseiten, importiert
+  aus einer Tabelle des Betreibers. Die Information nach Art. 14 DSGVO steht
+  im vorbereiteten Entwurf der ersten Mail (Quelle der Adresse,
+  Widerspruch per Antwort).
+- **Empfänger:** keine; die Mail verlässt das Postfach des Betreibers.
+- **Fristen:** Löschung auf Anfrage über die Kontaktseite; ein Widerspruch
+  setzt die Stufe „Nicht kontaktieren“ und beendet jede Wiedervorlage. Der
+  Bestand ist jährlich auf Kontakte ohne Aktivität zu prüfen.
 ## Schwellenwertprüfung zur Datenschutz-Folgenabschätzung
 
 Art. 35 DSGVO verlangt eine DSFA, wenn eine Verarbeitung voraussichtlich ein

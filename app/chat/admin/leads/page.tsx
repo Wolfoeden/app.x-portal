@@ -12,7 +12,14 @@ import {
 import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { Card } from "@/components/admin/Cockpit";
+import { LeadAutomationPanel } from "@/components/admin/LeadAutomationPanel";
 import { promotionalDeliveryConfigured } from "@/lib/email/deliver";
+import {
+  isLeadAutomationPaused,
+  leadAutomationSummary,
+  readLeadAutomation,
+} from "@/lib/leadgen/automation";
 import {
   herkunftsHinweis,
   naechsterSchritt,
@@ -189,7 +196,7 @@ export default async function LeadsPage({
 
   // Nur die Liste holen, die gezeigt wird. Der Trichter und die Läufe gelten
   // für beide Ansichten.
-  const [list, messages, summary, runs] = await Promise.all([
+  const [list, messages, summary, runs, automation] = await Promise.all([
     zeigtNachrichten
       ? Promise.resolve(null)
       : listLeads({ search, status, category, scope, match, page }),
@@ -202,6 +209,7 @@ export default async function LeadsPage({
       : Promise.resolve(null),
     leadSummary(),
     listLeadRuns(4),
+    readLeadAutomation(),
   ]);
 
   const gezeigt = list?.rows.length ?? messages?.rows.length ?? 0;
@@ -238,12 +246,21 @@ export default async function LeadsPage({
           description={
             <p>
               Der Abgleich hält jeden offenen Lead gegen den Katalog und legt
-              bei einem Treffer einen Entwurf an. Verschickt wird daraus
-              werktags zwischen 8 und 12 Uhr, höchstens{" "}
-              {LEAD_BULK_SEND_LIMIT} am Tag.
+              bei einem Treffer einen Entwurf an.{" "}
+              {leadAutomationSummary(automation, LEAD_BULK_SEND_LIMIT)}
             </p>
           }
         />
+
+        <Card title="Automatik">
+          <LeadAutomationPanel
+            key={automation.updatedAt ?? "vorgabe"}
+            automation={automation}
+            paused={isLeadAutomationPaused(automation)}
+            defaultDailyLimit={LEAD_BULK_SEND_LIMIT}
+          />
+        </Card>
+        <div style={{ height: 18 }} />
 
         {/* Oben steht nur, was Arbeit ist. Zehn Kacheln nebeneinander, von
             denen sieben Vergangenheit sind, lassen die drei, auf die es
