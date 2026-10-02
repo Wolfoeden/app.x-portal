@@ -54,6 +54,11 @@ comment on table public.leadgen_automation is
 insert into public.leadgen_automation (id) values (true)
 on conflict (id) do nothing;
 
+-- Eine Zeile braucht keinen Index zum Suchen, aber das Löschen eines Kontos
+-- prüft den Fremdschlüssel; die Abnahme verlangt für jeden einen Index.
+create index if not exists leadgen_automation_updated_by_idx
+  on public.leadgen_automation (updated_by);
+
 alter table public.leadgen_automation enable row level security;
 alter table public.leadgen_automation force row level security;
 revoke all on public.leadgen_automation from anon, authenticated;
