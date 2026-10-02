@@ -139,6 +139,7 @@ export function OverviewView({
         <div className={styles.grid}>
           <Card title="Zu erledigen" className={styles.span5}>
             <ul className={styles.list}>
+              <TaskRow href="/chat/admin/vermittlungen" title="Suchaufträge bearbeiten" meta="„XPORTAL sucht für Sie“, Freelancer zuordnen" count={tasks.mandates} />
               <TaskRow href="/chat/admin/vermittlungen" title="Vermittlungsanfragen prüfen" meta="Verfügbarkeit klären, vorstellen" count={tasks.placementReview} />
               <TaskRow href="/chat/admin/freelancers" title="Freelancer-Bewerbungen" meta="neu oder in Prüfung" count={tasks.applications} />
               <TaskRow href="/chat/admin/leads?ansicht=prepared" title="Lead-Mails freigeben" meta="Entwurf liegt bereit" count={tasks.leadDrafts} />

@@ -3429,6 +3429,7 @@ export function ChatWorkspace({
                 {hasResult && !pendingAssistant ? (
                   <ResultSection
                     brief={brief}
+                    previewMode={preview}
                     projectId={activeProject?.id ?? null}
                     profiles={profiles}
                     partialProfiles={partialProfiles}

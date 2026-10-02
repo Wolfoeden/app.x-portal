@@ -4445,6 +4445,56 @@ a.secondary-action {
   font: inherit;
 }
 
+.placement-fields textarea {
+  min-height: 72px;
+  resize: vertical;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: 10px 12px;
+  color: var(--ink);
+  font: inherit;
+  line-height: 1.45;
+}
+
+/* „XPORTAL sucht für Sie“ unter dem Ergebnis: zugeklappt eine Zeile mit
+   Knopf, geöffnet das Formular mit den Vermittlungsbedingungen. */
+.mandate-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 18px;
+  margin-top: 14px;
+  border: 1px solid var(--green-border);
+  border-radius: var(--radius-md);
+  background: var(--green-soft);
+  padding: 14px 16px;
+}
+
+.mandate-card > div { min-width: 0; flex: 1 1 320px; }
+.mandate-card strong { display: block; font-size: var(--fs-sm); }
+.mandate-card p { margin: 4px 0 0; color: var(--ink-soft); font-size: var(--fs-xs); line-height: 1.5; }
+.mandate-card.is-open { display: grid; align-items: start; background: var(--surface); border-color: var(--border); }
+.mandate-card.is-open .placement-form { margin-top: 4px; }
+.mandate-card.is-done { justify-content: flex-start; flex-wrap: nowrap; }
+.mandate-icon {
+  display: inline-flex;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--green);
+  color: #fff;
+}
+
+@media (max-width: 620px) {
+  .mandate-card .placement-fields { grid-template-columns: 1fr; }
+  .mandate-card .primary-action { width: 100%; }
+}
+
 .project-destination-list {
   display: grid;
   max-height: 250px;

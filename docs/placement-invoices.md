@@ -33,6 +33,28 @@ Vorerst nur Empfänger in Deutschland. Rechnungen ins Ausland (Reverse Charge)
 von Hand stellen und unter „Rechnung außerhalb von Stripe gestellt?“ mit der
 Nummer eintragen.
 
+## Suchauftrag: „XPORTAL sucht für Sie“
+
+Unter jedem Suchergebnis (mit und ohne Treffer) kann der Kunde XPORTAL
+beauftragen, passende Freelancer persönlich vorzustellen — als Gast mit
+E-Mail und Firma, mit Konto ohne weitere Angaben. Er stimmt dabei den
+Vermittlungsbedingungen zu (`placement_terms_accepted` mit `mandate: true`).
+
+1. Der Auftrag erscheint unter **Vermittlungen → Suchaufträge offen** und in
+   der Übersicht unter „Zu erledigen“; der Betreiber bekommt eine Mail.
+2. **Zuordnen**: Vorschläge aus dem Abgleich (Treffer und Teiltreffer) oder
+   ein beliebiges aktives Profil. Jede Zuordnung legt eine gewöhnliche Anfrage
+   (`intro_bookings`, `manual_review`) an — mit dem Zeitpunkt der Zustimmung
+   aus dem Auftrag und seinen Kontaktdaten. Zuordnen verschickt nichts.
+3. **Vorstellen** wie bei jeder Anfrage; danach gelten Nachfassen,
+   Beauftragung und Rechnung unverändert.
+4. Stand des Auftrags von Hand: in Bearbeitung, vorgestellt, abgeschlossen,
+   abgelehnt. Je Projekt ist höchstens ein Auftrag offen.
+
+Benötigt die Migration `20261003090000_suchauftraege.sql`. Ohne sie zeigt die
+Vermittlungsseite einen Hinweis statt der Liste, und das Absenden im Chat
+meldet einen Fehler.
+
 ## Anfrage ohne Konto und „Gespräche“
 
 - Gäste fragen im Chat ohne Registrierung an: E-Mail, Firma, optional Name,

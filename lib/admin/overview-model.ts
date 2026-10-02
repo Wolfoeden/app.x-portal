@@ -193,6 +193,8 @@ const ACTIVITY_LABELS: Readonly<Record<string, string>> = {
   leadgen_automation_updated: "Lead-Automatik geändert",
   crm_contacts_imported: "Kontakte importiert",
   crm_contact_updated: "Kontakt bearbeitet",
+  search_mandate_created: "Suchauftrag eingegangen",
+  search_mandate_assigned: "Suchauftrag: Freelancer zugeordnet",
   contact_request_created: "Kontaktformular",
   lead_email_booking_click: "Termin-Link aus Lead-Mail geklickt",
 };

@@ -9,32 +9,28 @@ import { contactInbox } from "@/lib/contact/messages";
 import { deliverEmail } from "@/lib/email/deliver";
 import { FreelancerProfileSchema } from "@/lib/domain";
 import { PLACEMENT_TERMS, placementRequestsEnabled } from "@/lib/placement/config";
+import {
+  DAY_MS,
+  GUEST_LIMIT_ERROR,
+  GuestContactSchema,
+  admitGuestContact,
+  jsonResponse,
+  type GuestContact,
+} from "@/lib/placement/guest-contact";
 import { placementRequestNotice } from "@/lib/placement/messages";
 import { freelancerContactEmail } from "@/lib/placement/requests";
 import {
   assertSameOrigin,
-  getClientIp,
   logEvent,
   readJsonWithLimit,
 } from "@/lib/security/request";
-import { consumeRateLimit } from "@/lib/security/shared-rate-limit";
 import { SITE_URL } from "@/lib/seo";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 /**
- * Anfrage ohne Konto: Wer als Gast anfragt, gibt E-Mail und Firma an, damit
- * XPORTAL vorstellen und nachfragen kann. `website` ist ein Honigtopf; Menschen
- * sehen das Feld nicht, Formular-Bots füllen es.
+ * Anfrage ohne Konto: Wer als Gast anfragt, gibt E-Mail und Firma an
+ * (lib/placement/guest-contact.ts, geteilt mit dem Suchauftrag).
  */
-const GuestContactSchema = z
-  .object({
-    email: z.string().trim().toLowerCase().max(320).email(),
-    company: z.string().trim().min(2).max(200),
-    name: z.string().trim().max(120).optional().transform((value) => value || null),
-    website: z.string().max(200).optional(),
-  })
-  .strict();
-
 const IntroductionInputSchema = z
   .object({
     projectId: z.string().uuid(),
@@ -46,12 +42,8 @@ const IntroductionInputSchema = z
   })
   .strict();
 
-type GuestContact = { email: string; company: string; name: string | null };
-
-/** Wie viele Anfragen ohne Konto in 24 Stunden: je Gast und je Adresse. */
+/** Wie viele Anfragen ohne Konto in 24 Stunden je Gast; je Adresse siehe guest-contact. */
 const GUEST_REQUESTS_PER_DAY = 3;
-const GUEST_REQUESTS_PER_IP_PER_DAY = 10;
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 const LookupSchema = z.object({
   projectId: z.string().uuid(),
@@ -247,41 +239,23 @@ async function guestContactFor(
   admin: ReturnType<typeof createAdminSupabaseClient>,
 ): Promise<GuestContact> {
   if (!placementRequestsEnabled()) {
-    throw new Response(JSON.stringify({ error: "Bitte melden Sie sich an, um die Auswahl zu bestätigen." }), {
-      status: 409,
-      headers: { "Content-Type": "application/json" },
-    });
+    throw jsonResponse(409, "Bitte melden Sie sich an, um die Auswahl zu bestätigen.");
   }
   const contact = input.guestContact;
   if (!contact) {
-    throw new Response(JSON.stringify({ error: "Bitte geben Sie Ihre E-Mail-Adresse und Ihre Firma an." }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+    throw jsonResponse(400, "Bitte geben Sie Ihre E-Mail-Adresse und Ihre Firma an.");
   }
-  if (contact.website) {
-    logEvent("guest_request_honeypot", { userId: user.id });
-    throw new Response(JSON.stringify({ error: "Die Anfrage konnte nicht gesendet werden." }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  const tooMany = new Response(
-    JSON.stringify({ error: "Sie haben heute schon mehrere Anfragen gesendet. Bitte versuchen Sie es morgen erneut oder legen Sie ein Konto an." }),
-    { status: 429, headers: { "Content-Type": "application/json" } },
-  );
-  const ipLimit = await consumeRateLimit(`guest-placement-ip:${getClientIp(request)}`, GUEST_REQUESTS_PER_IP_PER_DAY, DAY_MS);
-  if (!ipLimit.allowed) throw tooMany;
+  // Honigtopf und Grenze je Adresse; die Grenze je Gast zählt diese Tabelle.
+  const admitted = await admitGuestContact(request, contact, user.id, "placement");
   const { count, error } = await admin
     .from("intro_bookings")
     .select("id", { count: "exact", head: true })
     .eq("owner_user_id", user.id)
     .gte("requested_at", new Date(Date.now() - DAY_MS).toISOString());
   if (error) throw error;
-  if ((count ?? 0) >= GUEST_REQUESTS_PER_DAY) throw tooMany;
+  if ((count ?? 0) >= GUEST_REQUESTS_PER_DAY) throw jsonResponse(429, GUEST_LIMIT_ERROR);
 
-  return { email: contact.email, company: contact.company, name: contact.name };
+  return admitted;
 }
 
 export async function POST(request: Request) {

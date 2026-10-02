@@ -69,6 +69,8 @@ Basis: `e36d9e24e8beb41ccc8887dc3b78a529252f7c74` · 12. September 2026
 | `/api/leadgen/run` | signierter, limitierter Lauf mit Deduplizierung/Stopregeln | A-REG: `tests/api/leadgen-run-route.test.ts`, `tests/leadgen/*`, `tests/sourcing/*` |
 | `/api/account/{export,delete}` | eigener Export und Löschung | A-REG: Auth-/Request-/RLS-Regressionstor; manuelle Kontoabnahme vor Release |
 | `/api/health`, `/api/csp-report`, `/api/funnel-events` | Betriebsstatus, CSP-Berichte, minimierte Funnelereignisse | A-REG: `tests/health/route.test.ts`, `tests/security/csp.test.ts`, `tests/audit/write.test.ts` |
+| `/api/search-mandates` | Suchauftrag aus dem Ergebnis: eigenes Projekt, aktuelle Vermittlungsbedingungen, Gäste mit E-Mail/Firma, Honigtopf und Tageslimit | A-REG: `tests/api/search-mandates-route.test.ts`, `tests/placement/mandates.test.ts` |
+| `/api/admin/search-mandates/[id]` | Admin: Stand setzen, Freelancer zuordnen (legt Anfrage `manual_review` an) | A-REG: `tests/api/search-mandates-route.test.ts` |
 | `/api/showcase?theme=` | ohne Sitzung: selbst angemeldete, freigegebene Profile je Rollen-Shortcut, nur öffentliche Profilangaben, kein Kalenderlink | A-REG: `tests/freelancer/showcase.test.ts` |
 
 ## Freigaberegel

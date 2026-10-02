@@ -120,6 +120,12 @@ Retention-Policies überprüfbar.
 - **Empfänger:** der jeweilige Buchungsanbieter **erst nach dem Klick des
   Nutzers**; keine Einbettung, keine automatische Verbindung.
 - **Fristen:** Vermittlungsnachweise bis zu 730 Tage.
+- **Suchaufträge** („XPORTAL sucht für Sie“, `search_mandates`): E-Mail,
+  Firma, optional Name, Telefon und Notiz zum Projekt, Fassung der
+  Vermittlungsbedingungen, Stand. Zweck ist die persönliche Vorstellung
+  passender Freelancer auf Wunsch des Kunden (Art. 6 Abs. 1 lit. b DSGVO).
+  Gelöscht mit dem Projekt; die Zustimmung zu den Bedingungen steht wie bei
+  jeder Anfrage im Audit-Protokoll.
 
 ### 7. Whitelist / Early Access
 

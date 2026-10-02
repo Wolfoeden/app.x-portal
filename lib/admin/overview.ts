@@ -100,6 +100,7 @@ export type Overview = {
     placementReview: number | null;
     applications: number | null;
     leadDrafts: number | null;
+    mandates: number | null;
     contactsDue: number | null;
     contactsNew: number | null;
   };
@@ -137,6 +138,7 @@ export async function loadOverview(range: OverviewRange, now: Date = new Date())
     placementReview,
     applications,
     leadDrafts,
+    mandates,
     seen,
     leadShortlists,
     sent,
@@ -165,6 +167,12 @@ export async function loadOverview(range: OverviewRange, now: Date = new Date())
         .in("status", ["submitted", "in_review"]),
     ),
     settle(admin.from("leadgen_outreach").select("id", { count: "exact", head: true }).eq("state", "draft")),
+    settle(
+      admin
+        .from("search_mandates")
+        .select("id", { count: "exact", head: true })
+        .in("status", ["open", "in_progress"]),
+    ),
     settle(admin.from("leadgen_seen_postings").select("outcome,first_seen").gte("first_seen", rangeSince).limit(5_000)),
     settle(
       admin
@@ -256,6 +264,7 @@ export async function loadOverview(range: OverviewRange, now: Date = new Date())
       placementReview: count(placementReview),
       applications: count(applications),
       leadDrafts: count(leadDrafts),
+      mandates: count(mandates),
       contactsDue: contacts?.due ?? null,
       contactsNew: contacts?.fresh ?? null,
     },

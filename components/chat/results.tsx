@@ -71,6 +71,7 @@ import {
 import { EXTERNAL_SEARCH_CREDITS } from "@/lib/ai/credit-policy";
 
 import { AgentLaunchPanel, agentLaunchState, ResearchFacts } from "./agent-launch";
+import { MandateCard } from "./mandate-card";
 import { initials, isRecord, nullableString } from "./shared";
 import { profileCheck, VERIFICATION_HELP } from "./verification";
 import { openBriefFields } from "./open-fields";
@@ -255,6 +256,7 @@ export function ResultSection({
   dismissedProfiles = [],
   onDismissProfile,
   onRestoreProfile,
+  previewMode = false,
 }: {
   brief: StructuredBrief | null;
   projectId: string | null;
@@ -293,6 +295,8 @@ export function ResultSection({
   dismissedProfiles?: readonly DismissedProfile[];
   onDismissProfile?: (profile: FreelancerProfileResult, reason: ProfileFeedbackReason) => void;
   onRestoreProfile?: (profileId: string) => void;
+  /** Lokale Vorschau: Der Suchauftrag schickt nichts ab. */
+  previewMode?: boolean;
 }) {
   const launchState = agentLaunchState(isAccountUser, creditsRemaining);
   // „Passt nicht" blendet ein Profil in dieser Suche aus. Sind alle
@@ -409,6 +413,7 @@ export function ResultSection({
               />
             )}
           />
+          <MandateCard projectId={projectId} hasMatches guest={!isAccountUser} preview={previewMode} />
         </>
       ) : (
         <>
@@ -458,6 +463,12 @@ export function ResultSection({
                 </p>
               </div>
             </div>
+          ) : null}
+          {/* Kostenlos und ohne Recherche-Credits: XPORTAL sucht selbst weiter.
+              Nicht bei einer unklaren Anfrage — dort fehlt, wonach gesucht
+              werden soll. */}
+          {matchingStatus !== "needs_clarification" ? (
+            <MandateCard projectId={projectId} hasMatches={false} guest={!isAccountUser} preview={previewMode} />
           ) : null}
           <div className="search-recovery">
             <p>{shownPartials.length ? "Passt keines dieser Profile? Ihre Anfrage bleibt erhalten." : "Ihre Anfrage bleibt erhalten."}</p>
