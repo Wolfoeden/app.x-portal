@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { SITE_FOR_MAIL } from "@/lib/crm/contacts-model";
 import { IMPRINT_EMAIL, PROVIDER_IMPRINT_LINES } from "@/lib/legal/policy";
 
 /**
@@ -29,7 +30,9 @@ export {
 export const SALES_CALL_SOURCE = "website_gespraech";
 
 /** Wie lang das Gespräch ist — steht auf der Seite und in der Bestätigung. */
-export const SALES_CALL_MINUTES = 20;
+export const SALES_CALL_MINUTES = 30;
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
 const optional = (max: number) =>
   z
@@ -51,6 +54,12 @@ export const SalesCallSchema = z
     duration: optional(80),
     rate: optional(80),
     note: optional(2_000),
+    /** Kam die Anfrage von einem Profil, steht es in der Notiz. */
+    profileId: z
+      .string()
+      .trim()
+      .transform((value) => value || null)
+      .refine((value) => value === null || UUID.test(value), { message: "profileId" }),
     consent: z.literal("on"),
     /** Honigtopf: Menschen sehen das Feld nicht und lassen es leer. */
     website: z.string().max(200).optional().default(""),
@@ -76,6 +85,7 @@ export function salesCallFromForm(form: FormData): unknown {
     duration: field("duration"),
     rate: field("rate"),
     note: field("note"),
+    profileId: field("profileId"),
     ...(consent ? { consent } : {}),
     website: field("website"),
   };
@@ -88,6 +98,7 @@ function detailLines(input: SalesCallInput): string[] {
     input.duration ? `Dauer: ${input.duration}` : null,
     input.rate ? `Tagessatz-Rahmen: ${input.rate}` : null,
     input.phone ? `Telefon: ${input.phone}` : null,
+    input.profileId ? `Interesse an Profil: ${SITE_FOR_MAIL}/profil/${input.profileId}` : null,
   ].filter((line): line is string => line !== null);
 }
 

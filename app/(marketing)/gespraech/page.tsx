@@ -12,6 +12,7 @@ import { PLACEMENT_TERMS, PLACEMENT_TERMS_PATH } from "@/lib/placement/config";
 import { SALES_CALL_MINUTES, SALES_CALL_PATH, isSalesCallEntry } from "@/lib/sales/sales-call-model";
 import { readSalesCallToken, salesCallUrl } from "@/lib/sales/sales-call";
 import { SALES_CALL_PAGE, pageMetadata } from "@/lib/seo";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -39,12 +40,33 @@ const STEPS = [
  * Formular, danach der Kalender. Die Seite kommt ohne JavaScript aus; das
  * Formular geht an /api/sales-call und kommt mit `?status=` zurück.
  */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+
+/** Das Profil, von dem die Anfrage kommt: nur aktiv und echt, nur Name und Rolle. */
+async function chosenProfile(id: string | undefined): Promise<{ id: string; name: string; role: string } | null> {
+  if (!id || !UUID.test(id) || !process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) return null;
+  try {
+    const { data } = await createAdminSupabaseClient()
+      .from("freelancer_profiles")
+      .select("id,display_name,role_title")
+      .eq("id", id)
+      .eq("profile_status", "active")
+      .eq("demo_status", "real")
+      .maybeSingle();
+    const row = data as { id: string; display_name: string; role_title: string } | null;
+    return row ? { id: row.id, name: row.display_name, role: row.role_title } : null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function SalesCallPage({ searchParams }: { searchParams: Promise<Query> }) {
   const query = await searchParams;
   const status = statusOf(first(query.status));
   const token = first(query.t);
   const calendarReady = Boolean(salesCallUrl());
   const tokenValid = status === "sent" && Boolean(readSalesCallToken(token));
+  const profile = status ? null : await chosenProfile(first(query.profil));
 
   if (!status) {
     const via = first(query.von);
@@ -154,6 +176,13 @@ export default async function SalesCallPage({ searchParams }: { searchParams: Pr
             ) : null}
             <form id="formular" className={styles.form} action="/api/sales-call" method="post">
               <h2>Worum geht es?</h2>
+              {profile ? (
+                <p className={styles.chosen}>
+                  Sie interessieren sich für <strong>{profile.name}</strong>, {profile.role}. Wir klären im Gespräch,
+                  ob es passt, und stellen Sie vor.
+                  <input type="hidden" name="profileId" value={profile.id} />
+                </p>
+              ) : null}
               <div className={styles.row}>
                 <label>
                   <span>Firma</span>
@@ -181,6 +210,7 @@ export default async function SalesCallPage({ searchParams }: { searchParams: Pr
                   minLength={2}
                   maxLength={200}
                   required
+                  defaultValue={profile?.role}
                   placeholder="z. B. KI-Entwickler für einen Agenten auf Basis unserer Dokumente"
                 />
               </label>

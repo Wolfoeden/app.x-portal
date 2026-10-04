@@ -13,6 +13,7 @@
 .panel { position: sticky; top: 96px; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: clamp(20px, 3vw, 30px); background: var(--surface); box-shadow: var(--shadow-soft); }
 .panel h2 { margin: 0 0 4px; font-size: var(--fs-xl); letter-spacing: -.035em; }
 .form { display: grid; gap: 16px; }
+.chosen { margin: 0; border-radius: var(--radius-sm); padding: 12px 14px; background: var(--green-soft); color: var(--ink-soft); font-size: var(--fs-sm); line-height: 1.55; }
 .form label { display: grid; gap: 7px; min-width: 0; }
 .form label > span { color: var(--ink-soft); font-size: var(--fs-xs); font-weight: 650; }
 .form em { color: var(--muted-light); font-style: normal; font-weight: 500; }

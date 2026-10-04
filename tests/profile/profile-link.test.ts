@@ -51,11 +51,29 @@ describe("the button on the profile page", () => {
     expect(href.searchParams.get("profile")).toBe(ID);
   });
 
-  it("starts with the project description when no project is known", () => {
+  it("sends free users without a project to the sales call with this profile", () => {
     expect(profilePageAction({ ...base, placement: true })).toMatchObject({
       kind: "link",
-      href: "/chat",
-      label: "Projekt beschreiben und anfragen",
+      href: `/gespraech?von=profile&profil=${ID}`,
+      label: "Kennenlernen anfragen",
     });
+    expect(profilePageAction({ ...base, placement: true, isAccountUser: true, directBooking: false })).toMatchObject({
+      href: `/gespraech?von=profile&profil=${ID}`,
+    });
+  });
+
+  it("lets paying customers book the calendar directly", () => {
+    expect(
+      profilePageAction({ ...base, placement: true, isAccountUser: true, hasCalendar: true, directBooking: true }),
+    ).toMatchObject({ kind: "booking", href: `/api/freelancers/${ID}/book`, label: "Termin buchen" });
+  });
+
+  it("does not offer direct booking without a calendar or account", () => {
+    expect(
+      profilePageAction({ ...base, placement: true, isAccountUser: true, hasCalendar: false, directBooking: true }).kind,
+    ).toBe("link");
+    expect(
+      profilePageAction({ ...base, placement: true, isAccountUser: false, hasCalendar: true, directBooking: true }).kind,
+    ).toBe("link");
   });
 });

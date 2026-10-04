@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { writeAuditEvent } from "@/lib/audit/write";
+import { userHasPaidAccess } from "@/lib/billing/paid-access";
 import { requireCurrentUser, type CurrentUser } from "@/lib/auth/current-user";
 import { contactInbox } from "@/lib/contact/messages";
 import { deliverEmail } from "@/lib/email/deliver";
@@ -305,7 +306,12 @@ export async function POST(request: Request) {
     }
 
     const profile = FreelancerProfileSchema.parse(match.profile_snapshot);
-    if (placementRequestsEnabled()) {
+    // Im Vermittlungsmodell fragt an, wer nicht zahlt. Wer einen bezahlten
+    // Tarif hat, bucht direkt — der Weg darunter, der vor dem Modell für alle
+    // galt. Die Vorstellung steht trotzdem in `intro_bookings`.
+    const placement = placementRequestsEnabled();
+    const directForPaying = placement && !user.isAnonymous && (await userHasPaidAccess(user.id));
+    if (placement && !directForPaying) {
       const guest = user.isAnonymous ? await guestContactFor(request, input, user, admin) : null;
       return await placementRequest(input, user, admin, profile, match.id, guest);
     }
@@ -316,26 +322,33 @@ export async function POST(request: Request) {
       )
       .eq("id", input.profileId)
       .eq("profile_status", "active")
-      .eq("availability_status", "available")
+      .in("availability_status", placement ? ["available", "limited", "unknown"] : ["available"])
       .maybeSingle();
     if (profileError) throw profileError;
+
+    // A change to manual approval can only make the workflow more restrictive;
+    // it never silently unlocks a direct booking that was not shown before.
+    const freeIntroduction =
+      Boolean(currentProfile) &&
+      profile.introPolicy.type === "free" &&
+      currentProfile?.intro_policy === "free";
+
+    // Ein zahlender Kunde und ein Profil ohne Kalender oder mit Freigabe von
+    // Hand: Dann stellt XPORTAL vor, wie bei allen anderen.
+    if (directForPaying && (!freeIntroduction || !currentProfile?.booking_url)) {
+      return await placementRequest(input, user, admin, profile, match.id, null);
+    }
     if (!currentProfile) {
       throw new Response("Dieses Profil ist aktuell nicht verfügbar.", {
         status: 409,
       });
     }
 
-    // A change to manual approval can only make the workflow more restrictive;
-    // it never silently unlocks a direct booking that was not shown before.
-    const freeIntroduction =
-      profile.introPolicy.type === "free" &&
-      currentProfile.intro_policy === "free";
     const bookingUrl = freeIntroduction
       ? currentProfile.demo_status === "demo"
         ? process.env.NEXT_PUBLIC_CALENDLY_URL ?? null
         : currentProfile.booking_url ??
-          process.env.NEXT_PUBLIC_CALENDLY_URL ??
-          null
+          (placement ? null : process.env.NEXT_PUBLIC_CALENDLY_URL ?? null)
       : null;
     const timestamp = new Date().toISOString();
     const insert = {

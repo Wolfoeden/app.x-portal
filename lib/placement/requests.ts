@@ -1,6 +1,7 @@
 import "server-only";
 
 import { accountNameFromMetadata } from "@/lib/auth/account-name";
+import { userHasPaidAccess } from "@/lib/billing/paid-access";
 import { deliverEmail } from "@/lib/email/deliver";
 import { logEvent } from "@/lib/security/request";
 import { profileUrl } from "@/lib/profile/profile-link";
@@ -38,9 +39,10 @@ function httpsUrl(value: unknown): string | null {
 /**
  * Darf diese Person den Kalender des Freelancers öffnen?
  *
- * Mit eingeschaltetem Vermittlungsmodell nur nach einer Vorstellung. Sonst
- * wäre die Anfrage mit Zustimmung ein Umweg, den niemand nehmen muss, und
- * XPORTAL könnte die Vermittlung nicht belegen. Der Betreiber darf immer.
+ * Mit eingeschaltetem Vermittlungsmodell nach einer Vorstellung — oder mit
+ * einem bezahlten Tarif: Wer zahlt, bucht direkt. Alle anderen fragen über
+ * XPORTAL an; sonst wäre die Anfrage mit Zustimmung ein Umweg, den niemand
+ * nehmen muss. Der Betreiber darf immer.
  */
 export async function placementBookingAllowed(
   user: { id: string; isAdmin: boolean; isAnonymous: boolean } | null,
@@ -48,6 +50,7 @@ export async function placementBookingAllowed(
 ): Promise<boolean> {
   if (!user || user.isAnonymous) return false;
   if (user.isAdmin) return true;
+  if (await userHasPaidAccess(user.id)) return true;
   const { data, error } = await createAdminSupabaseClient()
     .from("intro_bookings")
     .select("id")

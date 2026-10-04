@@ -9,6 +9,7 @@
  */
 
 import {
+  createContext,
   useContext,
   useEffect,
   useMemo,
@@ -1008,18 +1009,34 @@ export type BookingActionState = {
 };
 
 /**
+ * Darf dieses Konto direkt buchen? Im Vermittlungsmodell nur mit bezahltem
+ * Tarif; der Chat setzt den Wert aus dem Guthabenstand, die Karten lesen ihn.
+ */
+export const DirectBookingContext = createContext(false);
+
+/**
  * Booking used to be a bare link straight to the freelancer's calendar, so a
  * guest left the product without the selection ever being recorded. A guest is
  * now taken through the sign-in first and returns to this exact profile.
  *
- * Im Vermittlungsmodell führt der Knopf immer zur Anfrage, auch ohne
- * Kalender: Die Vorstellung übernimmt dann der Betreiber.
+ * Im Vermittlungsmodell führt der Knopf zur Anfrage, auch ohne Kalender: Die
+ * Vorstellung übernimmt dann der Betreiber. Ausnahme: Kunden mit bezahltem
+ * Tarif (`directBooking`) buchen bei Profilen mit Kalender direkt.
  */
 export function bookingActionState(
   profile: Pick<FreelancerProfileResult, "bookingUrl">,
   isAccountUser: boolean,
   placement: boolean = placementRequestsEnabled(),
+  directBooking = false,
 ): BookingActionState {
+  if (placement && directBooking && isAccountUser && profile.bookingUrl) {
+    return {
+      kind: "bookable",
+      label: "Termin buchen",
+      hint: "In Ihrem Tarif enthalten · Sie wählen den Termin im Kalender des Freelancers.",
+      disabled: false,
+    };
+  }
   if (placement) {
     return {
       kind: "request",
@@ -1110,7 +1127,8 @@ export function ProfileCard({
       state: row.status === "missing" ? "missing" : row.verified ? "verified" : "stated",
     }));
   const cvAction = cvActionState(profile, isAccountUser);
-  const bookingAction = bookingActionState(profile, isAccountUser);
+  const directBooking = useContext(DirectBookingContext);
+  const bookingAction = bookingActionState(profile, isAccountUser, placementRequestsEnabled(), directBooking);
   const [cvDownloadState, setCvDownloadState] = useState<"idle" | "loading" | "error">("idle");
   const [cvDownloadError, setCvDownloadError] = useState<string | null>(null);
   const cardRef = useProfileImpression(profile, projectId);

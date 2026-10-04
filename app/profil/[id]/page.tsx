@@ -15,6 +15,7 @@ import {
 import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { loadPublicProfileView, type PublicProfileView } from "@/lib/freelancer/public-profile";
+import { userHasPaidAccess } from "@/lib/billing/paid-access";
 import { placementRequestsEnabled } from "@/lib/placement/config";
 import {
   isProfileLinkSource,
@@ -110,6 +111,9 @@ export default async function ProfilePage({ params, searchParams }: Params & Sea
   const projectId = projectParam && UUID.test(projectParam) ? projectParam : null;
   const user = await getCurrentUser().catch(() => null);
   const isAccountUser = Boolean(user && !user.isAnonymous);
+  // Wer zahlt, bucht direkt; das prüft die Buchungsroute ein zweites Mal.
+  const directBooking =
+    isAccountUser && user ? await userHasPaidAccess(user.id).catch(() => false) : false;
 
   const { profile, dossier, shownAt } = view;
   const action = profilePageAction({
@@ -119,6 +123,7 @@ export default async function ProfilePage({ params, searchParams }: Params & Sea
     isAccountUser,
     projectId,
     via,
+    directBooking,
   });
 
   // Zählt, ob Links aus Mails geöffnet werden. Nach der Antwort, damit die

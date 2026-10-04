@@ -20,6 +20,7 @@ export const SALES_CALL_ENTRIES = [
   "role_page",
   "pricing",
   "chat",
+  "profile",
   "mail",
 ] as const;
 export type SalesCallEntry = (typeof SALES_CALL_ENTRIES)[number];

@@ -72,6 +72,13 @@ describe("salesCallNote", () => {
     expect(note).toContain(valid.note);
   });
 
+  it("names the profile the request came from", () => {
+    const id = "0b5c2b9e-3c55-4a43-9a7e-2f1d6c7a8b90";
+    const note = salesCallNote(SalesCallSchema.parse(salesCallFromForm(form({ ...valid, profileId: id }))));
+    expect(note).toContain(`Interesse an Profil: https://x-portal.eu/profil/${id}`);
+    expect(SalesCallSchema.safeParse(salesCallFromForm(form({ ...valid, profileId: "../admin" }))).success).toBe(false);
+  });
+
   it("stays within the column limit", () => {
     const note = salesCallNote(
       SalesCallSchema.parse(salesCallFromForm(form({ ...valid, note: "x".repeat(2_000) }))),

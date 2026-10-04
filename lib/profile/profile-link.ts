@@ -35,9 +35,13 @@ export type ProfilePageAction =
  * Der Knopf auf der Profilseite.
  *
  * Ohne Vermittlungsmodell wie in der Lead-Mail: direkt zum Kalender, ohne
- * Anmeldung. Mit dem Modell läuft jede Anfrage über ein Projekt, weil nur so
- * klar ist, wofür vorgestellt wird. Kommt der Aufruf aus einem Projekt, wird
- * dort angefragt; sonst beginnt der Weg mit der Projektbeschreibung.
+ * Anmeldung. Mit dem Modell:
+ * - Kunden mit bezahltem Tarif (`directBooking`) buchen direkt, wenn das
+ *   Profil einen Kalender hat.
+ * - Kommt der Aufruf aus einem Projekt, wird dort angefragt.
+ * - Sonst geht es zu „Gespräch buchen“ mit diesem Profil vorausgewählt:
+ *   XPORTAL klärt im Gespräch, was gebraucht wird, und stellt vor. Bisher
+ *   führte der Knopf hier in einen leeren Chat.
  */
 export function profilePageAction(input: {
   profileId: string;
@@ -46,7 +50,16 @@ export function profilePageAction(input: {
   isAccountUser: boolean;
   projectId: string | null;
   via: ProfileLinkSource | null;
+  directBooking?: boolean;
 }): ProfilePageAction {
+  if (input.placement && input.directBooking && input.isAccountUser && input.hasCalendar) {
+    return {
+      kind: "booking",
+      href: `/api/freelancers/${input.profileId}/book`,
+      label: "Termin buchen",
+      hint: "In Ihrem Tarif enthalten · Sie wählen den Termin im Kalender des Freelancers",
+    };
+  }
   if (!input.placement) {
     if (!input.hasCalendar) {
       return {
@@ -86,8 +99,8 @@ export function profilePageAction(input: {
   }
   return {
     kind: "link",
-    href: "/chat",
-    label: "Projekt beschreiben und anfragen",
-    hint: "Kostenlos bis zur Beauftragung · Die Anfrage läuft über Ihr Projekt",
+    href: `/gespraech?von=profile&profil=${encodeURIComponent(input.profileId)}`,
+    label: "Kennenlernen anfragen",
+    hint: "Kostenlos bis zur Beauftragung · XPORTAL klärt mit Ihnen den Bedarf und stellt vor",
   };
 }

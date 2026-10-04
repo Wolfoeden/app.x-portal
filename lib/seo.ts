@@ -80,7 +80,7 @@ export const SALES_CALL_PAGE = {
   label: "Gespräch buchen",
   title: "Gespräch buchen: Freelancer für KI, SAP und Software | XPORTAL",
   description:
-    "20 Minuten, kostenlos: Erzählen Sie, wen Sie suchen. XPORTAL prüft den Bestand und stellt passende Freelancer vor. Honorar nur bei Beauftragung.",
+    "30 Minuten, kostenlos: Erzählen Sie, wen Sie suchen. XPORTAL prüft den Bestand und stellt passende Freelancer vor. Honorar nur bei Beauftragung.",
   priority: 0.9,
   changeFrequency: "monthly",
 } as const satisfies PublicPage;

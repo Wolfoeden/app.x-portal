@@ -98,12 +98,16 @@ describe("GET /api/freelancers/[id]/book im Vermittlungsmodell", () => {
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
   });
 
-  // Der Kalender vor der Vorstellung wäre der Weg an der Anfrage vorbei.
+  // Der Kalender vor der Vorstellung (und ohne bezahlten Tarif) wäre der Weg
+  // an der Anfrage vorbei: Es geht zu „Gespräch buchen“ mit diesem Profil.
   it("schickt ohne Vorstellung zur Anfrage statt in den Kalender", async () => {
     const response = await aufruf("?via=lead");
 
     expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toBe("https://x-portal.eu/chat?booking=request");
+    const location = new URL(response.headers.get("location")!);
+    expect(location.pathname).toBe("/gespraech");
+    expect(location.searchParams.get("von")).toBe("profile");
+    expect(location.searchParams.get("profil")).toMatch(/^[0-9a-f-]{36}$/u);
     expect(mocks.destination).not.toHaveBeenCalled();
     expect(mocks.event).not.toHaveBeenCalled();
   });

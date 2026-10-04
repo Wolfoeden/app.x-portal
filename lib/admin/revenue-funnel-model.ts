@@ -55,6 +55,7 @@ const SALES_CALL_ENTRY_LABELS: Readonly<Record<string, string>> = {
   role_page: "Rollenseite",
   pricing: "Preise",
   chat: "Chat",
+  profile: "Profilseite",
   mail: "Mail",
   direct: "direkt",
 };
