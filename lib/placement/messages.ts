@@ -66,6 +66,40 @@ export function placementRequestNotice(input: {
   };
 }
 
+/** An den Betreiber, sobald ein Suchauftrag eingeht. */
+export function mandateNotice(input: {
+  siteUrl: string;
+  contactEmail: string;
+  company: string | null;
+  name: string | null;
+  phone: string | null;
+  note: string | null;
+  guest: boolean;
+  projectTitle: string | null;
+  briefSummary: string | null;
+  mandateId: string;
+}): Message {
+  return {
+    subject: `Suchauftrag: ${project(input.projectTitle)}`,
+    text: [
+      "Ein Suchauftrag wartet: Der Kunde möchte, dass XPORTAL passende Freelancer vorstellt.",
+      "",
+      `Projekt: ${project(input.projectTitle)}`,
+      ...(input.briefSummary ? [`Anforderungen: ${input.briefSummary}`] : []),
+      `Kontakt: ${input.contactEmail}${input.name ? ` · ${input.name}` : ""}${input.company ? ` · ${input.company}` : ""}`,
+      ...(input.phone ? [`Telefon: ${input.phone}`] : []),
+      ...(input.note ? [`Notiz: ${input.note}`] : []),
+      ...(input.guest
+        ? ["Ohne Konto aufgegeben: Die E-Mail-Adresse ist nicht bestätigt. Vor der Vorstellung kurz prüfen."]
+        : []),
+      `Vermittlungsbedingungen: ${PLACEMENT_TERMS.version} (zugestimmt)`,
+      `Vorgang: ${input.mandateId}`,
+      "",
+      `Freelancer zuordnen: ${input.siteUrl}/chat/admin/vermittlungen`,
+    ].join("\n"),
+  };
+}
+
 /** An den Kunden, sobald die Vorstellung freigegeben ist. */
 export function introductionForClient(
   input: IntroductionParties & {

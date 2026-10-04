@@ -18,6 +18,7 @@ import { openCookieSettings } from "@/components/CookieConsent";
 import { LegalFooter } from "@/components/LegalFooter";
 import {
   IconAlertCircle,
+  IconArrowRight,
   IconArrowUp,
   IconBookmark,
   IconCheck,
@@ -49,7 +50,7 @@ import {
   type DismissedProfile,
   type ProfileFeedbackReason,
 } from "@/lib/freelancer/profile-feedback";
-import type { RegisteredShowcase } from "@/lib/freelancer/showcase";
+import type { RegisteredShowcase, ShowcaseTheme } from "@/lib/freelancer/showcase";
 import { AccountSummary, CreditPlansDialog } from "./chat/account";
 import {
   exhaustedNotice,
@@ -89,7 +90,11 @@ import {
   type ToastState,
 } from "./chat/shared";
 import { RegisteredShowcasePanel } from "./chat/registered-showcase";
-import { ProjectDetails, ResultSection, SavedProfileList } from "./chat/results";
+import { bookingActionState, ProjectDetails, ResultSection, SavedProfileList } from "./chat/results";
+import { ProfileSheet, ProfileSheetContext, type ProfileSheetRequest } from "./profile/profile-sheet";
+import type { ProfileDossier } from "@/lib/profile/dossier";
+import { profilePath } from "@/lib/profile/profile-link";
+import { appPath } from "@/lib/app-path";
 import { resultScroll, type ShownResult } from "./chat/result-scroll";
 import {
   SidebarChatList,
@@ -101,7 +106,7 @@ import {
   usageSummary,
   creditBreakdown,
 } from "./chat/usage-presentation";
-import { exampleBrief } from "./chat/example-briefs";
+import { exampleBrief, exampleBriefForText, firstGap, withoutUnfilledPrompts } from "./chat/example-briefs";
 import {
   type GuidedSuggestion,
   SuggestionGrid,
@@ -321,6 +326,8 @@ interface ChatWorkspaceProps {
     resultState?: "ranked" | "no_match" | "searching";
     /** Selbst angemeldete Profile für den Shortcut, ohne Datenbank. */
     showcase?: RegisteredShowcase;
+    /** Vollständige Profile für das Seitenpanel, ohne Datenbank. */
+    dossiers?: Record<string, ProfileDossier>;
     collections?: ProjectCollectionItem[];
     conversations?: ConversationItem[];
   };
@@ -1193,8 +1200,8 @@ export function ChatWorkspace({
     previewResultState === "searching" ? "searching" : "idle",
   );
   const [draft, setDraft] = useState("");
-  /** Die Shortcut-Nachricht, unter der die selbst angemeldeten Profile stehen. */
-  const [guideShowcaseMessageId, setGuideShowcaseMessageId] = useState<string | null>(null);
+  /** Die Shortcut-Nachricht, unter der die selbst angemeldeten Profile der Rolle stehen. */
+  const [guideShowcase, setGuideShowcase] = useState<{ messageId: string; theme: ShowcaseTheme } | null>(null);
   const [pendingAssistant, setPendingAssistant] = useState<PendingAssistant | null>(null);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [pendingProfileId, setPendingProfileId] = useState<string | null>(null);
@@ -1885,7 +1892,7 @@ export function ChatWorkspace({
           window.history.replaceState({}, "", cleanUrl);
         }
         /**
-         * Ein Beispiel von der Landingpage (`?beispiel=ki-automatisierung`):
+         * Ein Rolleneinstieg von der Landingpage (`?beispiel=ai-agenten`):
          * wirkt wie ein Klick auf den Shortcut. Nicht, wenn der Link zugleich
          * ein Projekt öffnet oder einen eigenen Text mitbringt.
          */
@@ -2074,12 +2081,17 @@ export function ChatWorkspace({
         createdAt: new Date().toISOString(),
       },
     ]);
-    setGuideShowcaseMessageId(suggestion.showcase ? introId : null);
+    setGuideShowcase(suggestion.showcase ? { messageId: introId, theme: suggestion.showcase } : null);
     setDraft(suggestion.draftPrefix);
+    // Der erste Platzhalter ist markiert: Wer tippt, ersetzt ihn — die
+    // Aufgabe steht dann gleich hinter der Rolle.
     requestAnimationFrame(() => {
       const textarea = composerRef.current;
-      textarea?.focus();
-      textarea?.setSelectionRange(textarea.value.length, textarea.value.length);
+      if (!textarea) return;
+      textarea.focus();
+      const gap = firstGap(textarea.value);
+      if (gap) textarea.setSelectionRange(gap.start, gap.end);
+      else textarea.setSelectionRange(textarea.value.length, textarea.value.length);
     });
   };
 
@@ -2128,13 +2140,17 @@ export function ChatWorkspace({
       appendUser = true,
       existingClientMessageId?: string,
     ) => {
-      const text = rawText.trim();
+      // Angaben eines Shortcut-Anfangs, die noch „…“ sind, gehen nicht mit.
+      const text = withoutUnfilledPrompts(rawText);
       if (!text || pendingAssistant) return;
       if (preview) {
         showToast("Lokale Vorschau: Ihre Änderung ist vorbereitet. Es wird keine echte Suche gestartet.", "neutral");
         return;
       }
-      trackFunnelEvent("search_started");
+      // Welcher Rolleneinstieg zu einer Suche führte, damit sich je Rolle
+      // verfolgen lässt, ob aus Anfragen Kontakte und Gespräche werden.
+      const shortcut = exampleBriefForText(text);
+      trackFunnelEvent("search_started", shortcut ? `shortcut:${shortcut.key}` : null);
       const optimistic: ConversationMessage = {
         id: existingClientMessageId ?? makeId("user"),
         role: "user",
@@ -2579,6 +2595,59 @@ export function ChatWorkspace({
     }
   };
 
+  // Das Seitenpanel für ein Profil. Die Adresse trägt `?profil=<id>`: Die
+  // Zurück-Taste schließt das Panel, ein geteilter Link öffnet es wieder.
+  const [profileSheet, setProfileSheet] = useState<ProfileSheetRequest | null>(null);
+  const profileSheetPushed = useRef(false);
+  const openProfileSheet = useCallback((request: ProfileSheetRequest) => {
+    setProfileSheet(request);
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("profil") === request.id) return;
+    url.searchParams.set("profil", request.id);
+    window.history.pushState(window.history.state, "", url);
+    profileSheetPushed.current = true;
+  }, []);
+  const closeProfileSheet = useCallback(() => {
+    if (profileSheetPushed.current) {
+      // Der Eintrag stammt vom Öffnen; zurück schließt über `popstate`.
+      profileSheetPushed.current = false;
+      window.history.back();
+      return;
+    }
+    setProfileSheet(null);
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("profil")) {
+      url.searchParams.delete("profil");
+      window.history.replaceState(window.history.state, "", url);
+    }
+  }, []);
+  useEffect(() => {
+    const syncProfileSheet = () => {
+      if (new URL(window.location.href).searchParams.has("profil")) return;
+      profileSheetPushed.current = false;
+      setProfileSheet(null);
+    };
+    window.addEventListener("popstate", syncProfileSheet);
+    // Ein geteilter Link mit `?profil=` öffnet das Panel beim Laden.
+    const linked = new URL(window.location.href).searchParams.get("profil");
+    if (linked && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(linked)) {
+      queueMicrotask(() => setProfileSheet({ id: linked, via: "link" }));
+    }
+    return () => window.removeEventListener("popstate", syncProfileSheet);
+  }, []);
+
+  /** Aus dem Panel zurück zum Eingabefeld: Anfragen laufen über ein Projekt. */
+  const describeProject = () => {
+    closeProfileSheet();
+    requestAnimationFrame(() => {
+      const textarea = composerRef.current;
+      if (!textarea) return;
+      textarea.focus();
+      const gap = firstGap(textarea.value);
+      if (gap) textarea.setSelectionRange(gap.start, gap.end);
+    });
+  };
+
   const requestBooking = (profile: FreelancerProfileResult) => {
     // Im Vermittlungsmodell ist der Knopf eine Anfrage, auch ohne Kalender:
     // Er öffnet den Anfrage-Dialog, für Gäste nach der Anmeldung.
@@ -2964,16 +3033,82 @@ export function ChatWorkspace({
   // Nur solange der Shortcut-Hinweis allein steht: Mit dem Absenden beginnt
   // der Abgleich, und dessen Ergebnis soll nicht mit der Liste konkurrieren.
   const showGuideShowcase =
-    guideShowcaseMessageId !== null &&
+    guideShowcase !== null &&
     messages.length === 1 &&
-    messages[0]?.id === guideShowcaseMessageId &&
+    messages[0]?.id === guideShowcase.messageId &&
     !pendingAssistant &&
     !hasResult;
+
+  /**
+   * Die Knöpfe unten im Profil-Panel. Aus dem Suchergebnis: anfragen wie auf
+   * der Karte. Sonst gibt es noch kein Projekt, an das eine Anfrage gebunden
+   * werden kann — der Knopf führt zurück ins Eingabefeld.
+   */
+  const profileSheetActions = (request: ProfileSheetRequest) => {
+    const pageHref = appPath(profilePath(request.id, request.via === "results" ? "chat" : request.via === "shortcut" ? "shortcut" : "share"));
+    const pageLink = (
+      <a className="secondary-action" href={pageHref} target="_blank" rel="noopener noreferrer">
+        Profilseite öffnen
+      </a>
+    );
+    const result = request.result;
+    if (result) {
+      const action = bookingActionState(result, isAccountUser);
+      return (
+        <>
+          <div className="profile-sheet-buttons">
+            {action.kind === "bookable" ? (
+              <a
+                className="primary-action"
+                href={appPath(`/api/freelancers/${result.id}/book`)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => requestBooking(result)}
+              >
+                {action.label} <IconArrowRight size={13} />
+              </a>
+            ) : (
+              <button
+                className="primary-action"
+                type="button"
+                disabled={action.disabled}
+                onClick={() => {
+                  closeProfileSheet();
+                  requestBooking(result);
+                }}
+              >
+                {action.label}
+                {action.disabled ? null : <IconArrowRight size={13} />}
+              </button>
+            )}
+            {pageLink}
+          </div>
+          <p className="profile-sheet-hint">{action.hint}</p>
+        </>
+      );
+    }
+    const firstName = request.header?.displayName.split(/\s+/u)[0] ?? null;
+    return (
+      <>
+        <div className="profile-sheet-buttons">
+          <button className="primary-action" type="button" onClick={describeProject}>
+            Projekt beschreiben <IconArrowRight size={13} />
+          </button>
+          {pageLink}
+        </div>
+        <p className="profile-sheet-hint">
+          Anfragen laufen über ein Projekt: Beschreiben Sie es kurz, XPORTAL gleicht es ab, danach fragen Sie
+          {firstName ? ` ${firstName}` : " das Profil"} direkt an.
+        </p>
+      </>
+    );
+  };
 
   // Eingeklappt wird nur die Desktop-Leiste; mobil bleibt sie ein Panel.
   const railSidebar = sidebarCollapsed && !mobileLayout;
 
   return (
+    <ProfileSheetContext.Provider value={openProfileSheet}>
     <div
       className={`app-shell ${detailsOpen ? "" : "details-hidden"}${emptyChat ? " is-empty-chat" : ""}${profileFocus ? " is-profile-focus" : ""}${isResizingSidebar ? " is-resizing-sidebar" : ""}`}
       style={{ "--sidebar-width": `${railSidebar ? SIDEBAR_RAIL_WIDTH : sidebarWidth}px` } as CSSProperties}
@@ -3403,7 +3538,7 @@ export function ChatWorkspace({
                   <MessageBubble key={message.id} message={message} />
                 ))}
                 {showGuideShowcase ? (
-                  <RegisteredShowcasePanel initial={previewData?.showcase} />
+                  <RegisteredShowcasePanel theme={guideShowcase.theme} initial={previewData?.showcase} />
                 ) : null}
                 {pendingAssistant ? (
                   <PendingMessage
@@ -3420,6 +3555,7 @@ export function ChatWorkspace({
                 {hasResult && !pendingAssistant ? (
                   <ResultSection
                     brief={brief}
+                    previewMode={preview}
                     projectId={activeProject?.id ?? null}
                     profiles={profiles}
                     partialProfiles={partialProfiles}
@@ -3684,8 +3820,18 @@ export function ChatWorkspace({
         />
       ) : null}
 
+      {profileSheet ? (
+        <ProfileSheet
+          request={profileSheet}
+          initial={previewData?.dossiers?.[profileSheet.id] ?? null}
+          onClose={closeProfileSheet}
+          actions={profileSheetActions(profileSheet)}
+        />
+      ) : null}
+
       {toast ? <div className={`toast ${toast.tone}`} role="status" key={toast.id}>{toast.message}</div> : null}
     </div>
+    </ProfileSheetContext.Provider>
   );
 }
 

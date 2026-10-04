@@ -9,6 +9,7 @@
  */
 
 import {
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -39,6 +40,10 @@ import {
 } from "@/lib/freelancer/profile-feedback";
 import { placementRequestsEnabled } from "@/lib/placement/config";
 import { profilePath } from "@/lib/profile/profile-link";
+import { monogramTone, PROFILE_FIELD_LABELS } from "@/lib/profile/identity";
+import { FitBar, type FitSegment } from "../profile/FitBar";
+import { ProfileSheetContext } from "../profile/profile-sheet";
+import { ProjectTeaserBlock } from "../profile/ProjectTeaserBlock";
 
 import { factPreview } from "./fact-preview";
 import { shouldHighlightProfile } from "./profile-fit";
@@ -71,6 +76,7 @@ import {
 import { EXTERNAL_SEARCH_CREDITS } from "@/lib/ai/credit-policy";
 
 import { AgentLaunchPanel, agentLaunchState, ResearchFacts } from "./agent-launch";
+import { MandateCard } from "./mandate-card";
 import { initials, isRecord, nullableString } from "./shared";
 import { profileCheck, VERIFICATION_HELP } from "./verification";
 import { openBriefFields } from "./open-fields";
@@ -255,6 +261,7 @@ export function ResultSection({
   dismissedProfiles = [],
   onDismissProfile,
   onRestoreProfile,
+  previewMode = false,
 }: {
   brief: StructuredBrief | null;
   projectId: string | null;
@@ -293,6 +300,8 @@ export function ResultSection({
   dismissedProfiles?: readonly DismissedProfile[];
   onDismissProfile?: (profile: FreelancerProfileResult, reason: ProfileFeedbackReason) => void;
   onRestoreProfile?: (profileId: string) => void;
+  /** Lokale Vorschau: Der Suchauftrag schickt nichts ab. */
+  previewMode?: boolean;
 }) {
   const launchState = agentLaunchState(isAccountUser, creditsRemaining);
   // „Passt nicht" blendet ein Profil in dieser Suche aus. Sind alle
@@ -409,6 +418,7 @@ export function ResultSection({
               />
             )}
           />
+          <MandateCard projectId={projectId} hasMatches guest={!isAccountUser} preview={previewMode} />
         </>
       ) : (
         <>
@@ -458,6 +468,12 @@ export function ResultSection({
                 </p>
               </div>
             </div>
+          ) : null}
+          {/* Kostenlos und ohne Recherche-Credits: XPORTAL sucht selbst weiter.
+              Nicht bei einer unklaren Anfrage — dort fehlt, wonach gesucht
+              werden soll. */}
+          {matchingStatus !== "needs_clarification" ? (
+            <MandateCard projectId={projectId} hasMatches={false} guest={!isAccountUser} preview={previewMode} />
           ) : null}
           <div className="search-recovery">
             <p>{shownPartials.length ? "Passt keines dieser Profile? Ihre Anfrage bleibt erhalten." : "Ihre Anfrage bleibt erhalten."}</p>
@@ -1086,11 +1102,19 @@ export function ProfileCard({
   const check = profileCheck(profile.referenceStatus);
   const isPartial = profile.recommendationRole === "partial";
   const presentation = profilePresentation(profile, brief);
+  // Optionale Wünsche zählen nicht mit: Die Leiste zeigt, was die Anfrage braucht.
+  const fitSegments: FitSegment[] = presentation.evidence
+    .filter((row) => row.priority !== "optional")
+    .map((row) => ({
+      label: row.requirement,
+      state: row.status === "missing" ? "missing" : row.verified ? "verified" : "stated",
+    }));
   const cvAction = cvActionState(profile, isAccountUser);
   const bookingAction = bookingActionState(profile, isAccountUser);
   const [cvDownloadState, setCvDownloadState] = useState<"idle" | "loading" | "error">("idle");
   const [cvDownloadError, setCvDownloadError] = useState<string | null>(null);
   const cardRef = useProfileImpression(profile, projectId);
+  const openProfile = useContext(ProfileSheetContext);
   // Einmal, nicht dauernd: eine Karte, die weiterpulsiert, liest sich als
   // Aufforderung statt als Hinweis und zieht den Blick von den Karten daneben
   // ab, die man gerade vergleichen will.
@@ -1127,9 +1151,17 @@ export function ProfileCard({
     >
       <div className="profile-rank" aria-label={`${isPartial ? "Teiltreffer" : "Ergebnis"} ${position}`}>{position.toString().padStart(2, "0")}</div>
       <div className="profile-main">
+        <div className="pband" data-field={profile.field ?? "none"}>
+          <span className="pband-label">{profile.field ? PROFILE_FIELD_LABELS[profile.field] : "Profil"}</span>
+          {check?.verified ? (
+            <span className="pband-verified" title={check.text}>
+              <IconCheck size={11} /> Profil geprüft
+            </span>
+          ) : null}
+        </div>
         <header className="profile-header">
           <div className="profile-identity">
-            <div className={`profile-avatar ${profile.avatarUrl ? "has-image" : ""}`} style={avatarStyle(profile.avatarUrl)} aria-hidden="true">{profile.avatarUrl ? null : initials(profile.displayName)}</div>
+            <div className={`profile-avatar pid ${profile.avatarUrl ? "has-image" : ""}`} data-tone={monogramTone(profile.displayName)} style={avatarStyle(profile.avatarUrl)} aria-hidden="true">{profile.avatarUrl ? null : initials(profile.displayName)}</div>
             <div>
               <h3>{profile.displayName}</h3>
               <p>{profile.role}</p>
@@ -1161,6 +1193,7 @@ export function ProfileCard({
             ) : null}
             <div className="profile-evidence">
               <h4>Das bringt das Profil für Ihr Projekt mit</h4>
+              <FitBar segments={fitSegments} noun={fitSegments.length === 1 ? "Anforderung" : "Anforderungen"} />
               <ul>
                 {presentation.evidence.map((row) => (
                   <li className={`profile-evidence-row is-${row.status}`} key={row.requirement}>
@@ -1178,6 +1211,16 @@ export function ProfileCard({
         ) : (
           <div className="profile-tags">{presentation.skills.map((skill) => <span key={skill}>{skill}</span>)}</div>
         )}
+        {profile.highlight ? (
+          <div className="profile-references">
+            <ProjectTeaserBlock teaser={profile.highlight} total={profile.projectCount ?? 1} />
+          </div>
+        ) : profile.referencesSummary ? (
+          <div className="showcase-card-teaser profile-references">
+            <small>Referenzen</small>
+            <span>{profile.referencesSummary}</span>
+          </div>
+        ) : null}
         {presentation.openPoints.length ? (
           <div className="profile-conversation">
             <h4>{isPartial ? "Vor einem Gespräch prüfen" : "Im Erstgespräch klären"}</h4>
@@ -1192,16 +1235,37 @@ export function ProfileCard({
           ) : null}
         </p>
 
-        {onToggleCollapsed ? (
-          <button
-            className="profile-collapse-toggle"
-            type="button"
-            onClick={onToggleCollapsed}
-            aria-expanded={!collapsed}
-          >
-            <span aria-hidden="true"><IconChevronDown size={14} /></span>
-            {collapsed ? "Vollständiges Profil und Belege" : "Profildetails schließen"}
-          </button>
+        {onToggleCollapsed || openProfile ? (
+          <div className="profile-detail-actions">
+            {onToggleCollapsed ? (
+              <button
+                className="profile-collapse-toggle"
+                type="button"
+                onClick={onToggleCollapsed}
+                aria-expanded={!collapsed}
+              >
+                <span aria-hidden="true"><IconChevronDown size={14} /></span>
+                {collapsed ? "Belege zum Projekt" : "Belege schließen"}
+              </button>
+            ) : null}
+            {openProfile ? (
+              <button
+                className="profile-collapse-toggle is-sheet"
+                type="button"
+                aria-haspopup="dialog"
+                onClick={() =>
+                  openProfile({
+                    id: profile.id,
+                    via: "results",
+                    header: { displayName: profile.displayName, role: profile.role, avatarUrl: profile.avatarUrl ?? null, field: profile.field ?? null },
+                    result: profile,
+                  })
+                }
+              >
+                Vollständiges Profil <IconArrowRight size={13} />
+              </button>
+            ) : null}
+          </div>
         ) : null}
 
         {collapsed ? null : (

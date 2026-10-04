@@ -1,6 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const flags = vi.hoisted(() => ({ scheduledSend: false }));
+const flags = vi.hoisted(() => ({
+  automation: {
+    prepareMode: "scheduled",
+    sendMode: "manual",
+    pausedUntil: null as string | null,
+    dailyLimit: null as number | null,
+    lastArrivalTriggerAt: null,
+    updatedAt: null,
+    updatedBy: null,
+  },
+}));
 
 const mocks = vi.hoisted(() => ({
   audit: vi.fn(),
@@ -18,13 +28,11 @@ vi.mock("@/lib/auth/current-user", () => ({
 vi.mock("@/lib/email/deliver", () => ({
   promotionalDeliveryConfigured: mocks.configured,
 }));
-vi.mock("@/lib/leadgen/limits", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/leadgen/limits")>();
+vi.mock("@/lib/leadgen/automation", async () => {
+  const model = await import("@/lib/leadgen/automation-model");
   return {
-    ...actual,
-    get SCHEDULED_LEAD_SEND_ENABLED() {
-      return flags.scheduledSend;
-    },
+    ...model,
+    readLeadAutomation: async () => flags.automation,
   };
 });
 vi.mock("@/lib/leadgen/match-run", () => ({
@@ -79,7 +87,13 @@ function browserAnfrage(body: unknown = {}, origin = "https://x-portal.eu"): Req
 
 beforeEach(() => {
   vi.clearAllMocks();
-  flags.scheduledSend = false;
+  flags.automation = {
+    ...flags.automation,
+    prepareMode: "scheduled",
+    sendMode: "manual",
+    pausedUntil: null,
+    dailyLimit: null,
+  };
   process.env.LEADGEN_RUN_SECRET = TOKEN;
   process.env.EMAIL_FROM = "info@x-portal.eu";
   mocks.audit.mockResolvedValue(undefined);
@@ -108,6 +122,34 @@ describe("POST /api/leadgen/run", () => {
     expect(mocks.audit).not.toHaveBeenCalled();
   });
 
+  it("verschickt nach Zeitplan, sobald die Betriebsart es erlaubt, mit ihrer Tagesmenge", async () => {
+    flags.automation.sendMode = "scheduled";
+    flags.automation.dailyLimit = 12;
+    await POST(schedulerAnfrage({ mode: "send" }));
+
+    expect(mocks.send).toHaveBeenCalledWith(expect.objectContaining({ dailyLimit: 12 }));
+  });
+
+  it("verschickt nicht, solange die Automatik angehalten ist", async () => {
+    flags.automation.sendMode = "scheduled";
+    flags.automation.pausedUntil = new Date(Date.now() + 60 * 60_000).toISOString();
+    const payload = await (await POST(schedulerAnfrage({ mode: "send" }))).json();
+
+    expect(payload.stoppedBy).toBe("manual_only");
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
+
+  it("gleicht nach Zeitplan nicht ab, wenn der Abgleich nur per Knopf läuft", async () => {
+    flags.automation.prepareMode = "manual";
+    const payload = await (await POST(schedulerAnfrage({ mode: "prepare" }))).json();
+
+    expect(payload.stoppedBy).toBe("manual_only");
+    expect(mocks.prepare).not.toHaveBeenCalled();
+    // Der Betreiber darf weiterhin.
+    await POST(browserAnfrage({ mode: "prepare" }));
+    expect(mocks.prepare).toHaveBeenCalledTimes(1);
+  });
+
   it("gleicht nach Zeitplan weiter ab, auch wenn der Versand von Hand geht", async () => {
     const response = await POST(schedulerAnfrage({ mode: "prepare" }));
 
@@ -127,7 +169,7 @@ describe("POST /api/leadgen/run", () => {
   });
 
   it("bindet nur den Versand des Zeitgebers an das Fenster", async () => {
-    flags.scheduledSend = true;
+    flags.automation.sendMode = "scheduled";
     await POST(schedulerAnfrage({ mode: "send" }));
 
     expect(mocks.send).toHaveBeenCalledWith(

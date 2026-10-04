@@ -1,5 +1,5 @@
 .surface {
-  min-height: calc(100svh - 65px);
+  min-height: 100svh;
   background: var(--surface-soft);
   color: var(--ink);
   padding: 28px clamp(18px, 4.5vw, 64px) 72px;

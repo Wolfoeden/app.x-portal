@@ -1,12 +1,13 @@
 import "server-only";
 
-import { randomBytes, timingSafeEqual } from "node:crypto";
+import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { pseudonymizeSubject } from "@/lib/security/request";
 
 import {
+  APPLICATION_PHOTO_PATH_PATTERN,
   AVATAR_BUCKET,
   AVATAR_EXTENSIONS,
   AVATAR_MAX_BYTES,
@@ -43,6 +44,23 @@ export function verifyAvatarObjectPath(
   return (
     expected.length === provided.length && timingSafeEqual(expected, provided)
   );
+}
+
+/** Ein Foto aus dem Bewerbungsformular, bevor es ein Profil gibt. */
+export function mintApplicationPhotoPath(mimeType: AvatarMimeType): string {
+  return `incoming/${randomUUID()}/avatar-${randomBytes(16).toString("hex")}.${AVATAR_EXTENSIONS[mimeType]}`;
+}
+
+export function signApplicationPhotoPath(objectPath: string): string {
+  return pseudonymizeSubject(`freelancer-application-photo:${objectPath}`);
+}
+
+export function verifyApplicationPhotoPath(objectPath: string, token: string): boolean {
+  if (!APPLICATION_PHOTO_PATH_PATTERN.test(objectPath)) return false;
+  if (!/^[0-9a-f]{64}$/u.test(token)) return false;
+  const expected = Buffer.from(signApplicationPhotoPath(objectPath), "utf8");
+  const provided = Buffer.from(token, "utf8");
+  return expected.length === provided.length && timingSafeEqual(expected, provided);
 }
 
 function hasMagicBytes(bytes: Uint8Array, mimeType: AvatarMimeType): boolean {

@@ -7,13 +7,15 @@ import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { promotionalDeliveryConfigured } from "@/lib/email/deliver";
 import {
+  readLeadAutomation,
+  scheduledPrepareAllowed,
+  scheduledSendAllowed,
+} from "@/lib/leadgen/automation";
+import {
   runLeadPreparePass,
   runLeadSendPass,
 } from "@/lib/leadgen/match-run";
-import {
-  LEAD_BULK_SEND_LIMIT,
-  SCHEDULED_LEAD_SEND_ENABLED,
-} from "@/lib/leadgen/limits";
+import { LEAD_BULK_SEND_LIMIT } from "@/lib/leadgen/limits";
 import {
   assertSameOrigin,
   readJsonWithLimit,
@@ -114,12 +116,18 @@ export async function POST(request: Request) {
     const mode = input.mode ?? "send";
     modus = mode;
 
-    // Der Zeitplan verschickt zurzeit nicht selbst; siehe
-    // SCHEDULED_LEAD_SEND_ENABLED. Der Aufruf bleibt ein Erfolg, damit der
-    // Zeitgeber nichts meldet, und hinterlässt kein Protokoll: Er kommt alle
-    // zehn Minuten und hätte nichts zu berichten.
-    if (mode === "send" && auth.actor === "scheduler" && !SCHEDULED_LEAD_SEND_ENABLED) {
+    // Was der Zeitgeber darf, steht in der Betriebsart (leadgen_automation),
+    // die der Betreiber im Adminbereich setzt. Die Datenbank fragt sie schon,
+    // bevor sie die Route weckt; hier wird ein zweites Mal gefragt, damit ein
+    // veralteter Zeitplan oder ein Aufruf von Hand mit dem Geheimnis nicht
+    // an ihr vorbei verschickt. Der Aufruf bleibt ein Erfolg, damit der
+    // Zeitgeber nichts meldet, und hinterlässt kein Protokoll.
+    const automation = auth.actor === "scheduler" ? await readLeadAutomation() : null;
+    if (automation && mode === "send" && !scheduledSendAllowed(automation)) {
       return NextResponse.json({ mode, sent: 0, stoppedBy: "manual_only" });
+    }
+    if (automation && mode === "prepare" && !scheduledPrepareAllowed(automation)) {
+      return NextResponse.json({ mode, prepared: 0, stoppedBy: "manual_only" });
     }
     const from =
       process.env.EMAIL_FROM?.trim() || process.env.SMTP_USER?.trim() || null;
@@ -162,7 +170,7 @@ export async function POST(request: Request) {
         ? await runLeadPreparePass(gemeinsam)
         : await runLeadSendPass({
             ...gemeinsam,
-            dailyLimit: input.dailyLimit ?? LEAD_BULK_SEND_LIMIT,
+            dailyLimit: input.dailyLimit ?? automation?.dailyLimit ?? LEAD_BULK_SEND_LIMIT,
             // Nur der Zeitplan ist an das Fenster gebunden. Der Betreiber
             // ruft die Route bewusst auf und soll das auch um vier Uhr
             // nachmittags können.

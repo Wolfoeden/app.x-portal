@@ -3,10 +3,15 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { fetchActiveBookableRealProfiles } from "@/lib/data/freelancers";
+import { fetchProjects } from "@/lib/data/freelancer-projects";
+import { cardExtrasFor, fetchReferenceSummaries } from "@/lib/data/profile-extras";
+import type { ProfileProject } from "@/lib/profile/project-limits";
+import type { FreelancerProfile } from "@/lib/domain";
 import {
-  EMPTY_AUTOMATION_SHOWCASE,
-  selectAutomationShowcase,
+  emptyShowcase,
+  selectShowcase,
   type RegisteredShowcase,
+  type ShowcaseTheme,
 } from "@/lib/freelancer/showcase";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -43,22 +48,41 @@ export async function fetchRegisteredProfileIds(
 }
 
 /**
- * Kurz gemerkt, weil jeder Klick auf den Shortcut sonst drei Abfragen auslöst.
- * Eine neue Freigabe erscheint damit spätestens nach fünf Minuten.
+ * Kurz gemerkt, weil jeder Klick auf einen Shortcut sonst zwei Abfragen
+ * auslöst. Gemerkt werden die Profile, nicht die Auswahl: Sie gilt für alle
+ * Rollen, und ob eine Verfügbarkeitsangabe noch frisch ist, hängt vom
+ * Zeitpunkt des Aufrufs ab. Eine neue Freigabe erscheint spätestens nach fünf
+ * Minuten.
  */
 const CACHE_MS = 5 * 60_000;
-let cached: { at: number; value: RegisteredShowcase } | null = null;
+let cached: {
+  at: number;
+  profiles: FreelancerProfile[];
+  registered: Set<string>;
+  references: Map<string, string>;
+  projects: Map<string, ProfileProject[]>;
+} | null = null;
 
-export async function loadAutomationShowcase(now = Date.now()): Promise<RegisteredShowcase> {
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) return EMPTY_AUTOMATION_SHOWCASE;
-  if (cached && now - cached.at < CACHE_MS) return cached.value;
-
-  const admin = createAdminSupabaseClient();
-  const [profiles, registered] = await Promise.all([
-    fetchActiveBookableRealProfiles(admin),
-    fetchRegisteredProfileIds(admin),
-  ]);
-  const value = selectAutomationShowcase(profiles, registered);
-  cached = { at: now, value };
-  return value;
+export async function loadShowcase(theme: ShowcaseTheme, now = Date.now()): Promise<RegisteredShowcase> {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) return emptyShowcase(theme);
+  if (!cached || now - cached.at >= CACHE_MS) {
+    const admin = createAdminSupabaseClient();
+    const [profiles, registered] = await Promise.all([
+      fetchActiveBookableRealProfiles(admin),
+      fetchRegisteredProfileIds(admin),
+    ]);
+    // Notizen und Projekte sind ein Zusatz: Scheitert eine Abfrage, kommt die Liste ohne.
+    const [references, projects] = await Promise.all([
+      fetchReferenceSummaries(admin, [...registered]).catch(() => new Map<string, string>()),
+      fetchProjects(admin, [...registered], { publicOnly: true }).catch(() => new Map<string, ProfileProject[]>()),
+    ]);
+    cached = { at: now, profiles, registered, references, projects };
+  }
+  const showcase = selectShowcase(theme, cached.profiles, cached.registered, new Date(now));
+  const { references, projects } = cached;
+  if (references.size === 0 && projects.size === 0) return showcase;
+  return {
+    ...showcase,
+    profiles: showcase.profiles.map((profile) => ({ ...profile, ...cardExtrasFor(profile.id, references, projects) })),
+  };
 }

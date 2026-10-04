@@ -17,6 +17,21 @@ export const AVATAR_EXTENSIONS: Readonly<Record<AvatarMimeType, string>> = {
 export const AVATAR_OBJECT_PATH_PATTERN =
   /^[0-9a-f-]{36}\/avatar-[0-9a-f]{32}\.(?:jpg|jpeg|png|webp)$/u;
 
+/**
+ * Ein Foto aus der Bewerbung liegt im selben Bucket unter `incoming/`. Das
+ * Muster oben passt nicht darauf, also liefert die Bildroute es nie aus; erst
+ * bei der Freigabe wird es unter den Profilpfad kopiert.
+ */
+export const APPLICATION_PHOTO_PATH_PATTERN =
+  /^incoming\/[0-9a-f-]{36}\/avatar-[0-9a-f]{32}\.(?:jpg|png|webp)$/u;
+
+/** Der Bildtyp aus der Dateiendung eines vom Server erzeugten Pfads. */
+export function avatarMimeTypeFromPath(objectPath: string): AvatarMimeType | null {
+  const extension = objectPath.slice(objectPath.lastIndexOf(".") + 1);
+  const entry = Object.entries(AVATAR_EXTENSIONS).find(([, value]) => value === extension);
+  return entry ? (entry[0] as AvatarMimeType) : null;
+}
+
 /** Der Pfad, unter dem die Anwendung ein Profilbild ausliefert. */
 export const AVATAR_IMAGE_ROUTE = "/api/freelancer/avatar-image";
 

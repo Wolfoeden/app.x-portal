@@ -25,6 +25,7 @@ import {
   REFERRAL_PATTERN,
   SEEKING_LABELS,
 } from "@/lib/freelancer/limits";
+import { KNOWN_REFERRALS, REFERRAL_LABELS, referralLabel } from "@/lib/freelancer/referrals";
 
 import styles from "./freelancers.module.css";
 
@@ -92,10 +93,10 @@ export default async function FreelancerApplicationsPage({
   const activeReferral =
     params.quelle && REFERRAL_PATTERN.test(params.quelle) ? params.quelle : undefined;
 
-  const [applications, counts, agencyApplications] = await Promise.all([
+  const [applications, counts, ...referralApplications] = await Promise.all([
     listApplications({ status: activeStatus, referral: activeReferral }),
     countApplicationsByStatus(),
-    listApplications({ referral: "arbeitsagentur", limit: 1000 }),
+    ...KNOWN_REFERRALS.map((referral) => listApplications({ referral, limit: 1000 })),
   ]);
 
   await writeAuditEvent({
@@ -169,13 +170,16 @@ export default async function FreelancerApplicationsPage({
               {APPLICATION_STATUS_LABELS[status]} <b>{counts[status]}</b>
             </Link>
           ))}
-          {/* Der Zulauf über die Agentur für Arbeit, als eigener Stapel. */}
-          <Link
-            href="/chat/admin/freelancers?quelle=arbeitsagentur"
-            className={`${styles.tab} ${activeReferral === "arbeitsagentur" ? styles.tabActive : ""}`}
-          >
-            Agentur für Arbeit <b>{agencyApplications.length}</b>
-          </Link>
+          {/* Der Zulauf über Agentur für Arbeit und Jobcenter, je als eigener Stapel. */}
+          {KNOWN_REFERRALS.map((referral, index) => (
+            <Link
+              key={referral}
+              href={`/chat/admin/freelancers?quelle=${referral}`}
+              className={`${styles.tab} ${activeReferral === referral ? styles.tabActive : ""}`}
+            >
+              {REFERRAL_LABELS[referral]} <b>{referralApplications[index]?.length ?? 0}</b>
+            </Link>
+          ))}
         </nav>
 
         <AdminSectionHeader
@@ -211,7 +215,7 @@ export default async function FreelancerApplicationsPage({
                         <div className={styles.candidateRole}>{row.role_title}</div>
                         <div className={styles.chips}>
                           <span className={styles.chip}>{SEEKING_LABELS[row.seeking] ?? SEEKING_LABELS.projects}</span>
-                          {row.referral ? <span className={styles.chip}>über {row.referral === "arbeitsagentur" ? "Agentur für Arbeit" : row.referral}</span> : null}
+                          {row.referral ? <span className={styles.chip}>über {referralLabel(row.referral)}</span> : null}
                         </div>
                         {row.location_text ? (
                           <div className={styles.muted}>{row.location_text}</div>

@@ -103,12 +103,28 @@ Retention-Policies überprüfbar.
 - **Betroffene:** Freelancer.
 - **Datenkategorien:** Name, Kontaktadresse, Rolle, Kompetenzen, Sprachen,
   Standort, Verfügbarkeit, Sätze, Buchungsadresse, Profilbild, Lebenslauf als
-  PDF, Prüfvermerke.
+  PDF, Prüfvermerke; Referenzprojekte (Titel, Branche, Kunde nur wenn genannt
+  werden darf, Rolle, Zeitraum, Technologien, Ergebnis) und Links zu
+  öffentlichen Berufsprofilen (`freelancer_projects`, `profile_links`).
+  Projekte aus einer Online-Recherche tragen ihre Quelle und bleiben
+  unsichtbar, bis der Betreiber sie übernimmt; vor einer Veröffentlichung
+  ist die betroffene Person nach Art. 14 DSGVO zu informieren. Freelancer
+  pflegen ihre eigenen Projekte im Dashboard; den Vermerk „geprüft“ setzt
+  nur der Betreiber.
+  In der Bewerbung sind Referenzprojekte und Foto freiwillig
+  (`freelancer_applications.reference_projects`, `photo_storage_path`); das
+  Foto liegt bis zur Entscheidung privat unter `incoming/` und wird bei der
+  Freigabe zum Profilbild oder gelöscht, ebenso bei Ablehnung und
+  Neueinreichung.
+  Für bestehende Profile setzt der Betreiber ein Foto nur, wenn die Person
+  es selbst geschickt und eingewilligt hat (Häkchen, im Audit-Protokoll);
+  keine Fotos aus LinkedIn oder einer Recherche.
 - **Empfänger:** Supabase (Datenbank und private Speicher-Buckets); Kunden
   sehen ein freigegebenes Profil, den Lebenslauf nur nach gesonderter Freigabe
   und nur zu einem Profil aus dem eigenen aktuellen Ergebnis.
 - **Fristen:** Lebenslauf bis zum Widerruf oder Wegfall des Zwecks;
-  Profildaten bis zur Löschung des Profils.
+  Profildaten bis zur Löschung des Profils; Referenzprojekte werden mit dem
+  Profil gelöscht (`on delete cascade`).
 
 ### 6. Vermittlung und Buchungsanfragen
 
@@ -120,6 +136,12 @@ Retention-Policies überprüfbar.
 - **Empfänger:** der jeweilige Buchungsanbieter **erst nach dem Klick des
   Nutzers**; keine Einbettung, keine automatische Verbindung.
 - **Fristen:** Vermittlungsnachweise bis zu 730 Tage.
+- **Suchaufträge** („XPORTAL sucht für Sie“, `search_mandates`): E-Mail,
+  Firma, optional Name, Telefon und Notiz zum Projekt, Fassung der
+  Vermittlungsbedingungen, Stand. Zweck ist die persönliche Vorstellung
+  passender Freelancer auf Wunsch des Kunden (Art. 6 Abs. 1 lit. b DSGVO).
+  Gelöscht mit dem Projekt; die Zustimmung zu den Bedingungen steht wie bei
+  jeder Anfrage im Audit-Protokoll.
 
 ### 7. Whitelist / Early Access
 
@@ -204,8 +226,32 @@ Retention-Policies überprüfbar.
   Ein Widerspruch beendet die Frist sofort.
 - **Entscheidung eines Menschen:** Jede Nachricht wird durch einen Klick des
   Betreibers ausgelöst, im Einzelfall oder als ausdrücklich bestätigter
-  Stapel von höchstens 20 Nachrichten. Es gibt keinen Zeitplan und keinen
-  Automatismus, der ohne diesen Klick verschickt.
+  Stapel. Einen automatischen Versand nach Zeitplan gibt es nur, wenn der
+  Betreiber ihn im Adminbereich nach einer Bestätigung mit Hinweis auf § 7
+  UWG einschaltet (`leadgen_automation.send_mode = 'scheduled'`); die
+  Vorgabe ist `manual`, jede Änderung steht im Audit-Protokoll
+  (`leadgen_automation_updated`).
+
+### 12. Eigene Akquise: Kontakte (Recruiter und Auftraggeber)
+
+- **Zweck:** Pflege von Ansprechpartnern bei Personalberatungen und
+  Auftraggebern, die regelmäßig Projekte besetzen, für die persönliche
+  Ansprache durch den Betreiber.
+- **Rechtsgrundlage:** Art. 6 Abs. 1 lit. f DSGVO. Die Ansprache selbst
+  richtet sich nach § 7 UWG; XPORTAL verschickt an diese Kontakte nichts
+  automatisch, der Betreiber schreibt einzeln aus seinem Postfach.
+- **Betroffene:** Ansprechpartner der Unternehmen.
+- **Datenkategorien:** Firma, Name, Funktion, Region, Themenbezug,
+  geschäftliche E-Mail-Adresse samt Art und Quelle, Projektlink, Notizen,
+  Stufe, Wiedervorlage, Verlauf (`crm_contacts`, `crm_contact_events`).
+- **Herkunft:** öffentliche Ausschreibungen und Unternehmensseiten, importiert
+  aus einer Tabelle des Betreibers. Die Information nach Art. 14 DSGVO steht
+  im vorbereiteten Entwurf der ersten Mail (Quelle der Adresse,
+  Widerspruch per Antwort).
+- **Empfänger:** keine; die Mail verlässt das Postfach des Betreibers.
+- **Fristen:** Löschung auf Anfrage über die Kontaktseite; ein Widerspruch
+  setzt die Stufe „Nicht kontaktieren“ und beendet jede Wiedervorlage. Der
+  Bestand ist jährlich auf Kontakte ohne Aktivität zu prüfen.
 ## Schwellenwertprüfung zur Datenschutz-Folgenabschätzung
 
 Art. 35 DSGVO verlangt eine DSFA, wenn eine Verarbeitung voraussichtlich ein

@@ -1,90 +1,186 @@
+import { AVAILABILITY_FRESH_DAYS } from "@/components/chat/availability";
+import type { AvailabilityStatus } from "@/components/chat-contract";
 import type { FreelancerProfile } from "@/lib/domain";
-import { roleFamilies } from "@/lib/domain/role-taxonomy";
+import { roleFit } from "@/lib/domain/role-taxonomy";
 import { canonicalSkill } from "@/lib/domain/skill-taxonomy";
 import { normalizeAvatarUrl } from "@/lib/freelancer/avatar-limits";
+import type { WorkMode } from "@/lib/freelancer/limits";
+import { summaryExcerpt } from "@/lib/profile/excerpt";
+import { profileField } from "@/lib/profile/field";
+import type { ProfileField } from "@/lib/profile/identity";
+import type { ProjectTeaser } from "@/lib/profile/project-limits";
+import { placementRequestsEnabled } from "@/lib/placement/config";
+import { formatProfileRate } from "@/lib/presentation/chat";
 
 /**
- * Wer sich für „KI & Automatisierung“ selbst bei XPORTAL angemeldet hat.
+ * Wer sich für die Rolle eines Shortcuts selbst bei XPORTAL angemeldet hat.
  *
- * Der Shortcut im Chat füllte bisher nur einen Beispiel-Brief ein. Welche
- * Menschen dahinterstehen, sah man erst nach dem Abgleich — und dort nur die
- * drei vordersten. Diese Auswahl zeigt beim Klick die Profile, die sich selbst
- * registriert haben und freigegeben sind: keine recherchierten Kandidaten ohne
- * Einwilligung, keine vom Betreiber angelegten Zeilen, keine Demo-Profile.
+ * Der Shortcut setzt nur den Anfang einer Anfrage ins Eingabefeld. Welche
+ * Menschen dahinterstehen, zeigt diese Auswahl schon beim Klick: Profile, die
+ * sich selbst registriert haben und freigegeben sind — keine recherchierten
+ * Kandidaten ohne Einwilligung, keine vom Betreiber angelegten Zeilen, keine
+ * Demo-Profile.
  *
- * Sie ist kein Matching und keine Empfehlung. Ob jemand zu einem Projekt passt
- * und verfügbar ist, klärt erst der Abgleich und dann das Gespräch; die
- * Oberfläche sagt das neben der Liste.
+ * Jede Karte beantwortet vorab, ob sich ein Gespräch lohnt und was davor zu
+ * klären ist: was das Profil für die Rolle belegt, Honorar, Stand der
+ * Verfügbarkeit und der tatsächliche Kontaktweg. Sie ist trotzdem kein
+ * Matching. Ob Aufgabe, Start und Budget passen, klärt erst der Abgleich und
+ * dann das Gespräch; die Oberfläche sagt das neben der Liste.
  */
 
 export const SHOWCASE_LIMIT = 6;
-const SKILLS_PER_PROFILE = 3;
+const EVIDENCE_PER_PROFILE = 4;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export const SHOWCASE_THEMES = ["ai-agents", "react-typescript", "requirements-engineering"] as const;
+export type ShowcaseTheme = (typeof SHOWCASE_THEMES)[number];
+
+export function isShowcaseTheme(value: unknown): value is ShowcaseTheme {
+  return typeof value === "string" && (SHOWCASE_THEMES as readonly string[]).includes(value);
+}
+
+/** Eine Kompetenz, die das Profil für die Rolle nennt, in seiner Schreibweise. */
+export type ShowcaseEvidence = {
+  skill: string;
+  /** Muss-Kompetenz der Rolle, nicht nur eine weitere passende Angabe. */
+  required: boolean;
+  /** Von XPORTAL geprüft statt nur angegeben. */
+  verified: boolean;
+};
+
+/**
+ * Wie der Kontakt tatsächlich zustande kommt: über eine Anfrage, die XPORTAL
+ * prüft und vorstellt, über den Terminkalender des Freelancers, oder derzeit
+ * gar nicht direkt.
+ */
+export type ShowcaseContact = "request" | "calendar" | "none";
 
 export type ShowcaseProfile = {
   id: string;
   displayName: string;
   role: string;
   avatarUrl: string | null;
-  /** In der Schreibweise des Profils, Themen-Skills zuerst. */
-  skills: string[];
+  /** Muss-Kompetenzen der Rolle zuerst, dann weitere passende Angaben. */
+  evidence: ShowcaseEvidence[];
+  /** Das Honorar wie auf der Ergebniskarte; `null`, wenn keines angegeben ist. */
+  rate: string | null;
+  availability: {
+    status: AvailabilityStatus;
+    /** Wann der Freelancer die Verfügbarkeit zuletzt angegeben hat. */
+    updatedAt: string | null;
+    availableFrom: string | null;
+  };
+  contact: ShowcaseContact;
+  /** Ort, wie der Freelancer ihn angibt. */
+  location: string | null;
+  workModes: WorkMode[];
+  /** Profilprüfung durch XPORTAL abgeschlossen. */
+  verified: boolean;
+  /** Fachgebiet für das Titelband; `null` ohne erkennbare Rolle oder Skills. */
+  field: ProfileField | null;
+  /** Der erste Satz des Kurzprofils. */
+  summaryExcerpt: string | null;
+  /** Referenznotiz des Betreibers, nur wenn freigeschaltet. */
+  referencesSummary?: string | null;
+  /** Das Referenzprojekt für die Karte und wie viele es insgesamt gibt. */
+  highlight?: ProjectTeaser | null;
+  projectCount?: number;
 };
 
 export type RegisteredShowcase = {
-  theme: "automation";
+  theme: ShowcaseTheme;
+  /** Für die Überschrift: „… Profile für {label}“. */
+  label: string;
   /** Alle passenden, selbst angemeldeten Profile — nicht nur die gezeigten. */
   total: number;
   profiles: ShowcaseProfile[];
 };
 
-export const EMPTY_AUTOMATION_SHOWCASE: RegisteredShowcase = {
-  theme: "automation",
-  total: 0,
-  profiles: [],
+type ThemeDefinition = {
+  label: string;
+  /**
+   * Kanonische Kompetenzen, die das Profil alle nennen muss — dieselben, die
+   * der Abgleich aus dem unveränderten Anfang des Shortcuts als Kern liest.
+   * Wer nur einen Teil nennt, fiele dort unter die Empfehlungsschwelle und
+   * gehört deshalb auch hier nicht in die Liste.
+   */
+  required: readonly string[];
+  /** Weitere kanonische Kompetenzen, die die Rolle belegen. */
+  related: ReadonlySet<string>;
+  /**
+   * Werkzeuge ohne Eintrag im Vokabular. Nur ganze Angaben: „MCP“ als Skill
+   * ist das Protokoll, „MCP-Zertifikat“ nicht.
+   */
+  relatedTool: RegExp;
+  /**
+   * Die gesuchte Rolle, wo eine Kompetenz allein nicht reicht: Viele Profile
+   * nennen „Requirements Engineering“ als eine Fähigkeit unter vielen, ohne
+   * Requirements Engineer zu sein. Ein Profil, dessen Rolle erkennbar etwas
+   * anderes ist, fehlt dann; eines ohne erkennbare Rolle bleibt.
+   */
+  roleTitle: string | null;
 };
 
-/** Kanonische Skills aus dem geprüften Vokabular, die das Thema belegen. */
-const AUTOMATION_SKILLS: ReadonlySet<string> = new Set([
-  "AI Agents",
-  "n8n",
-  "Large Language Models",
-  "RAG",
-  "Business Process Automation",
-  "AI Tooling",
-  "Azure OpenAI",
-]);
+const THEMES: Readonly<Record<ShowcaseTheme, ThemeDefinition>> = {
+  "ai-agents": {
+    label: "AI-Agent-Entwicklung",
+    required: ["AI Agents"],
+    related: new Set(["Large Language Models", "RAG", "n8n", "Azure OpenAI", "AI Tooling"]),
+    relatedTool:
+      /^(?:langchain|langgraph|llamaindex|crewai|autogen|mcp|openai(?: api)?|claude api|prompt engineering)$/iu,
+    roleTitle: null,
+  },
+  "react-typescript": {
+    label: "React & TypeScript",
+    required: ["React", "TypeScript"],
+    related: new Set(["Next.js", "Node.js", "JavaScript"]),
+    relatedTool: /^(?:redux|vite|tailwind(?: ?css)?|tanstack query|react query|jest|vitest|playwright|storybook)$/iu,
+    roleTitle: null,
+  },
+  "requirements-engineering": {
+    label: "Requirements Engineering",
+    required: ["Requirements Management"],
+    related: new Set(["Business Analysis", "Process Management"]),
+    relatedTool: /^(?:bpmn(?: 2\.0)?|uml|user stories|jira|confluence|stakeholder[- ]management)$/iu,
+    roleTitle: "Requirements Engineer",
+  },
+};
 
-/**
- * Werkzeuge, die (noch) keinen Eintrag im Vokabular haben. Nur ganze Angaben:
- * „Make“ als Skill ist das Werkzeug, „Make-up Artist“ ist es nicht.
- */
-const AUTOMATION_TOOL =
-  /^(?:make(?:\.com)?|zapier|langchain|langgraph|crewai|autogen|openai(?: api)?|chatgpt|prompt engineering)$/iu;
-
-/** Rollen, die Automatisierung ohne KI-Wort nennen: „Workflow-Automatisierung“. */
-const AUTOMATION_ROLE = /automatisier|automation|workflow/iu;
-
-function isAutomationSkill(value: string): boolean {
-  return AUTOMATION_SKILLS.has(canonicalSkill(value)) || AUTOMATION_TOOL.test(value.trim());
+export function emptyShowcase(theme: ShowcaseTheme): RegisteredShowcase {
+  return { theme, label: THEMES[theme].label, total: 0, profiles: [] };
 }
 
-function automationSkills(profile: FreelancerProfile): string[] {
-  return profile.skillTags.map(({ value }) => value).filter(isAutomationSkill);
+/** Was das Profil für die Rolle nennt; `null`, wenn eine Muss-Kompetenz fehlt. */
+function themeEvidence(profile: FreelancerProfile, theme: ThemeDefinition): ShowcaseEvidence[] | null {
+  const tags = profile.skillTags.map((tag) => ({ ...tag, canonical: canonicalSkill(tag.value) }));
+  const required: ShowcaseEvidence[] = [];
+  for (const skill of theme.required) {
+    const tag = tags.find((candidate) => candidate.canonical === skill);
+    if (!tag) return null;
+    required.push({ skill: tag.value, required: true, verified: tag.source === "verified" });
+  }
+  const seen = new Set(theme.required);
+  const related: ShowcaseEvidence[] = [];
+  for (const tag of tags) {
+    if (seen.has(tag.canonical)) continue;
+    if (!theme.related.has(tag.canonical) && !theme.relatedTool.test(tag.value.trim())) continue;
+    seen.add(tag.canonical);
+    related.push({ skill: tag.value, required: false, verified: tag.source === "verified" });
+  }
+  return [...required, ...related];
 }
 
-export function isAutomationProfile(profile: FreelancerProfile): boolean {
-  return (
-    automationSkills(profile).length > 0 ||
-    roleFamilies(profile.role).includes("ai") ||
-    AUTOMATION_ROLE.test(profile.role)
-  );
+function contactFor(profile: FreelancerProfile, placement: boolean): ShowcaseContact {
+  if (placement) return "request";
+  return profile.introPolicy.bookingUrl ? "calendar" : "none";
 }
 
-function cardSkills(profile: FreelancerProfile): string[] {
-  const theme = automationSkills(profile);
-  const rest = profile.skillTags
-    .map(({ value }) => value)
-    .filter((value) => !theme.includes(value));
-  return [...new Set([...theme, ...rest])].slice(0, SKILLS_PER_PROFILE);
+/** Angegeben innerhalb der Frist, ab der die Karte zur Bestätigung rät. */
+function freshAvailability(profile: FreelancerProfile, now: Date): boolean {
+  const { status, checkedAt } = profile.availability;
+  if (status === "unknown" || !checkedAt) return false;
+  const time = new Date(checkedAt).getTime();
+  return !Number.isNaN(time) && now.getTime() - time <= AVAILABILITY_FRESH_DAYS * DAY_MS;
 }
 
 function compareText(left: string, right: string): number {
@@ -92,19 +188,26 @@ function compareText(left: string, right: string): number {
 }
 
 /**
- * Die Auswahl für den Shortcut, fest geordnet: mehr belegte Themen-Skills
- * zuerst, dann nach Namen. Kein Zufall, keine Bewertung — bei jedem Aufruf
- * dieselbe Reihenfolge.
+ * Die Auswahl für den Shortcut, fest geordnet: zuerst, wessen
+ * Verfügbarkeitsangabe frisch ist — mit wem sich ein Gespräch jetzt führen
+ * lässt —, dann mehr belegte Kompetenzen der Rolle, dann ein angegebenes
+ * Honorar, dann nach Namen. Kein Zufall, keine Bewertung.
  *
  * `profiles` sind die aktiven, echten, buchbaren Profile, die auch das
  * Matching sieht; `registeredProfileIds` die, hinter denen eine eigene
  * Anmeldung steht.
  */
-export function selectAutomationShowcase(
+export function selectShowcase(
+  theme: ShowcaseTheme,
   profiles: readonly FreelancerProfile[],
   registeredProfileIds: ReadonlySet<string>,
-  limit = SHOWCASE_LIMIT,
+  now: Date = new Date(),
+  options: { limit?: number; placement?: boolean } = {},
 ): RegisteredShowcase {
+  const definition = THEMES[theme];
+  const limit = options.limit ?? SHOWCASE_LIMIT;
+  const placement = options.placement ?? placementRequestsEnabled();
+
   const eligible = profiles
     .filter(
       (profile) =>
@@ -112,25 +215,45 @@ export function selectAutomationShowcase(
         profile.profileStatus === "active" &&
         profile.availability.status !== "unavailable" &&
         registeredProfileIds.has(profile.id) &&
-        isAutomationProfile(profile),
+        roleFit(definition.roleTitle, profile.role).kind !== "mismatch",
     )
-    .map((profile) => ({ profile, weight: automationSkills(profile).length }))
+    .flatMap((profile) => {
+      const evidence = themeEvidence(profile, definition);
+      return evidence
+        ? [{ profile, evidence, fresh: freshAvailability(profile, now), rate: formatProfileRate(profile) }]
+        : [];
+    })
     .sort(
       (left, right) =>
-        right.weight - left.weight ||
+        Number(right.fresh) - Number(left.fresh) ||
+        right.evidence.length - left.evidence.length ||
+        Number(right.rate !== null) - Number(left.rate !== null) ||
         compareText(left.profile.displayName, right.profile.displayName) ||
         compareText(left.profile.id, right.profile.id),
     );
 
   return {
-    theme: "automation",
+    theme,
+    label: definition.label,
     total: eligible.length,
-    profiles: eligible.slice(0, limit).map(({ profile }) => ({
+    profiles: eligible.slice(0, limit).map(({ profile, evidence, rate }) => ({
       id: profile.id,
       displayName: profile.displayName,
       role: profile.role,
       avatarUrl: normalizeAvatarUrl(profile.avatarUrl),
-      skills: cardSkills(profile),
+      evidence: evidence.slice(0, EVIDENCE_PER_PROFILE),
+      rate,
+      availability: {
+        status: profile.availability.status,
+        updatedAt: profile.availability.checkedAt,
+        availableFrom: profile.availability.availableFrom,
+      },
+      contact: contactFor(profile, placement),
+      location: profile.location?.value ?? null,
+      workModes: [...profile.workModes],
+      verified: profile.referenceStatus === "verified",
+      field: profileField(profile.role, profile.skillTags.map(({ value }) => value)),
+      summaryExcerpt: summaryExcerpt(profile.experienceSummary.value),
     })),
   };
 }

@@ -4,6 +4,9 @@ import { useRef, useState, type FormEvent } from "react";
 
 import { TagInput } from "@/components/TagInput";
 import { AuthDialog } from "@/components/chat/dialogs";
+import { ShowcaseCard } from "@/components/chat/showcase-card";
+import type { AuthDialogMode } from "@/components/chat/shared";
+import { exampleApplicationPreview } from "@/lib/freelancer/application-preview";
 import { signOut } from "@/lib/auth/browser";
 import { appPath } from "@/lib/app-path";
 import { placementRequestsEnabled } from "@/lib/placement/config";
@@ -27,8 +30,12 @@ import type {
   FreelancerMetrics,
 } from "@/lib/freelancer/portal";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
+import { ProjectListEditor } from "@/components/profile/ProjectListEditor";
+import { profileStrength } from "@/lib/freelancer/profile-strength";
+import type { ProfileProject } from "@/lib/profile/project-limits";
 
 import styles from "./apply.module.css";
+import { PROJECT_EDITOR_CLASSES } from "./project-editor-classes";
 
 const tagClasses = {
   field: styles.field,
@@ -82,42 +89,111 @@ export function onboardingFacts(placement: boolean): ReadonlyArray<{ term: strin
   ];
 }
 
+/**
+ * Die drei Wege, auf denen Menschen zu XPORTAL kommen. Wer über die Agentur
+ * für Arbeit oder das Jobcenter kommt, ist oft (noch) nicht selbstständig und
+ * soll sich trotzdem angesprochen fühlen. Bewusst ohne
+ * „Arbeitnehmerüberlassung“: Die bietet XPORTAL nicht an (AGB § 10).
+ */
+export const APPLICANT_PATHS: ReadonlyArray<{ title: string; text: string }> = [
+  { title: "Projekte als Freelancer", text: "Sie arbeiten selbstständig oder möchten es werden." },
+  { title: "Eine feste Stelle", text: "Sie suchen eine Anstellung und zeigen, was Sie können." },
+  {
+    title: "Auf dem Weg in die Selbstständigkeit",
+    text: "Sie müssen noch nicht selbstständig sein, um ein Profil anzulegen.",
+  },
+];
+
+/**
+ * Fragen, die vor allem Menschen ohne Freelance-Erfahrung stellen. Keine
+ * Zusage zu Förderung oder Leistungen: nur der Hinweis, wen man fragt.
+ */
+export const APPLICANT_FAQ: ReadonlyArray<{ question: string; answer: string }> = [
+  {
+    question: "Muss ich schon selbstständig sein?",
+    answer:
+      "Nein. Sie können ein Profil anlegen, bevor Sie eine selbstständige Tätigkeit anmelden. Wie Sie arbeiten, klären Sie vor dem ersten Auftrag.",
+  },
+  {
+    question: "Ich suche eine feste Stelle. Bin ich hier richtig?",
+    answer:
+      "Ja. Wählen Sie im Formular „Eine feste Stelle“. Ihr Profil erscheint dann nicht in der öffentlichen Freelancer-Suche; es sieht nur das XPORTAL-Team.",
+  },
+  {
+    question: "Ich beziehe Arbeitslosengeld oder Bürgergeld.",
+    answer:
+      "Teilen Sie einen Auftrag oder eine neue Stelle wie gewohnt Ihrer Agentur für Arbeit oder Ihrem Jobcenter mit. Wenn Sie sich selbstständig machen möchten, fragen Sie dort nach Förderung, etwa dem Gründungszuschuss (bei Arbeitslosengeld) oder dem Einstiegsgeld (bei Bürgergeld).",
+  },
+  {
+    question: "Ich habe Lücken im Lebenslauf.",
+    answer:
+      "Kein Problem. Wir schauen auf das, was Sie können. Ein Lebenslauf hilft bei der Sichtung, ist aber freiwillig.",
+  },
+];
+
 export function FreelancerAuthGate() {
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<AuthDialogMode | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
+  const [shownAt] = useState(() => new Date());
 
   return (
     <>
-      <section className={styles.portalCard}>
-        <p className={styles.eyebrow}>Geschützter Freelancer-Bereich</p>
-        <h2>Ein Konto schützt Ihre Angaben bis zur Freigabe.</h2>
-        <p>
-          Nach der Anmeldung reichen Sie Ihr Profil zur Sichtung ein. Erst nach
-          der Freigabe können passende Angaben als Beleg in einem Match erscheinen;
-          den Kontakt entscheidet weiterhin der Kunde.
-        </p>
-        <dl className={styles.onboardingFacts}>
-          {onboardingFacts(placementRequestsEnabled()).map((fact) => (
-            <div key={fact.term}><dt>{fact.term}</dt><dd>{fact.text}</dd></div>
-          ))}
-        </dl>
-        {notice ? (
-          <p className={notice.tone === "error" ? styles.formError : styles.callout}>
-            {notice.message}
+      <section className={styles.gate}>
+        <div className={styles.gateMain}>
+          <p className={styles.eyebrow}>Kostenlos für Sie</p>
+          <h2>Ein Profil, drei Wege.</h2>
+          <ul className={styles.paths}>
+            {APPLICANT_PATHS.map((path) => (
+              <li key={path.title}>
+                <strong>{path.title}</strong>
+                <span>{path.text}</span>
+              </li>
+            ))}
+          </ul>
+          <dl className={styles.onboardingFacts}>
+            {onboardingFacts(placementRequestsEnabled()).map((fact) => (
+              <div key={fact.term}><dt>{fact.term}</dt><dd>{fact.text}</dd></div>
+            ))}
+          </dl>
+          {notice ? (
+            <p className={notice.tone === "error" ? styles.formError : styles.callout}>
+              {notice.message}
+            </p>
+          ) : null}
+          <div className={styles.gateActions}>
+            <button className={styles.submit} type="button" onClick={() => setDialogMode("register")}>
+              Kostenlos Profil anlegen
+            </button>
+            <button className={styles.gateLogin} type="button" onClick={() => setDialogMode("login")}>
+              Schon registriert? Anmelden
+            </button>
+          </div>
+          <p className={styles.hint}>Ein Konto schützt Ihre Angaben, bis XPORTAL das Profil freigibt.</p>
+        </div>
+        <aside className={styles.gateExample} aria-labelledby="apply-example-title">
+          <p className={styles.eyebrow}>Beispiel</p>
+          <h3 id="apply-example-title">So sehen Unternehmen Ihr Profil</h3>
+          <ShowcaseCard profile={exampleApplicationPreview(shownAt)} now={shownAt} href={null} />
+          <p className={styles.hint}>
+            Ein ausgedachtes Profil. Ihres zeigt nur, was Sie angeben und XPORTAL freigibt.
           </p>
-        ) : null}
-        <button
-          className={styles.submit}
-          type="button"
-          onClick={() => setDialogOpen(true)}
-        >
-          Anmelden oder Konto erstellen
-        </button>
+        </aside>
       </section>
-      {dialogOpen ? (
+      <section className={styles.faq} aria-labelledby="apply-faq-title">
+        <h2 id="apply-faq-title">Häufige Fragen</h2>
+        {APPLICANT_FAQ.map((entry) => (
+          <details key={entry.question}>
+            <summary>{entry.question}</summary>
+            <p>{entry.answer}</p>
+          </details>
+        ))}
+      </section>
+      {dialogMode ? (
         <AuthDialog
-          initialMode="login"
-          onClose={() => setDialogOpen(false)}
+          initialMode={dialogMode}
+          // Nach der Bestätigung per E-Mail zurück zum Formular, nicht in den Chat.
+          destination="/freelancer/apply"
+          onClose={() => setDialogMode(null)}
           onAuthenticated={() => window.location.reload()}
           showToast={(message, tone) =>
             setNotice({
@@ -145,8 +221,8 @@ const applicationCopy = {
     text: "Das veröffentlichte Profil wird vorbereitet. Laden Sie die Seite in Kürze erneut, um Ihr Dashboard zu öffnen.",
   },
   rejected: {
-    title: "Ihre Bewerbung wurde noch nicht freigegeben.",
-    text: "Sie können Ihre Angaben überarbeiten und eine neue Bewerbung einreichen.",
+    title: "Wir konnten Ihr Profil noch nicht freigeben.",
+    text: "Ergänzen Sie Ihre Angaben unten und senden Sie das Profil erneut. Bei Fragen erreichen Sie uns über das Kontaktformular.",
   },
 } as const;
 
@@ -201,12 +277,65 @@ export function FreelancerDashboard({
   initialProfile,
   metrics,
   preview = false,
+  initialProjects = [],
+  projectsAvailable = false,
+  seeking = "projects",
+  availabilityUpdatedAt = null,
 }: {
   initialProfile: EditableFreelancerProfile;
   metrics: FreelancerMetrics;
   preview?: boolean;
+  initialProjects?: ProfileProject[];
+  projectsAvailable?: boolean;
+  seeking?: "projects" | "employment" | "both";
+  availabilityUpdatedAt?: string | null;
 }) {
   const [profile, setProfile] = useState(initialProfile);
+  const [projects, setProjects] = useState(initialProjects);
+  const [projectNotice, setProjectNotice] = useState<Notice>(null);
+  const [projectBusy, setProjectBusy] = useState(false);
+  const [strengthAt] = useState(() => new Date());
+  // Live aus dem, was gerade im Formular steht: Wer ein Foto oder Projekt
+  // ergänzt, sieht die Zahl sofort steigen.
+  const strength = profileStrength({
+    hasPhoto: Boolean(profile.avatarUrl),
+    summaryLength: profile.experienceSummary.trim().length,
+    projects: projects.filter((project) => project.isPublic).map((project) => ({ hasOutcome: Boolean(project.outcome) })),
+    hasRate: Boolean(profile.dayRate ?? profile.hourlyRate),
+    seeking,
+    availabilityUpdatedAt,
+    skillsCount: profile.skills.length,
+    industriesCount: profile.industries.length,
+    now: strengthAt,
+  });
+
+  async function saveProjects() {
+    setProjectNotice(null);
+    if (preview) {
+      setProjectNotice({ message: "Projekte gespeichert.", tone: "success" });
+      return;
+    }
+    setProjectBusy(true);
+    try {
+      const response = await fetch(appPath("/api/freelancer/projects"), {
+        method: "PUT",
+        credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ projects }),
+      });
+      const payload = (await response.json().catch(() => null)) as { projects?: ProfileProject[]; error?: string } | null;
+      if (!response.ok || !payload?.projects) {
+        setProjectNotice({ message: apiError(payload, "Die Projekte konnten nicht gespeichert werden."), tone: "error" });
+        return;
+      }
+      setProjects(payload.projects);
+      setProjectNotice({ message: "Projekte gespeichert. Kunden sehen sie auf Karte und Profil.", tone: "success" });
+    } catch {
+      setProjectNotice({ message: "Keine Verbindung zum Server. Bitte erneut versuchen.", tone: "error" });
+    } finally {
+      setProjectBusy(false);
+    }
+  }
   const [notice, setNotice] = useState<Notice>(null);
   const [busy, setBusy] = useState<"save" | "avatar" | "delete" | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
@@ -539,6 +668,33 @@ export function FreelancerDashboard({
         </div>
       </section>
 
+      <section className={styles.strength} aria-labelledby="profile-strength-title">
+        <div>
+          <p className={styles.eyebrow}>Profilstärke</p>
+          <h2 id="profile-strength-title">
+            {strength.done} von {strength.total} · {strength.level}
+          </h2>
+          <meter min={0} max={strength.total} value={strength.done} aria-label="Profilstärke" />
+          <p>
+            {strength.next ? (
+              <>
+                <strong>Nächster Schritt: {strength.next.label}.</strong> {strength.next.hint}
+              </>
+            ) : (
+              "Ihr Profil ist vollständig. Halten Sie Verfügbarkeit und Projekte aktuell."
+            )}
+          </p>
+        </div>
+        <a
+          className={styles.uploadButton}
+          href={appPath(`/profil/${profile.id}?via=share`)}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          So sehen Kunden Ihr Profil ↗
+        </a>
+      </section>
+
       <section className={styles.metrics} aria-label="Profilstatistik">
         <MetricCard
           label="Profilaufrufe"
@@ -658,6 +814,32 @@ export function FreelancerDashboard({
           </span>
         </div>
       </form>
+
+      <section className={styles.section} aria-labelledby="projects-title">
+        <p className={styles.eyebrow}>Referenzprojekte</p>
+        <h2 id="projects-title">Woran Sie gearbeitet haben</h2>
+        <p className={styles.sectionHint}>
+          Bis zu acht Projekte. Ein von XPORTAL geprüftes oder sonst das erste steht auf Ihrer Karte; alle
+          zusammen im Profil.
+        </p>
+        {projectsAvailable || preview ? (
+          <>
+            <ProjectListEditor projects={projects} onChange={setProjects} mode="owner" classes={PROJECT_EDITOR_CLASSES} />
+            {projectNotice ? (
+              <p className={projectNotice.tone === "error" ? styles.formError : styles.callout} role={projectNotice.tone === "error" ? "alert" : "status"}>
+                {projectNotice.message}
+              </p>
+            ) : null}
+            <div className={styles.actions} style={{ marginTop: 14 }}>
+              <button className={styles.submit} type="button" disabled={projectBusy} onClick={() => void saveProjects()}>
+                {projectBusy ? "Wird gespeichert …" : "Projekte speichern"}
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className={styles.callout}>Projekte lassen sich in Kürze hier eintragen.</p>
+        )}
+      </section>
 
       <section className={`${styles.section} ${styles.dangerZone}`}>
         <p className={styles.eyebrow}>Gefahrenbereich</p>

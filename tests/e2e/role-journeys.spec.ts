@@ -26,7 +26,7 @@ test.describe("geschützte Rollen-Journeys", () => {
     await expect(page.getByText("Im Erstgespräch klären", { exact: true }).first()).toBeVisible();
     await page.getByText("Wie kommt diese Auswahl zustande?").click();
     await expect(page.getByLabel("Vom Projekttext zur prüfbaren Auswahl")).toBeVisible();
-    await page.getByRole("button", { name: "Vollständiges Profil und Belege" }).first().click();
+    await page.getByRole("button", { name: "Belege zum Projekt" }).first().click();
     await expect(page.getByText("Im Profil belegt", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Anna Keller", { exact: true }).first()).toBeVisible();
     await page.getByRole("button", { name: "Konto und Einstellungen öffnen" }).click();
@@ -48,7 +48,7 @@ test.describe("geschützte Rollen-Journeys", () => {
     await expect(alex.getByText("Start kurzfristig: noch zu klären")).toBeVisible();
     await expect(alex.getByText(/Unterstützt Unternehmen bei KI-Roadmaps/u)).toHaveCount(0);
 
-    await alex.getByRole("button", { name: "Vollständiges Profil und Belege" }).click();
+    await alex.getByRole("button", { name: "Belege zum Projekt" }).click();
     await expect(alex.getByText(/Unterstützt Unternehmen bei KI-Roadmaps/u)).toBeVisible();
     await expect(alex.getByRole("button", { name: "Kontaktwege anzeigen" })).toBeVisible();
   });
@@ -66,7 +66,7 @@ test.describe("geschützte Rollen-Journeys", () => {
 
     // Nach dem Abbruch gilt die neue Aktion — nicht das zuvor gewählte Profil.
     const jo = page.locator("article.profile-card", { hasText: "Jo Beispiel" });
-    await jo.getByRole("button", { name: "Vollständiges Profil und Belege" }).click();
+    await jo.getByRole("button", { name: "Belege zum Projekt" }).click();
     await jo.getByRole("button", { name: "Kontaktwege anzeigen" }).click();
     await expect(dialog.locator(".auth-profile-context")).toContainText("Jo Beispiel");
     await expect(dialog.locator(".auth-profile-context")).not.toContainText("Alex Beispiel");

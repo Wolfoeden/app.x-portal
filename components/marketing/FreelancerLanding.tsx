@@ -44,10 +44,11 @@ function processSteps(placement: boolean) {
   ];
 }
 
-/** Was ein Beispiel auf der Landingpage verspricht, in einem Satz. */
+/** Wofür die Rolle steht, in einem Satz — ohne Zusage über den Bestand. */
 const EXAMPLE_TEASERS: Readonly<Record<ExampleBriefKey, string>> = {
-  "ki-automatisierung": "Workflows automatisieren, ein LLM anbinden, RAG auf eigene Dokumente.",
-  anforderungen: "Anforderungen aufnehmen, Prozesse analysieren, Umsetzung abstimmen.",
+  "ai-agenten": "Agenten auf Basis von Sprachmodellen, angebunden an Ihre Systeme und Daten.",
+  "react-typescript": "Weboberflächen und Anwendungen mit React und TypeScript.",
+  "requirements-engineer": "Anforderungen mit den Fachbereichen aufnehmen und für die Umsetzung klären.",
 };
 
 const MONTHLY_PLANS: readonly FixedMonthlyPlan[] = PUBLIC_PRICING_PLANS.flatMap((plan) =>
@@ -156,18 +157,18 @@ export function FreelancerLanding() {
       </section>
 
       {/* Früher vier Etiketten, die wie Knöpfe aussahen und nirgendwohin
-          führten. Jetzt öffnet jedes Thema den Chat mit einem Beispielprojekt —
-          nur Themen, die der Profilbestand trägt; alles andere über den eigenen
-          Text. */}
+          führten. Jetzt öffnet jede Rolle den Chat mit dem Anfang einer
+          Anfrage — nur Rollen, die der Profilbestand trägt; alles andere über
+          den eigenen Text. */}
       <section className={styles.fields} aria-labelledby="felder-title">
-        <div><p className={styles.eyebrow}>Direkt ausprobieren</p><h2 id="felder-title">Was möchten Sie umsetzen?</h2><p className={styles.fieldsLead}>Ein Klick öffnet ein Beispielprojekt, ohne Anmeldung. Anpassen, abschicken, passende Profile sehen.</p></div>
+        <div><p className={styles.eyebrow}>Direkt ausprobieren</p><h2 id="felder-title">Wen suchen Sie?</h2><p className={styles.fieldsLead}>Ein Klick öffnet den Chat mit dem Anfang Ihrer Anfrage, ohne Anmeldung. Aufgabe, Start und Budget ergänzen, abschicken, passende Profile sehen.</p></div>
         <ul className={styles.themeList}>
           {EXAMPLE_BRIEFS.map((example) => (
             <li key={example.key}>
               <Link className={styles.themeLink} href={exampleBriefPath(example.key)} prefetch={false}>
                 <strong>{example.label}</strong>
                 <span>{EXAMPLE_TEASERS[example.key]}</span>
-                <em>Beispiel öffnen <span aria-hidden="true">→</span></em>
+                <em>Anfrage beginnen <span aria-hidden="true">→</span></em>
               </Link>
             </li>
           ))}

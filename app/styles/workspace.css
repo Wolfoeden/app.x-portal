@@ -1239,6 +1239,16 @@
   font-weight: 600;
 }
 
+/* „Oder mit einer Rolle beginnen:“ — die Rollen sind der Nebenweg zur
+   eingefügten Projektanzeige. */
+.suggestion-grid-title {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
 .suggestion-intro {
   margin: 0 2px 10px;
   color: var(--muted-light);
@@ -4435,6 +4445,56 @@ a.secondary-action {
   font: inherit;
 }
 
+.placement-fields textarea {
+  min-height: 72px;
+  resize: vertical;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: 10px 12px;
+  color: var(--ink);
+  font: inherit;
+  line-height: 1.45;
+}
+
+/* „XPORTAL sucht für Sie“ unter dem Ergebnis: zugeklappt eine Zeile mit
+   Knopf, geöffnet das Formular mit den Vermittlungsbedingungen. */
+.mandate-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 18px;
+  margin-top: 14px;
+  border: 1px solid var(--green-border);
+  border-radius: var(--radius-md);
+  background: var(--green-soft);
+  padding: 14px 16px;
+}
+
+.mandate-card > div { min-width: 0; flex: 1 1 320px; }
+.mandate-card strong { display: block; font-size: var(--fs-sm); }
+.mandate-card p { margin: 4px 0 0; color: var(--ink-soft); font-size: var(--fs-xs); line-height: 1.5; }
+.mandate-card.is-open { display: grid; align-items: start; background: var(--surface); border-color: var(--border); }
+.mandate-card.is-open .placement-form { margin-top: 4px; }
+.mandate-card.is-done { justify-content: flex-start; flex-wrap: nowrap; }
+.mandate-icon {
+  display: inline-flex;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--green);
+  color: #fff;
+}
+
+@media (max-width: 620px) {
+  .mandate-card .placement-fields { grid-template-columns: 1fr; }
+  .mandate-card .primary-action { width: 100%; }
+}
+
 .project-destination-list {
   display: grid;
   max-height: 250px;
@@ -5295,8 +5355,8 @@ a.secondary-action {
 }
 .composer-credit-status.is-exhausted p { margin: 0; }
 
-/* Selbst angemeldete Profile unter dem Shortcut „KI & Automatisierung“. Auf
-   der Flucht des Antworttexts, damit die Liste zur Nachricht darüber gehört. */
+/* Selbst angemeldete Profile unter einem Rollen-Shortcut. Auf der Flucht des
+   Antworttexts, damit die Liste zur Nachricht darüber gehört. */
 .registered-showcase {
   margin-left: 41px;
   border: 1px solid var(--border);
@@ -5323,65 +5383,176 @@ a.secondary-action {
 
 .registered-showcase-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.registered-showcase-list a {
+/* Profilkarte: unter den Shortcuts und als Vorschau in der Bewerbung. Oben
+   das Band des Fachgebiets, darüber das Monogramm; die Fakten stehen unten
+   bündig, damit Karten einer Reihe gleich enden. */
+.showcase-card {
   display: flex;
   height: 100%;
-  align-items: flex-start;
+  flex-direction: column;
   gap: 10px;
+  overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: var(--surface);
-  padding: 10px 11px;
+  padding-bottom: 14px;
   color: inherit;
   text-decoration: none;
-  transition: border-color 150ms ease;
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
 }
 
-.registered-showcase-list a:hover,
-.registered-showcase-list a:focus-visible {
+.showcase-card > :not(.pband) {
+  margin-inline: 14px;
+}
+
+a.showcase-card:hover,
+a.showcase-card:focus-visible {
   border-color: var(--border-hover);
+  box-shadow: 0 12px 32px rgba(24, 24, 22, 0.09);
+  transform: translateY(-2px);
 }
 
-.registered-showcase-list .profile-avatar {
-  width: 34px;
-  height: 34px;
-  font-size: var(--fs-xs);
+/* Band je Fachgebiet: Verlauf mit feinem Punktraster, ohne Bilddatei. */
+.pband {
+  --band-a: #ecece7;
+  --band-b: #f5f5f1;
+  --band-ink: #4a4a44;
+  display: flex;
+  min-height: 54px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.6) 1px, transparent 0) 0 0 / 9px 9px,
+    linear-gradient(120deg, var(--band-a), var(--band-b));
+  padding: 9px 12px;
 }
 
-.registered-showcase-identity {
+.pband[data-field="ai"] { --band-a: #e9e2ff; --band-b: #d8ecff; --band-ink: #4b2f9e; }
+.pband[data-field="data"] { --band-a: #dbefff; --band-b: #ddf6ec; --band-ink: #0b5674; }
+.pband[data-field="frontend"] { --band-a: #ffe9d6; --band-b: #ffe2ef; --band-ink: #8c3a12; }
+.pband[data-field="software"] { --band-a: #e1e9fb; --band-b: #ecf0f6; --band-ink: #2a4787; }
+.pband[data-field="cloud"] { --band-a: #dbf1f5; --band-b: #e4eaff; --band-ink: #0f5a68; }
+.pband[data-field="sap"] { --band-a: #dde9ff; --band-b: #ebf3ff; --band-ink: #0b4ea0; }
+.pband[data-field="requirements"] { --band-a: #f3ecd8; --band-b: #e6f3e1; --band-ink: #5b4810; }
+.pband[data-field="business"] { --band-a: #fde4ea; --band-b: #fff0da; --band-ink: #8c2840; }
+
+.pband-label,
+.pband-verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.82);
+  padding: 2px 8px;
+  color: var(--band-ink);
+  font-size: var(--fs-2xs);
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.pband-verified {
+  color: var(--green);
+}
+
+/* Monogramm in einer festen Farbe je Name. */
+.pid { background-color: var(--pid, var(--ink)); }
+.pid[data-tone="0"] { --pid: #1d4f91; }
+.pid[data-tone="1"] { --pid: #0f6e5f; }
+.pid[data-tone="2"] { --pid: #6b3fa0; }
+.pid[data-tone="3"] { --pid: #a03d2c; }
+.pid[data-tone="4"] { --pid: #2e6b30; }
+.pid[data-tone="5"] { --pid: #7d4e0f; }
+.pid[data-tone="6"] { --pid: #3f4b99; }
+.pid[data-tone="7"] { --pid: #8f2f63; }
+.pid[data-tone="8"] { --pid: #1f5a73; }
+.pid[data-tone="9"] { --pid: #5d5a14; }
+
+.showcase-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.showcase-card .profile-avatar {
+  width: 52px;
+  height: 52px;
+  margin-top: -32px;
+  box-shadow: 0 0 0 3px var(--surface);
+  font-size: var(--fs-base);
+}
+
+.showcase-card-identity {
   display: grid;
   min-width: 0;
-  gap: 2px;
-}
-
-.registered-showcase-identity strong {
-  overflow: hidden;
-  font-size: var(--fs-sm);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.registered-showcase-identity > span:not(.registered-showcase-skills) {
   color: var(--muted);
   font-size: var(--fs-xs);
   line-height: 1.4;
 }
 
-.registered-showcase-skills {
+.showcase-card-identity strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: var(--fs-base);
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.showcase-card-identity span + span {
+  color: var(--muted-light);
+  font-size: var(--fs-2xs);
+}
+
+.showcase-card-fit,
+.showcase-card-teaser {
+  display: grid;
+  gap: 6px;
+}
+
+/* Belegleiste: ein Segment je Anforderung, voll = geprüft, hell = angegeben. */
+.fit-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  color: var(--ink-soft);
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+}
+
+.fit-bar-track {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.fit-bar-track span {
+  width: 20px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--green);
+}
+
+.fit-bar-track [data-state="stated"] { background: #9ccfb0; }
+.fit-bar-track [data-state="missing"] { background: transparent; box-shadow: inset 0 0 0 1px var(--border-strong); }
+
+.showcase-card-skills {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  margin-top: 5px;
 }
 
-.registered-showcase-skills span {
+.showcase-card-skills > span:not(.sr-only) {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   background: var(--surface-soft);
@@ -5389,6 +5560,103 @@ a.secondary-action {
   color: var(--ink-soft);
   font-size: var(--fs-2xs);
   line-height: 1.5;
+}
+
+/* Die Muss-Kompetenz der Rolle: belegt, nicht nur verwandt. */
+.showcase-card-skills > span.is-required {
+  border-color: var(--green-soft);
+  background: var(--green-soft);
+  color: var(--green);
+  font-weight: 600;
+}
+
+.showcase-card-skills small {
+  font-size: inherit;
+  font-weight: 500;
+}
+
+.showcase-card-teaser {
+  gap: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  padding: 8px 10px;
+  color: var(--ink-soft);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+
+.showcase-card-teaser small {
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.showcase-card-teaser span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.showcase-card-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.showcase-card-rate {
+  font-size: var(--fs-base);
+  font-weight: 680;
+  white-space: nowrap;
+}
+
+.showcase-card-contact,
+.showcase-card-open {
+  margin-top: -4px;
+  color: var(--ink-soft);
+  font-size: var(--fs-2xs);
+  line-height: 1.5;
+}
+
+.showcase-card-open {
+  margin-top: 0;
+  border-left: 2px solid var(--amber-border);
+  padding-left: 7px;
+}
+
+.showcase-card-cta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  font-size: var(--fs-xs);
+  font-weight: 650;
+}
+
+.showcase-card-cta svg {
+  transition: transform 150ms ease;
+}
+
+a.showcase-card:hover .showcase-card-cta svg {
+  transform: translateX(3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .showcase-card,
+  .showcase-card-cta svg {
+    transition: none;
+  }
+
+  a.showcase-card:hover,
+  a.showcase-card:hover .showcase-card-cta svg {
+    transform: none;
+  }
 }
 
 .registered-showcase-note {
@@ -5402,4 +5670,387 @@ a.secondary-action {
   .registered-showcase {
     margin-left: 0;
   }
+}
+
+/* Die Ergebniskarte trägt dasselbe Band, schmaler und über die volle Breite. */
+.profile-main > .pband {
+  min-height: 0;
+  margin: -17px -18px 12px;
+  padding: 7px 18px;
+}
+
+.profile-evidence .fit-bar {
+  margin: -2px 0 8px;
+}
+
+.profile-references {
+  margin-top: 10px;
+}
+
+.profile-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Profil-Panel: rechts angedockt, unter 720 px als Blatt von unten. */
+.modal-backdrop.is-sheet {
+  place-items: stretch end;
+  padding: 0;
+}
+
+.modal-card.is-sheet {
+  width: min(100%, 560px);
+  height: 100dvh;
+  max-height: 100dvh;
+  border-radius: 22px 0 0 22px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .modal-card.is-sheet {
+    animation: sheet-in 220ms ease-out;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+@media (max-width: 720px) {
+  .modal-backdrop.is-sheet {
+    place-items: end stretch;
+  }
+
+  .modal-card.is-sheet {
+    width: 100%;
+    height: auto;
+    max-height: 92dvh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+}
+
+.profile-sheet {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+}
+
+.profile-sheet-actions {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  padding: 14px 20px 16px;
+}
+
+.profile-sheet-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.profile-sheet-hint,
+.dossier-muted {
+  margin: 6px 0 0;
+  color: var(--muted-light);
+  font-size: var(--fs-2xs);
+  line-height: 1.5;
+}
+
+/* Detailansicht eines Profils: Panel im Chat und /profil/<id>. */
+.dossier .pband {
+  min-height: 96px;
+  padding: 14px 60px 14px 20px;
+}
+
+.dossier-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 20px 0;
+}
+
+.dossier-head .profile-avatar {
+  width: 84px;
+  height: 84px;
+  margin-top: -58px;
+  box-shadow: 0 0 0 4px var(--surface);
+  font-size: var(--fs-xl);
+}
+
+.dossier-head > div {
+  min-width: 0;
+}
+
+.dossier-head h1,
+.dossier-head h2 {
+  margin: 0;
+  font-size: var(--fs-xl);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.dossier-head p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.dossier-keyfacts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 16px 20px 0;
+}
+
+.dossier-keyfacts > div {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  padding: 8px 10px;
+}
+
+.dossier-keyfacts dt,
+.dossier-section h3 {
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+  font-weight: 680;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.dossier-keyfacts dd {
+  margin: 3px 0 0;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+}
+
+.dossier-keyfacts .availability {
+  display: inline-block;
+  white-space: normal;
+}
+
+.dossier-links,
+.dossier-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dossier-links {
+  margin: 12px 20px 0;
+}
+
+.dossier-links a,
+.dossier-chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 2px 9px;
+  color: var(--ink-soft);
+  font-size: var(--fs-xs);
+}
+
+.dossier-links a {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.dossier-chips li {
+  background: var(--surface-soft);
+}
+
+.dossier-chips li.is-verified,
+.dossier-badge.is-verified {
+  border-color: var(--green-border);
+  background: var(--green-soft);
+  color: var(--green);
+  font-weight: 600;
+}
+
+.dossier-hero {
+  padding-bottom: 16px;
+}
+
+.dossier-section {
+  border-top: 1px solid var(--border);
+  padding: 16px 20px;
+}
+
+.dossier-section h3 {
+  margin: 0 0 8px;
+}
+
+.dossier-section > p,
+.dossier-timeline p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+}
+
+.dossier-section > p.dossier-muted {
+  margin-top: 8px;
+  color: var(--muted-light);
+  font-size: var(--fs-2xs);
+}
+
+/* Projekte als Zeitleiste: Punkt je Projekt auf einer Linie. */
+.dossier-timeline {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  border-left: 2px solid var(--border);
+  padding: 0 0 0 16px;
+  list-style: none;
+}
+
+.dossier-timeline > li {
+  position: relative;
+  display: grid;
+  gap: 6px;
+}
+
+.dossier-timeline > li::before {
+  position: absolute;
+  top: 5px;
+  left: -23px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 3px var(--ink);
+  content: "";
+}
+
+.dossier-project-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-base);
+}
+
+.dossier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-soft);
+  padding: 1px 7px;
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+}
+
+.dossier-project-links {
+  display: flex;
+  gap: 14px;
+}
+
+.dossier-project-links a {
+  color: var(--ink);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.dossier-facts {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.dossier-facts > div {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 10px;
+  font-size: var(--fs-sm);
+}
+
+.dossier-facts dt {
+  color: var(--muted);
+}
+
+.dossier-facts dd {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.dossier-facts .is-verified small {
+  color: var(--green);
+}
+
+.dossier-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  border-top: 1px solid var(--border);
+  padding: 12px 20px;
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+}
+
+.dossier-loading {
+  margin: 0;
+  padding: 20px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+@media (max-width: 520px) {
+  .dossier-keyfacts {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .dossier-facts > div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+
+/* Unter dem Desktop-Zoom zählt die Sichtfeldhöhe mit (siehe oben). */
+@media (min-width: 1220px) {
+  .modal-card.is-sheet {
+    height: calc(100dvh / var(--ui-zoom));
+    max-height: calc(100dvh / var(--ui-zoom));
+  }
+}
+
+/* Das Referenzprojekt auf einer Karte. */
+.showcase-card-teaser.is-project strong {
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  line-height: 1.35;
+}
+
+.showcase-card-teaser .project-teaser-tech {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.project-teaser-tech i {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  padding: 0 7px;
+  color: var(--ink-soft);
+  font-size: var(--fs-2xs);
+  font-style: normal;
+}
+
+.profile-references .showcase-card-teaser {
+  display: grid;
 }

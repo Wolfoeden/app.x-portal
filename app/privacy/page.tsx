@@ -204,6 +204,20 @@ export default function PrivacyPage() {
               Sicherheits- und Nachweiszwecken protokolliert. Nicht empfohlene
               Teiltreffer erhalten keinen Dokumentzugriff.
             </p>
+            <p>
+              Foto und Referenzprojekte sind freiwillig. Wer sie in der
+              Bewerbung oder im Dashboard angibt, möchte sie im Profil zeigen
+              (Art. 6 Abs. 1 lit. b DSGVO). Ein Foto aus der Bewerbung liegt
+              bis zur Prüfung in einem privaten Speicher, den nur unser Team
+              über kurzzeitig gültige Links einsieht. Mit der Freigabe wird es
+              zum Profilbild oder gelöscht; bei Ablehnung oder erneuter
+              Bewerbung löschen wir es. Projekte erscheinen nur, wenn sie zum
+              Zeigen markiert sind; Kundennamen nennen Sie nur, wenn Sie das
+              dürfen. Den Vermerk „von XPORTAL geprüft“ setzt nur unser Team,
+              und eine spätere inhaltliche Änderung hebt ihn auf. Foto und
+              Projekte lassen sich im Dashboard jederzeit ändern oder
+              entfernen.
+            </p>
           </div>
         </section>
 
@@ -364,6 +378,7 @@ export default function PrivacyPage() {
               <li>Nachrichten in inaktiven Projekten: 180 Tage;</li>
               <li>inaktive Projekte, Match-Snapshots und externe Suchergebnisse: Prüfung beziehungsweise Löschung nach 365 Tagen;</li>
               <li>Lebensläufe von Freelancern: bis zum Widerruf der Bereitstellung, zur Beendigung des Vermittlungszwecks oder bis zu einer früheren berechtigten Löschanfrage; die Erforderlichkeit wird bei Profilprüfung und Deaktivierung erneut geprüft;</li>
+              <li>Fotos aus Bewerbungen: bis zur Entscheidung über die Bewerbung, danach als Profilbild bis zu dessen Entfernung oder Löschung des Profils;</li>
               <li>Kontaktanfragen: Löschung nach Erledigung, spätestens Überprüfung nach 365 Tagen;</li>
               <li>Zähler der Ratenbegrenzung: Löschung am Tag nach Ablauf des jeweiligen Zeitfensters;</li>
               <li>technische KI-Nutzungsdaten: je nach Kontotyp und Abrechnungsfenster 90 bis 400 Tage;</li>
@@ -444,7 +459,7 @@ export default function PrivacyPage() {
           </div>
         </section>
 
-        <p className="xlegal-updated">Stand: 17. September 2026</p>
+        <p className="xlegal-updated">Stand: 2. Oktober 2026</p>
       </main>
 
       <PublicFooter />

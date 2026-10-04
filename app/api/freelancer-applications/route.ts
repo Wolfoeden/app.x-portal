@@ -12,6 +12,13 @@ import {
   FreelancerApplicationInputSchema,
 } from "@/lib/freelancer/application";
 import { recordInviteConversion } from "@/lib/sourcing/conversion";
+import { applicationExtrasAvailable } from "@/lib/freelancer/applications-data";
+import { avatarMimeTypeFromPath } from "@/lib/freelancer/avatar-limits";
+import {
+  AVATAR_BUCKET,
+  inspectUploadedAvatar,
+  verifyApplicationPhotoPath,
+} from "@/lib/freelancer/avatar-storage";
 import {
   hasPdfMagicBytes,
   verifyCvObjectPath,
@@ -129,7 +136,9 @@ export async function POST(request: Request) {
       });
     }
 
-    const payload = await readJsonWithLimit(request, 24_000);
+    // Bis zu acht Referenzprojekte brauchen Platz; der Rest des Formulars
+    // kommt mit einem Drittel davon aus.
+    const payload = await readJsonWithLimit(request, 64_000);
     const parsed = FreelancerApplicationInputSchema.safeParse(payload);
     if (!parsed.success) {
       return NextResponse.json(
@@ -189,10 +198,30 @@ export async function POST(request: Request) {
       );
     }
 
+    if (input.photo && !verifyApplicationPhotoPath(input.photo.storagePath, input.photo.token)) {
+      return NextResponse.json(
+        { error: "Der Foto-Upload ist ungültig. Bitte das Foto erneut hochladen." },
+        { status: 400 },
+      );
+    }
+
     const admin = createAdminSupabaseClient();
     const uploaded = input.cv
       ? await inspectUploadedCv(admin, input.cv.storagePath)
       : null;
+
+    // Das Foto zählt erst, wenn seine ersten Bytes zum Bildtyp im Pfad passen.
+    // Ein ungültiges wird gelöscht und gemeldet, nicht still verworfen.
+    if (input.photo) {
+      const photo = await inspectUploadedAvatar(admin, input.photo.storagePath);
+      if (!photo || photo.mimeType !== avatarMimeTypeFromPath(input.photo.storagePath)) {
+        await admin.storage.from(AVATAR_BUCKET).remove([input.photo.storagePath]).catch(() => undefined);
+        return NextResponse.json(
+          { error: "Das Foto ist kein gültiges Bild. Erlaubt sind JPEG, PNG oder WebP bis 5 MB." },
+          { status: 400 },
+        );
+      }
+    }
 
     // Eine Datei, die keine PDF ist, wird nicht stillschweigend verworfen: der
     // Bewerber hat sie angehängt und soll erfahren, warum sie nicht ankommt.
@@ -224,18 +253,35 @@ export async function POST(request: Request) {
       insert.cv_size_bytes = null;
     }
 
+    // Projekte und Foto nur mit Migration 20261006100000. Das Formular blendet
+    // beide ohne sie aus; was trotzdem kommt, wird nicht gespeichert.
+    const extras = await applicationExtrasAvailable(admin);
+    const row: Partial<typeof insert> = { ...insert };
+    if (!extras) {
+      delete row.reference_projects;
+      delete row.photo_storage_path;
+    }
+
     // A resubmission replaces only this authenticated applicant's own pending
     // entry. An email address alone is not an ownership credential.
-    const { data: pending, error: pendingError } = await admin
+    const { data: pendingRows, error: pendingError } = await admin
       .from("freelancer_applications")
-      .select("id,cv_storage_path")
+      .select(extras ? "id,cv_storage_path,photo_storage_path" : "id,cv_storage_path")
       .eq("submitted_by_user_id", user.id)
       .in("status", ["submitted", "in_review"]);
     if (pendingError) throw pendingError;
+    const pending = (pendingRows ?? []) as unknown as Array<{
+      id: string;
+      cv_storage_path: string | null;
+      photo_storage_path?: string | null;
+    }>;
 
-    if (pending?.length) {
+    if (pending.length) {
       const staleCvPaths = pending
         .map((row) => row.cv_storage_path as string | null)
+        .filter((path): path is string => Boolean(path));
+      const stalePhotoPaths = pending
+        .map((row) => row.photo_storage_path ?? null)
         .filter((path): path is string => Boolean(path));
 
       const { error: deleteError } = await admin
@@ -250,11 +296,14 @@ export async function POST(request: Request) {
       if (staleCvPaths.length) {
         await admin.storage.from(CV_BUCKET).remove(staleCvPaths);
       }
+      if (stalePhotoPaths.length) {
+        await admin.storage.from(AVATAR_BUCKET).remove(stalePhotoPaths);
+      }
     }
 
     const { data, error } = await admin
       .from("freelancer_applications")
-      .insert(insert)
+      .insert(row)
       .select("id")
       .single();
     if (error) throw error;
@@ -282,7 +331,9 @@ export async function POST(request: Request) {
         hasCv: Boolean(insert.cv_storage_path),
         hasBookingUrl: Boolean(insert.booking_url),
         skillCount: insert.skills.length,
-        replacedPending: pending?.length ?? 0,
+        projectCount: extras ? insert.reference_projects.length : 0,
+        hasPhoto: extras && Boolean(insert.photo_storage_path),
+        replacedPending: pending.length,
         fromInvite,
       },
     });

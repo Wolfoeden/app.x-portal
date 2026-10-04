@@ -64,6 +64,11 @@ Kubernetes, LLM, RAG and n8n.
 **Serve today:** performance marketing, AI automation, requirements
 engineering. These are the three themes the chat page offers as example briefs.
 
+*Update 2026-10-02:* The chat no longer offers themes but up to three role
+shortcuts — AI agent developer, React/TypeScript developer (as a test) and
+requirements engineer — each a short, editable start of a request. The reasons
+and the numbers behind the choice are in `components/chat/example-briefs.ts`.
+
 **Do not lead with software development.** React reaches 4 profiles, Angular,
 AWS and Kubernetes 3 each. Approaching IT recruiters with a developer search is
 the one campaign the catalogue cannot currently support, and a first search that
