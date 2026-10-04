@@ -28,6 +28,7 @@ import {
   placementTermsSummary,
 } from "@/lib/placement/config";
 import { BUSINESS_ONLY_NOTICE } from "@/lib/legal/policy";
+import { salesCallHref } from "@/lib/sales/sales-call-links";
 import { MARKETING_PAGE, MARKETING_PAGES, pageMetadata } from "@/lib/seo";
 import { breadcrumbStructuredData } from "@/lib/structured-data";
 
@@ -119,7 +120,8 @@ function EnterpriseCard() {
         {CARD_COPY.enterprise_flex.features.map((feature) => <li key={feature}>{feature}</li>)}
         <li>{euro.format(plan.euroPerCreditCents / 100)} je verbrauchtem Credit</li>
       </ul>
-      <a className={styles.cardAction} href={`mailto:${ENTERPRISE_CONTACT.email}?subject=XPORTAL%20Enterprise`}>Enterprise per E-Mail anfragen <span aria-hidden="true">↗</span></a>
+      <Link className={styles.cardAction} href={salesCallHref("pricing")} prefetch={false}>Gespräch buchen <span aria-hidden="true">↗</span></Link>
+      <a className={styles.cardMail} href={`mailto:${ENTERPRISE_CONTACT.email}?subject=XPORTAL%20Enterprise`}>Enterprise per E-Mail anfragen</a>
     </article>
   );
 }

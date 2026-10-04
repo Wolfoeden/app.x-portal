@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { JsonLd } from "@/components/JsonLd";
 import { EXAMPLE_BRIEFS, exampleBriefPath, type ExampleBriefKey } from "@/components/chat/example-briefs";
-import { ProjectLink, Questions } from "./MarketingPage";
+import { ProjectLink, Questions, SalesCallLink } from "./MarketingPage";
 import { ProcessVideo } from "./ProcessVideo";
 import { MARKETING_PAGE } from "@/lib/seo";
 import { breadcrumbStructuredData } from "@/lib/structured-data";
@@ -118,7 +118,7 @@ export function FreelancerLanding() {
               ? "Projektbeschreibung bei XPORTAL einfügen, passende Profile prüfen und den Freelancer anfragen. XPORTAL stellt Sie vor; bezahlt wird nur, wenn Sie beauftragen."
               : "Projektbeschreibung bei XPORTAL einfügen, passende Profile prüfen und – bei vorhandenem Terminlink – direkt ein Erstgespräch buchen."}
           </p>
-          <div className={styles.actions}><ProjectLink>Projekt jetzt einfügen</ProjectLink><a className={styles.textLink} href="#ablauf">So funktioniert’s <span aria-hidden="true">↓</span></a></div>
+          <div className={styles.actions}><ProjectLink>Projekt jetzt einfügen</ProjectLink><SalesCallLink entry="hero" /><a className={styles.textLink} href="#ablauf">So funktioniert’s <span aria-hidden="true">↓</span></a></div>
           <ul className={styles.startNotes}>
             <li><span aria-hidden="true">✓</span> Analyse kostenlos und ohne Anmeldung</li>
             {placement ? (
@@ -199,7 +199,7 @@ export function FreelancerLanding() {
           ? { question: "Was kostet die Vermittlung?", answer: <p>Suche, Anfrage, Vorstellung und Erstgespräch sind kostenlos. Beauftragen Sie den Freelancer, zahlen Sie einmalig {PLACEMENT_TERMS.feePercent} % des vereinbarten Honorars für die ersten {PLACEMENT_TERMS.feeMonths} Monate (höchstens {PLACEMENT_TERMS.maxFeeDays} Projekttage), zuzüglich Umsatzsteuer, per Rechnung mit {PLACEMENT_TERMS.paymentDays} Tagen Zahlungsziel. Beispiel: {formatWholeEuro(PLACEMENT_EXAMPLE.dayRateCents)} Tagessatz und {PLACEMENT_EXAMPLE.projectDays} Projekttage ergeben {formatWholeEuro(placementExampleFeeCents())} netto. Die Rechnung kommt erst nach der Beauftragung, nicht für einen gebuchten Termin. Einzelheiten stehen in den <Link href={PLACEMENT_TERMS_PATH}>Vermittlungsbedingungen</Link>.</p> }
           : { question: "Was bedeutet „direkt buchen“?", answer: <p>Nach der Anmeldung öffnen Sie bei einem Profil mit Terminlink den hinterlegten Buchungskalender und wählen selbst einen freien Slot. Ohne Terminlink ist die direkte Buchung derzeit nicht verfügbar. Der Termin ist ein Erstgespräch und noch keine Beauftragung.</p> },
       ]} /></section>
-      <section className={styles.closing} aria-labelledby="start-title"><div><h2 id="start-title">Projektanzeige schon fertig?</h2><p>Kopieren, einfügen und passende Freelancer sehen.</p></div><ProjectLink>Projekt jetzt einfügen</ProjectLink></section>
+      <section className={styles.closing} aria-labelledby="start-title"><div><h2 id="start-title">Projektanzeige schon fertig?</h2><p>Kopieren, einfügen und passende Freelancer sehen. Oder in 20 Minuten mit uns klären, wen Sie brauchen.</p></div><div className={styles.actions}><ProjectLink>Projekt jetzt einfügen</ProjectLink><SalesCallLink entry="closing" /></div></section>
     </main>
   );
 }

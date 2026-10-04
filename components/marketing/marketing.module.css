@@ -7,6 +7,9 @@
 .primaryLink { display: inline-flex; align-items: center; justify-content: center; gap: 25px; flex-shrink: 0; min-height: var(--control-lg); border-radius: var(--radius-sm); padding: 12px 19px; background: var(--ink); color: var(--surface); font-size: var(--fs-sm); font-weight: 650; text-decoration: none; }
 .primaryLink:hover { background: var(--ink-hover); }
 .primaryLink span { font-size: 20px; font-weight: 400; line-height: 1; }
+.secondaryLink { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; min-height: var(--control-lg); border: 1px solid var(--ink); border-radius: var(--radius-sm); padding: 11px 19px; color: var(--ink); font-size: var(--fs-sm); font-weight: 650; text-decoration: none; }
+.secondaryLink:hover { background: var(--surface-soft); }
+.nextActions { display: flex; flex-wrap: wrap; gap: 12px; }
 .main { max-width: calc(var(--marketing-width) + 80px); margin: 0 auto; padding: 0 40px; }
 .main:focus { outline: none; }
 .breadcrumb { padding: 28px 0 0; color: var(--muted); font-size: var(--fs-xs); }

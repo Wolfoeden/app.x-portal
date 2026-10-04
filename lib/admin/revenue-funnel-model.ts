@@ -36,7 +36,31 @@ const PLACEMENT_STEPS = [
   { key: "placement_fee_paid", action: "placement_fee_paid", label: "Vermittlungshonorar bezahlt" },
 ] as const;
 
+/**
+ * Der zweite Weg zum Umsatz: „Gespräch buchen“. Seitenaufrufe zählen je
+ * Aufruf (die Seite kennt keine Person), Anfragen und Kalenderklicks je
+ * Kontakt.
+ */
+const SALES_CALL_STEPS = [
+  { key: "sales_call_viewed", label: "Gesprächsseite aufgerufen" },
+  { key: "sales_call_requested", label: "Gespräch angefragt" },
+  { key: "sales_call_calendar_opened", label: "Kalender geöffnet" },
+] as const;
+
+const SALES_CALL_ENTRY_LABELS: Readonly<Record<string, string>> = {
+  header: "Kopfzeile",
+  menu: "Menü",
+  hero: "Startseite oben",
+  closing: "Seitenende",
+  role_page: "Rollenseite",
+  pricing: "Preise",
+  chat: "Chat",
+  mail: "Mail",
+  direct: "direkt",
+};
+
 export const REVENUE_FUNNEL_ACTIONS = [
+  ...SALES_CALL_STEPS.map((step) => step.key),
   ...CLIENT_STEPS.map((step) => `signup_funnel_${step.key}`),
   BILLING_FUNNEL_ACTIONS.checkoutStarted,
   BILLING_FUNNEL_ACTIONS.subscriptionPaid,
@@ -106,6 +130,8 @@ export function buildRevenueFunnel(
   const agreedFees = new Map<string, number>();
   const paidFees = new Map<string, number>();
   const placementAction = new Map<string, string>(PLACEMENT_STEPS.map((step) => [step.action, step.key]));
+  const salesCallKeys = new Set<string>(SALES_CALL_STEPS.map((step) => step.key));
+  const salesCallEntries = new Map<string, number>();
 
   const add = (key: string, person: string) => {
     const set = people.get(key) ?? new Set<string>();
@@ -130,6 +156,15 @@ export function buildRevenueFunnel(
       if (typeof fee === "number" && fee > 0) {
         if (placementKey === "placement_engaged") agreedFees.set(request, fee);
         if (placementKey === "placement_fee_paid") paidFees.set(request, fee);
+      }
+      continue;
+    }
+
+    if (salesCallKeys.has(row.action)) {
+      add(row.action, row.target_id ? `contact:${row.target_id}` : `event:${row.id}`);
+      if (row.action === "sales_call_viewed") {
+        const via = text(row.metadata?.via) ?? "direct";
+        salesCallEntries.set(via, (salesCallEntries.get(via) ?? 0) + 1);
       }
       continue;
     }
@@ -205,7 +240,19 @@ export function buildRevenueFunnel(
   // zweite Weg zum Umsatz und stehen danach.
   const afterSignup = clientSteps.findIndex((step) => step.key === "signup_confirmed") + 1;
 
+  const salesCallDetail = [...salesCallEntries.entries()]
+    .sort((left, right) => right[1] - left[1])
+    .map(([via, total]) => `${numberFormat.format(total)} ${SALES_CALL_ENTRY_LABELS[via] ?? via}`)
+    .join(" · ");
+  const salesCallSteps: RevenueFunnelStep[] = SALES_CALL_STEPS.map((step) => ({
+    key: step.key,
+    label: step.label,
+    people: count(step.key),
+    detail: step.key === "sales_call_viewed" && salesCallDetail ? salesCallDetail : null,
+  }));
+
   const steps: RevenueFunnelStep[] = [
+    ...salesCallSteps,
     ...clientSteps.slice(0, afterSignup),
     ...placementSteps,
     ...clientSteps.slice(afterSignup),

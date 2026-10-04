@@ -139,7 +139,11 @@ export function MandateCard({
       <section className="mandate-card" aria-labelledby="mandate-title">
         <div>
           <strong id="mandate-title">{title}</strong>
-          <p>{lead} Kostenlos bis zur Beauftragung.</p>
+          <p>
+            {lead} Kostenlos bis zur Beauftragung.{" "}
+            {/* Fester Pfad statt salesCallHref: Ein Import hier landete in mehreren Client-Chunks. */}
+            <a href={appPath("/gespraech?von=chat")}>Lieber direkt sprechen?</a>
+          </p>
         </div>
         <button className="primary-action" type="button" onClick={() => setView({ kind: "form" })}>
           {hasMatches ? "Vorstellen lassen" : "Suchauftrag geben"}
