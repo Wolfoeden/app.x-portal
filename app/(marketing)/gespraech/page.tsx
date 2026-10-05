@@ -10,10 +10,10 @@ import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { BUSINESS_ONLY_NOTICE } from "@/lib/legal/policy";
 import { PLACEMENT_TERMS, PLACEMENT_TERMS_PATH } from "@/lib/placement/config";
-import { SALES_CALL_MINUTES, SALES_CALL_PATH, isSalesCallEntry, salesCalendarEmbedUrl } from "@/lib/sales/sales-call-model";
-import { readSalesCallToken, salesCallPrefill, salesCallUrl } from "@/lib/sales/sales-call";
+import { SALES_CALL_MINUTES, SALES_CALL_PATH, isSalesCallEntry } from "@/lib/sales/sales-call-model";
+import { readSalesCallToken, salesCallUrl } from "@/lib/sales/sales-call";
 import { salesContactPhotoUrl } from "@/lib/sales/sales-contact";
-import { SALES_CALL_PAGE, SITE_URL, pageMetadata } from "@/lib/seo";
+import { SALES_CALL_PAGE, pageMetadata } from "@/lib/seo";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -84,36 +84,13 @@ export default async function SalesCallPage({ searchParams }: { searchParams: Pr
   const query = await searchParams;
   const status = statusOf(first(query.status));
   const token = first(query.t);
-  const calendar = salesCallUrl();
-  const calendarReady = Boolean(calendar);
-  // Calendly will wissen, auf welcher Seite der Kalender steht.
-  const embedDomain = new URL(SITE_URL).host;
-  // Eingebettet wird nur der Dienst, den die CSP erlaubt (frame-src).
-  const calendarEmbeddable = Boolean(salesCalendarEmbedUrl(calendar, embedDomain));
-  const contactId = status === "sent" ? readSalesCallToken(token) : null;
-  const tokenValid = Boolean(contactId);
-  const [profile, contactPhoto, prefill] = await Promise.all([
+  const calendarReady = Boolean(salesCallUrl());
+  const tokenValid = status === "sent" && Boolean(readSalesCallToken(token));
+  const [profile, contactPhoto] = await Promise.all([
     status ? null : chosenProfile(first(query.profil)),
     salesContactPhotoUrl(),
-    calendarEmbeddable ? salesCallPrefill(contactId) : undefined,
   ]);
-  // Erst nach dem Absenden, auf der Danke-Seite: der Kalender auf dieser
-  // Seite, vorausgefüllt wie bisher der Link (Datenschutz, Abschnitt 7).
-  const embedUrl = status === "sent" && calendarEmbeddable ? salesCalendarEmbedUrl(calendar, embedDomain, prefill) : null;
-  const ownWindowHref = `${SALES_CALL_PATH}/termin${tokenValid && token ? `?t=${encodeURIComponent(token)}` : ""}`;
-
-  if (embedUrl) {
-    after(() =>
-      writeAuditEvent({
-        actorUserId: null,
-        action: "sales_call_calendar_opened",
-        targetType: "crm_contacts",
-        targetId: contactId,
-        outcome: "success",
-        metadata: { prefilled: Boolean(prefill), embedded: true },
-      }).catch(() => undefined),
-    );
-  }
+  const calendarHref = `${SALES_CALL_PATH}/termin${tokenValid && token ? `?t=${encodeURIComponent(token)}` : ""}`;
 
   if (!status) {
     const via = first(query.von);
@@ -152,27 +129,7 @@ export default async function SalesCallPage({ searchParams }: { searchParams: Pr
             <div id="termin" className={styles.done} aria-label="Anfrage gesendet">
               <p className={styles.doneLabel}><Check />Anfrage ist da</p>
               <h2>Danke. Wählen Sie jetzt Ihren Termin.</h2>
-              {embedUrl ? (
-                <>
-                  <p>
-                    {prefill ? "Ihr Name und Ihre Adresse sind schon eingetragen. " : null}Eine Bestätigung mit dem
-                    Link haben wir Ihnen auch per E-Mail geschickt.
-                  </p>
-                  <iframe
-                    className={styles.calendar}
-                    src={embedUrl}
-                    title="Kalender: freien Termin für das Gespräch wählen"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                  />
-                  <p className={styles.small}>
-                    Der Kalender kommt von unserem Terminanbieter.{" "}
-                    <a href={ownWindowHref} rel="nofollow noopener" target="_blank">
-                      In eigenem Fenster öffnen<span aria-hidden="true"> ↗</span>
-                    </a>
-                    . Lieber gleich telefonieren? Wir melden uns werktags innerhalb weniger Stunden.
-                  </p>
-                </>
-              ) : calendarReady ? (
+              {calendarReady ? (
                 <>
                   <p>
                     Im Kalender sind Ihr Name und Ihre Adresse schon eingetragen. Eine Bestätigung mit dem Link haben
@@ -180,7 +137,7 @@ export default async function SalesCallPage({ searchParams }: { searchParams: Pr
                   </p>
                   <a
                     className={actionClass("primary")}
-                    href={ownWindowHref}
+                    href={calendarHref}
                     rel="nofollow"
                   >
                     Termin wählen<span aria-hidden="true">↗</span>
@@ -307,12 +264,6 @@ export default async function SalesCallPage({ searchParams }: { searchParams: Pr
                     {calendarReady ? "Weiter zur Terminwahl" : "Gespräch anfragen"}
                   </button>
                 </div>
-                {calendarEmbeddable ? (
-                  <p className={styles.small}>
-                    Danach zeigt diese Seite den Kalender unseres Terminanbieters mit Sitz in den USA und übergibt ihm
-                    Name, E-Mail-Adresse und gesuchte Rolle, damit Sie sie nicht noch einmal eingeben.
-                  </p>
-                ) : null}
                 <p className={styles.small}>{BUSINESS_ONLY_NOTICE}</p>
               </form>
             </>

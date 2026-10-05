@@ -53,10 +53,6 @@
 .small { margin: 0; color: var(--sc-muted); font-size: 12.5px; line-height: 1.6; }
 
 .done { display: grid; gap: 16px; justify-items: start; }
-/* Der eingebettete Kalender: so hoch, dass Monat und Uhrzeiten ohne
-   Blättern im Rahmen Platz haben. */
-.calendar { display: block; width: 100%; height: 720px; border: 1px solid var(--sc-line); border-radius: var(--xp-field-radius); background: #fff; }
-.small a { color: var(--sc-ink); text-underline-offset: 3px; }
 .done h2 { margin: 0; font-family: var(--xp-display); font-size: 28px; font-weight: 400; letter-spacing: var(--xp-h2-tracking); }
 .done p { margin: 0; color: var(--ink-soft); line-height: 1.65; }
 .doneLabel { display: inline-flex; align-items: center; gap: 8px; color: var(--sc-brand) !important; font-size: 14px; font-weight: 600; }
@@ -82,7 +78,6 @@
 }
 
 @media (max-width: 640px) {
-  .calendar { height: 900px; }
   .split { border-inline: 0; }
   .formSide { padding: 36px 20px 48px; }
   .proofInner { padding: 40px 20px; }

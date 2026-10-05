@@ -136,32 +136,6 @@ export function salesCalendarUrl(
 }
 
 /**
- * Der Kalenderdienst, den die Seite einbetten darf. Er steht genau so in der
- * Content-Security-Policy (`frame-src`, lib/security/csp.ts); ein anderer
- * Dienst in `SALES_CALL_URL` öffnet sich weiter in einem eigenen Fenster.
- */
-export const SALES_CALENDAR_EMBED_ORIGIN = "https://calendly.com";
-
-/**
- * Die Adresse für den eingebetteten Kalender auf der Danke-Seite: derselbe
- * vorausgefüllte Link, dazu die Einbettungs-Parameter von Calendly. `null`,
- * wenn der Kalender nicht von dem Dienst kommt, den die Seite einbetten darf.
- */
-export function salesCalendarEmbedUrl(
-  base: string | null | undefined,
-  embedDomain: string,
-  prefill?: { fullName: string; email: string | null; role: string | null },
-): string | null {
-  const href = salesCalendarUrl(base, prefill);
-  if (!href) return null;
-  const url = new URL(href);
-  if (url.origin !== SALES_CALENDAR_EMBED_ORIGIN) return null;
-  url.searchParams.set("embed_domain", embedDomain);
-  url.searchParams.set("embed_type", "Inline");
-  return url.toString();
-}
-
-/**
  * Die Benachrichtigung ins eigene Postfach. Alles, was der Absender
  * angegeben hat, dazu der Weg zum Kontakt im Admin — die Antwort soll ohne
  * Umweg über die Datenbank möglich sein.

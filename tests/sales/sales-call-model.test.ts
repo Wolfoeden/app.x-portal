@@ -10,8 +10,6 @@ import {
   salesCallHref,
   salesCallNote,
   salesCallNotificationMessage,
-  SALES_CALENDAR_EMBED_ORIGIN,
-  salesCalendarEmbedUrl,
 } from "@/lib/sales/sales-call-model";
 
 function form(fields: Record<string, string>): FormData {
@@ -146,26 +144,5 @@ describe("entries", () => {
     expect(isSalesCallEntry("pricing")).toBe(true);
     expect(isSalesCallEntry("evil")).toBe(false);
     expect(SALES_CALL_KIND).toBe("Gesprächsanfrage (Website)");
-  });
-});
-
-describe("salesCalendarEmbedUrl", () => {
-  const prefill = { fullName: "Erika Mustermann", email: "erika@example.com", role: "SAP S/4HANA Finance" };
-
-  it("embeds the prefilled calendar with Calendly's inline parameters", () => {
-    const url = new URL(salesCalendarEmbedUrl("https://calendly.com/xportal/30min", "x-portal.eu", prefill)!);
-    expect(url.origin).toBe(SALES_CALENDAR_EMBED_ORIGIN);
-    expect(url.searchParams.get("name")).toBe("Erika Mustermann");
-    expect(url.searchParams.get("email")).toBe("erika@example.com");
-    expect(url.searchParams.get("a1")).toBe("SAP S/4HANA Finance");
-    expect(url.searchParams.get("embed_domain")).toBe("x-portal.eu");
-    expect(url.searchParams.get("embed_type")).toBe("Inline");
-  });
-
-  it("embeds only the one service the CSP frames", () => {
-    expect(salesCalendarEmbedUrl("https://cal.com/xportal/30min", "x-portal.eu")).toBeNull();
-    expect(salesCalendarEmbedUrl("https://calendly.com.evil.example/x", "x-portal.eu")).toBeNull();
-    expect(salesCalendarEmbedUrl("http://calendly.com/xportal", "x-portal.eu")).toBeNull();
-    expect(salesCalendarEmbedUrl(null, "x-portal.eu")).toBeNull();
   });
 });
