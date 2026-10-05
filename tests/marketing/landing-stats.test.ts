@@ -1,0 +1,64 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { afterEach, describe, expect, it, vi } from "vitest";
+vi.mock("server-only", () => ({}));
+
+import { FreelancerLanding } from "@/components/marketing/FreelancerLanding";
+import { MIN_FIELD_PROFILES, summarizeLandingStats } from "@/lib/marketing/landing-stats";
+
+afterEach(() => vi.unstubAllEnvs());
+
+function rows(role: string, count: number) {
+  return Array.from({ length: count }, () => ({ role_title: role, skill_tags: [] }));
+}
+
+describe("summarizeLandingStats", () => {
+  it("counts every active profile and groups them by field, largest first", () => {
+    const stats = summarizeLandingStats(
+      [...rows("AI Engineer", 5), ...rows("Business Analyst", 4), ...rows("SAP S/4HANA Beraterin", 2), ...rows("", 3)],
+      213,
+    );
+    expect(stats.profiles).toBe(14);
+    expect(stats.projects).toBe(213);
+    expect(stats.fields.map((field) => [field.field, field.count])).toEqual([
+      ["ai", 5],
+      ["requirements", 4],
+    ]);
+  });
+
+  it("leaves out thin fields and the catch-all instead of promising a pool", () => {
+    const stats = summarizeLandingStats([...rows("SAP S/4HANA Beraterin", MIN_FIELD_PROFILES - 1), ...rows("IT-Support", 9)], 0);
+    expect(stats.fields).toEqual([]);
+  });
+});
+
+describe("landing page with live numbers", () => {
+  it("shows the real pool and the analysed projects", () => {
+    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
+    const html = renderToStaticMarkup(
+      createElement(FreelancerLanding, {
+        stats: { profiles: 67, projects: 1213, fields: [{ field: "ai", label: "KI & Agenten", count: 18 }] },
+      }),
+    );
+    expect(html).toContain("mit 67 freigegebenen Profilen ab");
+    expect(html).toContain("<strong>KI &amp; Agenten</strong><span>18 Profile</span>");
+    expect(html).toContain("<strong>1.213</strong> Projektbeschreibungen analysiert");
+  });
+
+  it("names no numbers it does not have", () => {
+    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
+    const html = renderToStaticMarkup(createElement(FreelancerLanding));
+    expect(html).toContain("mit unserem Bestand ab");
+    expect(html).not.toContain("Freigegebene Profile nach Fachgebiet");
+    expect(html).not.toContain("freigegebene Profile");
+  });
+
+  it("offers the sales call next to the self-service path with tracked entries", () => {
+    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
+    const html = renderToStaticMarkup(createElement(FreelancerLanding));
+    for (const entry of ["hero", "process", "roles", "pricing", "closing"]) {
+      expect(html).toContain(`href="/gespraech?von=${entry}"`);
+    }
+    expect(html).toContain("Projekt kostenlos prüfen");
+  });
+});

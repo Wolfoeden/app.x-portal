@@ -1,92 +1,129 @@
+/* Kopf im Raster der Startseite: Marke links in der Randspalte, deren Linie
+   auf breiten Bildschirmen genau auf der linken Rahmenlinie steht, rechts die
+   zwei Wege. */
 .header {
+  --chrome-ink: #101b17;
+  --chrome-line: #e4e7ea;
+  --chrome-frame: 1088px;
   position: sticky;
   top: 0;
   z-index: 40;
-  border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  border-bottom: 1px solid var(--chrome-line);
+  background: color-mix(in srgb, #fff 90%, transparent);
   backdrop-filter: saturate(1.4) blur(12px);
 }
 
 .headerInner {
-  width: min(100% - 80px, 1260px);
-  min-height: 72px;
-  margin: 0 auto;
   display: flex;
-  align-items: center;
-  gap: 28px;
+  align-items: stretch;
+  min-height: 64px;
 }
 
 .brand {
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   flex: 0 0 auto;
-  color: var(--ink);
+  width: max(176px, calc((100% - var(--chrome-frame)) / 2));
+  padding-left: 40px;
+  border-right: 1px solid var(--chrome-line);
+  color: var(--chrome-ink);
+  font-family: var(--font-display), var(--font-sans);
   font-size: 19px;
-  font-weight: 750;
-  letter-spacing: -.7px;
+  font-weight: 600;
+  letter-spacing: -.05em;
   text-decoration: none;
 }
 
+.brand span::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 9px;
+  border-radius: 3px;
+  background: radial-gradient(circle at 30% 30%, #2fb072, #0c5c3b);
+  vertical-align: 1px;
+}
+
 .context {
-  border-left: 1px solid var(--border-strong);
-  padding-left: 16px;
+  align-self: center;
+  padding-left: 24px;
   color: var(--muted);
   font-size: var(--fs-xs);
 }
 
 .navigation {
   display: flex;
-  justify-content: center;
+  align-items: center;
   flex: 1 1 auto;
-  gap: 24px;
+  gap: 30px;
+  padding-left: 40px;
 }
 
 .navigation a {
-  color: var(--muted);
-  font-size: var(--fs-sm);
-  font-weight: 560;
+  color: var(--chrome-ink);
+  font-size: 15px;
+  font-weight: 400;
   text-decoration: none;
 }
 
 .navigation a:hover,
 .navigation a:focus-visible {
-  color: var(--ink);
   text-decoration: underline;
-  text-underline-offset: 5px;
+  text-underline-offset: 6px;
 }
 
-.primaryAction {
-  min-height: var(--control-lg);
+.headerActions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; margin-left: auto; padding: 0 24px; }
+
+.primaryAction,
+.secondaryAction {
+  box-sizing: border-box;
+  min-height: 42px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 18px;
   flex: 0 0 auto;
-  border-radius: var(--radius-sm);
-  padding: 10px 17px;
-  background: var(--ink);
-  color: var(--surface) !important;
-  font-size: var(--fs-sm);
-  font-weight: 650;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  padding: 9px 18px;
+  font-size: 15px;
+  font-weight: 500;
   text-decoration: none;
+  white-space: nowrap;
 }
 
-.primaryAction:hover { background: var(--ink-hover); }
+.primaryAction {
+  background: radial-gradient(circle at 50% 50%, #17804d, #0c5c3b);
+  color: #fff !important;
+  box-shadow: 0 1px 2px rgba(16, 27, 23, .18), 0 6px 16px rgba(23, 128, 77, .22), inset 0 1px 0 rgba(255, 255, 255, .14);
+}
 
-.headerActions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
-.secondaryAction { color: var(--ink); font-size: var(--fs-sm); font-weight: 600; padding: 10px 12px; text-decoration: none; }
-.secondaryAction:hover { text-decoration: underline; text-underline-offset: 5px; }
+.primaryAction:hover { background: radial-gradient(circle at 50% 50%, #17804d, #094a30); }
+.secondaryAction { border-color: #dde1e5; background: #fff; color: var(--chrome-ink); }
+.secondaryAction:hover { border-color: #b9c0c7; }
 
-.menu { display: none; position: relative; }
-.menu summary { min-height: var(--control-md); display: inline-flex; align-items: center; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 0 12px; font-size: var(--fs-xs); font-weight: 650; cursor: pointer; list-style: none; }
+.menu { display: none; position: relative; align-self: center; margin-right: 16px; }
+.menu summary { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 6px; cursor: pointer; list-style: none; }
 .menu summary::-webkit-details-marker { display: none; }
-.menu nav { position: absolute; right: 0; top: calc(100% + 10px); width: min(280px, calc(100vw - 40px)); display: grid; gap: 2px; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 8px; background: var(--surface); box-shadow: var(--shadow-modal); }
-.menu nav a { border-radius: var(--radius-xs); padding: 11px 12px; color: var(--ink); font-size: var(--fs-sm); text-decoration: none; }
+.menu summary:focus-visible { outline: 2px solid var(--chrome-ink); }
+.menuIcon, .menuIcon::before, .menuIcon::after { display: block; width: 20px; height: 2px; border-radius: 2px; background: var(--chrome-ink); }
+.menuIcon { position: relative; }
+.menuIcon::before, .menuIcon::after { content: ""; position: absolute; left: 0; }
+.menuIcon::before { top: -6px; }
+.menuIcon::after { top: 6px; }
+.menu[open] .menuIcon { background: transparent; }
+.menu[open] .menuIcon::before { top: 0; transform: rotate(45deg); }
+.menu[open] .menuIcon::after { top: 0; transform: rotate(-45deg); }
+.menu nav { position: absolute; right: 0; top: calc(100% + 10px); width: min(300px, calc(100vw - 32px)); display: grid; gap: 2px; border: 1px solid var(--chrome-line); border-radius: 10px; padding: 8px; background: #fff; box-shadow: var(--shadow-modal); }
+.menu nav a { border-radius: 6px; padding: 12px; color: var(--chrome-ink); font-size: 15px; text-decoration: none; }
 .menu nav a:hover { background: var(--surface-soft); }
-.menu nav .menuAction { margin-top: 6px; background: var(--ink); color: var(--surface); font-weight: 650; text-align: center; }
+.menu nav .menuAction { margin-top: 6px; background: radial-gradient(circle at 50% 50%, #17804d, #0c5c3b); color: #fff; font-weight: 500; text-align: center; }
 
+/* So breit wie der Rahmen der Startseite, damit die Fußzeile zwischen
+   denselben Linien steht. */
 .footer {
-  width: min(100% - 80px, 1180px);
+  width: min(100% - 80px, 1088px);
   margin: 0 auto;
   border-top: 1px solid var(--border);
   padding: 30px 0;
@@ -169,18 +206,25 @@
   line-height: 1.45;
 }
 
+@media (max-width: 1439px) {
+  .brand { width: auto; padding-right: 32px; border-right: 0; }
+  .navigation { padding-left: 8px; }
+}
+
 @media (max-width: 1080px) {
-  .headerInner { width: min(100% - 56px, 1260px); min-height: 64px; gap: 12px; }
+  .headerInner { min-height: 60px; }
+  .brand { padding-left: 24px; }
   .navigation, .secondaryAction { display: none; }
-  .headerActions { margin-left: auto; }
+  .headerActions { padding: 0 8px 0 0; }
   .menu { display: block; }
   .footer { width: calc(100% - 56px); }
 }
 
 @media (max-width: 680px) {
-  .headerInner { width: calc(100% - 40px); gap: 10px; }
+  .brand { padding-left: 20px; padding-right: 12px; }
   .context { display: none; }
-  .primaryAction { min-height: var(--control-md); gap: 8px; padding: 8px 11px; font-size: var(--fs-xs); }
+  .primaryAction { min-height: 40px; padding: 8px 13px; font-size: 14px; }
+  .menu { margin-right: 10px; }
   .footer { width: calc(100% - 40px); }
   .footerIntro { grid-template-columns: 1fr; gap: 18px; }
   .documentIntro { grid-template-columns: 1fr; gap: 26px; margin-bottom: 40px; }

@@ -51,6 +51,8 @@ const SALES_CALL_ENTRY_LABELS: Readonly<Record<string, string>> = {
   header: "Kopfzeile",
   menu: "Menü",
   hero: "Startseite oben",
+  process: "Startseite: Ablauf",
+  roles: "Startseite: Rollen",
   closing: "Seitenende",
   role_page: "Rollenseite",
   pricing: "Preise",

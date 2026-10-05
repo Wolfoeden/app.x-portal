@@ -35,6 +35,19 @@ const STEPS = [
   { title: "Wir stellen vor", text: "Passende Freelancer stellen wir Ihnen per E-Mail vor. Sie sprechen direkt miteinander." },
 ] as const;
 
+function Required() {
+  return <b className={styles.required} aria-hidden="true">*</b>;
+}
+
+function Check() {
+  return (
+    <svg className={styles.check} viewBox="0 0 20 20" aria-hidden="true">
+      <circle cx="10" cy="10" r="10" />
+      <path d="m6 10.2 2.6 2.6L14.2 7.4" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 /**
  * „Gespräch buchen“ — der Weg zu einem Menschen statt zum Chat. Kurzes
  * Formular, danach der Kalender. Die Seite kommt ohne JavaScript aus; das
@@ -86,173 +99,181 @@ export default async function SalesCallPage({ searchParams }: { searchParams: Pr
   }
 
   return (
-    <main id="main-content" className={`${marketing.main} ${styles.page}`} tabIndex={-1}>
-      <header className={styles.intro}>
-        <p className={marketing.eyebrow}>Gespräch buchen · {SALES_CALL_MINUTES} Minuten · kostenlos</p>
-        <h1 id="gespraech-title">In {SALES_CALL_MINUTES} Minuten wissen Sie, ob wir passende Leute haben.</h1>
-        <p className={marketing.lead}>
-          Sie suchen KI-, SAP- oder Software-Freelancer und möchten nicht erst selbst suchen? Erzählen Sie uns,
-          was ansteht. Wir sagen Ihnen ehrlich, ob unser Bestand passt, und stellen die passenden Leute vor.
-        </p>
-      </header>
+    <main id="main-content" className={styles.page} tabIndex={-1}>
+      <div className={styles.split}>
+        <section className={styles.formSide} aria-labelledby="gespraech-title">
+          <p className={styles.kicker}>Gespräch buchen · {SALES_CALL_MINUTES} Minuten · kostenlos</p>
+          <h1 id="gespraech-title">Sprechen wir über Ihr Projekt.</h1>
+          <p className={styles.intro}>
+            In {SALES_CALL_MINUTES} Minuten wissen Sie, ob wir passende KI-, Software- oder Digital-Freelancer für Sie
+            haben. Je genauer Ihre Angaben, desto konkreter wird das Gespräch.
+          </p>
 
-      <section className={styles.details} aria-label="So läuft das Gespräch">
-        <ol className={styles.steps}>
-          {STEPS.map((step, index) => (
-            <li key={step.title}>
-              <span aria-hidden="true">{index + 1}</span>
-              <div>
-                <strong>{step.title}</strong>
-                <p>{step.text}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-        <ul className={styles.facts}>
-          <li>Gespräch und Vorstellung kostenlos</li>
-          <li>
-            {PLACEMENT_TERMS.feePercent} % Honorar nur bei Beauftragung ·{" "}
-            <Link href={PLACEMENT_TERMS_PATH}>Bedingungen</Link>
-          </li>
-          <li>Sie arbeiten direkt mit dem Freelancer</li>
-        </ul>
-      </section>
-
-      <section className={styles.panel} aria-label={status === "sent" ? "Anfrage gesendet" : "Gesprächsanfrage"}>
-        {status === "sent" ? (
-          <div id="termin" className={styles.done}>
-            <p className={marketing.eyebrow}>Anfrage ist da</p>
-            <h2>Danke. Wählen Sie jetzt Ihren Termin.</h2>
-            {calendarReady ? (
-              <>
-                <p>
-                  Im Kalender sind Ihr Name und Ihre Adresse schon eingetragen. Eine Bestätigung mit dem Link haben
-                  wir Ihnen auch per E-Mail geschickt.
-                </p>
-                <a
-                  className={marketing.primaryLink}
-                  href={`${SALES_CALL_PATH}/termin${tokenValid && token ? `?t=${encodeURIComponent(token)}` : ""}`}
-                  rel="nofollow"
-                >
-                  Termin wählen<span aria-hidden="true">↗</span>
-                </a>
-                <p className={styles.small}>
-                  Der Kalender öffnet sich bei unserem Terminanbieter. Lieber gleich telefonieren? Wir melden uns
-                  werktags innerhalb weniger Stunden.
-                </p>
-              </>
-            ) : (
-              <p>Wir melden uns werktags innerhalb weniger Stunden und schlagen Ihnen einen Termin vor.</p>
-            )}
-            <Link className={styles.textLink} href="/chat" prefetch={false}>
-              Bis dahin selbst suchen <span aria-hidden="true">→</span>
-            </Link>
-          </div>
-        ) : (
-          <>
-            {status === "invalid" ? (
-              <Notice title="Bitte prüfen" tone="warning" role="alert">
-                <p>
-                  Firma, Name, eine gültige E-Mail-Adresse und die gesuchte Rolle brauchen wir mindestens, dazu Ihr
-                  Häkchen beim Datenschutz.
-                </p>
-              </Notice>
-            ) : null}
-            {status === "limited" ? (
-              <Notice title="Schon angekommen" tone="warning" role="alert">
-                <p>
-                  Für diese Adresse liegen heute schon Anfragen vor. Wir melden uns; dringend erreichen Sie uns unter{" "}
-                  <a href="mailto:info@x-portal.eu">info@x-portal.eu</a>.
-                </p>
-              </Notice>
-            ) : null}
-            {status === "error" ? (
-              <Notice title="Nicht gespeichert" tone="error" role="alert">
-                <p>
-                  Die Anfrage konnte gerade nicht entgegengenommen werden. Bitte versuchen Sie es gleich noch einmal
-                  oder schreiben Sie an <a href="mailto:info@x-portal.eu">info@x-portal.eu</a>.
-                </p>
-              </Notice>
-            ) : null}
-            <form id="formular" className={styles.form} action="/api/sales-call" method="post">
-              <h2>Worum geht es?</h2>
-              {profile ? (
-                <p className={styles.chosen}>
-                  Sie interessieren sich für <strong>{profile.name}</strong>, {profile.role}. Wir klären im Gespräch,
-                  ob es passt, und stellen Sie vor.
-                  <input type="hidden" name="profileId" value={profile.id} />
-                </p>
+          {status === "sent" ? (
+            <div id="termin" className={styles.done} aria-label="Anfrage gesendet">
+              <p className={styles.doneLabel}><Check />Anfrage ist da</p>
+              <h2>Danke. Wählen Sie jetzt Ihren Termin.</h2>
+              {calendarReady ? (
+                <>
+                  <p>
+                    Im Kalender sind Ihr Name und Ihre Adresse schon eingetragen. Eine Bestätigung mit dem Link haben
+                    wir Ihnen auch per E-Mail geschickt.
+                  </p>
+                  <a
+                    className={marketing.primaryLink}
+                    href={`${SALES_CALL_PATH}/termin${tokenValid && token ? `?t=${encodeURIComponent(token)}` : ""}`}
+                    rel="nofollow"
+                  >
+                    Termin wählen<span aria-hidden="true">↗</span>
+                  </a>
+                  <p className={styles.small}>
+                    Der Kalender öffnet sich bei unserem Terminanbieter. Lieber gleich telefonieren? Wir melden uns
+                    werktags innerhalb weniger Stunden.
+                  </p>
+                </>
+              ) : (
+                <p>Wir melden uns werktags innerhalb weniger Stunden und schlagen Ihnen einen Termin vor.</p>
+              )}
+              <Link className={styles.textLink} href="/chat" prefetch={false}>
+                Bis dahin selbst suchen <span aria-hidden="true">→</span>
+              </Link>
+            </div>
+          ) : (
+            <>
+              {status === "invalid" ? (
+                <Notice title="Bitte prüfen" tone="warning" role="alert">
+                  <p>
+                    Firma, Name, eine gültige E-Mail-Adresse und die gesuchte Rolle brauchen wir mindestens, dazu Ihr
+                    Häkchen beim Datenschutz.
+                  </p>
+                </Notice>
               ) : null}
-              <div className={styles.row}>
+              {status === "limited" ? (
+                <Notice title="Schon angekommen" tone="warning" role="alert">
+                  <p>
+                    Für diese Adresse liegen heute schon Anfragen vor. Wir melden uns; dringend erreichen Sie uns unter{" "}
+                    <a href="mailto:info@x-portal.eu">info@x-portal.eu</a>.
+                  </p>
+                </Notice>
+              ) : null}
+              {status === "error" ? (
+                <Notice title="Nicht gespeichert" tone="error" role="alert">
+                  <p>
+                    Die Anfrage konnte gerade nicht entgegengenommen werden. Bitte versuchen Sie es gleich noch einmal
+                    oder schreiben Sie an <a href="mailto:info@x-portal.eu">info@x-portal.eu</a>.
+                  </p>
+                </Notice>
+              ) : null}
+              <form id="formular" className={styles.form} action="/api/sales-call" method="post" aria-label="Gesprächsanfrage">
+                {profile ? (
+                  <p className={styles.chosen}>
+                    Sie interessieren sich für <strong>{profile.name}</strong>, {profile.role}. Wir klären im Gespräch,
+                    ob es passt, und stellen Sie vor.
+                    <input type="hidden" name="profileId" value={profile.id} />
+                  </p>
+                ) : null}
+                <div className={styles.row}>
+                  <label>
+                    <span>Firma<Required /></span>
+                    <input name="company" autoComplete="organization" minLength={2} maxLength={200} required />
+                  </label>
+                  <label>
+                    <span>Ihr Name<Required /></span>
+                    <input name="fullName" autoComplete="name" minLength={2} maxLength={160} required />
+                  </label>
+                </div>
+                <div className={styles.row}>
+                  <label>
+                    <span>Geschäftliche E-Mail<Required /></span>
+                    <input name="email" type="email" autoComplete="email" maxLength={160} required />
+                  </label>
+                  <label>
+                    <span>Telefon <em>optional</em></span>
+                    <input name="phone" type="tel" autoComplete="tel" maxLength={40} />
+                  </label>
+                </div>
                 <label>
-                  <span>Firma</span>
-                  <input name="company" autoComplete="organization" minLength={2} maxLength={200} required />
+                  <span>Wen suchen Sie?<Required /></span>
+                  <input
+                    name="role"
+                    minLength={2}
+                    maxLength={200}
+                    required
+                    defaultValue={profile?.role}
+                    placeholder="z. B. KI-Entwickler für einen Agenten auf Basis unserer Dokumente"
+                  />
                 </label>
+                <div className={styles.row3}>
+                  <label>
+                    <span>Start <em>optional</em></span>
+                    <input name="start" maxLength={80} placeholder="November" />
+                  </label>
+                  <label>
+                    <span>Dauer <em>optional</em></span>
+                    <input name="duration" maxLength={80} placeholder="3 Monate" />
+                  </label>
+                  <label>
+                    <span>Tagessatz <em>optional</em></span>
+                    <input name="rate" maxLength={80} placeholder="bis 800 €" />
+                  </label>
+                </div>
                 <label>
-                  <span>Ihr Name</span>
-                  <input name="fullName" autoComplete="name" minLength={2} maxLength={160} required />
+                  <span>Noch etwas? <em>optional</em></span>
+                  <textarea name="note" rows={3} maxLength={2000} />
                 </label>
-              </div>
-              <div className={styles.row}>
-                <label>
-                  <span>Geschäftliche E-Mail</span>
-                  <input name="email" type="email" autoComplete="email" maxLength={160} required />
+                <div className={styles.trap} aria-hidden="true">
+                  <label>
+                    Website
+                    <input name="website" tabIndex={-1} autoComplete="off" />
+                  </label>
+                </div>
+                <label className={styles.consent}>
+                  <input type="checkbox" name="consent" required />
+                  <span>
+                    Ich habe die <Link href="/privacy#kontakt">Datenschutzhinweise</Link> gelesen. XPORTAL verwendet
+                    meine Angaben, um diese Anfrage zu bearbeiten und mich dazu zu kontaktieren.
+                  </span>
                 </label>
-                <label>
-                  <span>Telefon <em>optional</em></span>
-                  <input name="phone" type="tel" autoComplete="tel" maxLength={40} />
-                </label>
-              </div>
-              <label>
-                <span>Wen suchen Sie?</span>
-                <input
-                  name="role"
-                  minLength={2}
-                  maxLength={200}
-                  required
-                  defaultValue={profile?.role}
-                  placeholder="z. B. KI-Entwickler für einen Agenten auf Basis unserer Dokumente"
-                />
-              </label>
-              <div className={styles.row3}>
-                <label>
-                  <span>Start <em>optional</em></span>
-                  <input name="start" maxLength={80} placeholder="z. B. November" />
-                </label>
-                <label>
-                  <span>Dauer <em>optional</em></span>
-                  <input name="duration" maxLength={80} placeholder="z. B. 3 Monate" />
-                </label>
-                <label>
-                  <span>Tagessatz <em>optional</em></span>
-                  <input name="rate" maxLength={80} placeholder="z. B. bis 800 €" />
-                </label>
-              </div>
-              <label>
-                <span>Noch etwas? <em>optional</em></span>
-                <textarea name="note" rows={3} maxLength={2000} />
-              </label>
-              <div className={styles.trap} aria-hidden="true">
-                <label>
-                  Website
-                  <input name="website" tabIndex={-1} autoComplete="off" />
-                </label>
-              </div>
-              <label className={styles.consent}>
-                <input type="checkbox" name="consent" required />
+                <div>
+                  <button type="submit" className={styles.submit}>
+                    {calendarReady ? "Weiter zur Terminwahl" : "Gespräch anfragen"}
+                  </button>
+                </div>
+                <p className={styles.small}>{BUSINESS_ONLY_NOTICE}</p>
+              </form>
+            </>
+          )}
+        </section>
+
+        <aside className={styles.proofSide} aria-label="So läuft das Gespräch">
+          <div className={styles.proofInner}>
+            <h2>So läuft das Gespräch</h2>
+            <ol className={styles.steps}>
+              {STEPS.map((step, index) => (
+                <li key={step.title}>
+                  <span aria-hidden="true">{index + 1}</span>
+                  <div>
+                    <strong>{step.title}</strong>
+                    <p>{step.text}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <ul className={styles.facts}>
+              <li><Check />Gespräch und Vorstellung kostenlos</li>
+              <li>
+                <Check />
                 <span>
-                  Ich habe die <Link href="/privacy#kontakt">Datenschutzhinweise</Link> gelesen. XPORTAL verwendet
-                  meine Angaben, um diese Anfrage zu bearbeiten und mich dazu zu kontaktieren.
+                  {PLACEMENT_TERMS.feePercent} % Honorar nur bei Beauftragung ·{" "}
+                  <Link href={PLACEMENT_TERMS_PATH}>Bedingungen</Link>
                 </span>
-              </label>
-              <button type="submit" className={styles.submit}>
-                {calendarReady ? "Weiter zur Terminwahl" : "Gespräch anfragen"}
-              </button>
-              <p className={styles.small}>{BUSINESS_ONLY_NOTICE}</p>
-            </form>
-          </>
-        )}
-      </section>
+              </li>
+              <li><Check />Sie arbeiten direkt mit dem Freelancer</li>
+              <li><Check />Projektdaten in der EU (Irland)</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
     </main>
   );
 }

@@ -136,7 +136,7 @@ describe("sidebar and landing page in the placement model", () => {
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     const html = renderToStaticMarkup(createElement(FreelancerLanding));
     expect(html).toContain("Einfügen. Anfragen.");
-    expect(html).toContain("Kostenlos anfragen.");
+    expect(html).toContain("Persönlich vorgestellt.");
     expect(html).toContain(">Freelancer anfragen</strong>");
     expect(html).toContain("Anfrage ohne Konto, Vorstellung kostenlos");
     expect(html).not.toContain("Einfügen. Buchen.");

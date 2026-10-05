@@ -16,6 +16,8 @@ export const SALES_CALL_ENTRIES = [
   "header",
   "menu",
   "hero",
+  "process",
+  "roles",
   "closing",
   "role_page",
   "pricing",

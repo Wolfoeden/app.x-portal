@@ -46,7 +46,10 @@ export function PublicHeader({ context }: { context?: string }) {
           </Link>
         </div>
         <details className={styles.menu}>
-          <summary>Menü</summary>
+          <summary>
+            <span className={styles.menuIcon} aria-hidden="true" />
+            <span className="sr-only">Menü</span>
+          </summary>
           <nav aria-label="Navigation">
             <NavigationLinks />
             <Link href="/chat" prefetch={false}>Kostenlos testen</Link>
