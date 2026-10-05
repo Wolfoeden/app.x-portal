@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { JsonLd } from "@/components/JsonLd";
 import { MatchProtocol } from "@/components/product/MatchProtocol";
+import { salesCallHref, type SalesCallEntry } from "@/lib/sales/sales-call-links";
 import { MARKETING_PAGES, type PublicPage } from "@/lib/seo";
 import { breadcrumbStructuredData } from "@/lib/structured-data";
 import styles from "./marketing.module.css";
@@ -11,6 +12,15 @@ export function ProjectLink({ children = "Projekt beschreiben" }: { children?: R
   return (
     <Link href="/chat" prefetch={false} className={styles.primaryLink}>
       {children}<span aria-hidden="true">↗</span>
+    </Link>
+  );
+}
+
+/** Der zweite Weg neben dem Chat: ein Gespräch mit XPORTAL. */
+export function SalesCallLink({ entry, children = "Gespräch buchen" }: { entry: SalesCallEntry; children?: ReactNode }) {
+  return (
+    <Link href={salesCallHref(entry)} prefetch={false} className={styles.secondaryLink}>
+      {children}
     </Link>
   );
 }
@@ -41,6 +51,7 @@ export function MarketingPage({
           <p className={styles.lead}>{intro}</p>
           <div className={styles.heroActions}>
             <ProjectLink />
+            <SalesCallLink entry="role_page" />
             <span className={styles.subtle}>Ohne Anmeldung starten</span>
           </div>
         </div>
@@ -56,7 +67,10 @@ export function MarketingPage({
           <h2 id="next-step-title">Aus Ihrer Aufgabe wird eine konkrete Suche.</h2>
           <p>Beschreiben Sie, was entstehen soll und welche Erfahrung Sie dafür brauchen.</p>
         </div>
-        <ProjectLink />
+        <div className={styles.nextActions}>
+          <ProjectLink />
+          <SalesCallLink entry="closing" />
+        </div>
       </section>
       <nav className={styles.related} aria-label="Passend zum Thema">
         <p className={styles.eyebrow}>Weiterlesen</p>

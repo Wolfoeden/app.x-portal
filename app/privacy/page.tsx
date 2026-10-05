@@ -235,9 +235,28 @@ export default function PrivacyPage() {
           </div>
         </section>
 
-        <section>
+        <section id="kontakt">
           <h2>7. Kontaktanfragen</h2>
           <div>
+            <p>
+              Wenn Sie über <a href="/gespraech">„Gespräch buchen“</a> ein
+              Gespräch anfragen, verarbeiten wir Firma, Namen, E-Mail-Adresse,
+              die gesuchte Rolle und die freiwilligen Angaben (Telefon, Start,
+              Dauer, Tagessatz-Rahmen, Notiz), um Sie zu kontaktieren, das
+              Gespräch zu führen und Ihnen passende Freelancer vorzustellen.
+              Die Anfrage legen wir als Kontakt in unserer Kundenverwaltung an
+              und schicken Ihnen eine Bestätigung per E-Mail. Rechtsgrundlage
+              ist Art. 6 Abs. 1 lit. b DSGVO (Anbahnung eines Vertrags).
+            </p>
+            <p>
+              Für die Terminwahl nutzen wir einen <strong>Terminbuchungsdienst
+              mit Sitz in den USA</strong>. Er wird nicht eingebettet: Erst wenn
+              Sie „Termin wählen“ anklicken, öffnet sich seine Seite, und wir
+              übergeben dabei Ihren Namen, Ihre E-Mail-Adresse und die gesuchte
+              Rolle, damit Sie sie nicht noch einmal eingeben müssen. Dies ist
+              eine Übermittlung in ein Drittland; zu den Garantien siehe
+              Abschnitt 9.
+            </p>
             <p>
               Wenn Sie das <a href="/contact">Kontaktformular</a> nutzen,
               verarbeiten wir Ihren Namen, Ihre E-Mail-Adresse, den Betreff und
@@ -330,6 +349,12 @@ export default function PrivacyPage() {
                 Freelancers, erst nach Ihrem Klick auf dessen Link;
               </li>
               <li>
+                ein <strong>Terminbuchungsdienst</strong> mit Sitz in den USA
+                für Gespräche mit XPORTAL, erst nach Ihrem Klick auf „Termin
+                wählen“; übergeben werden Name, E-Mail-Adresse und gesuchte
+                Rolle aus Ihrer Gesprächsanfrage;
+              </li>
+              <li>
                 ein <strong>Zahlungsdienstleister</strong> mit Sitz in Irland,
                 erst nach Ihrem Klick auf „Plan buchen“; dabei wird Ihre
                 XPORTAL-Kontokennung übergeben, damit die Zahlung Ihrem Konto
@@ -380,6 +405,7 @@ export default function PrivacyPage() {
               <li>Lebensläufe von Freelancern: bis zum Widerruf der Bereitstellung, zur Beendigung des Vermittlungszwecks oder bis zu einer früheren berechtigten Löschanfrage; die Erforderlichkeit wird bei Profilprüfung und Deaktivierung erneut geprüft;</li>
               <li>Fotos aus Bewerbungen: bis zur Entscheidung über die Bewerbung, danach als Profilbild bis zu dessen Entfernung oder Löschung des Profils;</li>
               <li>Kontaktanfragen: Löschung nach Erledigung, spätestens Überprüfung nach 365 Tagen;</li>
+              <li>Gesprächsanfragen: Löschung, wenn kein Vertrag zustande kommt oder Sie widersprechen, spätestens Überprüfung nach 365 Tagen; kommt ein Vertrag zustande, gelten die handels- und steuerrechtlichen Fristen;</li>
               <li>Zähler der Ratenbegrenzung: Löschung am Tag nach Ablauf des jeweiligen Zeitfensters;</li>
               <li>technische KI-Nutzungsdaten: je nach Kontotyp und Abrechnungsfenster 90 bis 400 Tage;</li>
               <li>Audit- und Vermittlungsnachweise: grundsätzlich bis zu 730 Tage; danach Löschung oder Pseudonymisierung nach der geltenden Richtlinie;</li>
@@ -459,7 +485,7 @@ export default function PrivacyPage() {
           </div>
         </section>
 
-        <p className="xlegal-updated">Stand: 2. Oktober 2026</p>
+        <p className="xlegal-updated">Stand: 4. Oktober 2026</p>
       </main>
 
       <PublicFooter />

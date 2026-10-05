@@ -1,9 +1,13 @@
 import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+vi.mock("server-only", () => ({}));
 
-import FindPage, { metadata as findMetadata } from "@/app/(marketing)/freelancer-finden/page";
+// Die Seite selbst ist asynchron (sie lädt die Zahlen zum Bestand); gerendert
+// wird hier ihr Inhalt ohne Zahlen, wie bei einem Ausfall der Datenbank.
+import { metadata as findMetadata } from "@/app/(marketing)/freelancer-finden/page";
+import { FreelancerLanding as FindPage } from "@/components/marketing/FreelancerLanding";
 import ItPage, { metadata as itMetadata } from "@/app/(marketing)/it-freelancer-finden/page";
 import MatchingPage, { metadata as matchingMetadata } from "@/app/(marketing)/ki-freelancer-matching/page";
 import PricingPage, { metadata as pricingMetadata } from "@/app/(marketing)/preise/page";
@@ -17,7 +21,7 @@ import { MARKETING_CATEGORIES } from "@/lib/marketing-categories";
 import { MARKETING_PAGE, MARKETING_PAGES, absoluteUrl, pageMetadata } from "@/lib/seo";
 
 const routes = [
-  { Component: FindPage, page: MARKETING_PAGE.find, metadata: findMetadata, required: ["Einfügen. Buchen.", "fehlende Informationen", "Projekt jetzt einfügen"] },
+  { Component: FindPage, page: MARKETING_PAGE.find, metadata: findMetadata, required: ["Einfügen. Buchen.", "offene Frage", "Projekt jetzt einfügen", "Gespräch buchen"] },
   { Component: ItPage, page: MARKETING_PAGE.it, metadata: itMetadata, required: ["IT-Freelancer", "React", "SAP", "Verfügbarkeit"] },
   { Component: MatchingPage, page: MARKETING_PAGE.matching, metadata: matchingMetadata, required: ["regelbasiert", "KI-gestütztes", "Nicht belegt"] },
   { Component: HowPage, page: MARKETING_PAGE.how, metadata: howMetadata, required: ["Requirement Extraction", "Credits", "Informationslücken"] },

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Inter } from "next/font/google";
+import { Inter, Sora } from "next/font/google";
 import { CookieConsent } from "@/components/CookieConsent";
 import { JsonLd } from "@/components/JsonLd";
 import { SITE_DESCRIPTION, SITE_URL } from "@/lib/seo";
@@ -18,6 +18,16 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
+// Überschriften der öffentlichen Seiten: eine geometrische Display-Schrift in
+// dünnem Schnitt mit enger Laufweite, wie bei Anbietern, die als Software
+// auftreten. Nur zwei Schnitte, damit die Seite nicht schwerer wird.
+const sora = Sora({
+  subsets: ["latin"],
+  weight: ["400", "600"],
+  display: "swap",
+  variable: "--font-display",
+});
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
@@ -32,7 +42,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="de" className={inter.variable}>
+    <html lang="de" className={`${inter.variable} ${sora.variable}`}>
       <body>
         <JsonLd data={siteStructuredData()} />
         {children}

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { writeAuditEvent } from "@/lib/audit/write";
+import { SALES_CALL_KIND } from "@/lib/sales/sales-call-links";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 import {
@@ -361,10 +362,95 @@ export async function deleteContact(id: string, adminId: string): Promise<boolea
   return deleted;
 }
 
-/** Für die Übersicht: fällige Wiedervorlagen und neue Kontakte. */
-export async function contactWorkload(today: string): Promise<{ due: number; fresh: number; total: number }> {
+/**
+ * Ein Kontakt, der sich selbst meldet — etwa über „Gespräch buchen“. Anders
+ * als beim Import ist die Anfrage der Anlass: Wiedervorlage heute, und wer
+ * früher „kein Interesse“ hatte oder nicht mehr kontaktiert werden wollte,
+ * steht nach der eigenen Anfrage wieder auf „Neu“. Eine laufende Pipeline
+ * (angeschrieben, Gespräch, Kunde) bleibt, wie sie ist; die Notiz des
+ * Betreibers wird nicht überschrieben, die Anfrage kommt in den Verlauf.
+ */
+export async function recordInboundLead(
+  contact: ContactInput,
+  options: { source: string; today: string; eventBody: string },
+): Promise<{ id: string; created: boolean }> {
   const admin = createAdminSupabaseClient();
-  const [due, fresh, total] = await Promise.all([
+  const key = contactDedupeKey(contact);
+  const now = new Date().toISOString();
+
+  const findExisting = async () => {
+    const { data, error } = await admin.from("crm_contacts").select("id,stage").eq("dedupe_key", key).maybeSingle();
+    if (error) throw error;
+    return data as { id: string; stage: string } | null;
+  };
+
+  let existing = await findExisting();
+  let created = false;
+  let id = "";
+  let fromStage: string | null = null;
+  let toStage: string | null = null;
+
+  if (!existing) {
+    const { data, error } = await admin
+      .from("crm_contacts")
+      .insert({
+        ...inputRow(contact),
+        dedupe_key: key,
+        source: options.source.slice(0, 80),
+        stage: "new",
+        next_follow_up_on: options.today,
+        updated_at: now,
+      })
+      .select("id")
+      .single();
+    // Zwei gleichzeitige Anfragen derselben Person: die zweite wird zur
+    // Aktualisierung der ersten.
+    if (error && (error as { code?: string }).code !== "23505") throw error;
+    if (data) {
+      created = true;
+      id = String((data as Row).id);
+    } else {
+      existing = await findExisting();
+      if (!existing) throw error ?? new Error("crm contact missing after conflict");
+    }
+  }
+
+  if (existing) {
+    id = existing.id;
+    const reopen = existing.stage === "not_interested" || existing.stage === "do_not_contact";
+    const update: Row = {
+      company: contact.company,
+      contact_name: contact.contactName,
+      kind: contact.kind,
+      focus: contact.focus,
+      email: contact.email,
+      email_kind: contact.emailKind,
+      next_follow_up_on: options.today,
+      updated_at: now,
+    };
+    if (reopen) {
+      update.stage = "new";
+      fromStage = existing.stage;
+      toStage = "new";
+    }
+    const { error } = await admin.from("crm_contacts").update(update).eq("id", id);
+    if (error) throw error;
+  }
+
+  const events: Row[] = [{ contact_id: id, kind: "note", body: options.eventBody.slice(0, 2000) }];
+  if (fromStage && toStage) events.push({ contact_id: id, kind: "stage", from_stage: fromStage, to_stage: toStage });
+  const insert = await admin.from("crm_contact_events").insert(events);
+  if (insert.error) throw insert.error;
+
+  return { id, created };
+}
+
+/** Für die Übersicht: fällige Wiedervorlagen, neue Kontakte, offene Anfragen. */
+export async function contactWorkload(
+  today: string,
+): Promise<{ due: number; fresh: number; total: number; inbound: number }> {
+  const admin = createAdminSupabaseClient();
+  const [due, fresh, total, inbound] = await Promise.all([
     admin
       .from("crm_contacts")
       .select("id", { count: "exact", head: true })
@@ -372,6 +458,7 @@ export async function contactWorkload(today: string): Promise<{ due: number; fre
       .in("stage", [...OPEN_CONTACT_STAGES]),
     admin.from("crm_contacts").select("id", { count: "exact", head: true }).eq("stage", "new").not("email", "is", null),
     admin.from("crm_contacts").select("id", { count: "exact", head: true }),
+    admin.from("crm_contacts").select("id", { count: "exact", head: true }).eq("kind", SALES_CALL_KIND).eq("stage", "new"),
   ]);
-  return { due: due.count ?? 0, fresh: fresh.count ?? 0, total: total.count ?? 0 };
+  return { due: due.count ?? 0, fresh: fresh.count ?? 0, total: total.count ?? 0, inbound: inbound.count ?? 0 };
 }

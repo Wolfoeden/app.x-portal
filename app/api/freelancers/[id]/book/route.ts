@@ -33,21 +33,32 @@ export async function GET(
     const parsed = IdSchema.safeParse(rawId);
     if (!parsed.success) return new Response("Nicht gefunden.", { status: 404 });
 
-    // Im Vermittlungsmodell öffnet sich der Kalender erst nach der
-    // Vorstellung. Wer vorher hier landet — aus einem alten Link, einer
-    // Lead-Mail oder von Hand —, wird zur Anfrage geschickt.
+    // Im Vermittlungsmodell öffnet sich der Kalender nach der Vorstellung
+    // oder mit bezahltem Tarif. Wer sonst hier landet — aus einem alten
+    // Link, einer Lead-Mail oder von Hand —, fragt über „Gespräch buchen“
+    // an, mit diesem Profil vorausgewählt.
     if (placementRequestsEnabled()) {
       const user = await getCurrentUser().catch(() => null);
       if (!(await placementBookingAllowed(user, parsed.data))) {
         return NextResponse.redirect(
-          new URL(appPath("/chat?booking=request"), request.url),
+          new URL(appPath(`/gespraech?von=profile&profil=${parsed.data}`), request.url),
           302,
         );
       }
     }
 
     const destination = await loadBookingDestination(parsed.data);
-    if (!destination) return new Response("Nicht gefunden.", { status: 404 });
+    if (!destination) {
+      // Ohne Kalender stellt XPORTAL vor: „Gespräch buchen“ mit diesem
+      // Profil, statt einer leeren Fehlerseite.
+      if (placementRequestsEnabled()) {
+        return NextResponse.redirect(
+          new URL(appPath(`/gespraech?von=profile&profil=${parsed.data}`), request.url),
+          302,
+        );
+      }
+      return new Response("Nicht gefunden.", { status: 404 });
+    }
 
     const ipHash = pseudonymizeIp(getClientIp(request));
     const limit = await consumeRateLimit(

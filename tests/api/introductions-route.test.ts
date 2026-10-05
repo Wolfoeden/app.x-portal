@@ -7,6 +7,9 @@ const mocks = vi.hoisted(() => ({
   inserted: [] as unknown[],
   anonymous: false,
   rateAllowed: true,
+  paid: false,
+  /** Ersetzt Kalender und Freigabe des Profils für einzelne Fälle. */
+  calendar: null as null | { booking_url: string; intro_policy: string; snapshotPolicy: string },
 }));
 
 vi.mock("server-only", () => ({}));
@@ -23,6 +26,7 @@ vi.mock("@/lib/auth/current-user", () => ({
 vi.mock("@/lib/security/shared-rate-limit", () => ({
   consumeRateLimit: async () => ({ allowed: mocks.rateAllowed, retryAfterSeconds: 60 }),
 }));
+vi.mock("@/lib/billing/paid-access", () => ({ userHasPaidAccess: async () => mocks.paid }));
 
 /**
  * Ein Bauchladen, der auf jede Kettenmethode sich selbst zurückgibt und am
@@ -89,15 +93,22 @@ vi.mock("@/lib/supabase/admin", () => ({
       }
       if (name === "matches") {
         return tabelle(() => ({
-          data: { id: "44444444-4444-4444-8444-444444444444", profile_snapshot: PROFIL },
+          data: {
+            id: "44444444-4444-4444-8444-444444444444",
+            profile_snapshot: mocks.calendar
+              ? { ...PROFIL, introPolicy: { type: mocks.calendar.snapshotPolicy } }
+              : PROFIL,
+          },
           error: null,
         }));
       }
       if (name === "freelancer_profiles") {
         return tabelle(() => ({
           data: {
-            intro_policy: "manual_approval",
-            booking_url: null,
+            id: "22222222-2222-4222-8222-222222222222",
+            owner_user_id: null,
+            intro_policy: mocks.calendar?.intro_policy ?? "manual_approval",
+            booking_url: mocks.calendar?.booking_url ?? null,
             demo_status: "real",
             profile_status: "active",
             availability_status: "available",
@@ -233,6 +244,8 @@ describe("Anfrage im Vermittlungsmodell", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.inserted.length = 0;
+    mocks.paid = false;
+    mocks.calendar = null;
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     process.env.SUPABASE_SERVICE_ROLE_KEY = "test";
     mocks.deliver.mockResolvedValue({ delivered: true });
@@ -302,6 +315,47 @@ describe("Anfrage im Vermittlungsmodell", () => {
     expect(mocks.inserted).toEqual([]);
     expect(mocks.audit).not.toHaveBeenCalled();
     expect(mocks.deliver).not.toHaveBeenCalled();
+  });
+
+  // Wer zahlt, bucht direkt: Die Vorstellung wird festgehalten, die Antwort
+  // trägt den Kalender, und es gibt weder Zustimmung noch Betreiber-Mail.
+  it("lässt zahlende Kunden bei Profilen mit Kalender direkt buchen", async () => {
+    mocks.paid = true;
+    mocks.calendar = { booking_url: "https://calendly.com/mira", intro_policy: "free", snapshotPolicy: "free" };
+    mocks.booking.mockReturnValueOnce({
+      data: {
+        id: "77777777-7777-4777-8777-777777777777",
+        status: "ready_to_book",
+        booking_url: "https://calendly.com/mira",
+        intro_policy_snapshot: "free",
+        requested_at: new Date().toISOString(),
+      },
+      error: null,
+    });
+
+    const response = await POST(anfrage());
+    const payload = (await response.json()) as { introduction: { status: string; bookingUrl: string } };
+
+    expect(response.status).toBe(200);
+    expect(payload.introduction).toMatchObject({ status: "ready_to_book", bookingUrl: "https://calendly.com/mira" });
+    expect(mocks.audit).not.toHaveBeenCalledWith(expect.objectContaining({ action: "placement_terms_accepted" }));
+    expect(mocks.deliver).not.toHaveBeenCalled();
+  });
+
+  it("stellt bei zahlenden Kunden ohne Kalender trotzdem vor", async () => {
+    mocks.paid = true;
+    mocks.booking
+      .mockReturnValueOnce({ data: null, error: null })
+      .mockReturnValueOnce({
+        data: { id: "66666666-6666-4666-8666-666666666666", status: "manual_review", requested_at: new Date().toISOString() },
+        error: null,
+      });
+
+    const response = await POST(anfrage({ placementTermsVersion: VERSION }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ action: "placement_terms_accepted" }));
+    expect((mocks.inserted[0] as Record<string, unknown>).status).toBe("manual_review");
   });
 
   it("meldet den Stand einer Anfrage für den Dialog", async () => {

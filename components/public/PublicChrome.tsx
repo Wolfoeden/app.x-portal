@@ -2,28 +2,62 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { LegalFooter } from "@/components/LegalFooter";
+import { salesCallHref } from "@/lib/sales/sales-call-links";
 import { MARKETING_PAGE } from "@/lib/seo";
 
 import styles from "./public-chrome.module.css";
 
+function NavigationLinks() {
+  return (
+    <>
+      <Link href={MARKETING_PAGE.find.path}>Freelancer finden</Link>
+      <Link href={MARKETING_PAGE.matching.path}>KI-Matching</Link>
+      <Link href={MARKETING_PAGE.how.path}>So funktioniert’s</Link>
+      <Link href={MARKETING_PAGE.pricing.path}>Preise</Link>
+      <Link href="/freelancer/apply">Für Freelancer</Link>
+    </>
+  );
+}
+
+/**
+ * Kopf aller öffentlichen Seiten. Zwei Wege, wie bei Anbietern, die verkaufen
+ * statt nur zeigen: „Gespräch buchen“ für alle, die lieber mit einem Menschen
+ * sprechen, „Kostenlos testen“ für alle, die selbst suchen wollen. Bleibt
+ * beim Scrollen stehen; auf dem Telefon öffnet „Menü“ die Navigation — ein
+ * `<details>`, damit es ohne JavaScript geht.
+ */
 export function PublicHeader({ context }: { context?: string }) {
   return (
-    <header className={styles.header}>
+    <header className={styles.header} data-public-surface>
       <div className={styles.headerInner}>
         <Link href={MARKETING_PAGE.find.path} className={styles.brand} aria-label="XPORTAL – Freelancer finden">
           <span>XPORTAL</span>
         </Link>
         {context ? <span className={styles.context}>{context}</span> : null}
         <nav className={styles.navigation} aria-label="Hauptnavigation">
-          <Link href={MARKETING_PAGE.find.path}>Freelancer finden</Link>
-          <Link href={MARKETING_PAGE.matching.path}>KI-Matching</Link>
-          <Link href={MARKETING_PAGE.how.path}>So funktioniert’s</Link>
-          <Link href={MARKETING_PAGE.pricing.path}>Preise</Link>
-          <Link href="/freelancer/apply">Freelancer-Portal</Link>
+          <NavigationLinks />
         </nav>
-        <Link href="/chat" prefetch={false} className={styles.primaryAction}>
-          App öffnen <span aria-hidden="true">↗</span>
-        </Link>
+        <div className={styles.headerActions}>
+          <Link href="/chat" prefetch={false} className={styles.secondaryAction}>
+            Kostenlos testen
+          </Link>
+          <Link href={salesCallHref("header")} prefetch={false} className={styles.primaryAction}>
+            Gespräch buchen
+          </Link>
+        </div>
+        <details className={styles.menu}>
+          <summary>
+            <span className={styles.menuIcon} aria-hidden="true" />
+            <span className="sr-only">Menü</span>
+          </summary>
+          <nav aria-label="Navigation">
+            <NavigationLinks />
+            <Link href="/chat" prefetch={false}>Kostenlos testen</Link>
+            <Link href={salesCallHref("menu")} prefetch={false} className={styles.menuAction}>
+              Gespräch buchen
+            </Link>
+          </nav>
+        </details>
       </div>
     </header>
   );

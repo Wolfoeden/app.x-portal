@@ -25,6 +25,9 @@ function step(funnel: ReturnType<typeof buildRevenueFunnel>, key: string) {
 describe("revenue funnel", () => {
   it("reads every step from search to paid subscription", () => {
     expect(REVENUE_FUNNEL_ACTIONS).toEqual([
+      "sales_call_viewed",
+      "sales_call_requested",
+      "sales_call_calendar_opened",
       "signup_funnel_search_started",
       "signup_funnel_result_seen",
       "signup_funnel_registration_started",
@@ -124,10 +127,34 @@ describe("revenue funnel", () => {
     expect(step(funnel, "checkout_started")?.people).toBe(0);
   });
 
+  it("counts the sales call path: views by entry, requests and calendar clicks per contact", () => {
+    const funnel = buildRevenueFunnel(
+      [
+        row("sales_call_viewed", null, { via: "header" }),
+        row("sales_call_viewed", null, { via: "header" }),
+        row("sales_call_viewed", null, { via: "pricing" }),
+        row("sales_call_viewed", "admin-1", { via: "header" }),
+        { ...row("sales_call_requested", null), target_id: "contact-1" },
+        { ...row("sales_call_calendar_opened", null), target_id: "contact-1" },
+        { ...row("sales_call_calendar_opened", null), target_id: "contact-1" },
+      ],
+      new Set(["admin-1"]),
+    );
+
+    expect(step(funnel, "sales_call_viewed")).toEqual({
+      key: "sales_call_viewed",
+      label: "Gesprächsseite aufgerufen",
+      people: 3,
+      detail: "2 Kopfzeile · 1 Preise",
+    });
+    expect(step(funnel, "sales_call_requested")?.people).toBe(1);
+    expect(step(funnel, "sales_call_calendar_opened")?.people).toBe(1);
+  });
+
   it("shows empty steps as zero instead of hiding them", () => {
     const funnel = buildRevenueFunnel([], new Set());
 
-    expect(funnel.steps.map((entry) => entry.people)).toEqual([0, 0, 0, 0, 0, 0, 0]);
+    expect(funnel.steps.map((entry) => entry.people)).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     expect(funnel.steps.every((entry) => entry.detail === null)).toBe(true);
   });
 
@@ -146,6 +173,9 @@ describe("revenue funnel", () => {
     );
 
     expect(funnel.steps.map((entry) => entry.key)).toEqual([
+      "sales_call_viewed",
+      "sales_call_requested",
+      "sales_call_calendar_opened",
       "search_started",
       "result_seen",
       "registration_started",

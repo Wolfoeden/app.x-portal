@@ -43,6 +43,7 @@ import {
   saveAccountName,
   signOut as signOutAccount,
 } from "@/lib/auth/browser";
+import { hasPaidAccess } from "@/lib/billing/paid-plan";
 import type { CheckoutPlanId } from "@/lib/billing/payment-links";
 import {
   DISMISSED_PROFILES_STORAGE_KEY,
@@ -90,7 +91,7 @@ import {
   type ToastState,
 } from "./chat/shared";
 import { RegisteredShowcasePanel } from "./chat/registered-showcase";
-import { bookingActionState, ProjectDetails, ResultSection, SavedProfileList } from "./chat/results";
+import { bookingActionState, DirectBookingContext, ProjectDetails, ResultSection, SavedProfileList } from "./chat/results";
 import { ProfileSheet, ProfileSheetContext, type ProfileSheetRequest } from "./profile/profile-sheet";
 import type { ProfileDossier } from "@/lib/profile/dossier";
 import { profilePath } from "@/lib/profile/profile-link";
@@ -1308,6 +1309,9 @@ export function ChatWorkspace({
     (isTeamView ? team.map((member) => member.profile) : [...profiles, ...partialProfiles])
       .find((profile) => profile.id === selectedProfileId) ?? null;
   const isAccountUser = auth.authenticated && !auth.anonymous;
+  // Wer einen bezahlten Tarif hat, bucht im Vermittlungsmodell direkt; die
+  // Buchungsroute prüft dasselbe noch einmal auf dem Server.
+  const directBooking = isAccountUser && hasPaidAccess(usage?.credits.planId, usage?.credits.subscriptionStatus);
   const accountName = isAccountUser
     ? shownAccountName(auth.user?.displayName ?? null, auth.user?.email ?? null) ?? "Ihr Konto"
     : null;
@@ -2661,7 +2665,9 @@ export function ChatWorkspace({
       );
       return;
     }
-    if (placement) {
+    // Zahlende Kunden buchen direkt: Der Link öffnet den Kalender, hier wird
+    // nur die Vorstellung daneben festgehalten.
+    if (placement && !(directBooking && profile.bookingUrl)) {
       setSelectedProfileId(profile.id);
       setContactOpen(true);
       return;
@@ -3053,7 +3059,7 @@ export function ChatWorkspace({
     );
     const result = request.result;
     if (result) {
-      const action = bookingActionState(result, isAccountUser);
+      const action = bookingActionState(result, isAccountUser, placementRequestsEnabled(), directBooking);
       return (
         <>
           <div className="profile-sheet-buttons">
@@ -3088,6 +3094,49 @@ export function ChatWorkspace({
       );
     }
     const firstName = request.header?.displayName.split(/\s+/u)[0] ?? null;
+    // Ohne Projekt: Wer zahlt, bucht direkt; alle anderen fragen über
+    // „Gespräch buchen“ an, mit diesem Profil vorausgewählt.
+    if (placementRequestsEnabled() && directBooking) {
+      return (
+        <>
+          <div className="profile-sheet-buttons">
+            <a
+              className="primary-action"
+              href={appPath(`/api/freelancers/${request.id}/book`)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Termin buchen <IconArrowRight size={13} />
+            </a>
+            {pageLink}
+          </div>
+          <p className="profile-sheet-hint">
+            In Ihrem Tarif enthalten · Sie wählen den Termin im Kalender{firstName ? ` von ${firstName}` : ""}.
+          </p>
+        </>
+      );
+    }
+    if (placementRequestsEnabled()) {
+      return (
+        <>
+          <div className="profile-sheet-buttons">
+            <a
+              className="primary-action"
+              href={appPath(`/gespraech?von=profile&profil=${encodeURIComponent(request.id)}`)}
+            >
+              Kennenlernen anfragen <IconArrowRight size={13} />
+            </a>
+            {pageLink}
+          </div>
+          <p className="profile-sheet-hint">
+            Kostenlos bis zur Beauftragung · XPORTAL klärt mit Ihnen den Bedarf und stellt
+            {firstName ? ` ${firstName}` : " das Profil"} vor. Oder{" "}
+            <button className="text-button" type="button" onClick={describeProject}>beschreiben Sie Ihr Projekt</button>{" "}
+            und sehen Sie weitere passende Profile.
+          </p>
+        </>
+      );
+    }
     return (
       <>
         <div className="profile-sheet-buttons">
@@ -3109,6 +3158,7 @@ export function ChatWorkspace({
 
   return (
     <ProfileSheetContext.Provider value={openProfileSheet}>
+    <DirectBookingContext.Provider value={directBooking}>
     <div
       className={`app-shell ${detailsOpen ? "" : "details-hidden"}${emptyChat ? " is-empty-chat" : ""}${profileFocus ? " is-profile-focus" : ""}${isResizingSidebar ? " is-resizing-sidebar" : ""}`}
       style={{ "--sidebar-width": `${railSidebar ? SIDEBAR_RAIL_WIDTH : sidebarWidth}px` } as CSSProperties}
@@ -3831,6 +3881,7 @@ export function ChatWorkspace({
 
       {toast ? <div className={`toast ${toast.tone}`} role="status" key={toast.id}>{toast.message}</div> : null}
     </div>
+    </DirectBookingContext.Provider>
     </ProfileSheetContext.Provider>
   );
 }

@@ -41,6 +41,7 @@ Basis: `e36d9e24e8beb41ccc8887dc3b78a529252f7c74` · 12. September 2026
 | `/mein-team` | Konto, Enterprise | kontoübergreifende Merkliste mit sichtbarer H1 | A-REG, A-JOURNEY, M-A11Y-STRUKTUR |
 | `/freelancer-finden`, `/it-freelancer-finden`, `/ki-freelancer-matching`, `/wie-funktioniert-xportal` | alle | servergerenderte Produktinformation, Match-Protokoll, aktuelle Preise, CTA zum kontextfreien Start | A-SEO, A-VISUAL, A-PROOF, M-30S |
 | `/freelancer/apply` | Freelancer | Auth-Gate, Bewerbung, Prüfung, Dashboard und Aktualisierung ohne Datenverlust; derselbe Beweisfaden wie im Recruiting | A-REG, A-JOURNEY, A-VISUAL, A-PROOF |
+| `/gespraech` | alle | „Gespräch buchen“: Formular ohne JavaScript, Danke-Schritt mit signiertem Kalenderlink (`/gespraech/termin`), keine Personendaten in der Adresszeile | A-REG (`tests/api/sales-call-route.test.ts`, `tests/sales/*`), A-SURFACE |
 | `/contact` | alle | Kontaktformular, Captcha, klare Erfolgs-/Fehlerzustände und gemeinsamer Kontextstempel | A-REG (`tests/api/contact-route.test.ts`), A-SURFACE, A-JOURNEY, M-A11Y-STRUKTUR |
 | `/datenwege` | alle | Datenwege in klarer Sprache, nur Aussagen aus der Datenschutzerklärung; verlinkt aus Chat, Seitenfuß und Preisseite | A-REG (`tests/marketing/data-flows.test.ts`), A-SEO |
 | `/imprint`, `/privacy`, `/terms` | alle | Anbieter-, Datenschutz- und Vertragsstatus im gemeinsamen Markenrahmen und mit sichtbarem Dokumentstatus | A-SEO, A-REG, A-VISUAL, A-SURFACE, A-JOURNEY, M-COMMERCIAL |
@@ -68,6 +69,7 @@ Basis: `e36d9e24e8beb41ccc8887dc3b78a529252f7c74` · 12. September 2026
 | `/api/admin/freelancer-profiles/[id]`, `/api/admin/freelancer-profiles/[id]/projects`, `/api/admin/freelancer-profiles/[id]/photo` | Profilpflege durch Admins: Referenzprojekte (inkl. Vorschläge aus der Recherche), Links, Referenznotiz, aktiv/pausiert, Foto (nur mit bestätigter Einwilligung, signiertes Upload-Ticket, Prüfung der ersten Bytes); `requireAdminUser`, same-origin, zod, Audit | A-REG: `tests/api/admin-freelancer-profiles-route.test.ts`, `tests/api/admin-freelancer-photo-route.test.ts` |
 | `/api/conversations` | „Gespräche“: eigene Anfragen bzw. Anfragen ans eigene Profil; Antwort nur für die eigene Seite oder mit signiertem Token aus dem Mail-Hinweis | A-REG: `tests/api/conversations-route.test.ts` |
 | `/api/admin/introductions/follow-ups` | Admin per Knopf oder täglicher Zeitplan mit `x-placement-run-token` (`PLACEMENT_RUN_SECRET`) | A-REG: `tests/api/conversations-route.test.ts` |
+| `/api/sales-call` | Same-Origin, Honigtopf, Rate-Limit je IP und Adresse, CRM-Eintrag mit Audit | A-REG: `tests/api/sales-call-route.test.ts` |
 | `/api/contact`, `/api/unsubscribe` | Captcha/Rate-Limit und Abmeldung | A-REG: `tests/api/contact-route.test.ts`, `tests/api/captcha-gate.test.ts`, `tests/email/unsubscribe.test.ts` |
 | `/api/admin/*` | Admin-Auswertung, Bewerbungen, Leads, Outreach, Automation | A-REG: `tests/admin/*`, `tests/leadgen/*`, `tests/api/ai-provider-route.test.ts` |
 | `/api/leadgen/run` | signierter, limitierter Lauf mit Deduplizierung/Stopregeln | A-REG: `tests/api/leadgen-run-route.test.ts`, `tests/leadgen/*`, `tests/sourcing/*` |

@@ -74,10 +74,23 @@ export const MARKETING_PAGE = {
 
 export const MARKETING_PAGES = Object.values(MARKETING_PAGE);
 
+/** „Gespräch buchen“: nicht in der Weiterlesen-Liste, aber im Index. */
+export const SALES_CALL_PAGE = {
+  path: "/gespraech",
+  label: "Gespräch buchen",
+  title: "Gespräch buchen: Freelancer für KI, SAP und Software | XPORTAL",
+  description:
+    "30 Minuten, kostenlos: Erzählen Sie, wen Sie suchen. XPORTAL prüft den Bestand und stellt passende Freelancer vor. Honorar nur bei Beauftragung.",
+  priority: 0.9,
+  changeFrequency: "monthly",
+} as const satisfies PublicPage;
+
 export const SITEMAP_ENTRIES = [
   CHAT_PAGE,
   ...MARKETING_PAGES,
+  SALES_CALL_PAGE,
   { path: "/freelancer/apply", priority: 0.7, changeFrequency: "monthly" },
+  { path: "/vermittlungsbedingungen", priority: 0.4, changeFrequency: "yearly" },
   { path: "/contact", priority: 0.4, changeFrequency: "yearly" },
   { path: "/terms", priority: 0.3, changeFrequency: "yearly" },
   { path: "/privacy", priority: 0.3, changeFrequency: "yearly" },

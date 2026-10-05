@@ -103,6 +103,7 @@ export type Overview = {
     mandates: number | null;
     contactsDue: number | null;
     contactsNew: number | null;
+    salesCalls: number | null;
   };
   leads: {
     found: number;
@@ -267,6 +268,7 @@ export async function loadOverview(range: OverviewRange, now: Date = new Date())
       mandates: count(mandates),
       contactsDue: contacts?.due ?? null,
       contactsNew: contacts?.fresh ?? null,
+      salesCalls: contacts?.inbound ?? null,
     },
     leads: {
       found: seenRows.length,
