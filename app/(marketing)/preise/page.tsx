@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { JsonLd } from "@/components/JsonLd";
 import { Questions } from "@/components/marketing/MarketingPage";
+import { actionClass } from "@/components/ui/actions";
 import {
   CREDIT_PRICES,
   roundedExampleCount,
@@ -50,6 +51,9 @@ const euro = new Intl.NumberFormat("de-DE", {
  * Preis und Credits (UX-Review Oktober 2026: das Abo über den Arbeitsnutzen
  * verkaufen, nicht über die Einheit).
  */
+/** Der Knopf jeder Tarifkarte: volle Breite, unten in der Karte. */
+const CARD_ACTION = actionClass("primary", { block: true, className: styles.cardAction });
+
 const CARD_COPY = {
   basic: {
     audience: "Für Recruiter, die einzelne Kundenanfragen im Monat selbst prüfen.",
@@ -96,7 +100,7 @@ function FixedCard({ plan }: { plan: FixedMonthlyPlan }) {
         <li>{number.format(plan.monthlyCredits)} Credits pro Monat</li>
         {copy.features.map((feature) => <li key={feature}>{feature}</li>)}
       </ul>
-      <a className={styles.cardAction} href={href}>
+      <a className={CARD_ACTION} href={href}>
         {plan.label} buchen <span aria-hidden="true">↗</span>
       </a>
     </article>
@@ -125,7 +129,7 @@ function EnterpriseCard() {
         {CARD_COPY.enterprise_flex.features.map((feature) => <li key={feature}>{feature}</li>)}
         <li>{euro.format(plan.euroPerCreditCents / 100)} je verbrauchtem Credit</li>
       </ul>
-      <Link className={styles.cardAction} href={salesCallHref("pricing")} prefetch={false}>Gespräch buchen <span aria-hidden="true">↗</span></Link>
+      <Link className={CARD_ACTION} href={salesCallHref("pricing")} prefetch={false}>Gespräch buchen <span aria-hidden="true">↗</span></Link>
       <a className={styles.cardMail} href={`mailto:${ENTERPRISE_CONTACT.email}?subject=XPORTAL%20Enterprise`}>Enterprise per E-Mail anfragen</a>
     </article>
   );
@@ -269,8 +273,8 @@ export default function PricingPage() {
               Recherchen ab.
             </p>
             <div className={styles.heroActions}>
-              <a href="#tarife" className={styles.primaryAction}>Tarife vergleichen</a>
-              <Link href={salesCallHref("pricing")} prefetch={false} className={styles.secondaryAction}>Gespräch buchen</Link>
+              <a href="#tarife" className={actionClass("primary")}>Tarife vergleichen</a>
+              <Link href={salesCallHref("pricing")} prefetch={false} className={actionClass("secondary")}>Gespräch buchen</Link>
             </div>
           </div>
           <PathChooser />
@@ -284,7 +288,7 @@ export default function PricingPage() {
               {`Starten Sie kostenlos: ${GUEST_TRIAL_CREDITS} Credits ohne Konto, ${START_CREDITS} insgesamt mit kostenlosem Konto. Danach wählen Sie ein monatliches Kontingent – oder zahlen im Enterprise-Tarif ausschließlich nach tatsächlicher Nutzung.`}
             </p>
             <div className={styles.heroActions}>
-              <Link href="/chat" prefetch={false} className={styles.primaryAction}>Kostenlos starten <span aria-hidden="true">↗</span></Link>
+              <Link href="/chat" prefetch={false} className={actionClass("primary")}>Kostenlos starten <span aria-hidden="true">↗</span></Link>
               <p><strong>{START_CREDITS} Credits mit kostenlosem Konto</strong><span>Einmalig, insgesamt; das Gastguthaben ({GUEST_TRIAL_CREDITS}) wird ersetzt, nicht addiert.</span></p>
             </div>
           </div>
@@ -347,7 +351,7 @@ export default function PricingPage() {
 
       <section className={styles.finalCta}>
         <div><p className={styles.eyebrow}>Kostenlos testen</p><h2>{START_CREDITS} Credits mit Konto. Einmalig. Ohne Abo.</h2><p>Erleben Sie XPORTAL zuerst am eigenen Projekt und wählen Sie danach den passenden Abrechnungsweg.</p></div>
-        <Link href="/chat" prefetch={false} className={styles.primaryAction}>Kostenlos starten <span aria-hidden="true">↗</span></Link>
+        <Link href="/chat" prefetch={false} className={actionClass("primary")}>Kostenlos starten <span aria-hidden="true">↗</span></Link>
       </section>
       <nav className={styles.related} aria-label="Passend zum Thema">
         {MARKETING_PAGES.filter((page) => page.path !== MARKETING_PAGE.pricing.path).map((page) => (

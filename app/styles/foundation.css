@@ -68,6 +68,54 @@
   --control-sm: 36px;
   --control-md: 40px;
   --control-lg: 44px;
+
+  /* Öffentliche Seiten, Fenster und Formulare -----------------------------
+
+     Eine Quelle für Knöpfe, Felder und Überschriften (UX-Review Oktober
+     2026: Startseite, Preise, Gespräch, Freelancer-Einstieg, Rechtsseiten
+     und der Anmeldedialog hatten je eigene Werte). Die Knöpfe selbst stehen
+     in components/ui/actions.module.css; globale Stile, die kein Modul
+     einbinden können, lesen dieselben Werte von hier. */
+  --xp-ink: #101b17;
+  --xp-ink-soft: #2d3632;
+  --xp-muted: #5f6772;
+  --xp-line: #e4e7ea;
+  --xp-soft: #f6f7f8;
+  --xp-brand: #17804d;
+  --xp-brand-soft: #eef8f2;
+
+  --xp-display: var(--font-display), var(--font-sans);
+  --xp-h1-size: clamp(36px, 4vw, 50px);
+  --xp-h1-tracking: -.05em;
+  --xp-h2-size: clamp(28px, 3.1vw, 38px);
+  --xp-h2-tracking: -.035em;
+  --xp-eyebrow-size: 14px;
+  --xp-lead-size: 17px;
+
+  --xp-action-height: var(--control-lg);
+  --xp-action-height-compact: var(--control-md);
+  --xp-action-radius: var(--radius-xs);
+  --xp-action-padding: 10px 20px;
+  --xp-action-font-size: 15px;
+  --xp-action-weight: 500;
+  --xp-action-primary: radial-gradient(circle at 50% 50%, #17804d, #0c5c3b);
+  --xp-action-primary-hover: radial-gradient(circle at 50% 50%, #17804d, #094a30);
+  --xp-action-primary-shadow: 0 1px 2px rgba(16, 27, 23, .18), 0 6px 16px rgba(23, 128, 77, .22), inset 0 1px 0 rgba(255, 255, 255, .14);
+  --xp-action-secondary-border: #dde1e5;
+  --xp-action-secondary-border-hover: #b9c0c7;
+  --xp-action-secondary-hover: #fafbfb;
+
+  --xp-field-height: var(--control-lg);
+  --xp-field-radius: var(--radius-xs);
+  --xp-field-padding: 9px 12px;
+  --xp-field-font-size: 15px;
+  --xp-field-border: #cfd7df;
+  --xp-field-bg: #f3f6f9;
+  --xp-field-bg-focus: #fff;
+  --xp-field-placeholder: #7a818b;
+  --xp-field-focus-ring: 2px solid rgba(23, 128, 77, .25);
+  --xp-label-size: 14px;
+  --xp-label-weight: 500;
 }
 
 * {

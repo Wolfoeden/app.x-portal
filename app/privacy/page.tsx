@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "@/app/styles/legal.css";
 import { CookieSettingsButton } from "@/components/CookieConsent";
+import { actionClass } from "@/components/ui/actions";
 import {
   PublicDocumentIntro,
   PublicFooter,
@@ -250,12 +251,17 @@ export default function PrivacyPage() {
             </p>
             <p>
               Für die Terminwahl nutzen wir einen <strong>Terminbuchungsdienst
-              mit Sitz in den USA</strong>. Er wird nicht eingebettet: Erst wenn
-              Sie „Termin wählen“ anklicken, öffnet sich seine Seite, und wir
-              übergeben dabei Ihren Namen, Ihre E-Mail-Adresse und die gesuchte
-              Rolle, damit Sie sie nicht noch einmal eingeben müssen. Dies ist
-              eine Übermittlung in ein Drittland; zu den Garantien siehe
-              Abschnitt 9.
+              mit Sitz in den USA</strong>. Sein Kalender erscheint erst,
+              nachdem Sie die Anfrage mit „Weiter zur Terminwahl“ abgeschickt
+              haben, und zwar eingebettet auf der folgenden Seite; vorher lädt
+              die Seite nichts von ihm. Dabei übergeben wir Ihren Namen, Ihre
+              E-Mail-Adresse und die gesuchte Rolle, damit Sie sie nicht noch
+              einmal eingeben müssen. Der Dienst verarbeitet außerdem technische
+              Verbindungsdaten und, was Sie im Kalender selbst eingeben; für die
+              Terminbuchung kann er eigene Cookies setzen. Den Kalender können
+              Sie auch in einem eigenen Fenster öffnen. Dies ist eine
+              Übermittlung in ein Drittland; zu den Garantien siehe Abschnitt
+              9.
             </p>
             <p>
               Wenn Sie das <a href="/contact">Kontaktformular</a> nutzen,
@@ -309,7 +315,7 @@ export default function PrivacyPage() {
               eine neue, konkrete Einwilligung eingeholt, und er wird nicht
               geladen, bevor sie vorliegt.
             </p>
-            <CookieSettingsButton className="contact-submit" />
+            <CookieSettingsButton className={actionClass("primary", { className: "contact-submit" })} />
           </div>
         </section>
 
@@ -350,9 +356,10 @@ export default function PrivacyPage() {
               </li>
               <li>
                 ein <strong>Terminbuchungsdienst</strong> mit Sitz in den USA
-                für Gespräche mit XPORTAL, erst nach Ihrem Klick auf „Termin
-                wählen“; übergeben werden Name, E-Mail-Adresse und gesuchte
-                Rolle aus Ihrer Gesprächsanfrage;
+                für Gespräche mit XPORTAL, erst nachdem Sie die
+                Gesprächsanfrage abgeschickt haben; sein Kalender wird dann auf
+                unserer Seite eingebettet, übergeben werden Name, E-Mail-Adresse
+                und gesuchte Rolle aus Ihrer Gesprächsanfrage;
               </li>
               <li>
                 ein <strong>Zahlungsdienstleister</strong> mit Sitz in Irland,
@@ -485,7 +492,7 @@ export default function PrivacyPage() {
           </div>
         </section>
 
-        <p className="xlegal-updated">Stand: 4. Oktober 2026</p>
+        <p className="xlegal-updated">Stand: 5. Oktober 2026</p>
       </main>
 
       <PublicFooter />

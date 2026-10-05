@@ -45,12 +45,12 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 40px;
+  min-height: var(--xp-action-height-compact);
   cursor: pointer;
-  border-radius: 5px;
+  border-radius: var(--xp-action-radius);
   padding: 0 18px;
-  font-size: 14.5px;
-  font-weight: 500;
+  font-size: var(--xp-action-font-size);
+  font-weight: var(--xp-action-weight);
 }
 
 /* Zwei Klassen, damit die Linkfarbe der Rechtsseiten (.xlegal a) den
@@ -63,9 +63,13 @@
 
 .card .primary {
   border: 1px solid transparent;
-  background: radial-gradient(circle at 50% 50%, #17804d, #0c5c3b);
+  background: var(--xp-action-primary);
   color: #fff;
-  box-shadow: 0 1px 2px rgba(16, 27, 23, .18), 0 6px 16px rgba(23, 128, 77, .22), inset 0 1px 0 rgba(255, 255, 255, .14);
+  box-shadow: var(--xp-action-primary-shadow);
+}
+
+.card .primary:hover:not(:disabled) {
+  background: var(--xp-action-primary-hover);
 }
 
 .primary:disabled {
@@ -75,15 +79,20 @@
 
 .card .secondary,
 .aside .secondary {
-  border: 1px solid #dde1e5;
+  border: 1px solid var(--xp-action-secondary-border);
   background: var(--surface);
   color: var(--ink);
 }
 
+.card .secondary:hover,
+.aside .secondary:hover {
+  border-color: var(--xp-action-secondary-border-hover);
+}
+
 .primary:focus-visible,
 .secondary:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: 2px;
+  outline: 2px solid var(--xp-brand);
+  outline-offset: 3px;
 }
 
 .hint {

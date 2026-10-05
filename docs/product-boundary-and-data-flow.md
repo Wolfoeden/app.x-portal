@@ -37,7 +37,10 @@ flowchart LR
 
 Freelancer profiles are never included in OpenAI model requests. Matching and
 ordering are reproducible without OpenAI. Calendly receives no chat or project
-content from the application and is not requested until the user clicks.
+content from the application. Freelancer booking pages are not requested until
+the user clicks; XPORTAL's own sales calendar is embedded on `/gespraech` only
+after the sales-call form is submitted, prefilled with name, e-mail and the
+role sought.
 
 ## Data categories
 

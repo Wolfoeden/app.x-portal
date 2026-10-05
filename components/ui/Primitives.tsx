@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
+import { actionClass } from "./actions";
 import styles from "./primitives.module.css";
 
 export function Notice({
@@ -44,8 +45,9 @@ export function EmptyState({
   );
 }
 
+/** Der Hauptknopf eines Formulars, im Stil der öffentlichen Seiten. */
 export function ActionButton({ className = "", ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
-  return <button {...props} className={`${styles.action} ${className}`.trim()} />;
+  return <button {...props} className={actionClass("primary", { className: className || undefined })} />;
 }
 
 export function FormField({ label, children }: { label: string; children: ReactNode }) {

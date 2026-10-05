@@ -2,6 +2,8 @@ import "server-only";
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+
 import { salesCalendarUrl } from "./sales-call-model";
 
 /**
@@ -63,4 +65,26 @@ export function readSalesCallToken(token: unknown, now: Date = new Date()): stri
   const age = Math.floor(now.getTime() / 1000) - issuedAt;
   if (age < 0 || age > MAX_AGE_SECONDS) return null;
   return contactId;
+}
+
+/**
+ * Name, Adresse und gesuchte Rolle aus dem Kontakt, für die Vorbelegung des
+ * Kalenders. Wirft nie: Ohne Vorbelegung geht es trotzdem weiter, der Termin
+ * ist wichtiger.
+ */
+export async function salesCallPrefill(
+  contactId: string | null,
+): Promise<{ fullName: string; email: string | null; role: string | null } | undefined> {
+  if (!contactId || !process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) return undefined;
+  try {
+    const { data } = await createAdminSupabaseClient()
+      .from("crm_contacts")
+      .select("contact_name,email,focus")
+      .eq("id", contactId)
+      .maybeSingle();
+    const row = data as { contact_name: string | null; email: string | null; focus: string | null } | null;
+    return row?.contact_name ? { fullName: row.contact_name, email: row.email, role: row.focus } : undefined;
+  } catch {
+    return undefined;
+  }
 }

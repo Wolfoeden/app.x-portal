@@ -291,7 +291,11 @@ No booking or engagement is created by model output. The customer opens a
 freelancer booking URL only through an explicit click. If an application-side
 introduction record is created from the secondary contact flow, it requires
 `explicit_confirmation_at` and a client/server idempotency key unique per
-owner. Calendly or other third-party content stays click-to-load.
+owner. Freelancer booking pages (Calendly or other third parties) stay
+click-to-load. The one exception is XPORTAL's own sales calendar on
+`/gespraech`: after the visitor submits the short sales-call form, the
+thank-you step embeds it (Calendly inline, prefilled with name, e-mail and the
+role sought); `frame-src` allows exactly `https://calendly.com` for this.
 
 An engagement row requires `confirmation_source` and `confirmed_at`; model
 output cannot create it. Statuses are `proposed`, `accepted`, `active`,

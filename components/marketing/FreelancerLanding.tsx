@@ -2,10 +2,13 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { JsonLd } from "@/components/JsonLd";
+import { actionClass } from "@/components/ui/actions";
+import { CaseStudies } from "./CaseStudies";
 import { ContactPerson } from "./ContactPerson";
 import { EXAMPLE_BRIEFS, exampleBriefPath, type ExampleBriefKey } from "@/components/chat/example-briefs";
 import { Questions } from "./MarketingPage";
 import { ProcessVideo } from "./ProcessVideo";
+import { publishedCaseStudies, type CaseStudy } from "@/lib/marketing/case-studies";
 import type { LandingStats } from "@/lib/marketing/landing-stats";
 import { MARKETING_PAGE } from "@/lib/seo";
 import { breadcrumbStructuredData } from "@/lib/structured-data";
@@ -33,7 +36,7 @@ import styles from "./landing.module.css";
 
 function SalesButton({ entry, children = "Gespräch buchen", pill = false, outline = false }: { entry: SalesCallEntry; children?: ReactNode; pill?: boolean; outline?: boolean }) {
   return (
-    <Link href={salesCallHref(entry)} prefetch={false} className={`${styles.button} ${outline ? styles.outline : styles.primary}${pill ? ` ${styles.pill}` : ""}`}>
+    <Link href={salesCallHref(entry)} prefetch={false} className={actionClass(outline ? "secondary" : "primary", { pill })}>
       {children}
     </Link>
   );
@@ -41,7 +44,7 @@ function SalesButton({ entry, children = "Gespräch buchen", pill = false, outli
 
 function TryButton({ href = "/chat", children, pill = false, primary = false }: { href?: string; children: ReactNode; pill?: boolean; primary?: boolean }) {
   return (
-    <Link href={href} prefetch={false} className={`${styles.button} ${primary ? styles.primary : styles.outline}${pill ? ` ${styles.pill}` : ""}`}>
+    <Link href={href} prefetch={false} className={actionClass(primary ? "primary" : "secondary", { pill })}>
       {children}
     </Link>
   );
@@ -248,10 +251,13 @@ function RecruiterTerms() {
 export function FreelancerLanding({
   stats = null,
   contactPhotoUrl = null,
+  caseStudies = publishedCaseStudies(),
 }: {
   stats?: LandingStats | null;
   /** Foto des Ansprechpartners (lib/sales/sales-contact.ts); ohne: Initialen. */
   contactPhotoUrl?: string | null;
+  /** Nur freigegebene Fälle (lib/marketing/case-studies.ts). */
+  caseStudies?: readonly CaseStudy[];
 }) {
   // Wird beim Build eingesetzt, wie überall beim Vermittlungsmodell.
   const placement = placementRequestsEnabled();
@@ -395,7 +401,7 @@ export function FreelancerLanding({
           <div className={styles.storyHead}>
             <span className={styles.storyIcon} aria-hidden="true"><Check /></span>
             <h2 id="begruendung-title">Sehen, warum es passen könnte: Anforderung, Beleg und offene Frage stehen getrennt da.</h2>
-            <Link className={`${styles.button} ${styles.outline}`} href={MARKETING_PAGE.matching.path}>Mehr zum Matching</Link>
+            <Link className={actionClass("secondary")} href={MARKETING_PAGE.matching.path}>Mehr zum Matching</Link>
           </div>
           <figure className={styles.example}>
             <figcaption>So lesen Sie ein Ergebnis <span>Illustratives Beispiel · kein reales Profil</span></figcaption>
@@ -414,6 +420,8 @@ export function FreelancerLanding({
           <Stats stats={stats} placement={placement} />
         </div>
       </section>
+
+      <CaseStudies cases={caseStudies} />
 
       {/* Jede Rolle öffnet den Chat mit dem Anfang einer Anfrage — nur Rollen,
           die der Profilbestand trägt; alles andere über den eigenen Text. */}

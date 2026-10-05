@@ -39,11 +39,20 @@ export const CSP_REPORT_PATH = "/api/csp-report";
  *
  * Der frueher hier stehende Satz "Kein `frame-src`: Es wird nichts eingebettet"
  * gilt damit nicht mehr uneingeschraenkt. Die Zusage aus Abschnitt 6 der
- * Datenschutzhinweise — Buchungsseiten erst nach einem Klick und in einem
- * eigenen Aufruf — bleibt davon unberuehrt: erlaubt ist ausschliesslich
- * hCaptcha, nicht das Einbetten beliebiger Dritter.
+ * Datenschutzhinweise — Buchungsseiten von Freelancern erst nach einem Klick
+ * und in einem eigenen Aufruf — bleibt davon unberuehrt.
  */
 const HCAPTCHA_ORIGINS = "https://hcaptcha.com https://*.hcaptcha.com";
+
+/**
+ * Der Kalender fuer „Gespraech buchen“ mit XPORTAL selbst. Er erscheint erst,
+ * nachdem jemand die Gespraechsanfrage abgeschickt hat, und nur auf der
+ * Danke-Seite (Abschnitt 7 der Datenschutzhinweise). Genau dieser eine Dienst,
+ * kein Platzhalter: Buchungsseiten von Freelancern bleiben aussen vor.
+ * Muss mit SALES_CALENDAR_EMBED_ORIGIN in lib/sales/sales-call-model.ts
+ * uebereinstimmen.
+ */
+export const SALES_CALENDAR_FRAME_ORIGIN = "https://calendly.com";
 
 /** Der Gruppenname, den `Reporting-Endpoints` und `report-to` teilen müssen. */
 export const CSP_REPORT_GROUP = "csp";
@@ -77,11 +86,11 @@ export function buildContentSecurityPolicy({
     "style-src 'self' 'unsafe-inline'",
     scriptSrc,
     `connect-src 'self' https://*.supabase.co wss://*.supabase.co ${HCAPTCHA_ORIGINS}`,
-    // Eingebettet wird ausschließlich hCaptcha. Die frühere Ausnahme für
-    // calendly.com bleibt gestrichen: sie stand im Widerspruch zu Abschnitt 6
-    // der Datenschutzhinweise, der zusagt, dass Buchungsseiten erst nach einem
+    // Eingebettet werden hCaptcha und der eigene Gesprächskalender auf der
+    // Danke-Seite von /gespraech. Buchungsseiten von Freelancern nicht:
+    // Abschnitt 6 der Datenschutzhinweise sagt zu, dass sie erst nach einem
     // Klick und dann in einem eigenen Aufruf geladen werden.
-    `frame-src ${HCAPTCHA_ORIGINS}`,
+    `frame-src ${HCAPTCHA_ORIGINS} ${SALES_CALENDAR_FRAME_ORIGIN}`,
     ...(reportPath
       ? [`report-uri ${reportPath}`, `report-to ${CSP_REPORT_GROUP}`]
       : []),

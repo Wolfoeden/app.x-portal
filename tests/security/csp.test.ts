@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
+import { SALES_CALENDAR_EMBED_ORIGIN } from "@/lib/sales/sales-call-model";
 import {
   buildContentSecurityPolicy,
   CSP_REPORT_GROUP,
   CSP_REPORT_PATH,
+  SALES_CALENDAR_FRAME_ORIGIN,
 } from "@/lib/security/csp";
 
 function directive(policy: string, name: string): string | undefined {
@@ -62,24 +64,32 @@ describe("content security policy", () => {
   });
 
   /**
-   * Frueher stand hier `frame-src 'none'`. Eingebettet wird jetzt hCaptcha —
-   * und ausschliesslich das. Abschnitt 6 der Datenschutzhinweise sagt zu, dass
-   * Buchungsseiten erst nach einem Klick und in einem eigenen Aufruf geladen
-   * werden; diese Zusage haelt der Test weiter fest.
+   * Frueher stand hier `frame-src 'none'`. Eingebettet werden hCaptcha und der
+   * eigene Gespraechskalender auf /gespraech — und ausschliesslich das.
+   * Abschnitt 6 der Datenschutzhinweise sagt zu, dass Buchungsseiten von
+   * Freelancern erst nach einem Klick und in einem eigenen Aufruf geladen
+   * werden; deshalb steht hier kein anderer Buchungsdienst und kein Platzhalter.
    */
-  it("embeds hCaptcha and nothing else", () => {
+  it("embeds hCaptcha and the own sales calendar, nothing else", () => {
     const policy = buildContentSecurityPolicy({ isProduction: true });
     const frameSrc = directive(policy, "frame-src") ?? "";
 
     expect(frameSrc).toContain("hcaptcha.com");
-    expect(frameSrc).not.toContain("calendly");
-    expect(policy).not.toContain("calendly");
+    expect(frameSrc).not.toContain("cal.com ");
+    expect(frameSrc).not.toContain("*.calendly");
 
     // Keine stillschweigende Oeffnung fuer alles Uebrige. Verglichen wird
     // gegen eine feste Liste und nicht gegen eine Endung: "endet auf
     // hcaptcha.com" traefe auch auf "evil-hcaptcha.com" zu.
     expect(frameSrc).not.toContain("'self'");
-    expect(frameSrc.replace("frame-src ", "").split(" ")).toEqual(HCAPTCHA_SOURCES);
+    expect(frameSrc.replace("frame-src ", "").split(" ")).toEqual([...HCAPTCHA_SOURCES, SALES_CALENDAR_FRAME_ORIGIN]);
+    // Nur eingebettet, nirgends sonst erlaubt.
+    expect(directive(policy, "connect-src")).not.toContain("calendly");
+    expect(directive(policy, "script-src")).not.toContain("calendly");
+  });
+
+  it("frames exactly the calendar the booking page embeds", () => {
+    expect(SALES_CALENDAR_FRAME_ORIGIN).toBe(SALES_CALENDAR_EMBED_ORIGIN);
   });
 
   it("reaches hCaptcha for the script, the frame and the answer", () => {
