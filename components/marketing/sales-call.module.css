@@ -24,7 +24,7 @@
 .form label > span { color: var(--sc-ink); font-size: 14px; font-weight: 500; }
 .form em { color: #7a818b; font-style: normal; font-weight: 400; }
 .required { margin-left: 2px; color: #c2352b; font-weight: 600; }
-.form :where(input:not([type="checkbox"]), textarea) { box-sizing: border-box; width: 100%; min-height: 44px; border: 1px solid #cfd7df; border-radius: 0; padding: 9px 12px; background: #f3f6f9; color: var(--sc-ink); font: inherit; font-size: 15px; }
+.form :where(input:not([type="checkbox"]), textarea) { box-sizing: border-box; width: 100%; min-height: 44px; border: 1px solid #cfd7df; border-radius: 6px; padding: 9px 12px; background: #f3f6f9; color: var(--sc-ink); font: inherit; font-size: 15px; }
 .form :where(input, textarea)::placeholder { color: #7a818b; }
 .form :where(input, textarea):focus-visible { border-color: var(--sc-brand); outline: 2px solid rgba(23, 128, 77, .25); outline-offset: 0; background: #fff; }
 .row, .row3 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }

@@ -69,11 +69,22 @@ export function Modal({
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const cardRef = useRef<HTMLElement>(null);
+  // Der Aufrufer übergibt meist eine neue Funktion je Render. Hinge der
+  // Effekt unten an ihr, liefe er bei jedem Render des Chats neu und setzte
+  // den Fokus zurück auf „Schließen“ — mitten ins Tippen; ein Leerzeichen
+  // schloss dann das Fenster.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
   useEffect(() => {
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    closeRef.current?.focus();
+    // Ein Feld, in das man sofort tippen soll, markiert sich mit
+    // `data-autofocus`; sonst landet der Fokus auf „Schließen“.
+    const preferred = cardRef.current?.querySelector<HTMLElement>("[data-autofocus]");
+    (preferred ?? closeRef.current)?.focus();
     const onKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") onCloseRef.current();
       if (event.key === "Tab" && cardRef.current) {
         const focusable = Array.from(
           cardRef.current.querySelectorAll<HTMLElement>(
@@ -97,7 +108,7 @@ export function Modal({
       document.removeEventListener("keydown", onKey);
       previouslyFocused?.focus();
     };
-  }, [onClose]);
+  }, []);
   return (
     <div className={`modal-backdrop${variant === "sheet" ? " is-sheet" : ""}`} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <section ref={cardRef} className={`modal-card ${size === "large" ? "is-large" : ""}${variant === "sheet" ? " is-sheet" : ""}`} role="dialog" aria-modal="true" aria-labelledby={titleId}>
@@ -499,7 +510,7 @@ export function CreateProjectDialog({
         <h2 id="create-project-title">Neues Projekt</h2>
         <p>Ein Projekt ist ein Ordner, in dem Sie mehrere zusammengehörige Chats speichern können.</p>
         <label htmlFor="project-name">Projektname</label>
-        <input id="project-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={120} autoFocus placeholder="z. B. SAP-Rollout 2026" />
+        <input id="project-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={120} data-autofocus placeholder="z. B. SAP-Rollout 2026" />
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         <div className="dialog-actions">
           <button className="secondary-action" type="button" onClick={onClose} disabled={busy}>Abbrechen</button>

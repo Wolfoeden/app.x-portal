@@ -28,7 +28,7 @@ function NavigationLinks() {
  */
 export function PublicHeader({ context }: { context?: string }) {
   return (
-    <header className={styles.header}>
+    <header className={styles.header} data-public-surface>
       <div className={styles.headerInner}>
         <Link href={MARKETING_PAGE.find.path} className={styles.brand} aria-label="XPORTAL – Freelancer finden">
           <span>XPORTAL</span>

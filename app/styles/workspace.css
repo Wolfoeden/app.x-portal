@@ -5329,7 +5329,8 @@ a.secondary-action {
   }
 
   /* Die öffentlichen Seiten sind eine Website und stehen auf 100 %, wie bei
-     jedem Anbieter; die Dichte oben gilt der App. */
+     jedem Anbieter; die Dichte oben gilt der App. Erkannt am Kopf der
+     öffentlichen Seiten (PublicHeader). */
   :root:has([data-public-surface]) {
     --ui-zoom: 1;
   }
@@ -6059,4 +6060,52 @@ a.showcase-card:hover .showcase-card-cta svg {
 
 .profile-references .showcase-card-teaser {
   display: grid;
+}
+
+/* Fenster im Stil der Website --------------------------------------------
+
+   Dieselbe Sprache wie die öffentlichen Seiten (landing.module.css):
+   Überschrift in der Display-Schrift, grüner Verlaufsknopf für den
+   Hauptschritt, weißer Rahmenknopf daneben, Eingabefelder wie im
+   Gesprächsformular. Gilt für jedes Fenster der App, damit keines aus der
+   Reihe fällt. */
+.modal-backdrop { background: rgba(16, 27, 23, .32); }
+.modal-card { border-color: #e4e7ea; border-radius: 14px; box-shadow: 0 30px 80px rgba(16, 27, 23, .18), 0 2px 6px rgba(16, 27, 23, .06); }
+.modal-close { top: 16px; right: 16px; border-color: #e4e7ea; border-radius: 6px; background: #fff; }
+.modal-card .dialog-eyebrow { margin: 0; color: var(--green); font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.modal-card h2 { font-family: var(--font-display), var(--font-sans); font-weight: 400; line-height: 1.2; letter-spacing: -.035em; }
+
+.modal-card .primary-action,
+.modal-card .secondary-action,
+.modal-card .danger-action,
+.modal-card .auth-submit { min-height: 42px; border-radius: 5px; padding: 0 18px; font-size: 14px; font-weight: 500; }
+.modal-card .primary-action,
+.modal-card .auth-submit { border: 1px solid transparent; background: radial-gradient(circle at 50% 50%, #17804d, #0c5c3b); color: #fff; box-shadow: 0 1px 2px rgba(16, 27, 23, .18), 0 6px 16px rgba(23, 128, 77, .2), inset 0 1px 0 rgba(255, 255, 255, .14); }
+.modal-card .primary-action:hover:not(:disabled),
+.modal-card .auth-submit:hover:not(:disabled) { background: radial-gradient(circle at 50% 50%, #17804d, #094a30); }
+.modal-card .primary-action:disabled,
+.modal-card .auth-submit:disabled { opacity: .45; box-shadow: none; }
+.modal-card .secondary-action { border-color: #dde1e5; background: #fff; color: var(--ink); }
+.modal-card .secondary-action:hover:not(:disabled) { border-color: #b9c0c7; background: #fff; }
+
+.project-dialog { gap: 0; padding: 32px; }
+.project-dialog h2 { margin: 10px 56px 0 0; font-size: 28px; line-height: 1.2; }
+.project-dialog > p { margin: 10px 0 0; font-size: 15px; }
+.project-dialog > label { margin: 24px 0 8px; font-size: 14px; font-weight: 500; }
+.project-dialog > input { min-height: 46px; border-color: #cfd7df; border-radius: 6px; background: #f3f6f9; font-size: 15px; }
+.project-dialog > input::placeholder { color: #7a818b; }
+.project-dialog > input:focus-visible { border-color: var(--green); outline: 2px solid rgba(23, 128, 77, .25); outline-offset: 0; background: #fff; }
+.project-dialog .form-error { margin-top: 12px; }
+.project-dialog .project-destination-list { margin-top: 20px; }
+.project-dialog .project-destination-list button { border-color: #e4e7ea; border-radius: 6px; padding: 12px 14px; font-size: 14.5px; }
+.project-dialog .project-destination-list button:hover,
+.project-dialog .project-destination-list button.active { border-color: var(--green); background: #eef8f2; }
+.project-dialog .dialog-actions { gap: 10px; margin-top: 28px; }
+
+@media (max-width: 620px) {
+  .modal-card,
+  .modal-card.is-large { border-radius: 14px 14px 0 0; }
+  .project-dialog { padding: 28px 20px calc(20px + env(safe-area-inset-bottom)); }
+  .project-dialog h2 { font-size: 24px; }
+  .project-dialog .dialog-actions:not(.split-actions) > * { flex: 1 1 0; }
 }

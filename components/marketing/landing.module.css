@@ -44,7 +44,7 @@
 /* Kopf der Seite */
 .hero .frame { padding-top: 88px; padding-bottom: 96px; }
 .heroGrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 330px); align-items: center; gap: 44px; }
-.hero h1 { font-size: clamp(38px, 3.9vw, 50px); line-height: 1.08; letter-spacing: -.05em; }
+.hero h1 { font-size: clamp(36px, 4vw, 50px); line-height: 1.08; letter-spacing: -.05em; }
 .hero h1 span { color: var(--lp-brand); }
 .subtitle { margin: 22px 0 0; color: var(--lp-ink-soft); font-size: clamp(19px, 1.7vw, 23px); line-height: 1.4; letter-spacing: -.01em; }
 .lead { max-width: 520px; margin: 18px 0 0; color: var(--lp-muted); font-size: 16.5px; line-height: 1.65; }

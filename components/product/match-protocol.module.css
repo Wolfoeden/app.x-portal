@@ -1,9 +1,9 @@
 .protocol {
-  --protocol-line: #d8d8d2;
+  --protocol-line: #e4e7ea;
   overflow: hidden;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-lg);
-  background: var(--surface-raised);
+  border: 1px solid #e4e7ea;
+  border-radius: 8px;
+  background: #fff;
 }
 
 .heading {
@@ -17,10 +17,8 @@
 
 .heading > span {
   color: var(--green);
-  font-size: var(--fs-2xs);
-  font-weight: 760;
-  letter-spacing: .12em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .heading strong {
