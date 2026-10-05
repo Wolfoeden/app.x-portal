@@ -1,0 +1,51 @@
+/* Ein Knopf für alle öffentlichen Seiten. Die Werte kommen aus
+   app/styles/foundation.css (--xp-action-*), damit globale Stile wie die
+   Rechtsseiten und der Anmeldedialog dasselbe zeigen. */
+.action {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: var(--xp-action-height);
+  border: 1px solid transparent;
+  border-radius: var(--xp-action-radius);
+  padding: var(--xp-action-padding);
+  font: inherit;
+  font-size: var(--xp-action-font-size);
+  font-weight: var(--xp-action-weight);
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.action:focus-visible { outline: 2px solid var(--xp-brand); outline-offset: 3px; }
+
+/* Zwei Klassen, damit Linkfarben von Textseiten (etwa `.xlegal a`) die
+   Schrift des Knopfs nicht überschreiben. */
+.action.primary {
+  background: var(--xp-action-primary);
+  color: #fff;
+  box-shadow: var(--xp-action-primary-shadow);
+}
+.action.primary:hover:not(:disabled) { background: var(--xp-action-primary-hover); color: #fff; }
+
+.action.secondary {
+  border-color: var(--xp-action-secondary-border);
+  background: #fff;
+  color: var(--xp-ink);
+}
+.action.secondary:hover:not(:disabled) { border-color: var(--xp-action-secondary-border-hover); background: var(--xp-action-secondary-hover); color: var(--xp-ink); }
+
+/* Nach den Varianten, damit ein gesperrter Hauptknopf keinen Schatten wirft. */
+.action:disabled, .action[aria-disabled="true"] { cursor: not-allowed; opacity: .5; box-shadow: none; }
+
+.pill { border-radius: 999px; }
+.block { width: 100%; }
+.compact { min-height: var(--xp-action-height-compact); padding: 8px 18px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .action { transition: none; }
+}

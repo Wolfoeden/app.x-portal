@@ -33,8 +33,8 @@ export const MARKETING_PAGE = {
   find: {
     path: "/freelancer-finden",
     label: "Freelancer finden",
-    title: "Freelancer finden für Ihr Projekt | XPORTAL",
-    description: "Beschreiben Sie Ihr Projekt und finden Sie Freelancer anhand Ihrer Anforderungen. XPORTAL zeigt Match-Gründe und offene Fragen. Ohne Anmeldung starten.",
+    title: "Freelancer finden für Kundenanfragen von Recruitern | XPORTAL",
+    description: "Für Recruiter und Personaldienstleister: Kundenanfrage mit Freelancer-Profilen abgleichen, Belege und offene Fragen sehen, Verfügbarkeit vor der Vorstellung klären lassen.",
     priority: 0.9,
     changeFrequency: "monthly",
   },

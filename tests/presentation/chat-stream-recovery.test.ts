@@ -73,7 +73,7 @@ describe("sidebar hierarchy", () => {
     const newChat = markup.indexOf('data-sidebar-primary="new-chat"');
     const search = markup.indexOf('class="sidebar-row sidebar-search-toggle"');
 
-    expect(markup).toContain("<span>X PORTAL</span></a>");
+    expect(markup).toContain("<span>XPORTAL</span></a>");
     expect(search).toBeGreaterThan(newChat);
     expect(markup).toContain('<span class="sidebar-row-label">Chats durchsuchen</span>');
     expect(markup).not.toContain('aria-label="Gespeicherte Chats durchsuchen"');

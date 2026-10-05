@@ -1,0 +1,57 @@
+/* Ansprechpartner: rundes Foto (oder Initialen), Name, Rolle. */
+.card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+}
+
+.avatar {
+  position: relative;
+  overflow: hidden;
+  display: inline-grid;
+  flex: none;
+  width: 60px;
+  height: 60px;
+  place-items: center;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background-color: #0f5c3b;
+  color: #fff;
+  font-family: var(--font-display), var(--font-sans);
+  font-size: 19px;
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgba(16, 27, 23, .14);
+}
+
+.photo {
+  position: absolute;
+  inset: 0;
+  background-position: center;
+  background-size: cover;
+}
+
+.card figcaption {
+  display: grid;
+  gap: 1px;
+  color: #5f6772;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.card strong {
+  color: #101b17;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.label {
+  color: #17804d;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.note {
+  margin-top: 2px;
+  font-size: 13px;
+}

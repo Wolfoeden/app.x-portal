@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "@/app/styles/legal.css";
 import { CookieSettingsButton } from "@/components/CookieConsent";
+import { actionClass } from "@/components/ui/actions";
 import {
   PublicDocumentIntro,
   PublicFooter,
@@ -309,7 +310,7 @@ export default function PrivacyPage() {
               eine neue, konkrete Einwilligung eingeholt, und er wird nicht
               geladen, bevor sie vorliegt.
             </p>
-            <CookieSettingsButton className="contact-submit" />
+            <CookieSettingsButton className={actionClass("primary", { className: "contact-submit" })} />
           </div>
         </section>
 

@@ -50,23 +50,8 @@
   .emptyState.compact > div { margin-top: 5px; }
 }
 
-.action {
-  min-height: var(--control-lg);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--ink);
-  border-radius: var(--radius-sm);
-  padding: 10px 20px;
-  background: var(--ink);
-  color: var(--surface);
-  font-size: var(--fs-sm);
-  font-weight: 650;
-  cursor: pointer;
-}
-.action:hover { background: var(--ink-hover); }
-.action:disabled { cursor: not-allowed; opacity: .55; }
-
+/* Felder wie im Gesprächsformular (app/styles/foundation.css, --xp-field-*). */
 .field { display: grid; gap: 8px; }
-.field > span { color: var(--muted); font-size: var(--fs-2xs); font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
-.field :where(input, select, textarea) { min-height: var(--control-lg); }
+.field > span { color: var(--xp-ink); font-size: var(--xp-label-size); font-weight: var(--xp-label-weight); }
+.field :where(input, select, textarea) { box-sizing: border-box; width: 100%; min-height: var(--xp-field-height); border: 1px solid var(--xp-field-border); border-radius: var(--xp-field-radius); padding: var(--xp-field-padding); background: var(--xp-field-bg); color: var(--ink); font: inherit; font-size: var(--xp-field-font-size); }
+.field :where(input, select, textarea):focus-visible { border-color: var(--xp-brand); outline: var(--xp-field-focus-ring); outline-offset: 0; background: var(--xp-field-bg-focus); }

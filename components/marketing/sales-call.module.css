@@ -2,51 +2,65 @@
    Überschrift und Formular, rechts eine graue Fläche mit dem Ablauf. Beide
    Spalten im Rahmen der Startseite (landing.module.css). */
 .page {
-  --sc-ink: #101b17;
-  --sc-muted: #5f6772;
-  --sc-line: #e4e7ea;
-  --sc-brand: #17804d;
+  --sc-ink: var(--xp-ink);
+  --sc-muted: var(--xp-muted);
+  --sc-line: var(--xp-line);
+  --sc-brand: var(--xp-brand);
   border-bottom: 1px solid var(--sc-line);
   color: var(--sc-ink);
 }
 .page:focus { outline: none; }
 .split { box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); width: min(100%, 1088px); margin: 0 auto; border-inline: 1px solid var(--sc-line); }
 .formSide { padding: 72px 64px 88px; }
-.kicker { margin: 0 0 18px; color: var(--sc-brand); font-size: 14px; font-weight: 600; }
-.formSide h1 { margin: 0; font-family: var(--font-display), var(--font-sans); font-size: clamp(36px, 4vw, 50px); font-weight: 400; line-height: 1.1; letter-spacing: -.05em; text-wrap: balance; }
-.intro { max-width: 460px; margin: 22px 0 34px; color: var(--sc-muted); font-size: 17px; line-height: 1.65; }
+.kicker { margin: 0 0 18px; color: var(--sc-brand); font-size: var(--xp-eyebrow-size); font-weight: 600; }
+.formSide h1 { margin: 0; font-family: var(--xp-display); font-size: var(--xp-h1-size); font-weight: 400; line-height: 1.1; letter-spacing: var(--xp-h1-tracking); text-wrap: balance; }
+.intro { max-width: 460px; margin: 22px 0 34px; color: var(--sc-muted); font-size: var(--xp-lead-size); line-height: 1.65; }
 .check { flex: none; width: 18px; height: 18px; }
 .check circle { fill: var(--sc-brand); }
 
 .form { display: grid; gap: 18px; }
 .chosen { margin: 0; border-left: 3px solid var(--sc-brand); padding: 12px 14px; background: #eef8f2; color: var(--ink-soft); font-size: 14px; line-height: 1.55; }
 .form label { display: grid; gap: 7px; min-width: 0; }
-.form label > span { color: var(--sc-ink); font-size: 14px; font-weight: 500; }
-.form em { color: #7a818b; font-style: normal; font-weight: 400; }
+.form label > span { color: var(--sc-ink); font-size: var(--xp-label-size); font-weight: var(--xp-label-weight); }
+.form em { color: var(--xp-field-placeholder); font-style: normal; font-weight: 400; }
 .required { margin-left: 2px; color: #c2352b; font-weight: 600; }
-.form :where(input:not([type="checkbox"]), textarea) { box-sizing: border-box; width: 100%; min-height: 44px; border: 1px solid #cfd7df; border-radius: 6px; padding: 9px 12px; background: #f3f6f9; color: var(--sc-ink); font: inherit; font-size: 15px; }
-.form :where(input, textarea)::placeholder { color: #7a818b; }
-.form :where(input, textarea):focus-visible { border-color: var(--sc-brand); outline: 2px solid rgba(23, 128, 77, .25); outline-offset: 0; background: #fff; }
+.form :where(input:not([type="checkbox"]), textarea) { box-sizing: border-box; width: 100%; min-height: var(--xp-field-height); border: 1px solid var(--xp-field-border); border-radius: var(--xp-field-radius); padding: var(--xp-field-padding); background: var(--xp-field-bg); color: var(--sc-ink); font: inherit; font-size: var(--xp-field-font-size); }
+.form :where(input, textarea)::placeholder { color: var(--xp-field-placeholder); }
+.form :where(input, textarea):focus-visible { border-color: var(--sc-brand); outline: var(--xp-field-focus-ring); outline-offset: 0; background: var(--xp-field-bg-focus); }
 .row, .row3 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .row3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* Zwei Schritte über dem Formular: erst Angaben, dann der Kalender. */
+.stepsMini { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: -14px 0 22px; padding: 0; list-style: none; color: var(--sc-muted); font-size: 14px; }
+.stepsMini li { display: inline-flex; align-items: center; gap: 8px; }
+.stepsMini span { display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid rgba(23, 128, 77, .25); border-radius: 50%; background: #fff; color: var(--sc-brand); font-size: 12px; font-weight: 600; }
+.stepsMini li[aria-current="step"] { color: var(--sc-ink); font-weight: 500; }
+.stepsMini li[aria-current="step"] span { border-color: var(--sc-brand); background: var(--sc-brand); color: #fff; }
+
+/* Die optionalen Angaben: eingeklappt, aber mit einem Klick erreichbar. */
+.more { border: 1px solid var(--sc-line); border-radius: var(--xp-field-radius); background: #fff; }
+.more summary { padding: 12px 14px; color: var(--sc-ink); font-size: 14px; font-weight: 500; cursor: pointer; }
+.more summary:focus-visible { outline: 2px solid var(--sc-brand); outline-offset: 2px; }
+.more[open] summary { border-bottom: 1px solid var(--sc-line); }
+.moreFields { display: grid; gap: 16px; padding: 16px 14px 18px; }
+
+.contact { margin-bottom: 34px; }
+
 .trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 .form .consent { grid-template-columns: 20px minmax(0, 1fr); align-items: start; gap: 10px; }
 .consent input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--sc-brand); }
 .form .consent span { color: var(--sc-muted); font-weight: 400; line-height: 1.55; }
-.submit { min-height: 46px; border: 0; border-radius: 5px; padding: 10px 24px; background: radial-gradient(circle at 50% 50%, #17804d, #0c5c3b); color: #fff; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(16, 27, 23, .18), 0 6px 16px rgba(23, 128, 77, .22), inset 0 1px 0 rgba(255, 255, 255, .14); }
-.submit:hover { background: radial-gradient(circle at 50% 50%, #17804d, #094a30); }
-.submit:focus-visible { outline: 2px solid var(--sc-ink); outline-offset: 3px; }
+/* Knopf: components/ui/actions.module.css (actionClass). */
 .small { margin: 0; color: var(--sc-muted); font-size: 12.5px; line-height: 1.6; }
 
 .done { display: grid; gap: 16px; justify-items: start; }
-.done h2 { margin: 0; font-family: var(--font-display), var(--font-sans); font-size: 28px; font-weight: 400; letter-spacing: -.035em; }
+.done h2 { margin: 0; font-family: var(--xp-display); font-size: 28px; font-weight: 400; letter-spacing: var(--xp-h2-tracking); }
 .done p { margin: 0; color: var(--ink-soft); line-height: 1.65; }
 .doneLabel { display: inline-flex; align-items: center; gap: 8px; color: var(--sc-brand) !important; font-size: 14px; font-weight: 600; }
 .textLink { color: var(--sc-ink); font-size: 14.5px; font-weight: 500; text-underline-offset: 5px; }
 
 .proofSide { border-left: 1px solid var(--sc-line); background: radial-gradient(120% 70% at 100% 100%, rgba(38, 160, 102, .16), transparent 60%), linear-gradient(160deg, #f8f9fa, #f1f4f3); }
 .proofInner { position: sticky; top: 64px; padding: 96px 56px; }
-.proofInner h2 { margin: 0; font-family: var(--font-display), var(--font-sans); font-size: 26px; font-weight: 400; letter-spacing: -.035em; }
+.proofInner h2 { margin: 0; font-family: var(--xp-display); font-size: 26px; font-weight: 400; letter-spacing: var(--xp-h2-tracking); }
 .steps { display: grid; gap: 22px; margin: 30px 0 0; padding: 0; list-style: none; }
 .steps li { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; }
 .steps li > span { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid rgba(23, 128, 77, .25); border-radius: 50%; background: #fff; color: var(--sc-brand); font-size: 14px; font-weight: 600; }

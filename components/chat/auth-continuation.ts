@@ -183,3 +183,24 @@ export function authIntentCopy(intent: AuthIntent) {
       };
   }
 }
+
+/**
+ * Wer den Dialog öffnet. Der Kundenweg setzt eine Anfrage fort; wer sich
+ * auf /freelancer/apply registriert, hat keine Anfrage, sondern legt ein
+ * Profil an — und bekommt deshalb weder „Ihre Anfrage bleibt erhalten“ noch
+ * einen Newsletter über passende Freelancer angeboten.
+ */
+export type AuthAudience = "client" | "freelancer";
+
+export const FREELANCER_AUTH_COPY = {
+  eyebrow: "Kostenlos für Sie",
+  title: "Konto anlegen und Profil erstellen",
+  loginTitle: "Anmelden und Profil bearbeiten",
+  body: "Nach der Bestätigung Ihrer E-Mail-Adresse geht es direkt zum Profilformular. Sichtbar wird Ihr Profil erst, wenn XPORTAL es freigegeben hat.",
+  afterConfirmation: "Danach öffnet sich das Profilformular.",
+  recoverBody: "Wir senden einen sicheren Link an Ihre E-Mail-Adresse. Ihre Profilangaben bleiben dabei erhalten.",
+  linkBody: "Wir senden einen Anmeldelink an die Adresse Ihres Kontos.",
+  loggedIn: "Anmeldung erfolgreich.",
+  accountReady: "Ihr Konto ist eingerichtet.",
+  privacy: "Das Konto schützt Ihre Profilangaben, bis XPORTAL das Profil freigibt.",
+} as const;

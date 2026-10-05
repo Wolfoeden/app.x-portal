@@ -43,7 +43,12 @@ import {
   IconPlus,
 } from "../icons";
 import { authErrorMessage, isServiceSideAuthFailure } from "./auth-errors";
-import { authIntentCopy, type AuthIntent } from "./auth-continuation";
+import {
+  authIntentCopy,
+  FREELANCER_AUTH_COPY,
+  type AuthAudience,
+  type AuthIntent,
+} from "./auth-continuation";
 import type { CheckoutDialogCopy } from "./checkout-intent";
 import {
   GOOGLE_AUTH_ENABLED,
@@ -126,6 +131,7 @@ export function AuthDialog({
   profileName,
   projectTitle,
   destination = "/chat",
+  audience = "client",
   onClose,
   onAuthenticated,
   showToast,
@@ -137,6 +143,8 @@ export function AuthDialog({
   profileName?: string;
   projectTitle?: string;
   destination?: string;
+  /** `freelancer`: Registrierung für ein Profil, nicht für eine Anfrage. */
+  audience?: AuthAudience;
   onClose: () => void;
   onAuthenticated: (mode: AuthDialogMode) => void;
   showToast: (message: string, tone?: ToastState["tone"]) => void;
@@ -156,7 +164,8 @@ export function AuthDialog({
   const [marketingEmails, setMarketingEmails] = useState(false);
   const [busy, setBusy] = useState<"google" | "microsoft" | "email" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const intentCopy = checkout ?? authIntentCopy(intent);
+  const freelancer = audience === "freelancer";
+  const intentCopy = freelancer ? FREELANCER_AUTH_COPY : checkout ?? authIntentCopy(intent);
   const plan = checkout?.plan ?? null;
   const destinationForMode = (currentMode: AuthDialogMode) => {
     const separator = destination.includes("?") ? "&" : "?";
@@ -219,7 +228,7 @@ export function AuthDialog({
     try {
       if (mode === "login") {
         await signInExistingAccount(email, password);
-        showToast("Anmeldung erfolgreich. Ihre Auswahl wird fortgesetzt.");
+        showToast(freelancer ? FREELANCER_AUTH_COPY.loggedIn : "Anmeldung erfolgreich. Ihre Auswahl wird fortgesetzt.");
         onAuthenticated(mode);
       } else if (mode === "register") {
         await registerEmailAccount(
@@ -242,7 +251,7 @@ export function AuthDialog({
         await setAccountPassword(password);
         const cleanUrl = `${window.location.pathname}${window.location.hash}`;
         window.history.replaceState({}, "", cleanUrl);
-        showToast("Ihr Konto ist eingerichtet. Ihre Auswahl wird fortgesetzt.");
+        showToast(freelancer ? FREELANCER_AUTH_COPY.accountReady : "Ihr Konto ist eingerichtet. Ihre Auswahl wird fortgesetzt.");
         onAuthenticated(mode);
       }
     } catch (emailError) {
@@ -264,15 +273,21 @@ export function AuthDialog({
                 ? "Anmelden ohne Passwort"
                 : mode === "register"
                   ? intentCopy.title
-                  : checkout?.loginTitle ?? "Anmelden und direkt fortfahren"}
+                  : freelancer
+                    ? FREELANCER_AUTH_COPY.loginTitle
+                    : checkout?.loginTitle ?? "Anmelden und direkt fortfahren"}
         </h2>
         <p>
           {mode === "set-password"
             ? "Legen Sie jetzt ein neues Passwort für Ihr bestätigtes Konto fest."
             : mode === "recover"
-              ? "Wir senden einen sicheren Link an Ihre E-Mail-Adresse. Ihre aktuelle Anfrage bleibt dabei erhalten."
+              ? freelancer
+                ? FREELANCER_AUTH_COPY.recoverBody
+                : "Wir senden einen sicheren Link an Ihre E-Mail-Adresse. Ihre aktuelle Anfrage bleibt dabei erhalten."
               : mode === "link"
-                ? "Wir senden einen Anmeldelink an die Adresse Ihres Kontos. Ihre aktuelle Anfrage bleibt dabei erhalten."
+                ? freelancer
+                  ? FREELANCER_AUTH_COPY.linkBody
+                  : "Wir senden einen Anmeldelink an die Adresse Ihres Kontos. Ihre aktuelle Anfrage bleibt dabei erhalten."
                 : intentCopy.body}
         </p>
         {plan && (mode === "login" || mode === "register") ? (
@@ -424,18 +439,23 @@ export function AuthDialog({
                     <a href="/terms">Allgemeinen Geschäftsbedingungen</a> zu.
                   </span>
                 </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={marketingEmails}
-                    onChange={(event) => setMarketingEmails(event.target.checked)}
-                  />
-                  <span>
-                    Newsletter: Neue Funktionen und passende Freelancer per
-                    E-Mail. Freiwillig, jederzeit über den Abmeldelink in jeder
-                    Nachricht kündbar.
-                  </span>
-                </label>
+                {/* Ein Newsletter über passende Freelancer richtet sich an
+                    Auftraggeber. Wer ein Profil anlegt, bekommt ihn nicht
+                    angeboten; die Einwilligung bleibt dann „false“. */}
+                {freelancer ? null : (
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={marketingEmails}
+                      onChange={(event) => setMarketingEmails(event.target.checked)}
+                    />
+                    <span>
+                      Newsletter: Neue Funktionen und passende Freelancer per
+                      E-Mail. Freiwillig, jederzeit über den Abmeldelink in jeder
+                      Nachricht kündbar.
+                    </span>
+                  </label>
+                )}
               </div>
             ) : null}
             {error ? <p className="form-error" role="alert">{error}</p> : null}
@@ -455,8 +475,9 @@ export function AuthDialog({
           </form>
         )}
         <p className="auth-privacy">
-          Die Anmeldung ordnet Ihre bisherige Arbeit Ihrem Konto zu und setzt
-          den von Ihnen gewählten Schritt fort.
+          {freelancer
+            ? FREELANCER_AUTH_COPY.privacy
+            : "Die Anmeldung ordnet Ihre bisherige Arbeit Ihrem Konto zu und setzt den von Ihnen gewählten Schritt fort."}
           {GOOGLE_AUTH_ENABLED ? " Google wird erst nach Ihrem Klick geöffnet; alternativ steht die E-Mail-Anmeldung zur Verfügung." : ""}
           {" "}<a href="/privacy">Datenschutzhinweise</a>
         </p>
@@ -470,9 +491,13 @@ export function AuthDialog({
             <a href="/terms">Allgemeinen Geschäftsbedingungen</a>.
           </p>
         ) : (
+          // Der B2B-Hinweis gilt dem Kundenangebot. Ein Profil legen auch
+          // Menschen an, die eine feste Stelle suchen (APPLICANT_PATHS); ihnen
+          // sagt er das Gegenteil dessen, was die Seite verspricht.
           <p className="auth-privacy">
-            {BUSINESS_ONLY_NOTICE} Wie XPORTAL Ihre Daten verarbeitet, steht in
-            den <a href="/privacy">Datenschutzhinweisen</a>.
+            {freelancer ? null : <>{BUSINESS_ONLY_NOTICE} </>}Wie XPORTAL Ihre
+            Daten verarbeitet, steht in den{" "}
+            <a href="/privacy">Datenschutzhinweisen</a>.
           </p>
         )}
       </div>

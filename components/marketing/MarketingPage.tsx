@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { JsonLd } from "@/components/JsonLd";
+import { actionClass } from "@/components/ui/actions";
 import { MatchProtocol } from "@/components/product/MatchProtocol";
 import { salesCallHref, type SalesCallEntry } from "@/lib/sales/sales-call-links";
 import { MARKETING_PAGES, type PublicPage } from "@/lib/seo";
@@ -10,7 +11,7 @@ import styles from "./marketing.module.css";
 
 export function ProjectLink({ children = "Projekt beschreiben" }: { children?: ReactNode }) {
   return (
-    <Link href="/chat" prefetch={false} className={styles.primaryLink}>
+    <Link href="/chat" prefetch={false} className={actionClass("primary")}>
       {children}<span aria-hidden="true">↗</span>
     </Link>
   );
@@ -19,7 +20,7 @@ export function ProjectLink({ children = "Projekt beschreiben" }: { children?: R
 /** Der zweite Weg neben dem Chat: ein Gespräch mit XPORTAL. */
 export function SalesCallLink({ entry, children = "Gespräch buchen" }: { entry: SalesCallEntry; children?: ReactNode }) {
   return (
-    <Link href={salesCallHref(entry)} prefetch={false} className={styles.secondaryLink}>
+    <Link href={salesCallHref(entry)} prefetch={false} className={actionClass("secondary")}>
       {children}
     </Link>
   );

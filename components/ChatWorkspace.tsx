@@ -3179,7 +3179,7 @@ export function ChatWorkspace({
       >
         <div className="sidebar-top">
           <a className="product-mark" href="/freelancer-finden" aria-label="XPORTAL Produktseite">
-            <span>X PORTAL</span>
+            <span>XPORTAL</span>
           </a>
           <button
             className="icon-button sidebar-collapse"

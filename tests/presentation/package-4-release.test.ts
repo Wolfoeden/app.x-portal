@@ -56,8 +56,9 @@ describe("Paket 4: Konsolidierung und Freigabe", () => {
   it("startet die Stripe-Weiterleitung mit echten Links auf der Preisseite", () => {
     const pricing = source("app/(marketing)/preise/page.tsx");
     expect(pricing).toContain('const href = `/api/billing/checkout?plan=${plan.id}`');
-    expect(pricing).toContain('<a className={styles.cardAction} href={href}>');
-    expect(pricing).not.toContain('<Link className={styles.cardAction} href={href}');
+    // Ein echter Link, kein Client-Router-Link: Stripe liegt außerhalb der App.
+    expect(pricing).toContain('<a className={CARD_ACTION} href={href}>');
+    expect(pricing).not.toContain('<Link className={CARD_ACTION} href={href}');
   });
 
   it("oeffnet vom Profil aus direkt die zentrale Preisseite", () => {

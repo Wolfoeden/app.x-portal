@@ -6073,28 +6073,34 @@ a.showcase-card:hover .showcase-card-cta svg {
 .modal-card { border-color: #e4e7ea; border-radius: 14px; box-shadow: 0 30px 80px rgba(16, 27, 23, .18), 0 2px 6px rgba(16, 27, 23, .06); }
 .modal-close { top: 16px; right: 16px; border-color: #e4e7ea; border-radius: 6px; background: #fff; }
 .modal-card .dialog-eyebrow { margin: 0; color: var(--green); font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; }
-.modal-card h2 { font-family: var(--font-display), var(--font-sans); font-weight: 400; line-height: 1.2; letter-spacing: -.035em; }
+.modal-card h2 { font-family: var(--xp-display); font-weight: 400; line-height: 1.2; letter-spacing: -.035em; }
 
+/* Knöpfe und Felder mit denselben Werten wie die öffentlichen Seiten
+   (app/styles/foundation.css, --xp-*). */
 .modal-card .primary-action,
 .modal-card .secondary-action,
 .modal-card .danger-action,
-.modal-card .auth-submit { min-height: 42px; border-radius: 5px; padding: 0 18px; font-size: 14px; font-weight: 500; }
+.modal-card .auth-submit { min-height: var(--xp-action-height); border-radius: var(--xp-action-radius); padding: 0 20px; font-size: var(--xp-action-font-size); font-weight: var(--xp-action-weight); }
 .modal-card .primary-action,
-.modal-card .auth-submit { border: 1px solid transparent; background: radial-gradient(circle at 50% 50%, #17804d, #0c5c3b); color: #fff; box-shadow: 0 1px 2px rgba(16, 27, 23, .18), 0 6px 16px rgba(23, 128, 77, .2), inset 0 1px 0 rgba(255, 255, 255, .14); }
+.modal-card .auth-submit { border: 1px solid transparent; background: var(--xp-action-primary); color: #fff; box-shadow: var(--xp-action-primary-shadow); }
 .modal-card .primary-action:hover:not(:disabled),
-.modal-card .auth-submit:hover:not(:disabled) { background: radial-gradient(circle at 50% 50%, #17804d, #094a30); }
+.modal-card .auth-submit:hover:not(:disabled) { background: var(--xp-action-primary-hover); }
 .modal-card .primary-action:disabled,
 .modal-card .auth-submit:disabled { opacity: .45; box-shadow: none; }
-.modal-card .secondary-action { border-color: #dde1e5; background: #fff; color: var(--ink); }
-.modal-card .secondary-action:hover:not(:disabled) { border-color: #b9c0c7; background: #fff; }
+.modal-card .secondary-action { border-color: var(--xp-action-secondary-border); background: #fff; color: var(--ink); }
+.modal-card .secondary-action:hover:not(:disabled) { border-color: var(--xp-action-secondary-border-hover); background: var(--xp-action-secondary-hover); }
+.modal-card .email-login label { color: var(--xp-ink); font-size: var(--xp-label-size); font-weight: var(--xp-label-weight); }
+.modal-card .email-login input:not([type="checkbox"]) { height: auto; min-height: var(--xp-field-height); border: 1px solid var(--xp-field-border); border-radius: var(--xp-field-radius); background: var(--xp-field-bg); padding: var(--xp-field-padding); font-size: var(--xp-field-font-size); }
+.modal-card .email-login input:not([type="checkbox"]):focus { border-color: var(--xp-brand); box-shadow: none; outline: var(--xp-field-focus-ring); outline-offset: 0; background: var(--xp-field-bg-focus); }
+.modal-card .email-login .auth-consent label { font-size: var(--fs-2xs); font-weight: 400; color: var(--muted); }
 
 .project-dialog { gap: 0; padding: 32px; }
 .project-dialog h2 { margin: 10px 56px 0 0; font-size: 28px; line-height: 1.2; }
 .project-dialog > p { margin: 10px 0 0; font-size: 15px; }
 .project-dialog > label { margin: 24px 0 8px; font-size: 14px; font-weight: 500; }
-.project-dialog > input { min-height: 46px; border-color: #cfd7df; border-radius: 6px; background: #f3f6f9; font-size: 15px; }
-.project-dialog > input::placeholder { color: #7a818b; }
-.project-dialog > input:focus-visible { border-color: var(--green); outline: 2px solid rgba(23, 128, 77, .25); outline-offset: 0; background: #fff; }
+.project-dialog > input { min-height: var(--xp-field-height); border-color: var(--xp-field-border); border-radius: var(--xp-field-radius); background: var(--xp-field-bg); font-size: var(--xp-field-font-size); }
+.project-dialog > input::placeholder { color: var(--xp-field-placeholder); }
+.project-dialog > input:focus-visible { border-color: var(--xp-brand); outline: var(--xp-field-focus-ring); outline-offset: 0; background: var(--xp-field-bg-focus); }
 .project-dialog .form-error { margin-top: 12px; }
 .project-dialog .project-destination-list { margin-top: 20px; }
 .project-dialog .project-destination-list button { border-color: #e4e7ea; border-radius: 6px; padding: 12px 14px; font-size: 14.5px; }

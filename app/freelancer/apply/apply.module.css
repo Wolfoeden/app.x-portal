@@ -93,9 +93,9 @@
 /* The first child carries the field label; trailing spans are hints. */
 .field > span:first-child,
 .field > label:first-child {
-  color: var(--muted);
-  font-size: var(--fs-2xs);
-  font-weight: 650;
+  color: var(--xp-ink);
+  font-size: var(--xp-label-size);
+  font-weight: var(--xp-label-weight);
 }
 
 .optional {
@@ -107,14 +107,18 @@
 .field select,
 .field textarea {
   width: 100%;
-  min-height: 42px;
-  border: 1px solid var(--border-strong);
-  border-radius: 9px;
-  background: var(--surface);
-  padding: 10px 12px;
+  min-height: var(--xp-field-height);
+  border: 1px solid var(--xp-field-border);
+  border-radius: var(--xp-field-radius);
+  background: var(--xp-field-bg);
+  padding: var(--xp-field-padding);
   color: var(--ink);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--xp-field-font-size);
+}
+
+.field :where(input, textarea)::placeholder {
+  color: var(--xp-field-placeholder);
 }
 
 .field textarea {
@@ -127,8 +131,10 @@
 .field select:focus-visible,
 .field textarea:focus-visible,
 .tagField input:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: 1px;
+  border-color: var(--xp-brand);
+  outline: var(--xp-field-focus-ring);
+  outline-offset: 0;
+  background: var(--xp-field-bg-focus);
 }
 
 .hint {
@@ -154,22 +160,29 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  min-height: 42px;
-  border: 1px solid var(--border-strong);
-  border-radius: 9px;
-  background: var(--surface);
+  min-height: var(--xp-field-height);
+  border: 1px solid var(--xp-field-border);
+  border-radius: var(--xp-field-radius);
+  background: var(--xp-field-bg);
   padding: 6px;
+}
+
+.tagBox:focus-within {
+  border-color: var(--xp-brand);
+  outline: var(--xp-field-focus-ring);
+  background: var(--xp-field-bg-focus);
 }
 
 .tagBox input {
   flex: 1 1 120px;
   min-width: 100px;
-  min-height: 28px;
+  min-height: 30px;
   border: 0;
   padding: 0 6px;
+  background: transparent;
   color: var(--ink);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--xp-field-font-size);
 }
 
 .tagBox input:focus-visible {
@@ -376,25 +389,39 @@
   gap: 14px;
 }
 
+/* Derselbe Hauptknopf wie components/ui/actions.module.css, aus denselben
+   Werten (--xp-action-*). Als eigene Klasse, weil das Portal im Browser
+   läuft und die Klassenzuordnung des gemeinsamen Moduls dort JavaScript
+   kosten würde (config/performance-budget.json). */
 .submit {
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
-  min-height: 48px;
-  border: 1px solid var(--ink);
-  border-radius: 10px;
-  background: var(--ink);
-  padding: 0 22px;
-  color: var(--surface);
-  cursor: pointer;
+  min-height: var(--xp-action-height);
+  border: 1px solid transparent;
+  border-radius: var(--xp-action-radius);
+  padding: var(--xp-action-padding);
+  background: var(--xp-action-primary);
+  color: #fff;
   font: inherit;
-  font-size: 13px;
-  font-weight: 650;
+  font-size: var(--xp-action-font-size);
+  font-weight: var(--xp-action-weight);
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: var(--xp-action-primary-shadow);
 }
 
+.submit:hover:not(:disabled) { background: var(--xp-action-primary-hover); }
+.submit:focus-visible { outline: 2px solid var(--xp-brand); outline-offset: 3px; }
+
+/* Während des Sendens zeigt der Zeiger, dass gewartet wird. */
 .submit:disabled {
   cursor: wait;
-  opacity: 0.6;
+  opacity: .5;
+  box-shadow: none;
 }
 
 .actionsHint {
@@ -861,10 +888,22 @@
   }
 }
 
-/* Einstieg vor der Anmeldung: Wege und Fakten links, Beispielkarte rechts. */
-.gate {
+/* Einstieg vor der Anmeldung: Nutzen und Knopf links, Profilvorschau rechts;
+   darunter Fakten, Protokoll und die drei Wege als eigene Karten. */
+.applyHero {
   display: grid;
   gap: 28px;
+  align-items: start;
+}
+
+.header .heroHint {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+.gate .gateActions {
+  margin-top: 4px;
 }
 
 .paths {
@@ -919,7 +958,7 @@
   padding: 16px;
 }
 
-.gateExample h3,
+.gateExample h2,
 .preview h2 {
   margin: 0;
   font-size: var(--fs-sm);
@@ -965,9 +1004,9 @@
 }
 
 @media (min-width: 880px) {
-  .gate {
+  .applyHero {
     grid-template-columns: minmax(0, 1fr) 320px;
-    align-items: start;
+    column-gap: 40px;
   }
 }
 
@@ -1050,17 +1089,19 @@
    dieselbe Display-Schrift, grüne Knöpfe, helle Flächen statt der dunklen
    Kopfkarte. */
 .shell { padding: 0 0 0; background: #fff; }
-.inner { box-sizing: border-box; width: min(100%, 1088px); max-width: none; padding: 0 72px 80px; border-inline: 1px solid #e4e7ea; }
+.inner { box-sizing: border-box; width: min(100%, 1088px); max-width: none; padding: 0 72px 80px; border-inline: 1px solid var(--xp-line); }
 .header { padding-top: 56px; }
-.eyebrow { color: var(--green); font-size: 14px; font-weight: 600; letter-spacing: 0; text-transform: none; }
-.header h1 { margin: 14px 0 16px; font-family: var(--font-display), var(--font-sans); font-size: clamp(36px, 4vw, 50px); font-weight: 400; line-height: 1.1; letter-spacing: -.05em; }
-.header p { max-width: 640px; color: #5f6772; font-size: 17px; line-height: 1.65; }
+.eyebrow { color: var(--xp-brand); font-size: var(--xp-eyebrow-size); font-weight: 600; letter-spacing: 0; text-transform: none; }
+.header h1 { margin: 14px 0 16px; font-family: var(--xp-display); font-size: var(--xp-h1-size); font-weight: 400; line-height: 1.1; letter-spacing: var(--xp-h1-tracking); }
+.header p { max-width: 640px; color: var(--xp-muted); font-size: var(--xp-lead-size); line-height: 1.65; }
 .header .eyebrow { margin: 0; color: var(--green); font-size: 14px; font-weight: 600; }
-.portalCard h2, .gate h2, .dashboardHead h2, .profileHeading h2 { font-family: var(--font-display), var(--font-sans); font-weight: 400; letter-spacing: -.035em; }
+.header .gateExample h2 { margin: 0; font-family: var(--font-sans); font-size: var(--fs-sm); font-weight: 650; letter-spacing: 0; }
+.header .gateExample .hint { margin: 0; font-size: 12px; line-height: 1.5; }
+.header .gateActions { margin: 24px 0 0; }
+.applyHero h1 { font-size: clamp(32px, 3.6vw, 44px); }
+.portalCard h2, .gate h2, .dashboardHead h2, .profileHeading h2 { font-family: var(--xp-display); font-weight: 400; letter-spacing: -.035em; }
 .section, .metricCard, .gate, .portalCard { border-color: #e4e7ea; border-radius: 8px; }
 
-.submit { min-height: 46px; border: 1px solid transparent; border-radius: 5px; background: radial-gradient(circle at 50% 50%, #17804d, #0c5c3b); padding: 0 22px; color: #fff; font-size: 15px; font-weight: 500; box-shadow: 0 1px 2px rgba(16, 27, 23, .18), 0 6px 16px rgba(23, 128, 77, .22), inset 0 1px 0 rgba(255, 255, 255, .14); }
-.submit:hover:not(:disabled) { background: radial-gradient(circle at 50% 50%, #17804d, #094a30); }
 
 .dashboardHead { border: 1px solid #e4e7ea; border-radius: 8px; background: radial-gradient(120% 90% at 92% 100%, rgba(38, 160, 102, .3), transparent 62%), linear-gradient(160deg, #f4fbf7, #ddf1e6); color: var(--ink); box-shadow: none; }
 .dashboardHead .eyebrow { color: var(--green); }
@@ -1070,7 +1111,7 @@
 .statusLine { color: var(--ink-soft); }
 .statusSwitch { border-color: #dde1e5; background: rgba(255, 255, 255, .7); }
 .statusSwitch button { color: #5f6772; }
-.statusSwitch button.isActive { background: radial-gradient(circle at 50% 50%, #17804d, #0c5c3b); color: #fff; }
+.statusSwitch button.isActive { background: var(--xp-action-primary); color: #fff; }
 .avatarPreview { border: 3px solid #fff; background-color: #0f5c3b; color: #fff; font-family: var(--font-display), var(--font-sans); font-weight: 600; box-shadow: 0 10px 30px rgba(16, 27, 23, .12); }
 .metricCard::before { background: var(--green); }
 
