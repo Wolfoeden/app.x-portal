@@ -18,6 +18,17 @@ describe("production privacy and authentication configuration", () => {
     );
   });
 
+  // Oktober 2026: LinkedIn und GitHub wie Google nur in der Produktion, wo die
+  // Callback-Adresse in Supabase freigegeben ist; Deploy-Vorschauen nicht.
+  it("sets the LinkedIn and GitHub switches only in the Netlify production context", () => {
+    const netlify = repositoryFile("netlify.toml");
+    const production = netlify.split("[context.production.environment]")[1]?.split("[[plugins]]")[0];
+    for (const flag of ["NEXT_PUBLIC_AUTH_LINKEDIN_ENABLED", "NEXT_PUBLIC_AUTH_GITHUB_ENABLED"]) {
+      expect(production).toContain(`${flag} = "true"`);
+      expect(netlify.split("[context.production.environment]")[0]).not.toContain(flag);
+    }
+  });
+
   it("keeps the primary cookie action readable outside the landing-page scope", () => {
     const css = repositoryFile("app/styles/workspace.css");
     const rule = css.match(/\.cookie-actions button\.is-primary\s*\{([^}]*)\}/u)?.[1];
