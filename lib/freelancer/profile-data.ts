@@ -183,7 +183,7 @@ export async function loadFreelancerPortalState(
     const row = profile as ProfileRow;
     // Projekte, Suchziel und Stand der Verfügbarkeit sind Zusätze für
     // Profilstärke und Projektliste; fehlen sie, bleibt das Dashboard nutzbar.
-    const [metrics, extra, projects, projectsAvailable] = await Promise.all([
+    const [metrics, extra, onboarding, projects, projectsAvailable] = await Promise.all([
       loadFreelancerMetrics(row.id),
       admin
         .from("freelancer_profiles")
@@ -191,6 +191,7 @@ export async function loadFreelancerPortalState(
         .eq("id", row.id)
         .maybeSingle()
         .then(({ data }) => data as { seeking?: "projects" | "employment" | "both"; availability_updated_at?: string | null } | null),
+      loadOnboardingFields(admin, row.id),
       fetchProjects(admin, [row.id], { publicOnly: false })
         .then((map) => (map.get(row.id) ?? []).filter((project) => !isHiddenProposal(project)))
         .catch(() => []),
@@ -198,7 +199,7 @@ export async function loadFreelancerPortalState(
     ]);
     return {
       kind: "profile",
-      profile: mapEditableProfile(row),
+      profile: { ...mapEditableProfile(row), ...onboarding },
       metrics,
       projects,
       projectsAvailable,
@@ -223,6 +224,24 @@ export async function loadFreelancerPortalState(
     } as FreelancerPortalState;
   }
   return { kind: "apply" };
+}
+
+/**
+ * Kapazität und Wunschprojekte (Migration 20261007090000). Ohne die Spalten
+ * ein leeres Objekt: Das Dashboard blendet die beiden Felder dann aus.
+ */
+async function loadOnboardingFields(
+  admin: ReturnType<typeof createAdminSupabaseClient>,
+  profileId: string,
+): Promise<Pick<EditableFreelancerProfile, "capacityDaysPerWeek" | "desiredProjects">> {
+  const { data, error } = await admin
+    .from("freelancer_profiles")
+    .select("capacity_days_per_week,desired_projects")
+    .eq("id", profileId)
+    .maybeSingle();
+  if (error || !data) return {};
+  const row = data as { capacity_days_per_week: number | null; desired_projects: string | null };
+  return { capacityDaysPerWeek: row.capacity_days_per_week, desiredProjects: row.desired_projects };
 }
 
 export async function updateOwnedFreelancerProfile(
@@ -302,7 +321,19 @@ export async function updateOwnedFreelancerProfile(
       status: 409,
     });
   }
-  return mapEditableProfile(updated as ProfileRow);
+  // Getrennt gespeichert, damit ein Profil auch vor der Migration speicherbar
+  // bleibt; scheitert es, bleiben die alten Werte stehen.
+  if (input.capacityDaysPerWeek !== undefined || input.desiredProjects !== undefined) {
+    await admin
+      .from("freelancer_profiles")
+      .update({
+        ...(input.capacityDaysPerWeek !== undefined ? { capacity_days_per_week: input.capacityDaysPerWeek } : {}),
+        ...(input.desiredProjects !== undefined ? { desired_projects: input.desiredProjects } : {}),
+      })
+      .eq("id", row.id)
+      .eq("owner_user_id", userId);
+  }
+  return { ...mapEditableProfile(updated as ProfileRow), ...(await loadOnboardingFields(admin, row.id)) };
 }
 
 export async function attachOwnedAvatar(input: {

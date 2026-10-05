@@ -9,7 +9,23 @@ import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 const supportedOauthProviders = {
   google: "google",
   microsoft: "azure",
+  // Nur im Freelancer-Zugang (AuthDialog audience="freelancer").
+  linkedin: "linkedin_oidc",
+  github: "github",
 } as const satisfies Record<string, Provider>;
+
+export type OauthProviderName = keyof typeof supportedOauthProviders;
+
+/**
+ * Was der Anbieter herausgeben soll, und nicht mehr: bei LinkedIn die
+ * OpenID-Angaben (Name, E-Mail, Bild). GitHub bleibt bei der Vorgabe von
+ * Supabase (`user:email`); öffentliche Repositorys liest der Import ohne
+ * Zugriffsrecht des Nutzers. Keine Nachrichten, keine Kontakte.
+ */
+const PROVIDER_SCOPES: Partial<Record<OauthProviderName, string>> = {
+  microsoft: "email",
+  linkedin: "openid profile email",
+};
 
 function siteUrl() {
   if (typeof window !== "undefined") {
@@ -97,7 +113,7 @@ export async function prepareGuestClaim() {
 }
 
 export async function startOauthUpgrade(
-  providerName: keyof typeof supportedOauthProviders,
+  providerName: OauthProviderName,
   requestedDestination?: string,
 ) {
   const supabase = getBrowserSupabaseClient();
@@ -106,9 +122,10 @@ export async function startOauthUpgrade(
   const provider = supportedOauthProviders[providerName];
   const destination = authDestination(requestedDestination);
   const redirectTo = `${siteUrl()}${appPath("/auth/callback")}?next=${encodeURIComponent(destination)}`;
+  const scopes = PROVIDER_SCOPES[providerName];
   const options = {
     redirectTo,
-    ...(providerName === "microsoft" ? { scopes: "email" } : {}),
+    ...(scopes ? { scopes } : {}),
   };
 
   if (claims.is_anonymous === true) {

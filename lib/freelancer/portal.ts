@@ -93,6 +93,9 @@ export const FreelancerProfileUpdateSchema = z
     bookingUrl: z.union([z.literal(""), secureUrl]).nullish().transform((value) => value || null),
     profileStatus: z.enum(["active", "paused"]),
     version: z.number().int().positive(),
+    // Freiwillig (Migration 20261007090000); fehlt das Feld, bleibt es, wie es ist.
+    capacityDaysPerWeek: z.number().int().min(1).max(5).nullable().optional(),
+    desiredProjects: optionalText(500).optional(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -130,6 +133,9 @@ export type EditableFreelancerProfile = {
   verificationStatus: string;
   avatarUrl: string | null;
   version: number;
+  /** Fehlen, solange Migration 20261007090000 nicht eingespielt ist. */
+  capacityDaysPerWeek?: number | null;
+  desiredProjects?: string | null;
 };
 
 export type FreelancerMetrics = {

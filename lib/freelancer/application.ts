@@ -20,6 +20,15 @@ import { ProjectListSchema } from "@/lib/profile/project-schema";
 
 import { candidateFacts } from "./facts";
 import {
+  DRAFT_LIST_FIELDS,
+  DRAFT_TEXT_FIELDS,
+  IMPORT_SOURCES,
+  MAX_DESIRED_PROJECTS_LENGTH,
+  MAX_PROVENANCE_IMPORTS,
+  MAX_PROVENANCE_VALUES,
+  type ImportProvenance,
+} from "./import/draft";
+import {
   AVAILABILITY_STATUSES,
   CURRENCIES,
   CV_MAX_BYTES,
@@ -132,6 +141,50 @@ function assertRatePairing(
   }
 }
 
+/**
+ * Woher übernommene Angaben stammen (lib/freelancer/import/draft.ts). Eine
+ * Kennzeichnung für die Sichtung, kein Nachweis: Sie setzt nie „geprüft“.
+ * `github.linked` korrigiert der Server gegen die verknüpfte Identität.
+ */
+export const ImportProvenanceSchema = z
+  .object({
+    imports: z
+      .array(
+        z
+          .object({
+            source: z.enum(IMPORT_SOURCES),
+            importedAt: z.string().trim().max(40),
+            github: z
+              .object({
+                login: z.string().trim().regex(/^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/iu),
+                linked: z.boolean(),
+              })
+              .strict()
+              .optional(),
+          })
+          .strict(),
+      )
+      .max(MAX_PROVENANCE_IMPORTS),
+    values: z
+      .array(
+        z
+          .object({
+            field: z.enum([...DRAFT_LIST_FIELDS, ...DRAFT_TEXT_FIELDS, "projects"]),
+            value: z.string().max(200),
+            source: z.enum(IMPORT_SOURCES),
+          })
+          .strict(),
+      )
+      .max(MAX_PROVENANCE_VALUES),
+  })
+  .strict();
+
+/** Freiwillig: verfügbare Tage pro Woche. Leer heißt „keine Angabe“. */
+const capacityDays = z
+  .union([z.literal(""), z.coerce.number().int().min(1).max(5)])
+  .nullish()
+  .transform((value) => (typeof value === "number" ? value : null));
+
 export const FreelancerApplicationInputSchema = z
   .object({
     fullName: z.string().trim().min(2).max(120),
@@ -168,6 +221,9 @@ export const FreelancerApplicationInputSchema = z
       .nullish()
       .transform((value) => (value && REFERRAL_PATTERN.test(value) ? value : null)),
     applicantNote: optionalText(2_000),
+    capacityDaysPerWeek: capacityDays,
+    desiredProjects: optionalText(MAX_DESIRED_PROJECTS_LENGTH),
+    importProvenance: ImportProvenanceSchema.nullable().default(null),
     cv: z
       .object({
         storagePath: z.string().trim().min(1).max(300),
@@ -272,6 +328,10 @@ export type ApplicationInsert = {
   /** Migration 20261006100000; ohne sie lässt die Route beide Felder weg. */
   reference_projects: ProfileProject[];
   photo_storage_path: string | null;
+  /** Migration 20261007090000; ohne sie lässt die Route die drei Felder weg. */
+  import_provenance: ImportProvenance | null;
+  capacity_days_per_week: number | null;
+  desired_projects: string | null;
 };
 
 /** Was aus dem Formular kommt, ist eine Angabe: nie geprüft, Herkunft Bewerbung. */
@@ -328,13 +388,26 @@ export function applicationInsertFromInput(
     referral: input.referral,
     reference_projects: input.projects.map(asApplicantProject),
     photo_storage_path: input.photo?.storagePath ?? null,
+    import_provenance: input.importProvenance,
+    capacity_days_per_week: input.capacityDaysPerWeek,
+    desired_projects: input.desiredProjects,
   };
 }
 
-export type ApplicationRow = Omit<ApplicationInsert, "reference_projects" | "photo_storage_path"> & {
+/** Die Felder aus Migration 20261007090000. */
+export const ONBOARDING_INSERT_FIELDS = ["import_provenance", "capacity_days_per_week", "desired_projects"] as const;
+
+export type ApplicationRow = Omit<
+  ApplicationInsert,
+  "reference_projects" | "photo_storage_path" | (typeof ONBOARDING_INSERT_FIELDS)[number]
+> & {
   /** Fehlen, solange Migration 20261006100000 nicht eingespielt ist. */
   reference_projects?: unknown;
   photo_storage_path?: string | null;
+  /** Fehlen, solange Migration 20261007090000 nicht eingespielt ist. */
+  import_provenance?: unknown;
+  capacity_days_per_week?: number | null;
+  desired_projects?: string | null;
   id: string;
   review_notes: string | null;
   reviewed_by_user_id: string | null;
@@ -349,6 +422,15 @@ export const APPLICATION_COLUMNS =
 
 /** Projekte und Foto (Migration 20261006100000), getrennt abfragbar. */
 export const APPLICATION_EXTRA_COLUMNS = "reference_projects,photo_storage_path";
+
+/** Import-Herkunft, Kapazität und Wunschprojekte (Migration 20261007090000). */
+export const APPLICATION_ONBOARDING_COLUMNS = ONBOARDING_INSERT_FIELDS.join(",");
+
+/** Die gespeicherte Herkunft, erneut geprüft; Kaputtes zählt als keine. */
+export function storedImportProvenance(value: unknown): ImportProvenance | null {
+  const parsed = ImportProvenanceSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
 
 export function slugFromName(displayName: string): string {
   const base = displayName

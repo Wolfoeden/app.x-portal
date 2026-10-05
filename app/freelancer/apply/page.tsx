@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { linkedIdentities } from "@/lib/auth/linked-identities";
 import { PublicFooter, PublicHeader } from "@/components/public/PublicChrome";
 import { MatchProtocol } from "@/components/product/MatchProtocol";
 import { applicationExtrasAvailable } from "@/lib/freelancer/applications-data";
@@ -117,6 +118,14 @@ export default async function FreelancerApplyPage({
   // Die Formular-Vorschau zeigt beide Abschnitte auch ohne Datenbank.
   const showsForm = Boolean(user && !user.isAnonymous && portalState?.kind !== "profile");
   const extrasAvailable = formPreview || (showsForm && (await applicationExtrasAvailable().catch(() => false)));
+  // Für den Importkasten: Ist die KI eingerichtet, und mit welchen Anbietern
+  // ist das Konto verknüpft? (GitHub-Name vorbelegen, LinkedIn-Hinweis.)
+  const identities = showsForm ? await linkedIdentities() : { providers: [], githubLogin: null };
+  const importProps = {
+    cvImportAvailable: formPreview || Boolean(process.env.OPENAI_API_KEY?.trim()),
+    githubLogin: identities.githubLogin,
+    linkedinConnected: identities.providers.includes("linkedin_oidc"),
+  };
   const welcome = referralWelcome(referral);
   const protocolStep = portalState?.kind === "application"
     ? portalState.status === "approved" ? 3 : 2
@@ -187,7 +196,7 @@ export default async function FreelancerApplyPage({
             availabilityUpdatedAt={new Date().toISOString()}
           />
         ) : formPreview ? (
-          <ApplyForm referral={referral} extrasAvailable={extrasAvailable} />
+          <ApplyForm referral={referral} extrasAvailable={extrasAvailable} {...importProps} />
         ) : !user || user.isAnonymous ? null : portalState?.kind === "profile" ? (
           <FreelancerDashboard
             initialProfile={portalState.profile}
@@ -205,13 +214,13 @@ export default async function FreelancerApplyPage({
             />
             {portalState.status === "rejected" ? (
               <div className={styles.reapply}>
-                <ApplyForm accountEmail={user.email ?? ""} accountName={user.displayName} inviteToken={invite ? inviteToken ?? null : null} referral={referral} extrasAvailable={extrasAvailable} />
+                <ApplyForm accountEmail={user.email ?? ""} accountName={user.displayName} inviteToken={invite ? inviteToken ?? null : null} referral={referral} extrasAvailable={extrasAvailable} {...importProps} />
               </div>
             ) : null}
           </>
         ) : (
           <>
-            <ApplyForm accountEmail={user.email ?? ""} accountName={user.displayName} inviteToken={invite ? inviteToken ?? null : null} referral={referral} extrasAvailable={extrasAvailable} />
+            <ApplyForm accountEmail={user.email ?? ""} accountName={user.displayName} inviteToken={invite ? inviteToken ?? null : null} referral={referral} extrasAvailable={extrasAvailable} {...importProps} />
           </>
         )}
 

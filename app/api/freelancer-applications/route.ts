@@ -10,9 +10,11 @@ import {
   CV_MAX_BYTES,
   CV_MIME_TYPES,
   FreelancerApplicationInputSchema,
+  ONBOARDING_INSERT_FIELDS,
 } from "@/lib/freelancer/application";
 import { recordInviteConversion } from "@/lib/sourcing/conversion";
-import { applicationExtrasAvailable } from "@/lib/freelancer/applications-data";
+import { applicationExtrasAvailable, applicationOnboardingAvailable } from "@/lib/freelancer/applications-data";
+import { linkedIdentities } from "@/lib/auth/linked-identities";
 import { avatarMimeTypeFromPath } from "@/lib/freelancer/avatar-limits";
 import {
   AVATAR_BUCKET,
@@ -260,6 +262,30 @@ export async function POST(request: Request) {
     if (!extras) {
       delete row.reference_projects;
       delete row.photo_storage_path;
+    }
+
+    // Import-Herkunft, Kapazität und Wunschprojekte nur mit Migration
+    // 20261007090000. „Konto verbunden“ gilt nur für einen GitHub-Namen, der
+    // wirklich mit diesem Konto verknüpft ist; der Browser kann das nicht
+    // behaupten.
+    if (!(await applicationOnboardingAvailable(admin))) {
+      for (const field of ONBOARDING_INSERT_FIELDS) delete row[field];
+    } else if (row.import_provenance) {
+      const { githubLogin } = await linkedIdentities();
+      row.import_provenance = {
+        ...row.import_provenance,
+        imports: row.import_provenance.imports.map((entry) =>
+          entry.github
+            ? {
+                ...entry,
+                github: {
+                  login: entry.github.login,
+                  linked: Boolean(githubLogin && githubLogin.toLowerCase() === entry.github.login.toLowerCase()),
+                },
+              }
+            : entry,
+        ),
+      };
     }
 
     // A resubmission replaces only this authenticated applicant's own pending
