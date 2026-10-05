@@ -14,6 +14,11 @@ NEXT_PUBLIC_SITE_URL = "https://x-portal.eu"
 # Keep this production-only so deploy previews never advertise an OAuth route
 # whose temporary hostname is not explicitly allowlisted.
 NEXT_PUBLIC_AUTH_GOOGLE_ENABLED = "true"
+# LinkedIn (OIDC) und GitHub, nur im Freelancer-Zugang (/freelancer/apply).
+# Beide Provider sind in Supabase eingerichtet (Oktober 2026); Einrichtung und
+# Prüfung: docs/freelancer-onboarding-import.md.
+NEXT_PUBLIC_AUTH_LINKEDIN_ENABLED = "true"
+NEXT_PUBLIC_AUTH_GITHUB_ENABLED = "true"
 # Vermittlungsmodell (lib/placement/config.ts): Kunden fragen Freelancer über
 # XPORTAL an, 10 % Honorar bei Beauftragung, Rechnung über Stripe. Die
 # Vermittlungsbedingungen sind seit dem 30.09.2026 freigegeben. Wirkt beim
