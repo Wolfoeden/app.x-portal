@@ -11,9 +11,9 @@ import { ProcessVideo } from "./ProcessVideo";
 import { publishedCaseStudies, type CaseStudy } from "@/lib/marketing/case-studies";
 import type { LandingStats } from "@/lib/marketing/landing-stats";
 import { MARKETING_PAGE } from "@/lib/seo";
-import { breadcrumbStructuredData } from "@/lib/structured-data";
+import { breadcrumbStructuredData, faqStructuredData, serviceStructuredData } from "@/lib/structured-data";
+import { faqAnswerText, landingFaq } from "./landing-faq";
 import { BRIEF_ANALYSIS_CREDITS, countLabel, roundedExampleCount } from "@/lib/ai/credit-policy";
-import { CREDIT_RULES } from "@/lib/billing/credit-rules";
 import { GUEST_TRIAL_CREDITS, PUBLIC_PRICING_PLANS, START_CREDITS, type FixedMonthlyPlan } from "@/lib/billing/plans";
 import {
   formatWholeEuro,
@@ -89,6 +89,15 @@ const EXAMPLE_TEASERS: Readonly<Record<ExampleBriefKey, string>> = {
   "ai-agenten": "Agenten auf Basis von Sprachmodellen, angebunden an Ihre Systeme und Daten.",
   "react-typescript": "Weboberflächen und Anwendungen mit React und TypeScript.",
   "requirements-engineer": "Anforderungen mit den Fachbereichen aufnehmen und für die Umsetzung klären.",
+};
+
+/**
+ * Weitere Bezeichnungen, unter denen nach der Rolle gesucht wird; nur in den
+ * strukturierten Daten. Die Kachel selbst sagt „AI-Agent-Entwickler“, der
+ * Produktentwurf daneben „KI-Agenten“.
+ */
+const ROLE_ALIASES: Readonly<Partial<Record<ExampleBriefKey, readonly string[]>>> = {
+  "ai-agenten": ["KI-Agenten-Entwickler", "Freelancer für AI Agents", "Freelancer für KI-Agenten"],
 };
 
 /** Kleine Produktszenen auf den Rollenkacheln; Illustration, keine Daten. */
@@ -262,6 +271,7 @@ export function FreelancerLanding({
   // Wird beim Build eingesetzt, wie überall beim Vermittlungsmodell.
   const placement = placementRequestsEnabled();
   const pool = stats ? `${number(stats.profiles)} freigegebenen Profilen` : "unserem Bestand";
+  const faq = landingFaq(placement);
   return (
     <main id="main-content" className={styles.main} tabIndex={-1}>
       <JsonLd data={breadcrumbStructuredData(MARKETING_PAGE.find)} />
@@ -269,8 +279,12 @@ export function FreelancerLanding({
       <header className={`${styles.section} ${styles.hero}`}>
         <div className={`${styles.frame} ${styles.heroGrid}`}>
           <div className={styles.heroCopy}>
-            <p className={styles.eyebrow}>Freelancer finden für Recruiter und Personaldienstleister</p>
-            <h1>Ihre Kundenanfrage.<br /><span>Nachvollziehbar passende Freelancer.</span></h1>
+            {/* Die Dachzeile gehört zur Überschrift: So beginnt die h1 mit dem
+                Suchbegriff „Freelancer finden“, und das Bild bleibt gleich. */}
+            <h1>
+              <span className={styles.heroKicker}>Freelancer finden für Recruiter und Personaldienstleister</span>{" "}
+              Ihre Kundenanfrage.<br /><span>Nachvollziehbar passende Freelancer.</span>
+            </h1>
             <p className={styles.subtitle}>Für KI-, Software- und Digitalprojekte Ihrer Kunden oder Ihres eigenen Unternehmens.</p>
             <p className={styles.lead}>
               {placement
@@ -519,15 +533,16 @@ export function FreelancerLanding({
             <h2 id="fragen-title">Noch Fragen?</h2>
             <Link className={styles.textLink} href={MARKETING_PAGE.how.path}>Alle Details zum Ablauf <span aria-hidden="true">→</span></Link>
           </div>
-          <Questions items={[
-            { question: "Kann ich ohne Anmeldung starten?", answer: <p>Ja. Beschreiben Sie Ihr Projekt als Gast. Für das dauerhafte Speichern und weitere Schritte mit einem ausgewählten Profil können Sie anschließend ein Konto erstellen.</p> },
-            { question: "Was kostet die Suche?", answer: <p>{CREDIT_RULES.guest} {CREDIT_RULES.account} Eine Projektanalyse verbraucht {BRIEF_ANALYSIS_CREDITS} Credits; fällt die KI aus, nichts. Kontingente und weitere Aktionen finden Sie auf der <Link href={MARKETING_PAGE.pricing.path}>Preisseite</Link>. Freelancer-Honorare sind separat.</p> },
-            { question: "Ist ein passender Freelancer garantiert?", answer: <p>Nein. Ergebnisse hängen von Ihren Anforderungen und den vorhandenen Profilen ab. Profilangaben sind nicht automatisch unabhängig geprüft. Verfügbarkeit, Honorar und offene Fragen klären Sie vor einer Zusammenarbeit. Auch kein passendes Ergebnis wird ausgewiesen.</p> },
-            placement
-              ? { question: "Was kostet die Vermittlung?", answer: <p>Anfrage, Vorstellung und Erstgespräch sind kostenlos; für die Suche im Chat gilt das Startguthaben. Beauftragen Sie den Freelancer, zahlen Sie einmalig {PLACEMENT_TERMS.feePercent} % des vereinbarten Honorars für die ersten {PLACEMENT_TERMS.feeMonths} Monate (höchstens {PLACEMENT_TERMS.maxFeeDays} Projekttage), zuzüglich Umsatzsteuer, per Rechnung mit {PLACEMENT_TERMS.paymentDays} Tagen Zahlungsziel. Beispiel: {formatWholeEuro(PLACEMENT_EXAMPLE.dayRateCents)} Tagessatz und {PLACEMENT_EXAMPLE.projectDays} Projekttage ergeben {formatWholeEuro(placementExampleFeeCents())} netto. Die Rechnung kommt erst nach der Beauftragung, nicht für einen gebuchten Termin. Einzelheiten stehen in den <Link href={PLACEMENT_TERMS_PATH}>Vermittlungsbedingungen</Link>.</p> }
-              : { question: "Was bedeutet „direkt buchen“?", answer: <p>Nach der Anmeldung öffnen Sie bei einem Profil mit Terminlink den hinterlegten Buchungskalender und wählen selbst einen freien Slot. Ohne Terminlink ist die direkte Buchung derzeit nicht verfügbar. Der Termin ist ein Erstgespräch und noch keine Beauftragung.</p> },
-            { question: "Wie läuft das Gespräch ab?", answer: <p>Sie erzählen in 30 Minuten, wen Sie suchen; wir sagen Ihnen ehrlich, ob unser Bestand passt, und stellen passende Freelancer danach per E-Mail vor. Das Gespräch ist kostenlos und verpflichtet zu nichts.</p> },
-          ]} />
+          <Questions items={faq.map((item) => ({
+            question: item.question,
+            answer: (
+              <p>
+                {item.answer.map((part) =>
+                  typeof part === "string" ? part : <Link key={part.href} href={part.href}>{part.label}</Link>,
+                )}
+              </p>
+            ),
+          }))} />
         </div>
       </section>
 
@@ -545,6 +560,21 @@ export function FreelancerLanding({
           </div>
         </div>
       </section>
+
+      {/* Für Suchmaschinen und KI-Systeme: dieselben Rollen, Konditionen und
+          Fragen, die oben sichtbar stehen. */}
+      <JsonLd data={serviceStructuredData({
+        page: MARKETING_PAGE.find,
+        roles: EXAMPLE_BRIEFS.map((example) => ({
+          name: example.label.replace(/ finden$/u, ""),
+          description: EXAMPLE_TEASERS[example.key],
+          alternateNames: ROLE_ALIASES[example.key],
+        })),
+        offer: placement
+          ? `Gespräch, Anfrage und Vorstellung kostenlos. Nur bei Beauftragung einmalig ${PLACEMENT_TERMS.feePercent} % des vereinbarten Honorars der ersten ${PLACEMENT_TERMS.feeMonths} Monate, höchstens ${PLACEMENT_TERMS.maxFeeDays} Projekttage, netto.`
+          : undefined,
+      })} />
+      <JsonLd data={faqStructuredData(faq.map((item) => ({ question: item.question, answer: faqAnswerText(item) })))} />
     </main>
   );
 }

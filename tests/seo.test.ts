@@ -45,9 +45,13 @@ describe("indexing rules", () => {
     expect(NON_INDEXABLE_PREFIXES).toContain("/booking/");
   });
 
-  it("keeps the product landing page indexable", () => {
+  it("keeps the product indexable and puts the landing page first", () => {
     expect(INDEXABLE_PATHS).toContain("/chat");
-    expect(SITEMAP_ENTRIES.find((entry) => entry.path === "/chat")?.priority).toBe(1);
+    // „Freelancer finden“ soll eine Seite tragen, nicht zwei.
+    const top = SITEMAP_ENTRIES.filter((entry) => entry.priority === 1).map((entry) => entry.path);
+    expect(top).toEqual(["/freelancer-finden"]);
+    const finding = [CHAT_PAGE, ...MARKETING_PAGES].filter((page) => page.title.startsWith("Freelancer finden"));
+    expect(finding.map((page) => page.path)).toEqual(["/freelancer-finden"]);
   });
 
   it("lists every legal page a visitor must be able to find", () => {

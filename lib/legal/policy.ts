@@ -76,7 +76,16 @@ export const BUSINESS_ONLY_NOTICE =
  * unleserlich gemacht hat.
  */
 export const PROVIDER_NAME = "XPORTAL — Inhaber Roman Dering";
-export const PROVIDER_ADDRESS = "Heilig-Kreuz-Straße 18, 87600 Kaufbeuren";
+
+/** Die Anschrift in Teilen, für strukturierte Daten (lib/structured-data.ts). */
+export const PROVIDER_POSTAL_ADDRESS = {
+  streetAddress: "Heilig-Kreuz-Straße 18",
+  postalCode: "87600",
+  addressLocality: "Kaufbeuren",
+  addressCountry: "DE",
+} as const;
+
+export const PROVIDER_ADDRESS = `${PROVIDER_POSTAL_ADDRESS.streetAddress}, ${PROVIDER_POSTAL_ADDRESS.postalCode} ${PROVIDER_POSTAL_ADDRESS.addressLocality}`;
 
 /** Beide Zeilen in der Reihenfolge, in der sie im Fuß erscheinen. */
 export const PROVIDER_IMPRINT_LINES: readonly string[] = [

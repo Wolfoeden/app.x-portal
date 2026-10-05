@@ -628,12 +628,15 @@
   display: none;
 }
 
+/* Die vierte Zeile traegt die Hinweiszeile unter dem Eingabefeld. Sie hat
+   eine eigene Zeile, damit sie im leeren Chat und im Gespraech an derselben
+   Stelle steht. */
 .chat-panel {
   position: relative;
   display: grid;
   min-width: 0;
   min-height: 0;
-  grid-template-rows: var(--topbar-height) minmax(0, 1fr) auto;
+  grid-template-rows: var(--topbar-height) minmax(0, 1fr) auto auto;
   background: var(--surface);
 }
 
@@ -2305,7 +2308,7 @@ a.secondary-action {
   width: 100%;
   min-width: 0;
   background: linear-gradient(to top, #fff 78%, rgba(255,255,255,0));
-  padding: 18px 40px 18px;
+  padding: 18px 40px 6px;
 }
 
 /* Das Eingabefeld waechst nicht mit: eine Zeile Text ueber die volle Breite
@@ -2314,16 +2317,6 @@ a.secondary-action {
 .selection-strip,
 .composer-credit-status {
   width: min(100%, 1000px);
-  margin-right: auto;
-  margin-left: auto;
-}
-
-/* Der Hinweis darunter haengt nicht an der Breite des Feldes. Er ist ein Satz
-   plus vier Links und soll in eine Zeile passen; an 640 px gebunden braeche er
-   in zwei. Auf schmalen Fenstern greift die min()-Grenze und er bricht wie
-   zuvor. */
-.composer-disclosure {
-  width: min(100%, 940px);
   margin-right: auto;
   margin-left: auto;
 }
@@ -2639,9 +2632,14 @@ a.secondary-action {
   font-weight: 680;
 }
 
+/* Der Hinweis haengt nicht an der Breite des Feldes: ein Satz plus Links, der
+   in eine Zeile passen soll. Er fuellt seine Gitterzeile, der Text bleibt in
+   einer 1040 px breiten Mitte. */
 .composer-disclosure {
-  margin-top: 6px;
-  margin-bottom: 0;
+  min-width: 0;
+  margin: 0;
+  background: var(--surface);
+  padding: 4px max(40px, calc((100% - 1040px) / 2)) 14px;
   color: var(--muted-light);
   font-size: var(--fs-2xs);
   text-align: center;
@@ -2649,14 +2647,18 @@ a.secondary-action {
 }
 
 /* Empty chats are composed as one centered question-and-answer moment. The
-   fourth grid row is intentional whitespace: it raises the prompt from the
-   bottom edge without absolute-positioning the interactive controls. */
+   fourth grid row is intentional whitespace: it holds the prompt in the
+   vertical middle without absolute-positioning the interactive controls. It
+   is a little shorter than the second row because the role suggestions below
+   the field and the disclosure line would otherwise push the field above the
+   middle. The fifth row is the same disclosure line as in a running chat. */
 .chat-panel.is-empty-chat {
   grid-template-rows:
     var(--topbar-height)
-    minmax(150px, 0.82fr)
+    minmax(150px, 1fr)
     auto
-    minmax(112px, 1fr);
+    minmax(112px, 0.75fr)
+    auto;
 }
 
 .chat-panel.is-empty-chat::after {
@@ -2685,11 +2687,31 @@ a.secondary-action {
 }
 
 .chat-panel.is-empty-chat .composer-disclosure {
-  position: absolute;
-  right: 40px;
-  bottom: 14px;
-  left: 40px;
-  width: auto;
+  grid-row: 5;
+}
+
+/* Zu Beginn ist das Eingabefeld die Hauptsache und deshalb groesser. Mit der
+   ersten Anfrage endet der Leerzustand, und das Feld nimmt seine gewohnte
+   Groesse unten an. */
+.chat-panel.is-empty-chat .composer {
+  border-radius: 30px;
+  box-shadow: 0 12px 40px rgba(20, 20, 18, 0.09);
+}
+
+.chat-panel.is-empty-chat .composer textarea {
+  min-height: 112px;
+  padding: 20px 8px 20px 24px;
+  font-size: var(--fs-md);
+}
+
+.chat-panel.is-empty-chat .composer-placeholder {
+  top: 20px;
+  left: 24px;
+  font-size: var(--fs-md);
+}
+
+.chat-panel.is-empty-chat .composer-bottom {
+  padding: 0 10px 10px 0;
 }
 
 /* Imprint and privacy live in the line people actually read before typing,
@@ -4150,6 +4172,11 @@ a.secondary-action {
     padding-right: 24px;
     padding-left: 24px;
   }
+
+  .composer-disclosure {
+    padding-right: 24px;
+    padding-left: 24px;
+  }
 }
 
 @media (max-width: 620px) {
@@ -4200,12 +4227,10 @@ a.secondary-action {
     padding: 22px 14px 28px;
   }
 
+  /* Auch auf dem Handy mittig. Die Rollenvorschlaege unter dem Feld sind hier
+     drei Zeilen hoch, deshalb ist die untere Freiflaeche deutlich kleiner. */
   .chat-panel.is-empty-chat {
-    grid-template-rows: var(--topbar-height) minmax(120px, 1fr) auto;
-  }
-
-  .chat-panel.is-empty-chat::after {
-    display: none;
+    grid-template-rows: var(--topbar-height) minmax(120px, 1fr) auto minmax(0, 0.62fr) auto;
   }
 
   .chat-panel.is-empty-chat .chat-scroll {
@@ -4225,9 +4250,14 @@ a.secondary-action {
     position: relative;
   }
 
-  .chat-panel.is-empty-chat .composer-disclosure {
-    position: static;
-    width: min(100%, 880px);
+  .chat-panel.is-empty-chat .composer textarea {
+    min-height: 84px;
+    padding: 16px 6px 16px 18px;
+  }
+
+  .chat-panel.is-empty-chat .composer-placeholder {
+    top: 16px;
+    left: 18px;
   }
 
   .welcome-state {

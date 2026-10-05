@@ -53,11 +53,13 @@ describe("marketing pages rendered on the server", () => {
       expect(new Set(ids).size).toBe(ids.length);
       for (const [, target] of html.matchAll(/href="#([^"]+)"/gu)) expect(ids).toContain(target);
       const json = [...main.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/gu)];
-      expect(json).toHaveLength(1);
+      const types = json.map((match) => JSON.parse(match[1]!)["@type"]);
+      // Die Startseite beschreibt zusätzlich Leistung und sichtbare FAQ
+      // (Oktober 2026, für Suchmaschinen und KI-Systeme); die übrigen
+      // Ratgeberseiten bleiben bei der Brotkrümelnavigation.
+      expect(types).toEqual(page.path === "/freelancer-finden" ? ["BreadcrumbList", "Service", "FAQPage"] : ["BreadcrumbList"]);
       const breadcrumb = JSON.parse(json[0][1]);
-      expect(breadcrumb["@type"]).toBe("BreadcrumbList");
       expect(breadcrumb.itemListElement.at(-1).item).toBe(absoluteUrl(page.path));
-      expect(html).not.toContain('"@type":"FAQPage"');
       expect(html).not.toContain('"@type":"Article"');
     });
   }
@@ -73,7 +75,8 @@ describe("marketing pages rendered on the server", () => {
   it("routes the root through product context and keeps the direct app entry", () => {
     const root = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
     const chat = readFileSync(new URL("../app/chat/page.tsx", import.meta.url), "utf8");
-    expect(root).toContain('redirect("/freelancer-finden")');
+    // Permanent (308), damit die Signale der Domain bei der Landingpage landen.
+    expect(root).toContain('permanentRedirect("/freelancer-finden")');
     expect(chat).toContain("return <ChatWorkspace />");
   });
 });

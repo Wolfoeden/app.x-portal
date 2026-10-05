@@ -140,3 +140,30 @@ deaktivierte Typprüfung. HTTP-Smokes gegen den lokalen Produktionsserver:
 alle vier Seiten und `/chat` antworten mit 200, `/` mit 307 nach `/chat`.
 H1, Titel, Beschreibung, Canonical, JSON-LD und deutscher Hauptinhalt sind im
 initialen HTML vorhanden.
+
+## Nachtrag Oktober 2026: „Freelancer finden“ und „AI Agents“
+
+Auftrag des Betreibers: für „Freelancer finden“ besser ranken und für
+„AI Agents“ mit EU-, DSGVO- und Deutschlandbezug gefunden werden, mit Texten
+für Suchmaschinen und KI-Systeme statt zusätzlicher sichtbarer Inhalte.
+Versteckter Text oder Inhalte nur für Bots (Cloaking) verstoßen gegen die
+Spam-Richtlinien von Google und wurden deshalb nicht verwendet. Umgesetzt:
+
+- `/` leitet dauerhaft (308) auf `/freelancer-finden`. Diese Seite hat
+  Sitemap-Priorität 1.0; `/chat` nennt „Freelancer finden“ nicht mehr im
+  Titel, damit nicht zwei eigene Seiten um denselben Suchbegriff konkurrieren.
+- Die h1 der Startseite beginnt mit „Freelancer finden für Recruiter und
+  Personaldienstleister“; optisch ist das die bisherige Dachzeile.
+- Strukturierte Daten (`lib/structured-data.ts`): Organization mit Anschrift
+  aus dem Impressum, Inhaber, Regionen und Themen; auf der Startseite
+  `Service` (Rollen und Konditionen der Seite) und `FAQPage` aus derselben
+  Quelle wie die sichtbare FAQ (`components/marketing/landing-faq.ts`). Die
+  frühere Entscheidung gegen `FAQPage` gilt für die Ratgeberseiten weiter.
+- `llms.txt` nennt Zielgruppen, Leistungen (auch KI-Agenten), wie KI im
+  Produkt eingesetzt wird, und die Datenwege. Die EU-Sätze stehen wörtlich auf
+  `/datenwege` (`lib/marketing/llms-facts.ts`, durch Tests geprüft). Nicht
+  behauptet: „vollständig in der EU“, „AI-Act-konform“, Zertifikate.
+
+Ranking hängt zusätzlich von Faktoren außerhalb des Codes ab: Search Console
+und Bing Webmaster Tools (Sitemap einreichen), Verlinkungen von anderen
+Seiten, Unternehmensprofil.

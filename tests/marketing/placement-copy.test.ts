@@ -67,6 +67,10 @@ describe("public copy with the placement model on", () => {
     const hero = html.slice(0, html.indexOf("</header>"));
     expect(hero).toContain("Recruiter und Personaldienstleister");
     expect(hero).toContain("Ihre Kundenanfrage.");
+    // Der Suchbegriff steht am Anfang der einzigen h1.
+    expect(html.match(/<h1[\s>]/gu)).toHaveLength(1);
+    const h1 = html.slice(html.indexOf("<h1"), html.indexOf("</h1>")).replace(/<[^>]+>/gu, "");
+    expect(h1.startsWith("Freelancer finden für Recruiter")).toBe(true);
     expect(hero).not.toContain("in Ihrem Unternehmen");
     // Die Produktansicht: Anforderung, Beleg, offener Punkt, nächster Schritt.
     const steps = ["Kundenanforderung", "Profilbeleg", "Offener Punkt", "Nächster Schritt"].map((label) => hero.indexOf(label));
