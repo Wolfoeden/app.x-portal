@@ -27,6 +27,17 @@ describe("data flows page", () => {
     expect(page).toContain("bis zu 30 Tage");
   });
 
+  // Oktober 2026: Profil aus Lebenslauf oder Code-Hosting übernehmen.
+  it("explains the freelancer import the same way the privacy policy does", () => {
+    const page = text();
+    expect(page).toContain("7. Für Freelancer: Profil aus Lebenslauf oder Code-Hosting");
+    expect(page).toContain("nicht als geprüft");
+    const privacy = readFileSync("app/privacy/page.tsx", "utf8").replace(/\s+/gu, " ");
+    for (const fact of ["pseudonymen Sicherheitskennung", "Dienst für Code-Hosting", "kein Training mit Ihren Inhalten", "als „geprüft“ gelten sie dadurch nicht"]) {
+      expect(privacy).toContain(fact);
+    }
+  });
+
   it("states nothing the privacy policy does not already say", () => {
     const privacy = readFileSync("app/privacy/page.tsx", "utf8").replace(/\s+/gu, " ");
     for (const fact of ["eu-west-1", "store: false", "bis zu 30 Tage", "Sitz in den USA", "Sitz in Deutschland", "Mutterunternehmen in den USA"]) {

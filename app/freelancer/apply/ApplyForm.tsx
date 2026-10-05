@@ -8,6 +8,20 @@ import { ShowcaseCard } from "@/components/chat/showcase-card";
 import { ProjectListEditor } from "@/components/profile/ProjectListEditor";
 import { appPath } from "@/lib/app-path";
 import { applicationPreviewProfile } from "@/lib/freelancer/application-preview";
+import {
+  addProvenance,
+  EMPTY_PROVENANCE,
+  finalProvenance,
+  IMPORT_SOURCE_LABELS,
+  IMPORT_SOURCES,
+  MAX_DESIRED_PROJECTS_LENGTH,
+  mergeDraft,
+  sourcesOf,
+  type DraftField,
+  type DraftTarget,
+  type ImportProvenance,
+  type ProfileDraft,
+} from "@/lib/freelancer/import/draft";
 import { AVATAR_MAX_BYTES, AVATAR_MIME_TYPES, type AvatarMimeType } from "@/lib/freelancer/avatar-limits";
 import { profileStrength } from "@/lib/freelancer/profile-strength";
 import type { ProfileProject } from "@/lib/profile/project-limits";
@@ -35,7 +49,25 @@ import {
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 import styles from "./apply.module.css";
+import { ImportPanel } from "./ImportPanel";
 import { PROJECT_EDITOR_CLASSES } from "./project-editor-classes";
+
+/** „aus Lebenslauf: Python, SQL · aus GitHub: Docker“ unter einem Feld. */
+function ImportedHint({
+  provenance,
+  field,
+  values,
+}: {
+  provenance: ImportProvenance;
+  field: DraftField;
+  values: readonly string[];
+}) {
+  const parts = IMPORT_SOURCES.flatMap((source) => {
+    const taken = values.filter((value) => sourcesOf(provenance, field, value).includes(source));
+    return taken.length ? [`${IMPORT_SOURCE_LABELS[source]}: ${taken.join(", ")}`] : [];
+  });
+  return parts.length ? <span className={styles.importedHint}>{parts.join(" · ")}</span> : null;
+}
 
 type UploadedCv = {
   storagePath: string;
@@ -126,7 +158,16 @@ export function ApplyForm({
   inviteToken = null,
   referral = null,
   extrasAvailable = false,
+  cvImportAvailable = false,
+  githubLogin = null,
+  linkedinConnected = false,
 }: {
+  /** Lebenslauf per KI einlesen (OPENAI_API_KEY gesetzt). */
+  cvImportAvailable?: boolean;
+  /** Der GitHub-Name des verknüpften Kontos, wenn über GitHub angemeldet. */
+  githubLogin?: string | null;
+  /** Über LinkedIn angemeldet: Name und E-Mail kommen von dort. */
+  linkedinConnected?: boolean;
   accountEmail?: string;
   /** Der Name aus der Registrierung, damit niemand ihn zweimal tippt. */
   accountName?: string | null;
@@ -170,6 +211,9 @@ export function ApplyForm({
   const [bookingUrl, setBookingUrl] = useState("");
   const [bookingUrlTouched, setBookingUrlTouched] = useState(false);
   const [applicantNote, setApplicantNote] = useState("");
+  const [capacityDays, setCapacityDays] = useState("");
+  const [desiredProjects, setDesiredProjects] = useState("");
+  const [provenance, setProvenance] = useState<ImportProvenance>(EMPTY_PROVENANCE);
   const [consent, setConsent] = useState(false);
   const [honeypot, setHoneypot] = useState("");
   const [previewAt] = useState(() => new Date());
@@ -219,16 +263,16 @@ export function ApplyForm({
     );
   }
 
-  async function uploadCv(file: File) {
+  async function uploadCv(file: File): Promise<UploadedCv | null> {
     setCvError(null);
 
     if (file.size > CV_MAX_BYTES) {
       setCvError("Die Datei ist größer als 10 MB.");
-      return;
+      return null;
     }
     if (!isCvMimeType(file.type) || !/\.pdf$/iu.test(file.name)) {
       setCvError("Bitte eine PDF-Datei auswählen.");
-      return;
+      return null;
     }
 
     setCvStatus("uploading");
@@ -251,7 +295,7 @@ export function ApplyForm({
       };
       if (!ticketResponse.ok || !ticket.path || !ticket.uploadToken) {
         setCvError(ticket.error ?? "Der Upload konnte nicht gestartet werden.");
-        return;
+        return null;
       }
 
       // The file goes directly to Supabase Storage with a one-object token, so
@@ -264,18 +308,21 @@ export function ApplyForm({
         });
       if (error) {
         setCvError("Der Upload ist fehlgeschlagen. Bitte erneut versuchen.");
-        return;
+        return null;
       }
 
-      setCv({
+      const uploaded: UploadedCv = {
         storagePath: ticket.path,
         token: ticket.pathToken ?? "",
         originalFilename: file.name.slice(0, 255),
         mimeType: file.type,
         sizeBytes: file.size,
-      });
+      };
+      setCv(uploaded);
+      return uploaded;
     } catch {
       setCvError("Der Upload ist fehlgeschlagen. Bitte erneut versuchen.");
+      return null;
     } finally {
       setCvStatus("idle");
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -322,6 +369,34 @@ export function ApplyForm({
       if (photoInputRef.current) photoInputRef.current.value = "";
     }
   }
+
+  function draftTarget(): DraftTarget {
+    return { roleTitle, experienceSummary, locationText, skills, languages, qualifications, industries, projects };
+  }
+
+  /** Übernimmt einen Import; gibt zurück, wie viele Angaben neu dazukamen. */
+  function applyDraft(draft: ProfileDraft): number {
+    // Ohne Projektspalten (Migration 20261006100000) keine Projekte übernehmen.
+    const { next, taken } = mergeDraft(draftTarget(), extrasAvailable ? draft : { ...draft, projects: [] });
+    setRoleTitle(next.roleTitle);
+    setExperienceSummary(next.experienceSummary);
+    setLocationText(next.locationText);
+    setSkills(next.skills);
+    setLanguages(next.languages);
+    setQualifications(next.qualifications);
+    setIndustries(next.industries);
+    setProjects(next.projects);
+    setProvenance((current) => addProvenance(current, draft, taken));
+    return taken.length;
+  }
+
+  const missing = [
+    !employment && !hourlyRate && !dayRate ? { label: "Stunden- oder Tagessatz", target: "apply-rates" } : null,
+    !availabilityFrom ? { label: "Verfügbar ab", target: "apply-availability-from" } : null,
+    !capacityDays ? { label: "Kapazität (Tage pro Woche)", target: "apply-capacity" } : null,
+    !desiredProjects.trim() ? { label: "Gewünschte Projekte", target: "apply-desired" } : null,
+    !languages.length ? { label: "Sprachen", target: "apply-languages" } : null,
+  ].filter((item): item is { label: string; target: string } => Boolean(item));
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -390,6 +465,9 @@ export function ApplyForm({
           seeking,
           referral: source,
           applicantNote,
+          capacityDaysPerWeek: capacityDays,
+          desiredProjects: desiredProjects.trim(),
+          importProvenance: finalProvenance(provenance, { ...draftTarget(), projects: filledProjects }),
           cv,
           projects: filledProjects,
           photo: extrasAvailable && photo ? { storagePath: photo.storagePath, token: photo.token } : null,
@@ -443,6 +521,16 @@ export function ApplyForm({
 
   return (
     <form className={styles.form} onSubmit={handleSubmit} noValidate>
+      <ImportPanel
+        cvImportAvailable={cvImportAvailable}
+        githubLogin={githubLogin}
+        linkedinConnected={linkedinConnected}
+        uploadCv={uploadCv}
+        onDraft={applyDraft}
+        takenCount={provenance.values.length}
+        missing={missing}
+      />
+
       <section className={styles.section}>
         <p className={styles.eyebrow}>01 · Kontakt</p>
         <h2>Wer sind Sie?</h2>
@@ -606,6 +694,7 @@ export function ApplyForm({
               maxLength={160}
               required
             />
+            <ImportedHint provenance={provenance} field="roleTitle" values={roleTitle.trim() ? [""] : []} />
           </label>
 
           <div className={styles.full}>
@@ -618,9 +707,10 @@ export function ApplyForm({
               required
               onChange={setSkills}
             />
+            <ImportedHint provenance={provenance} field="skills" values={skills} />
           </div>
 
-          <div className={styles.full}>
+          <div className={styles.full} id="apply-languages">
             <TagInput
               classes={tagClasses}
               label="Sprachen"
@@ -630,6 +720,7 @@ export function ApplyForm({
               required
               onChange={setLanguages}
             />
+            <ImportedHint provenance={provenance} field="languages" values={languages} />
           </div>
 
           <div className={styles.full}>
@@ -642,6 +733,7 @@ export function ApplyForm({
               max={MAX_QUALIFICATIONS}
               onChange={setQualifications}
             />
+            <ImportedHint provenance={provenance} field="qualifications" values={qualifications} />
           </div>
 
           <div className={styles.full}>
@@ -653,6 +745,7 @@ export function ApplyForm({
               max={MAX_INDUSTRIES}
               onChange={setIndustries}
             />
+            <ImportedHint provenance={provenance} field="industries" values={industries} />
           </div>
 
           <label className={`${styles.field} ${styles.full}`}>
@@ -668,6 +761,7 @@ export function ApplyForm({
             <span className={styles.hint}>
               {experienceSummary.trim().length}/{MAX_SUMMARY_LENGTH} Zeichen
             </span>
+            <ImportedHint provenance={provenance} field="experienceSummary" values={experienceSummary.trim() ? [""] : []} />
           </label>
         </div>
       </section>
@@ -714,9 +808,38 @@ export function ApplyForm({
               Verfügbar ab<span className={styles.optional}> · optional</span>
             </span>
             <input
+              id="apply-availability-from"
               value={availabilityFrom}
               onChange={(event) => setAvailabilityFrom(event.target.value)}
               type="date"
+            />
+          </label>
+
+          <label className={styles.field}>
+            <span>
+              Kapazität<span className={styles.optional}> · optional</span>
+            </span>
+            <select id="apply-capacity" value={capacityDays} onChange={(event) => setCapacityDays(event.target.value)}>
+              <option value="">Keine Angabe</option>
+              {[1, 2, 3, 4, 5].map((days) => (
+                <option key={days} value={String(days)}>
+                  {days} {days === 1 ? "Tag" : "Tage"} pro Woche
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={`${styles.field} ${styles.full}`}>
+            <span>
+              Gewünschte Projekte<span className={styles.optional}> · optional</span>
+            </span>
+            <textarea
+              id="apply-desired"
+              value={desiredProjects}
+              onChange={(event) => setDesiredProjects(event.target.value)}
+              placeholder="z. B. KI-Agenten im Kundenservice, remote, ab sechs Monaten Laufzeit"
+              maxLength={MAX_DESIRED_PROJECTS_LENGTH}
+              style={{ minHeight: 72 }}
             />
           </label>
 
@@ -727,7 +850,7 @@ export function ApplyForm({
             </div>
           ) : (
             <>
-              <label className={styles.field}>
+              <label className={styles.field} id="apply-rates">
                 <span>Stundensatz</span>
                 <input
                   value={hourlyRate}
@@ -865,6 +988,7 @@ export function ApplyForm({
             Ihrer Karte. Ohne Haken „im Profil zeigen“ sieht ein Projekt nur unser Team.
           </p>
           <ProjectListEditor projects={projects} onChange={setProjects} mode="owner" classes={PROJECT_EDITOR_CLASSES} />
+          <ImportedHint provenance={provenance} field="projects" values={projects.map((project) => project.title)} />
         </section>
       ) : null}
 

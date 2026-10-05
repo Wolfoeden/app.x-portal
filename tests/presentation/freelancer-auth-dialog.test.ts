@@ -1,6 +1,6 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { AuthDialog } from "@/components/chat/dialogs";
 import { BUSINESS_ONLY_NOTICE } from "@/lib/legal/policy";
@@ -60,5 +60,42 @@ describe("sign-up dialog for freelancers", () => {
     expect(register).toContain("Ihre Anfrage bleibt erhalten");
     expect(register).toContain("Newsletter:");
     expect(register).toContain(BUSINESS_ONLY_NOTICE);
+  });
+});
+
+// Oktober 2026: LinkedIn und GitHub als Anmeldewege, nur für Freelancer und
+// nur, wenn der Anbieter eingerichtet ist (Schalter in netlify.toml).
+describe("LinkedIn and GitHub sign-in for freelancers", () => {
+  async function render(audience: "client" | "freelancer", enabled: boolean) {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_AUTH_LINKEDIN_ENABLED", enabled ? "true" : "false");
+    vi.stubEnv("NEXT_PUBLIC_AUTH_GITHUB_ENABLED", enabled ? "true" : "false");
+    const { AuthDialog: Dialog } = await import("@/components/chat/dialogs");
+    const markup = renderToStaticMarkup(
+      createElement(Dialog, {
+        initialMode: "register",
+        audience,
+        destination: "/freelancer/apply",
+        onClose: noop,
+        onAuthenticated: noop,
+        showToast: noop,
+      }),
+    );
+    vi.unstubAllEnvs();
+    return markup;
+  }
+
+  it("offers both buttons to freelancers when switched on", async () => {
+    const markup = await render("freelancer", true);
+    expect(markup).toContain("Mit LinkedIn fortfahren");
+    expect(markup).toContain("Mit GitHub fortfahren");
+    expect(markup).toContain("erst nach Ihrem Klick geöffnet");
+  });
+
+  it("hides them from clients and while switched off", async () => {
+    for (const markup of [await render("client", true), await render("freelancer", false)]) {
+      expect(markup).not.toContain("Mit LinkedIn fortfahren");
+      expect(markup).not.toContain("Mit GitHub fortfahren");
+    }
   });
 });

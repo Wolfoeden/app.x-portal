@@ -8,7 +8,8 @@ import {
 import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { decisionDefaultsFromApplication, storedApplicationProjects } from "@/lib/freelancer/application";
+import { decisionDefaultsFromApplication, storedApplicationProjects, storedImportProvenance } from "@/lib/freelancer/application";
+import { IMPORT_SOURCE_LABELS, IMPORT_SOURCES, type DraftField } from "@/lib/freelancer/import/draft";
 import { createApplicationPhotoUrl, getApplication } from "@/lib/freelancer/applications-data";
 import { PROFILE_FEEDBACK_LABELS } from "@/lib/freelancer/profile-feedback";
 import { loadProfileFeedbackSummary } from "@/lib/freelancer/profile-feedback-data";
@@ -43,6 +44,18 @@ const badgeClass: Record<ApplicationStatus, string> = {
   in_review: styles.badgeInReview,
   approved: styles.badgeApproved,
   rejected: styles.badgeRejected,
+};
+
+/** Felder, für die die Prüfseite die Import-Herkunft zeigt. */
+const PROVENANCE_FIELD_LABELS: Readonly<Record<DraftField, string>> = {
+  roleTitle: "Rolle / Titel",
+  experienceSummary: "Kurzprofil",
+  locationText: "Standort",
+  skills: "Skills",
+  languages: "Sprachen",
+  qualifications: "Qualifikationen",
+  industries: "Branchen",
+  projects: "Projekte",
 };
 
 function formatRate(minor: number | null, currency: string | null): string {
@@ -93,6 +106,7 @@ export default async function FreelancerApplicationDetailPage({
   const defaults = decisionDefaultsFromApplication(application);
   // Das Foto liegt privat unter `incoming/`; die Prüfseite bekommt eine
   // Adresse, die nach zehn Minuten verfällt.
+  const provenance = storedImportProvenance(application.import_provenance);
   const photoUrl = application.photo_storage_path
     ? await createApplicationPhotoUrl(application.photo_storage_path).catch(() => null)
     : null;
@@ -184,6 +198,12 @@ export default async function FreelancerApplicationDetailPage({
                     : ""}
                 </dd>
               </div>
+              {application.capacity_days_per_week ? (
+                <div>
+                  <dt>Kapazität</dt>
+                  <dd>{application.capacity_days_per_week} {application.capacity_days_per_week === 1 ? "Tag" : "Tage"} pro Woche</dd>
+                </div>
+              ) : null}
               <div>
                 <dt>Honorar</dt>
                 <dd>
@@ -267,6 +287,55 @@ export default async function FreelancerApplicationDetailPage({
             <p className={styles.summaryText}>
               {application.experience_summary}
             </p>
+
+            {application.desired_projects ? (
+              <>
+                <h3>Gewünschte Projekte</h3>
+                <p className={styles.summaryText}>{application.desired_projects}</p>
+              </>
+            ) : null}
+
+            {provenance ? (
+              <>
+                <h3>Übernommen aus Import</h3>
+                <p className={styles.hint}>
+                  Diese Angaben hat die Person aus einem Import übernommen und vor dem Absenden bestätigt.
+                  Sie sind Angaben wie alle anderen, kein Nachweis; „geprüft“ setzen nur Sie.
+                </p>
+                <ul className={styles.feedbackList}>
+                  {provenance.imports.map((entry, index) => (
+                    <li key={`${entry.source}-${index}`}>
+                      {IMPORT_SOURCE_LABELS[entry.source]}
+                      {entry.github ? ` (${entry.github.login}, ${entry.github.linked ? "Konto verbunden" : "Name selbst eingetragen"})` : ""}
+                      {" · "}
+                      {Number.isNaN(Date.parse(entry.importedAt)) ? entry.importedAt : dateTimeFormat.format(new Date(entry.importedAt))}
+                    </li>
+                  ))}
+                </ul>
+                <dl className={styles.dl}>
+                  {(Object.keys(PROVENANCE_FIELD_LABELS) as DraftField[]).flatMap((field) => {
+                    const parts = IMPORT_SOURCES.flatMap((source) => {
+                      const values = provenance.values
+                        .filter((entry) => entry.field === field && entry.source === source)
+                        .map((entry) => entry.value)
+                        .filter(Boolean);
+                      const textField = provenance.values.some((entry) => entry.field === field && entry.source === source && !entry.value);
+                      return values.length || textField
+                        ? [`${IMPORT_SOURCE_LABELS[source]}${values.length ? `: ${values.join(", ")}` : ""}`]
+                        : [];
+                    });
+                    return parts.length
+                      ? [
+                          <div key={field}>
+                            <dt>{PROVENANCE_FIELD_LABELS[field]}</dt>
+                            <dd>{parts.join(" · ")}</dd>
+                          </div>,
+                        ]
+                      : [];
+                  })}
+                </dl>
+              </>
+            ) : null}
 
             {application.applicant_note ? (
               <>

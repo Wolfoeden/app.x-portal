@@ -24,6 +24,7 @@ import {
   setAccountPassword,
   signInExistingAccount,
   startOauthUpgrade,
+  type OauthProviderName,
 } from "@/lib/auth/browser";
 import { ACCOUNT_NAME_MAX_LENGTH } from "@/lib/auth/account-name";
 import { appPath } from "@/lib/app-path";
@@ -51,7 +52,9 @@ import {
 } from "./auth-continuation";
 import type { CheckoutDialogCopy } from "./checkout-intent";
 import {
+  GITHUB_AUTH_ENABLED,
   GOOGLE_AUTH_ENABLED,
+  LINKEDIN_AUTH_ENABLED,
   initials,
   MICROSOFT_AUTH_ENABLED,
   type AuthDialogMode,
@@ -162,9 +165,18 @@ export function AuthDialog({
   const [sendCount, setSendCount] = useState(0);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [marketingEmails, setMarketingEmails] = useState(false);
-  const [busy, setBusy] = useState<"google" | "microsoft" | "email" | null>(null);
+  const [busy, setBusy] = useState<OauthProviderName | "email" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const freelancer = audience === "freelancer";
+  // LinkedIn und GitHub tragen beim Profil etwas bei (Name, Foto,
+  // Repositorys); für Kunden wären sie nur zwei weitere Knöpfe.
+  const linkedin = freelancer && LINKEDIN_AUTH_ENABLED;
+  const github = freelancer && GITHUB_AUTH_ENABLED;
+  const providerNames = [
+    linkedin ? "LinkedIn" : null,
+    github ? "GitHub" : null,
+    GOOGLE_AUTH_ENABLED ? "Google" : null,
+  ].filter((value): value is string => Boolean(value));
   const intentCopy = freelancer ? FREELANCER_AUTH_COPY : checkout ?? authIntentCopy(intent);
   const plan = checkout?.plan ?? null;
   const destinationForMode = (currentMode: AuthDialogMode) => {
@@ -194,7 +206,7 @@ export function AuthDialog({
     setPassword("");
   };
 
-  const connectProvider = async (provider: "google" | "microsoft") => {
+  const connectProvider = async (provider: OauthProviderName) => {
     setBusy(provider);
     setError(null);
     try {
@@ -301,9 +313,15 @@ export function AuthDialog({
         ) : null}
         {mode === "login" || mode === "register" ? (
           <>
-            {GOOGLE_AUTH_ENABLED || MICROSOFT_AUTH_ENABLED ? (
+            {GOOGLE_AUTH_ENABLED || MICROSOFT_AUTH_ENABLED || linkedin || github ? (
               <>
                 <div className="provider-buttons">
+                  {linkedin ? (
+                    <button type="button" onClick={() => void connectProvider("linkedin")} disabled={Boolean(busy)}><span className="provider-letter linkedin" aria-hidden="true">in</span>{busy === "linkedin" ? "LinkedIn wird geöffnet …" : "Mit LinkedIn fortfahren"}</button>
+                  ) : null}
+                  {github ? (
+                    <button type="button" onClick={() => void connectProvider("github")} disabled={Boolean(busy)}><span className="provider-letter github" aria-hidden="true">GH</span>{busy === "github" ? "GitHub wird geöffnet …" : "Mit GitHub fortfahren"}</button>
+                  ) : null}
                   {GOOGLE_AUTH_ENABLED ? (
                     <button type="button" onClick={() => void connectProvider("google")} disabled={Boolean(busy)}><span className="provider-letter" aria-hidden="true">G</span>{busy === "google" ? "Google wird geöffnet …" : "Mit Google fortfahren"}</button>
                   ) : null}
@@ -478,7 +496,9 @@ export function AuthDialog({
           {freelancer
             ? FREELANCER_AUTH_COPY.privacy
             : "Die Anmeldung ordnet Ihre bisherige Arbeit Ihrem Konto zu und setzt den von Ihnen gewählten Schritt fort."}
-          {GOOGLE_AUTH_ENABLED ? " Google wird erst nach Ihrem Klick geöffnet; alternativ steht die E-Mail-Anmeldung zur Verfügung." : ""}
+          {providerNames.length
+            ? ` ${providerNames.join(", ").replace(/, ([^,]*)$/u, " und $1")} ${providerNames.length > 1 ? "werden" : "wird"} erst nach Ihrem Klick geöffnet; alternativ steht die E-Mail-Anmeldung zur Verfügung.`
+            : ""}
           {" "}<a href="/privacy">Datenschutzhinweise</a>
         </p>
         {/* Beim Anlegen eines Kontos per E-Mail steht die Zustimmung als

@@ -431,6 +431,9 @@ export function FreelancerDashboard({
           bookingUrl: profile.bookingUrl,
           profileStatus: profile.profileStatus,
           version: profile.version,
+          // Nur, wenn das Profil die Felder kennt (Migration 20261007090000).
+          ...("capacityDaysPerWeek" in profile ? { capacityDaysPerWeek: profile.capacityDaysPerWeek ?? null } : {}),
+          ...("desiredProjects" in profile ? { desiredProjects: profile.desiredProjects ?? "" } : {}),
         }),
       });
       const payload = (await response.json().catch(() => null)) as
@@ -845,6 +848,21 @@ export function FreelancerDashboard({
               <span>Verfügbar ab <span className={styles.optional}>· optional</span></span>
               <input type="date" value={profile.availabilityFrom ?? ""} onChange={(event) => update("availabilityFrom", event.target.value || null)} />
             </label>
+            {"capacityDaysPerWeek" in profile ? (
+              <label className={styles.field}>
+                <span>Kapazität <span className={styles.optional}>· optional</span></span>
+                <select value={profile.capacityDaysPerWeek ?? ""} onChange={(event) => update("capacityDaysPerWeek", event.target.value ? Number(event.target.value) : null)}>
+                  <option value="">Keine Angabe</option>
+                  {[1, 2, 3, 4, 5].map((days) => <option key={days} value={days}>{days} {days === 1 ? "Tag" : "Tage"} pro Woche</option>)}
+                </select>
+              </label>
+            ) : null}
+            {"desiredProjects" in profile ? (
+              <label className={`${styles.field} ${styles.full}`}>
+                <span>Gewünschte Projekte <span className={styles.optional}>· optional</span></span>
+                <textarea value={profile.desiredProjects ?? ""} maxLength={500} onChange={(event) => update("desiredProjects", event.target.value || null)} placeholder="z. B. KI-Agenten im Kundenservice, remote, ab sechs Monaten Laufzeit" style={{ minHeight: 72 }} />
+              </label>
+            ) : null}
           </div>
         </section>
 

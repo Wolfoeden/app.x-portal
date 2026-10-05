@@ -3168,6 +3168,14 @@ a.secondary-action {
   background: linear-gradient(135deg, #efefeb 49%, transparent 50%);
 }
 
+/* Zwei Buchstaben in derselben Kachel: kleiner gesetzt, ohne Markenfarben. */
+.provider-letter.linkedin,
+.provider-letter.github {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  letter-spacing: -0.02em;
+}
+
 .or-divider {
   position: relative;
   height: 36px;

@@ -78,6 +78,8 @@ describe("production privacy and authentication configuration", () => {
       "Intuition Machines",
       "Calendly",
       "Montabaur",
+      "GitHub",
+      "LinkedIn",
     ]) {
       expect(privacyPage).not.toContain(company);
       expect(termsPage).not.toContain(company);

@@ -65,6 +65,15 @@ secrets or raw IP addresses.
   AI credits are usage units only and cannot be purchased, transferred or
   redeemed in this release.
 - No automated hiring decision or hidden suitability score.
+- Freelancer onboarding import (October 2026): a CV PDF or public GitHub data
+  becomes a draft of the applicant's own statements, returned to the browser
+  and only stored when the applicant submits it. It structures the person's
+  own data for that person; it does not evaluate, rank or select freelancers
+  for recruiters. Imported values stay self-reported until a reviewer verifies
+  them, and GitHub activity is not a matching signal. EU AI Act: a later
+  feature that scores or prioritises freelancers for recruiters would need a
+  fresh classification (Annex III no. 4, employment and work relationships,
+  potentially high-risk) before it ships.
 - Missing budget, location, availability, qualification and contractual facts
   remain `null`/unknown.
 - Anonymous users receive an authenticated Supabase identity; raw IP addresses

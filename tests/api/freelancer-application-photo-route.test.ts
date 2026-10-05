@@ -19,7 +19,11 @@ vi.mock("@/lib/auth/current-user", () => ({ requireCurrentUser: mocks.currentUse
 vi.mock("@/lib/security/shared-rate-limit", () => ({ consumeRateLimit: mocks.rateLimit }));
 vi.mock("@/lib/audit/write", () => ({ writeAuditEvent: mocks.audit }));
 vi.mock("@/lib/sourcing/conversion", () => ({ recordInviteConversion: mocks.conversion }));
-vi.mock("@/lib/freelancer/applications-data", () => ({ applicationExtrasAvailable: mocks.extras }));
+vi.mock("@/lib/freelancer/applications-data", () => ({
+  applicationExtrasAvailable: mocks.extras,
+  // Ohne Migration 20261007090000: die drei neuen Felder bleiben weg.
+  applicationOnboardingAvailable: async () => false,
+}));
 vi.mock("@/lib/freelancer/avatar-storage", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/freelancer/avatar-storage")>()),
   inspectUploadedAvatar: mocks.inspect,

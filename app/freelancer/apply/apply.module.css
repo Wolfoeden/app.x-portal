@@ -1117,3 +1117,127 @@
 
 @media (max-width: 1080px) { .inner { padding: 0 48px 72px; } }
 @media (max-width: 760px) { .inner { padding: 0 20px 64px; border-inline: 0; } .header { padding-top: 36px; } }
+
+/* „Profil schneller ausfüllen“ (ImportPanel.tsx) ------------------------- */
+
+.importPanel {
+  border: 1px solid #cfe6d9;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f6fbf8, var(--surface));
+  padding: 26px clamp(18px, 3vw, 30px) 26px;
+}
+
+.importPanel h2 {
+  margin: 6px 0 4px;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.importLinked {
+  margin: -8px 0 16px;
+  color: var(--xp-brand);
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+}
+
+.importOptions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.importOption {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 14px 16px 16px;
+}
+
+.importOption > strong {
+  font-size: var(--xp-label-size);
+}
+
+.importOption > span {
+  color: var(--muted);
+  font-size: var(--fs-2xs);
+  line-height: 1.5;
+}
+
+.importOption .uploadButton {
+  justify-self: start;
+  margin-top: 4px;
+}
+
+.importRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.importRow input {
+  flex: 1 1 160px;
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid var(--xp-field-border);
+  border-radius: var(--xp-field-radius);
+  background: var(--xp-field-bg);
+  padding: var(--xp-field-padding);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--xp-field-font-size);
+}
+
+.importRow input:focus-visible {
+  border-color: var(--xp-brand);
+  outline: var(--xp-field-focus-ring);
+  outline-offset: 0;
+}
+
+.importNote {
+  margin: 14px 0 0;
+  color: var(--xp-ink);
+  font-size: var(--fs-2xs);
+  line-height: 1.5;
+}
+
+.importMissing {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  border-radius: 10px;
+  background: #fbf6ea;
+  padding: 10px 14px;
+  color: #6b5524;
+  font-size: var(--fs-2xs);
+}
+
+.importMissing ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.importMissing a {
+  color: inherit;
+  text-underline-offset: 2px;
+}
+
+/* Woher ein übernommener Wert stammt, unter dem Feld. */
+.importedHint {
+  display: block;
+  margin-top: 6px;
+  color: var(--xp-brand);
+  font-size: var(--fs-2xs);
+  line-height: 1.45;
+}
+
+.importedHint::before {
+  content: "↳ ";
+}

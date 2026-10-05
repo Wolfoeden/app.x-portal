@@ -147,6 +147,24 @@ export default function DataFlowsPage() {
             </p>
           </div>
         </section>
+
+        <section>
+          <h2>7. Für Freelancer: Profil aus Lebenslauf oder Code-Hosting</h2>
+          <div>
+            <p>
+              Wer sich als Freelancer bewirbt, kann Angaben übernehmen statt
+              sie abzutippen, nur auf eigenen Klick. Ein Lebenslauf (PDF) geht
+              dafür mit einer pseudonymen Sicherheitskennung an denselben
+              KI-Dienstleister mit Sitz in Irland wie die Projektanalyse; auch
+              hier wird kein Gesprächsverlauf gespeichert und nichts zum
+              Training verwendet. Für Angaben aus einem Code-Hosting-Dienst
+              fragt XPORTAL dort die öffentlichen Angaben zum genannten
+              Nutzernamen ab (Sitz in den USA). Der Entwurf füllt nur leere Felder und wird erst mit dem
+              Absenden der Bewerbung gespeichert. Übernommene Angaben gelten
+              als Angaben der Person, nicht als geprüft.
+            </p>
+          </div>
+        </section>
       </main>
       <PublicFooter />
     </div>

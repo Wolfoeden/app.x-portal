@@ -219,6 +219,28 @@ export default function PrivacyPage() {
               Projekte lassen sich im Dashboard jederzeit ändern oder
               entfernen.
             </p>
+            <p>
+              Beim Ausfüllen der Bewerbung können Sie Angaben aus einem
+              Lebenslauf (PDF) oder aus Ihrem öffentlichen Profil bei einem
+              Dienst für Code-Hosting übernehmen, jeweils nur auf Ihren Klick. Zum Einlesen des
+              Lebenslaufs übermittelt XPORTAL die Datei mit einer pseudonymen
+              Sicherheitskennung an den in Abschnitt 4 genannten
+              KI-Dienstleister mit Sitz in Irland, unter denselben Bedingungen:
+              kein gespeicherter Gesprächsverlauf, kein Training mit Ihren
+              Inhalten. Übernommen werden nur berufliche Angaben wie Rolle,
+              Kompetenzen, Sprachen, Abschlüsse, Branchen und Projekte;
+              Geburtsdatum, Anschrift, Familienstand und ähnliche Angaben
+              werden nicht übernommen, Kundennamen ebenfalls nicht. Beim
+              Code-Hosting-Dienst ruft XPORTAL die öffentlichen Angaben zum
+              genannten Nutzernamen ab: öffentliche Repositorys, ihre
+              Programmiersprachen und Beschreibungen. Der Entwurf füllt nur leere Felder; gespeichert
+              wird erst, was Sie mit der Bewerbung absenden. Dabei speichern
+              wir, welche Angaben aus welchem Import stammen, damit unser Team
+              sie bei der Prüfung einordnen kann; als „geprüft“ gelten sie
+              dadurch nicht. Kapazität und gewünschte Projekte sind
+              freiwillige Angaben. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b
+              DSGVO (vorvertragliche Maßnahmen auf Ihre Anfrage).
+            </p>
           </div>
         </section>
 
@@ -346,6 +368,12 @@ export default function PrivacyPage() {
                 die Anmeldung über ihn wählen;
               </li>
               <li>
+                ein <strong>Dienst für Code-Hosting</strong> mit Sitz in den
+                USA, erst wenn Sie in der Bewerbung Angaben von dort ergänzen;
+                XPORTAL fragt dort mit dem angegebenen Nutzernamen die
+                öffentlichen Profildaten ab;
+              </li>
+              <li>
                 der jeweils angezeigte <strong>Buchungsanbieter</strong> eines
                 Freelancers, erst nach Ihrem Klick auf dessen Link;
               </li>
@@ -464,7 +492,9 @@ export default function PrivacyPage() {
               kann die jeweilige Funktion nicht bereitgestellt werden.
             </p>
             <p>
-              KI unterstützt die Strukturierung Ihrer Angaben. Das Matching
+              KI unterstützt die Strukturierung Ihrer Angaben. Beim Einlesen
+              eines Lebenslaufs entsteht nur ein Entwurf Ihrer eigenen
+              Angaben, den Sie prüfen und ändern; er bewertet Sie nicht. Das Matching
               filtert und sortiert Profile anhand dokumentierter Regeln. Es
               findet keine ausschließlich automatisierte Entscheidung mit
               rechtlicher oder ähnlich erheblicher Wirkung im Sinne von Art. 22
@@ -486,7 +516,7 @@ export default function PrivacyPage() {
           </div>
         </section>
 
-        <p className="xlegal-updated">Stand: 4. Oktober 2026</p>
+        <p className="xlegal-updated">Stand: 5. Oktober 2026</p>
       </main>
 
       <PublicFooter />

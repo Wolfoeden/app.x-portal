@@ -10,6 +10,11 @@ export const GOOGLE_AUTH_ENABLED =
   process.env.NEXT_PUBLIC_AUTH_GOOGLE_ENABLED === "true";
 export const MICROSOFT_AUTH_ENABLED =
   process.env.NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED === "true";
+/** Nur im Freelancer-Zugang; Kunden sehen weiter Google, Microsoft und E-Mail. */
+export const LINKEDIN_AUTH_ENABLED =
+  process.env.NEXT_PUBLIC_AUTH_LINKEDIN_ENABLED === "true";
+export const GITHUB_AUTH_ENABLED =
+  process.env.NEXT_PUBLIC_AUTH_GITHUB_ENABLED === "true";
 
 export type AuthDialogMode = "login" | "register" | "link" | "recover" | "set-password";
 

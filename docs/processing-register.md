@@ -8,7 +8,7 @@ sind. Die drei Dokumente gehören zusammen und werden zusammen gepflegt.
 Sprache: Deutsch, abweichend vom Rest von `docs/`. Es ist ein Dokument, das
 einer deutschen Aufsichtsbehörde vorgelegt wird.
 
-**Stand:** 28. August 2026 · abgeleitet aus dem Code, nicht aus Absichten.
+**Stand:** 5. Oktober 2026 · abgeleitet aus dem Code, nicht aus Absichten.
 Jede Zeile ist an der Datenschutzerklärung, den Migrationen und den
 Retention-Policies überprüfbar.
 
@@ -116,6 +116,18 @@ Retention-Policies überprüfbar.
   Foto liegt bis zur Entscheidung privat unter `incoming/` und wird bei der
   Freigabe zum Profilbild oder gelöscht, ebenso bei Ablehnung und
   Neueinreichung.
+  Seit Oktober 2026 kann die Person beim Ausfüllen Angaben übernehmen, nur
+  auf eigenen Klick: aus einem hochgeladenen Lebenslauf (die PDF geht mit
+  pseudonymer Kennung an den KI-Dienstleister, `store: false`; übernommen
+  werden nur berufliche Angaben, keine Geburtsdaten, Anschrift oder
+  Kundennamen) oder aus öffentlichen GitHub-Daten zum angegebenen
+  Nutzernamen. Der Entwurf wird nicht gespeichert; mit der Bewerbung wird
+  gespeichert, welche Angaben aus welchem Import stammen
+  (`freelancer_applications.import_provenance`), dazu freiwillig Kapazität
+  in Tagen pro Woche und gewünschte Projekte (`capacity_days_per_week`,
+  `desired_projects`, auch im Profil). Die Herkunft ist Kennzeichnung für
+  die Sichtung, kein Nachweis. Anmeldung optional auch über LinkedIn oder
+  GitHub (OpenID Connect bzw. OAuth, nur Name, E-Mail, Kennung).
   Für bestehende Profile setzt der Betreiber ein Foto nur, wenn die Person
   es selbst geschickt und eingewilligt hat (Häkchen, im Audit-Protokoll);
   keine Fotos aus LinkedIn oder einer Recherche.

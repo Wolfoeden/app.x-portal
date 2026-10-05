@@ -9,6 +9,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import {
   APPLICATION_COLUMNS,
   APPLICATION_EXTRA_COLUMNS,
+  APPLICATION_ONBOARDING_COLUMNS,
   profileInsertFromDecision,
   storedApplicationProjects,
   slugFromName,
@@ -88,6 +89,26 @@ export async function countApplicationsByStatus(): Promise<
 }
 
 let extrasProbe: { at: number; available: boolean } | null = null;
+let onboardingProbe: { at: number; available: boolean } | null = null;
+
+/**
+ * Ob Import-Herkunft, Kapazität und Wunschprojekte gespeichert werden können
+ * (Migration 20261007090000); fünf Minuten gemerkt. Ohne sie lässt die Route
+ * die drei Felder beim Speichern weg.
+ */
+export async function applicationOnboardingAvailable(
+  admin: SupabaseClient = createAdminSupabaseClient(),
+  now = Date.now(),
+): Promise<boolean> {
+  if (onboardingProbe && now - onboardingProbe.at < 5 * 60_000) return onboardingProbe.available;
+  const { error } = await admin
+    .from("freelancer_applications")
+    .select("import_provenance", { head: true, count: "exact" })
+    .limit(1);
+  const available = !error || !isMissingSchema(error);
+  onboardingProbe = { at: now, available };
+  return available;
+}
 
 /**
  * Ob Projekte und Foto in Bewerbungen gespeichert werden können (Migration
@@ -114,8 +135,11 @@ export async function getApplication(
   const admin = createAdminSupabaseClient();
   const read = (columns: string) =>
     admin.from("freelancer_applications").select(columns).eq("id", id).maybeSingle();
-  let { data, error } = await read(`${APPLICATION_COLUMNS},${APPLICATION_EXTRA_COLUMNS}`);
-  // Vor der Migration ohne Projekte und Foto, statt die Prüfseite zu sperren.
+  let { data, error } = await read(`${APPLICATION_COLUMNS},${APPLICATION_EXTRA_COLUMNS},${APPLICATION_ONBOARDING_COLUMNS}`);
+  // Vor den Migrationen ohne die neueren Felder, statt die Prüfseite zu sperren.
+  if (error && isMissingSchema(error)) {
+    ({ data, error } = await read(`${APPLICATION_COLUMNS},${APPLICATION_EXTRA_COLUMNS}`));
+  }
   if (error && isMissingSchema(error)) ({ data, error } = await read(APPLICATION_COLUMNS));
   if (error) throw error;
   return (data as unknown as ApplicationRow | null) ?? null;
@@ -413,6 +437,18 @@ export async function publishApplication(input: {
     profileId: profile.id,
     reviewerUserId: input.reviewerUserId,
   });
+
+  // Kapazität und Wunschprojekte sind Angaben der Person wie im Dashboard.
+  // Fehlen die Spalten noch (Migration 20261007090000), bleibt es dabei.
+  const capacity = input.application.capacity_days_per_week ?? null;
+  const desired = input.application.desired_projects ?? null;
+  if (capacity !== null || desired) {
+    await admin
+      .from("freelancer_profiles")
+      .update({ capacity_days_per_week: capacity, desired_projects: desired })
+      .eq("id", profile.id)
+      .then(() => undefined, () => undefined);
+  }
 
   const photo = input.application.photo_storage_path ?? null;
   let photoTransferred = false;
