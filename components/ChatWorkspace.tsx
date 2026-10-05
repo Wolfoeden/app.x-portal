@@ -1992,12 +1992,15 @@ export function ChatWorkspace({
     };
   }, [accountMenuOpen]);
 
+  // Im leeren Chat ist das Feld größer (workspace.css). Wechselt der Zustand,
+  // wird die Höhe neu gemessen; sonst bliebe die große Höhe stehen.
+  const largeComposer = messages.length === 0 && !pendingAssistant;
   useEffect(() => {
     const textarea = composerRef.current;
     if (!textarea) return;
     textarea.style.height = "0px";
     textarea.style.height = `${Math.min(textarea.scrollHeight, 180)}px`;
-  }, [draft]);
+  }, [draft, largeComposer]);
 
   useEffect(() => {
     const section = messageListRef.current?.querySelector<HTMLElement>(".result-section") ?? null;
@@ -3735,24 +3738,24 @@ export function ChatWorkspace({
               onPricing={() => openPricing("guthaben")}
             />
           ) : null}
-          <p className="composer-disclosure">
-            {/* Der Preis steht vor dem Absenden, nicht erst im Kontostand danach (Audit F01). */}
-            Eine Projektanalyse kostet {usage?.credits.creditsPerRequest ?? BRIEF_ANALYSIS_CREDITS} Credits; ist die KI nicht verfügbar, nichts.{" "}
-            Daten werden nicht zum Trainieren von Modellen verwendet.
-            <span className="composer-legal">
-              <a href="/imprint">Impressum</a>
-              <span aria-hidden="true">·</span>
-              <a href="/privacy">Datenschutz</a>
-              <span aria-hidden="true">·</span>
-              {/* Wohin der Text geht, an der Stelle, an der er eingefügt wird (Audit P2). */}
-              <a href="/datenwege">Datenwege</a>
-              <span aria-hidden="true">·</span>
-              <a href="/terms">AGB</a>
-              <span aria-hidden="true">·</span>
-              <a href="/contact">Kontakt</a>
-            </span>
-          </p>
         </div>
+        {/* Eigene Gitterzeile unter dem Eingabefeld: steht im leeren Chat und
+            im Gespräch an derselben Stelle. Die Datenwege sind über die
+            Fußzeile, die Startseite und die Preisseite erreichbar. */}
+        <p className="composer-disclosure">
+          {/* Der Preis steht vor dem Absenden, nicht erst im Kontostand danach (Audit F01). */}
+          Eine Projektanalyse kostet {usage?.credits.creditsPerRequest ?? BRIEF_ANALYSIS_CREDITS} Credits; ist die KI nicht verfügbar, nichts.{" "}
+          Daten werden nicht zum Trainieren von Modellen verwendet.
+          <span className="composer-legal">
+            <a href="/imprint">Impressum</a>
+            <span aria-hidden="true">·</span>
+            <a href="/privacy">Datenschutz</a>
+            <span aria-hidden="true">·</span>
+            <a href="/terms">AGB</a>
+            <span aria-hidden="true">·</span>
+            <a href="/contact">Kontakt</a>
+          </span>
+        </p>
           </>
         )}
       </main>

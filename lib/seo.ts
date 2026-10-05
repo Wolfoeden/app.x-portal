@@ -8,34 +8,51 @@ export const SITE_URL =
   "https://x-portal.eu";
 
 export const SITE_DESCRIPTION =
-  "Beschreiben Sie Ihr Projekt im Dialog und erhalten Sie passende Freelancer-Profile nach nachvollziehbaren Regeln.";
+  "Freelancer finden für Recruiter und Unternehmen: Projekt beschreiben und passende Freelancer-Profile nach nachvollziehbaren Regeln erhalten.";
 
 export type PublicPage = {
   path: `/${string}`;
   label: string;
   title: string;
   description: string;
+  /** Für Bing und KI-Crawler; Google wertet das Feld nicht aus. */
+  keywords?: readonly string[];
   priority: number;
   changeFrequency: NonNullable<MetadataRoute.Sitemap[number]["changeFrequency"]>;
 };
 
+/**
+ * Die Arbeitsfläche. Ihr Titel nennt „Freelancer finden“ bewusst nicht mehr:
+ * Für diesen Suchbegriff soll /freelancer-finden ranken, nicht zwei eigene
+ * Seiten gegeneinander.
+ */
 export const CHAT_PAGE = {
   path: "/chat",
   label: "Projekt beschreiben",
-  title: "Freelancer finden – Profile mit Match-Begründung | XPORTAL",
+  title: "Projekt beschreiben und Freelancer-Profile abgleichen | XPORTAL",
   description:
     "Beschreiben Sie Ihr Projekt in einem Satz und erhalten Sie passende Freelancer-Profile — mit Begründung, warum sie passen, und sichtbaren Informationslücken.",
-  priority: 1,
+  priority: 0.8,
   changeFrequency: "weekly",
 } as const satisfies PublicPage;
 
 export const MARKETING_PAGE = {
+  // Die Startseite (/ leitet dauerhaft hierher) und die Seite für den
+  // Suchbegriff „Freelancer finden“.
   find: {
     path: "/freelancer-finden",
     label: "Freelancer finden",
-    title: "Freelancer finden für Kundenanfragen von Recruitern | XPORTAL",
-    description: "Für Recruiter und Personaldienstleister: Kundenanfrage mit Freelancer-Profilen abgleichen, Belege und offene Fragen sehen, Verfügbarkeit vor der Vorstellung klären lassen.",
-    priority: 0.9,
+    title: "Freelancer finden für Recruiter und Unternehmen | XPORTAL",
+    description: "Freelancer finden für KI-Agenten, Software, SAP: Anfrage mit freigegebenen Profilen abgleichen, Belege sehen. Vorstellung kostenlos, Anbieter aus Deutschland.",
+    keywords: [
+      "Freelancer finden",
+      "Freelancer Vermittlung",
+      "IT-Freelancer finden",
+      "KI-Agenten Entwickler",
+      "AI Agents Freelancer",
+      "DSGVO",
+    ],
+    priority: 1,
     changeFrequency: "monthly",
   },
   it: {
@@ -143,6 +160,7 @@ export function pageMetadata(page: PublicPage): Metadata {
     title: page.title,
     description: page.description,
     alternates: { canonical: url },
+    ...(page.keywords ? { keywords: [...page.keywords] } : {}),
     robots: { index: true, follow: true },
     openGraph: {
       type: "website",

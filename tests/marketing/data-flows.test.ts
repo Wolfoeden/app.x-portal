@@ -34,9 +34,13 @@ describe("data flows page", () => {
     }
   });
 
-  it("is reachable from the chat, the footer and the pricing page, and indexed", () => {
-    expect(readFileSync("components/ChatWorkspace.tsx", "utf8")).toContain('<a href="/datenwege">Datenwege</a>');
+  // Die Hinweiszeile unter dem Chat-Eingabefeld nennt die Datenwege nicht
+  // mehr (Wunsch des Betreibers, Oktober 2026); erreichbar bleiben sie über
+  // Fußzeile, Startseite und Preisseite.
+  it("is reachable from the footer, the landing page and the pricing page, and indexed", () => {
+    expect(readFileSync("components/ChatWorkspace.tsx", "utf8")).not.toContain('href="/datenwege"');
     expect(readFileSync("components/LegalFooter.tsx", "utf8")).toContain('<Link href="/datenwege">Datenwege</Link>');
+    expect(readFileSync("components/marketing/FreelancerLanding.tsx", "utf8")).toContain("/datenwege");
     const pricing = readFileSync("app/(marketing)/preise/page.tsx", "utf8");
     expect(pricing).toContain('href: "/datenwege"');
     expect(pricing).not.toContain(`title: "Hosting und Datenbank in der EU"`);
