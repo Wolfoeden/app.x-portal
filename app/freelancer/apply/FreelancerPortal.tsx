@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import { TagInput } from "@/components/TagInput";
 import { AuthDialog } from "@/components/chat/dialogs";
@@ -60,11 +60,24 @@ function apiError(payload: unknown, fallback: string): string {
 }
 
 /**
+ * Der erste Bildschirm für abgemeldete Besucher und für Angemeldete ohne
+ * Profil: zuerst der eigene Nutzen, dann der Prüfprozess (UX-Review Oktober
+ * 2026). Beide Stellen lesen denselben Text.
+ */
+export const APPLY_HERO = {
+  eyebrow: "Für Freelancer und IT-Fachkräfte",
+  title: "Mit Ihren Kompetenzen bei passenden Projektanfragen sichtbar werden.",
+  lead: "Erstellen Sie Ihr kostenloses Profil. Nach der Freigabe wird es bei passenden Anfragen berücksichtigt; XPORTAL meldet sich, wenn eine Anfrage passt.",
+} as const;
+
+/**
  * Was vor der Registrierung feststehen sollte (Audit P2, Freelancer-Aufnahme):
- * Kosten, Unterlagen, Prüfumfang und Ablauf. Die Angaben folgen dem
+ * Kosten, Kontakt, Ablauf, Prüfumfang und Unterlagen — in dieser Reihenfolge,
+ * damit der Nutzen vor dem Prüfprozess steht. Die Angaben folgen dem
  * Formular: Lebenslauf und Kalenderlink sind optional (ApplyForm.tsx,
  * lib/freelancer/application.ts), geprüft wird jede Angabe einzeln
- * (docs/operator-runbook.md).
+ * (docs/operator-runbook.md). Kontaktdaten stehen in keinem öffentlichen
+ * Profil (ShowcaseProfile in lib/freelancer/showcase.ts, ProfileDossier).
  */
 export function onboardingFacts(placement: boolean): ReadonlyArray<{ term: string; text: string }> {
   return [
@@ -75,16 +88,22 @@ export function onboardingFacts(placement: boolean): ReadonlyArray<{ term: strin
         : "Keine. Registrierung und Profil sind für Sie kostenlos.",
     },
     {
-      term: "Unterlagen",
-      text: "Rolle, Kompetenzen, Sprachen, Verfügbarkeit und Honorar. Ein Lebenslauf als PDF (bis 10 MB) hilft bei der Prüfung, ein Kalenderlink ist optional.",
+      term: "Kontakt",
+      text: placement
+        ? "Unternehmen sehen Ihr freigegebenes Profil ohne E-Mail-Adresse und Telefonnummer. Passt eine Anfrage, meldet sich XPORTAL bei Ihnen und stellt Sie per E-Mail vor."
+        : "Unternehmen sehen Ihr freigegebenes Profil ohne E-Mail-Adresse und Telefonnummer. Haben Sie einen Kalenderlink hinterlegt, können sie darüber ein Erstgespräch buchen.",
+    },
+    {
+      term: "Ablauf",
+      text: "Konto anlegen und E-Mail bestätigen, Profil in vier Abschnitten ausfüllen, Prüfung durch XPORTAL mit Rückfragen per E-Mail. Nach der Freigabe ist Ihr Profil im Matching auffindbar.",
     },
     {
       term: "Prüfung",
       text: "XPORTAL sichtet Ihre Angaben und gleicht einzelne mit Nachweisen ab, etwa Lebenslauf oder öffentlichem Berufsprofil. Nur diese erscheinen als „Von XPORTAL geprüft“; alles andere bleibt Ihre Angabe.",
     },
     {
-      term: "Ablauf",
-      text: "Konto anlegen und E-Mail bestätigen, Profil in vier Abschnitten ausfüllen, Prüfung durch XPORTAL mit Rückfragen per E-Mail. Nach der Freigabe ist Ihr Profil im Matching auffindbar.",
+      term: "Unterlagen",
+      text: "Rolle, Kompetenzen, Sprachen, Verfügbarkeit und Honorar. Ein Lebenslauf als PDF (bis 10 MB) hilft bei der Prüfung, ein Kalenderlink ist optional.",
     },
   ];
 }
@@ -131,53 +150,81 @@ export const APPLICANT_FAQ: ReadonlyArray<{ question: string; answer: string }> 
   },
 ];
 
-export function FreelancerAuthGate() {
+/**
+ * Der Einstieg für abgemeldete Besucher, einschließlich des ersten
+ * Bildschirms: Der Knopf dort öffnet denselben Dialog wie der unten, deshalb
+ * rendert das Gate den Kopf selbst. Hinweise (Einladung, Herkunft) und das
+ * Match-Protokoll kommen als fertige Server-Ausgabe von der Seite.
+ */
+export function FreelancerAuthGate({
+  notices = null,
+  protocol = null,
+}: {
+  notices?: ReactNode;
+  protocol?: ReactNode;
+}) {
   const [dialogMode, setDialogMode] = useState<AuthDialogMode | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [shownAt] = useState(() => new Date());
+  const actions = (
+    <div className={styles.gateActions}>
+      <button className={styles.submit} type="button" onClick={() => setDialogMode("register")}>
+        Kostenlos Profil anlegen
+      </button>
+      <button className={styles.gateLogin} type="button" onClick={() => setDialogMode("login")}>
+        Schon registriert? Anmelden
+      </button>
+    </div>
+  );
 
   return (
     <>
-      <section className={styles.gate}>
-        <div className={styles.gateMain}>
-          <p className={styles.eyebrow}>Kostenlos für Sie</p>
-          <h2>Ein Profil, drei Wege.</h2>
-          <ul className={styles.paths}>
-            {APPLICANT_PATHS.map((path) => (
-              <li key={path.title}>
-                <strong>{path.title}</strong>
-                <span>{path.text}</span>
-              </li>
-            ))}
-          </ul>
-          <dl className={styles.onboardingFacts}>
-            {onboardingFacts(placementRequestsEnabled()).map((fact) => (
-              <div key={fact.term}><dt>{fact.term}</dt><dd>{fact.text}</dd></div>
-            ))}
-          </dl>
+      <header className={`${styles.header} ${styles.applyHero}`}>
+        <div>
+          <p className={styles.eyebrow}>{APPLY_HERO.eyebrow}</p>
+          <h1>{APPLY_HERO.title}</h1>
+          <p>{APPLY_HERO.lead}</p>
+          {actions}
+          <p className={styles.heroHint}>Kostenlos. Sichtbar erst nach der Prüfung durch XPORTAL.</p>
           {notice ? (
-            <p className={notice.tone === "error" ? styles.formError : styles.callout}>
+            <p className={notice.tone === "error" ? styles.formError : styles.callout} role="status">
               {notice.message}
             </p>
           ) : null}
-          <div className={styles.gateActions}>
-            <button className={styles.submit} type="button" onClick={() => setDialogMode("register")}>
-              Kostenlos Profil anlegen
-            </button>
-            <button className={styles.gateLogin} type="button" onClick={() => setDialogMode("login")}>
-              Schon registriert? Anmelden
-            </button>
-          </div>
-          <p className={styles.hint}>Ein Konto schützt Ihre Angaben, bis XPORTAL das Profil freigibt.</p>
         </div>
         <aside className={styles.gateExample} aria-labelledby="apply-example-title">
-          <p className={styles.eyebrow}>Beispiel</p>
-          <h3 id="apply-example-title">So sehen Unternehmen Ihr Profil</h3>
+          <p className={styles.eyebrow}>Profilvorschau</p>
+          <h2 id="apply-example-title">So sehen Unternehmen Ihr Profil</h2>
           <ShowcaseCard profile={exampleApplicationPreview(shownAt)} now={shownAt} href={null} />
           <p className={styles.hint}>
             Ein ausgedachtes Profil. Ihres zeigt nur, was Sie angeben und XPORTAL freigibt.
           </p>
         </aside>
+      </header>
+      {notices}
+      <section className={styles.gate} aria-labelledby="apply-facts-title">
+        <p className={styles.eyebrow}>Kostenlos für Sie</p>
+        <h2 id="apply-facts-title">Was Sie erwartet.</h2>
+        <dl className={styles.onboardingFacts}>
+          {onboardingFacts(placementRequestsEnabled()).map((fact) => (
+            <div key={fact.term}><dt>{fact.term}</dt><dd>{fact.text}</dd></div>
+          ))}
+        </dl>
+        {actions}
+        <p className={styles.hint}>Ein Konto schützt Ihre Angaben, bis XPORTAL das Profil freigibt.</p>
+      </section>
+      {protocol}
+      <section className={styles.gate} aria-labelledby="apply-paths-title">
+        <p className={styles.eyebrow}>Auch ohne Freelance-Erfahrung</p>
+        <h2 id="apply-paths-title">Ein Profil, drei Wege.</h2>
+        <ul className={styles.paths}>
+          {APPLICANT_PATHS.map((path) => (
+            <li key={path.title}>
+              <strong>{path.title}</strong>
+              <span>{path.text}</span>
+            </li>
+          ))}
+        </ul>
       </section>
       <section className={styles.faq} aria-labelledby="apply-faq-title">
         <h2 id="apply-faq-title">Häufige Fragen</h2>
@@ -191,6 +238,7 @@ export function FreelancerAuthGate() {
       {dialogMode ? (
         <AuthDialog
           initialMode={dialogMode}
+          audience="freelancer"
           // Nach der Bestätigung per E-Mail zurück zum Formular, nicht in den Chat.
           destination="/freelancer/apply"
           onClose={() => setDialogMode(null)}

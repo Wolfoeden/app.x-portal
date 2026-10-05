@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { after } from "next/server";
 
+import { ContactPerson } from "@/components/marketing/ContactPerson";
 import marketing from "@/components/marketing/marketing.module.css";
 import styles from "@/components/marketing/sales-call.module.css";
 import { Notice } from "@/components/ui/Primitives";
@@ -11,6 +12,7 @@ import { BUSINESS_ONLY_NOTICE } from "@/lib/legal/policy";
 import { PLACEMENT_TERMS, PLACEMENT_TERMS_PATH } from "@/lib/placement/config";
 import { SALES_CALL_MINUTES, SALES_CALL_PATH, isSalesCallEntry } from "@/lib/sales/sales-call-model";
 import { readSalesCallToken, salesCallUrl } from "@/lib/sales/sales-call";
+import { salesContactPhotoUrl } from "@/lib/sales/sales-contact";
 import { SALES_CALL_PAGE, pageMetadata } from "@/lib/seo";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -52,6 +54,11 @@ function Check() {
  * „Gespräch buchen“ — der Weg zu einem Menschen statt zum Chat. Kurzes
  * Formular, danach der Kalender. Die Seite kommt ohne JavaScript aus; das
  * Formular geht an /api/sales-call und kommt mit `?status=` zurück.
+ *
+ * Sichtbar sind nur die vier Pflichtangaben (UX-Review Oktober 2026: vorher
+ * standen neun Felder vor der Terminwahl). Telefon, Start, Dauer, Tagessatz
+ * und Notiz liegen eingeklappt darunter; die Feldnamen sind dieselben, am
+ * Schema, am CRM-Eintrag und an den Datenschutzhinweisen ändert sich nichts.
  */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
@@ -79,7 +86,10 @@ export default async function SalesCallPage({ searchParams }: { searchParams: Pr
   const token = first(query.t);
   const calendarReady = Boolean(salesCallUrl());
   const tokenValid = status === "sent" && Boolean(readSalesCallToken(token));
-  const profile = status ? null : await chosenProfile(first(query.profil));
+  const [profile, contactPhoto] = await Promise.all([
+    status ? null : chosenProfile(first(query.profil)),
+    salesContactPhotoUrl(),
+  ]);
 
   if (!status) {
     const via = first(query.von);
@@ -105,8 +115,13 @@ export default async function SalesCallPage({ searchParams }: { searchParams: Pr
           <p className={styles.kicker}>Gespräch buchen · {SALES_CALL_MINUTES} Minuten · kostenlos</p>
           <h1 id="gespraech-title">Sprechen wir über Ihr Projekt.</h1>
           <p className={styles.intro}>
-            In {SALES_CALL_MINUTES} Minuten wissen Sie, ob wir passende KI-, Software- oder Digital-Freelancer für Sie
-            haben. Je genauer Ihre Angaben, desto konkreter wird das Gespräch.
+            In {SALES_CALL_MINUTES} Minuten wissen Sie, ob wir passende KI-, Software- oder Digital-Freelancer für Ihre
+            Anfrage haben.
+            {status === "sent"
+              ? null
+              : calendarReady
+                ? " Vier Angaben genügen, danach wählen Sie direkt einen freien Termin."
+                : " Vier Angaben genügen; wir melden uns werktags mit einem Terminvorschlag."}
           </p>
 
           {status === "sent" ? (
@@ -164,6 +179,10 @@ export default async function SalesCallPage({ searchParams }: { searchParams: Pr
                   </p>
                 </Notice>
               ) : null}
+              <ol className={styles.stepsMini} aria-label="Ablauf">
+                <li aria-current="step"><span aria-hidden="true">1</span>Ihre Angaben</li>
+                <li><span aria-hidden="true">2</span>{calendarReady ? "Termin wählen" : "Terminvorschlag"}</li>
+              </ol>
               <form id="formular" className={styles.form} action="/api/sales-call" method="post" aria-label="Gesprächsanfrage">
                 {profile ? (
                   <p className={styles.chosen}>
@@ -188,39 +207,44 @@ export default async function SalesCallPage({ searchParams }: { searchParams: Pr
                     <input name="email" type="email" autoComplete="email" maxLength={160} required />
                   </label>
                   <label>
-                    <span>Telefon <em>optional</em></span>
-                    <input name="phone" type="tel" autoComplete="tel" maxLength={40} />
+                    <span>Wen suchen Sie?<Required /></span>
+                    <input
+                      name="role"
+                      minLength={2}
+                      maxLength={200}
+                      required
+                      defaultValue={profile?.role}
+                      placeholder="z. B. KI-Entwickler"
+                    />
                   </label>
                 </div>
-                <label>
-                  <span>Wen suchen Sie?<Required /></span>
-                  <input
-                    name="role"
-                    minLength={2}
-                    maxLength={200}
-                    required
-                    defaultValue={profile?.role}
-                    placeholder="z. B. KI-Entwickler für einen Agenten auf Basis unserer Dokumente"
-                  />
-                </label>
-                <div className={styles.row3}>
-                  <label>
-                    <span>Start <em>optional</em></span>
-                    <input name="start" maxLength={80} placeholder="November" />
-                  </label>
-                  <label>
-                    <span>Dauer <em>optional</em></span>
-                    <input name="duration" maxLength={80} placeholder="3 Monate" />
-                  </label>
-                  <label>
-                    <span>Tagessatz <em>optional</em></span>
-                    <input name="rate" maxLength={80} placeholder="bis 800 €" />
-                  </label>
-                </div>
-                <label>
-                  <span>Noch etwas? <em>optional</em></span>
-                  <textarea name="note" rows={3} maxLength={2000} />
-                </label>
+                <details className={styles.more}>
+                  <summary>Projektdetails ergänzen <em>optional</em></summary>
+                  <div className={styles.moreFields}>
+                    <label>
+                      <span>Telefon <em>optional</em></span>
+                      <input name="phone" type="tel" autoComplete="tel" maxLength={40} />
+                    </label>
+                    <div className={styles.row3}>
+                      <label>
+                        <span>Start <em>optional</em></span>
+                        <input name="start" maxLength={80} placeholder="November" />
+                      </label>
+                      <label>
+                        <span>Dauer <em>optional</em></span>
+                        <input name="duration" maxLength={80} placeholder="3 Monate" />
+                      </label>
+                      <label>
+                        <span>Tagessatz <em>optional</em></span>
+                        <input name="rate" maxLength={80} placeholder="bis 800 €" />
+                      </label>
+                    </div>
+                    <label>
+                      <span>Noch etwas? <em>optional</em></span>
+                      <textarea name="note" rows={3} maxLength={2000} />
+                    </label>
+                  </div>
+                </details>
                 <div className={styles.trap} aria-hidden="true">
                   <label>
                     Website
@@ -247,6 +271,7 @@ export default async function SalesCallPage({ searchParams }: { searchParams: Pr
 
         <aside className={styles.proofSide} aria-label="So läuft das Gespräch">
           <div className={styles.proofInner}>
+            <ContactPerson photoUrl={contactPhoto} className={styles.contact} />
             <h2>So läuft das Gespräch</h2>
             <ol className={styles.steps}>
               {STEPS.map((step, index) => (

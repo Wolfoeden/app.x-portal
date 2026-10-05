@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { JsonLd } from "@/components/JsonLd";
+import { ContactPerson } from "./ContactPerson";
 import { EXAMPLE_BRIEFS, exampleBriefPath, type ExampleBriefKey } from "@/components/chat/example-briefs";
 import { Questions } from "./MarketingPage";
 import { ProcessVideo } from "./ProcessVideo";
@@ -146,7 +147,7 @@ function Pricing({ placement }: { placement: boolean }) {
       <div className={styles.frame}>
         <div className={styles.splitHead}>
           <h2 id="preise-title">Bezahlen, wenn es sich lohnt.</h2>
-          <p>Gespräch, Suche und Vorstellung kosten nichts. Geld verdienen wir erst, wenn Sie jemanden beauftragen. Wer selbst sucht, startet mit Guthaben und ohne Abo.</p>
+          <p>Gespräch, Anfrage und Vorstellung kosten nichts. Geld verdienen wir erst, wenn Sie jemanden beauftragen. Wer selbst sucht, startet mit Guthaben und ohne Abo.</p>
         </div>
         <div className={styles.priceGrid}>
           {placement ? (
@@ -154,7 +155,7 @@ function Pricing({ placement }: { placement: boolean }) {
               <p className={styles.priceName}>Vermittlung</p>
               <p className={styles.priceValue}><strong>{PLACEMENT_TERMS.feePercent} %</strong><span>einmalig, nur bei Beauftragung</span></p>
               <ul>
-                <li><Check />Suche, Anfrage und Vorstellung kostenlos</li>
+                <li><Check />Gespräch, Anfrage und Vorstellung kostenlos</li>
                 <li><Check />Vom Honorar der ersten {PLACEMENT_TERMS.feeMonths} Monate, höchstens {PLACEMENT_TERMS.maxFeeDays} Projekttage</li>
                 <li><Check />Rechnung mit {PLACEMENT_TERMS.paymentDays} Tagen Zahlungsziel, keine Vorkasse</li>
                 <li><Check />Beispiel: {formatWholeEuro(PLACEMENT_EXAMPLE.dayRateCents)} Tagessatz, {PLACEMENT_EXAMPLE.projectDays} Tage → {formatWholeEuro(placementExampleFeeCents())} netto</li>
@@ -197,7 +198,61 @@ function Pricing({ placement }: { placement: boolean }) {
   );
 }
 
-export function FreelancerLanding({ stats = null }: { stats?: LandingStats | null }) {
+/**
+ * Wie die Zusammenarbeit mit Personaldienstleistern läuft — früh auf der
+ * Seite, weil sich hier entscheidet, ob XPORTAL als Partner taugt
+ * (UX-Review Oktober 2026). Beauftragung, Honorar und Vorstellung stehen so
+ * in den Vermittlungsbedingungen (§§ 1–3, Zahlen aus PLACEMENT_TERMS); dass
+ * XPORTAL Kunden der Anfragenden nicht direkt anspricht, ist eine Zusage
+ * des Betreibers vom Oktober 2026.
+ */
+function RecruiterTerms() {
+  const t = PLACEMENT_TERMS;
+  const items = [
+    {
+      question: "Wer spricht mit Ihrem Kunden?",
+      answer: "Sie. XPORTAL stellt den Freelancer Ihnen vor, nicht Ihrem Kunden, und spricht Ihren Kunden nicht direkt an.",
+    },
+    {
+      question: "Wer beauftragt den Freelancer?",
+      answer: "Sie, direkt beim Freelancer. XPORTAL wird nicht Partei dieses Vertrags.",
+    },
+    {
+      question: "Wann fällt ein Honorar an?",
+      answer: `Nur wenn Sie einen vorgestellten Freelancer beauftragen: einmalig ${t.feePercent} % des vereinbarten Honorars der ersten ${t.feeMonths} Monate, höchstens ${t.maxFeeDays} Projekttage, netto. Gespräch, Anfrage und Vorstellung sind kostenlos.`,
+    },
+    {
+      question: "Was sehen Sie vor der Vorstellung?",
+      answer: "Kompetenzen mit Beleg, Honorarangaben und offene Punkte. Die Verfügbarkeit fragen wir beim Freelancer an, bevor wir Sie vorstellen.",
+    },
+  ];
+  return (
+    <section className={styles.section} id="zusammenarbeit" aria-labelledby="zusammenarbeit-title">
+      <div className={styles.frame}>
+        <p className={styles.eyebrow}>Für Personaldienstleister</p>
+        <h2 id="zusammenarbeit-title">So arbeiten Personaldienstleister mit XPORTAL.</h2>
+        <dl className={styles.coop}>
+          {items.map((item) => (
+            <div key={item.question}>
+              <dt>{item.question}</dt>
+              <dd>{item.answer}</dd>
+            </div>
+          ))}
+        </dl>
+        <Link className={styles.textLink} href={PLACEMENT_TERMS_PATH}>Vermittlungsbedingungen lesen <span aria-hidden="true">→</span></Link>
+      </div>
+    </section>
+  );
+}
+
+export function FreelancerLanding({
+  stats = null,
+  contactPhotoUrl = null,
+}: {
+  stats?: LandingStats | null;
+  /** Foto des Ansprechpartners (lib/sales/sales-contact.ts); ohne: Initialen. */
+  contactPhotoUrl?: string | null;
+}) {
   // Wird beim Build eingesetzt, wie überall beim Vermittlungsmodell.
   const placement = placementRequestsEnabled();
   const pool = stats ? `${number(stats.profiles)} freigegebenen Profilen` : "unserem Bestand";
@@ -208,12 +263,13 @@ export function FreelancerLanding({ stats = null }: { stats?: LandingStats | nul
       <header className={`${styles.section} ${styles.hero}`}>
         <div className={`${styles.frame} ${styles.heroGrid}`}>
           <div className={styles.heroCopy}>
-            <h1>Freelancer finden.<br /><span>{placement ? "Persönlich vorgestellt." : "Termin buchen."}</span></h1>
-            <p className={styles.subtitle}>Für KI-, Software- und Digitalprojekte in Ihrem Unternehmen.</p>
+            <p className={styles.eyebrow}>Freelancer finden für Recruiter und Personaldienstleister</p>
+            <h1>Ihre Kundenanfrage.<br /><span>Nachvollziehbar passende Freelancer.</span></h1>
+            <p className={styles.subtitle}>Für KI-, Software- und Digitalprojekte Ihrer Kunden oder Ihres eigenen Unternehmens.</p>
             <p className={styles.lead}>
               {placement
-                ? `Sagen Sie uns in 30 Minuten, wen Sie suchen. Wir gleichen Ihr Projekt mit ${pool} ab, fragen die Verfügbarkeit an und stellen Ihnen passende Freelancer per E-Mail vor. Bezahlt wird nur, wenn Sie beauftragen.`
-                : "Projektbeschreibung bei XPORTAL einfügen, passende Profile prüfen und – bei vorhandenem Terminlink – direkt ein Erstgespräch buchen."}
+                ? `Gleichen Sie Ihre Ausschreibung mit ${pool} ab. Sehen Sie relevante Kompetenzen, Honorare und offene Fragen – und lassen Sie die Verfügbarkeit vor einer Vorstellung klären.`
+                : "Ausschreibung bei XPORTAL einfügen, passende Profile mit Belegen und offenen Fragen prüfen und – bei vorhandenem Terminlink – direkt ein Erstgespräch buchen."}
             </p>
             <div className={styles.actions}>
               <SalesButton entry="hero" />
@@ -235,20 +291,29 @@ export function FreelancerLanding({ stats = null }: { stats?: LandingStats | nul
           </div>
           <figure className={styles.heroVisual}>
             <div className={styles.glow} aria-hidden="true" />
-            <div className={styles.briefChip}><span>Ihr Projekt</span>KI-Agenten · remote · ab November</div>
+            {/* Der Vergleich in vier Schritten: Kundenanforderung, Profilbeleg,
+                offener Punkt, nächster Schritt. */}
+            <div className={styles.briefChip}><span>Kundenanforderung</span>KI-Agenten · remote · ab November</div>
             <div className={styles.mockCard}>
               <div className={styles.mockBand} aria-hidden="true" />
               <div className={styles.mockHead}>
                 <span className={styles.mockAvatar} aria-hidden="true">KE</span>
                 <div><strong>KI-Entwicklerin</strong><span>Agenten, RAG, TypeScript · remote</span></div>
               </div>
+              <p className={styles.mockLabel}>Profilbeleg</p>
               <ul className={styles.mockEvidence}>
                 <li><span className={styles.ok} aria-hidden="true">✓</span>AI Agents<em>in Projekten belegt</em></li>
                 <li><span className={styles.ok} aria-hidden="true">✓</span>TypeScript<em>im Profil genannt</em></li>
+              </ul>
+              <p className={styles.mockLabel}>Offener Punkt</p>
+              <ul className={styles.mockEvidence}>
                 <li><span className={styles.open} aria-hidden="true">?</span>Start November<em>wird angefragt</em></li>
               </ul>
             </div>
-            <p className={styles.bubble}>{placement ? "Passt. Wir fragen die Verfügbarkeit an und stellen Sie vor." : "Passt. Termin direkt im Kalender wählen."}</p>
+            <p className={styles.bubble}>
+              <strong>Nächster Schritt</strong>
+              {placement ? "Verfügbarkeit klären, dann Vorstellung per E-Mail." : "Termin im Kalender des Freelancers wählen."}
+            </p>
             <figcaption>Illustratives Beispiel, kein reales Profil</figcaption>
           </figure>
         </div>
@@ -265,6 +330,8 @@ export function FreelancerLanding({ stats = null }: { stats?: LandingStats | nul
           </div>
         </section>
       ) : null}
+
+      {placement ? <RecruiterTerms /> : null}
 
       <section className={styles.section} id="vermittlung" aria-labelledby="vermittlung-title">
         <div className={styles.frame}>
@@ -449,7 +516,7 @@ export function FreelancerLanding({ stats = null }: { stats?: LandingStats | nul
             { question: "Was kostet die Suche?", answer: <p>{CREDIT_RULES.guest} {CREDIT_RULES.account} Eine Projektanalyse verbraucht {BRIEF_ANALYSIS_CREDITS} Credits; fällt die KI aus, nichts. Kontingente und weitere Aktionen finden Sie auf der <Link href={MARKETING_PAGE.pricing.path}>Preisseite</Link>. Freelancer-Honorare sind separat.</p> },
             { question: "Ist ein passender Freelancer garantiert?", answer: <p>Nein. Ergebnisse hängen von Ihren Anforderungen und den vorhandenen Profilen ab. Profilangaben sind nicht automatisch unabhängig geprüft. Verfügbarkeit, Honorar und offene Fragen klären Sie vor einer Zusammenarbeit. Auch kein passendes Ergebnis wird ausgewiesen.</p> },
             placement
-              ? { question: "Was kostet die Vermittlung?", answer: <p>Suche, Anfrage, Vorstellung und Erstgespräch sind kostenlos. Beauftragen Sie den Freelancer, zahlen Sie einmalig {PLACEMENT_TERMS.feePercent} % des vereinbarten Honorars für die ersten {PLACEMENT_TERMS.feeMonths} Monate (höchstens {PLACEMENT_TERMS.maxFeeDays} Projekttage), zuzüglich Umsatzsteuer, per Rechnung mit {PLACEMENT_TERMS.paymentDays} Tagen Zahlungsziel. Beispiel: {formatWholeEuro(PLACEMENT_EXAMPLE.dayRateCents)} Tagessatz und {PLACEMENT_EXAMPLE.projectDays} Projekttage ergeben {formatWholeEuro(placementExampleFeeCents())} netto. Die Rechnung kommt erst nach der Beauftragung, nicht für einen gebuchten Termin. Einzelheiten stehen in den <Link href={PLACEMENT_TERMS_PATH}>Vermittlungsbedingungen</Link>.</p> }
+              ? { question: "Was kostet die Vermittlung?", answer: <p>Anfrage, Vorstellung und Erstgespräch sind kostenlos; für die Suche im Chat gilt das Startguthaben. Beauftragen Sie den Freelancer, zahlen Sie einmalig {PLACEMENT_TERMS.feePercent} % des vereinbarten Honorars für die ersten {PLACEMENT_TERMS.feeMonths} Monate (höchstens {PLACEMENT_TERMS.maxFeeDays} Projekttage), zuzüglich Umsatzsteuer, per Rechnung mit {PLACEMENT_TERMS.paymentDays} Tagen Zahlungsziel. Beispiel: {formatWholeEuro(PLACEMENT_EXAMPLE.dayRateCents)} Tagessatz und {PLACEMENT_EXAMPLE.projectDays} Projekttage ergeben {formatWholeEuro(placementExampleFeeCents())} netto. Die Rechnung kommt erst nach der Beauftragung, nicht für einen gebuchten Termin. Einzelheiten stehen in den <Link href={PLACEMENT_TERMS_PATH}>Vermittlungsbedingungen</Link>.</p> }
               : { question: "Was bedeutet „direkt buchen“?", answer: <p>Nach der Anmeldung öffnen Sie bei einem Profil mit Terminlink den hinterlegten Buchungskalender und wählen selbst einen freien Slot. Ohne Terminlink ist die direkte Buchung derzeit nicht verfügbar. Der Termin ist ein Erstgespräch und noch keine Beauftragung.</p> },
             { question: "Wie läuft das Gespräch ab?", answer: <p>Sie erzählen in 30 Minuten, wen Sie suchen; wir sagen Ihnen ehrlich, ob unser Bestand passt, und stellen passende Freelancer danach per E-Mail vor. Das Gespräch ist kostenlos und verpflichtet zu nichts.</p> },
           ]} />
@@ -466,6 +533,7 @@ export function FreelancerLanding({ stats = null }: { stats?: LandingStats | nul
               <SalesButton entry="closing" />
               <TryButton>Projekt jetzt einfügen</TryButton>
             </div>
+            <ContactPerson photoUrl={contactPhotoUrl} className={styles.closingContact} />
           </div>
         </div>
       </section>

@@ -122,11 +122,14 @@ const SEEKING_HINTS: Readonly<Record<Seeking, string>> = {
 
 export function ApplyForm({
   accountEmail = "",
+  accountName = null,
   inviteToken = null,
   referral = null,
   extrasAvailable = false,
 }: {
   accountEmail?: string;
+  /** Der Name aus der Registrierung, damit niemand ihn zweimal tippt. */
+  accountName?: string | null;
   /** Projekte und Foto lassen sich speichern (Migration 20261006100000). */
   extrasAvailable?: boolean;
   /** `?quelle=` der Seite, etwa `arbeitsagentur`; sonst die gemerkte. */
@@ -146,7 +149,7 @@ export function ApplyForm({
   const [source] = useState<string | null>(() =>
     referral ?? (typeof window === "undefined" ? null : rememberedReferral()),
   );
-  const [fullName, setFullName] = useState("");
+  const [fullName, setFullName] = useState(accountName ?? "");
   const [contactEmail, setContactEmail] = useState(accountEmail);
   const [contactPhone, setContactPhone] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");

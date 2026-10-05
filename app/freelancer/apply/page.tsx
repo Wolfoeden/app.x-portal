@@ -18,6 +18,7 @@ import { RememberReferral } from "./RememberReferral";
 import { REFERRAL_PATTERN } from "@/lib/freelancer/limits";
 import { referralWelcome } from "@/lib/freelancer/referrals";
 import {
+  APPLY_HERO,
   FreelancerApplicationStatus,
   FreelancerAuthGate,
   FreelancerDashboard,
@@ -123,43 +124,61 @@ export default async function FreelancerApplyPage({
       ? 3
       : 1;
 
+  // Abgemeldet rendert das Gate den ersten Bildschirm selbst: Sein Knopf
+  // öffnet den Anmeldedialog, und der lebt im Browser.
+  const signedOut = !preview && !formPreview && (!user || user.isAnonymous);
+
+  const notices = (
+    <>
+      {referral ? <RememberReferral referral={referral} /> : null}
+      {welcome && !hasProfile ? <p className={styles.welcome}>{welcome}</p> : null}
+      {invite && !invite.alreadyConverted ? (
+        <p className={styles.invited}>
+          Schön, dass Sie da sind, {invite.fullName.split(/\s+/u)[0]}.
+          {invite.demandLabel
+            ? ` Ein Unternehmen sucht Unterstützung im Bereich ${invite.demandLabel} — dafür haben wir Ihnen geschrieben.`
+            : " Wir hatten Ihnen zu einer Projektanfrage geschrieben."}{" "}
+          Was Sie hier eintragen, stammt von Ihnen; unsere Notiz aus der
+          Recherche wird dadurch ersetzt.
+        </p>
+      ) : null}
+    </>
+  );
+
+  const protocol = (
+    <div className={styles.protocol}>
+      <MatchProtocol
+        variant="freelancer"
+        activeStep={protocolStep}
+        label="Vom Profil zum nachvollziehbaren Match"
+      />
+    </div>
+  );
+
   return (
     <>
       <PublicHeader context="Freelancer-Portal" />
       <main className={styles.shell} lang="de">
       <div className={styles.inner}>
-        <header className={styles.header}>
-          <p className={styles.eyebrow}>{hasProfile ? "Profilverwaltung" : "Für IT-Fachkräfte"}</p>
-          <h1>{hasProfile ? "Ihr Freelancer-Profil." : "Zeigen Sie, was Sie können."}</h1>
-          <p>
-            {hasProfile
-              ? "Hier aktualisieren Sie Ihre Angaben, steuern die Sichtbarkeit und sehen, wie Kunden mit Ihrem Profil interagieren."
-              : "Legen Sie kostenlos ein Profil an – ob Sie als Freelancer arbeiten, eine feste Stelle suchen oder sich gerade selbstständig machen. XPORTAL sieht sich jedes Profil persönlich an und meldet sich, wenn eine Anfrage passt."}
-          </p>
-        </header>
+        {signedOut ? (
+          <FreelancerAuthGate notices={notices} protocol={protocol} />
+        ) : (
+          <>
+            <header className={styles.header}>
+              <p className={styles.eyebrow}>{hasProfile ? "Profilverwaltung" : APPLY_HERO.eyebrow}</p>
+              <h1>{hasProfile ? "Ihr Freelancer-Profil." : APPLY_HERO.title}</h1>
+              <p>
+                {hasProfile
+                  ? "Hier aktualisieren Sie Ihre Angaben, steuern die Sichtbarkeit und sehen, wie Kunden mit Ihrem Profil interagieren."
+                  : APPLY_HERO.lead}
+              </p>
+            </header>
+            {notices}
+            {protocol}
+          </>
+        )}
 
-        {referral ? <RememberReferral referral={referral} /> : null}
-        {welcome && !hasProfile ? <p className={styles.welcome}>{welcome}</p> : null}
-        {invite && !invite.alreadyConverted ? (
-          <p className={styles.invited}>
-            Schön, dass Sie da sind, {invite.fullName.split(/\s+/u)[0]}.
-            {invite.demandLabel
-              ? ` Ein Unternehmen sucht Unterstützung im Bereich ${invite.demandLabel} — dafür haben wir Ihnen geschrieben.`
-              : " Wir hatten Ihnen zu einer Projektanfrage geschrieben."}{" "}
-            Was Sie hier eintragen, stammt von Ihnen; unsere Notiz aus der
-            Recherche wird dadurch ersetzt.
-          </p>
-        ) : null}
-
-        <div className={styles.protocol}>
-          <MatchProtocol
-            variant="freelancer"
-            activeStep={protocolStep}
-            label="Vom Profil zum nachvollziehbaren Match"
-          />
-        </div>
-
-        {preview ? (
+        {signedOut ? null : preview ? (
           <FreelancerDashboard
             initialProfile={previewProfile}
             metrics={previewMetrics}
@@ -169,9 +188,7 @@ export default async function FreelancerApplyPage({
           />
         ) : formPreview ? (
           <ApplyForm referral={referral} extrasAvailable={extrasAvailable} />
-        ) : !user || user.isAnonymous ? (
-          <FreelancerAuthGate />
-        ) : portalState?.kind === "profile" ? (
+        ) : !user || user.isAnonymous ? null : portalState?.kind === "profile" ? (
           <FreelancerDashboard
             initialProfile={portalState.profile}
             metrics={portalState.metrics}
@@ -188,13 +205,13 @@ export default async function FreelancerApplyPage({
             />
             {portalState.status === "rejected" ? (
               <div className={styles.reapply}>
-                <ApplyForm accountEmail={user.email ?? ""} inviteToken={invite ? inviteToken ?? null : null} referral={referral} extrasAvailable={extrasAvailable} />
+                <ApplyForm accountEmail={user.email ?? ""} accountName={user.displayName} inviteToken={invite ? inviteToken ?? null : null} referral={referral} extrasAvailable={extrasAvailable} />
               </div>
             ) : null}
           </>
         ) : (
           <>
-            <ApplyForm accountEmail={user.email ?? ""} inviteToken={invite ? inviteToken ?? null : null} referral={referral} extrasAvailable={extrasAvailable} />
+            <ApplyForm accountEmail={user.email ?? ""} accountName={user.displayName} inviteToken={invite ? inviteToken ?? null : null} referral={referral} extrasAvailable={extrasAvailable} />
           </>
         )}
 

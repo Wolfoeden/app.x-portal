@@ -861,10 +861,22 @@
   }
 }
 
-/* Einstieg vor der Anmeldung: Wege und Fakten links, Beispielkarte rechts. */
-.gate {
+/* Einstieg vor der Anmeldung: Nutzen und Knopf links, Profilvorschau rechts;
+   darunter Fakten, Protokoll und die drei Wege als eigene Karten. */
+.applyHero {
   display: grid;
   gap: 28px;
+  align-items: start;
+}
+
+.header .heroHint {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+.gate .gateActions {
+  margin-top: 4px;
 }
 
 .paths {
@@ -919,7 +931,7 @@
   padding: 16px;
 }
 
-.gateExample h3,
+.gateExample h2,
 .preview h2 {
   margin: 0;
   font-size: var(--fs-sm);
@@ -965,9 +977,9 @@
 }
 
 @media (min-width: 880px) {
-  .gate {
+  .applyHero {
     grid-template-columns: minmax(0, 1fr) 320px;
-    align-items: start;
+    column-gap: 40px;
   }
 }
 
@@ -1056,6 +1068,10 @@
 .header h1 { margin: 14px 0 16px; font-family: var(--font-display), var(--font-sans); font-size: clamp(36px, 4vw, 50px); font-weight: 400; line-height: 1.1; letter-spacing: -.05em; }
 .header p { max-width: 640px; color: #5f6772; font-size: 17px; line-height: 1.65; }
 .header .eyebrow { margin: 0; color: var(--green); font-size: 14px; font-weight: 600; }
+.header .gateExample h2 { margin: 0; font-family: var(--font-sans); font-size: var(--fs-sm); font-weight: 650; letter-spacing: 0; }
+.header .gateExample .hint { margin: 0; font-size: 12px; line-height: 1.5; }
+.header .gateActions { margin: 24px 0 0; }
+.applyHero h1 { font-size: clamp(32px, 3.6vw, 44px); }
 .portalCard h2, .gate h2, .dashboardHead h2, .profileHeading h2 { font-family: var(--font-display), var(--font-sans); font-weight: 400; letter-spacing: -.035em; }
 .section, .metricCard, .gate, .portalCard { border-color: #e4e7ea; border-radius: 8px; }
 

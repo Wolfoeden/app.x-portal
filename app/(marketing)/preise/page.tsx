@@ -45,17 +45,22 @@ const euro = new Intl.NumberFormat("de-DE", {
   maximumFractionDigits: 2,
 });
 
+/**
+ * Jede Karte beginnt mit der Aufgabe, die der Tarif trägt, dann Umfang,
+ * Preis und Credits (UX-Review Oktober 2026: das Abo über den Arbeitsnutzen
+ * verkaufen, nicht über die Einheit).
+ */
 const CARD_COPY = {
   basic: {
-    audience: "Für Einzelpersonen und kleine Teams mit regelmäßigem Bedarf.",
+    audience: "Für Recruiter, die einzelne Kundenanfragen im Monat selbst prüfen.",
     features: ["Projektanalysen", "AI-Agent-Recherchen", "Akquise-Anschreiben", "Transparentes Credit-System"],
   },
   pro: {
-    audience: "Für Unternehmen, die XPORTAL regelmäßig für Projekte und AI-Agent-Recherchen einsetzen.",
+    audience: "Für Recruiter mit laufenden Besetzungen für mehrere Kunden.",
     features: ["Alle XPORTAL-Kernleistungen", "Günstigerer Preis pro Credit", "Für regelmäßige Nutzung"],
   },
   business: {
-    audience: "Für Teams mit hohem Analyse- und Recherchebedarf.",
+    audience: "Für Teams, die viele Ausschreibungen parallel prüfen und recherchieren.",
     features: ["Alle XPORTAL-Kernleistungen", "Bester Credit-Preis der Monatspläne", "Für hohes Teamvolumen"],
   },
   enterprise_flex: {
@@ -76,17 +81,17 @@ function FixedCard({ plan }: { plan: FixedMonthlyPlan }) {
         {plan.recommended ? <span className={styles.badge}>Empfohlen</span> : null}
       </div>
       <p className={styles.audience}>{copy.audience}</p>
+      <div className={styles.usageExample}>
+        <span>Reicht im Monat für etwa</span>
+        <strong>{number.format(analysisExamples)} Projektanalysen</strong>
+        <span>oder {number.format(researchExamples)} AI-Agent-Recherchen</span>
+      </div>
       <div className={styles.priceBlock}>
         <p className={styles.price}>{euro.format(plan.priceNetCents / 100).replace(",00", "")}</p>
         <span>netto pro Monat</span>
       </div>
       <p className={styles.creditVolume}><strong>{number.format(plan.monthlyCredits)}</strong> Credits / Monat</p>
       <p className={styles.unitPrice}>{effectiveCreditPriceCents(plan).toLocaleString("de-DE", { maximumFractionDigits: 2 })} Cent / Credit</p>
-      <div className={styles.usageExample}>
-        <span>Rundes Beispielvolumen</span>
-        <strong>{number.format(analysisExamples)} Projektanalysen</strong>
-        <span>oder {number.format(researchExamples)} AI-Agent-Recherchen</span>
-      </div>
       <ul className={styles.features}>
         <li>{number.format(plan.monthlyCredits)} Credits pro Monat</li>
         {copy.features.map((feature) => <li key={feature}>{feature}</li>)}
@@ -104,6 +109,11 @@ function EnterpriseCard() {
     <article className={`${styles.card} ${styles.enterpriseCard}`}>
       <div className={styles.cardTopline}><p className={styles.planName}>Enterprise</p></div>
       <p className={styles.audience}>{CARD_COPY.enterprise_flex.audience}</p>
+      <div className={styles.usageExample}>
+        <span>Kein vorausbezahltes Kontingent</span>
+        <strong>Verbrauch × 2 Cent</strong>
+        <span>exakt in Cent berechnet</span>
+      </div>
       <div className={styles.priceBlock}>
         <p className={styles.usagePrice}>Nach Nutzung</p>
         <strong>{euro.format(plan.euroPerCreditCents / 100)} / Credit</strong>
@@ -111,11 +121,6 @@ function EnterpriseCard() {
       </div>
       <p className={styles.creditVolume}>Monatliche Abrechnung nach tatsächlichem Verbrauch.</p>
       <p className={styles.unitPrice}>{CREDIT_PRICES.research.credits} Credits AI-Agent-Recherche = {euro.format(meteredNetCents(CREDIT_PRICES.research.credits) / 100)}</p>
-      <div className={styles.usageExample}>
-        <span>Kein vorausbezahltes Kontingent</span>
-        <strong>Verbrauch × 2 Cent</strong>
-        <span>exakt in Cent berechnet</span>
-      </div>
       <ul className={styles.features}>
         {CARD_COPY.enterprise_flex.features.map((feature) => <li key={feature}>{feature}</li>)}
         <li>{euro.format(plan.euroPerCreditCents / 100)} je verbrauchtem Credit</li>
@@ -175,16 +180,17 @@ const PRICING_QUESTIONS = [
 ] as const;
 
 /**
- * Das Vermittlungsmodell als eigener Abschnitt über den Credit-Tarifen: Suche
- * und Anfrage sind kostenlos, bezahlt wird bei Beauftragung. Die Tarife
- * bleiben für Analysen und KI-Recherchen.
+ * Das Vermittlungsmodell als eigener Abschnitt direkt unter den Tarifen:
+ * Anfrage und Vorstellung sind kostenlos, bezahlt wird bei Beauftragung. Die
+ * Tarife bleiben für Analysen und KI-Recherchen. Dass dafür kein Abo nötig
+ * ist, sagt schon der Kopf der Seite.
  */
 function PlacementSection() {
   return (
     <section className={styles.placement} aria-labelledby="placement-title">
       <div>
         <p className={styles.eyebrow}>Vermittlung</p>
-        <h2 id="placement-title">Kostenlos suchen.<br />Zahlen bei Beauftragung.</h2>
+        <h2 id="placement-title">Kostenlos anfragen.<br />Zahlen bei Beauftragung.</h2>
         <ul>
           {placementTermsSummary().map((sentence) => <li key={sentence}>{sentence}</li>)}
         </ul>
@@ -203,38 +209,42 @@ function PlacementSection() {
   );
 }
 
+const ENTRY_EURO = Math.min(...PUBLIC_PRICING_PLANS.flatMap((plan) => (plan.billingModel === "fixed_monthly" ? [plan.euro] : [])));
+
 /**
- * Drei Kostenarten, klar getrennt (Audit F02): Vermittlung nur bei
- * Beauftragung, KI-Nutzung über Credits mit Startguthaben, Monatstarife nur
- * für regelmäßige Nutzung. Wer anfragt, braucht kein Abo.
+ * Drei Kostenarten, klar getrennt (Audit F02) — als Auswahl nach dem, was
+ * jemand vorhat: eine einzelne Kundenanfrage, ausprobieren oder laufend
+ * selbst prüfen. Steht im Kopf, damit vor den Tarifen klar ist, dass eine
+ * Anfrage kein Abo braucht.
  */
-function CostTypes() {
-  const entry = Math.min(...PUBLIC_PRICING_PLANS.flatMap((plan) => (plan.billingModel === "fixed_monthly" ? [plan.euro] : [])));
+function PathChooser() {
   return (
-    <section className={styles.actionSection} aria-labelledby="cost-types-title">
-      <div className={styles.sectionIntro}>
-        <p className={styles.eyebrow}>Was kostet was</p>
-        <h2 id="cost-types-title">Drei Kostenarten, klar getrennt.</h2>
-        <p>{CREDIT_RULES.placementWithoutPlan}</p>
-      </div>
-      <div className={styles.actionGrid}>
-        <article>
-          <p>Vermittlung</p>
-          <strong>0 € bis zur Beauftragung</strong>
-          <span>Danach einmalig {PLACEMENT_TERMS.feePercent} % des Honorars der ersten {PLACEMENT_TERMS.feeMonths} Monate, per Rechnung.</span>
-        </article>
-        <article>
-          <p>KI-Analysen und Recherchen</p>
-          <strong>{GUEST_TRIAL_CREDITS} / {START_CREDITS} Credits frei</strong>
-          <span>Ohne Konto {GUEST_TRIAL_CREDITS}, mit kostenlosem Konto {START_CREDITS} insgesamt, einmalig. Analyse {CREDIT_PRICES.project_brief.credits}, Recherche {CREDIT_PRICES.research.credits} Credits; fällt die KI aus, nichts.</span>
-        </article>
-        <article>
-          <p>Monatstarif</p>
-          <strong>ab {entry} € netto</strong>
-          <span>Nur für regelmäßige Analysen und Recherchen; monatlich kündbar. Ein Vermittlungshonorar kommt bei einer Beauftragung gegebenenfalls hinzu.</span>
-        </article>
-      </div>
-    </section>
+    <aside className={styles.chooser} aria-labelledby="chooser-title">
+      <p id="chooser-title">Welcher Weg passt?</p>
+      <ul>
+        <li>
+          <Link href={salesCallHref("pricing")} prefetch={false}>
+            <span>Einzelne Kundenanfrage</span>
+            <strong>Gespräch · 0 € bis zur Beauftragung</strong>
+            <small>Danach einmalig {PLACEMENT_TERMS.feePercent} % des Honorars der ersten {PLACEMENT_TERMS.feeMonths} Monate, per Rechnung. Kein Abo nötig.</small>
+          </Link>
+        </li>
+        <li>
+          <Link href="/chat" prefetch={false}>
+            <span>Erst ausprobieren</span>
+            <strong>{GUEST_TRIAL_CREDITS} / {START_CREDITS} Credits frei</strong>
+            <small>Ohne Konto {GUEST_TRIAL_CREDITS}, mit kostenlosem Konto {START_CREDITS} insgesamt, einmalig. Analyse {CREDIT_PRICES.project_brief.credits}, Recherche {CREDIT_PRICES.research.credits} Credits; fällt die KI aus, nichts.</small>
+          </Link>
+        </li>
+        <li>
+          <a href="#tarife">
+            <span>Ausschreibungen laufend selbst prüfen</span>
+            <strong>Monatstarif ab {ENTRY_EURO} € netto</strong>
+            <small>Monatlich kündbar. Ein Vermittlungshonorar kommt bei einer Beauftragung gegebenenfalls hinzu.</small>
+          </a>
+        </li>
+      </ul>
+    </aside>
   );
 }
 
@@ -248,34 +258,48 @@ export default function PricingPage() {
       </nav>
       <PricingContext />
 
-      <header className={styles.hero}>
-        <div>
-          <p className={styles.eyebrow}>Preise &amp; Credits</p>
-          <h1>Ein Guthaben.<br /><span>Klare Kosten.</span></h1>
-          <p className={styles.lead}>
-            {placement
-              ? `Anfrage und Vorstellung sind kostenlos; bezahlt wird erst bei einer Beauftragung. Für KI-Analysen gibt es ein Startguthaben: ${GUEST_TRIAL_CREDITS} Credits ohne Konto, ${START_CREDITS} insgesamt mit kostenlosem Konto. Danach wählen Sie ein monatliches Kontingent – oder zahlen im Enterprise-Tarif nach tatsächlicher Nutzung.`
-              : `Starten Sie kostenlos: ${GUEST_TRIAL_CREDITS} Credits ohne Konto, ${START_CREDITS} insgesamt mit kostenlosem Konto. Danach wählen Sie ein monatliches Kontingent – oder zahlen im Enterprise-Tarif ausschließlich nach tatsächlicher Nutzung.`}
-          </p>
-          <div className={styles.heroActions}>
-            <Link href="/chat" prefetch={false} className={styles.primaryAction}>Kostenlos starten <span aria-hidden="true">↗</span></Link>
-            <p><strong>{START_CREDITS} Credits mit kostenlosem Konto</strong><span>Einmalig, insgesamt; das Gastguthaben ({GUEST_TRIAL_CREDITS}) wird ersetzt, nicht addiert.</span></p>
+      {placement ? (
+        <header className={styles.hero}>
+          <div>
+            <p className={styles.eyebrow}>Preise</p>
+            <h1>Vorstellung kostenlos.<br /><span>Selbst suchen im Monatstarif.</span></h1>
+            <p className={styles.lead}>
+              Für eine einzelne Kundenanfrage stellen wir passende Freelancer kostenlos vor; bezahlt wird nur bei
+              Beauftragung. Prüfen Sie Ausschreibungen regelmäßig selbst, deckt ein Monatstarif Ihre Analysen und
+              Recherchen ab.
+            </p>
+            <div className={styles.heroActions}>
+              <a href="#tarife" className={styles.primaryAction}>Tarife vergleichen</a>
+              <Link href={salesCallHref("pricing")} prefetch={false} className={styles.secondaryAction}>Gespräch buchen</Link>
+            </div>
           </div>
-        </div>
-        <aside className={styles.creditThesis} aria-label="Ein Credit-System für alle Leistungen">
-          <p>Ein Guthaben</p>
-          <strong>3</strong>
-          <span>Leistungen, dieselbe Einheit</span>
-          <ul>
-            {ACTION_IDS.map((id) => <li key={id}><span>{CREDIT_PRICES[id].label}</span><strong>{CREDIT_PRICES[id].credits} C</strong></li>)}
-          </ul>
-        </aside>
-      </header>
+          <PathChooser />
+        </header>
+      ) : (
+        <header className={styles.hero}>
+          <div>
+            <p className={styles.eyebrow}>Preise &amp; Credits</p>
+            <h1>Ein Guthaben.<br /><span>Klare Kosten.</span></h1>
+            <p className={styles.lead}>
+              {`Starten Sie kostenlos: ${GUEST_TRIAL_CREDITS} Credits ohne Konto, ${START_CREDITS} insgesamt mit kostenlosem Konto. Danach wählen Sie ein monatliches Kontingent – oder zahlen im Enterprise-Tarif ausschließlich nach tatsächlicher Nutzung.`}
+            </p>
+            <div className={styles.heroActions}>
+              <Link href="/chat" prefetch={false} className={styles.primaryAction}>Kostenlos starten <span aria-hidden="true">↗</span></Link>
+              <p><strong>{START_CREDITS} Credits mit kostenlosem Konto</strong><span>Einmalig, insgesamt; das Gastguthaben ({GUEST_TRIAL_CREDITS}) wird ersetzt, nicht addiert.</span></p>
+            </div>
+          </div>
+          <aside className={styles.creditThesis} aria-label="Ein Credit-System für alle Leistungen">
+            <p>Ein Guthaben</p>
+            <strong>3</strong>
+            <span>Leistungen, dieselbe Einheit</span>
+            <ul>
+              {ACTION_IDS.map((id) => <li key={id}><span>{CREDIT_PRICES[id].label}</span><strong>{CREDIT_PRICES[id].credits} C</strong></li>)}
+            </ul>
+          </aside>
+        </header>
+      )}
 
-      {placement ? <CostTypes /> : null}
-      {placement ? <PlacementSection /> : null}
-
-      <section className={styles.planSection} aria-label="Tarife">
+      <section className={styles.planSection} id="tarife" aria-label="Tarife">
         <div className={styles.cards}>
           {PUBLIC_PRICING_PLANS.filter((plan) => plan.billingModel === "fixed_monthly").map((plan) => <FixedCard key={plan.id} plan={plan} />)}
           <EnterpriseCard />
@@ -290,6 +314,8 @@ export default function PricingPage() {
         </ul>
         <p className={styles.checkoutNote}>Alle Preise netto, zuzüglich gesetzlicher Umsatzsteuer. Basic, Pro und Business sind Monatsabonnements und verlängern sich automatisch. Sie können das Abonnement über Stripe verwalten und zum Ende der laufenden Abrechnungsperiode kündigen.</p>
       </section>
+
+      {placement ? <PlacementSection /> : null}
 
       <section className={styles.actionSection} aria-labelledby="actions-title">
         <div className={styles.sectionIntro}>

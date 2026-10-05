@@ -29,6 +29,22 @@
 .form :where(input, textarea):focus-visible { border-color: var(--sc-brand); outline: 2px solid rgba(23, 128, 77, .25); outline-offset: 0; background: #fff; }
 .row, .row3 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .row3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* Zwei Schritte über dem Formular: erst Angaben, dann der Kalender. */
+.stepsMini { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: -14px 0 22px; padding: 0; list-style: none; color: var(--sc-muted); font-size: 14px; }
+.stepsMini li { display: inline-flex; align-items: center; gap: 8px; }
+.stepsMini span { display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid rgba(23, 128, 77, .25); border-radius: 50%; background: #fff; color: var(--sc-brand); font-size: 12px; font-weight: 600; }
+.stepsMini li[aria-current="step"] { color: var(--sc-ink); font-weight: 500; }
+.stepsMini li[aria-current="step"] span { border-color: var(--sc-brand); background: var(--sc-brand); color: #fff; }
+
+/* Die optionalen Angaben: eingeklappt, aber mit einem Klick erreichbar. */
+.more { border: 1px solid var(--sc-line); border-radius: 6px; background: #fff; }
+.more summary { padding: 12px 14px; color: var(--sc-ink); font-size: 14px; font-weight: 500; cursor: pointer; }
+.more summary:focus-visible { outline: 2px solid var(--sc-brand); outline-offset: 2px; }
+.more[open] summary { border-bottom: 1px solid var(--sc-line); }
+.moreFields { display: grid; gap: 16px; padding: 16px 14px 18px; }
+
+.contact { margin-bottom: 34px; }
+
 .trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 .form .consent { grid-template-columns: 20px minmax(0, 1fr); align-items: start; gap: 10px; }
 .consent input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--sc-brand); }
