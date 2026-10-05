@@ -23,9 +23,8 @@ describe("production privacy and authentication configuration", () => {
   it("sets the LinkedIn and GitHub switches only in the Netlify production context", () => {
     const netlify = repositoryFile("netlify.toml");
     const production = netlify.split("[context.production.environment]")[1]?.split("[[plugins]]")[0];
-    expect(production).toContain('NEXT_PUBLIC_AUTH_GITHUB_ENABLED = "true"');
     for (const flag of ["NEXT_PUBLIC_AUTH_LINKEDIN_ENABLED", "NEXT_PUBLIC_AUTH_GITHUB_ENABLED"]) {
-      expect(production).toMatch(new RegExp(`${flag} = "(true|false)"`, "u"));
+      expect(production).toContain(`${flag} = "true"`);
       expect(netlify.split("[context.production.environment]")[0]).not.toContain(flag);
     }
   });

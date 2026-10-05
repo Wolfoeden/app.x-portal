@@ -16,10 +16,9 @@ NEXT_PUBLIC_SITE_URL = "https://x-portal.eu"
 NEXT_PUBLIC_AUTH_GOOGLE_ENABLED = "true"
 # LinkedIn (OIDC) und GitHub, nur im Freelancer-Zugang (/freelancer/apply).
 # Beide Provider sind in Supabase eingerichtet (Oktober 2026); Einrichtung und
-# Prüfung: docs/freelancer-onboarding-import.md. LinkedIn bleibt aus, bis die
-# Supabase-Callback-Adresse in der LinkedIn-App als Redirect-URL eingetragen
-# ist; sonst endet der Knopf auf einer Fehlerseite von LinkedIn.
-NEXT_PUBLIC_AUTH_LINKEDIN_ENABLED = "false"
+# Prüfung: docs/freelancer-onboarding-import.md. Geprüft am 05.10.2026:
+# /auth/v1/authorize führt bei beiden auf die Anmeldeseite des Anbieters.
+NEXT_PUBLIC_AUTH_LINKEDIN_ENABLED = "true"
 NEXT_PUBLIC_AUTH_GITHUB_ENABLED = "true"
 # Vermittlungsmodell (lib/placement/config.ts): Kunden fragen Freelancer über
 # XPORTAL an, 10 % Honorar bei Beauftragung, Rechnung über Stripe. Die
