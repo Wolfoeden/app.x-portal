@@ -17,14 +17,17 @@ function jsonLd(html: string): Node[] {
   return [...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gsu)].map((match) => JSON.parse(match[1]!) as Node);
 }
 
-function visibleText(html: string): string {
-  return html
-    .replace(/<script\b[^>]*>.*?<\/script>/gsu, "")
-    .replace(/<!-- -->/gu, "")
-    .replace(/<[^>]+>/gu, "")
-    .replace(/&quot;/gu, "\"")
-    .replace(/&amp;/gu, "&")
-    .replace(/\s+/gu, " ");
+/**
+ * Text ohne Markup, für den Vergleich mit Sätzen. Wiederholt, bis keine Tags
+ * mehr übrig sind; Eingabe ist ausschließlich eigenes Server-Rendering.
+ */
+function textOf(html: string): string {
+  let text = html;
+  for (let previous = ""; previous !== text;) {
+    previous = text;
+    text = text.replace(/<[^>]*>/gu, "");
+  }
+  return text.replace(/\s+/gu, " ");
 }
 
 afterEach(() => vi.unstubAllEnvs());
@@ -39,11 +42,14 @@ describe("landing page structured data", () => {
     const entities = faq.mainEntity as { name: string; acceptedAnswer: { text: string } }[];
     const items = landingFaq(true);
     expect(entities.map((entity) => entity.name)).toEqual(items.map((item) => item.question));
-    const text = visibleText(html);
-    const normal = (value: string) => value.replace(/\s+/gu, " ");
-    for (const entity of entities) {
-      expect(text).toContain(normal(entity.name));
-      expect(text).toContain(normal(entity.acceptedAnswer.text));
+    expect(entities.map((entity) => entity.acceptedAnswer.text)).toEqual(items.map(faqAnswerText));
+    // Sichtbar steht jede Frage und jedes Textstück ihrer Antwort im
+    // FAQ-Abschnitt, nicht nur in den strukturierten Daten.
+    const start = html.indexOf('id="fragen"');
+    const section = html.slice(start, html.indexOf("</section>", start));
+    for (const item of items) {
+      expect(section).toContain(`<summary>${item.question}</summary>`);
+      for (const part of item.answer) expect(section).toContain(typeof part === "string" ? part : `>${part.label}</a>`);
     }
   });
 
@@ -86,10 +92,7 @@ describe("landing page structured data", () => {
 
 describe("llms.txt for AI search systems", () => {
   it("only repeats data-flow facts that the data-flow page states", async () => {
-    const page = renderToStaticMarkup(createElement(DataFlowsPage))
-      .replace(/<!-- -->/gu, "")
-      .replace(/<[^>]+>/gu, "")
-      .replace(/\s+/gu, " ");
+    const page = textOf(renderToStaticMarkup(createElement(DataFlowsPage)));
     const text = await llmsText().text();
     for (const fact of LLMS_DATA_FACTS) {
       expect(page, fact).toContain(fact);
