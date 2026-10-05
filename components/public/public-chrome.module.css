@@ -35,17 +35,6 @@
   text-decoration: none;
 }
 
-.brand span::before {
-  content: "";
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  margin-right: 9px;
-  border-radius: 3px;
-  background: radial-gradient(circle at 30% 30%, #2fb072, #0c5c3b);
-  vertical-align: 1px;
-}
-
 /* Früher stand hier der Seitenname („Kontakt“, „Datenschutz“). Er schob die
    Navigation je Seite an eine andere Stelle; die Überschrift sagt dasselbe. */
 .context { display: none; }
