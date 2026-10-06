@@ -258,6 +258,16 @@ export function IconGithub(props: IconProps) {
   );
 }
 
+/** Gesperrter Kurzlink: im Abo enthalten. */
+export function IconLock(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <rect x="5" y="11" width="14" height="9.5" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </Glyph>
+  );
+}
+
 /** Collapses and expands the chat sidebar. */
 export function IconSidebar(props: IconProps) {
   return (

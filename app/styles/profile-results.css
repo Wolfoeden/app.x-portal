@@ -82,39 +82,80 @@
 .result-section .profile-footer > .profile-main-actions > * { flex: 0 0 auto; }
 .profile-booking-hint { margin: 0; color: var(--muted); font-size: var(--fs-2xs); line-height: 1.5; }
 
-/* Kurzlinks rechts neben „Freelancer anfragen“: LinkedIn, GitHub, Lebenslauf,
-   Kalender. Mit Abo anklickbar, sonst ausgegraut — mit Tooltip, warum. */
+/* Kurzlinks rechts neben „Freelancer anfragen“: Lebenslauf, Kalender,
+   LinkedIn, GitHub — mit Symbol in der Farbe des Dienstes und Beschriftung,
+   damit sie auf einen Blick erkennbar sind. Ohne Abo bleiben sie gut
+   sichtbar, tragen ein Schloss und führen zu den Tarifen; was es beim Profil
+   nicht gibt, steht blass da und verspricht nichts. */
 .profile-card .profile-footer > .profile-main-actions > .profile-shortcuts {
   display: inline-flex;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   min-width: 0;
   margin-left: auto;
 }
 .profile-shortcut {
+  --shortcut-color: var(--ink);
+  position: relative;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: var(--control-md);
-  height: var(--control-md);
+  gap: 6px;
+  min-height: var(--control-md);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: var(--surface);
-  padding: 0;
+  padding: 0 10px 0 8px;
   color: var(--ink);
+  font-size: var(--fs-2xs);
+  font-weight: 650;
+  white-space: nowrap;
   cursor: pointer;
   text-decoration: none;
 }
-.profile-shortcut:hover { background: var(--surface-soft); }
+.profile-shortcut[data-kind="cv"] { --shortcut-color: var(--green); }
+.profile-shortcut[data-kind="calendar"] { --shortcut-color: #006bff; }
+.profile-shortcut[data-kind="linkedin"] { --shortcut-color: #0a66c2; }
+.profile-shortcut[data-kind="github"] { --shortcut-color: #24292f; }
+.profile-shortcut-icon { display: inline-flex; color: var(--shortcut-color); }
+.profile-shortcut:hover { border-color: var(--border-hover); background: var(--surface-soft); }
 .profile-shortcut[aria-busy="true"] { cursor: progress; opacity: .6; }
-.profile-shortcut[aria-disabled="true"],
-.profile-shortcut[aria-disabled="true"]:hover {
+/* Gesperrt: voll sichtbar, mit Schloss — das ist der Nutzen, der ohne Abo
+   entgeht. */
+.profile-shortcut.is-locked { border-style: dashed; background: var(--surface-raised); }
+.profile-shortcut.is-locked:hover { border-style: solid; border-color: var(--ink); background: var(--surface); }
+.profile-shortcut-lock {
+  display: inline-flex;
+  margin-left: 1px;
+  color: var(--amber);
+}
+.profile-shortcut.is-missing,
+.profile-shortcut.is-missing:hover {
   border-color: var(--border);
-  background: var(--surface-soft);
+  background: transparent;
   color: var(--muted-light);
-  cursor: not-allowed;
-  opacity: .6;
+  cursor: default;
+  opacity: .55;
+}
+.profile-shortcut.is-missing .profile-shortcut-icon { color: inherit; }
+.profile-shortcuts-upsell {
+  display: flex;
+  align-items: start;
+  gap: 6px;
+  margin: 0;
+  color: var(--amber);
+  font-size: var(--fs-2xs);
+  line-height: 1.5;
+}
+.profile-shortcuts-upsell > span:first-child { display: inline-flex; flex: none; margin-top: 2px; }
+.profile-shortcuts-upsell a {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--ink);
+  font-weight: 680;
+  text-underline-offset: 2px;
 }
 
 .result-method { border-top: 1px solid var(--border); }
@@ -164,7 +205,23 @@
   .profile-evidence-row { grid-template-columns: minmax(0, 1fr); gap: 3px; }
   .result-section .profile-footer > .profile-main-actions > * { min-height: 44px; }
   .result-section .profile-footer > .profile-main-actions > .primary-action { flex: 1 1 100%; }
-  .profile-footer .profile-shortcut { flex: none; width: 44px; height: 44px; }
+  /* Auf dem Telefon vier gleich breite Kacheln: Symbol über der Beschriftung. */
+  .profile-card .profile-footer > .profile-main-actions > .profile-shortcuts {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+  .profile-footer .profile-shortcut {
+    width: 100%;
+    min-height: 52px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 2px;
+    font-size: 11px;
+  }
+  .profile-footer .profile-shortcut-lock { position: absolute; top: 5px; right: 6px; }
   .recovery-editor .brief-editor-fields { grid-template-columns: minmax(0, 1fr); }
   .recovery-editor .brief-field input,
   .recovery-editor .brief-field textarea,

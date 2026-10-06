@@ -76,7 +76,7 @@ describe("profile card footer", () => {
     expect(footer).toContain("Merken");
     expect(footer).toContain("Lebenslauf von Ada Beispiel herunterladen");
     expect(footer.indexOf("Merken")).toBeLessThan(footer.indexOf("profile-shortcuts"));
-    expect(markup.match(/class="profile-shortcut"/gu)).toHaveLength(4);
+    expect(markup.match(/class="profile-shortcut is-/gu)).toHaveLength(4);
   });
 
   // Die Reihenfolge im Markup ist die Tab-Reihenfolge; sie darf nicht erst per

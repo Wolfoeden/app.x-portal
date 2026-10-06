@@ -108,10 +108,11 @@ describe("recommended profile CV affordance", () => {
       disabled: true,
     });
 
-    // Selbst mit Abo-Kontext: Ein Gast erfährt nicht, ob es einen gibt.
+    // Selbst mit Abo-Kontext: Ein Gast erfährt nicht, ob es einen gibt —
+    // der Lebenslauf steht gesperrt da, nicht als fehlend.
     const markup = shortcuts(renderProfile(profile("missing"), false, { paid: true }));
-    expect(markup).toContain("Lebenslauf: Mit Abo direkt erreichbar");
-    expect(markup).not.toContain("Nicht hinterlegt");
+    expect(markup).toContain("Lebenslauf: Im Abo enthalten – Tarife ansehen");
+    expect(markup).not.toContain("Lebenslauf: Nicht hinterlegt");
   });
 
   it("enables an available CV only for paying account users", () => {
@@ -119,7 +120,7 @@ describe("recommended profile CV affordance", () => {
     const paid = shortcuts(renderProfile(profile("available"), true, { paid: true }));
     expect(paid).toContain('aria-label="Lebenslauf von Ada Beispiel herunterladen"');
     const free = shortcuts(renderProfile(profile("available"), true));
-    expect(free).toContain("Lebenslauf: Mit Abo direkt erreichbar");
+    expect(free).toContain("Lebenslauf: Im Abo enthalten – Tarife ansehen");
     expect(free).not.toContain("herunterladen");
   });
 
@@ -165,56 +166,76 @@ describe("recommended profile CV affordance", () => {
   });
 });
 
-// Oktober 2026: LinkedIn, GitHub, Lebenslauf und Kalender rechts neben
-// „Freelancer anfragen“. Ohne Abo ausgegraut, mit Abo anklickbar.
+// Oktober 2026: Lebenslauf, Kalender, LinkedIn und GitHub rechts neben
+// „Freelancer anfragen“. Ohne Abo gut sichtbar mit Schloss und Weg zu den
+// Tarifen; mit Abo anklickbar; was fehlt, steht blass da.
 describe("Kurzlinks auf der Profilkarte", () => {
   inPlacementModel();
   const withLinks = { ...profile("available"), contactLinks: { linkedin: true, github: false } };
 
-  it("zeigt ohne Abo alle vier ausgegraut und ohne Ziel", () => {
+  it("zeigt ohne Abo, was es beim Profil gibt, gesperrt mit Weg zu den Tarifen", () => {
     for (const markup of [shortcuts(renderProfile(withLinks, true)), shortcuts(renderProfile(withLinks, false))]) {
-      expect(markup.match(/class="profile-shortcut"/gu)).toHaveLength(4);
-      expect(markup.match(/aria-disabled="true"/gu)).toHaveLength(4);
-      expect(markup).not.toContain("href=");
-      for (const label of ["LinkedIn", "GitHub", "Lebenslauf", "Kalender"]) {
-        expect(markup).toContain(`${label}: Mit Abo direkt erreichbar`);
+      expect(markup.match(/class="profile-shortcut is-/gu)).toHaveLength(4);
+      for (const label of ["Lebenslauf", "Kalender", "LinkedIn"]) {
+        expect(markup).toContain(`>${label}</span>`);
+        expect(markup).toContain(`aria-label="${label}: Im Abo enthalten – Tarife ansehen"`);
       }
+      expect(markup.match(/class="profile-shortcut-lock"/gu)).toHaveLength(3);
+      // GitHub gibt es hier nicht: kein Schloss, kein Versprechen.
+      expect(markup).toContain('aria-label="GitHub: Nicht hinterlegt"');
+      expect(markup.match(/href="[^"]*"/gu)).toEqual(['href="/preise"', 'href="/preise"', 'href="/preise"']);
     }
+  });
+
+  it("nennt unter der Zeile, was ein Abo bei diesem Profil öffnet", () => {
+    const markup = renderProfile(withLinks, true);
+    expect(markup).toContain(
+      "Mit Abo öffnen Sie Lebenslauf, Kalender und LinkedIn sofort selbst, ohne auf die Vorstellung zu warten.",
+    );
+    expect(markup).toContain("Tarife ansehen");
+    expect(renderProfile(withLinks, true, { paid: true })).not.toContain("profile-shortcuts-upsell");
   });
 
   it("macht mit Abo anklickbar, was hinterlegt ist, und verrät keine Adresse", () => {
     const markup = shortcuts(renderProfile(withLinks, true, { paid: true }));
-    expect(markup).toContain('href="/api/freelancers/profile/cv-test/link?kind=linkedin"');
-    expect(markup).toContain('href="/api/freelancers/profile/cv-test/book"');
+    expect(markup).toContain('aria-label="Lebenslauf von Ada Beispiel herunterladen"');
     expect(markup).toContain("GitHub: Nicht hinterlegt");
+    expect(markup).not.toContain("profile-shortcut-lock");
     expect(markup.match(/aria-disabled="true"/gu)).toHaveLength(1);
     // Die einzigen Ziele sind die eigenen Routen; keine Adresse des Freelancers.
     expect(markup.match(/href="[^"]*"/gu)).toEqual([
-      'href="/api/freelancers/profile/cv-test/link?kind=linkedin"',
       'href="/api/freelancers/profile/cv-test/book"',
+      'href="/api/freelancers/profile/cv-test/link?kind=linkedin"',
     ]);
   });
 
   it("öffnet ohne Vermittlungsmodell, wie bisher Kalender und Lebenslauf, mit Konto", () => {
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "false");
     expect(shortcuts(renderProfile(withLinks, true))).toContain('href="/api/freelancers/profile/cv-test/link?kind=linkedin"');
-    expect(shortcuts(renderProfile(withLinks, false))).toContain("LinkedIn: Nur mit Konto");
+    const guest = renderProfile(withLinks, false);
+    expect(shortcuts(guest)).toContain("LinkedIn: Nur mit Konto");
+    expect(guest).not.toContain("profile-shortcuts-upsell");
   });
 
   it("leitet die Zustände nur aus Abo und Vorhandensein ab", () => {
-    const states = profileShortcutStates({
-      unlocked: true,
-      lockedHint: "Mit Abo direkt erreichbar",
-      contactLinks: undefined,
-      hasCalendar: false,
-      cvAccess: "forbidden",
-      hasProject: true,
-    });
-    expect(states.map((state) => [state.kind, state.enabled, state.hint])).toEqual([
-      ["linkedin", false, "Nicht hinterlegt"],
-      ["github", false, "Nicht hinterlegt"],
-      ["cv", false, "Nicht verfügbar"],
-      ["calendar", false, "Nicht hinterlegt"],
+    const base = { contactLinks: undefined, hasCalendar: false, cvAccess: "forbidden" as const, hasProject: true };
+    const summary = (unlocked: boolean, overrides: Partial<Parameters<typeof profileShortcutStates>[0]> = {}) =>
+      profileShortcutStates({ unlocked, lockedHint: "gesperrt", ...base, ...overrides }).map((state) => [
+        state.kind,
+        state.status,
+        state.hint,
+      ]);
+    expect(summary(true)).toEqual([
+      ["cv", "missing", "Nicht verfügbar"],
+      ["calendar", "missing", "Nicht hinterlegt"],
+      ["linkedin", "missing", "Nicht hinterlegt"],
+      ["github", "missing", "Nicht hinterlegt"],
+    ]);
+    expect(summary(false, { hasCalendar: true, cvAccess: "login_required", contactLinks: { linkedin: false, github: true } })).toEqual([
+      ["cv", "locked", "gesperrt"],
+      ["calendar", "locked", "gesperrt"],
+      ["linkedin", "missing", "Nicht hinterlegt"],
+      ["github", "locked", "gesperrt"],
     ]);
   });
 });
