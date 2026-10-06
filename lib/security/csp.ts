@@ -45,6 +45,20 @@ export const CSP_REPORT_PATH = "/api/csp-report";
  */
 const HCAPTCHA_ORIGINS = "https://hcaptcha.com https://*.hcaptcha.com";
 
+/**
+ * Die Herkünfte des Google-Ads-Tags (gtag.js), nach Googles CSP-Leitfaden für
+ * Google Ads: das Skript selbst, die Conversion-Meldungen und die Frames für
+ * die Zuordnung. Bilder deckt `img-src https:` schon ab.
+ *
+ * Geladen wird das Tag nur nach Einwilligung (components/GoogleAdsTag.tsx);
+ * die Freigabe hier erlaubt den Weg, sie lädt nichts.
+ */
+const GOOGLE_ADS_SCRIPT_ORIGINS =
+  "https://www.googletagmanager.com https://www.googleadservices.com https://www.google.com https://googleads.g.doubleclick.net";
+const GOOGLE_ADS_CONNECT_ORIGINS = `${GOOGLE_ADS_SCRIPT_ORIGINS} https://google.com`;
+const GOOGLE_ADS_FRAME_ORIGINS =
+  "https://td.doubleclick.net https://bid.g.doubleclick.net https://www.googletagmanager.com";
+
 /** Der Gruppenname, den `Reporting-Endpoints` und `report-to` teilen müssen. */
 export const CSP_REPORT_GROUP = "csp";
 
@@ -62,7 +76,7 @@ export function buildContentSecurityPolicy({
   // Herkunft ausgeschrieben, sonst wird das Skript blockiert.
   const scriptSrc = nonce
     ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${developmentEval}`
-    : `script-src 'self' 'unsafe-inline' ${HCAPTCHA_ORIGINS}${developmentEval}`;
+    : `script-src 'self' 'unsafe-inline' ${HCAPTCHA_ORIGINS} ${GOOGLE_ADS_SCRIPT_ORIGINS}${developmentEval}`;
 
   return [
     "default-src 'self'",
@@ -76,12 +90,13 @@ export function buildContentSecurityPolicy({
     // weil auch React zur Laufzeit Stile schreibt.
     "style-src 'self' 'unsafe-inline'",
     scriptSrc,
-    `connect-src 'self' https://*.supabase.co wss://*.supabase.co ${HCAPTCHA_ORIGINS}`,
-    // Eingebettet wird ausschließlich hCaptcha. Die frühere Ausnahme für
+    `connect-src 'self' https://*.supabase.co wss://*.supabase.co ${HCAPTCHA_ORIGINS} ${GOOGLE_ADS_CONNECT_ORIGINS}`,
+    // Eingebettet werden ausschließlich hCaptcha und — nach Einwilligung —
+    // die Zuordnungsframes des Google-Ads-Tags. Die frühere Ausnahme für
     // calendly.com bleibt gestrichen: sie stand im Widerspruch zu Abschnitt 6
     // der Datenschutzhinweise, der zusagt, dass Buchungsseiten erst nach einem
     // Klick und dann in einem eigenen Aufruf geladen werden.
-    `frame-src ${HCAPTCHA_ORIGINS}`,
+    `frame-src ${HCAPTCHA_ORIGINS} ${GOOGLE_ADS_FRAME_ORIGINS}`,
     ...(reportPath
       ? [`report-uri ${reportPath}`, `report-to ${CSP_REPORT_GROUP}`]
       : []),

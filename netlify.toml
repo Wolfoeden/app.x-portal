@@ -25,6 +25,11 @@ NEXT_PUBLIC_AUTH_GITHUB_ENABLED = "true"
 # Vermittlungsbedingungen sind seit dem 30.09.2026 freigegeben. Wirkt beim
 # nächsten Build; zum Abschalten hier auf "false" setzen.
 NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED = "true"
+# Google-Ads-Tag (gtag.js), Oktober 2026. Lädt nur nach Zustimmung im
+# Cookie-Banner (components/GoogleAdsTag.tsx); mit gesetzter ID fragt das Banner
+# „Alle akzeptieren / Optionale ablehnen“. Nur Produktion: Deploy-Vorschauen
+# messen nicht. Zum Abschalten die Zeile entfernen.
+NEXT_PUBLIC_GOOGLE_ADS_ID = "AW-10826269095"
 
 [[plugins]]
 package = "@netlify/plugin-nextjs"

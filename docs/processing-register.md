@@ -8,7 +8,7 @@ sind. Die drei Dokumente gehören zusammen und werden zusammen gepflegt.
 Sprache: Deutsch, abweichend vom Rest von `docs/`. Es ist ein Dokument, das
 einer deutschen Aufsichtsbehörde vorgelegt wird.
 
-**Stand:** 5. Oktober 2026 · abgeleitet aus dem Code, nicht aus Absichten.
+**Stand:** 6. Oktober 2026 · abgeleitet aus dem Code, nicht aus Absichten.
 Jede Zeile ist an der Datenschutzerklärung, den Migrationen und den
 Retention-Policies überprüfbar.
 
@@ -264,6 +264,28 @@ Retention-Policies überprüfbar.
 - **Fristen:** Löschung auf Anfrage über die Kontaktseite; ein Widerspruch
   setzt die Stufe „Nicht kontaktieren“ und beendet jede Wiedervorlage. Der
   Bestand ist jährlich auf Kontakte ohne Aktivität zu prüfen.
+
+### 13. Werbemessung (Conversion-Tracking, Google Ads)
+
+- **Zweck:** messen, ob Besuche und Registrierungen über eigene Anzeigen
+  kamen, um die Werbung danach auszurichten.
+- **Rechtsgrundlage:** Einwilligung nach § 25 Abs. 1 TDDDG und Art. 6 Abs. 1
+  lit. a DSGVO. Das Tag (`components/GoogleAdsTag.tsx`) lädt erst nach „Alle
+  akzeptieren“ im Cookie-Banner; Ablehnen ist gleich leicht und gleich
+  gestaltet. Betreiberseiten (`/chat/admin`) laden es nie.
+- **Betroffene:** Besucher der Website, die eingewilligt haben.
+- **Datenkategorien:** IP-Adresse, Browser- und Geräteangaben, aufgerufene und
+  verweisende Seite, Klickkennung einer Anzeige (`gclid`), Cookie-Kennungen
+  (`_gcl_au` u. a.). Keine Inhalte aus Projekten, Chats oder Profilen;
+  Conversion-Ereignisse sind noch nicht eingerichtet.
+- **Empfänger:** Google Ireland Limited; Übermittlung an Google LLC (USA) auf
+  Grundlage des EU-US Data Privacy Framework bzw. der Standardvertragsklauseln
+  (siehe `docs/processor-register.md`).
+- **Fristen:** Cookies bis 90 Tage; die Auswahl selbst
+  (`xportal_cookie_consent`) 180 Tage. Ein Widerruf über die
+  Cookie-Einstellungen setzt den Consent Mode auf „denied“, löscht die
+  `_gcl_*`-Cookies der Domain und lädt die Seite ohne Tag neu.
+
 ## Schwellenwertprüfung zur Datenschutz-Folgenabschätzung
 
 Art. 35 DSGVO verlangt eine DSFA, wenn eine Verarbeitung voraussichtlich ein

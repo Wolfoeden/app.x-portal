@@ -3,42 +3,34 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
+import {
+  CONSENT_CHANGED_EVENT,
+  CONSENT_COOKIE,
+  CONSENT_MAX_AGE_SECONDS,
+  consentCookieValue,
+  optionalServicesAvailable,
+  parseConsent,
+  type ConsentChoice,
+} from "@/lib/consent/consent";
+
 /**
  * Die Datenschutz-Auswahl.
  *
- * XPORTAL setzt derzeit ausschließlich technisch notwendige Cookies und
- * Sitzungsspeicher ein. Ein Layer mit „Alle akzeptieren“ holte damit eine
- * Einwilligung ein, die nichts trug: Es gab keinen Dienst, den sie aktiviert
- * hätte. Rechtlich unschädlich, aber es gewöhnt Nutzer an eine bedeutungslose
- * Zustimmung — und bei einer Prüfung sieht es aus wie ein Platzhalter.
- *
- * Solange `OPTIONAL_SERVICES_AVAILABLE` falsch ist, zeigt der Layer deshalb
- * nur eine Kenntnisnahme. Der Auswahlpfad bleibt im Code stehen und schaltet
- * sich mit dem ersten optionalen Dienst wieder ein — der Schalter ist die
- * ehrlichere Lösung, als den Code zu löschen und ihn später neu zu erfinden.
+ * Bis Oktober 2026 setzte XPORTAL nur technisch notwendige Cookies ein, und
+ * der Layer war eine Kenntnisnahme: Ein „Alle akzeptieren“ hätte eine
+ * Einwilligung eingeholt, die nichts trug. Mit dem Google-Ads-Tag
+ * (`components/GoogleAdsTag.tsx`) gibt es den ersten optionalen Dienst; ist
+ * seine ID gesetzt (`optionalServicesAvailable()`), fragt der Layer wieder
+ * richtig — Ablehnen so leicht wie Zustimmen. Ohne ID (lokal, Vorschau)
+ * bleibt es bei der Kenntnisnahme.
  */
 
-/**
- * Auf `true` setzen, sobald ein Dienst existiert, der ohne Einwilligung nicht
- * geladen werden darf. Dann greift wieder die vollständige Auswahl, und die
- * gespeicherte Kenntnisnahme reicht nicht mehr als Einwilligung.
- */
-const OPTIONAL_SERVICES_AVAILABLE = false;
-
-type ConsentChoice = "all" | "essential";
 type ConsentView = "hidden" | "banner" | "settings";
 
-const CONSENT_COOKIE = "xportal_cookie_consent";
 export const OPEN_COOKIE_SETTINGS_EVENT = "xportal:open-cookie-settings";
-const MAX_AGE_SECONDS = 60 * 60 * 24 * 180;
 
 function currentChoice(): ConsentChoice | null {
-  const match = document.cookie
-    .split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(`${CONSENT_COOKIE}=`));
-  const value = match?.slice(CONSENT_COOKIE.length + 1);
-  return value === "all" || value === "essential" ? value : null;
+  return parseConsent(document.cookie);
 }
 
 export function openCookieSettings() {
@@ -54,6 +46,8 @@ export function CookieSettingsButton({ className = "legal-footer-button" }: { cl
 }
 
 export function CookieConsent() {
+  // Beim Build eingesetzt (`NEXT_PUBLIC_`); als Aufruf, damit Tests ihn setzen können.
+  const OPTIONAL_SERVICES_AVAILABLE = optionalServicesAvailable();
   const [view, setView] = useState<ConsentView>("hidden");
   const [choice, setChoice] = useState<ConsentChoice>("essential");
 
@@ -84,9 +78,10 @@ export function CookieConsent() {
 
   const saveChoice = (nextChoice: ConsentChoice) => {
     const secure = window.location.protocol === "https:" ? "; Secure" : "";
-    document.cookie = `${CONSENT_COOKIE}=${nextChoice}; Path=/; Max-Age=${MAX_AGE_SECONDS}; SameSite=Lax${secure}`;
+    document.cookie = `${CONSENT_COOKIE}=${consentCookieValue(nextChoice)}; Path=/; Max-Age=${CONSENT_MAX_AGE_SECONDS}; SameSite=Lax${secure}`;
     setChoice(nextChoice);
     setView("hidden");
+    window.dispatchEvent(new CustomEvent(CONSENT_CHANGED_EVENT, { detail: nextChoice }));
   };
 
   const consentLayer = view !== "hidden" ? (
@@ -103,7 +98,7 @@ export function CookieConsent() {
             {view === "settings"
               ? "Cookie-Einstellungen"
               : OPTIONAL_SERVICES_AVAILABLE
-                ? "Ihre Datenschutz-Auswahl"
+                ? "Werbemessung erlauben?"
                 : "Nur notwendige Cookies"}
           </h2>
           {/* Die Kenntnisnahme ohne Wahl bleibt kurz. hCaptcha wird dort
@@ -116,6 +111,17 @@ export function CookieConsent() {
               {" "}<a href="/privacy">Datenschutzhinweise</a>
               {" · "}<a href="/imprint">Impressum</a>
             </p>
+          ) : view === "banner" ? (
+            <p>
+              Notwendige Cookies brauchen wir für Anmeldung, Sicherheit und Ihre
+              Auswahl. Mit Ihrer Zustimmung laden wir zusätzlich Google Ads
+              (Google Ireland Ltd.), um zu messen, welche Anzeigen zu Besuchen
+              und Registrierungen führen. Dabei können Daten in die USA
+              übertragen werden. Sie können die Zustimmung jederzeit unter
+              „Cookie-Einstellungen“ widerrufen.
+              {" "}<a href="/privacy">Datenschutzhinweise</a>
+              {" · "}<a href="/imprint">Impressum</a>
+            </p>
           ) : (
             <p>
               XPORTAL verwendet ausschließlich technisch notwendige Cookies und
@@ -124,7 +130,7 @@ export function CookieConsent() {
               absendet; dabei wird Ihre IP-Adresse an Intuition Machines, Inc.
               (USA) übertragen.
               {OPTIONAL_SERVICES_AVAILABLE
-                ? " Optionale Dienste werden erst nach Ihrer Zustimmung geladen."
+                ? " Google Ads (Google Ireland Ltd.; Übermittlung in die USA möglich) misst nur nach Ihrer Zustimmung, welche Anzeigen zu Besuchen und Registrierungen führen. Ein Widerruf gilt ab sofort."
                 : " Analyse- und Marketingdienste setzen wir nicht ein — hier gibt es nichts zu entscheiden. Sollte sich das ändern, fragen wir vorher."}
               {" "}<a href="/privacy">Datenschutzhinweise</a>
               {" · "}<a href="/imprint">Impressum</a>
@@ -140,7 +146,7 @@ export function CookieConsent() {
               <p>Erforderlich für Sicherheit, Sitzungen und die Speicherung Ihrer Auswahl.</p>
             </div>
             <div>
-              <span>Optional</span>
+              <span>{OPTIONAL_SERVICES_AVAILABLE ? "Werbemessung (Google Ads)" : "Optional"}</span>
               <strong>
                 {OPTIONAL_SERVICES_AVAILABLE
                   ? choice === "all"
@@ -150,7 +156,7 @@ export function CookieConsent() {
               </strong>
               <p>
                 {OPTIONAL_SERVICES_AVAILABLE
-                  ? "Diese Auswahl steuert, ob optionale Dienste geladen werden."
+                  ? "Lädt das Google-Ads-Tag, das Anzeigenklicks Besuchen und Registrierungen zuordnet. Ohne Zustimmung wird es nicht geladen."
                   : "Es ist kein optionaler Dienst eingebunden. Eine Zustimmung würde nichts aktivieren."}
               </p>
             </div>
@@ -159,15 +165,12 @@ export function CookieConsent() {
 
         <div className="cookie-actions">
           {OPTIONAL_SERVICES_AVAILABLE ? (
+            // Gleich gestaltet: Ablehnen muss so leicht sein wie Zustimmen.
             <>
-              <button type="button" onClick={() => saveChoice("essential")}>
+              <button type="button" className="is-choice" onClick={() => saveChoice("essential")}>
                 Optionale ablehnen
               </button>
-              <button
-                type="button"
-                className="is-primary"
-                onClick={() => saveChoice("all")}
-              >
+              <button type="button" className="is-choice" onClick={() => saveChoice("all")}>
                 Alle akzeptieren
               </button>
             </>

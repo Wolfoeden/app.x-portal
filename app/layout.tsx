@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Inter, Sora } from "next/font/google";
 import { CookieConsent } from "@/components/CookieConsent";
+import { GoogleAdsTag } from "@/components/GoogleAdsTag";
 import { JsonLd } from "@/components/JsonLd";
 import { SITE_DESCRIPTION, SITE_URL } from "@/lib/seo";
 import { siteStructuredData } from "@/lib/structured-data";
@@ -47,6 +48,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         <JsonLd data={siteStructuredData()} />
         {children}
         <CookieConsent />
+        <GoogleAdsTag />
       </body>
     </html>
   );
