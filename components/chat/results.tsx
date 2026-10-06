@@ -71,6 +71,7 @@ import {
   IconGithub,
   IconInfo,
   IconLinkedin,
+  IconLock,
   IconMaximize,
   IconMinimize,
   IconSearch,
@@ -1076,34 +1077,47 @@ export function bookingActionState(
   };
 }
 
-export type ProfileShortcutKind = "linkedin" | "github" | "cv" | "calendar";
+export type ProfileShortcutKind = "cv" | "calendar" | "linkedin" | "github";
 
 export type ProfileShortcutState = {
   kind: ProfileShortcutKind;
   label: string;
-  enabled: boolean;
+  /**
+   * `open`: anklickbar. `locked`: vorhanden, aber erst mit Abo — sichtbar und
+   * deutlich, damit klar ist, was ohne Abo entgeht. `missing`: gibt es bei
+   * diesem Profil nicht (oder nicht hier); blass, damit nichts versprochen
+   * wird, was ein Abo nicht liefert.
+   */
+  status: "open" | "locked" | "missing";
   /** Tooltip: was der Klick tut oder warum es ihn nicht gibt. */
   hint: string;
 };
 
 const SHORTCUT_LABELS: Record<ProfileShortcutKind, { label: string; action: string }> = {
-  linkedin: { label: "LinkedIn", action: "LinkedIn-Profil öffnen" },
-  github: { label: "GitHub", action: "GitHub-Profil öffnen" },
   cv: { label: "Lebenslauf", action: "Lebenslauf herunterladen" },
   calendar: { label: "Kalender", action: "Termin im Kalender wählen" },
+  linkedin: { label: "LinkedIn", action: "LinkedIn-Profil öffnen" },
+  github: { label: "GitHub", action: "GitHub-Profil öffnen" },
 };
 
+/** Was ein Abo hier freischaltet; steht im Tooltip und im Hinweis darunter. */
+export const SHORTCUT_LOCKED_HINT = "Im Abo enthalten – Tarife ansehen";
+
 /**
- * Die vier Kurzlinks rechts neben „Freelancer anfragen“: LinkedIn, GitHub,
- * Lebenslauf, Kalender. Im Vermittlungsmodell anklickbar nur mit Abo
- * (`directBooking`), sonst ausgegraut, auch für Gäste; ohne das Modell, wie
- * Kalender und Lebenslauf bisher, mit Konto. Die Routen dahinter prüfen
- * dasselbe noch einmal — die Karte kennt keine Adressen, nur ob es sie gibt.
+ * Die vier Kurzlinks rechts neben „Freelancer anfragen“: Lebenslauf,
+ * Kalender, LinkedIn, GitHub. Im Vermittlungsmodell öffnen sie sich nur mit
+ * Abo (`directBooking`); ohne Abo stehen sie trotzdem gut erkennbar da, mit
+ * Schloss und Weg zu den Tarifen. Ohne das Modell genügt, wie bisher bei
+ * Kalender und Lebenslauf, ein Konto. Die Routen dahinter prüfen dasselbe
+ * noch einmal — die Karte kennt keine Adressen, nur ob es sie gibt.
+ *
+ * Ob ein Gast-Lebenslauf existiert, verrät die Karte nicht (`login_required`):
+ * Er gilt dann als gesperrt, nicht als fehlend.
  */
 export function profileShortcutStates(input: {
   /** Abo im Vermittlungsmodell, sonst ein Konto. */
   unlocked: boolean;
-  /** Warum gesperrt: „Mit Abo direkt erreichbar“ oder „Nur mit Konto“. */
+  /** Tooltip, solange gesperrt: SHORTCUT_LOCKED_HINT oder „Nur mit Konto“. */
   lockedHint: string;
   contactLinks?: { linkedin: boolean; github: boolean };
   hasCalendar: boolean;
@@ -1111,33 +1125,50 @@ export function profileShortcutStates(input: {
   hasProject: boolean;
 }): ProfileShortcutState[] {
   const present: Record<ProfileShortcutKind, boolean> = {
+    cv: input.cvAccess === "available" || input.cvAccess === "login_required",
+    calendar: input.hasCalendar,
     linkedin: input.contactLinks?.linkedin ?? false,
     github: input.contactLinks?.github ?? false,
-    cv: input.cvAccess === "available",
-    calendar: input.hasCalendar,
   };
-  return (["linkedin", "github", "cv", "calendar"] as const).map((kind) => {
+  return (["cv", "calendar", "linkedin", "github"] as const).map((kind) => {
     const { label, action } = SHORTCUT_LABELS[kind];
-    if (!input.unlocked) return { kind, label, enabled: false, hint: input.lockedHint };
     if (!present[kind]) {
-      return { kind, label, enabled: false, hint: kind === "cv" && input.cvAccess === "forbidden" ? "Nicht verfügbar" : "Nicht hinterlegt" };
+      const hint = kind === "cv" && input.cvAccess === "forbidden" ? "Nicht verfügbar" : "Nicht hinterlegt";
+      return { kind, label, status: "missing", hint };
     }
-    if (kind === "cv" && !input.hasProject) return { kind, label, enabled: false, hint: "Im Projekt verfügbar" };
-    return { kind, label, enabled: true, hint: action };
+    if (!input.unlocked) return { kind, label, status: "locked", hint: input.lockedHint };
+    if (kind === "cv" && (input.cvAccess !== "available" || !input.hasProject)) {
+      return { kind, label, status: "missing", hint: "Im Projekt verfügbar" };
+    }
+    return { kind, label, status: "open", hint: action };
   });
 }
 
 const SHORTCUT_ICONS: Record<ProfileShortcutKind, (props: { size?: number }) => ReactNode> = {
-  linkedin: IconLinkedin,
-  github: IconGithub,
   cv: IconDocument,
   calendar: IconCalendar,
+  linkedin: IconLinkedin,
+  github: IconGithub,
 };
+
+function ShortcutFace({ state }: { state: ProfileShortcutState }) {
+  const Icon = SHORTCUT_ICONS[state.kind];
+  return (
+    <>
+      <span className="profile-shortcut-icon" aria-hidden="true"><Icon size={16} /></span>
+      <span className="profile-shortcut-label">{state.label}</span>
+      {state.status === "locked" ? (
+        <span className="profile-shortcut-lock" aria-hidden="true"><IconLock size={11} /></span>
+      ) : null}
+    </>
+  );
+}
 
 function ProfileShortcuts({
   profileId,
   displayName,
   states,
+  upsellHref,
   cvBusy,
   onDownloadCv,
   onOpenCalendar,
@@ -1145,6 +1176,8 @@ function ProfileShortcuts({
   profileId: string;
   displayName: string;
   states: ProfileShortcutState[];
+  /** Wohin ein gesperrter Kurzlink führt; ohne Ziel bleibt er stumm. */
+  upsellHref: string | null;
   cvBusy: boolean;
   onDownloadCv: () => void;
   onOpenCalendar: () => void;
@@ -1152,20 +1185,35 @@ function ProfileShortcuts({
   return (
     <div className="profile-shortcuts" role="group" aria-label={`Direkt zu ${displayName}`}>
       {states.map((state) => {
-        const Icon = SHORTCUT_ICONS[state.kind];
-        if (!state.enabled) {
+        const className = `profile-shortcut is-${state.status}`;
+        if (state.status === "locked" && upsellHref) {
+          return (
+            <a
+              key={state.kind}
+              className={className}
+              data-kind={state.kind}
+              href={appPath(upsellHref)}
+              aria-label={`${state.label}: ${state.hint}`}
+              title={state.hint}
+            >
+              <ShortcutFace state={state} />
+            </a>
+          );
+        }
+        if (state.status !== "open") {
           // aria-disabled statt disabled: Der Tooltip bleibt sichtbar und der
           // Grund vorlesbar.
           return (
             <button
               key={state.kind}
-              className="profile-shortcut"
+              className={className}
+              data-kind={state.kind}
               type="button"
               aria-disabled="true"
               aria-label={`${state.label}: ${state.hint}`}
               title={state.hint}
             >
-              <Icon size={15} />
+              <ShortcutFace state={state} />
             </button>
           );
         }
@@ -1173,14 +1221,15 @@ function ProfileShortcuts({
           return (
             <button
               key={state.kind}
-              className="profile-shortcut"
+              className={className}
+              data-kind={state.kind}
               type="button"
               aria-label={`Lebenslauf von ${displayName} herunterladen`}
               aria-busy={cvBusy}
               title={cvBusy ? "Lebenslauf wird vorbereitet …" : state.hint}
               onClick={onDownloadCv}
             >
-              <Icon size={15} />
+              <ShortcutFace state={state} />
             </button>
           );
         }
@@ -1191,7 +1240,8 @@ function ProfileShortcuts({
         return (
           <a
             key={state.kind}
-            className="profile-shortcut"
+            className={className}
+            data-kind={state.kind}
             href={appPath(href)}
             target="_blank"
             rel="noopener noreferrer"
@@ -1199,11 +1249,29 @@ function ProfileShortcuts({
             title={state.hint}
             onClick={state.kind === "calendar" ? onOpenCalendar : undefined}
           >
-            <Icon size={15} />
+            <ShortcutFace state={state} />
           </a>
         );
       })}
     </div>
+  );
+}
+
+/**
+ * Unter der Knopfzeile, solange etwas gesperrt ist: was ein Abo bei genau
+ * diesem Profil öffnet. Nur, was es hier wirklich gibt.
+ */
+function ShortcutUpsell({ states, href }: { states: ProfileShortcutState[]; href: string }) {
+  const locked = states.filter((state) => state.status === "locked").map((state) => state.label);
+  if (!locked.length) return null;
+  return (
+    <p className="profile-shortcuts-upsell">
+      <span aria-hidden="true"><IconLock size={12} /></span>
+      <span>
+        Mit Abo öffnen Sie {joinGerman(locked)} sofort selbst, ohne auf die Vorstellung zu warten.{" "}
+        <a href={appPath(href)}>Tarife ansehen <IconArrowRight size={11} /></a>
+      </span>
+    </p>
   );
 }
 
@@ -1264,9 +1332,10 @@ export function ProfileCard({
   const directBooking = useContext(DirectBookingContext);
   const placement = placementRequestsEnabled();
   const bookingAction = bookingActionState(profile, isAccountUser, placement, directBooking);
+  const shortcutUpsell = placement ? "/preise" : null;
   const shortcutStates = profileShortcutStates({
     unlocked: placement ? directBooking && isAccountUser : isAccountUser,
-    lockedHint: placement ? "Mit Abo direkt erreichbar" : "Nur mit Konto",
+    lockedHint: placement ? SHORTCUT_LOCKED_HINT : "Nur mit Konto",
     contactLinks: profile.contactLinks,
     hasCalendar: Boolean(profile.bookingUrl),
     cvAccess: cvAction.kind,
@@ -1538,6 +1607,7 @@ export function ProfileCard({
                 profileId={profile.id}
                 displayName={profile.displayName}
                 states={shortcutStates}
+                upsellHref={shortcutUpsell}
                 cvBusy={cvDownloadState === "loading"}
                 onDownloadCv={() => void downloadCv()}
                 onOpenCalendar={onRequestBooking}
@@ -1549,6 +1619,7 @@ export function ProfileCard({
             </p>
           ) : null}
           <p className="profile-booking-hint">{bookingAction.hint}</p>
+          {shortcutUpsell ? <ShortcutUpsell states={shortcutStates} href={shortcutUpsell} /> : null}
           {onDismiss ? <ProfileDismiss displayName={profile.displayName} onDismiss={onDismiss} /> : null}
         </footer>
       </div>
