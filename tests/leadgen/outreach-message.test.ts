@@ -123,7 +123,7 @@ describe("Pflichtangaben der Akquise-Mail", () => {
 
   it("nennt das Portal vor dem eingetragenen Namen", () => {
     expect(PROVIDER_IMPRINT_LINES[0].startsWith("XPORTAL")).toBe(true);
-    expect(PROVIDER_IMPRINT_LINES[0]).toContain("Inhaber Roman Dering");
+    expect(PROVIDER_IMPRINT_LINES[0]).toContain("Roman Dering, Einzelunternehmen");
   });
 
   it("nennt die Impressumsadresse", () => {

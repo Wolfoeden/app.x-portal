@@ -107,6 +107,11 @@ export interface FreelancerProfileResult {
   };
   /** Fachgebiet für das Titelband der Karte; fehlt bei älteren Antworten. */
   field?: ProfileField | null;
+  /**
+   * Ob LinkedIn bzw. GitHub hinterlegt sind — nie die Adressen selbst. Die
+   * Kurzlinks öffnen sie über `/api/freelancers/<id>/link`, das das Abo prüft.
+   */
+  contactLinks?: { linkedin: boolean; github: boolean };
   /** Freigegebene Referenznotiz des Betreibers, wenn sichtbar geschaltet. */
   referencesSummary?: string | null;
   /** Das Referenzprojekt für die Karte und wie viele es insgesamt gibt. */

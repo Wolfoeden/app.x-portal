@@ -2,8 +2,15 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { fetchProjects } from "@/lib/data/freelancer-projects";
-import { pickHighlight, projectTeaser, type ProfileProject, type ProjectTeaser } from "@/lib/profile/project-limits";
+import { fetchProfileLinks, fetchProjects } from "@/lib/data/freelancer-projects";
+import { contactLinkFlags, type ContactLinkFlags } from "@/lib/profile/contact-links";
+import {
+  pickHighlight,
+  projectTeaser,
+  type ProfileLink,
+  type ProfileProject,
+  type ProjectTeaser,
+} from "@/lib/profile/project-limits";
 
 /**
  * Was eine Profilkarte zusätzlich zum gespeicherten Abgleich zeigt, live aus
@@ -55,17 +62,25 @@ export function cardExtrasFor(
   };
 }
 
-/** Hängt Projekt und Notiz an; scheitert eine Abfrage, bleiben die Karten wie sie sind. */
+/**
+ * Hängt Projekt, Notiz und die Kurzlink-Arten an; scheitert eine Abfrage,
+ * fehlt nur ihr Teil. `contactLinks` sagt nur, ob LinkedIn oder GitHub
+ * hinterlegt sind — die Adressen öffnet allein `/api/freelancers/<id>/link`.
+ */
 export async function attachProfileExtras<T extends { id: string }>(
   admin: SupabaseClient,
   profiles: readonly T[],
-): Promise<Array<T & CardExtras>> {
+): Promise<Array<T & CardExtras & { contactLinks?: ContactLinkFlags }>> {
   if (profiles.length === 0) return [...profiles];
   const ids = profiles.map((profile) => profile.id);
-  const [references, projects] = await Promise.all([
+  const [references, projects, links] = await Promise.all([
     fetchReferenceSummaries(admin, ids).catch(() => new Map<string, string>()),
     fetchProjects(admin, ids, { publicOnly: true }).catch(() => new Map<string, ProfileProject[]>()),
+    fetchProfileLinks(admin, ids).catch(() => null as Map<string, ProfileLink[]> | null),
   ]);
-  if (references.size === 0 && projects.size === 0) return [...profiles];
-  return profiles.map((profile) => ({ ...profile, ...cardExtrasFor(profile.id, references, projects) }));
+  return profiles.map((profile) => ({
+    ...profile,
+    ...cardExtrasFor(profile.id, references, projects),
+    ...(links ? { contactLinks: contactLinkFlags(links.get(profile.id) ?? []) } : {}),
+  }));
 }

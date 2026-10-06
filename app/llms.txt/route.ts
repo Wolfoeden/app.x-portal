@@ -39,7 +39,7 @@ export function GET() {
     "- Die externe AI-Agent-Recherche im öffentlichen Web ist vom internen Abgleich getrennt. Sie braucht ein Konto und eine ausdrückliche Bestätigung; ihre Ergebnisse sind als nicht durch XPORTAL verifiziert gekennzeichnet.",
     "",
     "## Datenschutz, EU und Deutschland",
-    `- Anbieter: XPORTAL, Inhaber ${SALES_CONTACT.name}, ${PROVIDER_ADDRESS}, Deutschland.`,
+    `- Anbieter: XPORTAL, ${PROVIDER_ADDRESS}, Deutschland. Ansprechpartner: ${SALES_CONTACT.name}, ${SALES_CONTACT.role}.`,
     ...LLMS_DATA_FACTS.slice(0, 5).map((fact) => `- ${fact}`),
     `- E-Mails wie Bestätigungen ${LLMS_DATA_FACTS[5]}`,
     `- [Datenwege](${absoluteUrl("/datenwege")}): welcher Schritt wohin geht. Verbindlich ist die [Datenschutzerklärung](${absoluteUrl("/privacy")}).`,

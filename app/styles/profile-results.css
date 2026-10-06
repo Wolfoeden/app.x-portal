@@ -82,6 +82,41 @@
 .result-section .profile-footer > .profile-main-actions > * { flex: 0 0 auto; }
 .profile-booking-hint { margin: 0; color: var(--muted); font-size: var(--fs-2xs); line-height: 1.5; }
 
+/* Kurzlinks rechts neben „Freelancer anfragen“: LinkedIn, GitHub, Lebenslauf,
+   Kalender. Mit Abo anklickbar, sonst ausgegraut — mit Tooltip, warum. */
+.profile-card .profile-footer > .profile-main-actions > .profile-shortcuts {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-left: auto;
+}
+.profile-shortcut {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-md);
+  height: var(--control-md);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: 0;
+  color: var(--ink);
+  cursor: pointer;
+  text-decoration: none;
+}
+.profile-shortcut:hover { background: var(--surface-soft); }
+.profile-shortcut[aria-busy="true"] { cursor: progress; opacity: .6; }
+.profile-shortcut[aria-disabled="true"],
+.profile-shortcut[aria-disabled="true"]:hover {
+  border-color: var(--border);
+  background: var(--surface-soft);
+  color: var(--muted-light);
+  cursor: not-allowed;
+  opacity: .6;
+}
+
 .result-method { border-top: 1px solid var(--border); }
 .result-method > p { color: var(--muted); font-size: var(--fs-xs); line-height: 1.5; }
 .result-method summary { cursor: pointer; padding: 8px 0; color: var(--muted); font-size: var(--fs-xs); }
@@ -129,6 +164,7 @@
   .profile-evidence-row { grid-template-columns: minmax(0, 1fr); gap: 3px; }
   .result-section .profile-footer > .profile-main-actions > * { min-height: 44px; }
   .result-section .profile-footer > .profile-main-actions > .primary-action { flex: 1 1 100%; }
+  .profile-footer .profile-shortcut { flex: none; width: 44px; height: 44px; }
   .recovery-editor .brief-editor-fields { grid-template-columns: minmax(0, 1fr); }
   .recovery-editor .brief-field input,
   .recovery-editor .brief-field textarea,

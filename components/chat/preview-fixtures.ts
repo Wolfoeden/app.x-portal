@@ -112,6 +112,7 @@ export const previewProfiles: FreelancerProfileResult[] = [
     avatarUrl: null,
     bookingUrl: "https://example.com/anna/termin",
     cvAccess: "available",
+    contactLinks: { linkedin: true, github: false },
     displayName: "Anna Keller",
     field: "frontend",
     highlight: {

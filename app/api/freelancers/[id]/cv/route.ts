@@ -10,6 +10,9 @@ import {
   safeCvDownloadFilename,
 } from "@/lib/data/freelancer-cvs";
 import { MatchingEvaluationSnapshotSchema } from "@/lib/domain";
+import { placementRequestsEnabled } from "@/lib/placement/config";
+import { placementBookingAllowed } from "@/lib/placement/requests";
+import { partialProfileFromSnapshot } from "@/lib/placement/shown-profile";
 import {
   assertSameOrigin,
   getClientIp,
@@ -101,6 +104,21 @@ export async function POST(
       );
     }
 
+    // Im Vermittlungsmodell ist der Lebenslauf wie Kalender und Profil-Links
+    // ein direkter Weg zum Freelancer: mit bezahltem Tarif, nach einer
+    // Vorstellung durch den Betreiber oder als Betreiber.
+    if (placementRequestsEnabled() && !(await placementBookingAllowed(user, profileId))) {
+      await writeAuditEvent({
+        actorUserId: user.id,
+        action: "freelancer_cv_download_denied",
+        targetType: "freelancer_profile",
+        targetId: profileId,
+        outcome: "denied",
+        metadata: { reason: "no_paid_access" },
+      });
+      return json({ error: "Der Lebenslauf ist in Ihrem Tarif nicht enthalten." }, 403);
+    }
+
     const admin = createAdminSupabaseClient();
     const { data: project, error: projectError } = await admin
       .from("projects")
@@ -127,7 +145,7 @@ export async function POST(
 
     const { data: shortlist, error: shortlistError } = await admin
       .from("shortlists")
-      .select("id,result_status")
+      .select("id,result_status,partial_matches_snapshot")
       .eq("project_id", projectId)
       .eq("owner_user_id", user.id)
       .order("created_at", { ascending: false })
@@ -136,12 +154,16 @@ export async function POST(
       .maybeSingle();
     if (shortlistError) throw shortlistError;
 
-    // Only the latest persisted, ranked result is actionable. While a new
-    // analysis is pending, or if the latest result is a clarification/partial
-    // state, an older recommendation cannot authorize a download.
+    // Only the latest persisted result is actionable: its ranked matches, or,
+    // when it found no reliable match, its partial matches. While a new
+    // analysis is pending, or after a clarification, an older recommendation
+    // cannot authorize a download.
+    const partialShown =
+      shortlist?.result_status === "no_reliable_match" &&
+      partialProfileFromSnapshot(shortlist.partial_matches_snapshot, profileId) !== null;
     if (
       !shortlist ||
-      shortlist.result_status !== "ranked"
+      (shortlist.result_status !== "ranked" && !partialShown)
     ) {
       await writeAuditEvent({
         actorUserId: user.id,
@@ -154,27 +176,33 @@ export async function POST(
       return json({ error: "Der CV ist nicht verfügbar." }, 404);
     }
 
-    const { data: match, error: matchError } = await admin
-      .from("matches")
-      .select("id,evaluation_snapshot")
-      .eq("shortlist_id", shortlist.id)
-      .eq("owner_user_id", user.id)
-      .eq("freelancer_profile_id", profileId)
-      .maybeSingle();
-    if (matchError) throw matchError;
-    const evaluation = MatchingEvaluationSnapshotSchema.safeParse(
-      match?.evaluation_snapshot,
-    );
-    // Primary, alternative and partial are all decided roles and authorize a
-    // download. An absent or unrecognised role is not a decision and still
-    // fails closed.
-    if (
-      !match ||
-      !evaluation.success ||
-      (evaluation.data.recommendationRole !== "primary" &&
-        evaluation.data.recommendationRole !== "alternative" &&
-        evaluation.data.recommendationRole !== "partial")
-    ) {
+    let matchId: string | null = null;
+    if (!partialShown) {
+      const { data: match, error: matchError } = await admin
+        .from("matches")
+        .select("id,evaluation_snapshot")
+        .eq("shortlist_id", shortlist.id)
+        .eq("owner_user_id", user.id)
+        .eq("freelancer_profile_id", profileId)
+        .maybeSingle();
+      if (matchError) throw matchError;
+      const evaluation = MatchingEvaluationSnapshotSchema.safeParse(
+        match?.evaluation_snapshot,
+      );
+      // Primary, alternative and partial are all decided roles and authorize a
+      // download. An absent or unrecognised role is not a decision and still
+      // fails closed.
+      if (
+        match &&
+        evaluation.success &&
+        (evaluation.data.recommendationRole === "primary" ||
+          evaluation.data.recommendationRole === "alternative" ||
+          evaluation.data.recommendationRole === "partial")
+      ) {
+        matchId = match.id;
+      }
+    }
+    if (!partialShown && !matchId) {
       await writeAuditEvent({
         actorUserId: user.id,
         action: "freelancer_cv_download_denied",
@@ -242,7 +270,7 @@ export async function POST(
       targetId: profileId,
       outcome: "success",
       metadata: {
-        matchId: match.id,
+        matchId,
         projectId,
         documentVersion: document.version,
       },

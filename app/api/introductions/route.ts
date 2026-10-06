@@ -8,7 +8,6 @@ import { userHasPaidAccess } from "@/lib/billing/paid-access";
 import { requireCurrentUser, type CurrentUser } from "@/lib/auth/current-user";
 import { contactInbox } from "@/lib/contact/messages";
 import { deliverEmail } from "@/lib/email/deliver";
-import { FreelancerProfileSchema } from "@/lib/domain";
 import { PLACEMENT_TERMS, placementRequestsEnabled } from "@/lib/placement/config";
 import {
   DAY_MS,
@@ -20,6 +19,7 @@ import {
 } from "@/lib/placement/guest-contact";
 import { placementRequestNotice } from "@/lib/placement/messages";
 import { freelancerContactEmail } from "@/lib/placement/requests";
+import { findShownProfile } from "@/lib/placement/shown-profile";
 import {
   assertSameOrigin,
   logEvent,
@@ -107,10 +107,11 @@ async function placementRequest(
   user: CurrentUser,
   admin: ReturnType<typeof createAdminSupabaseClient>,
   profile: { displayName: string; role: string },
-  matchId: string,
+  matchId: string | null,
   guest: GuestContact | null,
 ) {
   if (input.placementTermsVersion !== PLACEMENT_TERMS.version) {
+    logEvent("intro_request_rejected", { reason: "terms_not_accepted" });
     return NextResponse.json(
       { error: "Bitte stimmen Sie den Vermittlungsbedingungen zu." },
       { status: 409 },
@@ -128,6 +129,7 @@ async function placementRequest(
     .maybeSingle();
   if (profileError) throw profileError;
   if (!currentProfile) {
+    logEvent("intro_request_rejected", { reason: "profile_unavailable" });
     throw new Response("Dieses Profil ist aktuell nicht verfügbar.", { status: 409 });
   }
 
@@ -287,25 +289,22 @@ export async function POST(request: Request) {
     if (!project) throw new Response("Projekt nicht gefunden.", { status: 404 });
 
     // A contact can only be requested for a profile that was explicitly shown
-    // to this owner. The stored profile snapshot, not current AI output, drives
-    // the introduction state.
-    const { data: match, error: matchError } = await admin
-      .from("matches")
-      .select("id,profile_snapshot")
-      .eq("project_id", input.projectId)
-      .eq("owner_user_id", user.id)
-      .eq("freelancer_profile_id", input.profileId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (matchError) throw matchError;
-    if (!match) {
+    // to this owner: a ranked match or a partial match of the latest search.
+    // The stored profile snapshot, not current AI output, drives the
+    // introduction state.
+    const shown = await findShownProfile(admin, {
+      projectId: input.projectId,
+      ownerUserId: user.id,
+      profileId: input.profileId,
+    });
+    if (!shown) {
+      logEvent("intro_request_rejected", { reason: "profile_not_shown" });
       throw new Response("Dieses Profil gehört nicht zur angezeigten Auswahl.", {
         status: 409,
       });
     }
 
-    const profile = FreelancerProfileSchema.parse(match.profile_snapshot);
+    const { profile, matchId } = shown;
     // Im Vermittlungsmodell fragt an, wer nicht zahlt. Wer einen bezahlten
     // Tarif hat, bucht direkt — der Weg darunter, der vor dem Modell für alle
     // galt. Die Vorstellung steht trotzdem in `intro_bookings`.
@@ -313,7 +312,7 @@ export async function POST(request: Request) {
     const directForPaying = placement && !user.isAnonymous && (await userHasPaidAccess(user.id));
     if (placement && !directForPaying) {
       const guest = user.isAnonymous ? await guestContactFor(request, input, user, admin) : null;
-      return await placementRequest(input, user, admin, profile, match.id, guest);
+      return await placementRequest(input, user, admin, profile, matchId, guest);
     }
     const { data: currentProfile, error: profileError } = await admin
       .from("freelancer_profiles")
@@ -336,9 +335,10 @@ export async function POST(request: Request) {
     // Ein zahlender Kunde und ein Profil ohne Kalender oder mit Freigabe von
     // Hand: Dann stellt XPORTAL vor, wie bei allen anderen.
     if (directForPaying && (!freeIntroduction || !currentProfile?.booking_url)) {
-      return await placementRequest(input, user, admin, profile, match.id, null);
+      return await placementRequest(input, user, admin, profile, matchId, null);
     }
     if (!currentProfile) {
+      logEvent("intro_request_rejected", { reason: "profile_unavailable" });
       throw new Response("Dieses Profil ist aktuell nicht verfügbar.", {
         status: 409,
       });
@@ -355,7 +355,7 @@ export async function POST(request: Request) {
       project_id: input.projectId,
       owner_user_id: user.id,
       freelancer_profile_id: input.profileId,
-      match_id: match.id,
+      match_id: matchId,
       intro_policy_snapshot: freeIntroduction ? "free" : "manual_approval",
       status: freeIntroduction ? "ready_to_book" : "manual_review",
       booking_provider: freeIntroduction ? "calendly" : "manual",

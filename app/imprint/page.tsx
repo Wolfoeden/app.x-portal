@@ -31,7 +31,7 @@ export default function ImprintPage() {
         <section>
           <h2>Anbieter</h2>
           <p>
-            XPORTAL — 300, Inhaber Roman Dering<br />
+            XPORTAL — 300, Roman Dering<br />
             Einzelunternehmen
           </p>
           <p>

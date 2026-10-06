@@ -4,6 +4,7 @@ import type { FreelancerProfileResult } from "@/components/chat-contract";
 import { fetchRealProfilesByIds } from "@/lib/data/freelancers";
 import { fetchProfileLinks, fetchProjects, toDossierLinks, toDossierProject } from "@/lib/data/freelancer-projects";
 import { cardExtrasFor, fetchReferenceSummaries } from "@/lib/data/profile-extras";
+import { isContactLinkKind } from "@/lib/profile/contact-links";
 import type { ProfileLink, ProfileProject } from "@/lib/profile/project-limits";
 import { placementRequestsEnabled } from "@/lib/placement/config";
 import { presentSavedProfile } from "@/lib/presentation/chat";
@@ -33,6 +34,11 @@ export async function loadPublicProfileView(profileId: string): Promise<PublicPr
     fetchProjects(admin, [profile.id], { publicOnly: true }).catch(() => new Map<string, ProfileProject[]>()),
     fetchProfileLinks(admin, [profile.id]).catch(() => new Map<string, ProfileLink[]>()),
   ]);
+  const placement = placementRequestsEnabled();
+  // Im Vermittlungsmodell sind LinkedIn und GitHub ein direkter Weg zum
+  // Freelancer: Sie öffnen sich über die Kurzlinks im Suchergebnis, mit Abo.
+  // Auf der öffentlichen Seite stünden sie an der Abo-Grenze vorbei.
+  const publicLinks = (links.get(profile.id) ?? []).filter((link) => !placement || !isContactLinkKind(link.kind));
   const dossier = buildProfileDossier(
     profile,
     {
@@ -41,9 +47,9 @@ export async function loadPublicProfileView(profileId: string): Promise<PublicPr
       rate: presented.rate,
       referencesSummary: references.get(profile.id) ?? null,
       projects: (projects.get(profile.id) ?? []).map(toDossierProject),
-      links: toDossierLinks(links.get(profile.id) ?? []),
+      links: toDossierLinks(publicLinks),
     },
-    { placement: placementRequestsEnabled() },
+    { placement },
   );
   return { profile: { ...presented, ...cardExtrasFor(profile.id, references, projects) }, dossier };
 }

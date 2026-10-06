@@ -2,9 +2,11 @@ import "server-only";
 
 import type { SavedFreelancer } from "@/components/chat-contract";
 import type { CurrentUser } from "@/lib/auth/current-user";
+import { fetchProfileLinks } from "@/lib/data/freelancer-projects";
 import { fetchRealProfilesByIds } from "@/lib/data/freelancers";
 import { findOwnerForMember } from "@/lib/data/plan-teams";
 import { presentSavedProfile } from "@/lib/presentation/chat";
+import { contactLinkFlags } from "@/lib/profile/contact-links";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 /**
@@ -67,6 +69,8 @@ export async function loadSavedFreelancers(
     rows.map((row) => row.freelancer_id),
   );
   const byId = new Map(profiles.map((profile) => [profile.id, profile]));
+  // Nur ob LinkedIn und GitHub hinterlegt sind, für die Kurzlinks der Karte.
+  const links = await fetchProfileLinks(admin, profiles.map((profile) => profile.id)).catch(() => null);
 
   return rows
     .map((row) => {
@@ -74,7 +78,13 @@ export async function loadSavedFreelancers(
       // A profile withdrawn from the catalogue drops out rather than becoming
       // a card with no content. The row stays so it reappears if it returns.
       if (!profile) return null;
-      return { savedAt: row.created_at, profile: presentSavedProfile(profile) };
+      return {
+        savedAt: row.created_at,
+        profile: {
+          ...presentSavedProfile(profile),
+          ...(links ? { contactLinks: contactLinkFlags(links.get(profile.id) ?? []) } : {}),
+        },
+      };
     })
     .filter((entry): entry is SavedFreelancer => entry !== null);
 }

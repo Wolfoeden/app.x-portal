@@ -38,7 +38,8 @@ export const metadata = {
  * Bereich, während der Agent arbeitet.
  *
  * `credits` setzt den Kontostand, um die Knopfzustände durchzuspielen: genug
- * Guthaben und zu wenig (unter dem Preis einer Recherche).
+ * Guthaben und zu wenig (unter dem Preis einer Recherche). `plan=pro` zeigt
+ * die Karten wie für ein Konto mit Abo (Kurzlinks anklickbar).
  *
  * `scenario=automation` spielt die Anfrage „KI & Automatisierungen“ durch:
  * `ranked` mit zwei Empfehlungen, `partial` und `no_match` mit n8n als Muss
@@ -60,13 +61,17 @@ function resultState(value: string | string[] | undefined): PreviewState {
   return (key && STATES[key]) || "ranked";
 }
 
-function usageFixture(value: string | string[] | undefined) {
+function usageFixture(value: string | string[] | undefined, plan: string | string[] | undefined) {
   const raw = Array.isArray(value) ? value[0] : value;
-  if (raw === undefined || !/^\d+$/u.test(raw)) return previewUsage;
+  const planId = Array.isArray(plan) ? plan[0] : plan;
+  const withPlan = planId && /^[a-z_]{2,40}$/u.test(planId)
+    ? { credits: { ...previewUsage.credits, planId } }
+    : previewUsage;
+  if (raw === undefined || !/^\d+$/u.test(raw)) return withPlan;
   const remaining = Number(raw);
   return {
     credits: {
-      ...previewUsage.credits,
+      ...withPlan.credits,
       remaining,
       used: Math.max(0, previewUsage.credits.total - remaining),
       exhausted: remaining <= 0,
@@ -125,7 +130,7 @@ export default async function ChatPreviewPage({
               }
             : {}),
         },
-        usage: usageFixture(params.credits),
+        usage: usageFixture(params.credits, params.plan),
         resultState: state === "empty" ? "ranked" : state === "partial" ? "no_match" : state,
         showcase: agentShowcase,
         dossiers: previewDossiers,

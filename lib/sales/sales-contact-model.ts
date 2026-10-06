@@ -13,7 +13,7 @@
  */
 export const SALES_CONTACT = {
   name: "Roman Dering",
-  role: "Inhaber von XPORTAL",
+  role: "Product Manager",
   /** `freelancer_profiles.id` des Profils mit dem Foto. */
   profileId: "c314d7c4-4428-45ac-ba54-1a657b9f6b62",
 } as const;
