@@ -36,9 +36,10 @@ function aufruf(kind = "linkedin") {
   });
 }
 
+/** Pfad und Query einer Weiterleitung innerhalb der Seite, sonst die volle Adresse. */
 function ziel(response: Response) {
-  const location = response.headers.get("location") ?? "";
-  return location.startsWith("https://x-portal.eu") ? location.slice("https://x-portal.eu".length) : location;
+  const location = new URL(response.headers.get("location") ?? "", "https://invalid.example");
+  return location.origin === "https://x-portal.eu" ? `${location.pathname}${location.search}` : location.href;
 }
 
 beforeEach(() => {

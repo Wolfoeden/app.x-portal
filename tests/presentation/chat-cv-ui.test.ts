@@ -188,7 +188,11 @@ describe("Kurzlinks auf der Profilkarte", () => {
     expect(markup).toContain('href="/api/freelancers/profile/cv-test/book"');
     expect(markup).toContain("GitHub: Nicht hinterlegt");
     expect(markup.match(/aria-disabled="true"/gu)).toHaveLength(1);
-    expect(markup).not.toContain("linkedin.com");
+    // Die einzigen Ziele sind die eigenen Routen; keine Adresse des Freelancers.
+    expect(markup.match(/href="[^"]*"/gu)).toEqual([
+      'href="/api/freelancers/profile/cv-test/link?kind=linkedin"',
+      'href="/api/freelancers/profile/cv-test/book"',
+    ]);
   });
 
   it("öffnet ohne Vermittlungsmodell, wie bisher Kalender und Lebenslauf, mit Konto", () => {
