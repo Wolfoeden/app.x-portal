@@ -311,12 +311,11 @@ export default function PrivacyPage() {
           <h2>8. Cookies und Sitzungsspeicher</h2>
           <div>
             <p>
-              XPORTAL verwendet derzeit keine Analyse- oder Marketingcookies.
               Folgende Speicherungen dienen ausschließlich Anmeldung,
               Sicherheit, Funktionsfähigkeit und Ihrer Auswahl:
             </p>
             <ul>
-              <li><code>xportal_cookie_consent</code>: speichert Ihre Auswahl für 180 Tage.</li>
+              <li><code>xportal_cookie_consent</code>: speichert Ihre Auswahl, auch eine Ablehnung, für 180 Tage.</li>
               <li><code>sb-…</code>: Cookies des Authentifizierungsdienstes für Gast- oder Kontositzungen; Laufzeit entsprechend der jeweiligen Sitzung.</li>
               <li><code>xportal_guest_claim</code>: einmaliger, HTTP-only geschützter Übertragungsnachweis für maximal 30 Minuten.</li>
               <li><code>xportal_email_auth_state</code>: HTTP-only Sicherheitsstatus für E-Mail-Links, maximal eine Stunde.</li>
@@ -325,12 +324,30 @@ export default function PrivacyPage() {
             <p>
               Diese Speicherungen sind für ausdrücklich angeforderte Funktionen
               erforderlich und werden auf § 25 Abs. 2 Nr. 2 TDDDG gestützt. Eine
-              Einwilligung ist dafür nicht erforderlich, und wir holen auch
-              keine ein: Der Hinweis beim ersten Besuch ist eine Kenntnisnahme,
-              keine Auswahl — es gibt derzeit keinen optionalen Dienst, den sie
-              aktivieren könnte. Sollte künftig einer hinzukommen, wird zuvor
-              eine neue, konkrete Einwilligung eingeholt, und er wird nicht
-              geladen, bevor sie vorliegt.
+              Einwilligung ist dafür nicht erforderlich.
+            </p>
+            <p>
+              <strong>Werbemessung, nur mit Ihrer Einwilligung.</strong> Wenn
+              Sie beim ersten Besuch oder in den Cookie-Einstellungen „Alle
+              akzeptieren“ wählen, laden wir das Mess-Skript eines Anbieters
+              von Online-Werbung (siehe Abschnitt 9). Es misst, ob ein Besuch
+              über eine unserer Anzeigen kam und ob danach etwa eine
+              Registrierung folgte, damit wir unsere Werbung danach ausrichten
+              können. Dafür werden Ihre IP-Adresse, Angaben zu Browser und
+              Gerät, die aufgerufene Seite, die verweisende Seite und eine
+              Klickkennung aus der Anzeige übermittelt, und es werden Cookies
+              gesetzt, insbesondere <code>_gcl_au</code> und weitere{" "}
+              <code>_gcl_…</code>, mit einer Laufzeit von bis zu 90 Tagen. Ohne
+              Ihre Einwilligung wird das Skript nicht geladen; auf den
+              Betreiberseiten nie.
+            </p>
+            <p>
+              Rechtsgrundlage ist Ihre Einwilligung nach § 25 Abs. 1 TDDDG und
+              Art. 6 Abs. 1 lit. a DSGVO. Sie können sie jederzeit mit Wirkung
+              für die Zukunft über „Cookie-Einstellungen verwalten“ widerrufen;
+              dabei löschen wir die genannten Cookies auf dieser Website. Die
+              Ablehnung hat keine Nachteile: Alle Funktionen von XPORTAL bleiben
+              nutzbar.
             </p>
             <CookieSettingsButton className={actionClass("primary", { className: "contact-submit" })} />
           </div>
@@ -395,6 +412,16 @@ export default function PrivacyPage() {
                 Deutschland für Transaktionsnachrichten wie Bestätigung,
                 Anmeldung oder Wiederherstellung; die Verarbeitung findet
                 innerhalb der EU statt;
+              </li>
+              <li>
+                ein <strong>Anbieter von Online-Werbung</strong> zur
+                Conversion-Messung mit Sitz in Irland, nur nach Ihrer
+                Einwilligung (Abschnitt 8). Er erhält IP-Adresse, Browser- und
+                Geräteangaben, die aufgerufene Seite und die Klickkennung einer
+                Anzeige und verarbeitet sie auch in eigener Verantwortung. Daten
+                werden an das Mutterunternehmen in den USA übermittelt; dies ist
+                eine Übermittlung in ein Drittland auf Grundlage des EU-US Data
+                Privacy Framework beziehungsweise von Standardvertragsklauseln;
               </li>
               <li>
                 ein <strong>Dienstleister zur Abwehr automatisierter
@@ -516,7 +543,7 @@ export default function PrivacyPage() {
           </div>
         </section>
 
-        <p className="xlegal-updated">Stand: 5. Oktober 2026</p>
+        <p className="xlegal-updated">Stand: 6. Oktober 2026</p>
       </main>
 
       <PublicFooter />

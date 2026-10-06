@@ -21,6 +21,22 @@ function directive(policy: string, name: string): string | undefined {
  */
 const HCAPTCHA_SOURCES = ["https://hcaptcha.com", "https://*.hcaptcha.com"];
 
+/**
+ * Oktober 2026: das Google-Ads-Tag, geladen erst nach Einwilligung
+ * (components/GoogleAdsTag.tsx). Ebenfalls eine feste Liste, keine Endung.
+ */
+const GOOGLE_ADS_SCRIPT_SOURCES = [
+  "https://www.googletagmanager.com",
+  "https://www.googleadservices.com",
+  "https://www.google.com",
+  "https://googleads.g.doubleclick.net",
+];
+const GOOGLE_ADS_FRAME_SOURCES = [
+  "https://td.doubleclick.net",
+  "https://bid.g.doubleclick.net",
+  "https://www.googletagmanager.com",
+];
+
 describe("content security policy", () => {
   it("keeps the enforced policy on 'unsafe-inline' until the nonce rollout flips", () => {
     const scriptSrc =
@@ -28,14 +44,14 @@ describe("content security policy", () => {
 
     expect(scriptSrc).toContain("'unsafe-inline'");
     expect(scriptSrc).toContain("'self'");
-    // Ausser hCaptcha kommt keine fremde Herkunft dazu.
+    // Ausser hCaptcha und dem Google-Ads-Tag kommt keine fremde Herkunft dazu.
     expect(scriptSrc).not.toContain("'strict-dynamic'");
     expect(
       scriptSrc
         .replace("script-src ", "")
         .split(" ")
         .filter((source) => source.startsWith("https://")),
-    ).toEqual(HCAPTCHA_SOURCES);
+    ).toEqual([...HCAPTCHA_SOURCES, ...GOOGLE_ADS_SCRIPT_SOURCES]);
   });
 
   it("replaces 'unsafe-inline' with the nonce instead of adding to it", () => {
@@ -62,12 +78,13 @@ describe("content security policy", () => {
   });
 
   /**
-   * Frueher stand hier `frame-src 'none'`. Eingebettet wird jetzt hCaptcha —
-   * und ausschliesslich das. Abschnitt 6 der Datenschutzhinweise sagt zu, dass
+   * Frueher stand hier `frame-src 'none'`. Eingebettet werden jetzt hCaptcha
+   * und, nach Einwilligung, die Zuordnungsframes des Google-Ads-Tags — und
+   * nichts sonst. Abschnitt 6 der Datenschutzhinweise sagt zu, dass
    * Buchungsseiten erst nach einem Klick und in einem eigenen Aufruf geladen
    * werden; diese Zusage haelt der Test weiter fest.
    */
-  it("embeds hCaptcha and nothing else", () => {
+  it("embeds hCaptcha and the Google Ads frames, nothing else", () => {
     const policy = buildContentSecurityPolicy({ isProduction: true });
     const frameSrc = directive(policy, "frame-src") ?? "";
 
@@ -79,7 +96,10 @@ describe("content security policy", () => {
     // gegen eine feste Liste und nicht gegen eine Endung: "endet auf
     // hcaptcha.com" traefe auch auf "evil-hcaptcha.com" zu.
     expect(frameSrc).not.toContain("'self'");
-    expect(frameSrc.replace("frame-src ", "").split(" ")).toEqual(HCAPTCHA_SOURCES);
+    expect(frameSrc.replace("frame-src ", "").split(" ")).toEqual([
+      ...HCAPTCHA_SOURCES,
+      ...GOOGLE_ADS_FRAME_SOURCES,
+    ]);
   });
 
   it("reaches hCaptcha for the script, the frame and the answer", () => {
@@ -90,6 +110,15 @@ describe("content security policy", () => {
     expect(directive(enforced, "script-src")).toContain("hcaptcha.com");
     expect(directive(enforced, "connect-src")).toContain("hcaptcha.com");
     expect(directive(enforced, "frame-src")).toContain("hcaptcha.com");
+  });
+
+  it("reaches the Google Ads tag for the script and its conversion pings", () => {
+    const enforced = buildContentSecurityPolicy({ isProduction: true });
+
+    expect(directive(enforced, "script-src")).toContain("https://www.googletagmanager.com");
+    expect(directive(enforced, "connect-src")).toContain("https://www.googleadservices.com");
+    expect(directive(enforced, "connect-src")).toContain("https://googleads.g.doubleclick.net");
+    expect(directive(enforced, "img-src")).toContain("https:");
   });
 
   it("keeps the hard boundaries in every variant", () => {

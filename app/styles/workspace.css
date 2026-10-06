@@ -4459,6 +4459,11 @@ a.secondary-action {
 .cookie-layer:not(.is-settings) .cookie-actions { justify-content: flex-end; }
 .cookie-layer:not(.is-settings) .cookie-actions button { min-height: 36px; border-radius: var(--radius-sm); }
 .cookie-layer:not(.is-settings) .cookie-actions button.is-primary { border-color: var(--ink); background: var(--ink); color: #fff; -webkit-text-fill-color: #fff; }
+/* Echte Wahl (Werbemessung): Ablehnen und Zustimmen sehen gleich aus und sind
+   gleich groß. Ein hervorgehobenes „Alle akzeptieren“ neben einem blassen
+   „Ablehnen“ lenkt die Entscheidung — das soll die Einwilligung nicht. */
+.cookie-actions button.is-choice { flex: 1 1 0; border-color: white; background: white; color: #090909; -webkit-text-fill-color: #090909; }
+.cookie-layer:not(.is-settings) .cookie-actions button.is-choice { border-color: var(--ink); background: var(--ink); color: #fff; -webkit-text-fill-color: #fff; }
 @media (max-width: 520px) {
   .cookie-layer:not(.is-settings) { width: 100%; padding: 10px; }
 }

@@ -29,6 +29,43 @@ describe("production privacy and authentication configuration", () => {
     }
   });
 
+  // Oktober 2026: das Google-Ads-Tag. Die ID steht nur in der Produktion,
+  // Deploy-Vorschauen messen nicht und behalten die Kenntnisnahme.
+  it("sets the Google Ads ID only in the Netlify production context", () => {
+    const netlify = repositoryFile("netlify.toml");
+    const production = netlify.split("[context.production.environment]")[1]?.split("[[plugins]]")[0];
+
+    expect(production).toContain('NEXT_PUBLIC_GOOGLE_ADS_ID = "AW-10826269095"');
+    expect(netlify.split("[context.production.environment]")[0]).not.toContain("NEXT_PUBLIC_GOOGLE_ADS_ID");
+  });
+
+  /**
+   * Die Einwilligung muss informiert und frei sein: Das Banner nennt den
+   * Dienst und die USA-Übermittlung, und Ablehnen ist so leicht und so
+   * sichtbar wie Zustimmen (gleiche Klasse, gleiche Gestaltung).
+   */
+  it("asks for ad measurement with equal-weight accept and reject", () => {
+    const banner = repositoryFile("components/CookieConsent.tsx");
+    const css = repositoryFile("app/styles/workspace.css");
+
+    expect(banner).toContain("Google Ads");
+    expect(banner).toContain("in die USA");
+    expect(banner).toContain("widerrufen");
+    expect(banner.match(/className="is-choice"/gu)).toHaveLength(2);
+    expect(banner).toContain("Optionale ablehnen");
+    expect(banner).toContain("Alle akzeptieren");
+    expect(css).toMatch(/\.cookie-actions button\.is-choice\s*\{[^}]*flex: 1 1 0/u);
+  });
+
+  it("describes ad measurement in the privacy notice without naming the company", () => {
+    const privacyPage = repositoryFile("app/privacy/page.tsx");
+
+    for (const requiredText of ["Werbemessung", "Anbieter von Online-Werbung", "§ 25 Abs. 1 TDDDG", "Art. 6 Abs. 1 lit. a DSGVO", "_gcl_au", "widerrufen"]) {
+      expect(privacyPage).toContain(requiredText);
+    }
+    expect(privacyPage).not.toContain("keine Analyse- oder Marketingcookies");
+  });
+
   it("keeps the primary cookie action readable outside the landing-page scope", () => {
     const css = repositoryFile("app/styles/workspace.css");
     const rule = css.match(/\.cookie-actions button\.is-primary\s*\{([^}]*)\}/u)?.[1];
