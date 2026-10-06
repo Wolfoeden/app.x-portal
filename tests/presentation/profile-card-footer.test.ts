@@ -64,17 +64,19 @@ describe("profile card footer", () => {
     expect(markup).toContain("Erstgespräch vereinbaren");
   });
 
-  it("keeps CV and contact methods with the full profile and only the meeting and Merken below", () => {
+  // Oktober 2026: Lebenslauf, LinkedIn, GitHub und Kalender stehen als
+  // Kurzlinks rechts in der Knopfzeile, nicht mehr im aufgeklappten Profil.
+  it("keeps contact methods with the full profile and the meeting, Merken and shortcuts below", () => {
     const markup = render(profile());
     const footer = markup.slice(markup.indexOf('<footer class="profile-footer">'));
 
-    for (const label of ["Lebenslauf herunterladen", "Zur Merkliste", "Kontaktwege anzeigen"]) {
-      expect(markup).toContain(label);
-    }
+    expect(markup).toContain("Kontaktwege anzeigen");
+    expect(footer).not.toContain("Kontaktwege anzeigen");
     expect(footer).toContain("Erstgespräch vereinbaren");
     expect(footer).toContain("Merken");
-    expect(footer).not.toContain("Kontaktwege anzeigen");
-    expect(footer).not.toContain("Lebenslauf");
+    expect(footer).toContain("Lebenslauf von Ada Beispiel herunterladen");
+    expect(footer.indexOf("Merken")).toBeLessThan(footer.indexOf("profile-shortcuts"));
+    expect(markup.match(/class="profile-shortcut"/gu)).toHaveLength(4);
   });
 
   // Die Reihenfolge im Markup ist die Tab-Reihenfolge; sie darf nicht erst per

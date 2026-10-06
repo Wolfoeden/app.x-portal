@@ -1,12 +1,14 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   bookingActionState,
   cvActionState,
+  DirectBookingContext,
   navigateToCvDownload,
   ProfileCard,
+  profileShortcutStates,
   requestFreelancerCvDownload,
 } from "@/components/chat/results";
 import { normalizeCvAccess } from "@/components/ChatWorkspace";
@@ -50,22 +52,41 @@ function profile(
 function renderProfile(
   value: FreelancerProfileResult,
   isAccountUser: boolean,
+  options: { paid?: boolean; projectId?: string | null } = {},
 ): string {
-  return renderToStaticMarkup(createElement(ProfileCard, {
+  const card = createElement(ProfileCard, {
     profile: value,
     position: 1,
     isAccountUser,
-    projectId: "project 123",
+    projectId: options.projectId === undefined ? "project 123" : options.projectId,
     selected: false,
     onSelect: () => undefined,
     onContact: () => undefined,
     onRequestBooking: () => undefined,
-      saved: false,
-      onToggleSave: () => undefined,
-  }));
+    saved: false,
+    onToggleSave: () => undefined,
+  });
+  return renderToStaticMarkup(
+    createElement(DirectBookingContext.Provider, { value: options.paid ?? false }, card),
+  );
+}
+
+/** Nur die Kurzlinks rechts neben „Freelancer anfragen“. */
+function shortcuts(markup: string): string {
+  const start = markup.indexOf('<div class="profile-shortcuts"');
+  expect(start).toBeGreaterThan(-1);
+  return markup.slice(start, markup.indexOf("</div>", start));
+}
+
+/** Produktion: Vermittlungsmodell an, die Kurzlinks brauchen ein Abo. */
+function inPlacementModel() {
+  beforeEach(() => vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true"));
+  afterEach(() => vi.unstubAllEnvs());
 }
 
 describe("recommended profile CV affordance", () => {
+  inPlacementModel();
+
   it("keeps historical responses safely backward compatible", () => {
     expect(normalizeCvAccess(undefined)).toBe("forbidden");
     expect(cvActionState({}, true)).toEqual({
@@ -87,45 +108,36 @@ describe("recommended profile CV affordance", () => {
       disabled: true,
     });
 
-    const markup = renderProfile(profile("missing"), false);
-    expect(markup).toContain("Lebenslauf nur mit Konto");
-    expect(markup).not.toContain("Kein Lebenslauf hinterlegt");
+    // Selbst mit Abo-Kontext: Ein Gast erfährt nicht, ob es einen gibt.
+    const markup = shortcuts(renderProfile(profile("missing"), false, { paid: true }));
+    expect(markup).toContain("Lebenslauf: Mit Abo direkt erreichbar");
+    expect(markup).not.toContain("Nicht hinterlegt");
   });
 
-  it("enables an available CV only for account users", () => {
-    const markup = renderProfile(profile("available"), true);
+  it("enables an available CV only for paying account users", () => {
     expect(cvActionState(profile("available"), true).disabled).toBe(false);
-    expect(markup).toContain("Lebenslauf herunterladen");
-    expect(markup).not.toMatch(/cv-action[^>]*disabled/u);
+    const paid = shortcuts(renderProfile(profile("available"), true, { paid: true }));
+    expect(paid).toContain('aria-label="Lebenslauf von Ada Beispiel herunterladen"');
+    const free = shortcuts(renderProfile(profile("available"), true));
+    expect(free).toContain("Lebenslauf: Mit Abo direkt erreichbar");
+    expect(free).not.toContain("herunterladen");
   });
 
   it("keeps an otherwise available CV blocked without a project context", () => {
-    const markup = renderToStaticMarkup(createElement(ProfileCard, {
-      profile: profile("available"),
-      position: 1,
-      isAccountUser: true,
-      projectId: null,
-      selected: false,
-      onSelect: () => undefined,
-      onContact: () => undefined,
-      onRequestBooking: () => undefined,
-      saved: false,
-      onToggleSave: () => undefined,
-    }));
-    expect(markup).toMatch(/cv-action[^>]*disabled/u);
+    const markup = shortcuts(renderProfile(profile("available"), true, { paid: true, projectId: null }));
+    expect(markup).toContain("Lebenslauf: Im Projekt verfügbar");
   });
 
-  it("shows the explicit missing state to account users", () => {
-    const markup = renderProfile(profile("missing"), true);
-    expect(markup).toContain("Kein Lebenslauf hinterlegt");
-    expect(markup).not.toMatch(/cv-action[^>]*disabled/u);
+  it("shows the explicit missing state to paying account users", () => {
+    const markup = shortcuts(renderProfile(profile("missing"), true, { paid: true }));
+    expect(markup).toContain("Lebenslauf: Nicht hinterlegt");
   });
 
   it("renders the CV control on a partial card too", () => {
-    const markup = renderProfile(profile("available", "partial"), true);
+    const markup = renderProfile(profile("available", "partial"), true, { paid: true });
     // Shown as not recommended, but the reader can still read the CV and
     // decide for themselves.
-    expect(markup).toContain("Lebenslauf herunterladen");
+    expect(markup).toContain("Lebenslauf von Ada Beispiel herunterladen");
     expect(markup).toContain("Nicht empfohlen");
     expect(markup).toContain("Kontakt auf eigene Entscheidung");
     expect(markup).toContain("Kontaktwege anzeigen");
@@ -150,6 +162,60 @@ describe("recommended profile CV affordance", () => {
     // Ein Teiltreffer steht ausdruecklich als "nicht empfohlen" da; ein
     // gruener Puls daneben saegte genau das wieder ab.
     expect(renderProfile(profile("available", "partial"), true)).not.toContain("is-highlight");
+  });
+});
+
+// Oktober 2026: LinkedIn, GitHub, Lebenslauf und Kalender rechts neben
+// „Freelancer anfragen“. Ohne Abo ausgegraut, mit Abo anklickbar.
+describe("Kurzlinks auf der Profilkarte", () => {
+  inPlacementModel();
+  const withLinks = { ...profile("available"), contactLinks: { linkedin: true, github: false } };
+
+  it("zeigt ohne Abo alle vier ausgegraut und ohne Ziel", () => {
+    for (const markup of [shortcuts(renderProfile(withLinks, true)), shortcuts(renderProfile(withLinks, false))]) {
+      expect(markup.match(/class="profile-shortcut"/gu)).toHaveLength(4);
+      expect(markup.match(/aria-disabled="true"/gu)).toHaveLength(4);
+      expect(markup).not.toContain("href=");
+      for (const label of ["LinkedIn", "GitHub", "Lebenslauf", "Kalender"]) {
+        expect(markup).toContain(`${label}: Mit Abo direkt erreichbar`);
+      }
+    }
+  });
+
+  it("macht mit Abo anklickbar, was hinterlegt ist, und verrät keine Adresse", () => {
+    const markup = shortcuts(renderProfile(withLinks, true, { paid: true }));
+    expect(markup).toContain('href="/api/freelancers/profile/cv-test/link?kind=linkedin"');
+    expect(markup).toContain('href="/api/freelancers/profile/cv-test/book"');
+    expect(markup).toContain("GitHub: Nicht hinterlegt");
+    expect(markup.match(/aria-disabled="true"/gu)).toHaveLength(1);
+    // Die einzigen Ziele sind die eigenen Routen; keine Adresse des Freelancers.
+    expect(markup.match(/href="[^"]*"/gu)).toEqual([
+      'href="/api/freelancers/profile/cv-test/link?kind=linkedin"',
+      'href="/api/freelancers/profile/cv-test/book"',
+    ]);
+  });
+
+  it("öffnet ohne Vermittlungsmodell, wie bisher Kalender und Lebenslauf, mit Konto", () => {
+    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "false");
+    expect(shortcuts(renderProfile(withLinks, true))).toContain('href="/api/freelancers/profile/cv-test/link?kind=linkedin"');
+    expect(shortcuts(renderProfile(withLinks, false))).toContain("LinkedIn: Nur mit Konto");
+  });
+
+  it("leitet die Zustände nur aus Abo und Vorhandensein ab", () => {
+    const states = profileShortcutStates({
+      unlocked: true,
+      lockedHint: "Mit Abo direkt erreichbar",
+      contactLinks: undefined,
+      hasCalendar: false,
+      cvAccess: "forbidden",
+      hasProject: true,
+    });
+    expect(states.map((state) => [state.kind, state.enabled, state.hint])).toEqual([
+      ["linkedin", false, "Nicht hinterlegt"],
+      ["github", false, "Nicht hinterlegt"],
+      ["cv", false, "Nicht verfügbar"],
+      ["calendar", false, "Nicht hinterlegt"],
+    ]);
   });
 });
 

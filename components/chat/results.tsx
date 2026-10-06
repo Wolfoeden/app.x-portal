@@ -64,10 +64,13 @@ import {
   IconAlertCircle,
   IconArrowRight,
   IconArrowUpRight,
+  IconCalendar,
   IconCheck,
   IconChevronDown,
   IconDocument,
+  IconGithub,
   IconInfo,
+  IconLinkedin,
   IconMaximize,
   IconMinimize,
   IconSearch,
@@ -1073,6 +1076,137 @@ export function bookingActionState(
   };
 }
 
+export type ProfileShortcutKind = "linkedin" | "github" | "cv" | "calendar";
+
+export type ProfileShortcutState = {
+  kind: ProfileShortcutKind;
+  label: string;
+  enabled: boolean;
+  /** Tooltip: was der Klick tut oder warum es ihn nicht gibt. */
+  hint: string;
+};
+
+const SHORTCUT_LABELS: Record<ProfileShortcutKind, { label: string; action: string }> = {
+  linkedin: { label: "LinkedIn", action: "LinkedIn-Profil öffnen" },
+  github: { label: "GitHub", action: "GitHub-Profil öffnen" },
+  cv: { label: "Lebenslauf", action: "Lebenslauf herunterladen" },
+  calendar: { label: "Kalender", action: "Termin im Kalender wählen" },
+};
+
+/**
+ * Die vier Kurzlinks rechts neben „Freelancer anfragen“: LinkedIn, GitHub,
+ * Lebenslauf, Kalender. Im Vermittlungsmodell anklickbar nur mit Abo
+ * (`directBooking`), sonst ausgegraut, auch für Gäste; ohne das Modell, wie
+ * Kalender und Lebenslauf bisher, mit Konto. Die Routen dahinter prüfen
+ * dasselbe noch einmal — die Karte kennt keine Adressen, nur ob es sie gibt.
+ */
+export function profileShortcutStates(input: {
+  /** Abo im Vermittlungsmodell, sonst ein Konto. */
+  unlocked: boolean;
+  /** Warum gesperrt: „Mit Abo direkt erreichbar“ oder „Nur mit Konto“. */
+  lockedHint: string;
+  contactLinks?: { linkedin: boolean; github: boolean };
+  hasCalendar: boolean;
+  cvAccess?: CvAccess;
+  hasProject: boolean;
+}): ProfileShortcutState[] {
+  const present: Record<ProfileShortcutKind, boolean> = {
+    linkedin: input.contactLinks?.linkedin ?? false,
+    github: input.contactLinks?.github ?? false,
+    cv: input.cvAccess === "available",
+    calendar: input.hasCalendar,
+  };
+  return (["linkedin", "github", "cv", "calendar"] as const).map((kind) => {
+    const { label, action } = SHORTCUT_LABELS[kind];
+    if (!input.unlocked) return { kind, label, enabled: false, hint: input.lockedHint };
+    if (!present[kind]) {
+      return { kind, label, enabled: false, hint: kind === "cv" && input.cvAccess === "forbidden" ? "Nicht verfügbar" : "Nicht hinterlegt" };
+    }
+    if (kind === "cv" && !input.hasProject) return { kind, label, enabled: false, hint: "Im Projekt verfügbar" };
+    return { kind, label, enabled: true, hint: action };
+  });
+}
+
+const SHORTCUT_ICONS: Record<ProfileShortcutKind, (props: { size?: number }) => ReactNode> = {
+  linkedin: IconLinkedin,
+  github: IconGithub,
+  cv: IconDocument,
+  calendar: IconCalendar,
+};
+
+function ProfileShortcuts({
+  profileId,
+  displayName,
+  states,
+  cvBusy,
+  onDownloadCv,
+  onOpenCalendar,
+}: {
+  profileId: string;
+  displayName: string;
+  states: ProfileShortcutState[];
+  cvBusy: boolean;
+  onDownloadCv: () => void;
+  onOpenCalendar: () => void;
+}) {
+  return (
+    <div className="profile-shortcuts" role="group" aria-label={`Direkt zu ${displayName}`}>
+      {states.map((state) => {
+        const Icon = SHORTCUT_ICONS[state.kind];
+        if (!state.enabled) {
+          // aria-disabled statt disabled: Der Tooltip bleibt sichtbar und der
+          // Grund vorlesbar.
+          return (
+            <button
+              key={state.kind}
+              className="profile-shortcut"
+              type="button"
+              aria-disabled="true"
+              aria-label={`${state.label}: ${state.hint}`}
+              title={state.hint}
+            >
+              <Icon size={15} />
+            </button>
+          );
+        }
+        if (state.kind === "cv") {
+          return (
+            <button
+              key={state.kind}
+              className="profile-shortcut"
+              type="button"
+              aria-label={`Lebenslauf von ${displayName} herunterladen`}
+              aria-busy={cvBusy}
+              title={cvBusy ? "Lebenslauf wird vorbereitet …" : state.hint}
+              onClick={onDownloadCv}
+            >
+              <Icon size={15} />
+            </button>
+          );
+        }
+        const href =
+          state.kind === "calendar"
+            ? `/api/freelancers/${profileId}/book`
+            : `/api/freelancers/${profileId}/link?kind=${state.kind}`;
+        return (
+          <a
+            key={state.kind}
+            className="profile-shortcut"
+            href={appPath(href)}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`${state.label} von ${displayName}`}
+            title={state.hint}
+            onClick={state.kind === "calendar" ? onOpenCalendar : undefined}
+          >
+            <Icon size={15} />
+          </a>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Says only what the row's name does not: another wording, a check, a gap. */
 function evidenceDetail(row: RequirementEvidence): string | null {
   if (row.status === "missing") return "Nicht im Profil aufgeführt";
@@ -1128,7 +1262,16 @@ export function ProfileCard({
     }));
   const cvAction = cvActionState(profile, isAccountUser);
   const directBooking = useContext(DirectBookingContext);
-  const bookingAction = bookingActionState(profile, isAccountUser, placementRequestsEnabled(), directBooking);
+  const placement = placementRequestsEnabled();
+  const bookingAction = bookingActionState(profile, isAccountUser, placement, directBooking);
+  const shortcutStates = profileShortcutStates({
+    unlocked: placement ? directBooking && isAccountUser : isAccountUser,
+    lockedHint: placement ? "Mit Abo direkt erreichbar" : "Nur mit Konto",
+    contactLinks: profile.contactLinks,
+    hasCalendar: Boolean(profile.bookingUrl),
+    cvAccess: cvAction.kind,
+    hasProject: Boolean(projectId),
+  });
   const [cvDownloadState, setCvDownloadState] = useState<"idle" | "loading" | "error">("idle");
   const [cvDownloadError, setCvDownloadError] = useState<string | null>(null);
   const cardRef = useProfileImpression(profile, projectId);
@@ -1332,28 +1475,6 @@ export function ProfileCard({
         ) : null}
 
         <div className="profile-actions profile-more-actions">
-          <div className="cv-action-group">
-            {cvAction.kind === "available" ? (
-              <button
-                className="secondary-action cv-action"
-                type="button"
-                disabled={!projectId || cvDownloadState === "loading"}
-                aria-busy={cvDownloadState === "loading"}
-                aria-describedby={cvDownloadError ? `cv-error-${profile.id}` : undefined}
-                onClick={downloadCv}
-              >
-                <IconDocument size={13} />
-                {cvDownloadState === "loading" ? "Lebenslauf wird vorbereitet …" : cvAction.label}
-              </button>
-            ) : (
-              <span className="profile-action-status"><IconDocument size={13} /> {cvAction.label}</span>
-            )}
-            {cvDownloadError ? (
-              <p className="cv-download-status is-error" id={`cv-error-${profile.id}`} role="alert">
-                {cvDownloadError}
-              </p>
-            ) : null}
-          </div>
           <button className="secondary-action" type="button" onClick={selected ? onContact : onSelect}>Kontaktwege anzeigen</button>
           <ProfileShare profileId={profile.id} projectId={projectId} />
         </div>
@@ -1413,7 +1534,20 @@ export function ProfileCard({
               >
                 {saved ? <><IconCheck size={13} /> Gemerkt</> : "Merken"}
               </button>
+              <ProfileShortcuts
+                profileId={profile.id}
+                displayName={profile.displayName}
+                states={shortcutStates}
+                cvBusy={cvDownloadState === "loading"}
+                onDownloadCv={() => void downloadCv()}
+                onOpenCalendar={onRequestBooking}
+              />
           </div>
+          {cvDownloadError ? (
+            <p className="cv-download-status is-error" role="alert">
+              {cvDownloadError}
+            </p>
+          ) : null}
           <p className="profile-booking-hint">{bookingAction.hint}</p>
           {onDismiss ? <ProfileDismiss displayName={profile.displayName} onDismiss={onDismiss} /> : null}
         </footer>

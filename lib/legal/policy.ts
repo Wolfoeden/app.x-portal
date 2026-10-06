@@ -75,7 +75,7 @@ export const BUSINESS_ONLY_NOTICE =
  * getrennt, sonst entsteht die Bandwurmzeile, die den alten Fuß so
  * unleserlich gemacht hat.
  */
-export const PROVIDER_NAME = "XPORTAL — Inhaber Roman Dering";
+export const PROVIDER_NAME = "XPORTAL — Roman Dering, Einzelunternehmen";
 
 /** Die Anschrift in Teilen, für strukturierte Daten (lib/structured-data.ts). */
 export const PROVIDER_POSTAL_ADDRESS = {

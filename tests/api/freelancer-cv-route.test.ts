@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type ProjectRow = { id: string; brief_status: string };
-type ShortlistRow = { id: string; result_status: string | null };
+type ShortlistRow = { id: string; result_status: string | null; partial_matches_snapshot?: unknown };
 type MatchRow = { id: string; evaluation_snapshot: unknown };
 
 const mocks = vi.hoisted(() => ({
@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   info: vi.fn(),
   limitCalls: [] as Array<[string, number]>,
   match: null as MatchRow | null,
+  /** Abo, Vorstellung oder Betreiber: darf dieses Konto direkt zum Freelancer? */
+  allowed: vi.fn(),
   orderCalls: [] as Array<[
     string,
     string,
@@ -28,6 +30,9 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/lib/audit/write", () => ({ writeAuditEvent: mocks.audit }));
 vi.mock("@/lib/auth/current-user", () => ({
   requireCurrentUser: mocks.requireUser,
+}));
+vi.mock("@/lib/placement/requests", () => ({
+  placementBookingAllowed: mocks.allowed,
 }));
 vi.mock("@/lib/data/freelancer-cvs", async (importOriginal) => {
   const actual = await importOriginal<
@@ -86,7 +91,9 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 
 import { POST } from "@/app/api/freelancers/[id]/cv/route";
+import { applyBriefPatch, buildShortlist, parseFallbackBrief } from "@/lib/domain";
 import { resetRateLimitsForTests } from "@/lib/security/rate-limit";
+import { profileFixtures } from "../domain/fixtures";
 
 const USER_ID = "10000000-0000-4000-8000-000000000001";
 const PROFILE_ID = "20000000-0000-4000-8000-000000000001";
@@ -166,6 +173,7 @@ beforeEach(() => {
     isAdmin: false,
   });
   mocks.audit.mockResolvedValue("trace-id");
+  mocks.allowed.mockResolvedValue(true);
   mocks.project = { id: PROJECT_ID, brief_status: "ready" };
   mocks.shortlist = { id: SHORTLIST_ID, result_status: "ranked" };
   mocks.match = {
@@ -200,6 +208,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   delete process.env.SUPABASE_SERVICE_ROLE_KEY;
   delete process.env.NEXT_PUBLIC_SUPABASE_URL;
   delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -400,6 +409,72 @@ describe("POST /api/freelancers/[id]/cv", () => {
     // reader's to make. Only an absent or unrecognised role fails closed.
     expect(response.status).toBe(200);
     expect(mocks.fetchDocument).toHaveBeenCalled();
+  });
+
+  // Oktober 2026: Ein Teiltreffer steht nur im Snapshot der Shortlist, nicht
+  // in `matches`. Die Karte bot den Lebenslauf an, die Route lehnte ab.
+  it("authorizes a partial match that exists only in the latest shortlist snapshot", async () => {
+    const brief = applyBriefPatch(
+      parseFallbackBrief("Muss-Anforderungen:\n- React\n- C++\n100% remote", {
+        now: new Date("2026-08-13T12:00:00.000Z"),
+      }),
+      { requiredSkills: ["React", "C++"], workMode: "remote" },
+    );
+    const partials = buildShortlist(brief, [profileFixtures[0]!]).partialMatches;
+    mocks.shortlist = {
+      id: SHORTLIST_ID,
+      result_status: "no_reliable_match",
+      partial_matches_snapshot: partials,
+    };
+    mocks.match = null;
+
+    const response = await POST(request(), context(profileFixtures[0]!.id));
+
+    expect(response.status).toBe(200);
+    expect(mocks.fromCalls).not.toContain("matches");
+    expect(mocks.audit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "freelancer_cv_download_authorized",
+        metadata: expect.objectContaining({ matchId: null }),
+      }),
+    );
+  });
+
+  it("does not treat a partial-only shortlist as covering other profiles", async () => {
+    mocks.shortlist = { id: SHORTLIST_ID, result_status: "no_reliable_match", partial_matches_snapshot: [] };
+
+    const response = await POST(request(), context());
+
+    await expectGenericUnavailable(response);
+    expect(mocks.fetchDocument).not.toHaveBeenCalled();
+  });
+
+  it("requires paid access in the placement model before touching the project", async () => {
+    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
+    mocks.allowed.mockResolvedValue(false);
+
+    const response = await POST(request(), context());
+
+    expect(response.status).toBe(403);
+    expect(mocks.allowed).toHaveBeenCalledWith(
+      expect.objectContaining({ id: USER_ID }),
+      PROFILE_ID,
+    );
+    expect(mocks.fromCalls).toEqual([]);
+    expect(mocks.audit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "freelancer_cv_download_denied",
+        metadata: { reason: "no_paid_access" },
+      }),
+    );
+  });
+
+  it("downloads with paid access in the placement model", async () => {
+    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
+
+    const response = await POST(request(), context());
+
+    expect(response.status).toBe(200);
   });
 
   it("denies an invalid evaluation snapshot with the same generic 404", async () => {

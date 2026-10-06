@@ -45,7 +45,8 @@ export function siteStructuredData() {
         email: IMPRINT_EMAIL,
         // Wie im Impressum.
         address: { "@type": "PostalAddress", ...PROVIDER_POSTAL_ADDRESS },
-        founder: { "@type": "Person", name: SALES_CONTACT.name },
+        // Die Kontaktperson von der Gesprächsseite, mit ihrer Rolle dort.
+        employee: { "@type": "Person", name: SALES_CONTACT.name, jobTitle: SALES_CONTACT.role },
         areaServed: AREA_SERVED,
         knowsAbout: KNOWS_ABOUT,
       },

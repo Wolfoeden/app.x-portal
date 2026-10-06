@@ -155,7 +155,7 @@ Spam-Richtlinien von Google und wurden deshalb nicht verwendet. Umgesetzt:
 - Die h1 der Startseite beginnt mit „Freelancer finden für Recruiter und
   Personaldienstleister“; optisch ist das die bisherige Dachzeile.
 - Strukturierte Daten (`lib/structured-data.ts`): Organization mit Anschrift
-  aus dem Impressum, Inhaber, Regionen und Themen; auf der Startseite
+  aus dem Impressum, Kontaktperson (Product Manager), Regionen und Themen; auf der Startseite
   `Service` (Rollen und Konditionen der Seite) und `FAQPage` aus derselben
   Quelle wie die sichtbare FAQ (`components/marketing/landing-faq.ts`). Die
   frühere Entscheidung gegen `FAQPage` gilt für die Ratgeberseiten weiter.

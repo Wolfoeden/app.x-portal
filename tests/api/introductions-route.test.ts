@@ -8,6 +8,11 @@ const mocks = vi.hoisted(() => ({
   anonymous: false,
   rateAllowed: true,
   paid: false,
+  /**
+   * Was das Konto gesehen hat: ein empfohlenes Profil (`matches`), nur einen
+   * Teiltreffer im Snapshot der Shortlist, oder keins von beiden.
+   */
+  shown: "match" as "match" | "partial" | "none",
   /** Ersetzt Kalender und Freigabe des Profils für einzelne Fälle. */
   calendar: null as null | { booking_url: string; intro_policy: string; snapshotPolicy: string },
 }));
@@ -92,6 +97,7 @@ vi.mock("@/lib/supabase/admin", () => ({
         }));
       }
       if (name === "matches") {
+        if (mocks.shown !== "match") return tabelle(() => ({ data: null, error: null }));
         return tabelle(() => ({
           data: {
             id: "44444444-4444-4444-8444-444444444444",
@@ -116,6 +122,15 @@ vi.mock("@/lib/supabase/admin", () => ({
           error: null,
         }));
       }
+      if (name === "shortlists") {
+        return tabelle(() => ({
+          data: {
+            partial_matches_snapshot:
+              mocks.shown === "partial" ? [{ profile: PROFIL, recommendationRole: "partial" }] : [],
+          },
+          error: null,
+        }));
+      }
       if (name === "intro_bookings") return tabelle(() => mocks.booking());
       return tabelle(() => ({ data: null, error: null }));
     },
@@ -124,6 +139,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 
 vi.mock("@/lib/domain", () => ({
   FreelancerProfileSchema: { parse: (wert: unknown) => wert },
+  ShortlistMatchSchema: { safeParse: (wert: unknown) => ({ success: true, data: wert }) },
 }));
 
 import { GET, POST } from "@/app/api/introductions/route";
@@ -246,6 +262,7 @@ describe("Anfrage im Vermittlungsmodell", () => {
     mocks.inserted.length = 0;
     mocks.paid = false;
     mocks.calendar = null;
+    mocks.shown = "match";
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     process.env.SUPABASE_SERVICE_ROLE_KEY = "test";
     mocks.deliver.mockResolvedValue({ delivered: true });
@@ -298,6 +315,34 @@ describe("Anfrage im Vermittlungsmodell", () => {
     expect(nachricht.subject).toBe("Vermittlungsanfrage: Mira Falk");
     expect(nachricht.text).toContain("/chat/admin/vermittlungen");
     expect(nachricht.text).toContain("Freelancer-E-Mail: fehlt");
+  });
+
+  // 06.10.2026: Ein Drittel der Suchen findet nur Teiltreffer. Die stehen
+  // nicht in `matches`, und jede Anfrage an sie endete mit 409.
+  it("nimmt die Anfrage an einen Teiltreffer an", async () => {
+    mocks.shown = "partial";
+    mocks.booking
+      .mockReturnValueOnce({ data: null, error: null })
+      .mockReturnValueOnce({
+        data: { id: "66666666-6666-4666-8666-666666666666", status: "manual_review", requested_at: new Date().toISOString() },
+        error: null,
+      });
+
+    const response = await POST(anfrage({ placementTermsVersion: VERSION }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.inserted[0]).toMatchObject({ match_id: null, status: "manual_review" });
+    expect(mocks.deliver.mock.calls[0][0].subject).toBe("Vermittlungsanfrage: Mira Falk");
+  });
+
+  it("weist ein Profil ab, das dem Konto nicht gezeigt wurde", async () => {
+    mocks.shown = "none";
+
+    const response = await POST(anfrage({ placementTermsVersion: VERSION }));
+
+    expect(response.status).toBe(409);
+    expect(mocks.inserted).toEqual([]);
+    expect(mocks.audit).not.toHaveBeenCalled();
   });
 
   // Der bisherige Upsert hätte eine schon vorgestellte Anfrage beim zweiten
