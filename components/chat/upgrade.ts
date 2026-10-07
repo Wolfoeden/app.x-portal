@@ -4,7 +4,7 @@ import {
   countLabel,
   creditPlan,
 } from "@/lib/ai/credit-policy";
-import { PUBLIC_PRICING_PLANS, START_CREDITS } from "@/lib/billing/plans";
+import { PUBLIC_PRICING_PLANS, TRIAL_CREDITS } from "@/lib/billing/plans";
 
 import type { AiUsageSnapshot } from "../chat-contract";
 
@@ -41,8 +41,8 @@ export function entryMonthlyEuro(): number {
 
 /** „3 AI-Agent-Recherchen oder 30 Analysen" — in Leistungen, nicht in Credits. */
 export function startCreditOutcome(): string {
-  return `${countLabel(affordableCount(START_CREDITS, "research"), "research")} oder ${countLabel(
-    affordableCount(START_CREDITS, "project_brief"),
+  return `${countLabel(affordableCount(TRIAL_CREDITS, "research"), "research")} oder ${countLabel(
+    affordableCount(TRIAL_CREDITS, "project_brief"),
     "project_brief",
   )}`;
 }
@@ -77,27 +77,34 @@ export function exhaustedNotice(
 ): ExhaustedNotice {
   if (!isAccountUser) {
     return {
-      text: `Ihr Gastguthaben ist aufgebraucht. Mit einem kostenlosen Konto haben Sie einmalig ${START_CREDITS} Credits insgesamt – genug für ${startCreditOutcome()}. Ihre bisherigen Projekte werden übernommen.`,
-      action: { kind: "signup", label: "Kostenloses Konto erstellen" },
+      text: `Für neue KI-Läufe benötigen Sie ein bestätigtes Konto und einen aktiven Trial oder Tarif. Der 14-Tage-Trial enthält einmalig ${TRIAL_CREDITS} Credits insgesamt und erfordert eine Karte bei Stripe. Ihre Eingabe bleibt erhalten. Ein Ergebnisbeispiel können Sie ohne Karte ansehen.`,
+      action: { kind: "pricing", label: "14 Tage kostenlos testen" },
     };
   }
 
   const plan = creditPlan(usage.credits.planId);
   const keepWriting =
-    "Sie können weiter schreiben; XPORTAL speichert und gleicht Ihre Angaben regelbasiert ab.";
+    "Ihre gespeicherten Projekte bleiben lesbar. Ihren noch nicht gesendeten Text bewahren wir in diesem Browser auf.";
+
+  if (usage.credits.subscriptionStatus === "trialing") {
+    return { text: `Ihre Trial-Credits sind aufgebraucht. Sie werden nicht aufgefüllt und lösen keine vorzeitige Abbuchung aus. ${keepWriting} Das bestätigte Trial-Ende und die Kündigung finden Sie in Ihrem Konto.`, action: null };
+  }
+  if (["past_due", "unpaid", "incomplete", "canceled", "incomplete_expired", "paused"].includes(usage.credits.subscriptionStatus ?? "")) {
+    return { text: `Derzeit sind keine neuen kostenpflichtigen KI-Läufe freigeschaltet. ${keepWriting} Prüfen Sie die Abrechnung und aktualisieren Sie bei offener Zahlung Ihr Zahlungsmittel.`, action: null };
+  }
 
   if (plan.billingModel === "fixed_monthly") {
     const refill = formatDate(usage.credits.periodEnd);
     return {
       text: `Ihr Monatsguthaben ist aufgebraucht. ${keepWriting} Neues Guthaben gibt es ${
-        refill ? `ab ${refill}` : "zu Beginn des nächsten Abrechnungszeitraums"
-      }; ein größerer Tarif gilt sofort.`,
+        refill ? `nach bestätigter Zahlung für die Periode ab ${refill}` : "nach bestätigter Zahlung der nächsten Abrechnungsperiode"
+      }.`,
       action: { kind: "pricing", label: "Größeren Tarif ansehen" },
     };
   }
 
   return {
-    text: `Ihre Start-Credits sind aufgebraucht und füllen sich nicht wieder auf. ${keepWriting} Für KI-Analysen und ${CREDIT_PRICES.research.plural} gibt es Monatstarife ab ${entryMonthlyEuro()} € netto.`,
+    text: `Ihr verfügbares Guthaben ist aufgebraucht. Ein neues Konto erzeugt kein Bonusguthaben. ${keepWriting} Für KI-Analysen und ${CREDIT_PRICES.research.plural} gibt es Monatstarife ab ${entryMonthlyEuro()} € netto und, sofern berechtigt, einen 14-Tage-Trial mit Karte.`,
     action: { kind: "pricing", label: "Tarife ansehen" },
   };
 }

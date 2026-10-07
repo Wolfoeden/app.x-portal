@@ -7,13 +7,14 @@ import { MatchProtocol } from "@/components/product/MatchProtocol";
 import { salesCallHref, type SalesCallEntry } from "@/lib/sales/sales-call-links";
 import { MARKETING_PAGES, type PublicPage } from "@/lib/seo";
 import { breadcrumbStructuredData } from "@/lib/structured-data";
+import { RecruitingLink } from "./RecruitingLink";
 import styles from "./marketing.module.css";
 
-export function ProjectLink({ children = "Projekt beschreiben" }: { children?: ReactNode }) {
+export function ProjectLink({ children = "14 Tage kostenlos testen" }: { children?: ReactNode }) {
   return (
-    <Link href="/chat" prefetch={false} className={actionClass("primary")}>
+    <RecruitingLink href="/preise#tarife" event="trial_cta_clicked" className={actionClass("primary")}>
       {children}<span aria-hidden="true">↗</span>
-    </Link>
+    </RecruitingLink>
   );
 }
 
@@ -53,7 +54,7 @@ export function MarketingPage({
           <div className={styles.heroActions}>
             <ProjectLink />
             <SalesCallLink entry="role_page" />
-            <span className={styles.subtle}>Ohne Anmeldung starten</span>
+            <span className={styles.subtle}>Karte erforderlich · 90 Credits insgesamt · danach gewählter Monatstarif</span>
           </div>
         </div>
         {aside}

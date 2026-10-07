@@ -1,5 +1,4 @@
-import { CREDIT_PLANS } from "@/lib/billing/plans";
-import { placementRequestsEnabled } from "@/lib/placement/config";
+import { CREDIT_PLANS, TRIAL_CREDITS, TRIAL_DAYS } from "@/lib/billing/plans";
 import type { CheckoutPlanId } from "@/lib/billing/payment-links";
 
 /**
@@ -25,12 +24,11 @@ export function checkoutSummary(planId: CheckoutPlanId) {
     label: plan.label,
     price: `${euro.format(plan.priceNetCents / 100).replace(",00", "")} netto pro Monat`,
     points: [
-      `${number.format(plan.monthlyCredits)} Credits pro Monat; nicht genutzte verfallen am Monatsende.`,
-      "Läuft einen Monat und verlängert sich jeweils um einen Monat. Kündbar zum Ende des laufenden Monats.",
-      "Zuzüglich Umsatzsteuer. Bei Stripe sehen Sie den Gesamtbetrag, bevor Sie zahlen.",
-      ...(placementRequestsEnabled()
-        ? ["Ein Vermittlungshonorar bei einer Beauftragung über XPORTAL ist davon getrennt."]
-        : []),
+      `${TRIAL_DAYS} Tage kostenlos, einmalig ${TRIAL_CREDITS} Credits insgesamt. Karte bei Stripe erforderlich.`,
+      `Danach automatisch ${plan.euro} € netto im Monat, zzgl. USt., mit ${number.format(plan.monthlyCredits)} Credits je bestätigter bezahlter Periode.`,
+      "Vor Trial-Ende selbstständig kündigen, um die erste kostenpflichtige Verlängerung zu vermeiden. Danach monatlich zum Periodenende kündbar.",
+      "Kein zusätzliches Bonusguthaben, keine Trial-Auffüllung und keine vorzeitige Abbuchung bei Verbrauch. Kein erneuter Trial bei Tarifwechsel.",
+      "Neue Kontaktanfragen und Beauftragungen sind provisionsfrei. Sie bezahlen die Software-Nutzung.",
     ],
   };
 }
@@ -38,11 +36,11 @@ export function checkoutSummary(planId: CheckoutPlanId) {
 export function checkoutIntentCopy(planId: CheckoutPlanId) {
   const { label } = CREDIT_PLANS[planId];
   return {
-    eyebrow: "Tarif buchen",
-    title: `Konto anlegen und ${label} buchen`,
-    loginTitle: `Anmelden und ${label} buchen`,
-    body: `Für einen Tarif brauchen Sie ein Konto. Danach geht es direkt zur Zahlung bei Stripe; gebucht ist ${label} erst dort.`,
-    afterConfirmation: `Danach geht es direkt zur Zahlung für ${label}.`,
+    eyebrow: "14 Tage kostenlos testen",
+    title: `Konto anlegen und ${label} testen`,
+    loginTitle: `Anmelden und ${label} testen`,
+    body: `Bestätigen Sie zuerst Ihre E-Mail. Danach hinterlegen Sie Ihre Karte bei Stripe und bestätigen den ${label}-Trial. Erst der serverseitig verifizierte Abschluss aktiviert die Testphase. Ihr Projekttext bleibt in diesem Browser erhalten.`,
+    afterConfirmation: `Danach geht es zur Kartenhinterlegung für ${label}. Der Trial startet erst nach dem bestätigten Stripe-Abschluss.`,
   };
 }
 

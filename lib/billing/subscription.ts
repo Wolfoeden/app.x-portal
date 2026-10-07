@@ -5,6 +5,7 @@ import { CREDIT_PLANS, TRIAL_CREDITS, TRIAL_DAYS, type FixedMonthlyPlan } from "
 import { planForStripePriceId, type CheckoutPlanId } from "@/lib/billing/payment-links";
 import { stripeRequest } from "@/lib/billing/stripe-api";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { SAAS_TERMS_REVIEW, SAAS_TERMS_VERSION } from "@/lib/legal/policy";
 
 export const RECRUITING_BILLING_KIND = "recruiting_subscription_v1";
 export class BillingError extends Error {
@@ -16,13 +17,9 @@ export function checkoutPlan(value: unknown): CheckoutPlanId | null {
 }
 
 export function trialCreditAllowance(): number {
-  const configured = process.env.STRIPE_TRIAL_CREDITS?.trim();
-  if (!configured) return TRIAL_CREDITS;
-  const credits = Number(configured);
-  if (!/^\d+$/u.test(configured) || !Number.isSafeInteger(credits) || credits <= 0 || credits > 10_000) {
-    throw new BillingError("invalid_trial_configuration", 503);
-  }
-  return credits;
+  // Change the shared catalogue to change the offer. An environment override
+  // would silently make the public 90-credit promise disagree with checkout.
+  return TRIAL_CREDITS;
 }
 
 export function stripePriceForPlan(plan: CheckoutPlanId): string {
@@ -52,9 +49,12 @@ type CheckoutAttempt = {
 };
 
 export async function startSubscriptionCheckout(userId: string, plan: CheckoutPlanId, origin: string): Promise<string> {
+  if (!SAAS_TERMS_REVIEW.checkoutEnabled && !/^(sk|rk)_test_/u.test(process.env.STRIPE_SECRET_KEY?.trim() ?? "")) {
+    throw new BillingError("legal_review_pending", 503);
+  }
   const price = stripePriceForPlan(plan);
   const admin = createAdminSupabaseClient();
-  const { data, error } = await admin.rpc("prepare_recruiting_checkout", { p_user_id: userId, p_plan_id: plan });
+  const { data, error } = await admin.rpc("prepare_recruiting_checkout", { p_user_id: userId, p_plan_id: plan, p_terms_version: SAAS_TERMS_VERSION });
   if (error) {
     const message = String(error.message ?? "");
     throw new BillingError(message.includes("email_not_verified") ? "email_not_verified"
@@ -99,10 +99,10 @@ export async function startSubscriptionCheckout(userId: string, plan: CheckoutPl
     customer_update: { address: "auto", name: "auto" },
     expires_at: Math.floor(Date.parse(attempt.expires_at) / 1_000),
     success_url: `${origin}/konto?billing=success`, cancel_url: `${origin}/preise?billing=cancelled`,
-    metadata: { xportal_kind: RECRUITING_BILLING_KIND, xportal_user_id: userId, xportal_checkout_key: attempt.request_key },
+    metadata: { xportal_kind: RECRUITING_BILLING_KIND, xportal_user_id: userId, xportal_checkout_key: attempt.request_key, xportal_terms_version: SAAS_TERMS_VERSION },
     subscription_data: {
       ...(attempt.trial_eligible ? { trial_period_days: TRIAL_DAYS, trial_settings: { end_behavior: { missing_payment_method: "cancel" } } } : {}),
-      metadata: { xportal_kind: RECRUITING_BILLING_KIND, xportal_user_id: userId, xportal_checkout_key: attempt.request_key },
+      metadata: { xportal_kind: RECRUITING_BILLING_KIND, xportal_user_id: userId, xportal_checkout_key: attempt.request_key, xportal_terms_version: SAAS_TERMS_VERSION },
     },
     custom_text: { submit: { message: attempt.trial_eligible
       ? `14 Tage kostenlos, einmalig ${trialCreditAllowance()} Credits. Danach ${catalogue.euro} EUR netto/Monat. Automatische Verlängerung; im Konto vor Testende kündbar. Keine Vermittlungsgebühr.`
@@ -119,12 +119,13 @@ export async function startSubscriptionCheckout(userId: string, plan: CheckoutPl
   return url;
 }
 
-export type SubscriptionSyncResult = { userId: string; plan: FixedMonthlyPlan; trialActivated: boolean; paidActivated: boolean; firstPayment: boolean; cancelled: boolean; trialEnd: string | null; accessUntil: string | null };
+export type SubscriptionSyncResult = { userId: string; plan: FixedMonthlyPlan; isRecruiting: boolean; trialActivated: boolean; paidActivated: boolean; firstPayment: boolean; cancelled: boolean; trialEnd: string | null; accessUntil: string | null };
 
 /** Fetch current objects. Webhook payload snapshots are never the entitlement authority. */
 export async function syncStripeSubscription(subscriptionId: string, eventId: string, eventType: string, checkoutSessionId?: string): Promise<SubscriptionSyncResult> {
+  const observedAt = new Date().toISOString();
   const subscription = await stripeRequest<Record<string, unknown>>("GET", `/subscriptions/${subscriptionId}`, {
-    expand: ["default_payment_method", "latest_invoice", "customer"],
+    expand: ["default_payment_method", "latest_invoice.payment_intent", "customer"],
   });
   const metadata = stripeObject(subscription.metadata);
   const items = stripeObject(subscription.items).data;
@@ -141,36 +142,57 @@ export async function syncStripeSubscription(subscriptionId: string, eventId: st
   const linkedRow = linked.data as { user_id: string } | null;
   userId = linkedRow?.user_id ?? userId;
   if (!userId) throw new BillingError("unassigned_subscription", 503);
+  if (!checkoutSessionId && metadata.xportal_kind === RECRUITING_BILLING_KIND) {
+    const attempt = await admin.from("recruiting_checkout_attempts").select("session_id")
+      .eq("user_id", userId).maybeSingle();
+    if (attempt.error) throw attempt.error;
+    checkoutSessionId = (attempt.data as { session_id?: string } | null)?.session_id;
+  }
   let verifiedCheckout = false;
   if (checkoutSessionId) {
     const session = await stripeRequest<Record<string, unknown>>("GET", `/checkout/sessions/${checkoutSessionId}`);
     verifiedCheckout = session.status === "complete" && session.mode === "subscription"
       && session.client_reference_id === userId && stripeId(session.subscription, "sub") === subscriptionId
-      && stripeObject(session.metadata).xportal_kind === RECRUITING_BILLING_KIND;
+      && stripeId(session.customer, "cus") === stripeId(subscription.customer, "cus")
+      && stripeObject(session.metadata).xportal_kind === RECRUITING_BILLING_KIND
+      && stripeObject(session.metadata).xportal_checkout_key === metadata.xportal_checkout_key;
     if (!verifiedCheckout && !linkedRow) throw new BillingError("checkout_not_completed", 409);
   }
   const customer = stripeObject(subscription.customer);
   const paymentMethod = stripeObject(subscription.default_payment_method);
   const customerPaymentMethod = stripeId(stripeObject(customer.invoice_settings).default_payment_method, "pm");
   let cardCollected = paymentMethod.type === "card";
+  const subscriptionPaymentMethod = stripeId(subscription.default_payment_method, "pm");
+  if (!cardCollected && subscriptionPaymentMethod) {
+    const method = await stripeRequest<Record<string, unknown>>("GET", `/payment_methods/${subscriptionPaymentMethod}`);
+    cardCollected = method.type === "card";
+  }
   if (!cardCollected && customerPaymentMethod) {
     const method = await stripeRequest<Record<string, unknown>>("GET", `/payment_methods/${customerPaymentMethod}`);
     cardCollected = method.type === "card";
   }
-  const invoice = stripeObject(subscription.latest_invoice);
+  let invoice = stripeObject(subscription.latest_invoice);
+  const latestInvoiceId = stripeId(subscription.latest_invoice, "in");
+  if (latestInvoiceId && !invoice.status) invoice = await stripeRequest<Record<string, unknown>>("GET", `/invoices/${latestInvoiceId}`);
   const invoiceId = stripeId(invoice.id, "in");
   const paidAmount = invoice.status === "paid" && invoice.paid === true && typeof invoice.amount_paid === "number" ? invoice.amount_paid : 0;
   const lines = stripeObject(invoice.lines).data;
   const billedLine = (Array.isArray(lines) ? lines : []).map(stripeObject).find((line) => {
     const id = stripeId(line.price, "price") ?? stripeId(stripeObject(stripeObject(line.pricing).price_details).price, "price");
-    return id === priceId && line.type !== "invoiceitem" && line.proration !== true;
+    return id === priceId && line.type !== "invoiceitem" && line.proration !== true
+      && stripeObject(stripeObject(line.parent).subscription_item_details).proration !== true;
   });
   const invoicePeriod = stripeObject(billedLine?.period);
   const periodStart = stripeInstant(invoicePeriod.start);
   const periodEnd = stripeInstant(invoicePeriod.end);
   const trialEnd = stripeInstant(subscription.trial_end);
+  const paymentIntent = stripeObject(invoice.payment_intent);
+  const invoiceStatus = invoice.status === "open" && paymentIntent.status === "requires_action"
+    ? "payment_action_required" : invoice.status === "open" && invoice.attempted === true
+      ? "payment_failed" : typeof invoice.status === "string" ? invoice.status : null;
   const { data, error } = await admin.rpc("sync_recruiting_subscription", {
     p_user_id: userId, p_event_id: eventId, p_event_type: eventType,
+    p_observed_at: observedAt,
     p_subscription_id: subscriptionId, p_customer_id: stripeId(subscription.customer, "cus"),
     p_plan_id: plan.id, p_status: subscription.status,
     p_cancel_at_period_end: subscription.cancel_at_period_end === true,
@@ -179,12 +201,12 @@ export async function syncStripeSubscription(subscriptionId: string, eventId: st
     p_checkout_session_id: checkoutSessionId ?? null,
     p_checkout_key: typeof metadata.xportal_checkout_key === "string" ? metadata.xportal_checkout_key : null,
     p_trial_credits: trialCreditAllowance(), p_invoice_id: invoiceId,
-    p_invoice_status: typeof invoice.status === "string" ? invoice.status : null,
+    p_invoice_status: invoiceStatus,
     p_amount_paid: paidAmount, p_paid_period_start: periodStart, p_paid_period_end: periodEnd,
   });
   if (error) throw error;
   const row = (Array.isArray(data) ? data[0] : data) as { trial_activated?: boolean; paid_activated?: boolean; first_payment?: boolean; cancelled?: boolean; access_until?: string } | null;
-  const result: SubscriptionSyncResult = { userId, plan, trialActivated: row?.trial_activated === true, paidActivated: row?.paid_activated === true,
+  const result: SubscriptionSyncResult = { userId, plan, isRecruiting: metadata.xportal_kind === RECRUITING_BILLING_KIND, trialActivated: row?.trial_activated === true, paidActivated: row?.paid_activated === true,
     firstPayment: row?.first_payment === true, cancelled: row?.cancelled === true, trialEnd, accessUntil: row?.access_until ?? null };
   const livemode = subscription.livemode === true;
   if (result.trialActivated) await recordRecruitingEvent({ event: "trial_activated", userId, entityId: subscriptionId, plan: plan.id, livemode });

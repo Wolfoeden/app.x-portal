@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { deliverEmail } from "@/lib/email/deliver";
 import { consentingFreelancerEmail } from "@/lib/placement/recruiting-contacts";
 import { contactRecipientHash, readContactToken } from "@/lib/placement/contact-token";
-import { contactAcceptedMessage } from "@/lib/placement/recruiting-messages";
-import { assertSameOrigin, readJsonWithLimit, getClientIp, pseudonymizeIp, logEvent } from "@/lib/security/request";
+import { dispatchRecruitingContact } from "@/lib/placement/contact-delivery";
+import { assertWorkflowOperationAllowed } from "@/lib/domain/workflow-controls";
+import { assertSameOrigin, readJsonWithLimit, getClientIp, pseudonymizeIp } from "@/lib/security/request";
 import { consumeRateLimit } from "@/lib/security/shared-rate-limit";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { SITE_URL } from "@/lib/seo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +25,7 @@ async function describe(token: string | null) {
   if (!row) throw new Response("Anfrage nicht gefunden.", { status: 404 });
   const [profile, project] = await Promise.all([
     admin.from("freelancer_profiles").select("display_name,owner_user_id,booking_url,profile_status").eq("id", row.freelancer_profile_id).maybeSingle(),
-    admin.from("projects").select("title").eq("id", row.project_id).maybeSingle(),
+    admin.from("projects").select("title,original_request,structured_brief").eq("id", row.project_id).maybeSingle(),
   ]);
   if (profile.error || project.error) throw profile.error || project.error;
   if (!profile.data || profile.data.profile_status !== "active") throw new Response("Profil nicht verfügbar.", { status: 409 });
@@ -52,29 +53,19 @@ export async function POST(request: Request) {
     const { admin, row, profile, project, recipient } = await describe(input.token);
     if (row.status !== "requested") return NextResponse.json({ recorded: false, status: row.status }, { headers: NO_STORE });
     const accepting = input.decision === "accept";
-    const now = new Date().toISOString();
+    if (accepting) assertWorkflowOperationAllowed(project?.structured_brief?.originalRequest || project?.original_request || "", "contact");
+    const { data: client, error: clientError } = await admin.auth.admin.getUserById(row.owner_user_id);
+    if (clientError) throw clientError;
+    if (accepting && (!client.user?.email_confirmed_at || !client.user.email)) throw new Response("Das Konto der anfragenden Person ist nicht mehr bestätigt.", { status: 409 });
     const calendar = /^https:\/\//u.test(profile.booking_url || "") ? profile.booking_url : null;
-    const { data, error } = await admin.from("intro_bookings").update(accepting ? {
-      status: "ready_to_book", confirmed_at: now, freelancer_consented_at: now,
-      booking_url: calendar, booking_provider: calendar ? "calendly" : null,
-    } : { status: "cancelled", cancelled_at: now }).eq("id", row.id).eq("status", "requested")
-      .eq("commercial_model", "no_fee").select("id").maybeSingle();
+    const { data, error } = await admin.rpc("respond_recruiting_contact", {
+      p_id: row.id, p_accept: accepting, p_client_email: client.user?.email || null,
+      p_freelancer_email: recipient, p_freelancer_name: profile.display_name,
+      p_project_title: project?.title || null, p_booking_url: calendar,
+    });
     if (error) throw error;
     if (!data) return NextResponse.json({ recorded: false }, { headers: NO_STORE });
-    if (accepting) {
-      const { data: client, error: clientError } = await admin.auth.admin.getUserById(row.owner_user_id);
-      if (clientError) throw clientError;
-      if (client.user?.email) {
-        const messages = [
-          { to: client.user.email, ...contactAcceptedMessage({ projectTitle: project?.title, counterpartEmail: recipient, counterpartName: profile.display_name, bookingUrl: calendar }) },
-          { to: recipient, ...contactAcceptedMessage({ projectTitle: project?.title, counterpartEmail: client.user.email, counterpartName: "Anfragende Person" }) },
-        ];
-        for (const message of messages) {
-          const sent = await deliverEmail({ ...message, kind: "transactional" });
-          if (!sent.delivered) logEvent("recruiting_contact_confirmation_failed", { requestId: row.id, reason: sent.reason });
-        }
-      }
-    }
+    if (accepting) await dispatchRecruitingContact(row.id, SITE_URL);
     return NextResponse.json({ recorded: true, status: accepting ? "ready_to_book" : "cancelled" }, { headers: NO_STORE });
   } catch (error) {
     if (error instanceof Response) return error;

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import "@/app/styles/legal.css";
 
 import {
@@ -14,7 +13,6 @@ import {
   PLACEMENT_EXAMPLE,
   PLACEMENT_TERMS,
   placementExampleFeeCents,
-  placementRequestsEnabled,
 } from "@/lib/placement/config";
 
 export const metadata: Metadata = {
@@ -36,7 +34,6 @@ export const metadata: Metadata = {
  * damit Seite, Anfrage-Dialog und Rechnung nicht auseinanderlaufen können.
  */
 export default function PlacementTermsPage() {
-  if (!placementRequestsEnabled()) notFound();
   const t = PLACEMENT_TERMS;
   const draft = t.status !== "approved";
 
@@ -46,17 +43,16 @@ export default function PlacementTermsPage() {
 
       <main className="xlegal-document">
         <PublicDocumentIntro
-          eyebrow="Vermittlungsbedingungen"
-          title="Kostenlos bis zur Beauftragung."
-          signal={{ label: "Status", value: draft ? "Entwurf" : "Gültig" }}
+          eyebrow="Historische Vermittlungsbedingungen"
+          title="Für bereits vereinbarte historische Vorgänge."
+          signal={{ label: "Fassung", value: t.version }}
         >
           <p>
-            Diese Bedingungen gelten, wenn Sie über XPORTAL einen Freelancer
-            anfragen und XPORTAL Sie vorstellt. Sie ergänzen die{" "}
-            <Link href="/terms">Allgemeinen Geschäftsbedingungen</Link> und
-            richten sich ausschließlich an Unternehmer.
+            Diese unverändert erhaltene Fassung gilt ausschließlich für historische Vorgänge mit dokumentierter damaliger Zustimmung. Neue Kontaktanfragen und Beauftragungen sind provisionsfrei. Für das neue Software-Abonnement siehe <Link href="/terms">SaaS-Bedingungen</Link>; die damalige <Link href="/terms/historisch">AGB-Fassung 1.1</Link> bleibt erhalten.
           </p>
         </PublicDocumentIntro>
+
+        <Notice title="Historische Vertragsfassung" tone="warning" role="status"><p>Die folgenden Abschnitte dokumentieren die frühere Vereinbarung. Sie erzeugen keine Gebührenzustimmung für neue Anfragen und ändern keine bestehenden Verträge, Rechnungen oder Ansprüche rückwirkend.</p></Notice>
 
         {draft ? (
           <Notice title="Entwurf" tone="warning" role="status">

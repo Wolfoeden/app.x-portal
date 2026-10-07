@@ -7,6 +7,7 @@ export function isWorkflowInstruction(value: string): boolean {
   const text = value.normalize("NFKC").trim();
   // A named obligation of the candidate remains an actual requirement.
   if (/\b(?:freelancer|kandidat(?:in|en)?|bewerber(?:in)?)\s+(?:muss|müssen|soll|sollen|darf|dürfen|benötigt|braucht)\b/iu.test(text)) return false;
+  if (/\b(?:externe?\s+recherche|external\s+research|kontaktaufnahme|outreach)\b/iu.test(text) && /\b(?:erlaubt|erlaube|erlauben|gestattet|freigegeben|zulassen|allow(?:ed)?)\b/iu.test(text)) return true;
   if (/\b(?:nur|ausschließlich|ausschliesslich|only)\s+(?:die\s+)?(?:vorhandene[nr]?|bestehende[nr]?|gespeicherte[nr]?|interne[nr]?|existing|internal)\s+(?:profile|kandidaten|profiles)\b/iu.test(text)) return true;
   if (/\b(?:keine?|ohne|nicht|no|without|do not)\s+(?:eine?\s+)?(?:externe?\s+|zusätzliche?\s+|external\s+)?(?:recherche|kontaktaufnahme|kontaktanfragen|anschreiben|kontaktieren|research|outreach|contact)\b/iu.test(text)) return true;
   if (/\b(?:profile|kandidaten|profiles)\s+(?:nur\s+)?(?:abgleichen|vergleichen|filtern|anzeigen|matchen|compare|match)\b/iu.test(text) && /\b(?:bitte|nur|ausschließlich|ausschliesslich|xportal|please|only)\b/iu.test(text)) return true;

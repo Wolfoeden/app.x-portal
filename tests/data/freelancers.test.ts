@@ -104,7 +104,7 @@ describe("freelancer database mapping", () => {
     expect(profiles.map((profile) => profile.id)).toEqual([row.id]);
     expect(calls).toContainEqual(["eq", "profile_status", "active"]);
     expect(calls).toContainEqual(["eq", "demo_status", "real"]);
-    expect(calls).toContainEqual(["not", "booking_url", "is", null]);
+    expect(calls).not.toContainEqual(["not", "booking_url", "is", null]);
     expect(calls).toContainEqual([
       "in",
       "availability_status",

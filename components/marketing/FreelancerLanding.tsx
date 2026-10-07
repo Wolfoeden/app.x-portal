@@ -3,8 +3,9 @@ import { JsonLd } from "@/components/JsonLd";
 import { actionClass } from "@/components/ui/actions";
 import { PUBLIC_PRICING_PLANS, TRIAL_CREDITS, TRIAL_DAYS } from "@/lib/billing/plans";
 import type { LandingStats } from "@/lib/marketing/landing-stats";
-import type { CaseStudy } from "@/lib/marketing/case-studies";
-import { MARKETING_PAGE } from "@/lib/seo";
+import { publishedCaseStudies, type CaseStudy } from "@/lib/marketing/case-studies";
+import { MARKETING_PAGE, MARKETING_PAGES } from "@/lib/seo";
+import { CaseStudies } from "./CaseStudies";
 import { breadcrumbStructuredData, faqStructuredData } from "@/lib/structured-data";
 import { salesCallHref } from "@/lib/sales/sales-call-links";
 import { Questions } from "./MarketingPage";
@@ -12,13 +13,14 @@ import { faqAnswerText, landingFaq } from "./landing-faq";
 import { RecruitingLink } from "./RecruitingLink";
 import styles from "./landing.module.css";
 
-export function FreelancerLanding(_props: { stats?: LandingStats | null; contactPhotoUrl?: string | null; caseStudies?: readonly CaseStudy[] }) {
+export function FreelancerLanding({ stats = null, caseStudies = publishedCaseStudies() }: { stats?: LandingStats | null; contactPhotoUrl?: string | null; caseStudies?: readonly CaseStudy[] }) {
   const plans = PUBLIC_PRICING_PLANS.filter((plan) => plan.billingModel === "fixed_monthly");
   const entry = Math.min(...plans.map((plan) => plan.euro));
   const faq = landingFaq(false);
   return (
     <main id="main-content" className={styles.main} tabIndex={-1}>
       <JsonLd data={breadcrumbStructuredData(MARKETING_PAGE.find)} />
+      <JsonLd data={{ "@context": "https://schema.org", "@type": "SoftwareApplication", name: "XPORTAL", applicationCategory: "BusinessApplication", operatingSystem: "Web", description: "Recruiting-Software für nachvollziehbare Freelancer-Auswahl und wiederkehrende Kundenmandate.", offers: plans.map(plan => ({ "@type": "Offer", price: plan.euro, priceCurrency: "EUR", description: `${plan.label}: netto pro Monat nach ${TRIAL_DAYS} Tagen Trial mit Karte, ${TRIAL_CREDITS} Trial-Credits insgesamt.` })) }} />
       <header className={`${styles.section} ${styles.hero}`}>
         <div className={`${styles.frame} ${styles.heroGrid}`}>
           <div className={styles.heroCopy}>
@@ -45,6 +47,7 @@ export function FreelancerLanding(_props: { stats?: LandingStats | null; contact
           </figure>
         </div>
       </header>
+      {stats ? <section className={styles.section} aria-label="Freigegebener Profilbestand"><div className={styles.frame}><p className={styles.eyebrow}>Vorhandener Bestand</p><p>{stats.profiles.toLocaleString("de-DE")} freigegebene Profile · {stats.projects.toLocaleString("de-DE")} Projektbeschreibungen analysiert. Diese Bestandszahlen bestätigen keine Verfügbarkeit oder erfolgreiche Besetzung.</p>{stats.fields.length ? <ul>{stats.fields.map(field => <li key={field.field}>{field.label}: {field.count.toLocaleString("de-DE")} Profile</li>)}</ul> : null}</div></section> : null}
       <section className={styles.section} aria-labelledby="workflow-title"><div className={styles.frame}>
         <p className={styles.eyebrow}>Ein Arbeitsablauf für Ihre Mandate</p><h2 id="workflow-title">Von der Ausschreibung zur nachvollziehbaren Auswahl.</h2>
         <ol className={styles.workflow}>
@@ -61,6 +64,8 @@ export function FreelancerLanding(_props: { stats?: LandingStats | null; contact
       </div></section>
       <section className={styles.section}><div className={`${styles.frame} ${styles.faq}`}><div><p className={styles.eyebrow}>Vor dem Start</p><h2>Was Sie wissen sollten.</h2></div><Questions items={faq.map((item) => ({ question: item.question, answer: <p>{item.answer.map((part, index) => typeof part === "string" ? part : <Link key={index} href={part.href}>{part.label}</Link>)}</p> }))} /></div></section>
       <section className={`${styles.section} ${styles.closing}`}><div className={styles.frame}><h2>Das nächste Mandat wartet.</h2><div className={styles.actions}><RecruitingLink href="/preise#tarife" event="trial_cta_clicked" className={actionClass("primary")}>14 Tage kostenlos testen</RecruitingLink><Link href={salesCallHref("hero")} prefetch={false} className={styles.textLink}>Gespräch buchen</Link><Link href="/freelancer/apply" className={styles.textLink}>Als Freelancer bewerben</Link></div><p className={styles.trialDisclosure}>Ergebnisbeispiel ohne Karte ansehen. Für den eigentlichen Trial sind ein bestätigtes Konto und die Kartenhinterlegung bei Stripe erforderlich.</p></div></section>
+      <CaseStudies cases={publishedCaseStudies(caseStudies)} />
+      <section className={styles.section}><div className={styles.frame}><Link href="/datenwege" className={styles.textLink}>Datenwege ansehen</Link><nav aria-label="Weiterlesen" className={styles.actions}>{MARKETING_PAGES.filter(page => page.path !== MARKETING_PAGE.find.path).map(page => <Link key={page.path} href={page.path} className={styles.textLink}>{page.label}</Link>)}</nav></div></section>
       <JsonLd data={faqStructuredData(faq.map((item) => ({ question: item.question, answer: faqAnswerText(item) })))} />
     </main>
   );

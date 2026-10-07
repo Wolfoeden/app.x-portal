@@ -217,7 +217,7 @@ export function mapFreelancerProfileRow(
       label:
         row.intro_policy === "free"
           ? "Kostenfreies Erstgespräch"
-          : "Kontakt nach manueller Freigabe",
+          : "Kontakt nach Freigabe durch den Freelancer",
       bookingUrl: row.booking_url,
     },
   });

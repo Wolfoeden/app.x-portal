@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { userHasRecruitingAccess } from "@/lib/billing/entitlements";
 import { createRecruitingContact } from "@/lib/placement/recruiting-contacts";
+import { approvedRecruitingContact } from "@/lib/placement/contact-delivery";
 import { assertSameOrigin, readJsonWithLimit } from "@/lib/security/request";
 import { consumeRateLimit } from "@/lib/security/shared-rate-limit";
 import { SITE_URL } from "@/lib/seo";
@@ -15,6 +16,7 @@ const InputSchema = z.object({
   projectId: z.string().uuid(), profileId: z.string().uuid(),
   idempotencyKey: z.string().trim().min(8).max(160),
   contactConsent: z.literal(true),
+  retryDelivery: z.boolean().optional(),
   placementTermsVersion: z.string().max(80).optional(),
 }).strict();
 
@@ -25,13 +27,15 @@ export async function GET(request: Request) {
     const projectId = z.string().uuid().parse(params.get("projectId"));
     const profileId = z.string().uuid().parse(params.get("profileId"));
     const { data, error } = await createAdminSupabaseClient().from("intro_bookings")
-      .select("id,status,requested_at,confirmed_at,commercial_model,contact_delivery_status")
+      .select("id,status,requested_at,confirmed_at,commercial_model,contact_delivery_status,freelancer_consented_at")
       .eq("owner_user_id", user.id).eq("project_id", projectId).eq("freelancer_profile_id", profileId)
       .order("requested_at", { ascending: false }).limit(1).maybeSingle();
     if (error) throw error;
+    const contact = data?.commercial_model === "no_fee" && data.freelancer_consented_at && data.status !== "cancelled" ? await approvedRecruitingContact(data.id) : null;
     return NextResponse.json({ introduction: data ? {
       id: data.id, status: data.status, requestedAt: data.requested_at, confirmedAt: data.confirmed_at,
       commercialModel: data.commercial_model, emailDelivery: data.contact_delivery_status,
+      contact,
     } : null }, { headers: NO_STORE });
   } catch (error) {
     if (error instanceof Response) return error;

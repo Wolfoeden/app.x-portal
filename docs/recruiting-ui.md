@@ -1,6 +1,6 @@
 # Recruiting SaaS UI checkpoint
 
-Saved frontend changes on 2026-10-07; feature work stopped at the user's 10% quota threshold. This is an implementation checkpoint, not a release or acceptance claim.
+Saved frontend changes on 2026-10-07. Work resumed after the user's quota reset and paused again for the next checkpoint runway. This is an implementation checkpoint, not a release or acceptance claim.
 
 ## Implemented
 
@@ -16,7 +16,20 @@ Saved frontend changes on 2026-10-07; feature work stopped at the user's 10% quo
 
 Preserved established white/green identity and fonts. The recruiting mandate board is the signature visual: requirements, attributed evidence, and unresolved facts remain visible together. No invented client logos, usage metrics, or time-saving claims were added. The fictional rate is labelled as a fictional example. Responsive CSS reduces workflow/pricing to single columns. Billing actions have minimum 44px height and visible keyboard focus.
 
-## Incomplete and required before release
+## Completed during resumed pass
+
+- Connected tab-local project draft helper to editing, auth/pricing transitions, sending and confirmed save. Restores a draft without replacing a project explicitly opened by ID. Clears only the confirmed submitted version.
+- Connected verified registration and successful persisted-project reopening to consent-gated measurement. Repeated use has one account/day key; server owns successful analysis and saved selection events.
+- New contact dialog sends explicit contact consent with no fee terms and no guest contact form. Added signed freelancer consent page at `/kontaktfreigabe`; GET only reads, POST decides.
+- Updated checkout, exhausted-credit, research, continuation and shared marketing copy. Hydrated authoritative billing access for direct profile actions.
+- Preserved exact former terms page at `/terms/historisch`, labelled the new SaaS terms as legally unapproved, preserved historical placement body, added current privacy data-flow supplement. New registration records the new draft SaaS version.
+- Added safe legacy `/agent` redirect with campaign parameters/UUID identifiers, excluding project text and arbitrary redirect targets. Restored approved case studies and optional real sourced pool statistics, with availability/outcome limitations; added software structured data and retained data-flow links.
+
+## Remaining before release
+
+The earlier list below documents the first checkpoint and is superseded by the completed list above for items 1, 2, 3, 4, 6, 7, 8 and 9. Still open: browser verification across registration/Checkout/cancellation; contact-delivery retry and confirmed email visibility in UI (backend supports both); adapting the historical presentation/marketing assertions; all required real Stripe acceptance scenarios and legal/live configuration. Root owns final lint/typecheck/build/test evidence and screenshot checks. The billing preview route was not added by this frontend agent.
+
+### First-checkpoint incomplete list (historical)
 
 1. Connect `saveProjectDraft`, `readProjectDraft`, `clearProjectDraft` to ChatWorkspace; draft helper exists but frontend currently does not consume it. Preserve text before registration/checkout, restore only without overriding a currently loaded project, clear only after confirmed save. No text in URLs/Stripe metadata.
 2. Update `components/chat/checkout-intent.ts`, `upgrade.ts`, `agent-launch.tsx`, `auth-continuation.ts`, `marketing/CreditSummary.tsx` and other existing marketing pages. These still contain old free-registration or placement-fee/process copy.

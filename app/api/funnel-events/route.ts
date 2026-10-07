@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { parseConsent } from "@/lib/consent/consent";
 import {
   assertSameOrigin,
   getClientIp,
@@ -43,6 +44,7 @@ const PRICING_REASONS = new Set(["recherche", "guthaben", "direkt"]);
 export async function POST(request: Request) {
   try {
     assertSameOrigin(request);
+    if (parseConsent(request.headers.get("cookie") ?? "") !== "all") return new Response(null, { status: 204 });
     const user = await getCurrentUser();
     const ipHash = pseudonymizeIp(getClientIp(request));
     const limit = await consumeRateLimit(

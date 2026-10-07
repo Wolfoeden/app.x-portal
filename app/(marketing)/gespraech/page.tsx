@@ -9,7 +9,6 @@ import { actionClass } from "@/components/ui/actions";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { BUSINESS_ONLY_NOTICE } from "@/lib/legal/policy";
-import { PLACEMENT_TERMS, PLACEMENT_TERMS_PATH } from "@/lib/placement/config";
 import { SALES_CALL_MINUTES, SALES_CALL_PATH, isSalesCallEntry } from "@/lib/sales/sales-call-model";
 import { readSalesCallToken, salesCallUrl } from "@/lib/sales/sales-call";
 import { salesContactPhotoUrl } from "@/lib/sales/sales-contact";
@@ -290,8 +289,7 @@ export default async function SalesCallPage({ searchParams }: { searchParams: Pr
               <li>
                 <Check />
                 <span>
-                  {PLACEMENT_TERMS.feePercent} % Honorar nur bei Beauftragung ·{" "}
-                  <Link href={PLACEMENT_TERMS_PATH}>Bedingungen</Link>
+                  Neue Vorgänge provisionsfrei · <Link href="/preise">Software-Abonnement</Link>
                 </span>
               </li>
               <li><Check />Sie arbeiten direkt mit dem Freelancer</li>

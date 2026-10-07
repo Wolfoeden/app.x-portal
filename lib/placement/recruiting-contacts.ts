@@ -2,30 +2,16 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import type { CurrentUser } from "@/lib/auth/current-user";
 import { writeAuditEvent } from "@/lib/audit/write";
-import { deliverEmail } from "@/lib/email/deliver";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { logEvent } from "@/lib/security/request";
+import { assertWorkflowOperationAllowed } from "@/lib/domain/workflow-controls";
 import { mintContactToken } from "./contact-token";
-import { freelancerContactRequest } from "./recruiting-messages";
+import { dispatchRecruitingContact } from "./contact-delivery";
+import { consentingFreelancerEmail } from "./recruiting-recipient";
+export { consentingFreelancerEmail } from "./recruiting-recipient";
 import { findShownProfile } from "./shown-profile";
 
-type Admin = ReturnType<typeof createAdminSupabaseClient>;
 type ContactRow = { id: string; status: string; requested_at: string; commercial_model: string; booking_url: string | null; contact_delivery_status: string | null };
 const COLUMNS = "id,status,requested_at,commercial_model,booking_url,contact_delivery_status";
-
-/** Imported addresses are excluded unless a published application has consent. */
-export async function consentingFreelancerEmail(admin: Admin, profileId: string, ownerId: string | null): Promise<string | null> {
-  if (ownerId) {
-    const { data, error } = await admin.auth.admin.getUserById(ownerId);
-    if (error) throw error;
-    return data.user?.email_confirmed_at ? data.user.email?.trim() || null : null;
-  }
-  const { data, error } = await admin.from("freelancer_applications").select("contact_email")
-    .eq("published_profile_id", profileId).eq("status", "approved").not("consent_at", "is", null)
-    .order("created_at", { ascending: false }).limit(1).maybeSingle();
-  if (error) throw error;
-  return data?.contact_email?.trim() || null;
-}
 
 function response(row: ContactRow, created: boolean) {
   return {
@@ -41,12 +27,17 @@ function response(row: ContactRow, created: boolean) {
   };
 }
 
-export async function createRecruitingContact(input: { projectId: string; profileId: string; idempotencyKey: string; user: CurrentUser; siteUrl: string }) {
+export async function createRecruitingContact(input: { projectId: string; profileId: string; idempotencyKey: string; user: CurrentUser; siteUrl: string; retryDelivery?: boolean }) {
   const admin = createAdminSupabaseClient();
-  const { data: project, error: projectError } = await admin.from("projects").select("id,title")
+  const owner = await admin.auth.admin.getUserById(input.user.id);
+  if (owner.error) throw owner.error;
+  if (!owner.data.user?.email_confirmed_at) throw new Response("Bestätigen Sie zuerst Ihre Konto-E-Mail.", { status: 403 });
+  const { data: project, error: projectError } = await admin.from("projects").select("id,title,original_request,structured_brief")
     .eq("id", input.projectId).eq("owner_user_id", input.user.id).maybeSingle();
   if (projectError) throw projectError;
   if (!project) throw new Response("Projekt nicht gefunden.", { status: 404 });
+  const source = typeof project.structured_brief?.originalRequest === "string" ? project.structured_brief.originalRequest : project.original_request || "";
+  assertWorkflowOperationAllowed(source, "contact");
   const shown = await findShownProfile(admin, { projectId: input.projectId, profileId: input.profileId, ownerUserId: input.user.id });
   if (!shown) throw new Response("Dieses Profil gehört nicht zur angezeigten Auswahl.", { status: 409 });
   const existingFor = () => admin.from("intro_bookings").select(COLUMNS).eq("owner_user_id", input.user.id)
@@ -54,7 +45,15 @@ export async function createRecruitingContact(input: { projectId: string; profil
     .neq("status", "cancelled").order("requested_at", { ascending: false }).limit(1).maybeSingle();
   const existing = await existingFor();
   if (existing.error) throw existing.error;
-  if (existing.data) return response(existing.data as ContactRow, false);
+  if (existing.data) {
+    if (input.retryDelivery && existing.data.commercial_model === "no_fee") {
+      await dispatchRecruitingContact(existing.data.id, input.siteUrl);
+      const refreshed = await existingFor();
+      if (refreshed.error) throw refreshed.error;
+      if (refreshed.data) return response(refreshed.data as ContactRow, false);
+    }
+    return response(existing.data as ContactRow, false);
+  }
   const { data: profile, error: profileError } = await admin.from("freelancer_profiles")
     .select("id,display_name,owner_user_id,intro_policy,booking_url,demo_status")
     .eq("id", input.profileId).eq("profile_status", "active").neq("availability_status", "unavailable").maybeSingle();
@@ -85,13 +84,10 @@ export async function createRecruitingContact(input: { projectId: string; profil
   const row = data as ContactRow;
   await writeAuditEvent({ actorUserId: input.user.id, action: "recruiting_contact_requested", targetType: "intro_booking", targetId: id, outcome: "success", metadata: { commercialModel: "no_fee", contactConsent: true } });
   if (recipient && token) {
-    const url = new URL("/kontaktfreigabe", input.siteUrl);
-    url.searchParams.set("t", token);
-    const delivered = await deliverEmail({ to: recipient, ...freelancerContactRequest({ projectTitle: project.title, freelancerName: profile.display_name, consentUrl: url.toString() }), kind: "transactional" });
-    row.contact_delivery_status = delivered.delivered ? "sent" : "failed";
-    const saved = await admin.from("intro_bookings").update({ contact_delivery_status: row.contact_delivery_status, contact_delivered_at: delivered.delivered ? new Date().toISOString() : null }).eq("id", id);
-    if (saved.error) throw saved.error;
-    if (!delivered.delivered) logEvent("recruiting_contact_delivery_failed", { requestId: id, reason: delivered.reason });
+    await dispatchRecruitingContact(id, input.siteUrl);
+    const refreshed = await existingFor();
+    if (refreshed.error) throw refreshed.error;
+    if (refreshed.data) return response(refreshed.data as ContactRow, true);
   }
   return response(row, true);
 }

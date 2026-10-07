@@ -4,12 +4,12 @@ import { BRIEF_ANALYSIS_CREDITS, CREDIT_PLANS, creditPlan, isCreditPlanId } from
 import { PUBLIC_PRICING_PLANS, START_CREDITS, meteredNetCents } from "@/lib/billing/plans";
 
 describe("Pricing- und Billingmodell", () => {
-  it("vergibt Start-Credits einmalig statt als Monatskontingent", () => {
+  it("grants 90 credits only for a verified card trial and zero on signup", () => {
     expect(CREDIT_PLANS.trial.billingModel).toBe("one_time");
     expect(CREDIT_PLANS.trial.grantCredits).toBe(90);
     expect(CREDIT_PLANS.trial.monthlyCredits).toBe(0);
-    expect(START_CREDITS).toBe(90);
-    expect(CREDIT_PLANS.guest.grantCredits).toBeLessThan(START_CREDITS);
+    expect(START_CREDITS).toBe(0);
+    expect(CREDIT_PLANS.guest.grantCredits).toBe(0);
   });
 
   it("definiert die drei Monatspläne zentral", () => {

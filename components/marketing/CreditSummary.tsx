@@ -3,10 +3,8 @@ import Link from "next/link";
 import { CREDIT_PRICES } from "@/lib/ai/credit-policy";
 import { CREDIT_RULES } from "@/lib/billing/credit-rules";
 import {
-  GUEST_TRIAL_CREDITS,
   PUBLIC_PRICING_PLANS,
-  START_CREDITS,
-  meteredNetCents,
+  TRIAL_CREDITS,
 } from "@/lib/billing/plans";
 import { BUSINESS_ONLY_NOTICE } from "@/lib/legal/policy";
 
@@ -25,27 +23,20 @@ export function CreditSummary() {
       <p>
         <strong>{CREDIT_RULES.account}</strong>{" "}
         {CREDIT_RULES.guest} {CREDIT_RULES.noRefill} Danach wählen Sie ein monatliches
-        Kontingent oder Enterprise-Abrechnung nach tatsächlicher Nutzung.
+        Kontingent im gewählten Software-Tarif.
       </p>
       <div className={styles.tableWrap} tabIndex={0} role="region" aria-label="Kontingente und Preise">
         <table>
           <caption>Kontingente und Preise</caption>
           <thead><tr><th scope="col">Tarif</th><th scope="col">Preis netto</th><th scope="col">Credits</th><th scope="col">Abrechnung</th></tr></thead>
           <tbody>
-            <tr><th scope="row">Ohne Konto</th><td>0 €</td><td>{number.format(GUEST_TRIAL_CREDITS)} einmalig</td><td>Kein Abo</td></tr>
-            <tr><th scope="row">Kostenloses Konto</th><td>0 €</td><td>{number.format(START_CREDITS)} einmalig, insgesamt</td><td>Kein Abo</td></tr>
-            {PUBLIC_PRICING_PLANS.map((plan) => (
+            <tr><th scope="row">14-Tage-Trial mit Karte</th><td>0 € im Trial</td><td>{number.format(TRIAL_CREDITS)} einmalig, insgesamt</td><td>Danach gewählter Monatstarif automatisch</td></tr>
+            {PUBLIC_PRICING_PLANS.filter(plan => plan.billingModel === "fixed_monthly").map((plan) => (
               <tr key={plan.id} data-plan={plan.id}>
                 <th scope="row">{plan.label}</th>
-                {plan.billingModel === "fixed_monthly" ? <>
                   <td>{euro.format(plan.priceNetCents / 100)}<small>zzgl. USt.</small></td>
                   <td>{number.format(plan.monthlyCredits)} / Monat</td>
                   <td>Monatliches Kontingent</td>
-                </> : <>
-                  <td>{euro.format(plan.euroPerCreditCents / 100)} / Credit<small>0 € Grundgebühr</small></td>
-                  <td>Nach Verbrauch</td>
-                  <td>Monatliche Verbrauchsabrechnung</td>
-                </>}
               </tr>
             ))}
           </tbody>
@@ -55,7 +46,6 @@ export function CreditSummary() {
         Eine {CREDIT_PRICES.project_brief.label} kostet <strong>{CREDIT_PRICES.project_brief.credits} Credits</strong>,
         eine {CREDIT_PRICES.research.label} <strong>{CREDIT_PRICES.research.credits} Credits</strong> und ein
         {" "}{CREDIT_PRICES.leadgen_outreach.label} <strong>{CREDIT_PRICES.leadgen_outreach.credits} Credits</strong>.
-        Enterprise berechnet dafür {euro.format(meteredNetCents(CREDIT_PRICES.project_brief.credits) / 100)}, {euro.format(meteredNetCents(CREDIT_PRICES.research.credits) / 100)} beziehungsweise {euro.format(meteredNetCents(CREDIT_PRICES.leadgen_outreach.credits) / 100)} netto.
       </p>
       <p className={styles.subtle}>Alle Leistungen verwenden dasselbe Guthaben. Nicht verbrauchte Monatscredits werden nicht kumuliert. Freelancer-Honorare sind nicht enthalten.</p>
       <p><Link href="/preise">Alle Tarife und Rechenbeispiele ansehen</Link></p>

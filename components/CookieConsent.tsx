@@ -81,6 +81,14 @@ export function CookieConsent() {
     document.cookie = `${CONSENT_COOKIE}=${consentCookieValue(nextChoice)}; Path=/; Max-Age=${CONSENT_MAX_AGE_SECONDS}; SameSite=Lax${secure}`;
     setChoice(nextChoice);
     setView("hidden");
+    if (nextChoice === "essential") {
+      try {
+        const keys = Object.keys(sessionStorage).filter(key => key.startsWith("xportal.recruiting-measurement."));
+        keys.forEach(key => sessionStorage.removeItem(key));
+        localStorage.removeItem("xportal.signup-funnel.v1");
+        localStorage.removeItem("xportal.signup-funnel-entry.v1");
+      } catch { /* Revocation still applies when browser storage is disabled. */ }
+    }
     window.dispatchEvent(new CustomEvent(CONSENT_CHANGED_EVENT, { detail: nextChoice }));
   };
 
@@ -98,7 +106,7 @@ export function CookieConsent() {
             {view === "settings"
               ? "Cookie-Einstellungen"
               : OPTIONAL_SERVICES_AVAILABLE
-                ? "Werbemessung erlauben?"
+                ? "Produkt- und Werbemessung erlauben?"
                 : "Nur notwendige Cookies"}
           </h2>
           {/* Die Kenntnisnahme ohne Wahl bleibt kurz. hCaptcha wird dort
@@ -114,7 +122,10 @@ export function CookieConsent() {
           ) : view === "banner" ? (
             <p>
               Notwendige Cookies brauchen wir für Anmeldung, Sicherheit und Ihre
-              Auswahl. Mit Ihrer Zustimmung laden wir zusätzlich Google Ads
+              Auswahl. Mit Ihrer Zustimmung messen wir zusätzlich den Weg vom
+              Ergebnisbeispiel bis zur wiederkehrenden Software-Nutzung. Projekttexte,
+              Lebensläufe und Kontaktdaten werden dabei nicht als Messparameter erfasst.
+              Wenn konfiguriert, laden wir außerdem Google Ads
               (Google Ireland Ltd.), um zu messen, welche Anzeigen zu Besuchen
               und Registrierungen führen. Dabei können Daten in die USA
               übertragen werden. Sie können die Zustimmung jederzeit unter
@@ -130,7 +141,7 @@ export function CookieConsent() {
               absendet; dabei wird Ihre IP-Adresse an Intuition Machines, Inc.
               (USA) übertragen.
               {OPTIONAL_SERVICES_AVAILABLE
-                ? " Google Ads (Google Ireland Ltd.; Übermittlung in die USA möglich) misst nur nach Ihrer Zustimmung, welche Anzeigen zu Besuchen und Registrierungen führen. Ein Widerruf gilt ab sofort."
+                ? " Optionale Produktmessung erfasst Nutzungsereignisse ohne Projekttexte, Lebensläufe und Kontaktdaten. Google Ads (Google Ireland Ltd.; Übermittlung in die USA möglich) lädt nur, wenn konfiguriert und zugestimmt. Ein Widerruf gilt ab sofort."
                 : " Analyse- und Marketingdienste setzen wir nicht ein — hier gibt es nichts zu entscheiden. Sollte sich das ändern, fragen wir vorher."}
               {" "}<a href="/privacy">Datenschutzhinweise</a>
               {" · "}<a href="/imprint">Impressum</a>
@@ -146,7 +157,7 @@ export function CookieConsent() {
               <p>Erforderlich für Sicherheit, Sitzungen und die Speicherung Ihrer Auswahl.</p>
             </div>
             <div>
-              <span>{OPTIONAL_SERVICES_AVAILABLE ? "Werbemessung (Google Ads)" : "Optional"}</span>
+              <span>{OPTIONAL_SERVICES_AVAILABLE ? "Produkt- und Werbemessung" : "Optional"}</span>
               <strong>
                 {OPTIONAL_SERVICES_AVAILABLE
                   ? choice === "all"
@@ -156,7 +167,7 @@ export function CookieConsent() {
               </strong>
               <p>
                 {OPTIONAL_SERVICES_AVAILABLE
-                  ? "Lädt das Google-Ads-Tag, das Anzeigenklicks Besuchen und Registrierungen zuordnet. Ohne Zustimmung wird es nicht geladen."
+                  ? "Erfasst die Nutzungsschritte der Software ohne sensible Inhalte. Ein konfiguriertes Google-Ads-Tag ordnet Anzeigenklicks Besuchen zu. Ohne Zustimmung werden diese optionalen Dienste nicht aktiviert."
                   : "Es ist kein optionaler Dienst eingebunden. Eine Zustimmung würde nichts aktivieren."}
               </p>
             </div>

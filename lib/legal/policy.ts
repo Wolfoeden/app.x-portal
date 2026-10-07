@@ -39,6 +39,14 @@ const TERMS_REVIEW_STATES = {
 } as const;
 export const TERMS_REVIEW = TERMS_REVIEW_STATES[TERMS_STATUS];
 
+/** New SaaS offer only; the approved historical 1.1 terms remain immutable. */
+export const SAAS_TERMS_VERSION = "saas-2026-10-1-draft";
+export const SAAS_TERMS_REVIEW = {
+  label: "SaaS-Entwurf — rechtliche Freigabe ausstehend",
+  status: "draft",
+  checkoutEnabled: false,
+} as const;
+
 /**
  * XPORTAL richtet sich ausschließlich an Unternehmer nach § 14 BGB. Der Satz
  * steht überall dort, wo jemand eine Entscheidung trifft — die Beschränkung

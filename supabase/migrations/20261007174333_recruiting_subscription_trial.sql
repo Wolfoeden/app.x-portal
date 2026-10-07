@@ -31,6 +31,7 @@ create table public.recruiting_checkout_attempts (
   session_url text,
   customer_id text,
   trial_eligible boolean not null,
+  terms_version text not null,
   expires_at timestamptz not null,
   completed_at timestamptz
 );
@@ -128,12 +129,12 @@ begin
     case when not v_active then 'billing_required' when v_remaining=0 and a.plan_id<>'enterprise_flex' then 'insufficient_credits' else 'ok' end;
 end; $$;
 
-create function public.prepare_recruiting_checkout(p_user_id uuid,p_plan_id text)
+create function public.prepare_recruiting_checkout(p_user_id uuid,p_plan_id text,p_terms_version text default 'saas-2026-10-1-draft')
 returns setof public.recruiting_checkout_attempts
 language plpgsql security definer set search_path = '' as $$
 declare a public.user_ai_credit_accounts%rowtype; u auth.users%rowtype; v_trial boolean; v_hash text; v_expires timestamptz;
 begin
-  if p_plan_id not in ('basic','pro','business') then raise exception 'invalid_plan'; end if;
+  if p_plan_id is null or p_plan_id not in ('basic','pro','business') or p_terms_version is null or length(trim(p_terms_version))=0 then raise exception 'invalid_plan'; end if;
   select x.* into u from auth.users x where x.id=p_user_id;
   if not found or coalesce(u.is_anonymous,false) or u.email_confirmed_at is null or u.email is null then raise exception 'email_not_verified'; end if;
   perform * from public.get_ai_credit_snapshot(p_user_id,false,0);
@@ -152,10 +153,10 @@ begin
   v_trial:=a.stripe_trial_claimed_at is null and a.stripe_subscription_id is null and not exists(
     select 1 from private.recruiting_trial_identities t where t.email_hash=v_hash and (t.claimed_at is not null or t.reserved_by<>p_user_id)
   );
-  insert into public.recruiting_checkout_attempts(user_id,plan_id,customer_id,trial_eligible,expires_at)
-    values(p_user_id,p_plan_id,a.stripe_customer_id,v_trial,v_expires)
+  insert into public.recruiting_checkout_attempts(user_id,plan_id,customer_id,trial_eligible,terms_version,expires_at)
+    values(p_user_id,p_plan_id,a.stripe_customer_id,v_trial,p_terms_version,v_expires)
     on conflict(user_id) do update set request_key=gen_random_uuid(),plan_id=excluded.plan_id,
-      session_id=null,session_url=null,customer_id=excluded.customer_id,trial_eligible=excluded.trial_eligible,expires_at=excluded.expires_at,completed_at=null;
+      session_id=null,session_url=null,customer_id=excluded.customer_id,trial_eligible=excluded.trial_eligible,terms_version=excluded.terms_version,expires_at=excluded.expires_at,completed_at=null;
   return query select c.* from public.recruiting_checkout_attempts c where c.user_id=p_user_id;
 end; $$;
 
@@ -180,41 +181,47 @@ create function public.sync_recruiting_subscription(
   p_user_id uuid,p_event_id text,p_event_type text,p_subscription_id text,p_customer_id text,p_plan_id text,p_status text,
   p_cancel_at_period_end boolean,p_trial_start timestamptz,p_trial_end timestamptz,p_card_collected boolean,p_checkout_verified boolean,
   p_checkout_session_id text,p_checkout_key uuid,p_trial_credits bigint,p_invoice_id text,p_invoice_status text,p_amount_paid bigint,
-  p_paid_period_start timestamptz,p_paid_period_end timestamptz
+  p_paid_period_start timestamptz,p_paid_period_end timestamptz,p_observed_at timestamptz
 )
 returns table(trial_activated boolean,paid_activated boolean,first_payment boolean,cancelled boolean,access_until timestamptz)
 language plpgsql security definer set search_path = '' as $$
 declare a public.user_ai_credit_accounts%rowtype; c public.recruiting_checkout_attempts%rowtype;
   v_inserted integer; v_trial boolean:=false; v_paid boolean:=false; v_first boolean:=false; v_cancel boolean:=false; v_legacy bigint; v_allowance bigint;
 begin
-  if p_user_id is null or p_event_id is null or p_subscription_id!~'^sub_[A-Za-z0-9]+$' or p_customer_id!~'^cus_[A-Za-z0-9]+$'
+  if p_user_id is null or p_event_id is null or p_subscription_id is null or p_customer_id is null or p_plan_id is null or p_status is null
+    or p_card_collected is null or p_checkout_verified is null or p_cancel_at_period_end is null or p_observed_at is null or p_trial_credits is null
+    or p_subscription_id!~'^sub_[A-Za-z0-9]+$' or p_customer_id!~'^cus_[A-Za-z0-9]+$'
     or p_plan_id not in ('basic','pro','business') or p_status not in ('incomplete','incomplete_expired','trialing','active','past_due','canceled','unpaid','paused')
     or p_trial_credits<1 or p_trial_credits>10000 then raise exception 'invalid_subscription_input'; end if;
   select x.* into a from public.user_ai_credit_accounts x where x.user_id=p_user_id for update;
   if not found or a.is_anonymous then raise exception 'invalid_account'; end if;
   select x.* into c from public.recruiting_checkout_attempts x where x.user_id=p_user_id;
   if a.stripe_subscription_id is distinct from p_subscription_id then
-    if not p_checkout_verified or c.session_id is distinct from p_checkout_session_id or c.request_key is distinct from p_checkout_key
+    if not p_checkout_verified or p_checkout_session_id is null or (c.session_id is not null and c.session_id is distinct from p_checkout_session_id) or c.request_key is distinct from p_checkout_key
       or c.customer_id is distinct from p_customer_id or c.plan_id is distinct from p_plan_id
       or (a.stripe_subscription_id is not null and a.stripe_subscription_status not in ('canceled','incomplete_expired')) then raise exception 'unverified_checkout'; end if;
   elsif a.stripe_customer_id is distinct from p_customer_id then raise exception 'customer_mismatch'; end if;
   insert into public.stripe_webhook_events(event_id,event_type,user_id) values(p_event_id,p_event_type,p_user_id) on conflict(event_id) do nothing;
   get diagnostics v_inserted=row_count;
   if v_inserted=0 then return query select false,false,false,false,coalesce(a.stripe_paid_through,a.stripe_trial_end); return; end if;
+  if a.stripe_synced_at is not null and p_observed_at<a.stripe_synced_at then
+    return query select false,false,false,false,coalesce(a.stripe_paid_through,a.stripe_trial_end); return;
+  end if;
 
   -- A canceled renewal is latched. A late event can never switch it back on.
   v_cancel:=(p_cancel_at_period_end or p_status='canceled') and a.stripe_cancel_requested_at is null;
   update public.user_ai_credit_accounts x set stripe_subscription_id=p_subscription_id,stripe_customer_id=p_customer_id,
     stripe_plan_id=p_plan_id,stripe_subscription_status=p_status,
-    stripe_cancel_at_period_end=x.stripe_cancel_at_period_end or p_cancel_at_period_end or p_status='canceled',
-    stripe_cancel_requested_at=case when p_cancel_at_period_end or p_status='canceled' then coalesce(x.stripe_cancel_requested_at,now()) else x.stripe_cancel_requested_at end,
+    stripe_cancel_at_period_end=(case when a.stripe_subscription_id is distinct from p_subscription_id then false else x.stripe_cancel_at_period_end end) or p_cancel_at_period_end or p_status='canceled',
+    stripe_cancel_requested_at=case when p_cancel_at_period_end or p_status='canceled' then coalesce(x.stripe_cancel_requested_at,now())
+      when a.stripe_subscription_id is distinct from p_subscription_id then null else x.stripe_cancel_requested_at end,
     stripe_trial_started_at=coalesce(x.stripe_trial_started_at,p_trial_start),stripe_trial_end=coalesce(x.stripe_trial_end,p_trial_end),
     stripe_latest_invoice_id=coalesce(p_invoice_id,x.stripe_latest_invoice_id),stripe_latest_invoice_status=coalesce(p_invoice_status,x.stripe_latest_invoice_status),
-    stripe_synced_at=now(),stripe_checkout_completed_at=case when p_checkout_verified then coalesce(x.stripe_checkout_completed_at,now()) else x.stripe_checkout_completed_at end
+    stripe_synced_at=p_observed_at,stripe_checkout_completed_at=case when p_checkout_verified then coalesce(x.stripe_checkout_completed_at,now()) else x.stripe_checkout_completed_at end
     where x.user_id=p_user_id;
 
   if a.stripe_trial_claimed_at is null and c.trial_eligible and p_checkout_verified and p_card_collected
-    and p_status='trialing' and p_trial_end>now() and p_trial_start is not null then
+    and p_status in ('trialing','canceled') and p_trial_end>now() and p_trial_start is not null and p_trial_end>p_trial_start then
     update private.recruiting_trial_identities t set claimed_at=now() where t.reserved_by=p_user_id and t.claimed_at is null;
     if not found then raise exception 'trial_already_claimed'; end if;
     v_legacy:=greatest(a.credits_total-a.credits_used,0);
@@ -244,6 +251,26 @@ begin
   end if;
   if p_checkout_verified then update public.recruiting_checkout_attempts x set completed_at=coalesce(x.completed_at,now()) where x.user_id=p_user_id; end if;
   return query select v_trial,v_paid,v_first,v_cancel,coalesce(x.stripe_paid_through,x.stripe_trial_end) from public.user_ai_credit_accounts x where x.user_id=p_user_id;
+end; $$;
+
+-- A self-imposed ceiling must never promote a 90-credit trial to a monthly
+-- allowance, refill spent credits, or erase a retained legacy balance.
+create or replace function public.set_ai_credit_self_limit(p_user_id uuid,p_limit bigint,p_plan_allowance bigint)
+returns table(credits_total bigint,credits_self_limit bigint)
+language plpgsql security definer set search_path = '' as $$
+declare a public.user_ai_credit_accounts%rowtype; v_cap bigint;
+begin
+  select x.* into a from public.user_ai_credit_accounts x where x.user_id=p_user_id for update;
+  if not found or a.is_anonymous or p_plan_allowance is distinct from private.credit_plan_monthly_allowance(a.plan_id)
+    or (p_limit is not null and (p_limit<0 or p_limit>p_plan_allowance)) then raise exception 'invalid AI credit limit input'; end if;
+  if a.stripe_subscription_id is not null then
+    v_cap:=a.billing_grant_credits;
+  elsif a.billing_generation='legacy' then v_cap:=p_plan_allowance;
+  else raise exception 'no_active_entitlement'; end if;
+  update public.user_ai_credit_accounts x set credits_self_limit=p_limit,
+    credits_total=x.legacy_credit_balance+least(v_cap,coalesce(p_limit,v_cap))
+    where x.user_id=p_user_id;
+  return query select x.credits_total,x.credits_self_limit from public.user_ai_credit_accounts x where x.user_id=p_user_id;
 end; $$;
 
 -- Enforce eligibility inside the same quota transaction as reservations.

@@ -72,6 +72,7 @@ export function billingPeriodLabel(
     year: "numeric",
   }).format(end);
   if (cancelAtPeriodEnd) return `Credits verfügbar bis ${formattedEnd}`;
+  if (status === "trialing") return `Trial bis ${formattedEnd} · keine Credit-Auffüllung`;
   if (status === "past_due" || status === "unpaid") {
     return `Keine neue Auffüllung ohne Zahlung · aktueller Zeitraum bis ${formattedEnd}`;
   }

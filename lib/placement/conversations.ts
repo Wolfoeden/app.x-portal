@@ -23,6 +23,7 @@ const INTRODUCED = new Set<string>(INTRODUCED_STATUSES);
 const MAX_ITEMS = 50;
 
 type Row = {
+  commercial_model?: "no_fee" | "legacy_placement";
   id: string;
   status: string;
   requested_at: string;
@@ -40,7 +41,7 @@ type Row = {
 };
 
 const COLUMNS =
-  "id,status,requested_at,confirmed_at,project_id,owner_user_id,freelancer_profile_id,contact_email,contact_name,contact_company,client_outcome,client_outcome_at,freelancer_outcome,freelancer_outcome_at";
+  "id,status,requested_at,confirmed_at,project_id,owner_user_id,freelancer_profile_id,contact_email,contact_name,contact_company,client_outcome,client_outcome_at,freelancer_outcome,freelancer_outcome_at,commercial_model";
 
 type Profile = { id: string; display_name: string; role_title: string; booking_url: string | null };
 
@@ -88,6 +89,7 @@ function item(
   const engagementRecorded = ctx.engaged.has(row.id);
   return {
     id: row.id,
+    commercialModel: row.commercial_model ?? "legacy_placement",
     role,
     projectTitle: ctx.titles.get(row.project_id) ?? null,
     counterpartName: counterpart.name,
@@ -99,7 +101,7 @@ function item(
     answer,
     answeredAt,
     engagementRecorded,
-    question: roleQuestionDue(
+    question: row.commercial_model === "no_fee" ? null : roleQuestionDue(
       { status: row.status, confirmedAt: row.confirmed_at, answer, answeredAt, hasEngagement: engagementRecorded },
       now,
     ),
