@@ -23,6 +23,7 @@ import { createOpenAiClient } from "@/lib/openai/provider";
 import { followedByRateUnit } from "@/lib/domain/brief-phrases";
 import { applyConfirmedFields } from "@/lib/domain/confirmed-fields";
 import { requirementPriority } from "@/lib/domain/requirements";
+import { isWorkflowInstruction, projectRequirementSource } from "@/lib/domain/workflow-instructions";
 
 /**
  * Product allowlist: normal project analysis is deliberately pinned to Nano.
@@ -216,6 +217,7 @@ Rules:
 - Preserve corrections in the latest message over older statements.
 - Treat a follow-up as an addition unless it explicitly corrects or removes an earlier fact.
 - Put professional capabilities explicitly required from the freelancer in requiredSkills and clearly optional professional capabilities in optionalSkills.
+- Instructions controlling XPORTAL's search, research, filtering, profile comparison, or contact behaviour are workflow instructions. Never put these in any freelancer requirement field. Preserve explicit obligations addressed to the freelancer.
 - A capability the user rules out ("keine Angular-Leute", "ohne SAP", "not Java") belongs in excludedSkills and must never appear in requiredSkills or optionalSkills. Negation reverses a requirement, it does not create one.
 - Do not put personality traits, working style, commitment, workload, schedule, availability, preparation obligations or other delivery conditions in skill fields; preserve them in constraints.
 - Consolidate examples and subtopics under the named professional capability instead of turning every task bullet into an independent skill.
@@ -272,7 +274,8 @@ function groundedList(
   source: string,
 ): string[] | null {
   if (!proposed) return null;
-  return deduplicate(proposed.filter((value) => sourceContains(source, value)));
+  const requirements = projectRequirementSource(source);
+  return deduplicate(proposed.filter((value) => !isWorkflowInstruction(value) && sourceContains(requirements, value)));
 }
 
 interface SkillEvidenceGroup {
@@ -996,6 +999,7 @@ function enhanceDeterministicBrief(
   parsed: ProjectBrief,
   source: string,
 ): ProjectBrief {
+  source = projectRequirementSource(source);
   const prerequisites = namedSection(source, "Voraussetzungen");
   const preferredTechnologies = namedSection(source, "Bevorzugte Technologien");
   const alternativeRoles = alternativeRoleClause(prerequisites);
@@ -1210,7 +1214,7 @@ export function reconcileAiBrief(
   latestMessage?: string,
 ): ProjectBrief {
   const proposed = AiBriefCandidateSchema.parse(untrustedCandidate);
-  const source = deterministic.originalRequest;
+  const source = projectRequirementSource(deterministic.originalRequest);
   const latest = latestMessage?.trim() ?? source;
 
   const proposedRequired = groundedSkillList(
@@ -1301,7 +1305,7 @@ export function reconcileAiBrief(
     startWindow: proposedWindow ?? deterministic.startWindow,
     constraints: removeExplicitItems(
       mergeLists(
-        deterministic.constraints,
+        deterministic.constraints?.filter((value) => !isWorkflowInstruction(value)) ?? null,
         mergeLists(
           groundedList(proposed.constraints, source),
           proposedBehaviouralConstraints,

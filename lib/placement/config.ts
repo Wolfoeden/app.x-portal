@@ -24,8 +24,15 @@
  * Als Funktion, damit Tests ihn je Fall setzen können.
  */
 export function placementRequestsEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED === "true";
+  // Contact consent and historical conversations stay available in the SaaS.
+  // The old public deployment flag cannot re-enable fee-bearing creation.
+  return true;
 }
+
+export const RECRUITING_COMMERCIAL_MODEL = "no_fee" as const;
+export type RecruitingCommercialModel = "no_fee" | "legacy_placement";
+
+/** These immutable constants apply only to historical accepted contracts. */
 
 export const PLACEMENT_TERMS = {
   /** Wird bei jeder Zustimmung gespeichert. Neue Fassung, neue Kennung. */
@@ -111,10 +118,9 @@ export function formatWholeEuro(cents: number): string {
 
 /** Die drei Sätze, die bei jeder Anfrage über dem Häkchen stehen. */
 export function placementTermsSummary(): string[] {
-  const t = PLACEMENT_TERMS;
   return [
-    "Anfrage, Vorstellung und Erstgespräch sind kostenlos und brauchen kein Abo.",
-    `Beauftragen Sie den Freelancer, zahlen Sie einmalig ${t.feePercent} % des vereinbarten Honorars für die ersten ${t.feeMonths} Monate (höchstens ${t.maxFeeDays} Projekttage), zuzüglich Umsatzsteuer.`,
-    `Das gilt für Beauftragungen innerhalb von ${t.protectionMonths} Monaten nach der Vorstellung, auch wenn der Vertrag später oder für ein anderes Projekt zustande kommt.`,
+    "Sie bezahlen für die Software-Nutzung im gewählten Tarif.",
+    "Für neue Kontaktanfragen und Beauftragungen fällt keine Vermittlungsprovision oder Erfolgsgebühr an.",
+    "Der Freelancer entscheidet selbst über die Kontaktfreigabe und bestätigt seine aktuelle Verfügbarkeit gesondert.",
   ];
 }

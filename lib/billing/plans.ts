@@ -42,6 +42,9 @@ export type MeteredPlan = PlanBase & {
 
 export type CreditPlan = OneTimeCreditPlan | FixedMonthlyPlan | MeteredPlan;
 
+export const TRIAL_DAYS = 14;
+export const TRIAL_CREDITS = 90;
+
 export const CREDIT_PLANS = {
   /**
    * Das Startguthaben ist so bemessen, dass es zum Ausprobieren reicht und
@@ -55,7 +58,7 @@ export const CREDIT_PLANS = {
     id: "guest",
     label: "Gastzugang",
     billingModel: "one_time",
-    grantCredits: 30,
+    grantCredits: 0,
     monthlyCredits: 0,
     priceNetCents: 0,
     purchasable: false,
@@ -65,9 +68,9 @@ export const CREDIT_PLANS = {
   },
   trial: {
     id: "trial",
-    label: "Kostenloser Start",
+    label: "Testphase mit Karte",
     billingModel: "one_time",
-    grantCredits: 90,
+    grantCredits: TRIAL_CREDITS,
     monthlyCredits: 0,
     priceNetCents: 0,
     purchasable: false,
@@ -169,7 +172,8 @@ export const PUBLIC_PRICING_PLANS = [
   CREDIT_PLANS.enterprise_flex,
 ] as const;
 
-export const START_CREDITS = CREDIT_PLANS.trial.grantCredits;
+/** Account creation itself never grants credits. The verified Stripe trial does. */
+export const START_CREDITS = 0;
 export const GUEST_TRIAL_CREDITS = CREDIT_PLANS.guest.grantCredits;
 
 export function isCreditPlanId(value: unknown): value is CreditPlanId {

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { accountNameFromMetadata } from "@/lib/auth/account-name";
-import { userHasPaidAccess } from "@/lib/billing/paid-access";
+import { userHasRecruitingAccess } from "@/lib/billing/entitlements";
 import { deliverEmail } from "@/lib/email/deliver";
 import { logEvent } from "@/lib/security/request";
 import { profileUrl } from "@/lib/profile/profile-link";
@@ -50,7 +50,13 @@ export async function placementBookingAllowed(
 ): Promise<boolean> {
   if (!user || user.isAnonymous) return false;
   if (user.isAdmin) return true;
-  if (await userHasPaidAccess(user.id)) return true;
+  if (await userHasRecruitingAccess(user.id)) {
+    const { data: profile, error } = await createAdminSupabaseClient()
+      .from("freelancer_profiles").select("intro_policy")
+      .eq("id", profileId).eq("profile_status", "active").maybeSingle();
+    if (error) throw error;
+    if (profile?.intro_policy === "free") return true;
+  }
   const { data, error } = await createAdminSupabaseClient()
     .from("intro_bookings")
     .select("id")

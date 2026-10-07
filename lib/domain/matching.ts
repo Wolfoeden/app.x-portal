@@ -14,6 +14,7 @@ import { placementRequestsEnabled } from "@/lib/placement/config";
 
 import { roleFamilyLabels, roleFit } from "./role-taxonomy";
 import { skillFamilyKey, skillTerms } from "./skill-taxonomy";
+import { isWorkflowInstruction } from "./workflow-instructions";
 import {
   deriveRequirementGroups,
   hasAmbiguousSkillConnectors,
@@ -1274,6 +1275,9 @@ export function evaluateProfile(
     (brief.contractualRequirements ?? []).map(normalize),
   );
   for (const constraint of brief.constraints ?? []) {
+    // Previously persisted extractions may contain operator instructions.
+    // These do not describe candidate evidence and cannot become known gaps.
+    if (isWorkflowInstruction(constraint)) continue;
     // These facts already have a dedicated assessment above. Assessing them
     // again against free-text skill facts produced "remote fits / unconfirmed"
     // and repeated the same start question on one profile.

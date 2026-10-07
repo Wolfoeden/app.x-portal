@@ -15,11 +15,11 @@ afterEach(() => {
 });
 
 describe("placement model settings", () => {
-  it("is off unless the switch is set to exactly true", () => {
+  it("keeps consent and historical conversations available independently of the obsolete fee switch", () => {
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "");
-    expect(placementRequestsEnabled()).toBe(false);
+    expect(placementRequestsEnabled()).toBe(true);
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "1");
-    expect(placementRequestsEnabled()).toBe(false);
+    expect(placementRequestsEnabled()).toBe(true);
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     expect(placementRequestsEnabled()).toBe(true);
   });
@@ -33,21 +33,20 @@ describe("placement model settings", () => {
     expect(placementFeeCents(59_200, -3)).toBe(0);
   });
 
-  it("states fee, period, cap and protection in the consent text", () => {
+  it("states subscription payment and freelancer consent without a new fee agreement", () => {
     const text = placementTermsSummary().join(" ");
 
-    expect(text).toContain("kostenlos");
-    expect(text).toContain(`${PLACEMENT_TERMS.feePercent} %`);
-    expect(text).toContain(`ersten ${PLACEMENT_TERMS.feeMonths} Monate`);
-    expect(text).toContain(`${PLACEMENT_TERMS.maxFeeDays} Projekttage`);
-    expect(text).toContain(`${PLACEMENT_TERMS.protectionMonths} Monaten`);
+    expect(text).toContain("Software-Nutzung");
+    expect(text).toContain("keine Vermittlungsprovision");
+    expect(text).toContain("Freelancer entscheidet selbst");
+    expect(text).not.toContain(`${PLACEMENT_TERMS.feePercent} %`);
   });
 
   it("keeps the freelancer's calendar out of the browser once the switch is on", () => {
     const calendar = "https://calendly.com/beispiel";
 
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "false");
-    expect(clientBookingUrl("p1", calendar, "https://x-portal.eu")).toBe(calendar);
+    expect(clientBookingUrl("p1", calendar, "https://x-portal.eu")).toBe("https://x-portal.eu/api/freelancers/p1/book");
 
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     expect(clientBookingUrl("p1", calendar, "https://x-portal.eu/")).toBe(

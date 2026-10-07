@@ -1,447 +1,57 @@
-import { randomUUID } from "node:crypto";
-
 import { NextResponse } from "next/server";
 import { z } from "zod";
-
-import { writeAuditEvent } from "@/lib/audit/write";
-import { userHasPaidAccess } from "@/lib/billing/paid-access";
-import { requireCurrentUser, type CurrentUser } from "@/lib/auth/current-user";
-import { contactInbox } from "@/lib/contact/messages";
-import { deliverEmail } from "@/lib/email/deliver";
-import { PLACEMENT_TERMS, placementRequestsEnabled } from "@/lib/placement/config";
-import {
-  DAY_MS,
-  GUEST_LIMIT_ERROR,
-  GuestContactSchema,
-  admitGuestContact,
-  jsonResponse,
-  type GuestContact,
-} from "@/lib/placement/guest-contact";
-import { placementRequestNotice } from "@/lib/placement/messages";
-import { freelancerContactEmail } from "@/lib/placement/requests";
-import { findShownProfile } from "@/lib/placement/shown-profile";
-import {
-  assertSameOrigin,
-  logEvent,
-  readJsonWithLimit,
-} from "@/lib/security/request";
+import { requireCurrentUser } from "@/lib/auth/current-user";
+import { userHasRecruitingAccess } from "@/lib/billing/entitlements";
+import { createRecruitingContact } from "@/lib/placement/recruiting-contacts";
+import { assertSameOrigin, readJsonWithLimit } from "@/lib/security/request";
+import { consumeRateLimit } from "@/lib/security/shared-rate-limit";
 import { SITE_URL } from "@/lib/seo";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
-/**
- * Anfrage ohne Konto: Wer als Gast anfragt, gibt E-Mail und Firma an
- * (lib/placement/guest-contact.ts, geteilt mit dem Suchauftrag).
- */
-const IntroductionInputSchema = z
-  .object({
-    projectId: z.string().uuid(),
-    profileId: z.string().uuid(),
-    idempotencyKey: z.string().trim().min(8).max(160),
-    /** Nur im Vermittlungsmodell: die Fassung, der zugestimmt wurde. */
-    placementTermsVersion: z.string().trim().min(1).max(80).optional(),
-    guestContact: GuestContactSchema.optional(),
-  })
-  .strict();
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+const NO_STORE = { "Cache-Control": "private, no-store" };
+const InputSchema = z.object({
+  projectId: z.string().uuid(), profileId: z.string().uuid(),
+  idempotencyKey: z.string().trim().min(8).max(160),
+  contactConsent: z.literal(true),
+  placementTermsVersion: z.string().max(80).optional(),
+}).strict();
 
-/** Wie viele Anfragen ohne Konto in 24 Stunden je Gast; je Adresse siehe guest-contact. */
-const GUEST_REQUESTS_PER_DAY = 3;
-
-const LookupSchema = z.object({
-  projectId: z.string().uuid(),
-  profileId: z.string().uuid(),
-});
-
-/**
- * Der Stand einer Anfrage, für den Anfrage-Dialog: nichts, wartet, vorgestellt
- * oder abgelehnt. Nur im Vermittlungsmodell; vorher gab es nichts abzufragen.
- */
 export async function GET(request: Request) {
-  if (!placementRequestsEnabled()) return new Response(null, { status: 404 });
   try {
-    const params = new URL(request.url).searchParams;
-    const input = LookupSchema.parse({
-      projectId: params.get("projectId"),
-      profileId: params.get("profileId"),
-    });
     const user = await requireCurrentUser();
-
-    const { data, error } = await createAdminSupabaseClient()
-      .from("intro_bookings")
-      .select("id,status,requested_at,confirmed_at")
-      .eq("owner_user_id", user.id)
-      .eq("project_id", input.projectId)
-      .eq("freelancer_profile_id", input.profileId)
-      .order("requested_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const params = new URL(request.url).searchParams;
+    const projectId = z.string().uuid().parse(params.get("projectId"));
+    const profileId = z.string().uuid().parse(params.get("profileId"));
+    const { data, error } = await createAdminSupabaseClient().from("intro_bookings")
+      .select("id,status,requested_at,confirmed_at,commercial_model,contact_delivery_status")
+      .eq("owner_user_id", user.id).eq("project_id", projectId).eq("freelancer_profile_id", profileId)
+      .order("requested_at", { ascending: false }).limit(1).maybeSingle();
     if (error) throw error;
-    const row = data as
-      | { id: string; status: string; requested_at: string; confirmed_at: string | null }
-      | null;
-    return NextResponse.json({
-      introduction: row
-        ? { id: row.id, status: row.status, requestedAt: row.requested_at, confirmedAt: row.confirmed_at }
-        : null,
-    });
+    return NextResponse.json({ introduction: data ? {
+      id: data.id, status: data.status, requestedAt: data.requested_at, confirmedAt: data.confirmed_at,
+      commercialModel: data.commercial_model, emailDelivery: data.contact_delivery_status,
+    } : null }, { headers: NO_STORE });
   } catch (error) {
     if (error instanceof Response) return error;
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: "Die Auswahl ist ungültig." }, { status: 400 });
-    }
-    return NextResponse.json({ error: "Der Stand der Anfrage ist gerade nicht abrufbar." }, { status: 503 });
+    return NextResponse.json({ error: "Der Stand der Anfrage ist gerade nicht abrufbar." }, { status: error instanceof z.ZodError ? 400 : 503, headers: NO_STORE });
   }
-}
-
-/**
- * Eine Anfrage im Vermittlungsmodell.
- *
- * Anders als der bisherige Weg: Ohne Zustimmung zur aktuellen Fassung der
- * Vermittlungsbedingungen gibt es keine Anfrage; jede Anfrage wartet auf die
- * Vorstellung durch den Betreiber; der Kalender wird erst danach freigegeben;
- * und eine bestehende Anfrage wird nie überschrieben. Der bisherige Upsert
- * hätte eine schon vorgestellte Anfrage beim zweiten Klick wieder auf
- * „wartet“ gesetzt.
- */
-async function placementRequest(
-  input: z.infer<typeof IntroductionInputSchema>,
-  user: CurrentUser,
-  admin: ReturnType<typeof createAdminSupabaseClient>,
-  profile: { displayName: string; role: string },
-  matchId: string | null,
-  guest: GuestContact | null,
-) {
-  if (input.placementTermsVersion !== PLACEMENT_TERMS.version) {
-    logEvent("intro_request_rejected", { reason: "terms_not_accepted" });
-    return NextResponse.json(
-      { error: "Bitte stimmen Sie den Vermittlungsbedingungen zu." },
-      { status: 409 },
-    );
-  }
-
-  // Begrenzt verfügbar oder offen ist kein Grund, die Anfrage abzuweisen;
-  // genau das klärt die Vorstellung.
-  const { data: currentProfile, error: profileError } = await admin
-    .from("freelancer_profiles")
-    .select("id,owner_user_id,profile_status,availability_status")
-    .eq("id", input.profileId)
-    .eq("profile_status", "active")
-    .neq("availability_status", "unavailable")
-    .maybeSingle();
-  if (profileError) throw profileError;
-  if (!currentProfile) {
-    logEvent("intro_request_rejected", { reason: "profile_unavailable" });
-    throw new Response("Dieses Profil ist aktuell nicht verfügbar.", { status: 409 });
-  }
-
-  const { data: existing, error: existingError } = await admin
-    .from("intro_bookings")
-    .select("id,status,requested_at")
-    .eq("owner_user_id", user.id)
-    .eq("project_id", input.projectId)
-    .eq("freelancer_profile_id", input.profileId)
-    .neq("status", "cancelled")
-    .order("requested_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (existingError) throw existingError;
-  if (existing) {
-    return NextResponse.json({
-      introduction: { id: existing.id, status: existing.status, requestedAt: existing.requested_at },
-      message: "Zu diesem Profil liegt Ihre Anfrage bereits vor.",
-    });
-  }
-
-  // Erst die Zustimmung, dann die Anfrage: Es darf keine Anfrage geben, zu der
-  // die Fassung der Bedingungen fehlt. Scheitert das Protokoll, scheitert die
-  // Anfrage, und der Kunde kann es erneut versuchen.
-  const id = randomUUID();
-  const timestamp = new Date().toISOString();
-  await writeAuditEvent({
-    actorUserId: user.id,
-    action: "placement_terms_accepted",
-    targetType: "intro_booking",
-    targetId: id,
-    outcome: "success",
-    metadata: {
-      version: PLACEMENT_TERMS.version,
-      feePercent: PLACEMENT_TERMS.feePercent,
-      feeMonths: PLACEMENT_TERMS.feeMonths,
-      maxFeeDays: PLACEMENT_TERMS.maxFeeDays,
-      protectionMonths: PLACEMENT_TERMS.protectionMonths,
-      acceptedAt: timestamp,
-      ...(guest ? { guest: true, contactEmail: guest.email, company: guest.company } : {}),
-    },
-    required: true,
-  });
-
-  const { data: booking, error: bookingError } = await admin
-    .from("intro_bookings")
-    .insert({
-      id,
-      project_id: input.projectId,
-      owner_user_id: user.id,
-      freelancer_profile_id: input.profileId,
-      match_id: matchId,
-      intro_policy_snapshot: "manual_approval",
-      status: "manual_review",
-      booking_provider: "manual",
-      booking_url: null,
-      idempotency_key: `placement:${input.projectId}:${input.profileId}:${Date.now()}`,
-      explicit_confirmation_at: timestamp,
-      ...(guest
-        ? { contact_email: guest.email, contact_company: guest.company, contact_name: guest.name }
-        : {}),
-    })
-    .select("id,status,requested_at")
-    .single();
-  if (bookingError) throw bookingError;
-
-  const { error: updateError } = await admin
-    .from("projects")
-    .update({ status: "intro_requested" })
-    .eq("id", input.projectId)
-    .eq("owner_user_id", user.id);
-  if (updateError) throw updateError;
-
-  const [projectRow, freelancerEmail] = await Promise.all([
-    admin.from("projects").select("title").eq("id", input.projectId).maybeSingle(),
-    freelancerContactEmail(admin, input.profileId, currentProfile.owner_user_id ?? null).catch(() => null),
-  ]);
-  const notice = placementRequestNotice({
-    siteUrl: SITE_URL,
-    clientEmail: guest?.email ?? user.email,
-    guest: guest ? { company: guest.company, name: guest.name } : null,
-    freelancerName: profile.displayName,
-    freelancerRole: profile.role,
-    projectTitle: (projectRow.data as { title?: string | null } | null)?.title ?? null,
-    requestId: booking.id,
-    freelancerReachable: Boolean(freelancerEmail),
-  });
-  const meldung = await deliverEmail({ to: contactInbox(), ...notice, kind: "transactional" });
-  if (!meldung.delivered) {
-    logEvent("intro_notification_failed", { bookingId: booking.id, reason: meldung.reason });
-  }
-
-  return NextResponse.json({
-    introduction: { id: booking.id, status: booking.status, requestedAt: booking.requested_at },
-    message:
-      "Ihre Anfrage ist eingegangen. XPORTAL prüft die Verfügbarkeit, stellt Sie vor und meldet sich per E-Mail. Den Stand sehen Sie unter „Gespräche“.",
-  });
-}
-
-/**
- * Darf dieser Gast jetzt ohne Konto anfragen? Nur im Vermittlungsmodell, mit
- * gültigen Angaben, leerem Honigtopf und innerhalb der Grenzen je Gast und je
- * Adresse. Die Zählung je Gast steht in der Datenbank, damit ein Kaltstart
- * sie nicht zurücksetzt.
- */
-async function guestContactFor(
-  request: Request,
-  input: z.infer<typeof IntroductionInputSchema>,
-  user: CurrentUser,
-  admin: ReturnType<typeof createAdminSupabaseClient>,
-): Promise<GuestContact> {
-  if (!placementRequestsEnabled()) {
-    throw jsonResponse(409, "Bitte melden Sie sich an, um die Auswahl zu bestätigen.");
-  }
-  const contact = input.guestContact;
-  if (!contact) {
-    throw jsonResponse(400, "Bitte geben Sie Ihre E-Mail-Adresse und Ihre Firma an.");
-  }
-  // Honigtopf und Grenze je Adresse; die Grenze je Gast zählt diese Tabelle.
-  const admitted = await admitGuestContact(request, contact, user.id, "placement");
-  const { count, error } = await admin
-    .from("intro_bookings")
-    .select("id", { count: "exact", head: true })
-    .eq("owner_user_id", user.id)
-    .gte("requested_at", new Date(Date.now() - DAY_MS).toISOString());
-  if (error) throw error;
-  if ((count ?? 0) >= GUEST_REQUESTS_PER_DAY) throw jsonResponse(429, GUEST_LIMIT_ERROR);
-
-  return admitted;
 }
 
 export async function POST(request: Request) {
   try {
     assertSameOrigin(request);
-    const input = IntroductionInputSchema.parse(
-      await readJsonWithLimit(request, 4_000),
-    );
+    const input = InputSchema.parse(await readJsonWithLimit(request, 4_000));
     const user = await requireCurrentUser();
-    if (user.isAnonymous && !placementRequestsEnabled()) {
-      return NextResponse.json(
-        { error: "Bitte melden Sie sich an, um die Auswahl zu bestätigen." },
-        { status: 409 },
-      );
-    }
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
-      throw new Response("Serverkonfiguration unvollständig.", { status: 503 });
-    }
-
-    const admin = createAdminSupabaseClient();
-    const { data: project, error: projectError } = await admin
-      .from("projects")
-      .select("id")
-      .eq("id", input.projectId)
-      .eq("owner_user_id", user.id)
-      .maybeSingle();
-    if (projectError) throw projectError;
-    if (!project) throw new Response("Projekt nicht gefunden.", { status: 404 });
-
-    // A contact can only be requested for a profile that was explicitly shown
-    // to this owner: a ranked match or a partial match of the latest search.
-    // The stored profile snapshot, not current AI output, drives the
-    // introduction state.
-    const shown = await findShownProfile(admin, {
-      projectId: input.projectId,
-      ownerUserId: user.id,
-      profileId: input.profileId,
-    });
-    if (!shown) {
-      logEvent("intro_request_rejected", { reason: "profile_not_shown" });
-      throw new Response("Dieses Profil gehört nicht zur angezeigten Auswahl.", {
-        status: 409,
-      });
-    }
-
-    const { profile, matchId } = shown;
-    // Im Vermittlungsmodell fragt an, wer nicht zahlt. Wer einen bezahlten
-    // Tarif hat, bucht direkt — der Weg darunter, der vor dem Modell für alle
-    // galt. Die Vorstellung steht trotzdem in `intro_bookings`.
-    const placement = placementRequestsEnabled();
-    const directForPaying = placement && !user.isAnonymous && (await userHasPaidAccess(user.id));
-    if (placement && !directForPaying) {
-      const guest = user.isAnonymous ? await guestContactFor(request, input, user, admin) : null;
-      return await placementRequest(input, user, admin, profile, matchId, guest);
-    }
-    const { data: currentProfile, error: profileError } = await admin
-      .from("freelancer_profiles")
-      .select(
-        "intro_policy,booking_url,demo_status,profile_status,availability_status",
-      )
-      .eq("id", input.profileId)
-      .eq("profile_status", "active")
-      .in("availability_status", placement ? ["available", "limited", "unknown"] : ["available"])
-      .maybeSingle();
-    if (profileError) throw profileError;
-
-    // A change to manual approval can only make the workflow more restrictive;
-    // it never silently unlocks a direct booking that was not shown before.
-    const freeIntroduction =
-      Boolean(currentProfile) &&
-      profile.introPolicy.type === "free" &&
-      currentProfile?.intro_policy === "free";
-
-    // Ein zahlender Kunde und ein Profil ohne Kalender oder mit Freigabe von
-    // Hand: Dann stellt XPORTAL vor, wie bei allen anderen.
-    if (directForPaying && (!freeIntroduction || !currentProfile?.booking_url)) {
-      return await placementRequest(input, user, admin, profile, matchId, null);
-    }
-    if (!currentProfile) {
-      logEvent("intro_request_rejected", { reason: "profile_unavailable" });
-      throw new Response("Dieses Profil ist aktuell nicht verfügbar.", {
-        status: 409,
-      });
-    }
-
-    const bookingUrl = freeIntroduction
-      ? currentProfile.demo_status === "demo"
-        ? process.env.NEXT_PUBLIC_CALENDLY_URL ?? null
-        : currentProfile.booking_url ??
-          (placement ? null : process.env.NEXT_PUBLIC_CALENDLY_URL ?? null)
-      : null;
-    const timestamp = new Date().toISOString();
-    const insert = {
-      project_id: input.projectId,
-      owner_user_id: user.id,
-      freelancer_profile_id: input.profileId,
-      match_id: matchId,
-      intro_policy_snapshot: freeIntroduction ? "free" : "manual_approval",
-      status: freeIntroduction ? "ready_to_book" : "manual_review",
-      booking_provider: freeIntroduction ? "calendly" : "manual",
-      booking_url: bookingUrl,
-      idempotency_key: input.idempotencyKey,
-      explicit_confirmation_at: timestamp,
-    };
-
-    const { data: booking, error: bookingError } = await admin
-      .from("intro_bookings")
-      .upsert(insert, {
-        onConflict: "owner_user_id,idempotency_key",
-        ignoreDuplicates: false,
-      })
-      .select("id,status,booking_url,intro_policy_snapshot,requested_at")
-      .single();
-    if (bookingError) throw bookingError;
-
-    const { error: updateError } = await admin
-      .from("projects")
-      .update({ status: "intro_requested" })
-      .eq("id", input.projectId)
-      .eq("owner_user_id", user.id);
-    if (updateError) throw updateError;
-
-    // Eine Anfrage, die von Hand freigegeben werden muss, wartet sonst
-    // ungesehen in der Tabelle. Bis zum 9. September stand sie in der
-    // Admin-Inbox; die ist weg, und ohne Ersatz waere die Anfrage still
-    // liegengeblieben. Sie geht deshalb denselben Weg wie eine
-    // Kontaktanfrage: als Mail an das Postfach, in das ohnehin geschaut wird.
-    //
-    // Nur beim ersten Mal: Der Upsert liefert bei einer Wiederholung dieselbe
-    // Zeile mit ihrem urspruenglichen `requested_at` zurueck, und eine zweite
-    // Mail zur selben Anfrage waere nur Laerm.
-    const frischAngelegt =
-      Date.now() - new Date(booking.requested_at).getTime() < 60_000;
-    if (booking.status === "manual_review" && frischAngelegt) {
-      const meldung = await deliverEmail({
-        to: contactInbox(),
-        subject: `Vorstellung freigeben: ${profile.displayName}`,
-        text: [
-          "Eine Vorstellung wartet auf Ihre Freigabe.",
-          "",
-          `Freelancer: ${profile.displayName} — ${profile.role}`,
-          `Anfragende Person: ${user.email ?? "unbekannt"}`,
-          `Projekt: ${input.projectId}`,
-          `Vorgang: ${booking.id}`,
-          "",
-          "Antworten Sie der anfragenden Person direkt.",
-        ].join("\n"),
-        // Kein Werbebrief, sondern die Weitergabe einer Anfrage an uns selbst.
-        kind: "transactional",
-      });
-      // Ein gescheiterter Versand macht die Anfrage nicht ungueltig; sie steht
-      // in der Tabelle. Was schiefging, steht im Protokoll.
-      if (!meldung.delivered) {
-        logEvent("intro_notification_failed", {
-          bookingId: booking.id,
-          reason: meldung.reason,
-        });
-      }
-    }
-
-    return NextResponse.json({
-      introduction: {
-        id: booking.id,
-        status: booking.status,
-        bookingUrl: booking.booking_url,
-        treatment: booking.intro_policy_snapshot,
-        requestedAt: booking.requested_at,
-      },
-      message: freeIntroduction
-        ? "Die Einführung ist bestätigt. Calendly kann jetzt geladen werden."
-        : "Ihre Kontaktanfrage ist eingegangen. Roman Dering prüft die Einführung persönlich.",
-    });
+    if (user.isAnonymous || !user.email) throw new Response("Bitte melden Sie sich mit einem bestätigten Konto an.", { status: 401 });
+    if (!user.isAdmin && !(await userHasRecruitingAccess(user.id))) throw new Response("Für neue Kontaktanfragen benötigen Sie eine aktive Testphase oder einen berechtigten Tarif.", { status: 402 });
+    const limit = await consumeRateLimit(`recruiting-contact:${user.id}`, 10, 60 * 60_000);
+    if (!limit.allowed) return NextResponse.json({ error: "Zu viele Anfragen. Bitte versuchen Sie es später erneut." }, { status: 429, headers: { ...NO_STORE, "Retry-After": String(limit.retryAfterSeconds) } });
+    const result = await createRecruitingContact({ ...input, user, siteUrl: SITE_URL });
+    return NextResponse.json(result, { status: result.created ? 201 : 200, headers: NO_STORE });
   } catch (error) {
     if (error instanceof Response) return error;
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Die Auswahl ist ungültig." },
-        { status: 400 },
-      );
-    }
-    return NextResponse.json(
-      { error: "Die Kontaktanfrage konnte nicht gespeichert werden." },
-      { status: 503 },
-    );
+    return NextResponse.json({ error: error instanceof z.ZodError ? "Bitte bestätigen Sie die Kontaktfreigabe und prüfen Sie Ihre Auswahl." : "Die Kontaktanfrage konnte gerade nicht gespeichert werden." }, { status: error instanceof z.ZodError ? 400 : 503, headers: NO_STORE });
   }
 }

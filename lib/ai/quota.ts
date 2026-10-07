@@ -7,7 +7,6 @@ import {
   type CreditPlanId,
 } from "@/lib/ai/credit-policy";
 import { findOwnerForMember } from "@/lib/data/plan-teams";
-import { logEvent } from "@/lib/security/request";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export type AiCreditSnapshot = {
@@ -175,22 +174,10 @@ export const ALLOWED_MONTHLY_CREDIT_TOTALS: readonly number[] = [
  * Umgebung getippt hat, ist deutlich besser als gar keines.
  */
 export function configuredInitialCredits(isAnonymous: boolean): number {
-  const fallback = isAnonymous ? GUEST_MONTHLY_CREDITS : ACCOUNT_MONTHLY_CREDITS;
-  const name = isAnonymous ? "AI_CREDITS_GUEST_TOTAL" : "AI_CREDITS_USER_TOTAL";
-  const configured = nonNegativeInteger(name, fallback);
-
-  if (!isAnonymous) {
-    if (configured !== fallback) {
-      logEvent("ai_credit_total_rejected", { name, fallback });
-    }
-    return fallback;
-  }
-
-  if (!ALLOWED_MONTHLY_CREDIT_TOTALS.includes(configured)) {
-    logEvent("ai_credit_total_rejected", { name, fallback });
-    return fallback;
-  }
-  return configured;
+  // No environment override may reintroduce a guest or registration bonus.
+  // The database preserves existing balances and grants trial credits once.
+  void isAnonymous;
+  return 0;
 }
 
 export function configuredDailyTokenLimit(

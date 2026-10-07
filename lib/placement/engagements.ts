@@ -38,6 +38,7 @@ type Admin = ReturnType<typeof createAdminSupabaseClient>;
  */
 
 type IntroRow = {
+  commercial_model?: "no_fee" | "legacy_placement";
   id: string;
   status: string;
   project_id: string;
@@ -56,7 +57,7 @@ type IntroRow = {
 };
 
 const INTRO_COLUMNS =
-  "id,status,project_id,owner_user_id,freelancer_profile_id,confirmed_at,outcome,follow_up_count,contact_email,contact_name,contact_company,client_outcome,client_outcome_at,freelancer_outcome,freelancer_outcome_at";
+  "id,status,project_id,owner_user_id,freelancer_profile_id,confirmed_at,outcome,follow_up_count,contact_email,contact_name,contact_company,client_outcome,client_outcome_at,freelancer_outcome,freelancer_outcome_at,commercial_model";
 
 /** Was diese Seite zuletzt gesagt hat, und wann. */
 function answerOf(row: IntroRow, role: AnswerRole) {
@@ -119,8 +120,9 @@ export async function recordEngagement(
   if (await engagementFor(admin, introId)) {
     throw new Response("Die Beauftragung ist schon erfasst.", { status: 409 });
   }
-  const terms = await acceptedTerms(admin, introId);
-  const feeMinor = placementFeeCents(input.dayRateMinor, input.projectDays, terms);
+  const noFee = intro.commercial_model === "no_fee";
+  const terms = noFee ? null : await acceptedTerms(admin, introId);
+  const feeMinor = terms ? placementFeeCents(input.dayRateMinor, input.projectDays, terms) : 0;
   const now = new Date().toISOString();
 
   const { error } = await admin.from("engagements").insert({
@@ -128,6 +130,7 @@ export async function recordEngagement(
     owner_user_id: intro.owner_user_id,
     freelancer_profile_id: intro.freelancer_profile_id,
     intro_booking_id: intro.id,
+    commercial_model: intro.commercial_model ?? "legacy_placement",
     status: "active",
     contract_value_minor: input.dayRateMinor * input.projectDays,
     currency: "EUR",
@@ -137,8 +140,8 @@ export async function recordEngagement(
     project_days: input.projectDays,
     starts_on: input.startsOn,
     fee_minor: feeMinor,
-    fee_status: "open",
-    terms_version: terms.version,
+    fee_status: noFee ? "waived" : "open",
+    terms_version: terms?.version ?? null,
   });
   if (error) throw error;
 
@@ -154,7 +157,7 @@ export async function recordEngagement(
     .eq("id", intro.id);
   if (introError) throw introError;
 
-  return { feeMinor, termsVersion: terms.version, clientUserId: intro.owner_user_id };
+  return { feeMinor, termsVersion: terms?.version ?? null, clientUserId: intro.owner_user_id };
 }
 
 /** Der Betreiber hält fest: kein Auftrag. */
@@ -184,6 +187,7 @@ export async function recordFeeStatus(
   const admin = createAdminSupabaseClient();
   const intro = await loadIntroduced(admin, introId);
   const engagement = await engagementFor(admin, introId);
+  if (intro.commercial_model === "no_fee") throw new Response("Für diesen Vorgang gibt es keine Vermittlungsgebühr.", { status: 409 });
   if (!engagement) throw new Response("Erst die Beauftragung erfassen.", { status: 409 });
   const allowedFrom = next.status === "invoiced" ? ["open"] : ["open", "invoiced"];
   if (!allowedFrom.includes(engagement.fee_status ?? "")) {
@@ -217,6 +221,7 @@ async function followUpCandidates(admin: Admin): Promise<FollowUpRow[]> {
   const { data, error } = await admin
     .from("intro_bookings")
     .select(INTRO_COLUMNS)
+    .eq("commercial_model", "legacy_placement")
     .in("status", [...INTRODUCED_STATUSES])
     .lt("follow_up_count", 2)
     .order("confirmed_at", { ascending: true })
@@ -406,7 +411,7 @@ export async function recordRoleAnswer(
   const { error } = await admin.from("intro_bookings").update(values).eq("id", intro.id);
   if (error) throw error;
 
-  if (answer === "engaged" && previous !== "engaged") {
+  if (intro.commercial_model !== "no_fee" && answer === "engaged" && previous !== "engaged") {
     const [client, profile, project] = await Promise.all([
       clientContact(admin, intro),
       admin.from("freelancer_profiles").select("display_name").eq("id", intro.freelancer_profile_id).maybeSingle(),

@@ -1,64 +1,13 @@
-import { BRIEF_ANALYSIS_CREDITS } from "@/lib/ai/credit-policy";
-import { CREDIT_RULES } from "@/lib/billing/credit-rules";
-import {
-  formatWholeEuro,
-  PLACEMENT_EXAMPLE,
-  PLACEMENT_TERMS,
-  PLACEMENT_TERMS_PATH,
-  placementExampleFeeCents,
-} from "@/lib/placement/config";
-import { MARKETING_PAGE } from "@/lib/seo";
-
-/** Ein Stück Antwort: Text oder ein Link mit seinem sichtbaren Wortlaut. */
+import { TRIAL_CREDITS, TRIAL_DAYS } from "@/lib/billing/plans";
 export type FaqPart = string | { href: string; label: string };
-
 export type FaqItem = { question: string; answer: readonly FaqPart[] };
-
-/**
- * Die Fragen am Ende der Startseite. Als Daten statt als JSX, weil dieselben
- * Sätze auch als strukturierte Daten (FAQPage) ausgegeben werden; so kann die
- * Fassung für Suchmaschinen nicht von der sichtbaren abweichen.
- */
-export function landingFaq(placement: boolean): readonly FaqItem[] {
-  const t = PLACEMENT_TERMS;
+export function landingFaq(_placement: boolean): readonly FaqItem[] {
   return [
-    {
-      question: "Kann ich ohne Anmeldung starten?",
-      answer: ["Ja. Beschreiben Sie Ihr Projekt als Gast. Für das dauerhafte Speichern und weitere Schritte mit einem ausgewählten Profil können Sie anschließend ein Konto erstellen."],
-    },
-    {
-      question: "Was kostet die Suche?",
-      answer: [
-        `${CREDIT_RULES.guest} ${CREDIT_RULES.account} Eine Projektanalyse verbraucht ${BRIEF_ANALYSIS_CREDITS} Credits; fällt die KI aus, nichts. Kontingente und weitere Aktionen finden Sie auf der `,
-        { href: MARKETING_PAGE.pricing.path, label: "Preisseite" },
-        ". Freelancer-Honorare sind separat.",
-      ],
-    },
-    {
-      question: "Ist ein passender Freelancer garantiert?",
-      answer: ["Nein. Ergebnisse hängen von Ihren Anforderungen und den vorhandenen Profilen ab. Profilangaben sind nicht automatisch unabhängig geprüft. Verfügbarkeit, Honorar und offene Fragen klären Sie vor einer Zusammenarbeit. Auch kein passendes Ergebnis wird ausgewiesen."],
-    },
-    placement
-      ? {
-          question: "Was kostet die Vermittlung?",
-          answer: [
-            `Anfrage, Vorstellung und Erstgespräch sind kostenlos; für die Suche im Chat gilt das Startguthaben. Beauftragen Sie den Freelancer, zahlen Sie einmalig ${t.feePercent} % des vereinbarten Honorars für die ersten ${t.feeMonths} Monate (höchstens ${t.maxFeeDays} Projekttage), zuzüglich Umsatzsteuer, per Rechnung mit ${t.paymentDays} Tagen Zahlungsziel. Beispiel: ${formatWholeEuro(PLACEMENT_EXAMPLE.dayRateCents)} Tagessatz und ${PLACEMENT_EXAMPLE.projectDays} Projekttage ergeben ${formatWholeEuro(placementExampleFeeCents())} netto. Die Rechnung kommt erst nach der Beauftragung, nicht für einen gebuchten Termin. Einzelheiten stehen in den `,
-            { href: PLACEMENT_TERMS_PATH, label: "Vermittlungsbedingungen" },
-            ".",
-          ],
-        }
-      : {
-          question: "Was bedeutet „direkt buchen“?",
-          answer: ["Nach der Anmeldung öffnen Sie bei einem Profil mit Terminlink den hinterlegten Buchungskalender und wählen selbst einen freien Slot. Ohne Terminlink ist die direkte Buchung derzeit nicht verfügbar. Der Termin ist ein Erstgespräch und noch keine Beauftragung."],
-        },
-    {
-      question: "Wie läuft das Gespräch ab?",
-      answer: ["Sie erzählen in 30 Minuten, wen Sie suchen; wir sagen Ihnen ehrlich, ob unser Bestand passt, und stellen passende Freelancer danach per E-Mail vor. Das Gespräch ist kostenlos und verpflichtet zu nichts."],
-    },
+    { question: "Kann ich ohne Karte ausprobieren?", answer: ["Sie können das klar gekennzeichnete Ergebnisbeispiel ohne Konto und Karte ansehen. Der eigentliche Trial startet erst nach bestätigter E-Mail und serverseitig verifizierter Kartenhinterlegung bei Stripe."] },
+    { question: "Was enthält der kostenlose Trial?", answer: [`${TRIAL_DAYS} Tage Zugang im gewählten Tarif mit einmalig ${TRIAL_CREDITS} Credits insgesamt. Danach beginnt das gewählte Monatsabonnement, sofern Sie vor dem bestätigten Trial-Ende nicht kündigen. Preise und Kartenpflicht sehen Sie vor dem Start auf der `, { href: "/preise", label: "Preisseite" }, "."] },
+    { question: "Gibt es eine Vermittlungsgebühr?", answer: ["Für neue Vorgänge nicht. Sie bezahlen die Software-Nutzung. Neue Kontaktanfragen und Beauftragungen lösen keine Provision oder Erfolgsgebühr aus. Bestehende historische Verträge bleiben unverändert."] },
+    { question: "Ist ein passender Freelancer garantiert?", answer: ["Nein. Ergebnisse hängen von Anforderungen und Profilangaben ab. Unbekannte Angaben bleiben offen. Ein Profilfund bestätigt weder Interesse noch Verfügbarkeit; diese entscheidet der Freelancer selbst."] },
+    { question: "Wie geht es nach einem Ergebnis weiter?", answer: ["Speichern und vergleichen Sie Ihre Auswahl. Freigegebene Dokumente und Kontaktwege nutzen Sie entsprechend ihrer Freigabe; andernfalls lösen Sie bewusst eine Kontaktanfrage aus. Der Freelancer entscheidet selbst. Ein Gespräch mit dem Betreiber ist keine Voraussetzung."] },
   ];
 }
-
-/** Die Antwort als reiner Text, wie sie ein Leser ohne Links sieht. */
-export function faqAnswerText(item: FaqItem): string {
-  return item.answer.map((part) => (typeof part === "string" ? part : part.label)).join("");
-}
+export function faqAnswerText(item: FaqItem): string { return item.answer.map((part) => typeof part === "string" ? part : part.label).join(""); }
