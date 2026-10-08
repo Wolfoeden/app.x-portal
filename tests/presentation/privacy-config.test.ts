@@ -111,16 +111,17 @@ describe("production privacy and authentication configuration", () => {
    * wieder einen Namen einsetzt. Deshalb steht die Regel hier als Test und
    * nicht als Vorsatz.
    */
-  it("names processors by role, never by company", () => {
+  it("names the payment processor explicitly and keeps other processor categories", () => {
     const privacyPage = repositoryFile("app/privacy/page.tsx");
     const termsPage = repositoryFile("app/terms/page.tsx");
+    expect(privacyPage).toContain("Stripe");
 
     for (const company of [
       "Netlify",
       "Supabase",
       "OpenAI",
       "Google",
-      "Stripe",
+
       "IONOS",
       "hCaptcha",
       "Intuition Machines",

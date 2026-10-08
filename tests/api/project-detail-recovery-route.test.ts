@@ -254,7 +254,7 @@ describe("project detail deterministic recovery", () => {
     expect(body.partialProfiles[0]).toMatchObject({
       displayName: "Anna Keller",
       recommendationRole: "partial",
-      bookingUrl: profileFixtures[0]!.introPolicy.bookingUrl,
+      bookingUrl: `https://x-portal.eu/api/freelancers/${profileFixtures[0]!.id}/book`,
     });
     expect(mocks.fetchProfilesByIds).toHaveBeenCalledWith(expect.anything(), [profileFixtures[0]!.id]);
   });

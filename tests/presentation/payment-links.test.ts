@@ -80,7 +80,8 @@ describe("enterprise contact", () => {
       "utf8",
     );
 
-    expect(pricing).toContain("ENTERPRISE_CONTACT.email");
+    expect(pricing).toContain("/chat?checkout=");
+    expect(pricing).not.toContain("ENTERPRISE_CONTACT.email");
     expect(pricing).not.toMatch(/mailto:[a-z]/u);
     expect(account).toContain('href="/preise"');
     expect(account).not.toContain("mailto:");

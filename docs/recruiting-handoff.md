@@ -1,3 +1,20 @@
+AKTUELLER STAND 08.10.2026 — maßgeblich vor den älteren Abschnitten unten
+
+Anwendung lokal geprüft: 1677 Tests bestanden, 0 fehlgeschlagen, 187 Dateien. Acht neue Rechte-/Team-Mutationsprüfungen enthalten. Lint und Typprüfung bestanden. Produktionsbuild bestanden. Sämtliche Performance-Budgets bestanden: JavaScript470867/520000 Byte gzip, größter Chunk72996/120000, CSS57431/57500.
+
+GitHub-Verbindung funktioniert. Zwischenstände189b9fc undcccb1c5 erfolgreich gepusht; die Git-Quittung nennt den neuesten HEAD. Commit9b91559 aus dem anderen Konto war hier nicht auffindbar. Entsprechende Änderungen wurden aus dem überprüfbaren Checkout rekonstruiert. Keine Produktion ausgerollt.
+
+OFFEN FÜR DIE FERTIGSTELLUNG
+P0: Vollständige Supabase-Datenbanktests reparieren und erneut über GitHub Actions prüfen. Der frühere Lauf spielte die Migrationen erfolgreich ein, scheiterte aber an39 Assertions in ai_credit_period.test.sql, ai_credits.test.sql, stripe_subscription_lifecycle.test.sql plus fehlenden FK-Indizes. Erwartungen an neue Gast-/Registrierungsboni sind veraltet; Perioden-/Legacy-/Reservierungsverhalten auf echte Fehler prüfen, nicht pauschal Erwartungen ersetzen. Zwei belegte fehlende Indizes wurden in20261008104126_recruiting_foreign_key_indexes.sql ergänzt; deren CI-Ergebnis noch abwarten.
+P0: Die vollständige serverseitige Tarif-/Trial-/Team-/CV-Berechtigung und Profilfreigabe abnehmen; neuer Team-POST-Schutz und zentraler alter Helper sind implementiert und getestet.
+P1: Stripe-Sandbox/TestClocks, echte Supabase-Testumgebung, alle12 ursprünglichen End-to-End-Szenarien, Auth-/Checkout-Draft-Erhalt, mobile/Tastatur-Tests. Keine echte Abbuchung als Test.
+P1: Kontakt-Retry und private Kontaktanzeige im UI vollständig anschließen, Outbox-/SMTP-Fehlerfälle abnehmen.
+P2: Sieben-Tage-Erinnerung, automatische Reconciliation, Steuer-/Portal-Konfiguration, Analytics-Kampagnenzuordnung/Report/Retention, rechtliche Freigabe der neuen SaaS-Bedingungen. Erst nach Abnahme Produktionsmigration, Main-Merge, Netlify-Release und Live-Verifikation.
+
+Die 25-Prozent-Grenze gilt weiterhin für das zuerst erschöpfte Kontingentfenster. Frühzeitig sichern.
+
+ÄLTERER DETAILABGLEICH MIT DEM ORIGINALPLAN — Zahlen/Prüfstände unten sind historisch
+
 XPORTAL - Abschluss des Arbeitsabschnitts und Übergabe, 07.10.2026
 
 VERDIKT

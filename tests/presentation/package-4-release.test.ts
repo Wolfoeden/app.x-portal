@@ -48,7 +48,7 @@ describe("Paket 4: Konsolidierung und Freigabe", () => {
     expect(account).not.toContain("Setzen Sie zuerst das Häkchen");
     expect(account).not.toContain("Fragen zur Abrechnung oder eine Obergrenze vereinbaren");
     expect(account).toContain('href="/preise"');
-    expect(account).toContain("Tarife und Trial ansehen");
+    expect(account).toContain("Monatstarife ansehen");
     expect(account).not.toContain("fixedPlanCheckout");
     expect(account).not.toContain("businessConfirmed");
   });

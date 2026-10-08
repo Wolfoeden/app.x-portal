@@ -15,7 +15,7 @@ import HowPage, { metadata as howMetadata } from "@/app/(marketing)/wie-funktion
 import MarketingLayout from "@/app/(marketing)/layout";
 import { CreditSummary } from "@/components/marketing/CreditSummary";
 import { CREDIT_PLANS, CREDIT_PRICES } from "@/lib/ai/credit-policy";
-import { GUEST_TRIAL_CREDITS, PUBLIC_PRICING_PLANS, START_CREDITS } from "@/lib/billing/plans";
+import { PUBLIC_PRICING_PLANS } from "@/lib/billing/plans";
 import { SKILL_TAXONOMY } from "@/lib/domain/skill-taxonomy";
 import { MARKETING_CATEGORIES } from "@/lib/marketing-categories";
 import { MARKETING_PAGE, MARKETING_PAGES, absoluteUrl, pageMetadata } from "@/lib/seo";

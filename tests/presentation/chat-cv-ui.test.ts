@@ -190,7 +190,7 @@ describe("Kurzlinks auf der Profilkarte", () => {
   it("nennt unter der Zeile, was ein Abo bei diesem Profil öffnet", () => {
     const markup = renderProfile(withLinks, true);
     expect(markup).toContain(
-      "Mit Abo öffnen Sie Lebenslauf, Kalender und LinkedIn sofort selbst, ohne auf die Vorstellung zu warten.",
+      "Mit aktivem Trial oder Tarif öffnen Sie die freigegebenen Lebenslauf, Kalender und LinkedIn selbst.",
     );
     expect(markup).toContain("Tarife ansehen");
     expect(renderProfile(withLinks, true, { paid: true })).not.toContain("profile-shortcuts-upsell");
@@ -211,10 +211,10 @@ describe("Kurzlinks auf der Profilkarte", () => {
 
   it("öffnet ohne Vermittlungsmodell, wie bisher Kalender und Lebenslauf, mit Konto", () => {
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "false");
-    expect(shortcuts(renderProfile(withLinks, true))).toContain('href="/api/freelancers/profile/cv-test/link?kind=linkedin"');
+    expect(shortcuts(renderProfile(withLinks, true, { paid: true }))).toContain('href="/api/freelancers/profile/cv-test/link?kind=linkedin"');
     const guest = renderProfile(withLinks, false);
-    expect(shortcuts(guest)).toContain("LinkedIn: Nur mit Konto");
-    expect(guest).not.toContain("profile-shortcuts-upsell");
+    expect(shortcuts(guest)).toContain("LinkedIn: Im Abo enthalten – Tarife ansehen");
+    expect(guest).toContain("profile-shortcuts-upsell");
   });
 
   it("leitet die Zustände nur aus Abo und Vorhandensein ab", () => {
@@ -298,11 +298,11 @@ describe("booking button in the placement model", () => {
     expect(account).toEqual({
       kind: "request",
       label: "Freelancer anfragen",
-      hint: "Kostenlos bis zur Beauftragung · XPORTAL stellt Sie vor",
+      hint: "Provisionsfrei · Freelancer entscheidet über Kontaktfreigabe",
       disabled: false,
     });
     expect(guest.kind).toBe("request");
-    expect(guest.hint).toContain("kein Passwort");
+    expect(guest.hint).toContain("Bestätigtes Konto und aktiver Trial oder Tarif erforderlich");
   });
 
   it("keeps the direct booking when the switch is off", () => {

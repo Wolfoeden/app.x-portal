@@ -45,11 +45,11 @@ describe("availability with its date", () => {
       .toBe("Nicht verfügbar · Stand 21.09.");
   });
 
-  it("says XPORTAL confirms an old statement before the introduction when it introduces", () => {
+  it("never promises operator verification for an old statement", () => {
     const notice = availabilityNotice("available", "2026-08-08T12:00:00.000Z", NOW, { confirmedBy: "introduction" });
     expect(notice.stale).toBe(true);
     expect(notice.openPoint).toBe(
-      "Verfügbarkeit zuletzt am 08.08.2026 angegeben; XPORTAL bestätigt sie vor der Vorstellung.",
+      "Verfügbarkeit zuletzt am 08.08.2026 angegeben; im Erstgespräch bestätigen lassen.",
     );
   });
 
