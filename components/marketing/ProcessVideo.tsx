@@ -134,12 +134,12 @@ export function ProcessVideo({ steps }: { steps: readonly ProcessStep[] }) {
           poster={appPath("/images/landing/ablauf-poster.webp")}
           width={1920}
           height={1280}
-          aria-label="Kurzvideo: Eine Ausschreibung wird kopiert, bei XPORTAL eingefügt, ein passendes Profil geprüft und ein Erstgespräch gebucht."
+          aria-label="Kurzvideo: Eine Ausschreibung wird kopiert, bei XPORTAL eingefügt, ein passendes Profil geprüft und der Kontakt angefragt."
         >
           <source src={appPath("/videos/ablauf.webm")} type="video/webm" />
           <source src={appPath("/videos/ablauf.mp4")} type="video/mp4" />
         </video>
-        <figcaption className="sr-only">Illustratives Beispiel, kein reales Projekt.</figcaption>
+        <figcaption className="sr-only">Produktablauf in XPORTAL.</figcaption>
       </figure>
       <ol ref={listRef} className={`${styles.steps} ${styles.videoSteps}`}>
         {steps.map((step, index) => (

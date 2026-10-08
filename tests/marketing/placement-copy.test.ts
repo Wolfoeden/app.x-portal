@@ -32,10 +32,11 @@ describe("recruiting SaaS commercial contract", () => {
     expect(html).toContain("zzgl. USt.");
     expect(html).toContain("Keine vorzeitige Abbuchung");
   });
-  it("addresses recruiters with an explicitly fictional evidence example", () => {
+  it("addresses recruiters with the established product profile visual", () => {
     const html = landing();
     expect(html.match(/<h1[\s>]/gu)).toHaveLength(1);
-    for (const phrase of ["Recruiter und IT-Personaldienstleister", "Ergebnisbeispiel · frei erfunden", "Profilbeleg", "Verfügbarkeit nicht bestätigt", "Nächster Schritt"]) expect(html).toContain(phrase);
+    for (const phrase of ["Recruiter und IT-Personaldienstleister", "Kundenanforderung", "KI-Entwicklerin", "Profilbeleg", "Offener Punkt", "Nächster Schritt"]) expect(html).toContain(phrase);
+    expect(html).not.toMatch(/frei erfunden|Beispielprofil A/u);
   });
   it("preserves historical fee terms while excluding them from new charges", () => {
     expect(PLACEMENT_TERMS.feePercent).toBe(10);

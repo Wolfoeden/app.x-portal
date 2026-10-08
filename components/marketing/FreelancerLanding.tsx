@@ -9,9 +9,24 @@ import { CaseStudies } from "./CaseStudies";
 import { breadcrumbStructuredData, faqStructuredData } from "@/lib/structured-data";
 import { salesCallHref } from "@/lib/sales/sales-call-links";
 import { Questions } from "./MarketingPage";
+import { ProcessVideo } from "./ProcessVideo";
 import { faqAnswerText, landingFaq } from "./landing-faq";
 import { RecruitingLink } from "./RecruitingLink";
 import styles from "./landing.module.css";
+
+function StepIcon({ kind }: { kind: "brief" | "profiles" | "contact" }) {
+  return <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {kind === "brief" ? <><rect x="17" y="9" width="32" height="44" rx="5" /><path d="M25 21h16M25 29h16M25 37h8" /><path d="m35 46 5 5 13-14" strokeWidth="3" /></> : null}
+    {kind === "profiles" ? <><rect x="7" y="17" width="23" height="35" rx="4" /><rect x="34" y="9" width="23" height="43" rx="4" /><circle cx="18.5" cy="28" r="4" /><path d="M12 43c0-9 13-9 13 0" /><circle cx="45.5" cy="23" r="4" /><path d="M39 37c0-9 13-9 13 0m-13 9 4 4 8-9" /></> : null}
+    {kind === "contact" ? <><path d="M10 11h32a5 5 0 0 1 5 5v17a5 5 0 0 1-5 5H24L12 48V38h-2a5 5 0 0 1-5-5V16a5 5 0 0 1 5-5Z" /><path d="M47 25h7a5 5 0 0 1 5 5v16a5 5 0 0 1-5 5v8L43 51H32m-17-29h22m-22 8h15" /></> : null}
+  </svg>;
+}
+
+const processSteps = [
+  { title: "Projekttext kopieren", text: "Nehmen Sie die Beschreibung aus Ihrer bestehenden Ausschreibung.", icon: <StepIcon kind="brief" />, startsAt: 0 },
+  { title: "Bei XPORTAL einfügen", text: "XPORTAL strukturiert die Anforderungen und gleicht vorhandene Profile ab.", icon: <StepIcon kind="profiles" />, startsAt: 3.5 },
+  { title: "Freelancer anfragen", text: "Profilbelege und offene Punkte prüfen, Auswahl speichern und den Kontakt bewusst anfragen.", icon: <StepIcon kind="contact" />, startsAt: 8.7 },
+] as const;
 
 export function FreelancerLanding({ stats = null, caseStudies = publishedCaseStudies() }: { stats?: LandingStats | null; contactPhotoUrl?: string | null; caseStudies?: readonly CaseStudy[] }) {
   const plans = PUBLIC_PRICING_PLANS.filter((plan) => plan.billingModel === "fixed_monthly");
@@ -28,22 +43,32 @@ export function FreelancerLanding({ stats = null, caseStudies = publishedCaseStu
             <p className={styles.lead}>Strukturieren Sie Anforderungen, gleichen Sie Freelancer ab und speichern Sie Ihre Auswahl. Für das nächste Mandat und für die nächste Entscheidung.</p>
             <div className={styles.actions}>
               <RecruitingLink href="/preise#tarife" event="trial_cta_clicked" className={actionClass("primary")}>14 Tage kostenlos testen</RecruitingLink>
-              <RecruitingLink href="#ergebnisbeispiel" event="demo_viewed" className={actionClass("secondary")}>Ergebnisbeispiel ansehen</RecruitingLink>
+              <RecruitingLink href="#produktablauf" event="demo_viewed" className={actionClass("secondary")}>Produktablauf ansehen</RecruitingLink>
             </div>
             <p className={styles.trialDisclosure}>Karte bei Stripe erforderlich · {TRIAL_CREDITS} Credits insgesamt für {TRIAL_DAYS} Tage.<br />Danach gewählter Monatstarif ab {entry} € netto, zzgl. USt., mit automatischer Verlängerung. Vor Trial-Ende kündigen, um die erste kostenpflichtige Verlängerung zu vermeiden.</p>
             <p className={styles.softwareNote}>Sie bezahlen die Software. Neue Kontaktanfragen und Beauftragungen sind provisionsfrei.</p>
           </div>
-          <figure id="ergebnisbeispiel" className={styles.mandateBoard}>
-            <figcaption><strong>Ergebnisbeispiel · frei erfunden</strong><span>Demonstriert die Darstellung. Keine reale Person, keine bestätigte Verfügbarkeit.</span></figcaption>
-            <div className={styles.mandateBrief}><span>Kundenmandat</span><strong>React &amp; TypeScript · remote</strong><p>Start im November · Honorarrahmen offen</p></div>
-            <div className={styles.mandateCandidate}><span className={styles.mockAvatar} aria-hidden="true">AB</span><div><strong>Beispielprofil A</strong><span>Frontend-Entwicklung</span></div><b>Teilpassung</b></div>
-            <dl className={styles.evidenceMatrix}>
-              <div><dt>React</dt><dd><strong>Profilbeleg</strong>Im Beispielprojekt genannt</dd></div>
-              <div><dt>TypeScript</dt><dd><strong>Selbstauskunft</strong>Im Beispielprofil genannt</dd></div>
-              <div><dt>Honorar</dt><dd><strong>Beispielangabe</strong>90 € / Stunde netto</dd></div>
-              <div data-open=""><dt>Start November</dt><dd><strong>Offen</strong>Verfügbarkeit nicht bestätigt</dd></div>
-            </dl>
-            <p className={styles.mandateNext}><strong>Nächster Schritt</strong>Auswahl speichern, offene Kriterien klären und Kontakt bewusst anfragen.</p>
+          <figure className={styles.heroVisual} aria-label="Produktansicht mit Profilbelegen und offenem Verfügbarkeitspunkt">
+            <div className={styles.glow} aria-hidden="true" />
+            <div className={styles.briefChip}><span>Kundenanforderung</span>KI-Agenten · remote · ab November</div>
+            <div className={styles.mockCard}>
+              <div className={styles.mockBand} aria-hidden="true" />
+              <div className={styles.mockHead}>
+                <span className={styles.mockAvatar} aria-hidden="true">KE</span>
+                <div><strong>KI-Entwicklerin</strong><span>Agenten, RAG, TypeScript · remote</span></div>
+              </div>
+              <p className={styles.mockLabel}>Profilbeleg</p>
+              <ul className={styles.mockEvidence}>
+                <li><span className={styles.ok} aria-hidden="true">✓</span>AI Agents<em>in Projekten belegt</em></li>
+                <li><span className={styles.ok} aria-hidden="true">✓</span>TypeScript<em>im Profil genannt</em></li>
+              </ul>
+              <p className={styles.mockLabel}>Offener Punkt</p>
+              <ul className={styles.mockEvidence}>
+                <li><span className={styles.open} aria-hidden="true">?</span>Start November<em>wird angefragt</em></li>
+              </ul>
+            </div>
+            <p className={styles.bubble}><strong>Nächster Schritt</strong>Auswahl speichern, Verfügbarkeit klären und Kontakt bewusst anfragen.</p>
+            <figcaption>Produktansicht · Profilbelege und offene Punkte bleiben getrennt.</figcaption>
           </figure>
         </div>
       </header>
@@ -57,13 +82,20 @@ export function FreelancerLanding({ stats = null, caseStudies = publishedCaseStu
         </ol>
         <p className={styles.sectionLead}>Kein verlässlicher Treffer? Kriterien bearbeiten oder eine zusätzliche Recherche ausdrücklich starten. Sie brauchen dafür kein Gespräch mit dem Betreiber.</p>
       </div></section>
+      <section id="produktablauf" className={styles.section} aria-labelledby="produktablauf-title"><div className={styles.frame}>
+        <div className={styles.splitHead}>
+          <div><p className={styles.eyebrow}>XPORTAL in Aktion</p><h2 id="produktablauf-title">Projekt einfügen. Profil prüfen. Kontakt anfragen.</h2></div>
+          <p>Das Kurzvideo zeigt den bestehenden Ablauf direkt im Produkt: Ausschreibung übernehmen, Anforderungen abgleichen und mit nachvollziehbaren Profilangaben weiterarbeiten.</p>
+        </div>
+        <div className={styles.videoPanel}><ProcessVideo steps={processSteps} /></div>
+      </div></section>
       <section className={styles.section} aria-labelledby="preise-title"><div className={styles.frame}>
         <div className={styles.splitHead}><h2 id="preise-title">14 Tage am eigenen Mandat testen.</h2><p>Einmalig {TRIAL_CREDITS} Credits innerhalb des gewählten Tarifs. Kein zusätzliches Gast- oder Registrierungsbonusguthaben. Verbrauchte Trial-Credits werden nicht aufgefüllt und lösen keine vorzeitige Abbuchung aus.</p></div>
         <div className={styles.saasPlans}>{plans.map((plan) => <article key={plan.id} className={styles.priceCard}><p className={styles.priceName}>{plan.label}</p><p className={styles.priceValue}><strong>{plan.euro} €</strong><span>netto / Monat nach dem Trial</span></p><p>{plan.monthlyCredits.toLocaleString("de-DE")} Credits je bezahlter Monatsperiode</p><RecruitingLink href={`/chat?checkout=${plan.id}`} event="trial_cta_clicked" plan={plan.id} className={actionClass("primary")}>14 Tage kostenlos testen</RecruitingLink><p className={styles.trialDisclosure}>Karte erforderlich · anschließend automatische monatliche Verlängerung · monatlich zum Periodenende kündbar.</p></article>)}</div>
         <Link href="/preise" className={styles.textLink}>Tarife und Abrechnung im Detail →</Link>
       </div></section>
       <section id="fragen" className={styles.section}><div className={`${styles.frame} ${styles.faq}`}><div><p className={styles.eyebrow}>Vor dem Start</p><h2>Was Sie wissen sollten.</h2></div><Questions items={faq.map((item) => ({ question: item.question, answer: <p>{item.answer.map((part, index) => typeof part === "string" ? part : <Link key={index} href={part.href}>{part.label}</Link>)}</p> }))} /></div></section>
-      <section className={`${styles.section} ${styles.closing}`}><div className={styles.frame}><h2>Das nächste Mandat wartet.</h2><div className={styles.actions}><RecruitingLink href="/preise#tarife" event="trial_cta_clicked" className={actionClass("primary")}>14 Tage kostenlos testen</RecruitingLink><Link href={salesCallHref("hero")} prefetch={false} className={styles.textLink}>Gespräch buchen</Link><Link href="/freelancer/apply" className={styles.textLink}>Als Freelancer bewerben</Link></div><p className={styles.trialDisclosure}>Ergebnisbeispiel ohne Karte ansehen. Für den eigentlichen Trial sind ein bestätigtes Konto und die Kartenhinterlegung bei Stripe erforderlich.</p></div></section>
+      <section className={`${styles.section} ${styles.closing}`}><div className={styles.frame}><h2>Das nächste Mandat wartet.</h2><div className={styles.actions}><RecruitingLink href="/preise#tarife" event="trial_cta_clicked" className={actionClass("primary")}>14 Tage kostenlos testen</RecruitingLink><Link href={salesCallHref("hero")} prefetch={false} className={styles.textLink}>Gespräch buchen</Link><Link href="/freelancer/apply" className={styles.textLink}>Als Freelancer bewerben</Link></div><p className={styles.trialDisclosure}>Produktansicht und Ablaufvideo sind ohne Konto und Karte zugänglich. Für den eigentlichen Trial sind ein bestätigtes Konto und die Kartenhinterlegung bei Stripe erforderlich.</p></div></section>
       <CaseStudies cases={publishedCaseStudies(caseStudies)} />
       <section className={styles.section}><div className={styles.frame}><Link href="/datenwege" className={styles.textLink}>Datenwege ansehen</Link><nav aria-label="Weiterlesen" className={styles.actions}>{MARKETING_PAGES.filter(page => page.path !== MARKETING_PAGE.find.path).map(page => <Link key={page.path} href={page.path} className={styles.textLink}>{page.label}</Link>)}</nav></div></section>
       <JsonLd data={faqStructuredData(faq.map((item) => ({ question: item.question, answer: faqAnswerText(item) })))} />
