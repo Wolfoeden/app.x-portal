@@ -1,12 +1,36 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { CREDIT_PLANS, TRIAL_CREDITS } from "@/lib/billing/plans";
+import { IMPRINT_EMAIL } from "@/lib/legal/policy";
 import styles from "./billing-management.module.css";
 export type BillingStatusView = { planId: string; selectedPlanId?: string | null; subscriptionStatus: string | null; trialEnd: string | null; periodEnd: string | null; cancelAtPeriodEnd: boolean; latestInvoiceStatus: string | null; access: { canRunAi: boolean; canUseRecruiting: boolean; source: "trial" | "paid" | "legacy" | "none"; reason: string }; credits: { total: number; used: number; reserved: number; remaining: number } };
 export function billingDate(value: string | null): string {
   if (!value || Number.isNaN(new Date(value).getTime())) return "Noch nicht bestätigt";
   return new Intl.DateTimeFormat("de-DE", { dateStyle: "long", timeStyle: "short", timeZone: "Europe/Berlin" }).format(new Date(value));
 }
+/**
+ * Was die Rückkehr von `/api/billing/checkout` oder Stripe im Konto anzeigt.
+ * Die Route leitet mit `?billing=<code>` hierher; ohne diese Meldung landete
+ * man nach einem gescheiterten Checkout kommentarlos wieder beim Testknopf.
+ */
+export function checkoutReturnMessage(code: string | null): { tone: "notice" | "error"; text: string } | null {
+  if (!code) return null;
+  if (code === "success") return { tone: "notice", text: "Stripe hat Ihre Karte bestätigt. Ihre Testphase wird aktiviert …" };
+  if (code === "email_not_verified") return { tone: "error", text: "Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse über den Link in unserer Bestätigungsmail. Danach starten Sie die Testphase erneut." };
+  if (code === "subscription_exists") return { tone: "notice", text: "Für dieses Konto besteht bereits eine Testphase oder ein Abonnement. Die Details sehen Sie unten." };
+  const safeCode = /^[a-z_-]{1,40}$/u.test(code) ? code : "unbekannt";
+  return { tone: "error", text: `Der Checkout konnte gerade nicht gestartet werden (Code: ${safeCode}). Es wurde nichts abgebucht. Bitte versuchen Sie es in einigen Minuten erneut oder schreiben Sie an ${IMPRINT_EMAIL}.` };
+}
+const RECONCILE_DELAYS_MS = [0, 1_500, 3_000, 5_000, 8_000] as const;
+async function reconcileCheckout(signal: AbortSignal): Promise<void> {
+  const response = await fetch("/api/billing/reconcile", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: "{}", signal });
+  if (!response.ok && response.status !== 503) throw new Error("reconcile_failed");
+}
+const wait = (ms: number, signal: AbortSignal) => new Promise<void>((resolve) => {
+  if (ms === 0 || signal.aborted) { resolve(); return; }
+  const timer = setTimeout(resolve, ms);
+  signal.addEventListener("abort", () => { clearTimeout(timer); resolve(); }, { once: true });
+});
 async function loadBillingStatus(signal?: AbortSignal): Promise<BillingStatusView> {
   const response = await fetch("/api/billing/status", { credentials: "same-origin", cache: "no-store", signal });
   const body = await response.json();
@@ -20,6 +44,7 @@ export function BillingManagement({ initialStatus }: { initialStatus?: BillingSt
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [checkoutMessage, setCheckoutMessage] = useState<ReturnType<typeof checkoutReturnMessage>>(null);
   const refresh = useCallback(async () => {
     if (initialStatus) return;
     try {
@@ -36,6 +61,39 @@ export function BillingManagement({ initialStatus }: { initialStatus?: BillingSt
     }).catch((cause: unknown) => {
       if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Die Abrechnung konnte nicht geladen werden.");
     }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [initialStatus]);
+  useEffect(() => {
+    if (initialStatus) return;
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("billing");
+    const message = checkoutReturnMessage(code);
+    if (!message) return;
+    const controller = new AbortController();
+    void (async () => {
+      await Promise.resolve();
+      if (controller.signal.aborted) return;
+      params.delete("billing");
+      window.history.replaceState({}, "", `${window.location.pathname}${params.size ? `?${params.toString()}` : ""}${window.location.hash}`);
+      setCheckoutMessage(message);
+      if (code !== "success") return;
+      // Nach Stripe den Stand direkt dort abgleichen, statt nur auf den Webhook zu warten.
+      for (const delay of RECONCILE_DELAYS_MS) {
+        await wait(delay, controller.signal);
+        if (controller.signal.aborted) return;
+        try {
+          await reconcileCheckout(controller.signal);
+          const next = await loadBillingStatus(controller.signal);
+          if (controller.signal.aborted) return;
+          setStatus(next); setError(null); setLoading(false);
+          if (next.subscriptionStatus && next.access.source !== "none") {
+            setCheckoutMessage({ tone: "notice", text: next.subscriptionStatus === "trialing" ? "Ihre Testphase ist aktiv. Viel Erfolg mit Ihrem ersten Mandat." : "Ihr Abonnement ist aktiv." });
+            return;
+          }
+        } catch { if (controller.signal.aborted) return; }
+      }
+      setCheckoutMessage({ tone: "notice", text: "Stripe hat den Abschluss gemeldet, die Bestätigung ist aber noch nicht bei uns angekommen. Bitte aktualisieren Sie den Status in einer Minute." });
+    })();
     return () => controller.abort();
   }, [initialStatus]);
   const action = async (kind: "portal" | "cancel") => {
@@ -56,6 +114,7 @@ export function BillingManagement({ initialStatus }: { initialStatus?: BillingSt
   return <section className={styles.panel} aria-labelledby="billing-management-title"><header><p>Abrechnung und Zugang</p><h2 id="billing-management-title">{trial ? "Ihre kostenlose Testphase" : "Ihr Software-Abonnement"}</h2></header>
     {loading ? <p role="status">Bestätigten Stripe-Status laden …</p> : null}
     {error ? <p className={styles.error} role="alert">{error} <a href="/chat?anmelden=1">Zur Anmeldung</a></p> : null}
+    {checkoutMessage ? <p className={checkoutMessage.tone === "error" ? styles.error : styles.notice} role={checkoutMessage.tone === "error" ? "alert" : "status"}>{checkoutMessage.text}</p> : null}
     {notice ? <p className={styles.notice} role="status">{notice}</p> : null}
     {status ? <><p className={styles.status}>{status.cancelAtPeriodEnd ? "Kündigung bestätigt" : trial ? "Trial aktiv" : status.access.source === "paid" ? "Bezahlte Periode aktiv" : status.access.source === "legacy" ? "Bestandsguthaben" : "Keine aktive Nutzungsberechtigung"}</p><dl className={styles.facts}>
       <div><dt>Gewählter Tarif</dt><dd>{plan?.label ?? status.planId}{plan?.billingModel === "fixed_monthly" ? ` · ${plan.euro} € netto / Monat, zzgl. USt.` : ""}</dd></div>

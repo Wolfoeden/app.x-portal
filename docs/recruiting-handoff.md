@@ -1,3 +1,22 @@
+AKTUELLER STAND 08.10.2026, ABEND (Claude), dieser Abschnitt hat Vorrang
+
+VORFALL: Am 08.10. um 17:03 UTC wurde der Deploy-Preview von PR #102 (Kontext deploy-preview, Commit 6466361) auf x-portal.eu als Produktion veröffentlicht. Die Produktionsdatenbank hatte keine der sechs Recruiting-Migrationen: 1.826 fehlgeschlagene Aufrufe von get_recruiting_entitlement in 13 Minuten, neue Besucher mit 0 Credits, Checkout unmöglich. Um 17:17 UTC wurde der Produktions-Deploy von main (d0ebb0b) wieder veröffentlicht. Regel: Deploy-Previews nie per „Publish deploy“ live schalten. Sie werden ohne die Produktionswerte aus netlify.toml gebaut und laufen gegen eine nicht migrierte Datenbank.
+
+GEÄNDERT AUF claude/quirky-pascal-tjc98f (baut auf 6466361 auf):
+- Startseite: Tisch-Szene (project-conversation.webp) und Projekt→Profile (project-match.webp) wieder als eigene Abschnitte; Porträt 362-KB-PNG → 4-KB-WebP; ungenutzte CSS-Regeln der alten Startseite entfernt. Performance-Budget wieder grün (vorher CSS und Public Assets zu groß; CI prüft das Budget nicht).
+- Konto: /konto wertet ?billing=<code> aus. Fehler werden mit Code erklärt; nach Stripe-Erfolg wird /api/billing/reconcile mehrfach aufgerufen, damit der Trial nicht allein vom Webhook abhängt.
+- Checkout: Mit Live-Key fallen neue Sessions auf die verifizierten Live-Preise zurück, wenn STRIPE_*_PRICE_ID fehlt. Die Preisprüfung bei Stripe bleibt bestehen.
+- Preisseite: Link „Beispiel ohne Karte ansehen“ zeigt auf #produktablauf (alter Anker existierte nicht mehr).
+- Geprüft: 1.692 Tests, Lint, Typcheck, Build, Performance-Budget.
+
+PRODUKTIONS-DB: Alle Vorbedingungen der sechs Migrationen lesend gegen xmoxzfqmcnsntvqxhtfb geprüft (Signatur/Rückgabetyp consume_ai_quota_v2 und weitere, keine kollidierenden Spalten/Tabellen, intro_policy-Werte nur free/manual_approval). Noch nichts angewendet.
+
+RELEASE-REIHENFOLGE (DB und Code gehören zusammen; main-Code mit migrierter DB gibt neuen Gästen 0 Credits und setzt neue Vorstellungen auf no_fee):
+1. Freigabe der SaaS-Bedingungen durch den Betreiber; dann SAAS_TERMS_REVIEW in lib/legal/policy.ts umstellen und den Entwurfshinweis auf /terms entfernen.
+2. Stripe (Live): Webhook-Endpunkt https://x-portal.eu/api/stripe/webhook um customer.subscription.trial_will_end und invoice.payment_action_required ergänzen; Erinnerungsmail vor Trial-Ende aktivieren; für „Zahlungsmittel und Rechnungen“ STRIPE_RECRUITING_PORTAL_CONFIGURATION_ID setzen (Kündigung im Konto geht auch ohne).
+3. Sechs Migrationen auf Produktion anwenden, unmittelbar danach den Branch nach main mergen (Netlify-Produktionsbuild).
+4. Live-Test durch den Betreiber: Registrierung → E-Mail bestätigen → Karte bei Stripe (0 €) → /konto zeigt Trial → Suche → im Konto kündigen.
+
 AKTUELLER STAND 08.10.2026 — Abschluss zur Übergabe (dieser Abschnitt hat Vorrang)
 
 Bestehender Branch: codex/recruiting-saas-20261007. Nicht neu von main anfangen.

@@ -2,7 +2,7 @@ import "server-only";
 
 import { recordRecruitingEvent } from "@/lib/analytics/recruiting-server";
 import { CREDIT_PLANS, TRIAL_CREDITS, TRIAL_DAYS, type FixedMonthlyPlan } from "@/lib/billing/plans";
-import { planForStripePriceId, type CheckoutPlanId } from "@/lib/billing/payment-links";
+import { planForStripePriceId, VERIFIED_PRICE_IDS, type CheckoutPlanId } from "@/lib/billing/payment-links";
 import { stripeRequest } from "@/lib/billing/stripe-api";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { SAAS_TERMS_REVIEW, SAAS_TERMS_VERSION } from "@/lib/legal/policy";
@@ -23,9 +23,11 @@ export function trialCreditAllowance(): number {
 }
 
 export function stripePriceForPlan(plan: CheckoutPlanId): string {
-  // New sessions require explicit environment configuration; historic default
-  // Price IDs remain readable only for processing existing subscriptions.
-  const price = process.env[`STRIPE_${plan.toUpperCase()}_PRICE_ID`]?.trim();
+  // The environment wins. With a live key the verified live prices are the
+  // fallback, as for incoming webhooks; startSubscriptionCheckout still checks
+  // amount, currency and interval at Stripe before any session is created.
+  const liveKey = /^(sk|rk)_live_/u.test(process.env.STRIPE_SECRET_KEY?.trim() ?? "");
+  const price = process.env[`STRIPE_${plan.toUpperCase()}_PRICE_ID`]?.trim() || (liveKey ? VERIFIED_PRICE_IDS[plan] : undefined);
   if (!price || !/^price_[A-Za-z0-9]+$/u.test(price)) throw new BillingError("price_not_configured", 503);
   return price;
 }

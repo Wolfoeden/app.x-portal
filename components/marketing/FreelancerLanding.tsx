@@ -61,7 +61,7 @@ export function FreelancerLanding({ caseStudies = publishedCaseStudies() }: { st
             <div className={`${styles.mockCard} ${styles.profileReveal}`}>
               <div className={styles.mockBand} aria-hidden="true" />
               <div className={styles.mockHead}>
-                <Image className={`${styles.mockAvatar} ${styles.mockAvatarImage}`} src="/images/landing/amelie-d.png" alt="Porträt von Amelie D." width={52} height={52} priority />
+                <Image className={`${styles.mockAvatar} ${styles.mockAvatarImage}`} src="/images/landing/amelie-d.webp" alt="Porträt von Amelie D." width={52} height={52} priority />
                 <div><strong>Amelie D.</strong><span>KI-Entwicklerin · Agenten, RAG, TypeScript · remote</span></div>
               </div>
               <p className={styles.mockLabel}>Profilbeleg</p>
@@ -78,6 +78,19 @@ export function FreelancerLanding({ caseStudies = publishedCaseStudies() }: { st
         </div>
       </header>
       <section className={`${styles.section} ${styles.inventoryStrip}`} aria-label="Profile online"><div className={`${styles.frame} ${styles.inventoryFrame}`}><span className={styles.onlineDot} aria-hidden="true" /><strong>210</strong><span>Profile online</span></div></section>
+      <section id="abgleich" className={styles.section} aria-labelledby="abgleich-title">
+        <div className={`${styles.frame} ${styles.quote}`}>
+          <div className={styles.quoteText}>
+            <p className={styles.eyebrow}>Abgleich</p>
+            <h2 id="abgleich-title">Jede Anforderung gegen echte Profilangaben geprüft.</h2>
+            <p>XPORTAL strukturiert die Ausschreibung und gleicht sie mit den vorhandenen Profilen ab. Was belegt ist, sehen Sie mit Beleg. Was unklar ist, bleibt als offener Punkt stehen, statt geraten zu werden.</p>
+            <RecruitingLink href="#produktablauf" event="demo_viewed" className={actionClass("secondary")}>Produktablauf ansehen</RecruitingLink>
+          </div>
+          <div className={styles.quoteMedia}>
+            <Image src="/images/landing/project-match.webp" alt="Eine Projektbeschreibung wird mit einer Auswahl von Freelancer-Profilen verbunden." width={1536} height={1024} sizes="(max-width: 860px) 100vw, 560px" loading="lazy" />
+          </div>
+        </div>
+      </section>
       <section id="produktablauf" className={styles.section} aria-labelledby="produktablauf-title"><div className={styles.frame}>
         <div className={styles.splitHead}>
           <div><p className={styles.eyebrow}>XPORTAL in Aktion</p><h2 id="produktablauf-title">Projekt einfügen. Profil prüfen. Kontakt anfragen.</h2></div>
@@ -85,6 +98,18 @@ export function FreelancerLanding({ caseStudies = publishedCaseStudies() }: { st
         </div>
         <div className={styles.videoPanel}><ProcessVideo steps={processSteps} /></div>
       </div></section>
+      <section id="kontakt" className={styles.section} aria-labelledby="kontakt-title">
+        <div className={`${styles.frame} ${styles.quote}`}>
+          <div className={styles.quoteText}>
+            <h2 id="kontakt-title">Passendes Profil gefunden?<br />Direkt ins Gespräch.</h2>
+            <p>Sie fragen den Freelancer über XPORTAL an. Er entscheidet selbst, ob er seine Kontaktdaten freigibt; danach sprechen Sie direkt miteinander. Ohne Provision und ohne Vermittlungsgebühr.</p>
+            <RecruitingLink href="/preise#tarife" event="trial_cta_clicked" className={actionClass("primary")}>14 Tage kostenlos testen</RecruitingLink>
+          </div>
+          <div className={styles.quoteMedia}>
+            <Image src="/images/landing/project-conversation.webp" alt="Auftraggeber und Freelancer besprechen gemeinsam eine Projektbeschreibung am Tisch." width={1536} height={1024} sizes="(max-width: 860px) 100vw, 560px" loading="lazy" />
+          </div>
+        </div>
+      </section>
       <section className={styles.section} aria-labelledby="preise-title"><div className={styles.frame}>
         <div className={styles.splitHead}><h2 id="preise-title">14 Tage am eigenen Mandat testen.</h2><p>Einmalig {TRIAL_CREDITS} Credits innerhalb des gewählten Tarifs. Kein zusätzliches Gast- oder Registrierungsbonusguthaben. Verbrauchte Trial-Credits werden nicht aufgefüllt und lösen keine vorzeitige Abbuchung aus.</p></div>
         <div className={styles.saasPlans}>{plans.map((plan) => <article key={plan.id} className={styles.priceCard}><p className={styles.priceName}>{plan.label}</p><p className={styles.priceValue}><strong>{plan.euro} €</strong><span>netto / Monat nach dem Trial</span></p><p>{plan.monthlyCredits.toLocaleString("de-DE")} Credits je bezahlter Monatsperiode</p><RecruitingLink href={`/chat?checkout=${plan.id}`} event="trial_cta_clicked" plan={plan.id} className={actionClass("primary")}>14 Tage kostenlos testen</RecruitingLink><p className={styles.trialDisclosure}>Karte erforderlich · anschließend automatische monatliche Verlängerung · monatlich zum Periodenende kündbar.</p></article>)}</div>

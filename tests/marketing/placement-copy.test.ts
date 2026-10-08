@@ -41,6 +41,16 @@ describe("recruiting SaaS commercial contract", () => {
     expect(html).not.toContain("Nächster Schritt");
     expect(html).not.toMatch(/frei erfunden|Beispielprofil A/u);
   });
+  it("shows the illustrations for matching and the conversation at the table", () => {
+    const html = landing();
+    expect(html).toContain("project-match.webp");
+    expect(html).toContain("project-conversation.webp");
+    expect(html).toContain("am Tisch");
+  });
+  it("links the pricing page demo to an anchor the landing page has", () => {
+    expect(pricing()).toContain("/freelancer-finden#produktablauf");
+    expect(landing()).toContain('id="produktablauf"');
+  });
   it("preserves historical fee terms while excluding them from new charges", () => {
     expect(PLACEMENT_TERMS.feePercent).toBe(10);
     expect(PLACEMENT_TERMS.version).toBe("vermittlung-2026-09-1");
