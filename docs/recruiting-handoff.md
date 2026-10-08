@@ -1,3 +1,22 @@
+AKTUELLER STAND 08.10.2026 — SQL-Korrektur und Sicherheitsupdates (dieser Abschnitt hat Vorrang)
+
+Weiter auf codex/recruiting-saas-20261007. Kein Produktionsrelease und keine reale Testabbuchung.
+Letzter vollständig ausgewerteter Datenbanklauf: 37765291194, HEAD 091edd4. FK-Indizes bestanden; noch 39 Assertions in drei Credit-/Stripe-Dateien fehlgeschlagen.
+Jetzt geändert: historische Guthaben ausdrücklich als Testdaten angelegt; neue Gast-/Registrierungsboni bleiben 0; Gastkonvertierung muss Reservierungen erhalten. Einmalige historische Grants behalten ihr Zeitfenster; Abo-Ablauftests erhalten echte Subscription-/Grant-Fixtures.
+Neue additive Migration 20261008112129_recruiting_credit_compatibility.sql: roll_ai_credit_period weist NULL-Identitäten wieder ab; alter activate_paid_plan setzt Grant/Ablauf/erste Zahlung und erhält historische Restguthaben sowie offene Reservierungen. Vollständige pgTAP-Abnahme dieses neuen Stands steht noch aus. Nicht als behoben behaupten, bevor Actions grün ist.
+Next.js/eslint-config-next auf 16.3.8, Sharp per Override auf 0.35.5. Lokaler Produktionsabhängigkeitsaudit bestanden: keine bekannten Schwachstellen. Anlass waren zwei neue hohe CI-Audit-Befunde.
+Aktuelle Anwendungsprüfungen laufen; Ergebnisse/Git-HEAD in der Git-Quittung und dem Abschlussbericht außerhalb des Repos. Historische grüne 1677 Tests/Build/Performance gelten nicht automatisch für die Paketupdates.
+
+NÄCHSTER FREIGABEMEILENSTEIN: verkaufsfähiger Kern (Werbelandingpage -> Registrierung mit Projekttext -> Karten-Trial -> Recruiting -> Zahlung/Kündigung). Zusatzreports/Komfortfunktionen zurückstellen. Keine belastbare Restzeit vorhanden, weil reale Stripe-/Browser-Abnahme noch fehlt.
+1. Neue Database- und Application-Actions vollständig auswerten, übrige Fehler korrigieren. Neue SQL-Kompatibilität auch auf Legacy-Guthaben/Reservierungen prüfen.
+2. Serverseitige Tarif-/Trial-/Team-/CV-Rechte und Profilfreigabe vollständig abnehmen.
+3. Stripe-Sandbox/TestClocks und isolierte Supabase-Testumgebung: alle 12 Original-Szenarien, Auth-/Checkout-Draft-Erhalt, Mobil/Tastatur. Keine echten Abbuchungen.
+4. Kontakt-Retry/private Anzeige im UI, Outbox-/SMTP-Fehlerfälle vervollständigen.
+5. Vor Freigabe: Sieben-Tage-Erinnerung, Reconciliation, Steuer-/Portal-Konfiguration, SaaS-Bedingungen. Analytics-Kampagnenreport/Retention bleibt offen.
+Erst nach bestandener Abnahme Produktion migrieren, main mergen, Netlify veröffentlichen und live verifizieren. Draft-PR #102 bleibt offen.
+Kontingent: bei letzter Abfrage 28 Prozent Rest im Fünf-Stunden-Fenster; Sicherung eingeleitet. Weiterhin spätestens 25 Prozent sichern/pushen/berichten.
+
+HISTORISCHER STAND — untenstehende Zahlen und offene Punkte können überholt sein
 AKTUELLER STAND 08.10.2026 — maßgeblich vor den älteren Abschnitten unten
 
 Anwendung lokal geprüft: 1677 Tests bestanden, 0 fehlgeschlagen, 187 Dateien. Acht neue Rechte-/Team-Mutationsprüfungen enthalten. Lint und Typprüfung bestanden. Produktionsbuild bestanden. Sämtliche Performance-Budgets bestanden: JavaScript470867/520000 Byte gzip, größter Chunk72996/120000, CSS57431/57500.
