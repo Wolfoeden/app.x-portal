@@ -39,9 +39,9 @@ describe("signed subscription webhook routing", () => {
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
   it("passes new completed Checkout to server verification, never activating from URL", async () => {
-    const response = await POST(signed("checkout.session.completed", { id: "cs_Test", subscription: "sub_Test", metadata: { xportal_kind: "recruiting_subscription_v1" } }));
+    const response = await POST(signed("checkout.session.completed", { id: "cs_live_a1B2c3", subscription: "sub_Test", metadata: { xportal_kind: "recruiting_subscription_v1" } }));
     expect(response.status).toBe(200);
-    expect(mocks.sync).toHaveBeenCalledWith("sub_Test", "evt_Test", "checkout.session.completed", "cs_Test");
+    expect(mocks.sync).toHaveBeenCalledWith("sub_Test", "evt_Test", "checkout.session.completed", "cs_live_a1B2c3");
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
   it.each(["customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted", "customer.subscription.trial_will_end"])("re-fetches canonical state for %s", async (type) => {
