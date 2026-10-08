@@ -37,7 +37,7 @@ export function stripeObject(value: unknown): Record<string, unknown> {
 }
 export function stripeId(value: unknown, prefix: string): string | null {
   const id = typeof value === "string" ? value : stripeObject(value).id;
-  return typeof id === "string" && new RegExp(`^${prefix}_[A-Za-z0-9]+$`, "u").test(id) ? id : null;
+  return typeof id === "string" && new RegExp(`^${prefix}_[A-Za-z0-9]+(?:_[A-Za-z0-9]+)*$`, "u").test(id) ? id : null;
 }
 export function stripeInstant(value: unknown): string | null {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0
