@@ -1747,7 +1747,7 @@ export function ChatWorkspace({
         if (requestedProjectRef.current === projectId) setLoadingProjectId(null);
       }
     },
-    [applyProjectDetail, auth.user?.id, fetchProjectDetail, isAccountUser, showToast],
+    [applyProjectDetail, auth.user, fetchProjectDetail, isAccountUser, showToast],
   );
 
   useEffect(() => {

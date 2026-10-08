@@ -27,7 +27,7 @@ import {
   saveAccountName,
   startOauthUpgrade,
 } from "@/lib/auth/browser";
-import { TERMS_VERSION } from "@/lib/legal/policy";
+import { SAAS_TERMS_VERSION } from "@/lib/legal/policy";
 
 const originalSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
@@ -186,7 +186,7 @@ describe("browser authentication journeys", () => {
           terms_accepted_at: "2026-08-31T10:00:00.000Z",
           // Ohne die Fassung belegt der Zeitstempel nur, DASS zugestimmt
           // wurde, nicht wozu.
-          terms_version: TERMS_VERSION,
+          terms_version: SAAS_TERMS_VERSION,
           marketing_emails: false,
         },
       },
@@ -205,7 +205,7 @@ describe("browser authentication journeys", () => {
           data: {
             display_name: "Erika Mustermann",
             terms_accepted_at: "2026-08-31T10:00:00.000Z",
-            terms_version: TERMS_VERSION,
+            terms_version: SAAS_TERMS_VERSION,
             marketing_emails: true,
           },
         }),

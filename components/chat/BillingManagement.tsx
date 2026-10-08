@@ -7,6 +7,12 @@ export function billingDate(value: string | null): string {
   if (!value || Number.isNaN(new Date(value).getTime())) return "Noch nicht bestätigt";
   return new Intl.DateTimeFormat("de-DE", { dateStyle: "long", timeStyle: "short", timeZone: "Europe/Berlin" }).format(new Date(value));
 }
+async function loadBillingStatus(signal?: AbortSignal): Promise<BillingStatusView> {
+  const response = await fetch("/api/billing/status", { credentials: "same-origin", cache: "no-store", signal });
+  const body = await response.json();
+  if (!response.ok) throw new Error(response.status === 401 ? "Melden Sie sich an, um Ihre Abrechnung zu sehen." : body.error ?? "Die Abrechnung konnte nicht geladen werden.");
+  return body;
+}
 export function BillingManagement({ initialStatus }: { initialStatus?: BillingStatusView }) {
   const [status, setStatus] = useState<BillingStatusView | null>(initialStatus ?? null);
   const [loading, setLoading] = useState(!initialStatus);
@@ -17,14 +23,21 @@ export function BillingManagement({ initialStatus }: { initialStatus?: BillingSt
   const refresh = useCallback(async () => {
     if (initialStatus) return;
     try {
-      const response = await fetch("/api/billing/status", { credentials: "same-origin", cache: "no-store" });
-      const body = await response.json();
-      if (!response.ok) throw new Error(response.status === 401 ? "Melden Sie sich an, um Ihre Abrechnung zu sehen." : body.error ?? "Die Abrechnung konnte nicht geladen werden.");
-      setStatus(body); setError(null);
+      setStatus(await loadBillingStatus()); setError(null);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Die Abrechnung konnte nicht geladen werden."); }
     finally { setLoading(false); }
   }, [initialStatus]);
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    if (initialStatus) return;
+    const controller = new AbortController();
+    void loadBillingStatus(controller.signal).then((nextStatus) => {
+      if (controller.signal.aborted) return;
+      setStatus(nextStatus); setError(null);
+    }).catch((cause: unknown) => {
+      if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Die Abrechnung konnte nicht geladen werden.");
+    }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [initialStatus]);
   const action = async (kind: "portal" | "cancel") => {
     if (initialStatus) { setNotice("Vorschau: Keine Änderung bei Stripe ausgeführt."); return; }
     setBusy(kind); setError(null);

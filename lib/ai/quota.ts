@@ -1,9 +1,7 @@
 import "server-only";
 
 import {
-  ACCOUNT_MONTHLY_CREDITS,
   creditPlan,
-  GUEST_MONTHLY_CREDITS,
   type CreditPlanId,
 } from "@/lib/ai/credit-policy";
 import { findOwnerForMember } from "@/lib/data/plan-teams";

@@ -1,7 +1,7 @@
 XPORTAL - Abschluss des Arbeitsabschnitts und Übergabe, 07.10.2026
 
 VERDIKT
-Der implementierte Zwischenstand ist übergabefähig, die vollständige Recruiting-SaaS ist noch NICHT abgenommen oder produktionsreif. Die Weiterentwicklung wurde auf ausdrücklichen Wunsch beendet. Keine Produktionsmigration, kein Main-Merge, kein Live-Deployment, keine reale Testabbuchung und kein externer E-Mail-Test wurden ausgeführt.
+Der implementierte Zwischenstand ist übergabefähig, die vollständige Recruiting-SaaS ist noch NICHT abgenommen oder produktionsreif. Die Weiterentwicklung wurde an der neu gesetzten Kontingentgrenze beendet: 25 Prozent Rest. Bei ihrer ersten Abfrage nach der Änderung waren bereits nur 19 Prozent im Fünf-Stunden-Fenster verfügbar. Danach nur laufende Änderungen geprüft und gesichert. Keine Produktionsmigration, kein Main-Merge, kein Live-Deployment, keine reale Testabbuchung und kein externer E-Mail-Test wurden ausgeführt.
 
 REPOSITORY UND FORTSETZUNG
 Repository: https://github.com/Wolfoeden/app.x-portal
@@ -10,6 +10,12 @@ Ausgangspunkt: origin/main d0ebb0b815a0a3c548b8f83be57596c5380c877b
 Erster gesicherter/push-verifizierter Abschnitt: 545f426
 Arbeitsverzeichnis: C:\Users\roman\Documents\Codex\2026-10-07\bei-10-kontingent-schlie-e-die\work\xportal
 Den aktuellen Remote-HEAD nennt die separate Git-Quittung. Nicht in alten, schmutzigen XPORTAL-Checkouts weiterarbeiten. Keine fremden uncommitteten Änderungen wurden übernommen.
+
+LETZTER GESICHERTER ABSCHNITT
+Aktuelle Prüfung unter Node 24.19.0: 1613 Tests bestanden, 56 fehlgeschlagen in 186 Dateien. Lint ohne Fehler/Warnungen, Typprüfung und Produktionsbuild bestanden. Performance: JavaScript gzip 539050 / 520000 Bytes; übrige Budgets bestanden. Keine neue Browser-, SQL-, Stripe- oder Live-Abnahme.
+Geändert: Profilseite verwendet profilspezifische Freigabe plus zentrale Trial-/Tarifrechte; Link-Fallback und Profil-CTA führen in den selbstständigen Arbeitsbereich mit Profilkontext; dortige alte Provisionshinweise entfernt. Abrechnungs-Initialabruf ist abbrechbar und schreibt nach Unmount keine Zustände. React-Memo-Abhängigkeit und ungenutzte Imports/FAQ-Argument bereinigt. FAQ-Anker ergänzt. Betroffene Link-/Profil-/Auth-Vertragstests aktualisiert. Übrige fehlgeschlagene Tests ausdrücklich nicht abgeschaltet oder pauschal abgeschwächt.
+Priorität im nächsten Modell: 56 Fehler einzeln fachlich triagieren; verbliebene aktive Alttexte und vollständige Berechtigungen prüfen; Bundle reduzieren; dann vollständige Supabase-/Stripe-/Browser-Abnahme wie unten beschrieben.
+Neue Kontingentregel: spätestens bei25 Prozent Rest stoppen und Commit/Push/Prüfbericht/Übergabe sichern; ab30-35 Prozent Reserve vorbereiten. Kontoübergreifend geteilt, anderer Chat verschafft keine eigene Quote.
 
 ABGLEICH MIT DEINEM PLAN
 1. Produktentscheidung - umgesetzt als Software-Abo in neuen Hauptwegen. Recruiting-Positionierung, keine neue Provision im neuen Kontakt-/Beauftragungsmodell. Offen: vollständiger Audit sämtlicher aktiver Nebenwege und alter manueller Vermittlungshinweise.
@@ -22,7 +28,7 @@ ABGLEICH MIT DEINEM PLAN
 
 5. Stripe - serverseitige Sessions, erlaubte Price-IDs, Karte verpflichtend, verifizierte kanonische Subscription/Invoice, Signatur/Replay/0-EUR-Schutz, Perioden-Grants und Reconcile-Endpunkt implementiert. Offen: tatsächliche Testprodukt-/Preis-/Webhook-/Portal-Zuordnung, VAT-/Steuerprüfung, sämtliche realen Sandbox-/Test-Clock-Szenarien; automatischer Wiederabgleich für inaktive Konten statt nur nutzergetriggertem Reconcile; Zeitüberschreitungen/Parallelität unter realen Bedingungen.
 
-6. Kündigung/Erinnerungen/Zugang - Kontooberfläche, Portal und Kündigungs-Endpunkt mit Stripe-Enddatum und festgehaltener Kündigung implementiert; getrennte bezahlte/trial Rechte. Offen: Stripe-Erinnerung tatsächlich7 Tage vorher einstellen und Versand/Dedup prüfen; Kündigung vor Trial-Ende, Portal-Reaktivierung, SCA/Zahlungsfehler/Nachzahlung real testen; zuverlässige Benachrichtigung und Retry. Ältere serverseitige paid-access/CV-/Link-Checks noch mit Trial/zentraler Berechtigung vereinheitlichen. Lesbarkeit alter Projekte/Abrechnung nach Ablauf durchgängig prüfen.
+6. Kündigung/Erinnerungen/Zugang - Kontooberfläche, Portal und Kündigungs-Endpunkt mit Stripe-Enddatum und festgehaltener Kündigung implementiert; getrennte bezahlte/trial Rechte. Offen: Stripe-Erinnerung tatsächlich7 Tage vorher einstellen und Versand/Dedup prüfen; Kündigung vor Trial-Ende, Portal-Reaktivierung, SCA/Zahlungsfehler/Nachzahlung real testen; zuverlässige Benachrichtigung und Retry. Öffentliche Profilseite auf denselben zentralen Trial-/Tarif- und Profilfreigabe-Check wie die Kalenderroute umgestellt. Vollständiger Audit von CV-/Link-/Team-Rechten und alten Helpern bleibt offen. Lesbarkeit alter Projekte/Abrechnung nach Ablauf durchgängig prüfen.
 
 7. Website - Landingpage, Preise9/19/50 EUR netto, primärer14-Tage-CTA, Karte90 Credits/Verlängerung, gekennzeichnetes fiktives Ergebnisbeispiel, Kontooberfläche, Kontaktfreigabe und eingeschränkte /agent-Weiterleitung implementiert. Lokale Screenshots erstellt. Offen: vollständige mobile/tastatur-/Screenreader-/Fehlerzustands-Abnahme, verbliebene alte Ergebnis-/Profil-/Nebenwegtexte und SEO/Schema-Regressionsprüfungen. Screenshots sind lokale Darstellung und Fixtures, keine Live- oder Zahlungsevidenz.
 
@@ -32,13 +38,13 @@ ABGLEICH MIT DEINEM PLAN
 
 10. Ereignismessung - neue erlaubte Ereignisse, consent-gated Browser/API, separate serverbestätigte Zahlung/Trial-Ereignisse, DB-Dedup, interne/Test-Markierung, erste erfolgreiche Analyse und gespeicherte Auswahl angeschlossen. Einwilligung v3 fordert Zustimmung für den geänderten Messzweck neu an; keine sensiblen Inhalte als Parameter. Offen: vollständiger Funnel-Report/Admin-Auswertung, verlässliche Kampagnen-Verknüpfung über Registrierung und Stripe-Webhooks, server-/clientseitige Zählung konsistent auswerten, technische Fehler überall anschließen, Aufbewahrung/Export/Löschung der neuen Messdaten; Reddit-Konfiguration falls tatsächlich benötigt. Keine IDs erfunden. Analytics-SQL/RLS wurde noch nicht separat ausgeführt.
 
-11. Abnahme - NOCH NICHT ERFÜLLT. Typprüfung und Produktionsbuild bestanden. Gesamttests: 1609 bestanden, 60 fehlgeschlagen in 186 Dateien. Lint:2 Fehler/3 Warnungen; Client-JavaScript-Budget überschritten. Fokussierte Agentenprüfung: Recruiting169 Unit-Tests und19 SQL-Assertions; Billing39 Unit-Tests und26 SQL-Assertions; Root17 Fokusprüfungen. Diese Zahlen sind getrennte, teilweise überlappende Läufe und dürfen nicht zu einem Gesamtwert addiert werden. SQL verwendet isolierte PGlite-Fixtures, kein vollständiges Supabase-Projekt. ALLE12 Abnahmepunkte des ursprünglichen Plans müssen end-to-end noch abgeschlossen werden; insbesondere reale Stripe-Sandbox/TestClocks, Kontaktzustellung und mobile/auth/Checkout-Fehlerfälle.
+11. Abnahme - NOCH NICHT ERFÜLLT. Typprüfung und Produktionsbuild bestanden. Gesamttests: 1613 bestanden, 56 fehlgeschlagen in 186 Dateien. Lint ohne Fehler/Warnungen. Typprüfung und Produktionsbuild erneut unter Node 24.19.0 bestanden. Client-JavaScript-Budget weiter überschritten:539050/520000 Bytes. Fokussierte Agentenprüfung: Recruiting169 Unit-Tests und19 SQL-Assertions; Billing39 Unit-Tests und26 SQL-Assertions; Root17 Fokusprüfungen. Diese Zahlen sind getrennte, teilweise überlappende Läufe und dürfen nicht zu einem Gesamtwert addiert werden. SQL verwendet isolierte PGlite-Fixtures, kein vollständiges Supabase-Projekt. ALLE12 Abnahmepunkte des ursprünglichen Plans müssen end-to-end noch abgeschlossen werden; insbesondere reale Stripe-Sandbox/TestClocks, Kontaktzustellung und mobile/auth/Checkout-Fehlerfälle.
 
 12. Lieferung - Implementierung,4 additive Migrationen, Fachdocs, Umgebungsvariablen ohne neue Secrets, lokale Screenshots, Prüfbericht, Rückweghinweise und Übergabeprompt liegen vor. Offen: grüne Freigabe-Gates, tatsächliche Stripe-/Supabase-Konfiguration, rechtliche Freigabe, autorisierte Produktionsmigration und Deployment plus Live-Prüfung. Push allein bedeutet keinen Live-Release.
 
 PRIORITÄTEN FÜR DEN NÄCHSTEN AGENTEN
-P0:60 fehlgeschlagene Tests einzeln gegen den neuen Vertrag bewerten. Veraltete Expectations sinnvoll aktualisieren, echte Fehler beheben. Keine Sicherheitsprüfungen löschen, um grün zu werden.
-P0: Lintfehler ChatWorkspace.tsx (Memo-Abhängigkeit auth.user) und BillingManagement.tsx (setState im Effect), Warnungen sowie JavaScript-Budget beheben.
+P0:56 fehlgeschlagene Tests einzeln gegen den neuen Vertrag bewerten. Veraltete Expectations sinnvoll aktualisieren, echte Fehler beheben. Keine Sicherheitsprüfungen löschen, um grün zu werden.
+P0: JavaScript-Budget beheben. Die bisherigen Lintfehler und Warnungen sind beseitigt.
 P0: Trial-Berechtigung über sämtliche serverseitigen CV/Link/Kalender/Team-/KI-Wege vereinheitlichen und schützen.
 P1: Isoliertes Supabase-Staging mit vollständiger Migrationskette, RLS/Advisors, Konkurrenztests und Bestandsdaten-Snapshot.
 P1: Isoliertes Stripe-Testkonto konfigurieren; die12 geforderten Abnahmeszenarien mit Browser/TestClocks dokumentiert durchführen. Keine echten Abbuchungen.

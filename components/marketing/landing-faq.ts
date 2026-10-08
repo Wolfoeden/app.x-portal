@@ -1,7 +1,7 @@
 import { TRIAL_CREDITS, TRIAL_DAYS } from "@/lib/billing/plans";
 export type FaqPart = string | { href: string; label: string };
 export type FaqItem = { question: string; answer: readonly FaqPart[] };
-export function landingFaq(_placement: boolean): readonly FaqItem[] {
+export function landingFaq(): readonly FaqItem[] {
   return [
     { question: "Kann ich ohne Karte ausprobieren?", answer: ["Sie können das klar gekennzeichnete Ergebnisbeispiel ohne Konto und Karte ansehen. Der eigentliche Trial startet erst nach bestätigter E-Mail und serverseitig verifizierter Kartenhinterlegung bei Stripe."] },
     { question: "Was enthält der kostenlose Trial?", answer: [`${TRIAL_DAYS} Tage Zugang im gewählten Tarif mit einmalig ${TRIAL_CREDITS} Credits insgesamt. Danach beginnt das gewählte Monatsabonnement, sofern Sie vor dem bestätigten Trial-Ende nicht kündigen. Preise und Kartenpflicht sehen Sie vor dem Start auf der `, { href: "/preise", label: "Preisseite" }, "."] },

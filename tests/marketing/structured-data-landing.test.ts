@@ -40,7 +40,7 @@ describe("landing page structured data", () => {
     const html = renderToStaticMarkup(createElement(FreelancerLanding));
     const faq = jsonLd(html).find((node) => node["@type"] === "FAQPage")!;
     const entities = faq.mainEntity as { name: string; acceptedAnswer: { text: string } }[];
-    const items = landingFaq(true);
+    const items = landingFaq();
     expect(entities.map((entity) => entity.name)).toEqual(items.map((item) => item.question));
     expect(entities.map((entity) => entity.acceptedAnswer.text)).toEqual(items.map(faqAnswerText));
     // Sichtbar steht jede Frage und jedes Textstück ihrer Antwort im
@@ -84,7 +84,7 @@ describe("landing page structured data", () => {
   });
 
   it("keeps the FAQ answers free of markup", () => {
-    for (const item of [...landingFaq(true), ...landingFaq(false)]) {
+    for (const item of [...landingFaq(), ...landingFaq()]) {
       expect(faqAnswerText(item)).not.toMatch(/[<>]/u);
     }
   });

@@ -16,7 +16,7 @@ import styles from "./landing.module.css";
 export function FreelancerLanding({ stats = null, caseStudies = publishedCaseStudies() }: { stats?: LandingStats | null; contactPhotoUrl?: string | null; caseStudies?: readonly CaseStudy[] }) {
   const plans = PUBLIC_PRICING_PLANS.filter((plan) => plan.billingModel === "fixed_monthly");
   const entry = Math.min(...plans.map((plan) => plan.euro));
-  const faq = landingFaq(false);
+  const faq = landingFaq();
   return (
     <main id="main-content" className={styles.main} tabIndex={-1}>
       <JsonLd data={breadcrumbStructuredData(MARKETING_PAGE.find)} />
@@ -62,7 +62,7 @@ export function FreelancerLanding({ stats = null, caseStudies = publishedCaseStu
         <div className={styles.saasPlans}>{plans.map((plan) => <article key={plan.id} className={styles.priceCard}><p className={styles.priceName}>{plan.label}</p><p className={styles.priceValue}><strong>{plan.euro} €</strong><span>netto / Monat nach dem Trial</span></p><p>{plan.monthlyCredits.toLocaleString("de-DE")} Credits je bezahlter Monatsperiode</p><RecruitingLink href={`/chat?checkout=${plan.id}`} event="trial_cta_clicked" plan={plan.id} className={actionClass("primary")}>14 Tage kostenlos testen</RecruitingLink><p className={styles.trialDisclosure}>Karte erforderlich · anschließend automatische monatliche Verlängerung · monatlich zum Periodenende kündbar.</p></article>)}</div>
         <Link href="/preise" className={styles.textLink}>Tarife und Abrechnung im Detail →</Link>
       </div></section>
-      <section className={styles.section}><div className={`${styles.frame} ${styles.faq}`}><div><p className={styles.eyebrow}>Vor dem Start</p><h2>Was Sie wissen sollten.</h2></div><Questions items={faq.map((item) => ({ question: item.question, answer: <p>{item.answer.map((part, index) => typeof part === "string" ? part : <Link key={index} href={part.href}>{part.label}</Link>)}</p> }))} /></div></section>
+      <section id="fragen" className={styles.section}><div className={`${styles.frame} ${styles.faq}`}><div><p className={styles.eyebrow}>Vor dem Start</p><h2>Was Sie wissen sollten.</h2></div><Questions items={faq.map((item) => ({ question: item.question, answer: <p>{item.answer.map((part, index) => typeof part === "string" ? part : <Link key={index} href={part.href}>{part.label}</Link>)}</p> }))} /></div></section>
       <section className={`${styles.section} ${styles.closing}`}><div className={styles.frame}><h2>Das nächste Mandat wartet.</h2><div className={styles.actions}><RecruitingLink href="/preise#tarife" event="trial_cta_clicked" className={actionClass("primary")}>14 Tage kostenlos testen</RecruitingLink><Link href={salesCallHref("hero")} prefetch={false} className={styles.textLink}>Gespräch buchen</Link><Link href="/freelancer/apply" className={styles.textLink}>Als Freelancer bewerben</Link></div><p className={styles.trialDisclosure}>Ergebnisbeispiel ohne Karte ansehen. Für den eigentlichen Trial sind ein bestätigtes Konto und die Kartenhinterlegung bei Stripe erforderlich.</p></div></section>
       <CaseStudies cases={publishedCaseStudies(caseStudies)} />
       <section className={styles.section}><div className={styles.frame}><Link href="/datenwege" className={styles.textLink}>Datenwege ansehen</Link><nav aria-label="Weiterlesen" className={styles.actions}>{MARKETING_PAGES.filter(page => page.path !== MARKETING_PAGE.find.path).map(page => <Link key={page.path} href={page.path} className={styles.textLink}>{page.label}</Link>)}</nav></div></section>

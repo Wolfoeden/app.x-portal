@@ -28,7 +28,7 @@ import { contactLinkFlags, isAllowedContactLink } from "@/lib/profile/contact-li
 
 const PROFIL_ID = "11111111-1111-4111-8111-111111111111";
 const KONTO = { id: "22222222-2222-4222-8222-222222222222", isAnonymous: false, isAdmin: false };
-const GESPRAECH = `/gespraech?von=profile&profil=${PROFIL_ID}`;
+const GESPRAECH = `/chat?profil=${PROFIL_ID}`;
 
 function aufruf(kind = "linkedin") {
   return GET(new Request(`https://x-portal.eu/api/freelancers/${PROFIL_ID}/link?kind=${kind}`), {
@@ -88,11 +88,11 @@ describe("GET /api/freelancers/[id]/link", () => {
     expect(mocks.audit).not.toHaveBeenCalled();
   });
 
-  it("öffnet ohne Vermittlungsmodell für jedes Konto", async () => {
+  it("prüft die Freigabe auch bei ausgeschaltetem historischen Schalter", async () => {
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "false");
     mocks.allowed.mockResolvedValue(false);
-    expect((await aufruf()).headers.get("location")).toBe("https://www.linkedin.com/in/mira-falk");
-    expect(mocks.allowed).not.toHaveBeenCalled();
+    expect(ziel(await aufruf())).toBe(GESPRAECH);
+    expect(mocks.allowed).toHaveBeenCalledWith(KONTO, PROFIL_ID);
   });
 
   it("leitet nie auf eine fremde oder unverschlüsselte Adresse weiter", async () => {
