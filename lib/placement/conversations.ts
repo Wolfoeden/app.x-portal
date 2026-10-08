@@ -89,6 +89,7 @@ function item(
   const engagementRecorded = ctx.engaged.has(row.id);
   return {
     id: row.id,
+    projectId: row.project_id,
     commercialModel: row.commercial_model ?? "legacy_placement",
     role,
     projectTitle: ctx.titles.get(row.project_id) ?? null,

@@ -1,0 +1,58 @@
+{
+  "run": "fca1b949-e52c-403c-9edb-75878bc98f17",
+  "account": "acct_1U8BM82FFiyUCWGi",
+  "mode": "sandbox",
+  "apiVersion": "2024-06-20",
+  "scope": "Actual Stripe API and Test Clocks; app/browser/DB integration is a separate gate",
+  "results": [
+    {
+      "name": "14-day card trial, zero invoice, paid monthly renewal",
+      "passed": true,
+      "evidence": {
+        "clock": "clock_1UOJfR2FFiyUCWGiN8YCZzXC",
+        "subscription": "sub_1UOJfV2FFiyUCWGiisI75gzL",
+        "trialInvoice": "in_1UOJfV2FFiyUCWGi5Gk13NAG",
+        "paidInvoice": "in_1UOJfc2FFiyUCWGip5AQNVHP",
+        "amountPaid": 1900
+      }
+    },
+    {
+      "name": "cancellation before trial end prevents first paid invoice",
+      "passed": true,
+      "evidence": {
+        "subscription": "sub_1UOJfq2FFiyUCWGiFwRy3XRj",
+        "status": "canceled",
+        "paidInvoices": 0
+      }
+    },
+    {
+      "name": "failed payment and recovery",
+      "passed": true,
+      "evidence": {
+        "subscription": "sub_1UOJg72FFiyUCWGihgp0EcWt",
+        "invoice": "in_1UOJgF2FFiyUCWGi8sUFvYHQ",
+        "failedIntentStatus": "requires_payment_method",
+        "recovered": "active"
+      }
+    },
+    {
+      "name": "authentication required and recovery",
+      "passed": true,
+      "evidence": {
+        "subscription": "sub_1UOJgf2FFiyUCWGiBNQkPhx0",
+        "invoice": "in_1UOJgn2FFiyUCWGiVTUJrs6I",
+        "failedIntentStatus": "requires_action",
+        "recovered": "active"
+      }
+    },
+    {
+      "name": "abandoned checkout and duplicate creation",
+      "passed": true,
+      "evidence": {
+        "session": "cs_test_a1iWqWKDTPEpdsApqW5kHWaT0ALf8GeSELxEeOp3upo3xz26TSHm6LQusn",
+        "singleSession": true,
+        "expiredWithoutSubscription": true
+      }
+    }
+  ]
+}

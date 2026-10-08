@@ -1,3 +1,48 @@
+AKTUELLER STAND 08.10.2026 — Abschluss zur Übergabe (dieser Abschnitt hat Vorrang)
+
+Bestehender Branch: codex/recruiting-saas-20261007. Nicht neu von main anfangen.
+Kein Produktionsrelease, keine Produktionsmigration und keine reale Testabbuchung. Nutzer hat Abschluss und Übergabe an eine andere KI angeordnet. Auf anschließendes „weiter“ wird dieser Abschluss fertiggestellt. Seit Nutzeranweisung wird das Nutzungskontingent nicht mehr abgefragt.
+
+BESTANDENE PRÜFUNGEN
+- Vollständige Supabase-Migrationskette/pgTAP auf GitHub: 350 Assertions in 18 Dateien, Database-Run 37769733449, Commit 13fdf6a. Die 39 früheren Fehler und fehlenden Indizes sind behoben. Seitdem keine SQL-Änderung.
+- Application-Run 37769733371 auf 13fdf6a grün, einschließlich Sicherheitsaudit, Lint, Typcheck, Tests und Build; Preview grün.
+- Neuer lokaler Stand: 1682 Anwendungstests in 188 Dateien bestanden; Typprüfung bestanden. Abschließender Lint nach Korrektur des Effect-Loaders bestanden. Drei Kontakt-Browserprüfungen nach dieser Korrektur bestanden (1280/390 px, Tastatur, Retry, Ladefehler, keine private Adresse ohne Freigabe).
+- Produktionsbuild und Performance bestanden: JS gzip 473766/520000, größter Chunk72976/120000, CSS57431/57500. Build war unmittelbar vor der kleinen Effect-Loader-Korrektur; aktuelle CI nach Push beachten.
+- Fünf echte Stripe-Sandbox/API-Test-Clock-Prüfungen bestanden: 14-Tage-Kartentrial/0-EUR-Rechnung/erste Monatszahlung 19 EUR; Kündigung vor Trial-Ende ohne kostenpflichtige Rechnung; abgelehnte Zahlung mit Nachzahlung; zusätzliche Authentifizierung mit Wiederherstellung durch gültiges Ersatz-Zahlungsmittel; abgebrochener Checkout und idempotente Session-Erstellung.
+- Stripe-Evidenz: docs/evidence/recruiting-stripe-sandbox-2026-10-08.json. Reproduzierbares Skript: scripts/verify-stripe-sandbox.mjs. WICHTIG: Direkte Stripe-API-Tests mit echten Sandbox-Objekten, keine vollständige App/Browser/Webhook/Supabase-End-to-End-Abnahme. Zusätzliche Authentifizierung wurde als requires_action nachgewiesen; der 3DS-Browserdialog selbst wurde nicht abgeschlossen.
+
+NEU IMPLEMENTIERT
+Private freigegebene Kontaktadresse in Anfrage-Dialog und Gesprächsübersicht; Status neu laden; ausdrücklich ausgelöster Zustellungs-Retry für ausstehende/fehlgeschlagene Benachrichtigungen. API lädt Kontaktdaten ausschließlich für den Eigentümer nach aufgezeichneter Freelancer-Freigabe, nicht für abgelehnte/historische Vorgänge; private/no-store. Retry umfasst auch fehlgeschlagene Bestätigungsmails. Fünf neue API-Rechteprüfungen. Lokale Vorschauseite /chat/preview/contact ist außerhalb development gesperrt. Keine externe Kontaktmail bei diesen Browser-/API-Tests versandt.
+
+ZUGÄNGE FÜR FORTSETZUNG
+Stripe CLI ist nach Nutzerfreigabe für „300 Sandbox“, acct_1U8BM82FFiyUCWGi autorisiert. Nicht erneut eine Sandbox anlegen. CLI-Konfiguration liegt außerhalb des Repos unter ../stripe-acceptance-config.toml. Auth nutzt die CLI-Anmeldung; dort liegt kein exportierbarer regulärer Test-API-Key. Keine Zugangsdaten veröffentlichen. Den früheren temporären rkcs-Schlüssel nicht verwenden. CLI per npm exec --package=@stripe/cli oder vorhandenes stripe.exe verwenden; whoami --format json prüft das Konto. STRIPE_ACCEPTANCE_ACCOUNT muss explizit acct_1U8BM82FFiyUCWGi sein. Kein --live.
+Supabase: XPORTAL-Produktion xmoxzfqmcnsntvqxhtfb (17.6), keine bestehende Entwicklungsbranch gefunden. 300-Projekt uhxwaonnkvicfekzefbn ist nicht XPORTAL-Staging. GitHub Database nutzt eine kurzlebige lokale Supabase-Instanz mit vollständiger Migrationskette. Keine gehostete Testbranch oder Produktionsänderung angelegt. Der GitHub-Secret-Export wurde mangels regulärem Test-Key nicht ausgeführt.
+
+KONKRETE RESTARBEIT BIS ZUR PRODUKTIONSFREIGABE
+1. Aktuelle PR-Prüfungen auswerten. Serverseitige Berechtigungen aller CV/Link/Kalender/Team-/KI-/Profilwege gegen echten DB-Zustand vollständig abnehmen. Zentraler Rechtehelper und Team-POST-Schutz sind implementiert; nicht als offene Implementierung neu bauen.
+2. Stripe-Sandbox mit XPORTAL und isoliertem Supabase verbinden; vollständige zwölf Szenarien aus dem Originalauftrag ausführen. Noch nicht durch echte integrierte Tests belegt: App-Kartencheckout, Auth-/Checkout-Abbruch mit Projekttext, echte konkurrierende Requests, signierte/doppelte/vertauschte Webhooks bis ins Credit-Ledger, erschöpfte Credits ohne Frühbelastung, Wiederholungs-Trial/Bestandskonten, vollständiger 3DS-Dialog und Wiederfreischaltung in der Anwendung. Bestehende Unit-/SQL-Tests und fünf Stripe-Fälle nutzen, nicht erneut grundlos aufsetzen.
+3. Kontakt-Outbox/SMTP inkl. Zustimmung, Absturz/Lease, Retry und Widerruf integriert abnehmen. Kontakt-UI ist jetzt angeschlossen; nicht mehr als fehlend führen.
+4. Betriebsfunktionen noch offen: verlässliche Sieben-Tage-Erinnerung, automatischer Zahlungsabgleich, tatsächliche Steuer-/Portal-Konfiguration. Aktuelle Sandbox-Preise/Testobjekte sind keine produktive Konfiguration.
+5. SaaS-Bedingungen sind in lib/legal/policy.ts weiterhin ausdrücklich Entwurf und Live-Checkout bleibt gesperrt. Keine rechtliche Freigabe behaupten/erfinden. Nach fachlicher Freigabe die echten produktiven Preise/Steuern/Webhooks/Portal zuordnen.
+6. Danach Migration/Release konkret vorbereiten, main mergen, Netlify ausrollen, geänderte Routen und Zahlungsweg live verifizieren. Kein Release allein wegen grüner Unit-Tests.
+Nachrangig: Kampagnenzuordnung/Funnelreport/Retention und Komfortfunktionen. Fokus auf verkaufsfähigen Kern für Werbetraffic.
+
+ORIGINALABNAHME — BELEGSTATUS
+1 Trial: Stripe bestanden; kompletter App-Checkout offen.
+2 Checkout-Abbruch: Stripe bestanden; Auth-/Draft-Rückkehr offen.
+3 Konkurrenz: Stripe-Session-Idempotenz bestanden; echte konkurrierende App/DB-Requests offen.
+4 Trial-Ende: Stripe-Rechnung/Zahlung bestanden; integrierte Monatsrechte offen.
+5 Kündigung: Stripe-Test-Clock bestanden; kompletter Konto-UI-Weg offen.
+6 Zahlungsfehler/SCA: Stripe-Zustände bestanden; App-Meldung und 3DS-Dialog offen.
+7 Nachzahlung: Stripe wieder aktiv; App-Credits ohne Doppelgrant integriert offen.
+8 Replay/Reihenfolge/0 EUR: Unit/SQL und echte Stripe-Nullrechnung; signierter Gesamtweg offen.
+9 Erschöpfung: Unit/SQL vorhanden; integrierter Beweis ohne Frühbelastung offen.
+10 Wiederholungs-Trial/Bestand: Unit/SQL vorhanden; reale integrierte Kontenprüfung offen.
+11 Neue Kontakte: no_fee/DB/API/UI vorhanden; echte SMTP-Gesamtstrecke offen.
+12 Mobil/Tastatur: Kontaktteil bestanden; kompletter Landing/Auth/Checkout/Draft-Weg offen.
+
+HISTORISCHE ABSCHNITTE — nachfolgende offene Punkte/Zahlen sind teilweise überholt
+
 AKTUELLER STAND 08.10.2026 — SQL-Korrektur und Sicherheitsupdates (dieser Abschnitt hat Vorrang)
 
 Weiter auf codex/recruiting-saas-20261007. Kein Produktionsrelease und keine reale Testabbuchung.

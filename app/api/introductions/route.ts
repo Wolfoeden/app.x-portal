@@ -32,10 +32,17 @@ export async function GET(request: Request) {
       .order("requested_at", { ascending: false }).limit(1).maybeSingle();
     if (error) throw error;
     const contact = data?.commercial_model === "no_fee" && data.freelancer_consented_at && data.status !== "cancelled" ? await approvedRecruitingContact(data.id) : null;
+    let deliveryNeedsRetry = false;
+    if (data?.commercial_model === "no_fee" && data.status !== "cancelled") {
+      const deliveries = await createAdminSupabaseClient().from("recruiting_contact_deliveries")
+        .select("id").eq("intro_booking_id", data.id).in("status", ["pending", "failed"]).limit(1);
+      if (deliveries.error) throw deliveries.error;
+      deliveryNeedsRetry = Boolean(deliveries.data?.length);
+    }
     return NextResponse.json({ introduction: data ? {
       id: data.id, status: data.status, requestedAt: data.requested_at, confirmedAt: data.confirmed_at,
       commercialModel: data.commercial_model, emailDelivery: data.contact_delivery_status,
-      contact,
+      contact, deliveryNeedsRetry,
     } : null }, { headers: NO_STORE });
   } catch (error) {
     if (error instanceof Response) return error;

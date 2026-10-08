@@ -5,6 +5,7 @@ import { placementTermsSummary } from "@/lib/placement/config";
 import type { FreelancerProfileResult } from "../chat-contract";
 import { IconArrowRight, IconCheck } from "../icons";
 import { Modal } from "./dialogs";
+import { RecruitingContactDetails } from "./recruiting-contact-details";
 import { initials } from "./shared";
 type Introduction = { id: string; status: string; commercialModel?: string; emailDelivery?: string };
 type View = "loading" | "form" | "waiting" | "introduced" | "declined" | "no_project" | "login" | "error";
@@ -61,6 +62,7 @@ export function PlacementDialog({ profile, projectId, introductionsPath, preview
     </form> : null}
     {view === "waiting" ? <div className="confirmation-state" role="status"><span aria-hidden="true"><IconCheck size={16} /></span><h3>Kontaktanfrage gespeichert</h3><p>{record?.emailDelivery === "failed" ? "Die E-Mail konnte noch nicht zugestellt werden. Eine Freigabe liegt noch nicht vor. Den Status sehen Sie unter Gespräche." : "Die Kontaktfreigabe steht noch aus. Der Freelancer entscheidet selbst; Interesse und Verfügbarkeit sind nicht bestätigt."}</p><a className="booking-link-action" href={appPath("/gespraeche")}>Zu Ihren Gesprächen <IconArrowRight size={13} /></a></div> : null}
     {view === "introduced" ? <div className="confirmation-state" role="status"><span aria-hidden="true"><IconCheck size={16} /></span><h3>{historical ? "Sie wurden vorgestellt" : "Kontaktweg freigegeben"}</h3><p>Nutzen Sie den freigegebenen Kontaktweg für den weiteren Austausch. Bestätigen Sie Verfügbarkeit, Honorar und Einsatzbedingungen direkt miteinander. Die Kontaktfreigabe ist noch keine Zusage für den Einsatz.</p>{profile.bookingUrl ? <a className="booking-link-action" href={appPath(`/api/freelancers/${profile.id}/book`)} target="_blank" rel="noopener noreferrer">Termin wählen <IconArrowRight size={13} /></a> : <p>Die freigegebenen Kontaktdaten werden per E-Mail übermittelt.</p>}</div> : null}
+    {!historical && !preview && !guest && projectId && (view === "waiting" || view === "introduced") ? <RecruitingContactDetails projectId={projectId} profileId={profile.id} introductionsPath={introductionsPath} /> : null}
     {view === "declined" ? <div className="placement-status" role="status"><p>Die Kontaktanfrage wurde abgelehnt oder beendet. Sie können weitere Profile prüfen oder Ihre Kriterien bearbeiten.</p><a href="/chat">Projekt weiterbearbeiten</a></div> : null}
     {view === "error" && error ? <p className="form-error" role="alert">{error}</p> : null}
   </div></Modal>;

@@ -444,6 +444,7 @@ export type ConversationAnswer = "engaged" | "talking" | "no_engagement";
  */
 export interface ConversationItem {
   id: string;
+  projectId?: string;
   /** Absent on older saved UI snapshots; preserve their historical contract copy. */
   commercialModel?: "no_fee" | "legacy_placement";
   role: "client" | "freelancer";

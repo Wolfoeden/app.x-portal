@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { RecruitingContactDetails } from "./recruiting-contact-details";
 import { appPath } from "@/lib/app-path";
 
 import type { ConversationAnswer, ConversationItem } from "../chat-contract";
@@ -128,6 +129,7 @@ function ConversationCard({
       </header>
 
       <Steps item={item} />
+      {newContact && item.role === "client" && item.projectId && item.stage !== "declined" ? <RecruitingContactDetails projectId={item.projectId} profileId={item.profileId} introductionsPath={appPath("/api/introductions")} /> : null}
 
       {item.question ? (
         <div className="conversation-question">
@@ -212,8 +214,7 @@ export function ConversationsPage({
       <header className="team-page-header">
         <h1>Gespräche</h1>
         <p>
-          Der Stand Ihrer Anfragen: angefragt, vorgestellt, beauftragt. Wenn XPORTAL nachfragt, ob es zur
-          Beauftragung kam, antworten Sie hier mit einem Klick.
+          Der Stand Ihrer Anfragen, Kontaktfreigaben und Beauftragungen. Freigegebene Kontaktdaten und offene Benachrichtigungen finden Sie direkt beim jeweiligen Gespräch.
         </p>
       </header>
 
@@ -228,8 +229,7 @@ export function ConversationsPage({
         <div className="empty-projects">
           <p>Noch keine Gespräche</p>
           <small>
-            Fragen Sie im Chat einen passenden Freelancer an. Hier sehen Sie dann, wann XPORTAL Sie vorstellt und
-            wie es weitergeht. Als Freelancer erscheinen hier Anfragen, sobald XPORTAL Sie vorgestellt hat.
+            Fragen Sie im Chat gezielt einen Freelancer an. Hier verfolgen Sie die Kontaktfreigabe und den weiteren Austausch. Als Freelancer sehen Sie hier Ihre freigegebenen Kontakte.
           </small>
         </div>
       ) : (
