@@ -1715,6 +1715,14 @@ export function ChatWorkspace({
     [fetchProjectDetail],
   );
 
+  // loadProject must stay stable: the workspace bootstrap effect depends on it,
+  // and a callback that changes with every auth update re-runs that effect in
+  // an endless loop (setAuth → new auth.user → new loadProject → bootstrap).
+  const returnUseUserRef = useRef<string | null>(null);
+  useEffect(() => {
+    returnUseUserRef.current = isAccountUser ? auth.user?.id ?? null : null;
+  }, [auth.user?.id, isAccountUser]);
+
   const loadProject = useCallback(
     async (project: ProjectListItem | string) => {
       const projectId = typeof project === "string" ? project : project.id;
@@ -1727,7 +1735,8 @@ export function ChatWorkspace({
       else setLoadingProjectId(projectId);
       try {
         const detail = await fetchProjectDetail(projectId);
-        if (isAccountUser && auth.user?.id) trackRecruitingEvent("return_use", { entityId: `${auth.user.id}:${new Date().toISOString().slice(0, 10)}` });
+        const returnUseUser = returnUseUserRef.current;
+        if (returnUseUser) trackRecruitingEvent("return_use", { entityId: `${returnUseUser}:${new Date().toISOString().slice(0, 10)}` });
         // Wer zwischenzeitlich weitergeklickt hat, soll nicht zurückgeworfen
         // werden: die verspätete Antwort landet nur im Zwischenspeicher.
         if (requestedProjectRef.current !== projectId) return detail;
@@ -1747,7 +1756,7 @@ export function ChatWorkspace({
         if (requestedProjectRef.current === projectId) setLoadingProjectId(null);
       }
     },
-    [applyProjectDetail, auth.user, fetchProjectDetail, isAccountUser, showToast],
+    [applyProjectDetail, fetchProjectDetail, showToast],
   );
 
   useEffect(() => {
