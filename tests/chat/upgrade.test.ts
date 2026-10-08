@@ -12,7 +12,7 @@ import {
   pricingPath,
 } from "@/components/chat/upgrade";
 import type { AiUsageSnapshot } from "@/components/chat-contract";
-import { CREDIT_PLANS, START_CREDITS } from "@/lib/billing/plans";
+import { CREDIT_PLANS, START_CREDITS, TRIAL_CREDITS } from "@/lib/billing/plans";
 
 function usage(planId: string, extra: Partial<AiUsageSnapshot["credits"]> = {}): AiUsageSnapshot {
   return {
@@ -35,16 +35,16 @@ describe("exhausted credits", () => {
   it("promises a guest the one-time start credits, never a monthly refill", () => {
     const notice = exhaustedNotice(usage("guest"), false);
 
-    expect(notice.text).toContain(`einmalig ${START_CREDITS} Credits insgesamt`);
-    expect(notice.text).toContain("Ihre bisherigen Projekte werden übernommen");
+    expect(notice.text).toContain(`einmalig ${TRIAL_CREDITS} Credits insgesamt`);
+    expect(notice.text).toContain("Ihre Eingabe bleibt erhalten");
     expect(notice.text).not.toMatch(/im Monat|monatlich/u);
-    expect(notice.action).toEqual({ kind: "signup", label: "Kostenloses Konto erstellen" });
+    expect(notice.action).toEqual({ kind: "pricing", label: "14 Tage kostenlos testen" });
   });
 
   it("tells a trial account that nothing refills and shows the way to a plan", () => {
     const notice = exhaustedNotice(usage("trial"), true);
 
-    expect(notice.text).toContain("füllen sich nicht wieder auf");
+    expect(notice.text).toContain("Ein neues Konto erzeugt kein Bonusguthaben");
     expect(notice.text).not.toContain("Neues Guthaben gibt es");
     expect(notice.text).toContain(`ab ${CREDIT_PLANS.basic.euro} € netto`);
     expect(notice.action?.kind).toBe("pricing");
@@ -53,7 +53,7 @@ describe("exhausted credits", () => {
   it("names the refill date for a subscription and offers a larger plan", () => {
     const notice = exhaustedNotice(usage("pro", { subscriptionStatus: "active" }), true);
 
-    expect(notice.text).toContain("Neues Guthaben gibt es ab 01.10.2026");
+    expect(notice.text).toContain("nach bestätigter Zahlung für die Periode ab 01.10.2026");
     expect(notice.action).toEqual({ kind: "pricing", label: "Größeren Tarif ansehen" });
   });
 });
@@ -108,7 +108,7 @@ describe("research launch notes", () => {
     );
 
   it("gives a guest the reason to sign up next to the button", () => {
-    expect(render({ kind: "login" })).toContain(`${START_CREDITS} Start-Credits reichen für 3 AI-Agent-Recherchen`);
+    expect(render({ kind: "login" })).toContain("Karte");
   });
 
   it("shows the entry price when the balance is too small", () => {
@@ -120,7 +120,7 @@ describe("example volumes", () => {
   it("rounds down to steps of five so no page promises more than a plan carries", async () => {
     const { roundedExampleCount } = await import("@/lib/ai/credit-policy");
 
-    expect(roundedExampleCount(START_CREDITS, "research")).toBe(3);
+    expect(roundedExampleCount(START_CREDITS, "research")).toBe(0);
     expect(roundedExampleCount(CREDIT_PLANS.basic.monthlyCredits, "research")).toBe(15);
     expect(roundedExampleCount(CREDIT_PLANS.pro.monthlyCredits, "research")).toBe(40);
     expect(roundedExampleCount(90, "research")).toBe(3);

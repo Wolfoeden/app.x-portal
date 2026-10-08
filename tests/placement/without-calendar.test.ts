@@ -45,11 +45,11 @@ function client(rows: FreelancerProfileRow[]) {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("profiles without a calendar", () => {
-  it("stay out of the catalogue while clients book calendars directly", async () => {
+  it("remain discoverable without a shared calendar independent of the obsolete fee flag", async () => {
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "false");
     const { client: supabase, calls } = client([row]);
-    expect(await fetchActiveBookableRealProfiles(supabase)).toEqual([]);
-    expect(calls).toContain("not booking_url");
+    expect((await fetchActiveBookableRealProfiles(supabase)).map((profile) => profile.id)).toEqual([row.id]);
+    expect(calls).not.toContain("not booking_url");
   });
 
   it("are found and recommended once clients request through XPORTAL", async () => {
@@ -65,13 +65,14 @@ describe("profiles without a calendar", () => {
     expect(shortlist.matches[0]?.profile.id).toBe(row.id);
   });
 
-  it("keep the old rule in matching when the model is off", () => {
+  it("keeps an evidence match even when consent must precede contact", () => {
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "false");
     const profile = FreelancerProfileSchema.parse({
       ...profileFixtures[0],
       introPolicy: { ...profileFixtures[0].introPolicy, bookingUrl: null },
     });
     const shortlist = buildShortlist(parseFallbackBrief("React remote"), [profile]);
-    expect(shortlist.matches).toHaveLength(0);
+    expect(shortlist.matches).toHaveLength(1);
+    expect(shortlist.matches[0]?.profile.introPolicy.bookingUrl).toBeNull();
   });
 });

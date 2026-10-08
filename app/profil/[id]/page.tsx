@@ -15,7 +15,7 @@ import {
 import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { loadPublicProfileView, type PublicProfileView } from "@/lib/freelancer/public-profile";
-import { userHasPaidAccess } from "@/lib/billing/paid-access";
+import { placementBookingAllowed } from "@/lib/placement/requests";
 import { placementRequestsEnabled } from "@/lib/placement/config";
 import {
   isProfileLinkSource,
@@ -111,9 +111,9 @@ export default async function ProfilePage({ params, searchParams }: Params & Sea
   const projectId = projectParam && UUID.test(projectParam) ? projectParam : null;
   const user = await getCurrentUser().catch(() => null);
   const isAccountUser = Boolean(user && !user.isAnonymous);
-  // Wer zahlt, bucht direkt; das prüft die Buchungsroute ein zweites Mal.
+  // Trial/Tarif und profilspezifische Freigabe gelten auch auf der Profilseite.
   const directBooking =
-    isAccountUser && user ? await userHasPaidAccess(user.id).catch(() => false) : false;
+    isAccountUser && user ? await placementBookingAllowed(user, id).catch(() => false) : false;
 
   const { profile, dossier, shownAt } = view;
   const action = profilePageAction({

@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { LegalFooter } from "@/components/LegalFooter";
-import { salesCallHref } from "@/lib/sales/sales-call-links";
+import { RecruitingLink } from "@/components/marketing/RecruitingLink";
 import { MARKETING_PAGE } from "@/lib/seo";
 
 import styles from "./public-chrome.module.css";
@@ -39,11 +39,11 @@ export function PublicHeader({ context }: { context?: string }) {
         </nav>
         <div className={styles.headerActions}>
           <Link href="/chat" prefetch={false} className={styles.secondaryAction}>
-            Kostenlos testen
+            Anmelden
           </Link>
-          <Link href={salesCallHref("header")} prefetch={false} className={styles.primaryAction}>
-            Gespräch buchen
-          </Link>
+          <RecruitingLink href="/preise#tarife" event="trial_cta_clicked" className={styles.primaryAction}>
+            14 Tage kostenlos testen
+          </RecruitingLink>
         </div>
         <details className={styles.menu}>
           <summary>
@@ -52,10 +52,8 @@ export function PublicHeader({ context }: { context?: string }) {
           </summary>
           <nav aria-label="Navigation">
             <NavigationLinks />
-            <Link href="/chat" prefetch={false}>Kostenlos testen</Link>
-            <Link href={salesCallHref("menu")} prefetch={false} className={styles.menuAction}>
-              Gespräch buchen
-            </Link>
+            <Link href="/chat" prefetch={false}>Anmelden</Link>
+            <RecruitingLink href="/preise#tarife" event="trial_cta_clicked" className={styles.menuAction}>14 Tage kostenlos testen</RecruitingLink>
           </nav>
         </details>
       </div>

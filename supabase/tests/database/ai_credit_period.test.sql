@@ -64,7 +64,8 @@ select is(
 -- Rolling inside a live period must not refill anything.
 -- ---------------------------------------------------------------------
 update public.user_ai_credit_accounts
-  set credits_used = 100, credits_reserved = 25
+  set credits_total = 300, billing_generation = 'legacy', legacy_credit_balance = 300,
+      credits_used = 100, credits_reserved = 25
   where user_id = 'd1111111-1111-4111-8111-111111111111';
 
 select is(
@@ -100,7 +101,7 @@ select is(
 );
 
 -- ---------------------------------------------------------------------
--- An expired one-time trial advances the window without refilling.
+-- An expired one-time grant retains its window without refilling.
 -- ---------------------------------------------------------------------
 update public.user_ai_credit_accounts
   set period_start = private.current_ai_credit_period_start()
@@ -118,8 +119,8 @@ select is(
       'd1111111-1111-4111-8111-111111111111'
     ) r
   ),
-  true,
-  'an expired period reports a roll'
+  false,
+  'an expired one-time grant does not roll'
 );
 
 select is(
@@ -138,8 +139,8 @@ select is(
     from public.user_ai_credit_accounts a
     where a.user_id = 'd1111111-1111-4111-8111-111111111111'
   ),
-  private.current_ai_credit_period_start(),
-  'rolling moves the window to the current month'
+  private.current_ai_credit_period_start() - interval '2 months',
+  'a one-time grant retains its original window'
 );
 
 -- A second roll in the same period must be a no-op, so that two concurrent
@@ -225,7 +226,7 @@ select is(
 -- silently adding or removing credits.
 -- ---------------------------------------------------------------------
 update public.user_ai_credit_accounts
-  set credits_total = 50000,
+  set credits_total = 50000, legacy_credit_balance = 50000,
       credits_used = 20225,
       period_start = private.current_ai_credit_period_start()
         - interval '2 months',
@@ -277,6 +278,8 @@ select is(
 -- ---------------------------------------------------------------------
 update public.user_ai_credit_accounts
   set plan_id = 'basic', credits_total = 500, credits_used = 499,
+      stripe_subscription_id = 'sub_PeriodFixture', billing_grant_credits = 500,
+      legacy_credit_balance = 0, credits_reserved = 0,
       period_start = private.current_ai_credit_period_start() - interval '2 months',
       period_end = private.current_ai_credit_period_start() - interval '1 month'
   where user_id = 'd1111111-1111-4111-8111-111111111111';
@@ -290,6 +293,8 @@ select is(
 
 update public.user_ai_credit_accounts
   set plan_id = 'pro', credits_total = 1250, credits_used = 1250,
+      stripe_subscription_id = 'sub_PeriodFixture', billing_grant_credits = 1250,
+      legacy_credit_balance = 0, credits_reserved = 0,
       period_start = private.current_ai_credit_period_start() - interval '2 months',
       period_end = private.current_ai_credit_period_start() - interval '1 month'
   where user_id = 'd1111111-1111-4111-8111-111111111111';
@@ -303,6 +308,8 @@ select is(
 
 update public.user_ai_credit_accounts
   set plan_id = 'business', credits_total = 4000, credits_used = 3999,
+      stripe_subscription_id = 'sub_PeriodFixture', billing_grant_credits = 4000,
+      legacy_credit_balance = 0, credits_reserved = 0,
       period_start = private.current_ai_credit_period_start() - interval '2 months',
       period_end = private.current_ai_credit_period_start() - interval '1 month'
   where user_id = 'd1111111-1111-4111-8111-111111111111';

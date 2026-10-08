@@ -48,20 +48,20 @@ describe("provider cost reconciliation", () => {
     expect(calculateProviderCostCents(1_000_000, 1_000_000)).toBe(1540);
   });
 
-  it("gives a guest 30 and an account 90 credits once", () => {
-    expect(GUEST_MONTHLY_CREDITS).toBe(30);
-    expect(configuredInitialCredits(true)).toBe(30);
-    expect(ACCOUNT_MONTHLY_CREDITS).toBe(90);
-    expect(configuredInitialCredits(false)).toBe(90);
+  it("gives no credits for guest sessions or registration", () => {
+    expect(GUEST_MONTHLY_CREDITS).toBe(0);
+    expect(configuredInitialCredits(true)).toBe(0);
+    expect(ACCOUNT_MONTHLY_CREDITS).toBe(0);
+    expect(configuredInitialCredits(false)).toBe(0);
   });
 
-  it("buys 10 guest and 30 account searches at the flat price", () => {
+  it("does not promise analyses from registration bonus credits", () => {
     // Die Zahl, die in der Oberfläche steht, muss aus den Kontingenten
     // folgen — sonst verspricht die Seite etwas, das die Abrechnung nicht hält.
-    expect(Math.floor(GUEST_MONTHLY_CREDITS / BRIEF_ANALYSIS_CREDITS)).toBe(10);
+    expect(Math.floor(GUEST_MONTHLY_CREDITS / BRIEF_ANALYSIS_CREDITS)).toBe(0);
     expect(
       Math.floor(ACCOUNT_MONTHLY_CREDITS / BRIEF_ANALYSIS_CREDITS),
-    ).toBe(30);
+    ).toBe(0);
   });
 
   it("honors zero as an explicit hard-stop configuration", () => {
@@ -106,28 +106,28 @@ describe("Kontingente, die die Datenbank auch annimmt", () => {
     expect(configuredInitialCredits(true)).toBe(GUEST_MONTHLY_CREDITS);
   });
 
-  it("lässt einen zulässigen Wert weiterhin durch", () => {
+  it("does not restore a registration bonus even from a historically valid value", () => {
     process.env.AI_CREDITS_USER_TOTAL = "90";
-    expect(configuredInitialCredits(false)).toBe(90);
+    expect(configuredInitialCredits(false)).toBe(0);
   });
 
   it("lässt das feste 90-Credit-Trial nicht per Umgebung erhöhen", () => {
     process.env.AI_CREDITS_USER_TOTAL = "300";
-    expect(configuredInitialCredits(false)).toBe(90);
+    expect(configuredInitialCredits(false)).toBe(0);
   });
 
-  it("gibt angemeldeten Konten 90 Credits, auch ohne Umgebungsvariable", () => {
+  it("keeps registration separate from the Stripe verified trial", () => {
     // Das eine Guthaben trägt alles: Analyse zu 3, Websuche zu 30 Credits.
-    expect(configuredInitialCredits(false)).toBe(90);
-    expect(ACCOUNT_MONTHLY_CREDITS).toBe(90);
+    expect(configuredInitialCredits(false)).toBe(0);
+    expect(ACCOUNT_MONTHLY_CREDITS).toBe(0);
   });
 
-  it("nimmt für Gäste einen früheren Umgebungswert noch an", () => {
+  it("does not revive an old guest bonus environment override", () => {
     // Steht in Netlify noch AI_CREDITS_GUEST_TOTAL=100, gilt dieser Wert
     // weiter. Das kleinere Gastguthaben wirkt erst, wenn die Variable fehlt.
     process.env.AI_CREDITS_GUEST_TOTAL = "100";
-    expect(configuredInitialCredits(true)).toBe(100);
+    expect(configuredInitialCredits(true)).toBe(0);
     delete process.env.AI_CREDITS_GUEST_TOTAL;
-    expect(configuredInitialCredits(true)).toBe(30);
+    expect(configuredInitialCredits(true)).toBe(0);
   });
 });

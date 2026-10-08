@@ -4,13 +4,13 @@ import { useState, type FormEvent } from "react";
 
 import { creditPlan } from "@/lib/ai/credit-policy";
 import { ACCOUNT_NAME_MAX_LENGTH } from "@/lib/auth/account-name";
-import { customerPortalUrl } from "@/lib/billing/payment-links";
 import { CREDIT_PLANS } from "@/lib/billing/plans";
 
 import type { AiUsageSnapshot, PlanTeamSnapshot } from "../chat-contract";
 import { IconArrowUpRight, IconSpark } from "../icons";
 import { CreditLimitSetting } from "./credit-limit";
 import { TeamMembersPanel } from "./team-members";
+import { BillingManagement } from "./BillingManagement";
 
 const creditFormat = new Intl.NumberFormat("de-DE");
 const euroFormat = new Intl.NumberFormat("de-DE", {
@@ -46,7 +46,8 @@ export function subscriptionStatusLabel(
   cancelAtPeriodEnd = false,
 ): string | null {
   if (cancelAtPeriodEnd && status !== "canceled") return "Gekündigt";
-  if (status === "active" || status === "trialing") return "Abo aktiv";
+  if (status === "trialing") return "Trial aktiv";
+  if (status === "active") return "Abo aktiv";
   if (status === "pending" || status === "incomplete") return "Aktivierung läuft";
   if (status === "past_due" || status === "unpaid") return "Zahlung offen";
   if (status === "paused") return "Pausiert";
@@ -71,6 +72,7 @@ export function billingPeriodLabel(
     year: "numeric",
   }).format(end);
   if (cancelAtPeriodEnd) return `Credits verfügbar bis ${formattedEnd}`;
+  if (status === "trialing") return `Trial bis ${formattedEnd} · keine Credit-Auffüllung`;
   if (status === "past_due" || status === "unpaid") {
     return `Keine neue Auffüllung ohne Zahlung · aktueller Zeitraum bis ${formattedEnd}`;
   }
@@ -257,7 +259,6 @@ export function CreditPlansDialog({
     usage?.credits.subscriptionStatus,
     usage?.credits.cancelAtPeriodEnd,
   );
-  const portal = customerPortalUrl();
 
   return (
     <div className="plans-dialog" role="dialog" aria-label="Abrechnung und Team">
@@ -276,16 +277,17 @@ export function CreditPlansDialog({
                 usage.credits.cancelAtPeriodEnd,
               ) : "Zahlungsstatus wird geladen"}</span>
             </div>
-            {portal ? <a href={portal}>Zahlungen und Rechnungen <IconArrowUpRight size={12} /></a> : null}
+            <a href="/konto">Testphase, Zahlungen und Rechnungen <IconArrowUpRight size={12} /></a>
           </div>
         ) : null}
       </section>
 
       <a className="plan-action" href="/preise">
-        Tarife ansehen und Credits kaufen <IconArrowUpRight size={12} />
+        Monatstarife ansehen <IconArrowUpRight size={12} />
       </a>
 
       {plan.billingModel === "fixed_monthly" ? <CreditLimitSetting limit={selfLimit} maxCredits={plan.monthlyCredits} maxEuro={selfLimitMaxEuro} onSaved={onSelfLimitSaved} /> : null}
+      <BillingManagement />
       <TeamMembersPanel team={team} planLabel={plan.label} busy={teamBusy} notice={teamNotice} onInvite={onInviteTeamMember} onRemove={onRemoveTeamMember} />
     </div>
   );

@@ -31,7 +31,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   const profileId = parsed.data;
   const kind = new URL(request.url).searchParams.get("kind");
   const fallback = () =>
-    NextResponse.redirect(new URL(appPath(`/gespraech?von=profile&profil=${profileId}`), request.url), {
+    NextResponse.redirect(new URL(appPath(`/chat?profil=${profileId}`), request.url), {
       status: 302,
       headers: NO_STORE,
     });

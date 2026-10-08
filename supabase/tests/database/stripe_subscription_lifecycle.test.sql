@@ -41,7 +41,7 @@ select is(
       from public.user_ai_credit_accounts a
      where a.user_id = 'd3333333-3333-4333-8333-333333333333'
   ),
-  'trial:300:pending',
+  'trial:0:pending',
   'checkout alone grants no paid credits'
 );
 

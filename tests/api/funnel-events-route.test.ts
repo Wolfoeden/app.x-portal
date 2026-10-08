@@ -21,6 +21,7 @@ function anfrage(event: string, outcome: string | null = null) {
     method: "POST",
     headers: {
       "content-type": "application/json",
+      cookie: "xportal_cookie_consent=v3.all",
       origin: "https://x-portal.eu",
       "sec-fetch-site": "same-origin",
       "x-forwarded-for": "203.0.113.9",

@@ -13,6 +13,8 @@ import {
   useSyncExternalStore,
 } from "react";
 import { BRIEF_ANALYSIS_CREDITS, EXTERNAL_SEARCH_CREDITS } from "@/lib/ai/credit-policy";
+import { saveProjectDraft, readProjectDraft, clearProjectDraft } from "@/lib/recruiting/project-draft";
+import { trackRecruitingEvent } from "@/lib/analytics/recruiting-client";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { openCookieSettings } from "@/components/CookieConsent";
 import { LegalFooter } from "@/components/LegalFooter";
@@ -1201,6 +1203,11 @@ export function ChatWorkspace({
     previewResultState === "searching" ? "searching" : "idle",
   );
   const [draft, setDraft] = useState("");
+  useEffect(() => {
+    if (preview || workspaceView !== "chat" || new URLSearchParams(window.location.search).has("project")) return;
+    const saved = readProjectDraft();
+    if (saved) queueMicrotask(() => setDraft(current => current || saved));
+  }, [preview, workspaceView]);
   /** Die Shortcut-Nachricht, unter der die selbst angemeldeten Profile der Rolle stehen. */
   const [guideShowcase, setGuideShowcase] = useState<{ messageId: string; theme: ShowcaseTheme } | null>(null);
   const [pendingAssistant, setPendingAssistant] = useState<PendingAssistant | null>(null);
@@ -1215,6 +1222,7 @@ export function ChatWorkspace({
     { tone: "error" | "success"; message: string } | null
   >(null);
   const [usage, setUsage] = useState<AiUsageSnapshot | null>(previewData?.usage ?? null);
+  const [recruitingAccess, setRecruitingAccess] = useState<boolean | null>(null);
   /* Das selbst gesetzte Limit kommt neben der Momentaufnahme mit, damit die
      Einstellung nach einem Neuladen den gespeicherten Wert zeigt. */
   const [selfLimit, setSelfLimit] = useState<number | null>(null);
@@ -1311,7 +1319,7 @@ export function ChatWorkspace({
   const isAccountUser = auth.authenticated && !auth.anonymous;
   // Wer einen bezahlten Tarif hat, bucht im Vermittlungsmodell direkt; die
   // Buchungsroute prüft dasselbe noch einmal auf dem Server.
-  const directBooking = isAccountUser && hasPaidAccess(usage?.credits.planId, usage?.credits.subscriptionStatus);
+  const directBooking = isAccountUser && (preview ? hasPaidAccess(usage?.credits.planId, usage?.credits.subscriptionStatus) : recruitingAccess === true);
   const accountName = isAccountUser
     ? shownAccountName(auth.user?.displayName ?? null, auth.user?.email ?? null) ?? "Ihr Konto"
     : null;
@@ -1397,6 +1405,7 @@ export function ChatWorkspace({
       continuation?: AuthContinuation,
       mode: AuthDialogMode = "register",
     ) => {
+      if (draft.trim()) saveProjectDraft(draft);
       const next =
         continuation ?? createAuthContinuation(intent, activeProject?.id ?? null);
       storeAuthContinuation(next);
@@ -1408,7 +1417,7 @@ export function ChatWorkspace({
       setAuthInitialMode(mode);
       setAuthOpen(true);
     },
-    [activeProject?.id],
+    [activeProject?.id, draft],
   );
 
   const storeDismissed = useCallback(
@@ -1477,8 +1486,9 @@ export function ChatWorkspace({
 
   /** Zur einzigen Preisliste, mit dem Grund, damit sie sagen kann, warum. */
   const openPricing = useCallback((reason: PricingReason) => {
+    if (draft.trim()) saveProjectDraft(draft);
     window.location.assign(new URL(pricingPath(reason), window.location.origin).toString());
-  }, []);
+  }, [draft]);
 
   const refreshAuth = useCallback(async () => {
     const claims = await ensureGuestSession();
@@ -1499,6 +1509,11 @@ export function ChatWorkspace({
   }, [apiPaths.session]);
 
   const refreshUsage = useCallback(async () => {
+    void fetch(appPath("/api/billing/status"), { credentials: "same-origin", cache: "no-store" }).then(async response => {
+      if (!response.ok) { setRecruitingAccess(false); return; }
+      const billing = await response.json();
+      setRecruitingAccess(billing.access?.canUseRecruiting === true);
+    }).catch(() => setRecruitingAccess(false));
     if (!apiPaths.credits) {
       setUsage(null);
       return null;
@@ -1598,6 +1613,7 @@ export function ChatWorkspace({
 
       const snapshot = normalizeUsageSnapshot(body.usage);
       if (snapshot) setUsage(snapshot);
+      void refreshUsage();
 
       if (Array.isArray(body.projects)) {
         setProjects(
@@ -1711,6 +1727,7 @@ export function ChatWorkspace({
       else setLoadingProjectId(projectId);
       try {
         const detail = await fetchProjectDetail(projectId);
+        if (isAccountUser && auth.user?.id) trackRecruitingEvent("return_use", { entityId: `${auth.user.id}:${new Date().toISOString().slice(0, 10)}` });
         // Wer zwischenzeitlich weitergeklickt hat, soll nicht zurückgeworfen
         // werden: die verspätete Antwort landet nur im Zwischenspeicher.
         if (requestedProjectRef.current !== projectId) return detail;
@@ -1730,7 +1747,7 @@ export function ChatWorkspace({
         if (requestedProjectRef.current === projectId) setLoadingProjectId(null);
       }
     },
-    [applyProjectDetail, fetchProjectDetail, showToast],
+    [applyProjectDetail, auth.user, fetchProjectDetail, isAccountUser, showToast],
   );
 
   useEffect(() => {
@@ -1758,6 +1775,10 @@ export function ChatWorkspace({
         if (!alive) return;
         const searchParams = new URLSearchParams(window.location.search);
         const requestedCheckout = checkoutPlanFrom(searchParams.get("checkout"));
+        if (searchParams.get("anmelden") === "1" && view.anonymous) {
+          setAuthInitialMode("login");
+          setAuthOpen(true);
+        }
         if (requestedCheckout) {
           if (view.anonymous) {
             setAuthIntent("generic");
@@ -1777,7 +1798,7 @@ export function ChatWorkspace({
         // Vermittlungsmodell öffnet sich ein Kalender erst nach der Vorstellung.
         if (searchParams.get("booking") === "request") {
           showToast(
-            "Termine laufen über eine Anfrage: Öffnen Sie Ihr Projekt und wählen Sie beim Profil „Freelancer anfragen“. Kostenlos bis zur Beauftragung.",
+            "Öffnen Sie Ihr Projekt und wählen Sie beim Profil „Freelancer anfragen“. Neue Kontaktanfragen sind provisionsfrei. Der Freelancer entscheidet selbst über die Freigabe.",
             "neutral",
           );
           searchParams.delete("booking");
@@ -2154,6 +2175,7 @@ export function ChatWorkspace({
         showToast("Lokale Vorschau: Ihre Änderung ist vorbereitet. Es wird keine echte Suche gestartet.", "neutral");
         return;
       }
+      saveProjectDraft(text);
       // Welcher Rolleneinstieg zu einer Suche führte, damit sich je Rolle
       // verfolgen lässt, ob aus Anfragen Kontakte und Gespräche werden.
       const shortcut = exampleBriefForText(text);
@@ -2243,6 +2265,7 @@ export function ChatWorkspace({
         }
 
         finishChatResponse(result);
+        if (readProjectDraft() === text) clearProjectDraft();
         setPendingAssistant(null);
       } catch (error) {
         if (error instanceof ChatBuildVersionMismatchError) {
@@ -2295,6 +2318,7 @@ export function ChatWorkspace({
           return;
         }
         const message = error instanceof Error ? error.message : "Die Anfrage konnte nicht verarbeitet werden.";
+        trackRecruitingEvent("technical_error", { entityId: optimistic.id, outcome: "failed" });
         setPendingAssistant({
           id: makeId("assistant-error"),
           clientMessageId: optimistic.id,
@@ -2552,7 +2576,7 @@ export function ChatWorkspace({
     // Im Vermittlungsmodell fragen Gäste ohne Konto an; der Dialog fragt
     // dann nach E-Mail und Firma. 18 von 30 Suchenden wollten anfragen, 5
     // haben die Registrierung davor geschafft.
-    if (!isAccountUser && !placementRequestsEnabled()) {
+    if (!isAccountUser) {
       setPendingProfileId(profile.id);
       openAuth(
         "contact_profile",
@@ -2586,6 +2610,7 @@ export function ChatWorkspace({
           projectId,
           profileId: profile.id,
           idempotencyKey: `booking:${projectId}:${profile.id}`,
+          contactConsent: true,
         }),
       });
       if (!response.ok) return undefined;
@@ -2660,7 +2685,7 @@ export function ChatWorkspace({
     // Er öffnet den Anfrage-Dialog, für Gäste nach der Anmeldung.
     const placement = placementRequestsEnabled();
     if (!placement && !profile.bookingUrl) return;
-    if (!isAccountUser && !placement) {
+    if (!isAccountUser) {
       setPendingBookingProfileId(profile.id);
       openAuth(
         "book_profile",
@@ -2688,6 +2713,7 @@ export function ChatWorkspace({
     const authFlow = completedMode ?? new URLSearchParams(window.location.search).get("authflow");
     if (authFlow === "register") {
       trackFunnelEvent("signup_confirmed", continuation?.intent ?? "generic");
+      trackRecruitingEvent("registration_completed", { entityId: view.user?.id, outcome: "success" });
     }
     const projectIdToReload =
       continuation?.projectId ?? activeProject?.id ?? sessionStorage.getItem("pending_project_id");
@@ -3125,15 +3151,14 @@ export function ChatWorkspace({
           <div className="profile-sheet-buttons">
             <a
               className="primary-action"
-              href={appPath(`/gespraech?von=profile&profil=${encodeURIComponent(request.id)}`)}
+              href={appPath("/preise#tarife")}
             >
-              Kennenlernen anfragen <IconArrowRight size={13} />
+              14 Tage kostenlos testen <IconArrowRight size={13} />
             </a>
             {pageLink}
           </div>
           <p className="profile-sheet-hint">
-            Kostenlos bis zur Beauftragung · XPORTAL klärt mit Ihnen den Bedarf und stellt
-            {firstName ? ` ${firstName}` : " das Profil"} vor. Oder{" "}
+            Für neue Kontaktanfragen ist ein aktiver Trial oder Tarif erforderlich. Neue Vorgänge sind provisionsfrei. Oder{" "}
             <button className="text-button" type="button" onClick={describeProject}>beschreiben Sie Ihr Projekt</button>{" "}
             und sehen Sie weitere passende Profile.
           </p>
@@ -3698,7 +3723,7 @@ export function ChatWorkspace({
                 id="chat-composer"
                 ref={composerRef}
                 value={draft}
-                onChange={(event) => setDraft(event.target.value)}
+                onChange={(event) => { setDraft(event.target.value); saveProjectDraft(event.target.value); }}
                 onKeyDown={handleComposerKeyDown}
                 rows={1}
                 maxLength={12_000}

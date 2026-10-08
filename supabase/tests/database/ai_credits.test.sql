@@ -84,8 +84,8 @@ select is(
       'c1111111-1111-4111-8111-111111111111', false, 300
     ) s
   ),
-  '300:300',
-  'the server-supplied one-time account trial starts at 300 credits'
+  '0:0',
+  'registration alone grants no credits despite a legacy initial allocation'
 );
 
 select is(
@@ -95,9 +95,21 @@ select is(
       'c6666666-6666-4666-8666-666666666666', true, 500
     ) s
   ),
-  '500:500',
-  'guest credit fixture starts at the supplied allocation'
+  '0:0',
+  'new guests receive no credits from legacy initial allocations'
 );
+
+-- Trusted historical fixtures preserve ledger coverage without automatic signup bonuses.
+reset role;
+insert into public.user_ai_credit_accounts (user_id,is_anonymous,plan_id,credits_total,billing_generation,legacy_credit_balance) values
+('c1111111-1111-4111-8111-111111111111',false,'trial',300,'legacy',300),
+('c2222222-2222-4222-8222-222222222222',true,'guest',1000,'legacy',1000),
+('c3333333-3333-4333-8333-333333333333',true,'guest',1000,'legacy',1000),
+('c4444444-4444-4444-8444-444444444444',false,'trial',100,'legacy',100),
+('c5555555-5555-4555-8555-555555555555',true,'guest',100,'legacy',100),
+('c6666666-6666-4666-8666-666666666666',true,'guest',500,'legacy',500)
+on conflict (user_id) do update set credits_total=excluded.credits_total,billing_generation=excluded.billing_generation,legacy_credit_balance=excluded.legacy_credit_balance;
+set local role service_role;
 
 select is(
   (
@@ -151,8 +163,8 @@ select is(
       'c5555555-5555-4555-8555-555555555555', false, 300
     ) s
   ),
-  '300:0:0:300',
-  'guest conversion creates the one-time account trial without a second grant'
+  '100:0:60:40',
+  'guest conversion preserves historical balance and reservations without a bonus'
 );
 
 select is(

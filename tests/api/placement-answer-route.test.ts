@@ -71,11 +71,11 @@ describe("POST /api/placement/answer", () => {
     expect(mocks.record).not.toHaveBeenCalled();
   });
 
-  it("does not exist without the switch", async () => {
+  it("keeps historical answer links usable without the obsolete fee switch", async () => {
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "false");
 
     const response = await call({ token: "token-abcdefgh", answer: "engaged" });
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(200);
   });
 });

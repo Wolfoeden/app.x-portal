@@ -41,7 +41,7 @@ export async function GET(
       const user = await getCurrentUser().catch(() => null);
       if (!(await placementBookingAllowed(user, parsed.data))) {
         return NextResponse.redirect(
-          new URL(appPath(`/gespraech?von=profile&profil=${parsed.data}`), request.url),
+          new URL(appPath(`/chat?profil=${parsed.data}`), request.url),
           302,
         );
       }
@@ -53,7 +53,7 @@ export async function GET(
       // Profil, statt einer leeren Fehlerseite.
       if (placementRequestsEnabled()) {
         return NextResponse.redirect(
-          new URL(appPath(`/gespraech?von=profile&profil=${parsed.data}`), request.url),
+          new URL(appPath(`/chat?profil=${parsed.data}`), request.url),
           302,
         );
       }

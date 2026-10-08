@@ -1,6 +1,7 @@
 "use client";
 
 import { appPath } from "@/lib/app-path";
+import { parseConsent } from "@/lib/consent/consent";
 
 export type FunnelEvent =
   | "search_started"
@@ -17,6 +18,7 @@ const ENTRY_MAX_AGE_MS = 60 * 60 * 1_000;
 
 export function rememberFunnelEntry(entry: "direct" | "recruiter") {
   try {
+    if (parseConsent(document.cookie) !== "all") return;
     localStorage.setItem(
       ENTRY_KEY,
       JSON.stringify({ entry, createdAt: Date.now() }),
@@ -61,6 +63,7 @@ export function trackFunnelEvent(
   outcome: string | null = null,
 ) {
   try {
+    if (parseConsent(document.cookie) !== "all") return;
     const params = new URLSearchParams(window.location.search);
     const entry =
       params.get("entry") === "recruiter" || params.has("q")

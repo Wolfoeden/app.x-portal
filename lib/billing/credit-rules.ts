@@ -1,6 +1,6 @@
 import { CREDIT_PRICES } from "@/lib/ai/credit-policy";
 
-import { GUEST_TRIAL_CREDITS, START_CREDITS } from "./plans";
+import { TRIAL_CREDITS, TRIAL_DAYS } from "./plans";
 
 /**
  * Die Credit-Regeln in Sätzen, an einer Stelle.
@@ -15,10 +15,10 @@ import { GUEST_TRIAL_CREDITS, START_CREDITS } from "./plans";
  * darüber sprechen, übernehmen sie von hier.
  */
 export const CREDIT_RULES = {
-  guest: `Ohne Konto: ${GUEST_TRIAL_CREDITS} Credits, einmalig.`,
-  account: `Mit kostenlosem Konto: ${START_CREDITS} Credits insgesamt, einmalig. Das Gastguthaben wird dabei ersetzt, nicht addiert.`,
-  noRefill: "Das Startguthaben füllt sich nicht monatlich auf.",
+  guest: "Ohne Karte ist ein gekennzeichnetes Ergebnisbeispiel verfügbar. Neue Gäste erhalten kein Bonusguthaben.",
+  account: `Der ${TRIAL_DAYS}-Tage-Trial beginnt nach bestätigter E-Mail und serverseitig verifizierter Kartenhinterlegung bei Stripe mit einmalig ${TRIAL_CREDITS} Credits insgesamt. Neue Registrierung erzeugt kein zusätzliches Bonusguthaben.`,
+  noRefill: "Verbrauchte Trial-Credits füllen sich nicht auf und lösen keine vorzeitige Abbuchung aus. Legitim zugesagtes Bestandsguthaben bleibt erhalten.",
   failures: `Fällt die KI-Analyse aus, kostet sie nichts; eine technisch gescheiterte Recherche ebenfalls nicht. Eine Analyse kostet sonst ${CREDIT_PRICES.project_brief.credits} Credits, eine Recherche ${CREDIT_PRICES.research.credits}.`,
   placementWithoutPlan:
-    "Anfrage und Vorstellung sind kostenlos und brauchen kein Abo. Ein Monatstarif lohnt sich, wenn Sie regelmäßig Projekte analysieren oder recherchieren.",
+    "Neue Kontaktanfragen benötigen einen aktiven Trial oder Tarif und eine ausdrückliche Freigabe. Neue Beauftragungen sind provisionsfrei.",
 } as const;

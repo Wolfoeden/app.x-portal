@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { RecruitingContactDetails } from "./recruiting-contact-details";
 import { appPath } from "@/lib/app-path";
 
 import type { ConversationAnswer, ConversationItem } from "../chat-contract";
@@ -43,6 +44,7 @@ function question(item: ConversationItem): string {
 }
 
 function Steps({ item }: { item: ConversationItem }) {
+  const newContact = item.commercialModel === "no_fee";
   const requested = day(item.requestedAt);
   const introduced = day(item.introducedAt);
   const done = item.engagementRecorded || item.answer === "engaged";
@@ -50,7 +52,7 @@ function Steps({ item }: { item: ConversationItem }) {
     { label: item.role === "client" ? "Angefragt" : "Anfrage erhalten", detail: requested, state: "done" },
     item.stage === "declined"
       ? { label: "Nicht vorgestellt", detail: null, state: "stopped" }
-      : { label: "Vorgestellt", detail: introduced ?? "wird geprüft", state: introduced ? "done" : "current" },
+      : { label: newContact ? "Kontaktfreigabe" : "Vorgestellt", detail: introduced ?? (newContact ? "Freelancer entscheidet" : "wird geprüft"), state: introduced ? "done" : "current" },
     {
       label: "Beauftragung",
       detail: item.engagementRecorded
@@ -114,6 +116,7 @@ function ConversationCard({
 }) {
   const settled = item.engagementRecorded || item.answer === "engaged" || item.answer === "no_engagement";
   const canReport = item.stage === "introduced" && !item.engagementRecorded;
+  const newContact = item.commercialModel === "no_fee";
   return (
     <article className={`conversation-card${item.question ? " has-question" : ""}`} aria-label={`Gespräch mit ${item.counterpartName}`}>
       <header>
@@ -126,6 +129,7 @@ function ConversationCard({
       </header>
 
       <Steps item={item} />
+      {newContact && item.role === "client" && item.projectId && item.stage !== "declined" ? <RecruitingContactDetails projectId={item.projectId} profileId={item.profileId} introductionsPath={appPath("/api/introductions")} /> : null}
 
       {item.question ? (
         <div className="conversation-question">
@@ -136,7 +140,7 @@ function ConversationCard({
               : "Die Vorstellung ist gut sechs Wochen her."}
           </p>
           <AnswerButtons item={item} busy={busy} onAnswer={onAnswer} />
-          {item.role === "client" ? (
+          {newContact ? <small>Neue Beauftragungen sind provisionsfrei.</small> : item.role === "client" ? (
             <small>Kostenlos bis zur Beauftragung. Erst dann fällt das Vermittlungshonorar an.</small>
           ) : (
             <small>Für Sie bleibt die Vermittlung kostenlos.</small>
@@ -146,7 +150,7 @@ function ConversationCard({
         <p className="conversation-note">
           {item.engagementRecorded
             ? "Die Beauftragung ist erfasst. Danke!"
-            : item.answer === "engaged"
+            : newContact ? "Ihre Rückmeldung ist gespeichert. Es entsteht keine Vermittlungsgebühr." : item.answer === "engaged"
               ? item.role === "client"
                 ? "Danke! XPORTAL meldet sich wegen der Einzelheiten zur Rechnung."
                 : "Danke! XPORTAL klärt die Einzelheiten mit dem Kunden."
@@ -158,7 +162,7 @@ function ConversationCard({
           <AnswerButtons item={item} busy={busy} onAnswer={onAnswer} />
         </details>
       ) : item.stage === "requested" ? (
-        <p className="conversation-note">XPORTAL prüft die Verfügbarkeit und stellt Sie per E-Mail vor.</p>
+        <p className="conversation-note">{newContact ? "Kontaktfreigabe ausstehend. Der Freelancer entscheidet selbst. Interesse und aktuelle Verfügbarkeit sind nicht bestätigt." : "Historischer Vorgang: XPORTAL prüft die Verfügbarkeit und stellt Sie per E-Mail vor."}</p>
       ) : item.stage === "declined" ? (
         <p className="conversation-note">Eine Vorstellung war diesmal nicht möglich. Die Details stehen in unserer E-Mail.</p>
       ) : null}
@@ -210,8 +214,7 @@ export function ConversationsPage({
       <header className="team-page-header">
         <h1>Gespräche</h1>
         <p>
-          Der Stand Ihrer Anfragen: angefragt, vorgestellt, beauftragt. Wenn XPORTAL nachfragt, ob es zur
-          Beauftragung kam, antworten Sie hier mit einem Klick.
+          Der Stand Ihrer Anfragen, Kontaktfreigaben und Beauftragungen. Freigegebene Kontaktdaten und offene Benachrichtigungen finden Sie direkt beim jeweiligen Gespräch.
         </p>
       </header>
 
@@ -226,8 +229,7 @@ export function ConversationsPage({
         <div className="empty-projects">
           <p>Noch keine Gespräche</p>
           <small>
-            Fragen Sie im Chat einen passenden Freelancer an. Hier sehen Sie dann, wann XPORTAL Sie vorstellt und
-            wie es weitergeht. Als Freelancer erscheinen hier Anfragen, sobald XPORTAL Sie vorgestellt hat.
+            Fragen Sie im Chat gezielt einen Freelancer an. Hier verfolgen Sie die Kontaktfreigabe und den weiteren Austausch. Als Freelancer sehen Sie hier Ihre freigegebenen Kontakte.
           </small>
         </div>
       ) : (

@@ -106,7 +106,7 @@ describe("chat presentation", () => {
     expect(match).toBeDefined();
     const result = presentMatch(match!);
     expect(result.facts.some((fact) => fact.verification === "verified")).toBe(true);
-    expect(result.bookingUrl).toBe("https://calendly.com/example/anna");
+    expect(result.bookingUrl).toBe(`https://x-portal.eu/api/freelancers/${premiumProfile.id}/book`);
     expect(result.introPolicy.manualApprovalRequired).toBe(false);
     expect(result.introPolicy.readyToBook).toBe(true);
     expect(result.recommendationRole).toBe("primary");
@@ -178,7 +178,7 @@ describe("chat presentation", () => {
     // contact belongs to the reader, so the booking URL survives.
     expect(presentMatch(partial!)).toMatchObject({
       recommendationRole: "partial",
-      bookingUrl: profileFixtures[0]!.introPolicy.bookingUrl,
+      bookingUrl: `https://x-portal.eu/api/freelancers/${profileFixtures[0]!.id}/book`,
       introPolicy: {
         label: "Nicht empfohlen – Kontakt dennoch möglich",
         manualApprovalRequired: false,

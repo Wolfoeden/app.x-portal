@@ -150,7 +150,7 @@ export function authIntentCopy(intent: AuthIntent) {
         return {
           eyebrow: "Anfrage fortsetzen",
           title: "E-Mail bestätigen und Freelancer anfragen",
-          body: "Ihre Anfrage und das gewählte Profil bleiben erhalten. Nach der Bestätigung per E-Mail senden Sie die Anfrage, und XPORTAL stellt Sie vor. Kostenlos bis zur Beauftragung.",
+          body: "Ihre Anfrage und das gewählte Profil bleiben erhalten. Nach der Anmeldung können Sie mit aktivem Trial oder Tarif bewusst eine provisionsfreie Kontaktanfrage senden. Der Freelancer entscheidet selbst über Kontaktfreigabe und Verfügbarkeit.",
           afterConfirmation: "Danach senden Sie die Anfrage zu diesem Profil.",
         };
       }

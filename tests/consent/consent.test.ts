@@ -28,12 +28,20 @@ describe("Einwilligung für das Google-Ads-Tag", () => {
   });
 
   it("wertet eine alte Kenntnisnahme nicht als Einwilligung", () => {
+    expect(parseConsent("xportal_cookie_consent=v2.all")).toBeNull();
     // Bis Oktober 2026 hieß „Verstanden“ schlicht `essential` oder `all`.
     expect(parseConsent("xportal_cookie_consent=all")).toBeNull();
     expect(parseConsent("xportal_cookie_consent=essential")).toBeNull();
     expect(parseConsent(`a=1; xportal_cookie_consent=${consentCookieValue("all")}; b=2`)).toBe("all");
     expect(parseConsent(`xportal_cookie_consent=${consentCookieValue("essential")}`)).toBe("essential");
     expect(parseConsent("")).toBeNull();
+  });
+
+  it("bietet Produktmessung auch ohne Werbe-ID nur bei aktiver Konfiguration an", () => {
+    vi.stubEnv("NEXT_PUBLIC_GOOGLE_ADS_ID", "");
+    vi.stubEnv("NEXT_PUBLIC_PRODUCT_ANALYTICS_ENABLED", "true");
+    expect(optionalServicesAvailable()).toBe(true);
+    expect(googleAdsId()).toBeNull();
   });
 
   it("lädt nur mit Zustimmung, mit ID und nicht auf Betreiberseiten", () => {

@@ -20,6 +20,7 @@ import {
   DEFAULT_SKILL_ALIASES,
   DEFAULT_SKILL_CATALOG,
 } from "./skill-taxonomy";
+import { projectRequirementSource } from "./workflow-instructions";
 
 const DEFAULT_LANGUAGE_ALIASES: Readonly<Record<string, string>> = {
   deutsch: "German",
@@ -405,6 +406,9 @@ export function parseFallbackBrief(
 ): ProjectBrief {
   if (!originalRequest.trim()) throw new Error("The original request cannot be empty.");
 
+  const rawRequest = originalRequest;
+  originalRequest = projectRequirementSource(originalRequest);
+
   const now = options.now ?? new Date();
   const skills = parseSkills(originalRequest, options.skillCatalog ?? DEFAULT_SKILL_CATALOG);
   const startWindow = parseStartWindow(originalRequest, now) ?? parseStartPhrase(originalRequest, now);
@@ -420,9 +424,9 @@ export function parseFallbackBrief(
   ]);
   const explicitContractualRequirements = parseLabeledList(originalRequest, ["contract terms", "contractual requirements", "vertragsanforderungen"]);
   const candidate = {
-    originalRequest,
+    originalRequest: rawRequest,
     projectTitle: null,
-    summary: originalRequest.replace(/\s+/gu, " ").trim(),
+    summary: rawRequest.replace(/\s+/gu, " ").trim(),
     requiredSkills: skills.required,
     optionalSkills: skills.optional,
     excludedSkills: skills.excluded,

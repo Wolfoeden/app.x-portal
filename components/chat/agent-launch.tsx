@@ -4,10 +4,8 @@ import { useEffect, useState } from "react";
 
 import {
   EXTERNAL_SEARCH_CREDITS,
-  affordableCount,
-  countLabel,
 } from "@/lib/ai/credit-policy";
-import { START_CREDITS } from "@/lib/billing/plans";
+import { TRIAL_CREDITS } from "@/lib/billing/plans";
 import { IconSpark } from "@/components/icons";
 
 import { entryMonthlyEuro } from "./upgrade";
@@ -92,10 +90,7 @@ function note(state: AgentLaunchState): string {
     case "login":
       // Der Grund, sich jetzt anzumelden, gehört neben den Knopf: Das
       // kostenlose Startguthaben trägt mehrere Läufe.
-      return `Kostenloses Konto · ${START_CREDITS} Start-Credits reichen für ${countLabel(
-        affordableCount(START_CREDITS, "research"),
-        "research",
-      )}`;
+      return `Bestätigtes Konto und aktiver Trial oder Tarif erforderlich · 14 Tage mit Karte testen, ${TRIAL_CREDITS} Credits insgesamt`;
     case "loading":
       return `${EXTERNAL_SEARCH_CREDITS} Credits`;
     case "insufficient":

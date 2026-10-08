@@ -16,6 +16,7 @@ import { requireCurrentUser } from "@/lib/auth/current-user";
 import { fetchActiveBookableRealProfiles } from "@/lib/data/freelancers";
 import type { ProjectRow } from "@/lib/data/projects";
 import { buildShortlist, ProjectBriefSchema } from "@/lib/domain";
+import { assertWorkflowOperationAllowed } from "@/lib/domain/workflow-controls";
 import {
   estimateExternalSearchTokenCeiling,
   searchExternalFreelancers,
@@ -236,6 +237,7 @@ export async function POST(request: Request) {
       input.projectId,
       user.id,
     );
+    assertWorkflowOperationAllowed(brief.originalRequest, "externalResearch");
 
     // Search is only the explicit fallback after the current curated catalog
     // produced no eligible profile. This check prevents paid duplicate work.

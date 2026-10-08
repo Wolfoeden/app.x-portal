@@ -16,7 +16,7 @@ const VERIFIED_PAYMENT_LINK_IDS = {
   business: "plink_1UBAWJCQxgmYRfmLtce10O55",
 } as const;
 
-const VERIFIED_PRICE_IDS = {
+export const VERIFIED_PRICE_IDS = {
   basic: "price_1UGQfrCQxgmYRfmL7z6DURBe",
   pro: "price_1UGQgTCQxgmYRfmLkAttXxUC",
   business: "price_1UBAVPCQxgmYRfmLM6WX4Dax",

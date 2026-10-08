@@ -1,0 +1,17 @@
+.panel { padding:24px; background:#f5f9f6; border:1px solid #c9dfd1; color:#24372c; }
+/* Embedded in legal and account pages; retain one continuous billing panel. */
+section.panel.panel { display:block; padding:24px; border:1px solid #c9dfd1; }
+.panel header p { margin:0 0 7px; color:#17623f; font-size:12px; font-weight:600; }
+.panel h2 { margin:0 0 20px; font-size:25px; font-weight:500; letter-spacing:-.03em; }
+.panel > p { font-size:14px; line-height:1.6; }
+.status { font-weight:650; color:#17623f; }
+.facts { margin:0; }
+.facts div { display:flex; justify-content:space-between; gap:20px; padding:12px 0; border-top:1px solid #dce7df; font-size:14px; line-height:1.5; }
+.facts dt { color:#637168; } .facts dd { margin:0; text-align:right; }
+.actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:22px; }
+.actions button,.actions a,.confirm button { min-height:44px; padding:10px 14px; border:1px solid #729c82; border-radius:6px; background:#fff; color:#174f31; font:inherit; font-size:13px; cursor:pointer; text-decoration:none; }
+.actions button:disabled,.confirm button:disabled { opacity:.6; cursor:wait; }
+.actions button:focus-visible,.actions a:focus-visible,.confirm button:focus-visible { outline:3px solid #17804d; outline-offset:3px; }
+.error { background:#fff4ed; padding:12px; color:#913419; } .notice { background:#e8f4eb; padding:12px; color:#175e37; }
+.confirm { margin-top:16px; padding:16px; background:#fff; border:1px solid #c7d6cc; } .confirm p { font-size:14px; line-height:1.6; } .confirm button { margin-right:10px; }
+@media(max-width:600px) { .panel{padding:18px;} .facts div{flex-direction:column;gap:4px;} .facts dd{text-align:left;} .actions{flex-direction:column;} }

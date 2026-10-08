@@ -39,6 +39,15 @@ const TERMS_REVIEW_STATES = {
 } as const;
 export const TERMS_REVIEW = TERMS_REVIEW_STATES[TERMS_STATUS];
 
+/** New SaaS offer only; the approved historical 1.1 terms remain immutable. */
+export const SAAS_TERMS_VERSION = "saas-2026-10-1";
+/** Vom Betreiber am 08.10.2026 freigegeben; damit ist der Live-Checkout offen. */
+export const SAAS_TERMS_REVIEW = {
+  label: "Gültig ab 8. Oktober 2026",
+  status: "approved",
+  checkoutEnabled: true,
+} as const;
+
 /**
  * XPORTAL richtet sich ausschließlich an Unternehmer nach § 14 BGB. Der Satz
  * steht überall dort, wo jemand eine Entscheidung trifft — die Beschränkung

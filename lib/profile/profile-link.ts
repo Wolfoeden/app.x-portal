@@ -81,7 +81,7 @@ export function profilePageAction(input: {
       kind: "request",
       projectId: input.projectId,
       label: "Freelancer anfragen",
-      hint: "Kostenlos bis zur Beauftragung · XPORTAL stellt Sie vor",
+      hint: "Kontakt mit Zustimmung des Freelancers · keine Vermittlungsprovision",
     };
   }
   if (input.projectId) {
@@ -94,13 +94,13 @@ export function profilePageAction(input: {
       kind: "link",
       href: `/chat?${params.toString()}`,
       label: "Freelancer anfragen",
-      hint: "Kostenlos bis zur Beauftragung · E-Mail bestätigen, kein Passwort nötig",
+      hint: "E-Mail bestätigen und Trial oder Tarif aktivieren · Kontakt nur mit Freigabe",
     };
   }
   return {
     kind: "link",
-    href: `/gespraech?von=profile&profil=${encodeURIComponent(input.profileId)}`,
-    label: "Kennenlernen anfragen",
-    hint: "Kostenlos bis zur Beauftragung · XPORTAL klärt mit Ihnen den Bedarf und stellt vor",
+    href: `/chat?profil=${encodeURIComponent(input.profileId)}`,
+    label: "Im Arbeitsbereich öffnen",
+    hint: "Anforderungen hinterlegen, Profil prüfen und Kontakt selbstständig anfragen",
   };
 }

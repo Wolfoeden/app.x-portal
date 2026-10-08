@@ -31,6 +31,8 @@ export default function PrivacyPage() {
           </p>
         </PublicDocumentIntro>
 
+        <section aria-labelledby="saas-privacy-title"><h2 id="saas-privacy-title">Ergänzung zum Recruiting-Abonnement</h2><div><p>Dieser Abschnitt beschreibt die Datenwege des Software-Abonnements mit Testphase, Kontaktanfragen und Messung. Bestehende Verpflichtungen und Aufbewahrungsfristen werden nicht rückwirkend geändert.</p><p>Ein noch nicht gesendeter Projektentwurf wird für Anmeldung und Checkout im Sitzungsspeicher dieses Browser-Tabs aufbewahrt, höchstens 24 Stunden und bis zu 12.000 Zeichen. Er wird nicht in URLs oder Stripe-Metadaten übertragen. Nach bestätigter Projektspeicherung wird der übertragene Entwurf entfernt. Das Schließen des Tabs oder deaktivierter Browserspeicher kann den Entwurf verlieren.</p><p>Neue Kontaktanfragen erfolgen nur durch eine bewusste Einzelaktion mit Zustimmung zur Weitergabe. XPORTAL übermittelt zunächst die konkrete Anfrage an den dokumentierten Kontaktweg. Erst nach Freigabe des Freelancers werden Name, Konto-E-Mail und Projekttitel der anfragenden Person sowie die freigegebene Freelancer-E-Mail für den direkten Austausch übermittelt. Die Freigabe gilt für die konkrete Anfrage und ist keine Bestätigung aktueller Verfügbarkeit. Private Dokumente und Kontaktdaten werden nicht öffentlich gemacht.</p><p>Stripe verarbeitet Kartenhinterlegung, Abonnement, Zahlungsmittel und Rechnungen. Kartennummer und CVC verbleiben bei Stripe. XPORTAL speichert die Zuordnung von Konto, Stripe-Kunde und Abonnement sowie bestätigte Status-, Perioden- und Kontingentdaten. Ein Browser-Erfolgslink aktiviert keine Rechte.</p><p>Optionale Produktmessung erfolgt nur nach entsprechender Cookie-Einwilligung: definierte Ereignisse wie Demoaufruf, Trial-Klick, bestätigte Registrierung, erfolgreiche Analyse, gespeicherte Auswahl und wiederkehrende Nutzung. Übermittelt werden technische bzw. pseudonyme Kennungen, erlaubte Statuswerte, Tarif und eine begrenzte Kampagnenquelle. Projekttexte, Lebensläufe und Kontaktdaten werden nicht als Analyseparameter an Werbeplattformen übertragen. Fehlende Werbepixel-Konfiguration erzeugt keine erfundene Integration.</p></div></section>
+
         <section>
           <h2>1. Verantwortlicher und Begriffe</h2>
           <div>
@@ -177,7 +179,7 @@ export default function PrivacyPage() {
             <p>
               Zweck ist, geschäftliche Projektanfragen mit nachvollziehbaren
               beruflichen Profilen abzugleichen. Rechtsgrundlage ist Art. 6 Abs.
-              1 lit. f DSGVO; unser berechtigtes Interesse ist die Vermittlung
+              1 lit. f DSGVO; unser berechtigtes Interesse ist der nachvollziehbare Abgleich
               geeigneter beruflicher Kontakte. Betroffene Freelancer können
               dieser Verarbeitung aus Gründen ihrer besonderen Situation
               widersprechen und Berichtigung oder Löschung verlangen. XPORTAL

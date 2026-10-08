@@ -87,13 +87,10 @@ describe("POST /api/admin/introductions/[id]", () => {
     expect(response.status).toBe(400);
   });
 
-  it("does not exist without the switch", async () => {
+  it("keeps historical administration available without the old deployment flag", async () => {
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "false");
-
-    const response = await call({ action: "approve" });
-
-    expect(response.status).toBe(404);
-    expect(mocks.approve).not.toHaveBeenCalled();
+    expect((await call({ action: "approve" })).status).toBe(200);
+    expect(mocks.approve).toHaveBeenCalled();
   });
 
   it("records an engagement in euros and logs the fee with the client", async () => {

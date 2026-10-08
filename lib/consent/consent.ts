@@ -21,7 +21,7 @@ export function googleAdsId(): string | null {
  * aktiviert, wäre eine Scheinwahl.
  */
 export function optionalServicesAvailable(): boolean {
-  return googleAdsId() !== null;
+  return googleAdsId() !== null || process.env.NEXT_PUBLIC_PRODUCT_ANALYTICS_ENABLED === "true";
 }
 
 export type ConsentChoice = "all" | "essential";
@@ -37,7 +37,9 @@ export const CONSENT_MAX_AGE_SECONDS = 60 * 60 * 24 * 180;
  * Eine solche Kenntnisnahme ist keine Einwilligung in Werbemessung, deshalb
  * gilt sie als „noch keine Wahl“, und das Banner fragt einmal neu.
  */
-const CONSENT_VERSION = "v2";
+// The new product funnel is a changed purpose. Earlier advertising consent is
+// never silently reused for it; ask once for this version's stated purposes.
+const CONSENT_VERSION = "v3";
 
 export function consentCookieValue(choice: ConsentChoice): string {
   return `${CONSENT_VERSION}.${choice}`;

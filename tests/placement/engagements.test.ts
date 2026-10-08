@@ -100,6 +100,21 @@ afterEach(() => {
 });
 
 describe("recording an engagement", () => {
+  it("never calculates a commission for a new no_fee engagement", async () => {
+    given("intro_bookings", { ...INTRO, commercial_model: "no_fee" }, null);
+    given("engagements", null, null);
+    const result = await recordEngagement(REQUEST, { dayRateMinor: 60_000, projectDays: 60, startsOn: "2026-11-02" });
+    expect(result.feeMinor).toBe(0);
+    expect(result.termsVersion).toBeNull();
+    expect(writesTo("engagements")[0].values).toMatchObject({ commercial_model: "no_fee", fee_minor: 0, fee_status: "waived", terms_version: null });
+  });
+
+  it("rejects placement invoice status changes for a new no_fee contact", async () => {
+    given("intro_bookings", { ...INTRO, commercial_model: "no_fee" });
+    given("engagements", { id: "eng-new", fee_status: "waived", fee_minor: 0 });
+    await expect(recordFeeStatus(REQUEST, { status: "paid" })).rejects.toMatchObject({ status: 409 });
+    expect(writesTo("engagements")).toHaveLength(0);
+  });
   // Der Kunde hat einer Fassung zugestimmt; deren Zahlen gelten, auch wenn
   // die Bedingungen inzwischen anders lauten.
   it("computes the fee from the terms the client accepted", async () => {

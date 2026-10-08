@@ -21,7 +21,7 @@ import {
 
 import { appPath } from "@/lib/app-path";
 import { MatchProtocol } from "@/components/product/MatchProtocol";
-import { MINIMUM_CORE_COVERAGE_BASIS_POINTS } from "@/lib/domain/matching";
+import { MINIMUM_CORE_COVERAGE_BASIS_POINTS } from "@/lib/domain/matching-threshold";
 
 import {
   BRIEF_FIELDS,
@@ -1046,8 +1046,8 @@ export function bookingActionState(
       kind: "request",
       label: "Freelancer anfragen",
       hint: isAccountUser
-        ? "Kostenlos bis zur Beauftragung · XPORTAL stellt Sie vor"
-        : "Kostenlos bis zur Beauftragung · E-Mail bestätigen, kein Passwort nötig",
+        ? "Provisionsfrei · Freelancer entscheidet über Kontaktfreigabe"
+        : "Bestätigtes Konto und aktiver Trial oder Tarif erforderlich",
       disabled: false,
     };
   }
@@ -1268,7 +1268,7 @@ function ShortcutUpsell({ states, href }: { states: ProfileShortcutState[]; href
     <p className="profile-shortcuts-upsell">
       <span aria-hidden="true"><IconLock size={12} /></span>
       <span>
-        Mit Abo öffnen Sie {joinGerman(locked)} sofort selbst, ohne auf die Vorstellung zu warten.{" "}
+        Mit aktivem Trial oder Tarif öffnen Sie die freigegebenen {joinGerman(locked)} selbst.{" "}
         <a href={appPath(href)}>Tarife ansehen <IconArrowRight size={11} /></a>
       </span>
     </p>

@@ -87,23 +87,11 @@ const PROFILE = {
 } as unknown as FreelancerProfileResult;
 
 describe("request without an account", () => {
-  it("asks a guest for e-mail and company instead of a registration, and says what happens next", () => {
-    const html = renderToStaticMarkup(
-      createElement(PlacementDialog, {
-        profile: PROFILE,
-        projectId: "33333333-3333-4333-8333-333333333333",
-        introductionsPath: "/api/introductions",
-        preview: true,
-        guest: true,
-        onClose: () => undefined,
-      }),
-    );
-    expect(html).toContain('type="email"');
-    expect(html).toContain("Geschäftliche E-Mail");
-    expect(html).toContain("Firma");
-    expect(html).toContain("So geht es weiter:");
-    expect(html).toContain("Ein Konto brauchen Sie dafür nicht.");
-    expect(html).toContain('class="placement-trap"');
+  it("requires an account before new contact requests", () => {
+    const html = renderToStaticMarkup(createElement(PlacementDialog, { profile: PROFILE, projectId: "33333333-3333-4333-8333-333333333333", introductionsPath: "/api/introductions", preview: true, guest: true, onClose: () => undefined }));
+    expect(html).not.toContain('type="email"');
+    expect(html).not.toContain("Ein Konto brauchen Sie dafür nicht.");
+    expect(html).toContain("Konto");
   });
 
   it("keeps the dialog short for account users", () => {
@@ -129,17 +117,13 @@ describe("sidebar and landing page in the placement model", () => {
     expect(on).toContain('href="/gespraeche"');
 
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "false");
-    expect(renderToStaticMarkup(createElement(ChatWorkspace))).not.toContain('data-sidebar-primary="conversations"');
+    expect(renderToStaticMarkup(createElement(ChatWorkspace))).toContain('data-sidebar-primary="conversations"');
   });
 
-  it("names request and introduction as the main steps instead of a booking", () => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
+  it("offers a bounded self-service trial", () => {
     const html = renderToStaticMarkup(createElement(FreelancerLanding));
-    expect(html).toContain("Einfügen. Anfragen.");
-    expect(html).toContain("Nachvollziehbar passende Freelancer.");
-    expect(html).toContain(">Freelancer anfragen</strong>");
-    expect(html).toContain("Anfrage ohne Konto, Vorstellung kostenlos");
-    expect(html).not.toContain("Einfügen. Buchen.");
-    expect(html).not.toContain("Termin buchen.</span>");
+    for (const text of ["Projektbeschreibung", "Amelie D.", "Profilbeleg", "210", "Profile online", "14 Tage kostenlos testen"]) expect(html).toContain(text);
+    expect(html).not.toContain("Anfrage ohne Konto");
   });
+
 });

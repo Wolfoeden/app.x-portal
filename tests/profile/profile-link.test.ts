@@ -51,14 +51,14 @@ describe("the button on the profile page", () => {
     expect(href.searchParams.get("profile")).toBe(ID);
   });
 
-  it("sends free users without a project to the sales call with this profile", () => {
+  it("keeps users without a project in the self-service workspace with this profile", () => {
     expect(profilePageAction({ ...base, placement: true })).toMatchObject({
       kind: "link",
-      href: `/gespraech?von=profile&profil=${ID}`,
-      label: "Kennenlernen anfragen",
+      href: `/chat?profil=${ID}`,
+      label: "Im Arbeitsbereich öffnen",
     });
     expect(profilePageAction({ ...base, placement: true, isAccountUser: true, directBooking: false })).toMatchObject({
-      href: `/gespraech?von=profile&profil=${ID}`,
+      href: `/chat?profil=${ID}`,
     });
   });
 

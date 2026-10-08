@@ -35,7 +35,7 @@ type Admin = ReturnType<typeof createAdminSupabaseClient>;
 type Row = Record<string, unknown>;
 
 const COLUMNS =
-  "id,project_id,owner_user_id,contact_email,contact_company,contact_name,contact_phone,note,status,terms_version,created_at,handled_at";
+  "id,project_id,owner_user_id,contact_email,contact_company,contact_name,contact_phone,note,status,terms_version,created_at,handled_at,commercial_model";
 
 /** Höchstens so viele Suchaufträge ohne Konto je Gast und Tag. */
 const GUEST_MANDATES_PER_DAY = 3;
@@ -377,6 +377,8 @@ export async function assignFreelancer(
   const requestId = randomUUID();
   const { error: insertError } = await admin.from("intro_bookings").insert({
     id: requestId,
+    commercial_model: "legacy_placement",
+    legacy_mandate_id: mandateId,
     project_id: String(mandate.project_id),
     owner_user_id: String(mandate.owner_user_id),
     freelancer_profile_id: profileId,

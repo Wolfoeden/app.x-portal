@@ -141,7 +141,7 @@ export function availabilityNotice(
     reason: null,
     openPoint:
       options.confirmedBy === "introduction"
-        ? `Verfügbarkeit zuletzt am ${fullDate(date)} angegeben; XPORTAL bestätigt sie vor der Vorstellung.`
+        ? `Verfügbarkeit zuletzt am ${fullDate(date)} angegeben; im Erstgespräch bestätigen lassen.`
         : `Verfügbarkeit zuletzt am ${fullDate(date)} angegeben; im Erstgespräch bestätigen lassen.`,
     statedOn: fullDate(date),
     stale: true,

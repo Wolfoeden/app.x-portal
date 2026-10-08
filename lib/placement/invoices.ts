@@ -190,6 +190,7 @@ export async function issuePlacementInvoice(introId: string, billing: BillingDet
       "id,intro_booking_id,owner_user_id,project_id,freelancer_profile_id,fee_minor,fee_status,day_rate_minor,project_days,starts_on,terms_version,stripe_customer_id,stripe_invoice_id",
     )
     .eq("intro_booking_id", introId)
+    .eq("commercial_model", "legacy_placement")
     .maybeSingle();
   if (error) throw error;
   const engagement = data as EngagementForInvoice | null;
@@ -363,6 +364,7 @@ export async function recordPlacementInvoicePaid(stripeInvoiceId: string) {
     .from("engagements")
     .update({ fee_status: "paid", paid_at: new Date().toISOString() })
     .eq("stripe_invoice_id", stripeInvoiceId)
+    .eq("commercial_model", "legacy_placement")
     .in("fee_status", ["open", "invoiced"])
     .select("intro_booking_id,owner_user_id,fee_minor")
     .maybeSingle();

@@ -217,7 +217,7 @@ describe("deterministic freelancer matching", () => {
     );
   });
 
-  it("rejects demo profiles and profiles without a secure booking link", () => {
+  it("rejects demo profiles while retaining valid profiles requiring contact consent", () => {
     const brief = parseFallbackBrief("React freelancer in German, remote", { now });
     const demo = { ...profileFixtures[0]!, demoStatus: "demo" as const };
     const withoutBooking = {
@@ -228,9 +228,8 @@ describe("deterministic freelancer matching", () => {
     expect(evaluateProfile(brief, demo).rejectionReasons).toContain(
       "Profil ist kein reales Produktionsprofil.",
     );
-    expect(evaluateProfile(brief, withoutBooking).rejectionReasons).toContain(
-      "Profil hat keinen sicheren direkten Booking-Link.",
-    );
+    expect(evaluateProfile(brief, withoutBooking).eligible).toBe(true);
+    expect(withoutBooking.introPolicy.bookingUrl).toBeNull();
   });
 
   it("returns an honest empty result when no profile satisfies hard facts", () => {

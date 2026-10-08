@@ -32,33 +32,34 @@ describe("summarizeLandingStats", () => {
   });
 });
 
-describe("landing page with live numbers", () => {
-  it("shows the real pool and the analysed projects", () => {
+describe("landing page inventory total", () => {
+  it("shows the requested concise online total instead of the former breakdown", () => {
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     const html = renderToStaticMarkup(
       createElement(FreelancerLanding, {
         stats: { profiles: 67, projects: 1213, fields: [{ field: "ai", label: "KI & Agenten", count: 18 }] },
       }),
     );
-    expect(html).toContain("mit 67 freigegebenen Profilen ab");
-    expect(html).toContain("<strong>KI &amp; Agenten</strong><span>18 Profile</span>");
-    expect(html).toContain("<strong>1.213</strong> Projektbeschreibungen analysiert");
+    expect(html).toContain(">210</strong><span>Profile online</span>");
+    expect(html).not.toContain("67 freigegebene Profile");
+    expect(html).not.toContain("KI &amp; Agenten: 18 Profile");
+    expect(html).not.toContain("Projektbeschreibungen analysiert");
   });
 
-  it("names no numbers it does not have", () => {
+  it("keeps the total and removes the former workflow block", () => {
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     const html = renderToStaticMarkup(createElement(FreelancerLanding));
-    expect(html).toContain("mit unserem Bestand ab");
-    expect(html).not.toContain("Freigegebene Profile nach Fachgebiet");
-    expect(html).not.toContain("freigegebene Profile");
+    expect(html).toContain(">210</strong><span>Profile online</span>");
+    expect(html).not.toContain("Ein Arbeitsablauf für Ihre Mandate");
+    expect(html).not.toContain("Von der Ausschreibung zur nachvollziehbaren Auswahl");
   });
 
   it("offers the sales call next to the self-service path with tracked entries", () => {
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     const html = renderToStaticMarkup(createElement(FreelancerLanding));
-    for (const entry of ["hero", "process", "roles", "pricing", "closing"]) {
+    for (const entry of ["hero"]) {
       expect(html).toContain(`href="/gespraech?von=${entry}"`);
     }
-    expect(html).toContain("Projekt kostenlos prüfen");
+    expect(html).toContain("14 Tage kostenlos testen");
   });
 });

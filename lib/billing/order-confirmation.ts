@@ -38,6 +38,7 @@ const creditFormat = new Intl.NumberFormat("de-DE");
 
 export function orderConfirmationMessage(
   plan: FixedMonthlyPlan = CREDIT_PLANS.enterprise_legacy,
+  termsVersion: string = TERMS_VERSION,
 ): {
   subject: string;
   text: string;
@@ -66,10 +67,11 @@ export function orderConfirmationMessage(
       "",
       "KÜNDIGUNG",
       "In Textform und formlos — eine E-Mail an " + IMPRINT_EMAIL + " genügt,",
-      "ebenso das Kontaktformular unter https://x-portal.eu/contact.",
+      "Selbstständig in Ihrer Kontoverwaltung unter https://x-portal.eu/konto;",
+      "eine Kündigung bleibt auch in Textform möglich.",
       "",
       "GRUNDLAGE",
-      `Es gelten die Allgemeinen Geschäftsbedingungen in der Fassung ${TERMS_VERSION}`,
+      `Es gelten die Allgemeinen Geschäftsbedingungen in der Fassung ${termsVersion}`,
       `(Stand: ${TERMS_EFFECTIVE_DATE}), abrufbar unter https://x-portal.eu/terms.`,
       BUSINESS_ONLY_NOTICE,
       "",

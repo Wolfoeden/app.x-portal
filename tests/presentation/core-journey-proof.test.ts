@@ -102,7 +102,7 @@ describe("Paket 2: gemeinsamer Beweisfaden", () => {
     expect(markup).not.toContain("Aktueller Stand. Klare nächste Option.");
     expect(markup).not.toContain("Fragen zur Abrechnung oder eine Obergrenze vereinbaren");
     expect(markup).toContain('href="/preise"');
-    expect(markup).toContain("Tarife ansehen und Credits kaufen");
+    expect(markup).toContain("Monatstarife ansehen");
     expect(markup).not.toContain("Monatlich buchen");
   });
 });

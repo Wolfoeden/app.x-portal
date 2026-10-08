@@ -8,9 +8,12 @@ import type {
   AiAnalysisTrace,
 } from "@/components/chat-contract";
 import { writeAuditEvent } from "@/lib/audit/write";
+import { recordRecruitingEvent } from "@/lib/analytics/recruiting-server";
+import { parseConsent } from "@/lib/consent/consent";
 import { executeTrackedAiRequest } from "@/lib/ai/gateway";
 import { BRIEF_ANALYSIS_CREDITS } from "@/lib/ai/credit-policy";
 import { unreadConditions } from "@/lib/domain/brief-phrases";
+import { deriveWorkflowControls } from "@/lib/domain/workflow-controls";
 import { briefAnalysisResult } from "@/lib/openai/brief-billing";
 import { currentPeriodEndIso, getAccountPlanId } from "@/lib/ai/quota";
 import { requireCurrentUser } from "@/lib/auth/current-user";
@@ -719,6 +722,9 @@ async function processChatRequest(
       },
     });
 
+    if (analysisCompleted && parseConsent(request.headers.get("cookie") ?? "") === "all") {
+      await recordRecruitingEvent({ event: "first_analysis_succeeded", userId: user.id, entityId: user.id, isInternal: user.isAdmin });
+    }
     const requesterPlanId = await getAccountPlanId({
       userId: user.id,
       isAnonymous: user.isAnonymous,
@@ -844,7 +850,7 @@ async function processChatRequest(
             },
           ],
           externalSearchAvailable:
-            shortlist.status === "no_reliable_match",
+            shortlist.status === "no_reliable_match" && deriveWorkflowControls(extraction.brief.originalRequest).externalResearch === "allowed",
         } satisfies AiAnalysisTrace,
         buildVersion: SERVER_BUILD_VERSION,
       },

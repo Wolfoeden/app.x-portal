@@ -2,19 +2,19 @@ import { NextResponse } from "next/server";
 
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { recordCheckoutStarted } from "@/lib/billing/funnel";
-import {
-  fixedPlanCheckout,
-  type CheckoutPlanId,
-} from "@/lib/billing/payment-links";
+import { StripeRequestError } from "@/lib/billing/stripe-api";
+import { BillingError, checkoutPlan, startSubscriptionCheckout } from "@/lib/billing/subscription";
+import { assertSameOrigin, readJsonWithLimit } from "@/lib/security/request";
 import { SITE_URL } from "@/lib/seo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function checkoutPlan(value: string | null): CheckoutPlanId | null {
-  return value === "basic" || value === "pro" || value === "business"
-    ? value
-    : null;
+/** Fehlercode für das Protokoll; Stripe-Meldungen bleiben draußen. */
+function checkoutFailureReason(error: unknown): string {
+  if (error instanceof BillingError) return error.code;
+  if (error instanceof StripeRequestError) return `stripe_${error.status}_${error.code ?? "error"}`.slice(0, 80);
+  return "unexpected";
 }
 
 export async function GET(request: Request) {
@@ -27,8 +27,10 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/preise?billing=invalid-plan", redirectBase), 303);
   }
 
+  let userId: string | null = null;
   try {
     const user = await requireCurrentUser();
+    userId = user.id;
     if (user.isAnonymous) {
       await recordCheckoutStarted({ userId: user.id, plan, result: "login_required" });
       return NextResponse.redirect(
@@ -37,18 +39,12 @@ export async function GET(request: Request) {
       );
     }
 
-    const checkout = fixedPlanCheckout(plan, user.id);
+    const checkout = await startSubscriptionCheckout(user.id, plan, redirectBase.origin);
     await recordCheckoutStarted({
       userId: user.id,
       plan,
       result: checkout ? "stripe" : "unavailable",
     });
-    if (!checkout) {
-      return NextResponse.redirect(
-        new URL("/preise?billing=unavailable", redirectBase),
-        303,
-      );
-    }
     return NextResponse.redirect(checkout, 303);
   } catch (error) {
     if (error instanceof Response && error.status === 401) {
@@ -58,9 +54,31 @@ export async function GET(request: Request) {
         303,
       );
     }
+    const code = error instanceof BillingError ? error.code : "unavailable";
+    await recordCheckoutStarted({ userId, plan, result: "unavailable", reason: checkoutFailureReason(error) });
     return NextResponse.redirect(
-      new URL("/preise?billing=unavailable", redirectBase),
+      new URL(`/konto?billing=${encodeURIComponent(code)}`, redirectBase),
       303,
     );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    assertSameOrigin(request);
+    const body = await readJsonWithLimit(request, 1_000) as { plan?: unknown };
+    const plan = checkoutPlan(body.plan);
+    if (!plan) return NextResponse.json({ error: "invalid_plan" }, { status: 400 });
+    const user = await requireCurrentUser();
+    if (user.isAnonymous) return NextResponse.json({ error: "login_required" }, { status: 401 });
+    const requestUrl = new URL(request.url);
+    const origin = requestUrl.hostname.endsWith(".netlify.app") ? new URL(SITE_URL).origin : requestUrl.origin;
+    const url = await startSubscriptionCheckout(user.id, plan, origin);
+    return NextResponse.json({ url });
+  } catch (error) {
+    if (error instanceof Response) return error;
+    return NextResponse.json({ error: error instanceof BillingError ? error.code : "checkout_unavailable" }, {
+      status: error instanceof BillingError ? error.status : 503,
+    });
   }
 }

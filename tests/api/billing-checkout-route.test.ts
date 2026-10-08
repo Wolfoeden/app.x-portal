@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   requireCurrentUser: vi.fn(),
   writeAuditEvent: vi.fn(),
+  startCheckout: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -10,6 +11,11 @@ vi.mock("@/lib/auth/current-user", () => ({
   requireCurrentUser: mocks.requireCurrentUser,
 }));
 vi.mock("@/lib/audit/write", () => ({ writeAuditEvent: mocks.writeAuditEvent }));
+vi.mock("@/lib/billing/subscription", () => ({
+  BillingError: class extends Error {},
+  checkoutPlan: (value: string) => ["basic", "pro", "business"].includes(value) ? value : null,
+  startSubscriptionCheckout: mocks.startCheckout,
+}));
 
 import { GET } from "@/app/api/billing/checkout/route";
 
@@ -22,6 +28,7 @@ beforeEach(() => {
     isAnonymous: false,
   });
   mocks.writeAuditEvent.mockResolvedValue("trace");
+  mocks.startCheckout.mockResolvedValue("https://checkout.stripe.com/c/pay/cs_Test");
 });
 
 function recordedCheckout() {
@@ -41,9 +48,9 @@ describe("canonical pricing checkout route", () => {
 
     expect(response.status).toBe(303);
     expect(`${location.origin}${location.pathname}`).toBe(
-      "https://buy.stripe.com/3cIcN4fVnb9DcyS9haa3u05",
+      "https://checkout.stripe.com/c/pay/cs_Test",
     );
-    expect(location.searchParams.get("client_reference_id")).toBe(accountId);
+    expect(mocks.startCheckout).toHaveBeenCalledWith(accountId, "pro", "https://x-portal.eu");
     expect(recordedCheckout()).toEqual([
       {
         actorUserId: accountId,
@@ -51,6 +58,26 @@ describe("canonical pricing checkout route", () => {
         metadata: { plan: "pro", result: "stripe" },
       },
     ]);
+  });
+
+  it("explains a Stripe failure on the account page and logs only its code", async () => {
+    const { StripeRequestError } = await import("@/lib/billing/stripe-api");
+    mocks.startCheckout.mockRejectedValue(new StripeRequestError(403, null, "The provided key 'rk_live_***' does not have access"));
+
+    const response = await GET(
+      new Request("https://x-portal.eu/api/billing/checkout?plan=basic"),
+    );
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("https://x-portal.eu/konto?billing=unavailable");
+    expect(recordedCheckout()).toEqual([
+      {
+        actorUserId: accountId,
+        action: "billing_checkout_started",
+        metadata: { plan: "basic", result: "unavailable", reason: "stripe_403_error" },
+      },
+    ]);
+    expect(JSON.stringify(mocks.writeAuditEvent.mock.calls)).not.toContain("rk_live");
   });
 
   // Der Messpunkt darf den Weg zu Stripe nie aufhalten.
@@ -62,7 +89,7 @@ describe("canonical pricing checkout route", () => {
     );
 
     expect(response.status).toBe(303);
-    expect(response.headers.get("location")).toContain("https://buy.stripe.com/");
+    expect(response.headers.get("location")).toContain("https://checkout.stripe.com/");
   });
 
   it("sends guests through login while retaining the chosen plan", async () => {

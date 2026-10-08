@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { writeAuditEvent } from "@/lib/audit/write";
+import { recordRecruitingEvent } from "@/lib/analytics/recruiting-server";
+import { parseConsent } from "@/lib/consent/consent";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import {
   canEditSavedFreelancers,
@@ -74,6 +76,9 @@ export async function POST(request: Request) {
     }
     const input = FreelancerIdSchema.parse(await readJsonWithLimit(request, 2_000));
     await saveFreelancer(user, input.freelancerId);
+    if (parseConsent(request.headers.get("cookie") ?? "") === "all") {
+      await recordRecruitingEvent({ event: "selection_saved", userId: user.id, entityId: `${user.id}:${input.freelancerId}`, isInternal: user.isAdmin });
+    }
     await writeAuditEvent({
       actorUserId: user.id,
       action: "freelancer_saved",

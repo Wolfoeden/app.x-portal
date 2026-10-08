@@ -155,7 +155,7 @@ test.describe("geschützte Rollen-Journeys", () => {
 
   test("Marketing: Produkt, Verantwortungen, Preis und nächster Schritt sind sofort sichtbar", async ({ page }) => {
     await page.goto("/freelancer-finden");
-    await expect(page.getByRole("heading", { level: 1, name: /^Freelancer finden für Recruiter und Personaldienstleister\s+Ihre Kundenanfrage\.\s*Nachvollziehbar passende Freelancer\.$/u })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /^Kundenanfrage rein\.\s*Prüfbare Auswahl raus\.$/u })).toBeVisible();
     await expect(page.getByLabel("So entsteht ein nachvollziehbarer Match")).toBeVisible();
     await expect(page.getByText("90 Credits", { exact: false }).first()).toBeVisible();
     await expect(page.getByText("3 Credits", { exact: false }).first()).toBeVisible();

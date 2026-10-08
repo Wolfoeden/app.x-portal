@@ -212,7 +212,7 @@ describe("Vorbereiten: der Abgleich", () => {
     expect(body).toContain("So haben wir Ihre Ausschreibung abgeglichen:");
     expect(body).toMatch(/✓ React\s+im Profil belegt/u);
     expect(body).toContain(
-      `https://x-portal.eu/api/freelancers/${PROFIL.id}/book?via=lead`,
+      `https://x-portal.eu/profil/${PROFIL.id}?via=lead`,
     );
     expect(body).not.toContain("Beta");
   });

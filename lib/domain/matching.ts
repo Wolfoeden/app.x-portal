@@ -14,6 +14,7 @@ import { placementRequestsEnabled } from "@/lib/placement/config";
 
 import { roleFamilyLabels, roleFit } from "./role-taxonomy";
 import { skillFamilyKey, skillTerms } from "./skill-taxonomy";
+import { isWorkflowInstruction } from "./workflow-instructions";
 import {
   deriveRequirementGroups,
   hasAmbiguousSkillConnectors,
@@ -38,7 +39,8 @@ export const READABLE_SCORE_VERSIONS = [
   "freelancer-score-v1",
   "freelancer-score-v2",
 ] as const;
-export const MINIMUM_CORE_COVERAGE_BASIS_POINTS = 7_000 as const;
+import { MINIMUM_CORE_COVERAGE_BASIS_POINTS } from "./matching-threshold";
+export { MINIMUM_CORE_COVERAGE_BASIS_POINTS } from "./matching-threshold";
 export const MINIMUM_PARTIAL_COVERAGE_BASIS_POINTS = 2_500 as const;
 export const MAX_PARTIAL_MATCHES = 2 as const;
 
@@ -1274,6 +1276,9 @@ export function evaluateProfile(
     (brief.contractualRequirements ?? []).map(normalize),
   );
   for (const constraint of brief.constraints ?? []) {
+    // Previously persisted extractions may contain operator instructions.
+    // These do not describe candidate evidence and cannot become known gaps.
+    if (isWorkflowInstruction(constraint)) continue;
     // These facts already have a dedicated assessment above. Assessing them
     // again against free-text skill facts produced "remote fits / unconfirmed"
     // and repeated the same start question on one profile.

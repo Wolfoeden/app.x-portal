@@ -3,7 +3,7 @@
 import type { Provider } from "@supabase/supabase-js";
 
 import { appPath } from "@/lib/app-path";
-import { TERMS_VERSION } from "@/lib/legal/policy";
+import { SAAS_TERMS_VERSION } from "@/lib/legal/policy";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 const supportedOauthProviders = {
@@ -229,7 +229,7 @@ export async function registerEmailAccount(
         // jemand zugestimmt hat, aber nicht, wozu. Sobald sich die AGB
         // ändern, ist das der Unterschied zwischen einem Nachweis und einer
         // Behauptung.
-        terms_version: TERMS_VERSION,
+        terms_version: SAAS_TERMS_VERSION,
         marketing_emails: consent.marketingEmails,
       },
     },
