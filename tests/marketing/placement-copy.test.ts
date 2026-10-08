@@ -5,7 +5,7 @@ vi.mock("server-only", () => ({}));
 import PricingPage from "@/app/(marketing)/preise/page";
 import { FreelancerLanding } from "@/components/marketing/FreelancerLanding";
 import { PLACEMENT_TERMS } from "@/lib/placement/config";
-import { PUBLIC_PRICING_PLANS, TRIAL_CREDITS } from "@/lib/billing/plans";
+import { PUBLIC_PRICING_PLANS } from "@/lib/billing/plans";
 afterEach(() => vi.unstubAllEnvs());
 const landing = () => renderToStaticMarkup(createElement(FreelancerLanding));
 const pricing = () => renderToStaticMarkup(createElement(PricingPage));
@@ -17,9 +17,10 @@ describe("recruiting SaaS commercial contract", () => {
       expect(html).not.toMatch(/10 % Honorar|Zahlen bei Beauftragung|Kostenlos bis zur Beauftragung/u);
     }
   });
-  it("states card, total trial credits and renewal near the primary CTA", () => {
-    const hero = landing().split("</header>")[0];
-    for (const phrase of ["14 Tage kostenlos testen", "Karte bei Stripe erforderlich", `${TRIAL_CREDITS} Credits insgesamt`, "automatischer Verlängerung", "Vor Trial-Ende kündigen"]) expect(hero).toContain(phrase);
+  it("keeps the primary CTA clean in the hero", () => {
+    const hero = landing().match(/<header\b[\s\S]*?<\/header>/u)?.[0] ?? "";
+    expect(hero).toContain("14 Tage kostenlos testen");
+    for (const phrase of ["Karte bei Stripe erforderlich", "Credits insgesamt", "automatischer Verlängerung", "Vor Trial-Ende kündigen"]) expect(hero).not.toContain(phrase);
   });
   it("offers the three monthly plans at their configured prices", () => {
     const html = pricing();
@@ -35,7 +36,9 @@ describe("recruiting SaaS commercial contract", () => {
   it("addresses recruiters with the established product profile visual", () => {
     const html = landing();
     expect(html.match(/<h1[\s>]/gu)).toHaveLength(1);
-    for (const phrase of ["Recruiter und IT-Personaldienstleister", "Kundenanforderung", "KI-Entwicklerin", "Profilbeleg", "Offener Punkt", "Nächster Schritt"]) expect(html).toContain(phrase);
+    for (const phrase of ["Kundenanfrage rein", "Projektbeschreibung", "Amelie D.", "KI-Entwicklerin", "Profilbeleg", "Offener Punkt"]) expect(html).toContain(phrase);
+    expect(html).not.toContain("Freelancer finden für Recruiter und IT-Personaldienstleister");
+    expect(html).not.toContain("Nächster Schritt");
     expect(html).not.toMatch(/frei erfunden|Beispielprofil A/u);
   });
   it("preserves historical fee terms while excluding them from new charges", () => {

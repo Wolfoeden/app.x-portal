@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { JsonLd } from "@/components/JsonLd";
 import { actionClass } from "@/components/ui/actions";
@@ -28,9 +29,8 @@ const processSteps = [
   { title: "Freelancer anfragen", text: "Profilbelege und offene Punkte prüfen, Auswahl speichern und den Kontakt bewusst anfragen.", icon: <StepIcon kind="contact" />, startsAt: 8.7 },
 ] as const;
 
-export function FreelancerLanding({ stats = null, caseStudies = publishedCaseStudies() }: { stats?: LandingStats | null; contactPhotoUrl?: string | null; caseStudies?: readonly CaseStudy[] }) {
+export function FreelancerLanding({ caseStudies = publishedCaseStudies() }: { stats?: LandingStats | null; contactPhotoUrl?: string | null; caseStudies?: readonly CaseStudy[] }) {
   const plans = PUBLIC_PRICING_PLANS.filter((plan) => plan.billingModel === "fixed_monthly");
-  const entry = Math.min(...plans.map((plan) => plan.euro));
   const faq = landingFaq();
   return (
     <main id="main-content" className={styles.main} tabIndex={-1}>
@@ -39,23 +39,30 @@ export function FreelancerLanding({ stats = null, caseStudies = publishedCaseStu
       <header className={`${styles.section} ${styles.hero}`}>
         <div className={`${styles.frame} ${styles.heroGrid}`}>
           <div className={styles.heroCopy}>
-            <h1><span className={styles.heroKicker}>Freelancer finden für Recruiter und IT-Personaldienstleister</span>{" "}Kundenanfrage rein.<br /><span>Prüfbare Auswahl raus.</span></h1>
+            <h1>Kundenanfrage rein.<br /><span>Prüfbare Auswahl raus.</span></h1>
             <p className={styles.lead}>Strukturieren Sie Anforderungen, gleichen Sie Freelancer ab und speichern Sie Ihre Auswahl. Für das nächste Mandat und für die nächste Entscheidung.</p>
             <div className={styles.actions}>
               <RecruitingLink href="/preise#tarife" event="trial_cta_clicked" className={actionClass("primary")}>14 Tage kostenlos testen</RecruitingLink>
               <RecruitingLink href="#produktablauf" event="demo_viewed" className={actionClass("secondary")}>Produktablauf ansehen</RecruitingLink>
             </div>
-            <p className={styles.trialDisclosure}>Karte bei Stripe erforderlich · {TRIAL_CREDITS} Credits insgesamt für {TRIAL_DAYS} Tage.<br />Danach gewählter Monatstarif ab {entry} € netto, zzgl. USt., mit automatischer Verlängerung. Vor Trial-Ende kündigen, um die erste kostenpflichtige Verlängerung zu vermeiden.</p>
             <p className={styles.softwareNote}>Sie bezahlen die Software. Neue Kontaktanfragen und Beauftragungen sind provisionsfrei.</p>
           </div>
-          <figure className={styles.heroVisual} aria-label="Produktansicht mit Profilbelegen und offenem Verfügbarkeitspunkt">
+          <div className={styles.heroVisual} aria-label="Projektbeschreibung aus einer Plattform einfügen und passendes Profil anzeigen">
             <div className={styles.glow} aria-hidden="true" />
-            <div className={styles.briefChip}><span>Kundenanforderung</span>KI-Agenten · remote · ab November</div>
-            <div className={styles.mockCard}>
+            <div className={styles.intakeStage}>
+              <ul className={styles.sourceLogos} aria-label="Mögliche Quellen einer Projektbeschreibung">
+                <li><Image src="/images/landing/source-freelancermap.png" alt="freelancermap" width={44} height={42} /></li>
+                <li><Image src="/images/landing/source-linkedin.png" alt="LinkedIn" width={42} height={42} /></li>
+                <li><Image src="/images/landing/source-arbeitsagentur.png" alt="Bundesagentur für Arbeit" width={42} height={42} /></li>
+                <li><Image src="/images/landing/source-upwork.png" alt="Upwork" width={42} height={42} /></li>
+              </ul>
+              <div className={styles.requestBubble}><span>XPORTAL</span><strong>Projektbeschreibung</strong></div>
+            </div>
+            <div className={`${styles.mockCard} ${styles.profileReveal}`}>
               <div className={styles.mockBand} aria-hidden="true" />
               <div className={styles.mockHead}>
-                <span className={styles.mockAvatar} aria-hidden="true">KE</span>
-                <div><strong>KI-Entwicklerin</strong><span>Agenten, RAG, TypeScript · remote</span></div>
+                <Image className={`${styles.mockAvatar} ${styles.mockAvatarImage}`} src="/images/landing/amelie-d.png" alt="Porträt von Amelie D." width={52} height={52} priority />
+                <div><strong>Amelie D.</strong><span>KI-Entwicklerin · Agenten, RAG, TypeScript · remote</span></div>
               </div>
               <p className={styles.mockLabel}>Profilbeleg</p>
               <ul className={styles.mockEvidence}>
@@ -67,21 +74,10 @@ export function FreelancerLanding({ stats = null, caseStudies = publishedCaseStu
                 <li><span className={styles.open} aria-hidden="true">?</span>Start November<em>wird angefragt</em></li>
               </ul>
             </div>
-            <p className={styles.bubble}><strong>Nächster Schritt</strong>Auswahl speichern, Verfügbarkeit klären und Kontakt bewusst anfragen.</p>
-            <figcaption>Produktansicht · Profilbelege und offene Punkte bleiben getrennt.</figcaption>
-          </figure>
+          </div>
         </div>
       </header>
-      {stats ? <section className={styles.section} aria-label="Freigegebener Profilbestand"><div className={styles.frame}><p className={styles.eyebrow}>Vorhandener Bestand</p><p>{stats.profiles.toLocaleString("de-DE")} freigegebene Profile · {stats.projects.toLocaleString("de-DE")} Projektbeschreibungen analysiert. Diese Bestandszahlen bestätigen keine Verfügbarkeit oder erfolgreiche Besetzung.</p>{stats.fields.length ? <ul>{stats.fields.map(field => <li key={field.field}>{field.label}: {field.count.toLocaleString("de-DE")} Profile</li>)}</ul> : null}</div></section> : null}
-      <section className={styles.section} aria-labelledby="workflow-title"><div className={styles.frame}>
-        <p className={styles.eyebrow}>Ein Arbeitsablauf für Ihre Mandate</p><h2 id="workflow-title">Von der Ausschreibung zur nachvollziehbaren Auswahl.</h2>
-        <ol className={styles.workflow}>
-          <li><span>1 · Anforderungen</span><h3>Projekttext einfügen</h3><p>Prüfen und ergänzen Sie fachliche Kriterien. Bedienanweisungen bleiben vom Profilabgleich getrennt.</p></li>
-          <li><span>2 · Abgleich</span><h3>Belege und Lücken sehen</h3><p>Profilangaben, Honorare und offene Punkte bleiben erkennbar. Ein Profilfund bestätigt keine Verfügbarkeit.</p></li>
-          <li><span>3 · Weiterarbeiten</span><h3>Auswahl sichern</h3><p>Speichern Sie mehrere Projekte und Profile, setzen Sie Mandate fort und nutzen Sie freigegebene Kontaktwege.</p></li>
-        </ol>
-        <p className={styles.sectionLead}>Kein verlässlicher Treffer? Kriterien bearbeiten oder eine zusätzliche Recherche ausdrücklich starten. Sie brauchen dafür kein Gespräch mit dem Betreiber.</p>
-      </div></section>
+      <section className={`${styles.section} ${styles.inventoryStrip}`} aria-label="Profile online"><div className={`${styles.frame} ${styles.inventoryFrame}`}><span className={styles.onlineDot} aria-hidden="true" /><strong>210</strong><span>Profile online</span></div></section>
       <section id="produktablauf" className={styles.section} aria-labelledby="produktablauf-title"><div className={styles.frame}>
         <div className={styles.splitHead}>
           <div><p className={styles.eyebrow}>XPORTAL in Aktion</p><h2 id="produktablauf-title">Projekt einfügen. Profil prüfen. Kontakt anfragen.</h2></div>

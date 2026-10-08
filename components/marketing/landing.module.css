@@ -20,17 +20,12 @@
 .main:focus { outline: none; }
 .trialDisclosure { max-width: 630px; color: var(--lp-muted); font-size: 12.5px; line-height: 1.65; margin: 18px 0 0; }
 .softwareNote { color: var(--lp-brand-deep); font-size: 14px; line-height: 1.5; margin: 16px 0 0; }
-.workflow { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; padding: 0; margin: 38px 0 0; list-style: none; }
-.workflow li { background: var(--lp-soft); padding: 24px; }
-.workflow li > span { color: var(--lp-brand); font-size: 12px; }
-.workflow h3 { margin-top: 15px !important; font-size: 18px; }
-.workflow p { font-size: 14px; line-height: 1.65; color: var(--lp-muted); }
 .saasPlans { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; margin-top: 32px; }
 .saasPlans .priceCard { padding: 22px; }
 .saasPlans .priceValue strong { font-size: 36px; }
 .saasPlans .priceCard > p:not(.priceName):not(.priceValue):not(.trialDisclosure) { font-size: 13px; line-height: 1.6; }
 .saasPlans .priceCard > a { margin-top: auto; font-size: 13px; }
-@media (max-width:760px) { .workflow,.saasPlans { grid-template-columns:1fr; } }
+@media (max-width:760px) { .saasPlans { grid-template-columns:1fr; } }
 .main h1, .main h2, .main h3 { margin: 0; color: var(--lp-ink); }
 .main h1, .main h2 { font-family: var(--xp-display); font-weight: 400; text-wrap: balance; }
 .main h2 { max-width: 760px; font-size: var(--xp-h2-size); line-height: 1.22; letter-spacing: var(--xp-h2-tracking); }
@@ -54,9 +49,6 @@
 .heroGrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 330px); align-items: center; gap: 44px; }
 .hero h1 { font-size: var(--xp-h1-size); line-height: 1.08; letter-spacing: var(--xp-h1-tracking); }
 .hero h1 span { color: var(--lp-brand); }
-/* Die Dachzeile in der h1 sieht aus wie .eyebrow, samt der Zeilenhoehe, die
-   der Absatz vorher von der Seite erbte. */
-.hero h1 .heroKicker { display: block; margin: 0 0 14px; font-family: var(--font-sans); font-size: var(--xp-eyebrow-size); font-weight: 600; line-height: 1.5; letter-spacing: normal; text-wrap: wrap; }
 .subtitle { margin: 22px 0 0; color: var(--lp-ink-soft); font-size: clamp(19px, 1.7vw, 23px); line-height: 1.4; letter-spacing: -.01em; }
 .lead { max-width: 520px; margin: 18px 0 0; color: var(--lp-muted); font-size: 16.5px; line-height: 1.65; }
 .notes { display: grid; gap: 8px; margin: 24px 0 0; padding: 0; list-style: none; color: var(--lp-muted); font-size: 13.5px; }
@@ -64,15 +56,27 @@
 .notes .check { width: 16px; height: 16px; }
 .notes a { color: var(--lp-ink); text-underline-offset: 3px; }
 
-.heroVisual { position: relative; display: flex; flex-direction: column; align-items: center; gap: 14px; margin: 0; padding: 12px 0; }
+.heroVisual { position: relative; display: flex; min-height: 462px; flex-direction: column; align-items: center; gap: 14px; padding: 4px 0 12px; }
 .heroVisual > :not(.glow) { position: relative; }
 .glow { position: absolute; inset: -18% -22%; background: radial-gradient(closest-side, rgba(38, 170, 108, .26), rgba(38, 170, 108, .09) 55%, transparent 78%); pointer-events: none; }
-.briefChip { align-self: flex-start; display: inline-flex; white-space: nowrap; align-items: center; gap: 9px; border: 1px solid var(--lp-line); border-radius: 999px; padding: 8px 15px; background: #fff; color: var(--lp-ink); font-size: 13px; box-shadow: 0 6px 20px rgba(16, 27, 23, .06); }
-.briefChip span { color: var(--lp-brand); font-weight: 600; }
+.intakeStage { width: 100%; height: 126px; }
+.sourceLogos { position: absolute; inset: 0 0 auto; height: 58px; margin: 0; padding: 0; list-style: none; }
+.sourceLogos li { position: absolute; top: 0; display: grid; place-items: center; width: 48px; height: 48px; overflow: hidden; border: 1px solid var(--lp-line); border-radius: 12px; background: #fff; box-shadow: 0 8px 24px rgba(16, 27, 23, .09); animation: sourceDrop .9s cubic-bezier(.22,.75,.24,1) both; }
+.sourceLogos li:nth-child(1) { left: 0; animation-delay: .1s; }
+.sourceLogos li:nth-child(2) { left: 27%; animation-delay: .38s; }
+.sourceLogos li:nth-child(3) { right: 27%; animation-delay: .66s; }
+.sourceLogos li:nth-child(4) { right: 0; animation-delay: .94s; }
+.sourceLogos img { width: 42px; height: 42px; object-fit: contain; }
+.requestBubble { position: absolute; right: 0; bottom: 0; display: flex; width: min(100%, 282px); align-items: center; gap: 12px; border: 1px solid #b8d7c6; border-radius: 18px 18px 4px 18px; padding: 13px 16px; background: #fff; box-shadow: 0 12px 34px rgba(16, 27, 23, .1); animation: requestReceived .45s 1.65s ease-out both; }
+.requestBubble::after { content: ""; position: absolute; right: -1px; bottom: -9px; width: 16px; height: 16px; border-right: 1px solid #b8d7c6; background: linear-gradient(135deg, transparent 49%, #fff 50%); }
+.requestBubble span { flex: none; border-radius: 999px; padding: 5px 8px; background: var(--lp-brand); color: #fff; font-size: 9px; font-weight: 750; letter-spacing: .04em; }
+.requestBubble strong { font-size: 14px; font-weight: 600; }
 .mockCard { width: 100%; max-width: 340px; overflow: hidden; border: 1px solid var(--lp-line); border-radius: 14px; background: #fff; box-shadow: 0 24px 60px rgba(16, 27, 23, .1); }
+.profileReveal { animation: profileReveal .7s 1.9s cubic-bezier(.2,.8,.25,1) backwards; }
 .mockBand { height: 58px; background: radial-gradient(rgba(255, 255, 255, .4) 1px, transparent 1.2px) 0 0 / 11px 11px, linear-gradient(115deg, #d3f0e0, #8fd3b0 58%, #4fb383); }
 .mockHead { padding: 0 18px; }
 .mockAvatar { display: grid; place-items: center; width: 52px; height: 52px; margin-top: -26px; border: 3px solid #fff; border-radius: 50%; background: #0f5c3b; color: #fff; font-family: var(--font-display), var(--font-sans); font-size: 16px; font-weight: 600; }
+.mockAvatarImage { object-fit: cover; object-position: 50% 24%; }
 .mockHead strong { display: block; margin-top: 10px; font-size: 16px; font-weight: 600; letter-spacing: -.01em; }
 .mockHead div > span { display: block; margin-top: 2px; color: var(--lp-muted); font-size: 12.5px; }
 .mockEvidence { margin: 4px 0 0; padding: 0 18px 8px; list-style: none; }
@@ -83,10 +87,29 @@
 .ok, .open { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font-size: 11px; font-weight: 700; }
 .ok { background: #dcf1e5; color: var(--lp-brand); }
 .open { background: #fbf0d6; color: #7a5514; }
-.bubble { max-width: 300px; margin: 6px 0 0; border: 1px solid var(--lp-line); border-radius: 14px; padding: 12px 18px; background: #fff; color: var(--lp-ink); font-size: 14.5px; line-height: 1.45; text-align: center; box-shadow: 0 10px 30px rgba(16, 27, 23, .07); }
-.bubble::before { content: ""; position: absolute; top: -7px; left: 50%; width: 12px; height: 12px; border-top: 1px solid var(--lp-line); border-left: 1px solid var(--lp-line); background: #fff; transform: translateX(-50%) rotate(45deg); }
-.bubble strong { display: block; margin-bottom: 2px; color: var(--lp-brand); font-size: 12px; font-weight: 600; }
-.heroVisual figcaption { color: #7a818b; font-size: 11.5px; }
+
+@keyframes sourceDrop {
+  0% { opacity: 0; transform: translateY(-26px) scale(.82); }
+  22% { opacity: 1; }
+  68% { opacity: 1; transform: translateY(48px) scale(.76); }
+  100% { opacity: 0; transform: translateY(70px) scale(.52); }
+}
+@keyframes requestReceived {
+  0% { transform: scale(1); }
+  55% { transform: scale(1.035); border-color: var(--lp-brand); }
+  100% { transform: scale(1); }
+}
+@keyframes profileReveal {
+  from { opacity: 0; transform: translateY(22px) scale(.965); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.inventoryStrip { background: #fbfdfc; }
+.inventoryFrame { display: flex; align-items: baseline; justify-content: center; gap: 10px; padding-top: 26px; padding-bottom: 26px; }
+.section .inventoryFrame { padding-top: 26px; padding-bottom: 26px; }
+.inventoryFrame strong { color: var(--lp-brand-deep); font-family: var(--xp-display); font-size: 34px; font-weight: 500; letter-spacing: -.03em; }
+.inventoryFrame > span:last-child { color: var(--lp-ink-soft); font-size: 16px; }
+.onlineDot { align-self: center; width: 8px; height: 8px; border-radius: 50%; background: var(--lp-brand); box-shadow: 0 0 0 5px var(--lp-mint); }
 
 /* Bestand statt Logowand */
 .wall { padding-top: 40px; padding-bottom: 40px; }
@@ -313,4 +336,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .tile, .stepButton { transition: none; }
+  .sourceLogos li, .requestBubble, .profileReveal { animation: none; }
+  .sourceLogos li { opacity: 1; transform: none; }
 }

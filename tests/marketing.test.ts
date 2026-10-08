@@ -4,8 +4,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
-// Die Seite selbst ist asynchron (sie lädt die Zahlen zum Bestand); gerendert
-// wird hier ihr Inhalt ohne Zahlen, wie bei einem Ausfall der Datenbank.
 import { metadata as findMetadata } from "@/app/(marketing)/freelancer-finden/page";
 import { FreelancerLanding as FindPage } from "@/components/marketing/FreelancerLanding";
 import ItPage, { metadata as itMetadata } from "@/app/(marketing)/it-freelancer-finden/page";
@@ -21,7 +19,7 @@ import { MARKETING_CATEGORIES } from "@/lib/marketing-categories";
 import { MARKETING_PAGE, MARKETING_PAGES, absoluteUrl, pageMetadata } from "@/lib/seo";
 
 const routes = [
-  { Component: FindPage, page: MARKETING_PAGE.find, metadata: findMetadata, required: ["Recruiter", "Prüfbare Auswahl", "Karte bei Stripe", "90 Credits"] },
+  { Component: FindPage, page: MARKETING_PAGE.find, metadata: findMetadata, required: ["Kundenanfrage rein", "Projektbeschreibung", "Amelie D.", "210", "Profile online"] },
   { Component: ItPage, page: MARKETING_PAGE.it, metadata: itMetadata, required: ["IT-Freelancer", "React", "SAP", "Verfügbarkeit"] },
   { Component: MatchingPage, page: MARKETING_PAGE.matching, metadata: matchingMetadata, required: ["regelbasiert", "KI-gestütztes", "Nicht belegt"] },
   { Component: HowPage, page: MARKETING_PAGE.how, metadata: howMetadata, required: ["Requirement Extraction", "Credits", "Informationslücken"] },

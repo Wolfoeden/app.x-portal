@@ -37,10 +37,10 @@ describe("the process video", () => {
 
   it("explains recruiting without promising immediate booking", () => {
     const html = renderToStaticMarkup(createElement(FreelancerLanding));
-    for (const title of ["Projekttext einfügen", "Belege und Lücken sehen", "Auswahl sichern"]) expect(html).toContain(title);
-    expect(html).toContain("Freelancer anfragen");
+    for (const title of ["Projekttext kopieren", "Bei XPORTAL einfügen", "Freelancer anfragen"]) expect(html).toContain(title);
     expect(html).toContain("/videos/ablauf.webm");
     expect(html).toContain('href="#produktablauf"');
+    expect(html).not.toContain("Ein Arbeitsablauf für Ihre Mandate");
     expect(html).not.toContain("Einfügen. Buchen.");
   });
 
