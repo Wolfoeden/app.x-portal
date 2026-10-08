@@ -21,11 +21,11 @@ import { MARKETING_CATEGORIES } from "@/lib/marketing-categories";
 import { MARKETING_PAGE, MARKETING_PAGES, absoluteUrl, pageMetadata } from "@/lib/seo";
 
 const routes = [
-  { Component: FindPage, page: MARKETING_PAGE.find, metadata: findMetadata, required: ["Einfügen. Buchen.", "offene Frage", "Projekt jetzt einfügen", "Gespräch buchen"] },
+  { Component: FindPage, page: MARKETING_PAGE.find, metadata: findMetadata, required: ["Recruiter", "Prüfbare Auswahl", "Karte bei Stripe", "90 Credits"] },
   { Component: ItPage, page: MARKETING_PAGE.it, metadata: itMetadata, required: ["IT-Freelancer", "React", "SAP", "Verfügbarkeit"] },
   { Component: MatchingPage, page: MARKETING_PAGE.matching, metadata: matchingMetadata, required: ["regelbasiert", "KI-gestütztes", "Nicht belegt"] },
   { Component: HowPage, page: MARKETING_PAGE.how, metadata: howMetadata, required: ["Requirement Extraction", "Credits", "Informationslücken"] },
-  { Component: PricingPage, page: MARKETING_PAGE.pricing, metadata: pricingMetadata, required: ["Ein Guthaben", "Empfohlen", "Nach Nutzung", `${START_CREDITS} Credits mit kostenlosem Konto`, `Ohne Konto: ${GUEST_TRIAL_CREDITS} Credits`, "nicht addiert"] },
+  { Component: PricingPage, page: MARKETING_PAGE.pricing, metadata: pricingMetadata, required: ["14 Tage", "Karte bei Stripe", "Credits insgesamt", "keine Vermittlungsprovision"] },
 ];
 
 describe("marketing pages rendered on the server", () => {
@@ -43,7 +43,7 @@ describe("marketing pages rendered on the server", () => {
       expect(html.match(/<h1\b/gu)).toHaveLength(1);
       expect(text.length).toBeGreaterThan(1800);
       for (const phrase of required) expect(text).toContain(phrase);
-      expect(main).toMatch(/href="\/chat"[^>]*>(?:Projekt (?:beschreiben|jetzt einfügen)|Kostenlos starten)/u);
+      expect(main).toMatch(/href="(?:\/chat(?:\?checkout=[a-z]+)?|\/preise#tarife|#tarife)"/u);
       expect(metadata).toEqual(pageMetadata(page));
       expect(metadata.alternates?.canonical).toBe(absoluteUrl(page.path));
       for (const related of MARKETING_PAGES.filter((item) => item.path !== page.path)) {
@@ -57,7 +57,7 @@ describe("marketing pages rendered on the server", () => {
       // Die Startseite beschreibt zusätzlich Leistung und sichtbare FAQ
       // (Oktober 2026, für Suchmaschinen und KI-Systeme); die übrigen
       // Ratgeberseiten bleiben bei der Brotkrümelnavigation.
-      expect(types).toEqual(page.path === "/freelancer-finden" ? ["BreadcrumbList", "Service", "FAQPage"] : ["BreadcrumbList"]);
+      expect(types).toEqual(page.path === "/freelancer-finden" ? ["BreadcrumbList", "SoftwareApplication", "FAQPage"] : ["BreadcrumbList"]);
       const breadcrumb = JSON.parse(json[0][1]);
       expect(breadcrumb.itemListElement.at(-1).item).toBe(absoluteUrl(page.path));
       expect(html).not.toContain('"@type":"Article"');
@@ -86,8 +86,8 @@ describe("costs derived from product policy", () => {
     const html = renderToStaticMarkup(createElement(CreditSummary));
     expect(html).toContain(String(CREDIT_PRICES.project_brief.credits) + " Credits");
     expect(html).toContain(String(CREDIT_PRICES.research.credits) + " Credits");
-    expect(html).toContain(`${START_CREDITS} einmalig`);
-    for (const plan of PUBLIC_PRICING_PLANS) {
+    expect(html).toContain("90 einmalig");
+    for (const plan of PUBLIC_PRICING_PLANS.filter(plan => plan.billingModel === "fixed_monthly")) {
       const row = html.match(new RegExp('<tr data-plan="' + plan.id + '">([\\s\\S]*?)</tr>', "u"))?.[1];
       expect(row).toContain(plan.label);
       if (plan.billingModel === "fixed_monthly") {

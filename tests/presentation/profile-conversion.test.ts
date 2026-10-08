@@ -197,7 +197,7 @@ describe("profile card first reading level", () => {
     expect(markup).toContain("Im Erstgespräch klären");
     expect(markup).toContain("850 € / Tag");
     expect(markup).toContain("Start kurzfristig: noch zu klären");
-    expect(markup).toContain("Erstgespräch vereinbaren");
+    expect(markup).toContain("Freelancer anfragen");
     expect(markup).not.toContain(integrator.experienceSummary);
     expect(markup).not.toContain("Kontaktwege anzeigen");
     expect(markup).not.toContain("Verfügbarkeit bestätigt");

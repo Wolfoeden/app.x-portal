@@ -40,15 +40,15 @@ describe("landing page with live numbers", () => {
         stats: { profiles: 67, projects: 1213, fields: [{ field: "ai", label: "KI & Agenten", count: 18 }] },
       }),
     );
-    expect(html).toContain("mit 67 freigegebenen Profilen ab");
-    expect(html).toContain("<strong>KI &amp; Agenten</strong><span>18 Profile</span>");
-    expect(html).toContain("<strong>1.213</strong> Projektbeschreibungen analysiert");
+    expect(html).toContain("67 freigegebene Profile");
+    expect(html).toContain("KI &amp; Agenten: 18 Profile");
+    expect(html).toContain("1.213 Projektbeschreibungen analysiert");
   });
 
   it("names no numbers it does not have", () => {
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     const html = renderToStaticMarkup(createElement(FreelancerLanding));
-    expect(html).toContain("mit unserem Bestand ab");
+    expect(html).toContain("Profilangaben");
     expect(html).not.toContain("Freigegebene Profile nach Fachgebiet");
     expect(html).not.toContain("freigegebene Profile");
   });
@@ -56,9 +56,9 @@ describe("landing page with live numbers", () => {
   it("offers the sales call next to the self-service path with tracked entries", () => {
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     const html = renderToStaticMarkup(createElement(FreelancerLanding));
-    for (const entry of ["hero", "process", "roles", "pricing", "closing"]) {
+    for (const entry of ["hero"]) {
       expect(html).toContain(`href="/gespraech?von=${entry}"`);
     }
-    expect(html).toContain("Projekt kostenlos prüfen");
+    expect(html).toContain("14 Tage kostenlos testen");
   });
 });

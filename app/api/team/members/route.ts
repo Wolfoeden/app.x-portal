@@ -10,6 +10,7 @@ import {
   removeTeamMember,
   type InviteFailure,
 } from "@/lib/data/plan-teams";
+import { userHasRecruitingAccess } from "@/lib/billing/entitlements";
 import { deliverEmail } from "@/lib/email/deliver";
 import { assertSameOrigin, readJsonWithLimit } from "@/lib/security/request";
 import { teamInvitationMessage } from "@/lib/team/messages";
@@ -90,6 +91,9 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!(await userHasRecruitingAccess(user.id))) {
+      return NextResponse.json({ error: "Ein aktiver Trial oder Tarif ist erforderlich.", reason: "billing_required" }, { status: 403 });
+    }
     const input = EmailSchema.parse(await readJsonWithLimit(request, 2_000));
     const result = await addTeamMember({
       ownerUserId: user.id,

@@ -61,7 +61,7 @@ describe("profile card footer", () => {
     const markup = render(profile());
 
     expect(markup).not.toContain("Bereit für den nächsten Schritt");
-    expect(markup).toContain("Erstgespräch vereinbaren");
+    expect(markup).toContain("Freelancer anfragen");
   });
 
   // Oktober 2026: Lebenslauf, LinkedIn, GitHub und Kalender stehen als
@@ -72,9 +72,9 @@ describe("profile card footer", () => {
 
     expect(markup).toContain("Kontaktwege anzeigen");
     expect(footer).not.toContain("Kontaktwege anzeigen");
-    expect(footer).toContain("Erstgespräch vereinbaren");
+    expect(footer).toContain("Freelancer anfragen");
     expect(footer).toContain("Merken");
-    expect(footer).toContain("Lebenslauf von Ada Beispiel herunterladen");
+    expect(footer).toContain("Lebenslauf: Im Abo enthalten – Tarife ansehen");
     expect(footer.indexOf("Merken")).toBeLessThan(footer.indexOf("profile-shortcuts"));
     expect(markup.match(/class="profile-shortcut is-/gu)).toHaveLength(4);
   });
@@ -84,20 +84,18 @@ describe("profile card footer", () => {
   it("puts the meeting first in the markup, as it is shown", () => {
     const footer = render(profile()).split('<footer class="profile-footer">')[1] ?? "";
 
-    expect(footer.indexOf("Erstgespräch vereinbaren")).toBeLessThan(footer.indexOf("Merken"));
+    expect(footer.indexOf("Freelancer anfragen")).toBeLessThan(footer.indexOf("Merken"));
   });
 
   // Ohne Kalender gibt es keinen anderen Anfrageweg; der Knopf verspricht
   // deshalb keinen.
-  it("says plainly that a profile without a calendar cannot be booked", () => {
+  it("offers consent requests without inventing a calendar", () => {
     const markup = render(profile({ bookingUrl: null }));
-
-    expect(markup).toMatch(/<button[^>]*disabled=""[^>]*>Aktuell nicht buchbar<\/button>/u);
-    expect(markup).not.toContain("Gespräch anfragen");
+    expect(markup).toContain("Freelancer anfragen");
+    expect(markup).toContain("Kalender: Nicht hinterlegt");
+    expect(markup).not.toContain("/book");
   });
 
-  // Dass hier auf eigene Entscheidung gehandelt wird, muss neben den Knoepfen
-  // stehen — nicht nur weiter oben in der Begruendung.
   it("keeps the warning next to the buttons on a partial match", () => {
     const markup = render(profile({ recommendationRole: "partial", coreCoverage: 40 }));
 

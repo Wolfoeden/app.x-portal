@@ -40,7 +40,7 @@ describe("Vertragsbestätigung in Textform", () => {
 
   it("benennt einen Kündigungsweg, den es wirklich gibt", () => {
     expect(message.text).toContain(IMPRINT_EMAIL);
-    expect(message.text).toContain("https://x-portal.eu/contact");
+    expect(message.text).toContain("https://x-portal.eu/konto");
   });
 
   it("benennt die angewendete AGB-Fassung mit Stand und Fundstelle", () => {

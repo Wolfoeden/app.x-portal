@@ -48,17 +48,16 @@ describe("Paket 4: Konsolidierung und Freigabe", () => {
     expect(account).not.toContain("Setzen Sie zuerst das Häkchen");
     expect(account).not.toContain("Fragen zur Abrechnung oder eine Obergrenze vereinbaren");
     expect(account).toContain('href="/preise"');
-    expect(account).toContain("Tarife ansehen und Credits kaufen");
+    expect(account).toContain("Tarife und Trial ansehen");
     expect(account).not.toContain("fixedPlanCheckout");
     expect(account).not.toContain("businessConfirmed");
   });
 
-  it("startet die Stripe-Weiterleitung mit echten Links auf der Preisseite", () => {
+  it("preserves trial plan through registration before server checkout", () => {
     const pricing = source("app/(marketing)/preise/page.tsx");
-    expect(pricing).toContain('const href = `/api/billing/checkout?plan=${plan.id}`');
-    // Ein echter Link, kein Client-Router-Link: Stripe liegt außerhalb der App.
-    expect(pricing).toContain('<a className={CARD_ACTION} href={href}>');
-    expect(pricing).not.toContain('<Link className={CARD_ACTION} href={href}');
+    expect(pricing).toContain("/chat?checkout=");
+    expect(pricing).toContain("Karte erforderlich");
+    expect(source("components/ChatWorkspace.tsx")).toContain("/api/billing/checkout?plan=");
   });
 
   it("oeffnet vom Profil aus direkt die zentrale Preisseite", () => {

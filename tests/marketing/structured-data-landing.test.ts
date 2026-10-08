@@ -8,7 +8,7 @@ import { FreelancerLanding } from "@/components/marketing/FreelancerLanding";
 import { faqAnswerText, landingFaq } from "@/components/marketing/landing-faq";
 import { PROVIDER_ADDRESS } from "@/lib/legal/policy";
 import { LLMS_DATA_FACTS } from "@/lib/marketing/llms-facts";
-import { PLACEMENT_TERMS } from "@/lib/placement/config";
+import { PUBLIC_PRICING_PLANS, TRIAL_CREDITS } from "@/lib/billing/plans";
 import { siteStructuredData } from "@/lib/structured-data";
 
 type Node = Record<string, unknown>;
@@ -53,24 +53,22 @@ describe("landing page structured data", () => {
     }
   });
 
-  it("describes the service with the fee from the placement terms and the AI agent role", () => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
+  it("describes software prices and trial disclosure", () => {
     const html = renderToStaticMarkup(createElement(FreelancerLanding));
-    const service = jsonLd(html).find((node) => node["@type"] === "Service")!;
-    expect(JSON.stringify(service.offers)).toContain(`${PLACEMENT_TERMS.feePercent} %`);
-    const catalog = JSON.stringify(service.hasOfferCatalog);
-    expect(catalog).toContain("AI-Agent-Entwickler");
-    expect(catalog).toContain("KI-Agenten");
-    expect(service.provider).toEqual({ "@id": "https://x-portal.eu/#organization" });
+    const software = jsonLd(html).find(node => node["@type"] === "SoftwareApplication")!;
+    const offers = software.offers as { price: number; description: string }[];
+    expect(offers.map(offer => offer.price)).toEqual(PUBLIC_PRICING_PLANS.filter(plan => plan.billingModel === "fixed_monthly").map(plan => plan.euro));
+    for (const offer of offers) { expect(offer.description).toContain("Trial mit Karte"); expect(offer.description).toContain(String(TRIAL_CREDITS)); }
+    expect(software).not.toHaveProperty("aggregateRating");
   });
 
-  it("offers no fee without the placement model", () => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "false");
-    const html = renderToStaticMarkup(createElement(FreelancerLanding));
-    const service = jsonLd(html).find((node) => node["@type"] === "Service")!;
-    expect(service).not.toHaveProperty("offers");
-    const faq = jsonLd(html).find((node) => node["@type"] === "FAQPage")!;
-    expect(JSON.stringify(faq)).not.toContain("Was kostet die Vermittlung?");
+  it("cannot reintroduce commission through the legacy flag", () => {
+    for (const flag of ["true", "false"]) {
+      vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", flag);
+      const html = renderToStaticMarkup(createElement(FreelancerLanding));
+      expect(JSON.stringify(jsonLd(html))).not.toContain("10 %");
+      expect(html).toContain("provisionsfrei");
+    }
   });
 
   it("states the imprint address and the regions without social proof", () => {

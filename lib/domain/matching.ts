@@ -39,7 +39,8 @@ export const READABLE_SCORE_VERSIONS = [
   "freelancer-score-v1",
   "freelancer-score-v2",
 ] as const;
-export const MINIMUM_CORE_COVERAGE_BASIS_POINTS = 7_000 as const;
+import { MINIMUM_CORE_COVERAGE_BASIS_POINTS } from "./matching-threshold";
+export { MINIMUM_CORE_COVERAGE_BASIS_POINTS } from "./matching-threshold";
 export const MINIMUM_PARTIAL_COVERAGE_BASIS_POINTS = 2_500 as const;
 export const MAX_PARTIAL_MATCHES = 2 as const;
 

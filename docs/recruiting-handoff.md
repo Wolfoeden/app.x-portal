@@ -73,3 +73,21 @@ MODELLEMPFEHLUNG (JUDGMENT)
 Für die anspruchsvolle Endabnahme mit Abrechnung, Konkurrenz, Bestandsverträgen und Zugriffsrechten: GPT-6 Astra, Reasoning xhigh. Für eng abgegrenzte Implementierungs-/Testkorrekturen ist GPT-6.1 Sol mit high eine ressourcenschonende Alternative. Empfehlung auf Basis des Restauftrags und offizieller Modellbeschreibungen, keine Garantie eines bestandenen Releases.
 https://developers.openai.com/api/docs/models/gpt-6-astra
 https://developers.openai.com/api/docs/models/gpt-6.1-sol
+
+AKTUALISIERUNG 08.10.2026
+Commit 189b9fc wurde tatsächlich nach GitHub gepusht und verifiziert. Der im anderen Konto erwähnte Commit 9b91559 ist hier nicht vorhanden; dessen berichtete Korrekturen wurden im verfügbaren Checkout nachvollzogen.
+Aktuelle Gesamttests: 1657 bestanden / 12 fehlgeschlagen. Neue Änderungen: alter paid-access-Helper auf zentrale Recruiting-Rechte delegiert, Team-Einladung an aktive Berechtigung gebunden, große Matching-Importkante aus Browseranzeige entfernt, falsche Verfügbarkeitsbestätigung durch Betreiber entfernt, Preisseiten-Navigation/Datenwege ergänzt, alte Gebühren-/Bonus-/Kontakt-Testannahmen fachlich angepasst.
+GitHub-Datenbankprüfung der vorherigen Revision läuft mit vollständiger Migrationskette, scheitert aber an alten Credit-/Perioden-/Lifecycle-Erwartungen und query_plan_evidence.sql. Diese Datenbankfehler sind noch offen. Keine Produktionsmigration und kein Main-Merge.
+Noch fehlgeschlagene Anwendungstests:
+api/project-detail-recovery-route.test.ts: project detail deterministic recovery restores a persisted partial match with the current booking link
+presentation/availability.test.ts: availability with its date says XPORTAL confirms an old statement before the introduction when it introduces
+presentation/chat-cv-ui.test.ts: Kurzlinks auf der Profilkarte nennt unter der Zeile, was ein Abo bei diesem Profil öffnet
+presentation/chat-cv-ui.test.ts: Kurzlinks auf der Profilkarte öffnet ohne Vermittlungsmodell, wie bisher Kalender und Lebenslauf, mit Konto
+presentation/chat-cv-ui.test.ts: booking button in the placement model asks for an introduction instead of opening a calendar, with or without an account
+presentation/chat.test.ts: chat presentation shows provenance and the direct booking link
+presentation/chat.test.ts: chat presentation keeps a partial match bookable while labelling it as not recommended
+presentation/core-journey-proof.test.ts: Paket 2: gemeinsamer Beweisfaden verweist aus der Kontoverwaltung auf die einzige Preisseite
+presentation/package-4-release.test.ts: Paket 4: Konsolidierung und Freigabe haelt den Zahlungsdialog frei von einer zweiten Preisliste
+presentation/payment-links.test.ts: enterprise contact routes the single enterprise offer through the configured address
+presentation/privacy-config.test.ts: production privacy and authentication configuration names processors by role, never by company
+presentation/profile-conversion.test.ts: profile card first reading level puts the meeting before Merken, as it is read and tabbed

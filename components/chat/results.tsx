@@ -21,7 +21,7 @@ import {
 
 import { appPath } from "@/lib/app-path";
 import { MatchProtocol } from "@/components/product/MatchProtocol";
-import { MINIMUM_CORE_COVERAGE_BASIS_POINTS } from "@/lib/domain/matching";
+import { MINIMUM_CORE_COVERAGE_BASIS_POINTS } from "@/lib/domain/matching-threshold";
 
 import {
   BRIEF_FIELDS,

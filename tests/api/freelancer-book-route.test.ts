@@ -40,8 +40,8 @@ beforeEach(() => {
     displayName: "Beispiel",
     url: "https://calendly.com/beispiel",
   });
-  mocks.currentUser.mockResolvedValue(null);
-  mocks.allowed.mockResolvedValue(false);
+  mocks.currentUser.mockResolvedValue({ id: "kunde", isAdmin: false, isAnonymous: false });
+  mocks.allowed.mockResolvedValue(true);
 });
 
 afterEach(() => {
@@ -49,7 +49,7 @@ afterEach(() => {
 });
 
 describe("GET /api/freelancers/[id]/book", () => {
-  it("führt ohne Anmeldung zum Kalender und zählt den Klick", async () => {
+  it("führt nach bestätigter Freigabe zum Kalender und zählt den Klick", async () => {
     const response = await aufruf();
 
     expect(response.status).toBe(302);
@@ -83,12 +83,13 @@ describe("GET /api/freelancers/[id]/book", () => {
     expect(mocks.audit).not.toHaveBeenCalled();
   });
 
-  it("antwortet mit 404, wenn das Profil nicht mehr buchbar ist", async () => {
+  it("führt ohne Kalender zurück zum Profil im Arbeitsbereich", async () => {
     mocks.destination.mockResolvedValue(null);
 
     const response = await aufruf("?via=lead");
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(302);
+    expect(new URL(response.headers.get("location")!).pathname).toBe("/chat");
     expect(mocks.audit).not.toHaveBeenCalled();
   });
 });
@@ -100,13 +101,14 @@ describe("GET /api/freelancers/[id]/book im Vermittlungsmodell", () => {
 
   // Der Kalender vor der Vorstellung (und ohne bezahlten Tarif) wäre der Weg
   // an der Anfrage vorbei: Es geht zu „Gespräch buchen“ mit diesem Profil.
-  it("schickt ohne Vorstellung zur Anfrage statt in den Kalender", async () => {
+  it("schickt ohne Freigabe zur Anfrage statt in den Kalender", async () => {
+    mocks.currentUser.mockResolvedValue(null);
+    mocks.allowed.mockResolvedValue(false);
     const response = await aufruf("?via=lead");
 
     expect(response.status).toBe(302);
     const location = new URL(response.headers.get("location")!);
-    expect(location.pathname).toBe("/gespraech");
-    expect(location.searchParams.get("von")).toBe("profile");
+    expect(location.pathname).toBe("/chat");
     expect(location.searchParams.get("profil")).toMatch(/^[0-9a-f-]{36}$/u);
     expect(mocks.destination).not.toHaveBeenCalled();
     expect(mocks.event).not.toHaveBeenCalled();
@@ -128,7 +130,7 @@ describe("GET /api/freelancers/[id]/book im Vermittlungsmodell", () => {
 
     const response = await aufruf();
 
-    expect(mocks.allowed).not.toHaveBeenCalled();
+    expect(mocks.allowed).toHaveBeenCalled();
     expect(response.headers.get("location")).toBe("https://calendly.com/beispiel");
   });
 });

@@ -53,9 +53,9 @@ describe("data flows page", () => {
     expect(readFileSync("components/LegalFooter.tsx", "utf8")).toContain('<Link href="/datenwege">Datenwege</Link>');
     expect(readFileSync("components/marketing/FreelancerLanding.tsx", "utf8")).toContain("/datenwege");
     const pricing = readFileSync("app/(marketing)/preise/page.tsx", "utf8");
-    expect(pricing).toContain('href: "/datenwege"');
+    expect(pricing).toContain('href="/datenwege"');
     expect(pricing).not.toContain(`title: "Hosting und Datenbank in der EU"`);
-    expect(pricing).toContain(`title: "Datenbank in der EU"`);
+    expect(pricing).toContain("Datenwege ansehen");
     expect(INDEXABLE_PATHS).toContain("/datenwege");
   });
 });

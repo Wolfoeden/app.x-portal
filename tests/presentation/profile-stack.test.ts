@@ -134,7 +134,7 @@ describe("collapsed profiles", () => {
   it("keeps the meeting and Merken reachable while collapsed", () => {
     const markup = render(previewProfiles);
 
-    expect(markup).toContain("Erstgespräch vereinbaren");
+    expect(markup).toContain("Freelancer anfragen");
     expect(markup).toContain("Zur Merkliste");
     // CV und weitere Kontaktwege gehoeren zum vollstaendigen Profil.
     expect(markup).not.toContain("Kontaktwege anzeigen");

@@ -35,27 +35,19 @@ describe("the process video", () => {
     expect(html).toContain('aria-current="step"');
   });
 
-  it("sits in the landing section „Einfügen. Buchen.“ with the three real steps", () => {
+  it("explains recruiting without promising immediate booking", () => {
     const html = renderToStaticMarkup(createElement(FreelancerLanding));
-    const section = html.slice(html.indexOf('id="ablauf"'), html.indexOf('id="begruendung"'));
-    expect(section).toContain("Einfügen. Buchen.");
-    expect(section).toContain("/videos/ablauf.webm");
-    for (const title of ["Projekttext kopieren", "Bei XPORTAL einfügen", "Erstgespräch buchen"]) {
-      expect(section).toContain(title);
-    }
+    for (const title of ["Projekttext einfügen", "Belege und Lücken sehen", "Auswahl sichern"]) expect(html).toContain(title);
+    expect(html).toContain("Verfügbarkeit nicht bestätigt");
+    expect(html).not.toContain("Einfügen. Buchen.");
   });
-});
 
-describe("role shortcuts shared by chat and landing page", () => {
-  it("opens each role on the landing page as a chat entry", () => {
-    const html = renderToStaticMarkup(createElement(FreelancerLanding));
+  it("keeps role examples as contextual chat entries", () => {
     for (const example of EXAMPLE_BRIEFS) {
-      expect(html).toContain(`href="${exampleBriefPath(example.key)}"`);
+      const link = new URL(exampleBriefPath(example.key), "https://x-portal.eu");
+      expect(link.pathname).toBe("/chat");
+      expect(link.searchParams.get("beispiel")).toBe(example.key);
     }
-    // SAP stays reachable through the own text, but is not offered as a role
-    // until the pool carries it: four active profiles, one recently updated.
-    expect(EXAMPLE_BRIEFS.map((example) => example.label).join(" ")).not.toMatch(/SAP|DevOps|Data/u);
-    expect(html).not.toContain("SAP &amp; Integration");
   });
 
   it("offers at most three concrete roles instead of broad themes", () => {

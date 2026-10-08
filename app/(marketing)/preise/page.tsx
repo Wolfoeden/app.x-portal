@@ -6,7 +6,7 @@ import { actionClass } from "@/components/ui/actions";
 import { CREDIT_PRICES } from "@/lib/ai/credit-policy";
 import { PUBLIC_PRICING_PLANS, TRIAL_CREDITS, TRIAL_DAYS } from "@/lib/billing/plans";
 import { BUSINESS_ONLY_NOTICE } from "@/lib/legal/policy";
-import { MARKETING_PAGE, pageMetadata } from "@/lib/seo";
+import { MARKETING_PAGE, MARKETING_PAGES, pageMetadata } from "@/lib/seo";
 import { breadcrumbStructuredData } from "@/lib/structured-data";
 import { PricingContext } from "./PricingContext";
 import styles from "./pricing.module.css";
@@ -29,5 +29,6 @@ export default function PricingPage() {
     <section className={styles.actionSection} aria-labelledby="actions-title"><div className={styles.sectionIntro}><div><p className={styles.eyebrow}>Kontingent verstehen</p><h2 id="actions-title">Was verbraucht Credits?</h2></div><p>Die Anwendung nennt den Verbrauch vor einer Aktion. Fehlgeschlagene KI-Läufe werden nicht belastet. Abgeschlossene Recherche ohne passende Treffer bleibt ein verbrauchter Lauf.</p></div><div className={styles.actionGrid}>{Object.values(CREDIT_PRICES).map((price) => <article key={price.label}><p>{price.label}</p><strong>{price.credits} Credits</strong></article>)}</div></section>
     <section className={styles.faq}><div><p className={styles.eyebrow}>Abrechnung und Zugang</p><h2>Vor dem Start klar.</h2></div><Questions items={questions} /></section>
     <section className={styles.finalCta}><div><h2>Am nächsten Mandat ausprobieren.</h2><p>{TRIAL_DAYS} Tage · {TRIAL_CREDITS} Credits insgesamt · Karte erforderlich · anschließend gewählter Monatstarif.</p></div><a href="#tarife" className={actionClass("primary")}>Tarif wählen</a></section>
+    <nav aria-label="Weiterlesen"><Link href="/datenwege">Datenwege ansehen</Link>{MARKETING_PAGES.filter(page => page.path !== MARKETING_PAGE.pricing.path).map(page => <Link key={page.path} href={page.path}>{page.label}</Link>)}</nav>
   </main>;
 }

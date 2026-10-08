@@ -22,24 +22,24 @@ function dialog(initialMode: "register" | "login", checkoutPlan: "basic" | null 
   );
 }
 
-// Audit F03: Wer als Gast „Basic buchen“ klickt, sieht Tarif, Preis,
+// Audit F03: Wer als Gast „Basic testen“ klickt, sieht Tarif, Preis,
 // Laufzeit und den nächsten Schritt, in beiden Anmeldewegen.
 describe("booking a plan without an account", () => {
   it("shows plan, net price, credits, renewal and the next step when creating an account", () => {
     const markup = dialog("register");
-    expect(markup).toContain("Konto anlegen und Basic buchen");
+    expect(markup).toContain("Konto anlegen und Basic testen");
     expect(markup).toMatch(/Basic · 9\s€ netto pro Monat/u);
-    expect(markup).toContain(`${CREDIT_PLANS.basic.monthlyCredits} Credits pro Monat`);
-    expect(markup).toContain("verlängert sich jeweils um einen Monat");
-    expect(markup).toContain("Kündbar zum Ende des laufenden Monats");
-    expect(markup).toContain("Zuzüglich Umsatzsteuer");
-    expect(markup).toContain("direkt zur Zahlung bei Stripe");
+    expect(markup).toContain(`${CREDIT_PLANS.basic.monthlyCredits} Credits je bestätigter bezahlter Periode`);
+    expect(markup).toContain("Danach automatisch 9 € netto im Monat");
+    expect(markup).toContain("monatlich zum Periodenende kündbar");
+    expect(markup).toContain("zzgl. USt.");
+    expect(markup).toContain("Karte bei Stripe");
     expect(markup).toContain('id="register-name"');
   });
 
   it("shows the same plan when signing in to an existing account", () => {
     const markup = dialog("login");
-    expect(markup).toContain("Anmelden und Basic buchen");
+    expect(markup).toContain("Anmelden und Basic testen");
     expect(markup).toMatch(/Basic · 9\s€ netto pro Monat/u);
     expect(markup).not.toContain('id="register-name"');
   });
@@ -55,7 +55,7 @@ describe("booking a plan without an account", () => {
     try {
       process.env.NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED = "true";
       expect(checkoutSummary("basic").points.at(-1)).toBe(
-        "Ein Vermittlungshonorar bei einer Beauftragung über XPORTAL ist davon getrennt.",
+        "Neue Kontaktanfragen und Beauftragungen sind provisionsfrei. Sie bezahlen die Software-Nutzung.",
       );
       process.env.NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED = "false";
       expect(checkoutSummary("basic").points.join(" ")).not.toContain("Vermittlungshonorar");
