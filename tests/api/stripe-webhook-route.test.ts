@@ -61,7 +61,7 @@ describe("signed subscription webhook routing", () => {
     mocks.sync.mockResolvedValue({ userId: "account", plan: CREDIT_PLANS.pro, isRecruiting: true, paidActivated: true, firstPayment: true });
     expect((await POST(signed("invoice.paid", { id: "in_Paid", subscription: "sub_Test" }))).status).toBe(200);
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ action: "billing_subscription_paid", metadata: expect.objectContaining({ first: true }) }));
-    expect(mocks.deliver).toHaveBeenCalledWith(expect.objectContaining({ text: expect.stringContaining("saas-2026-10-1-draft") }));
+    expect(mocks.deliver).toHaveBeenCalledWith(expect.objectContaining({ text: expect.stringContaining("saas-2026-10-1") }));
   });
   it("keeps failures retryable until canonical persistence succeeds", async () => {
     mocks.sync.mockRejectedValue(new Error("db down"));

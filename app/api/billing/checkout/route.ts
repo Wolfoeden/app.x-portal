@@ -2,12 +2,20 @@ import { NextResponse } from "next/server";
 
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { recordCheckoutStarted } from "@/lib/billing/funnel";
+import { StripeRequestError } from "@/lib/billing/stripe-api";
 import { BillingError, checkoutPlan, startSubscriptionCheckout } from "@/lib/billing/subscription";
 import { assertSameOrigin, readJsonWithLimit } from "@/lib/security/request";
 import { SITE_URL } from "@/lib/seo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/** Fehlercode für das Protokoll; Stripe-Meldungen bleiben draußen. */
+function checkoutFailureReason(error: unknown): string {
+  if (error instanceof BillingError) return error.code;
+  if (error instanceof StripeRequestError) return `stripe_${error.status}_${error.code ?? "error"}`.slice(0, 80);
+  return "unexpected";
+}
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -19,8 +27,10 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/preise?billing=invalid-plan", redirectBase), 303);
   }
 
+  let userId: string | null = null;
   try {
     const user = await requireCurrentUser();
+    userId = user.id;
     if (user.isAnonymous) {
       await recordCheckoutStarted({ userId: user.id, plan, result: "login_required" });
       return NextResponse.redirect(
@@ -45,6 +55,7 @@ export async function GET(request: Request) {
       );
     }
     const code = error instanceof BillingError ? error.code : "unavailable";
+    await recordCheckoutStarted({ userId, plan, result: "unavailable", reason: checkoutFailureReason(error) });
     return NextResponse.redirect(
       new URL(`/konto?billing=${encodeURIComponent(code)}`, redirectBase),
       303,

@@ -26,14 +26,16 @@ export async function recordCheckoutStarted(input: {
   userId: string | null;
   plan: string;
   result: CheckoutResult;
+  /** Bei „unavailable“: Fehlercode, nie eine Meldung (Stripe nennt darin Teile des Schlüssels). */
+  reason?: string;
 }): Promise<void> {
   try {
     await writeAuditEvent({
       actorUserId: input.userId,
       action: BILLING_FUNNEL_ACTIONS.checkoutStarted,
       targetType: "billing_checkout",
-      outcome: "success",
-      metadata: { plan: input.plan, result: input.result },
+      outcome: input.result === "unavailable" ? "failed" : "success",
+      metadata: { plan: input.plan, result: input.result, ...(input.reason ? { reason: input.reason } : {}) },
     });
   } catch {
     logEvent("billing_funnel_record_failed", { step: "checkout_started" });

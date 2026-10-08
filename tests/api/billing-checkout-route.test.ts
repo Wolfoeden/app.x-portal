@@ -60,6 +60,26 @@ describe("canonical pricing checkout route", () => {
     ]);
   });
 
+  it("explains a Stripe failure on the account page and logs only its code", async () => {
+    const { StripeRequestError } = await import("@/lib/billing/stripe-api");
+    mocks.startCheckout.mockRejectedValue(new StripeRequestError(403, null, "The provided key 'rk_live_***' does not have access"));
+
+    const response = await GET(
+      new Request("https://x-portal.eu/api/billing/checkout?plan=basic"),
+    );
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("https://x-portal.eu/konto?billing=unavailable");
+    expect(recordedCheckout()).toEqual([
+      {
+        actorUserId: accountId,
+        action: "billing_checkout_started",
+        metadata: { plan: "basic", result: "unavailable", reason: "stripe_403_error" },
+      },
+    ]);
+    expect(JSON.stringify(mocks.writeAuditEvent.mock.calls)).not.toContain("rk_live");
+  });
+
   // Der Messpunkt darf den Weg zu Stripe nie aufhalten.
   it("still sends the account to Stripe when the measurement cannot be written", async () => {
     mocks.writeAuditEvent.mockRejectedValue(new Error("audit down"));
