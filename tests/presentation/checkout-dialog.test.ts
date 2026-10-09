@@ -8,12 +8,13 @@ import { AuthDialog } from "@/components/chat/dialogs";
 
 const noop = () => undefined;
 
-function dialog(initialMode: "register" | "login", checkoutPlan: "basic" | null = "basic") {
+function dialog(initialMode: "register" | "login", checkoutPlan: "basic" | null = "basic", voucher = false) {
   return renderToStaticMarkup(
     createElement(AuthDialog, {
       initialMode,
       checkout: checkoutPlan ? checkoutDialogCopy(checkoutPlan) : null,
       destination: checkoutPlan ? `/anmelden?checkout=${checkoutPlan}` : "/chat",
+      voucher: voucher ? { value: "", onChange: noop } : undefined,
       onClose: noop,
       onAuthenticated: noop,
       showToast: noop,
@@ -39,6 +40,13 @@ describe("booking a plan without an account", () => {
     expect(markup).toContain("Basic kostenlos testen");
     expect(markup).toMatch(/Basic · 9\s€ netto pro Monat/u);
     expect(markup).not.toContain('id="register-name"');
+  });
+
+  it("offers the optional cardless voucher during checkout registration", () => {
+    const markup = dialog("register", "basic", true);
+    expect(markup).toContain("Gutscheincode");
+    expect(markup).toContain("14 Tage und 90 Credits ohne Karte");
+    expect(markup).not.toContain("XPORTAL2026");
   });
 
   it("keeps the ordinary dialog without a plan", () => {

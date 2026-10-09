@@ -135,6 +135,7 @@ export function AuthDialog({
   profileName,
   projectTitle,
   destination = "/chat",
+  voucher,
   audience = "client",
   onClose,
   onAuthenticated,
@@ -147,6 +148,7 @@ export function AuthDialog({
   profileName?: string;
   projectTitle?: string;
   destination?: string;
+  voucher?: { value: string; onChange: (value: string) => void };
   /** `freelancer`: Registrierung für ein Profil, nicht für eine Anfrage. */
   audience?: AuthAudience;
   onClose: () => void;
@@ -304,7 +306,24 @@ export function AuthDialog({
         {plan && (mode === "login" || mode === "register") ? (
           <div className="auth-profile-context auth-plan-summary">
             <strong>{plan.label} · {plan.price}</strong>
-            <span>{plan.points[0]}</span>
+            <span>{voucher?.value.trim()
+              ? "14 Tage kostenlos · 90 Credits · mit Gutschein ohne Karte."
+              : plan.points[0]}</span>
+          </div>
+        ) : null}
+        {voucher && (mode === "login" || mode === "register") ? (
+          <div className="voucher-entry">
+            <label htmlFor="checkout-voucher">Gutscheincode <span>optional</span></label>
+            <input
+              id="checkout-voucher"
+              value={voucher.value}
+              onChange={(event) => voucher.onChange(event.target.value.toUpperCase())}
+              autoComplete="off"
+              inputMode="text"
+              maxLength={64}
+              placeholder="Code eingeben"
+            />
+            <p>Ein gültiger Code aktiviert 14 Tage und 90 Credits ohne Karte.</p>
           </div>
         ) : null}
         {profileName && (intent === "book_profile" || intent === "contact_profile") ? (
