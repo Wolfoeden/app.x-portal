@@ -49,9 +49,10 @@ describe("booking a plan without an account", () => {
     expect(markup).not.toContain("XPORTAL2026");
   });
 
-  it("keeps the ordinary dialog without a plan", () => {
-    const markup = dialog("login", null);
+  it("offers the voucher on the ordinary header login too", () => {
+    const markup = dialog("login", null, true);
     expect(markup).toContain("Anmelden und direkt fortfahren");
+    expect(markup).toContain("Gutscheincode");
     expect(markup).not.toContain("netto pro Monat");
   });
 
@@ -73,6 +74,8 @@ describe("booking a plan without an account", () => {
     const page = readFileSync("app/anmelden/page.tsx", "utf8");
     expect(source).toContain("checkoutDialogCopy(plan)");
     expect(source).toContain("/api/billing/checkout?plan=${plan}");
+    expect(source).toContain('plan: plan ?? "basic"');
+    expect(source).toContain('const loginPath = plan ? `/anmelden?checkout=${plan}` : "/anmelden"');
     expect(source).toContain('plan ? "register" : "login"');
     expect(source).toContain('plan ? `/api/billing/checkout?plan=${plan}` : "/chat"');
     expect(source).not.toContain("ChatWorkspace");
