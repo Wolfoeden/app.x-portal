@@ -51,7 +51,8 @@ export function CheckoutAccess({
   const [redeeming, setRedeeming] = useState(false);
 
   const redeemOrContinue = useCallback(async (code: string) => {
-    if (!plan || !code.trim()) {
+    const normalizedCode = code.trim();
+    if (!normalizedCode) {
       window.location.replace(plan ? `/api/billing/checkout?plan=${plan}` : "/chat");
       return;
     }
@@ -62,7 +63,7 @@ export function CheckoutAccess({
       const response = await fetch("/api/billing/voucher", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: code.trim(), plan }),
+        body: JSON.stringify({ code: normalizedCode, plan: plan ?? "basic" }),
       });
       const payload = await response.json().catch(() => null) as VoucherResponse | null;
       if (response.ok && payload?.accepted) {
@@ -104,9 +105,10 @@ export function CheckoutAccess({
     void redeemOrContinue(voucherCode);
   };
 
-  const destination = plan
-    ? `/anmelden?checkout=${plan}${voucherCode.trim() ? `&voucher=${encodeURIComponent(voucherCode.trim())}` : ""}`
-    : "/chat";
+  const loginPath = plan ? `/anmelden?checkout=${plan}` : "/anmelden";
+  const destination = voucherCode.trim()
+    ? `${loginPath}${plan ? "&" : "?"}voucher=${encodeURIComponent(voucherCode.trim())}`
+    : loginPath;
 
   return (
     <main className={styles.shell} aria-busy={!ready}>
@@ -135,7 +137,7 @@ export function CheckoutAccess({
           initialMode={plan ? "register" : "login"}
           checkout={plan ? checkoutDialogCopy(plan) : undefined}
           destination={destination}
-          voucher={plan ? { value: voucherCode, onChange: setVoucherCode } : undefined}
+          voucher={{ value: voucherCode, onChange: setVoucherCode }}
           onClose={() => router.push(plan ? "/preise#tarife" : "/freelancer-finden")}
           onAuthenticated={continueAfterLogin}
           showToast={(message) => setNotice(message)}
