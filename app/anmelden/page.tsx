@@ -10,8 +10,12 @@ export const metadata: Metadata = {
 export default async function CheckoutLoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ checkout?: string }>;
+  searchParams: Promise<{ checkout?: string; voucher?: string }>;
 }) {
-  const plan = checkoutPlanFrom((await searchParams).checkout ?? null);
-  return <CheckoutAccess plan={plan} />;
+  const parameters = await searchParams;
+  const plan = checkoutPlanFrom(parameters.checkout ?? null);
+  const voucher = typeof parameters.voucher === "string"
+    ? parameters.voucher.slice(0, 64)
+    : "";
+  return <CheckoutAccess plan={plan} initialVoucher={voucher} />;
 }

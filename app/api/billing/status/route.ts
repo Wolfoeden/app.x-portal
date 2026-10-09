@@ -14,14 +14,14 @@ export async function GET() {
     const [access, result] = await Promise.all([
       getBillingEntitlement(user.id),
       createAdminSupabaseClient().from("user_ai_credit_accounts")
-        .select("stripe_plan_id,stripe_trial_end,stripe_paid_through,stripe_first_paid_at,stripe_cancel_requested_at")
+        .select("stripe_plan_id,stripe_trial_end,voucher_trial_end,stripe_paid_through,stripe_first_paid_at,stripe_cancel_requested_at")
         .eq("user_id", user.id).maybeSingle(),
     ]);
     if (result.error) throw result.error;
-    const row = result.data as { stripe_plan_id?: string; stripe_trial_end?: string; stripe_paid_through?: string; stripe_first_paid_at?: string; stripe_cancel_requested_at?: string } | null;
+    const row = result.data as { stripe_plan_id?: string; stripe_trial_end?: string; voucher_trial_end?: string; stripe_paid_through?: string; stripe_first_paid_at?: string; stripe_cancel_requested_at?: string } | null;
     return NextResponse.json({
       planId: credits.planId, selectedPlanId: row?.stripe_plan_id ?? null,
-      subscriptionStatus: credits.subscriptionStatus, trialEnd: row?.stripe_trial_end ?? null,
+      subscriptionStatus: credits.subscriptionStatus, trialEnd: row?.stripe_trial_end ?? row?.voucher_trial_end ?? null,
       periodEnd: credits.periodEnd, cancelAtPeriodEnd: credits.cancelAtPeriodEnd,
       latestInvoiceStatus: credits.latestInvoiceStatus, paidThrough: row?.stripe_paid_through ?? null,
       firstPaidAt: row?.stripe_first_paid_at ?? null, access,
