@@ -63,9 +63,9 @@ describe("sign-up dialog for freelancers", () => {
   });
 });
 
-// Oktober 2026: LinkedIn und GitHub als Anmeldewege, nur für Freelancer und
-// nur, wenn der Anbieter eingerichtet ist (Schalter in netlify.toml).
-describe("LinkedIn and GitHub sign-in for freelancers", () => {
+// Oktober 2026: LinkedIn und GitHub als Anmeldewege für beide Zielgruppen,
+// nur wenn der Anbieter eingerichtet ist (Schalter in netlify.toml).
+describe("LinkedIn and GitHub sign-in", () => {
   async function render(audience: "client" | "freelancer", enabled: boolean) {
     vi.resetModules();
     vi.stubEnv("NEXT_PUBLIC_AUTH_LINKEDIN_ENABLED", enabled ? "true" : "false");
@@ -85,15 +85,16 @@ describe("LinkedIn and GitHub sign-in for freelancers", () => {
     return markup;
   }
 
-  it("offers both buttons to freelancers when switched on", async () => {
-    const markup = await render("freelancer", true);
-    expect(markup).toContain("Mit LinkedIn fortfahren");
-    expect(markup).toContain("Mit GitHub fortfahren");
-    expect(markup).toContain("erst nach Ihrem Klick geöffnet");
+  it("offers both buttons to clients and freelancers when switched on", async () => {
+    for (const markup of [await render("client", true), await render("freelancer", true)]) {
+      expect(markup).toContain("Mit LinkedIn fortfahren");
+      expect(markup).toContain("Mit GitHub fortfahren");
+      expect(markup).toContain("erst nach Ihrem Klick geöffnet");
+    }
   });
 
-  it("hides them from clients and while switched off", async () => {
-    for (const markup of [await render("client", true), await render("freelancer", false)]) {
+  it("hides them while switched off", async () => {
+    for (const markup of [await render("client", false), await render("freelancer", false)]) {
       expect(markup).not.toContain("Mit LinkedIn fortfahren");
       expect(markup).not.toContain("Mit GitHub fortfahren");
     }

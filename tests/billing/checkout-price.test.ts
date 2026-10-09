@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 import { VERIFIED_PRICE_IDS } from "@/lib/billing/payment-links";
@@ -23,5 +24,11 @@ describe("price for a new recruiting checkout", () => {
     vi.stubEnv("STRIPE_BUSINESS_PRICE_ID", "");
     expect(() => stripePriceForPlan("business")).toThrow(BillingError);
     expect(() => stripePriceForPlan("business")).toThrow("price_not_configured");
+  });
+
+  it("returns from Stripe directly to chat and lets Stripe choose configured payment methods", () => {
+    const source = readFileSync(new URL("../../lib/billing/subscription.ts", import.meta.url), "utf8");
+    expect(source).toContain('success_url: `${origin}/chat?billing=success`');
+    expect(source).not.toContain("payment_method_types:");
   });
 });

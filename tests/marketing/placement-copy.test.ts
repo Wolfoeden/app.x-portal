@@ -26,7 +26,7 @@ describe("recruiting SaaS commercial contract", () => {
     const html = pricing();
     expect(html).toContain('id="tarife"');
     for (const plan of PUBLIC_PRICING_PLANS.filter(p => p.billingModel === "fixed_monthly")) {
-      expect(html).toContain(`/chat?checkout=${plan.id}`);
+      expect(html).toContain(`/anmelden?checkout=${plan.id}`);
       expect(html).toContain(`${plan.euro} €`);
       expect(html).toContain(plan.label);
     }
@@ -36,7 +36,7 @@ describe("recruiting SaaS commercial contract", () => {
   it("addresses recruiters with the established product profile visual", () => {
     const html = landing();
     expect(html.match(/<h1[\s>]/gu)).toHaveLength(1);
-    for (const phrase of ["Kundenanfrage rein", "Projektbeschreibung", "Amelie D.", "KI-Entwicklerin", "Profilbeleg", "Offener Punkt"]) expect(html).toContain(phrase);
+    for (const phrase of ["Kundenanfrage rein", "Projektbeschreibung", "Roman D.", "Senior Blockchain-Spezialist", "Profilbeleg", "Offener Punkt"]) expect(html).toContain(phrase);
     expect(html).not.toContain("Freelancer finden für Recruiter und IT-Personaldienstleister");
     expect(html).not.toContain("Nächster Schritt");
     expect(html).not.toMatch(/frei erfunden|Beispielprofil A/u);

@@ -1783,6 +1783,28 @@ export function ChatWorkspace({
         const view = await loadWorkspace();
         if (!alive) return;
         const searchParams = new URLSearchParams(window.location.search);
+        if (searchParams.get("billing") === "success") {
+          showToast("Stripe ist abgeschlossen. Ihre Testphase wird jetzt aktiviert.", "neutral");
+          searchParams.delete("billing");
+          window.history.replaceState(
+            {},
+            "",
+            `${window.location.pathname}${searchParams.size ? `?${searchParams.toString()}` : ""}${window.location.hash}`,
+          );
+          void fetch(appPath("/api/billing/reconcile"), {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json" },
+            body: "{}",
+          }).then(() => fetch(appPath("/api/billing/status"), {
+            credentials: "same-origin",
+            cache: "no-store",
+          })).then(async (response) => {
+            if (!response.ok) return;
+            const billing = await response.json();
+            if (alive) setRecruitingAccess(billing.access?.canUseRecruiting === true);
+          }).catch(() => undefined);
+        }
         const requestedCheckout = checkoutPlanFrom(searchParams.get("checkout"));
         if (searchParams.get("anmelden") === "1" && view.anonymous) {
           setAuthInitialMode("login");

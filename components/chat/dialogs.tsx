@@ -168,10 +168,8 @@ export function AuthDialog({
   const [busy, setBusy] = useState<OauthProviderName | "email" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const freelancer = audience === "freelancer";
-  // LinkedIn und GitHub tragen beim Profil etwas bei (Name, Foto,
-  // Repositorys); für Kunden wären sie nur zwei weitere Knöpfe.
-  const linkedin = freelancer && LINKEDIN_AUTH_ENABLED;
-  const github = freelancer && GITHUB_AUTH_ENABLED;
+  const linkedin = LINKEDIN_AUTH_ENABLED;
+  const github = GITHUB_AUTH_ENABLED;
   const providerNames = [
     linkedin ? "LinkedIn" : null,
     github ? "GitHub" : null,
@@ -274,7 +272,7 @@ export function AuthDialog({
 
   return (
     <Modal titleId="auth-title" onClose={onClose}>
-      <div className="auth-dialog">
+      <div className={`auth-dialog${checkout ? " is-checkout-auth" : ""}`}>
         <span className="dialog-eyebrow">{intentCopy.eyebrow}</span>
         <h2 id="auth-title">
           {mode === "set-password"
@@ -289,8 +287,8 @@ export function AuthDialog({
                     ? FREELANCER_AUTH_COPY.loginTitle
                     : checkout?.loginTitle ?? "Anmelden und direkt fortfahren"}
         </h2>
-        <p>
-          {mode === "set-password"
+        {checkout && (mode === "login" || mode === "register") ? null : (
+          <p>{mode === "set-password"
             ? "Legen Sie jetzt ein neues Passwort für Ihr bestätigtes Konto fest."
             : mode === "recover"
               ? freelancer
@@ -300,12 +298,12 @@ export function AuthDialog({
                 ? freelancer
                   ? FREELANCER_AUTH_COPY.linkBody
                   : "Wir senden einen Anmeldelink an die Adresse Ihres Kontos. Ihre aktuelle Anfrage bleibt dabei erhalten."
-                : intentCopy.body}
-        </p>
+                : intentCopy.body}</p>
+        )}
         {plan && (mode === "login" || mode === "register") ? (
           <div className="auth-profile-context auth-plan-summary">
             <strong>{plan.label} · {plan.price}</strong>
-            <ul>{plan.points.map((point) => <li key={point}>{point}</li>)}</ul>
+            <span>{plan.points[0]}</span>
           </div>
         ) : null}
         {profileName && (intent === "book_profile" || intent === "contact_profile") ? (
@@ -316,14 +314,14 @@ export function AuthDialog({
             {GOOGLE_AUTH_ENABLED || MICROSOFT_AUTH_ENABLED || linkedin || github ? (
               <>
                 <div className="provider-buttons">
+                  {GOOGLE_AUTH_ENABLED ? (
+                    <button type="button" onClick={() => void connectProvider("google")} disabled={Boolean(busy)}><span className="provider-letter" aria-hidden="true">G</span>{busy === "google" ? "Wird geöffnet …" : checkout ? "Google" : "Mit Google fortfahren"}</button>
+                  ) : null}
                   {linkedin ? (
-                    <button type="button" onClick={() => void connectProvider("linkedin")} disabled={Boolean(busy)}><span className="provider-letter linkedin" aria-hidden="true">in</span>{busy === "linkedin" ? "LinkedIn wird geöffnet …" : "Mit LinkedIn fortfahren"}</button>
+                    <button type="button" onClick={() => void connectProvider("linkedin")} disabled={Boolean(busy)}><span className="provider-letter linkedin" aria-hidden="true">in</span>{busy === "linkedin" ? "Wird geöffnet …" : checkout ? "LinkedIn" : "Mit LinkedIn fortfahren"}</button>
                   ) : null}
                   {github ? (
-                    <button type="button" onClick={() => void connectProvider("github")} disabled={Boolean(busy)}><span className="provider-letter github" aria-hidden="true">GH</span>{busy === "github" ? "GitHub wird geöffnet …" : "Mit GitHub fortfahren"}</button>
-                  ) : null}
-                  {GOOGLE_AUTH_ENABLED ? (
-                    <button type="button" onClick={() => void connectProvider("google")} disabled={Boolean(busy)}><span className="provider-letter" aria-hidden="true">G</span>{busy === "google" ? "Google wird geöffnet …" : "Mit Google fortfahren"}</button>
+                    <button type="button" onClick={() => void connectProvider("github")} disabled={Boolean(busy)}><span className="provider-letter github" aria-hidden="true">GH</span>{busy === "github" ? "Wird geöffnet …" : checkout ? "GitHub" : "Mit GitHub fortfahren"}</button>
                   ) : null}
                   {MICROSOFT_AUTH_ENABLED ? (
                     <button type="button" onClick={() => void connectProvider("microsoft")} disabled={Boolean(busy)}><span className="provider-letter microsoft" aria-hidden="true">M</span>{busy === "microsoft" ? "Microsoft wird geöffnet …" : "Mit Microsoft fortfahren"}</button>
@@ -421,7 +419,7 @@ export function AuthDialog({
                 Zurück zur Anmeldung
               </button>
             ) : null}
-            {mode === "register" ? (
+            {mode === "register" && !checkout ? (
               <p className="auth-passwordless-note">
                 Kein Passwort nötig: Sie bestätigen Ihre Adresse über einen Link
                 per E-Mail. Auch später melden Sie sich einfach per Link an.
@@ -460,7 +458,7 @@ export function AuthDialog({
                 {/* Ein Newsletter über passende Freelancer richtet sich an
                     Auftraggeber. Wer ein Profil anlegt, bekommt ihn nicht
                     angeboten; die Einwilligung bleibt dann „false“. */}
-                {freelancer ? null : (
+                {freelancer || checkout ? null : (
                   <label>
                     <input
                       type="checkbox"
@@ -492,20 +490,24 @@ export function AuthDialog({
             </button>
           </form>
         )}
-        <p className="auth-privacy">
-          {freelancer
-            ? FREELANCER_AUTH_COPY.privacy
-            : "Die Anmeldung ordnet Ihre bisherige Arbeit Ihrem Konto zu und setzt den von Ihnen gewählten Schritt fort."}
-          {providerNames.length
-            ? ` ${providerNames.join(", ").replace(/, ([^,]*)$/u, " und $1")} ${providerNames.length > 1 ? "werden" : "wird"} erst nach Ihrem Klick geöffnet; alternativ steht die E-Mail-Anmeldung zur Verfügung.`
-            : ""}
-          {" "}<a href="/privacy">Datenschutzhinweise</a>
-        </p>
+        {checkout ? null : (
+          <p className="auth-privacy">
+            {freelancer
+              ? FREELANCER_AUTH_COPY.privacy
+              : "Die Anmeldung ordnet Ihre bisherige Arbeit Ihrem Konto zu und setzt den von Ihnen gewählten Schritt fort."}
+            {providerNames.length
+              ? ` ${providerNames.join(", ").replace(/, ([^,]*)$/u, " und $1")} ${providerNames.length > 1 ? "werden" : "wird"} erst nach Ihrem Klick geöffnet; alternativ steht die E-Mail-Anmeldung zur Verfügung.`
+              : ""}
+            {" "}<a href="/privacy">Datenschutzhinweise</a>
+          </p>
+        )}
         {/* Beim Anlegen eines Kontos per E-Mail steht die Zustimmung als
             Häkchen im Formular. Über einen Anbieter kann aber ebenfalls ein
             Konto entstehen, ohne dass dieses Formular je sichtbar war —
             deshalb bleibt der Hinweis für alle anderen Wege stehen. */}
-        {mode !== "register" ? (
+        {checkout ? (
+          <p className="auth-privacy">Mit der Anmeldung akzeptieren Sie die <a href="/terms">AGB</a>. <a href="/privacy">Datenschutz</a></p>
+        ) : mode !== "register" ? (
           <p className="auth-privacy">
             Mit dem Anlegen eines Kontos akzeptieren Sie die{" "}
             <a href="/terms">Allgemeinen Geschäftsbedingungen</a>.

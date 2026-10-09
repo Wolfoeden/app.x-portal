@@ -55,9 +55,9 @@ describe("Paket 4: Konsolidierung und Freigabe", () => {
 
   it("preserves trial plan through registration before server checkout", () => {
     const pricing = source("app/(marketing)/preise/page.tsx");
-    expect(pricing).toContain("/chat?checkout=");
+    expect(pricing).toContain("/anmelden?checkout=");
     expect(pricing).toContain("Karte erforderlich");
-    expect(source("components/ChatWorkspace.tsx")).toContain("/api/billing/checkout?plan=");
+    expect(source("app/anmelden/CheckoutAccess.tsx")).toContain("/api/billing/checkout?plan=");
   });
 
   it("oeffnet vom Profil aus direkt die zentrale Preisseite", () => {
