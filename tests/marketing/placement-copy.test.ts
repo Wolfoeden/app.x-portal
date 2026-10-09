@@ -17,9 +17,10 @@ describe("recruiting SaaS commercial contract", () => {
       expect(html).not.toMatch(/10 % Honorar|Zahlen bei Beauftragung|Kostenlos bis zur Beauftragung/u);
     }
   });
-  it("keeps the primary CTA clean in the hero", () => {
+  it("keeps the product walkthrough as the only hero action", () => {
     const hero = landing().match(/<header\b[\s\S]*?<\/header>/u)?.[0] ?? "";
-    expect(hero).toContain("14 Tage kostenlos testen");
+    expect(hero).toContain("Produktablauf ansehen");
+    expect(hero).not.toContain("14 Tage kostenlos testen");
     for (const phrase of ["Karte bei Stripe erforderlich", "Credits insgesamt", "automatischer Verlängerung", "Vor Trial-Ende kündigen"]) expect(hero).not.toContain(phrase);
   });
   it("offers the three monthly plans at their configured prices", () => {
@@ -36,7 +37,7 @@ describe("recruiting SaaS commercial contract", () => {
   it("addresses recruiters with the established product profile visual", () => {
     const html = landing();
     expect(html.match(/<h1[\s>]/gu)).toHaveLength(1);
-    for (const phrase of ["Kundenanfrage rein", "Projektbeschreibung", "Roman D.", "Senior Blockchain-Spezialist", "Profilbeleg", "Offener Punkt"]) expect(html).toContain(phrase);
+    for (const phrase of ["Keine Bewerbungen", "Nur noch Gespräche", "Projektbeschreibung", "Roman D.", "Senior Blockchain &amp; AI Automation Specialist", "Blockchain &amp; KI-Profil geprüft", "Experte kontaktieren"]) expect(html).toContain(phrase);
     expect(html).not.toContain("Freelancer finden für Recruiter und IT-Personaldienstleister");
     expect(html).not.toContain("Nächster Schritt");
     expect(html).not.toMatch(/frei erfunden|Beispielprofil A/u);

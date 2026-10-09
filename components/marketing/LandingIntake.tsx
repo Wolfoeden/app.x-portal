@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { type FormEvent, type KeyboardEvent, useEffect, useState } from "react";
+import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import { IconArrowUp, IconCheck } from "@/components/icons";
 import { actionClass } from "@/components/ui/actions";
@@ -12,43 +12,103 @@ import { SALES_CONTACT } from "@/lib/sales/sales-contact-model";
 import { RecruitingLink } from "./RecruitingLink";
 import styles from "./landing.module.css";
 
+const DEMO_BRIEF = "ai developer on chain for midnight starting november";
+
 export function LandingIntake({ contactPhotoUrl = null }: { contactPhotoUrl?: string | null }) {
   const [draft, setDraft] = useState("");
+  const [demoDraft, setDemoDraft] = useState("");
+  const [demoSubmitted, setDemoSubmitted] = useState(false);
   const [revealed, setRevealed] = useState(false);
+  const [userEditing, setUserEditing] = useState(false);
+  const userInteracted = useRef(false);
   const profilePhotoUrl = contactPhotoUrl ?? "https://x-portal.eu/api/freelancer/avatar-image/c314d7c4-4428-45ac-ba54-1a657b9f6b62/avatar-84a397c000177b632748345e59baa596.jpg";
+  const visibleDraft = userEditing ? draft : demoDraft;
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const timer = window.setTimeout(() => setRevealed(true), reducedMotion ? 0 : 1_900);
-    return () => window.clearTimeout(timer);
+    const timers: number[] = [];
+    const later = (callback: () => void, delay: number) => {
+      const timer = window.setTimeout(callback, delay);
+      timers.push(timer);
+    };
+
+    if (reducedMotion) {
+      later(() => {
+        setDemoDraft(DEMO_BRIEF);
+        setDemoSubmitted(true);
+        setRevealed(true);
+      }, 0);
+      return () => timers.forEach((timer) => window.clearTimeout(timer));
+    }
+
+    later(() => {
+      let index = 0;
+      const typeNext = () => {
+        if (userInteracted.current) return;
+        index += 1;
+        setDemoDraft(DEMO_BRIEF.slice(0, index));
+        if (index < DEMO_BRIEF.length) {
+          later(typeNext, 24);
+          return;
+        }
+        later(() => {
+          if (userInteracted.current) return;
+          setDemoSubmitted(true);
+          later(() => {
+            if (!userInteracted.current) setRevealed(true);
+          }, 420);
+        }, 180);
+      };
+      typeNext();
+    }, 3_250);
+
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
   }, []);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
-    if (!draft.trim()) {
+    if (!visibleDraft.trim()) {
       event.preventDefault();
       return;
     }
-    saveProjectDraft(draft);
+    saveProjectDraft(visibleDraft);
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      if (draft.trim()) event.currentTarget.form?.requestSubmit();
+      if (visibleDraft.trim()) event.currentTarget.form?.requestSubmit();
     }
+  };
+
+  const beginEditing = () => {
+    userInteracted.current = true;
+    setDraft(visibleDraft);
+    setUserEditing(true);
+    setDemoSubmitted(false);
+    setRevealed(true);
   };
 
   return (
     <header className={`${styles.section} ${styles.hero}`}>
-      <div className={`${styles.frame} ${styles.heroScene}`} data-revealed={revealed ? "true" : "false"}>
+      <div
+        className={`${styles.frame} ${styles.heroScene}`}
+        data-revealed={revealed ? "true" : "false"}
+        data-demo={userEditing ? "false" : "true"}
+        data-demo-submitted={demoSubmitted ? "true" : "false"}
+      >
+        <ul className={styles.sourceLogos} aria-label="Mögliche Quellen einer Projektbeschreibung">
+          <li><Image src="/images/landing/source-freelancermap.png" alt="freelancermap" width={44} height={42} /></li>
+          <li><Image src="/images/landing/source-linkedin.png" alt="LinkedIn" width={42} height={42} /></li>
+          <li><Image src="/images/landing/source-arbeitsagentur.png" alt="Bundesagentur für Arbeit" width={42} height={42} /></li>
+          <li><Image src="/images/landing/source-upwork.png" alt="Upwork" width={42} height={42} /></li>
+        </ul>
         <div className={styles.heroStage}>
           <div className={styles.heroTitleBlock}>
-            <h1>Kundenanfrage rein.<br /><span>Prüfbare Auswahl raus.</span></h1>
+            <h1>Keine Bewerbungen.<br /><span>Nur noch Gespräche.</span></h1>
           </div>
 
           <div className={styles.heroSupport}>
             <div className={styles.actions}>
-              <RecruitingLink href="/preise#tarife" event="trial_cta_clicked" className={actionClass("primary")}>14 Tage kostenlos testen</RecruitingLink>
               <RecruitingLink href="#produktablauf" event="demo_viewed" className={actionClass("secondary", { className: styles.prominentSecondary })}>Produktablauf ansehen</RecruitingLink>
             </div>
           </div>
@@ -58,55 +118,44 @@ export function LandingIntake({ contactPhotoUrl = null }: { contactPhotoUrl?: st
             prefetch={false}
             className={styles.profileLink}
             aria-label="Profil von Roman D. im Chat öffnen"
-            onClick={() => saveProjectDraft(draft)}
+            onClick={() => saveProjectDraft(visibleDraft)}
           >
-            <article className={`profile-card is-primary ${styles.landingProfile}`}>
-              <div className="profile-main">
-                <div className="pband" data-field="ai">
-                  <span className="pband-label">Blockchain &amp; KI</span>
-                  <span className="pband-verified"><IconCheck size={11} /> Profil geprüft</span>
-                </div>
-                <header className="profile-header">
-                  <div className="profile-identity">
-                    <Image className={styles.chatProfileAvatar} src={profilePhotoUrl} alt="Roman Dering" width={54} height={54} priority unoptimized />
-                    <div><h3>Roman D.</h3><p>Senior Blockchain-Spezialist · remote</p></div>
-                  </div>
-                  <span className="match-role">Hauptvorschlag</span>
-                </header>
-                <div className={styles.profileProof}>
-                  <strong><IconCheck size={14} /> Blockchain und KI-Automatisierung</strong>
-                  <span>im Profil belegt</span>
-                </div>
-                <div className={styles.profileOpenPoint}><strong>Offener Punkt</strong><span>Start November wird angefragt</span></div>
-                <p className={styles.profileOpenHint}>Roman D.s Profil im Chat öffnen →</p>
+            <article className={styles.expertCard}>
+              <div className={styles.verifiedBadge}><IconCheck size={14} /> Blockchain &amp; KI-Profil geprüft</div>
+              <div className={styles.expertProfile}>
+                <Image className={styles.chatProfileAvatar} src={profilePhotoUrl} alt="Roman Dering" width={68} height={68} priority unoptimized />
+                <div><h3>Roman D.</h3><p>Senior Blockchain &amp; AI Automation Specialist</p></div>
               </div>
+              <div className={styles.expertSkills} aria-label="Fachgebiete">
+                <span>Blockchain</span><span>KI-Agenten</span><span>Automation</span><span>Web3</span><span>Smart Contracts</span>
+              </div>
+              <p className={styles.expertDescription}>Entwicklung intelligenter Blockchain-, Automatisierungs- und KI-Lösungen für Unternehmen.</p>
+              <div className={styles.expertFacts}>
+                <div><strong>Verfügbarkeit</strong><span>Ab November</span></div>
+                <div><strong>Einsatz</strong><span>Remote</span></div>
+              </div>
+              <span className={styles.expertAction}>Experte kontaktieren →</span>
             </article>
           </Link>
         </div>
 
         <div className={styles.intakeDock} aria-label="Projektbeschreibung in den Chat übernehmen">
-          <ul className={styles.sourceLogos} aria-label="Mögliche Quellen einer Projektbeschreibung">
-            <li><Image src="/images/landing/source-freelancermap.png" alt="freelancermap" width={44} height={42} /></li>
-            <li><Image src="/images/landing/source-linkedin.png" alt="LinkedIn" width={42} height={42} /></li>
-            <li><Image src="/images/landing/source-arbeitsagentur.png" alt="Bundesagentur für Arbeit" width={42} height={42} /></li>
-            <li><Image src="/images/landing/source-upwork.png" alt="Upwork" width={42} height={42} /></li>
-          </ul>
           <form className={`composer ${styles.landingComposer}`} action="/chat" method="get" onSubmit={submit}>
             <label className="sr-only" htmlFor="landing-project-brief">Projektbeschreibung einfügen</label>
             <div className="composer-field">
               <textarea
                 id="landing-project-brief"
-                value={draft}
+                value={visibleDraft}
                 onChange={(event) => setDraft(event.target.value)}
-                onFocus={() => setRevealed(true)}
+                onFocus={beginEditing}
                 onKeyDown={handleKeyDown}
                 rows={1}
                 maxLength={12_000}
               />
-              {draft ? null : <span className="composer-placeholder" aria-hidden="true">Projektbeschreibung einfügen …</span>}
+              {visibleDraft ? null : <span className="composer-placeholder" aria-hidden="true">Projektbeschreibung einfügen …</span>}
             </div>
             <div className="composer-bottom">
-              <button className="send-button is-project-match" type="submit" disabled={!draft.trim()} aria-label="Projektbeschreibung im Chat abgleichen">
+              <button className="send-button is-project-match" type="submit" disabled={!visibleDraft.trim()} aria-label="Projektbeschreibung im Chat abgleichen">
                 <span>Projekt abgleichen</span><IconArrowUp size={17} />
               </button>
             </div>

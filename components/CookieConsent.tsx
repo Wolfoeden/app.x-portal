@@ -175,27 +175,17 @@ export function CookieConsent() {
         ) : null}
 
         <div className="cookie-actions">
-          {OPTIONAL_SERVICES_AVAILABLE ? (
-            // Gleich gestaltet: Ablehnen muss so leicht sein wie Zustimmen.
-            <>
-              <button type="button" className="is-choice" onClick={() => saveChoice("essential")}>
-                Optionale ablehnen
-              </button>
-              <button type="button" className="is-choice" onClick={() => saveChoice("all")}>
-                Alle akzeptieren
-              </button>
-            </>
-          ) : (
-            // Eine Schaltfläche, weil es genau eine Möglichkeit gibt. Zwei
-            // gleich wirkende Knöpfe wären eine Scheinwahl.
-            <button
-              type="button"
-              className="is-primary"
-              onClick={() => saveChoice("essential")}
-            >
-              Verstanden
+          {view === "banner" ? (
+            <button type="button" className="is-settings-choice" onClick={() => setView("settings")}>
+              Einwilligung anpassen
             </button>
-          )}
+          ) : null}
+          <button type="button" className="is-decline-choice" onClick={() => saveChoice("essential")}>
+            Ich lehne optionale Cookies ab
+          </button>
+          <button type="button" className="is-accept-choice" onClick={() => saveChoice("all")}>
+            Alle Cookies akzeptieren
+          </button>
         </div>
       </section>
     </div>

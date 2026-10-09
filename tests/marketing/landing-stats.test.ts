@@ -40,7 +40,7 @@ describe("landing page inventory total", () => {
         stats: { profiles: 67, projects: 1213, fields: [{ field: "ai", label: "KI & Agenten", count: 18 }] },
       }),
     );
-    expect(html).toContain(">210</strong><span>Profile online</span>");
+    expect(html).toMatch(/>210<\/strong>\s*<span>Profile online<\/span>/u);
     expect(html).not.toContain("67 freigegebene Profile");
     expect(html).not.toContain("KI &amp; Agenten: 18 Profile");
     expect(html).not.toContain("Projektbeschreibungen analysiert");
@@ -49,7 +49,7 @@ describe("landing page inventory total", () => {
   it("keeps the total and removes the former workflow block", () => {
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     const html = renderToStaticMarkup(createElement(FreelancerLanding));
-    expect(html).toContain(">210</strong><span>Profile online</span>");
+    expect(html).toMatch(/>210<\/strong>\s*<span>Profile online<\/span>/u);
     expect(html).not.toContain("Ein Arbeitsablauf für Ihre Mandate");
     expect(html).not.toContain("Von der Ausschreibung zur nachvollziehbaren Auswahl");
   });

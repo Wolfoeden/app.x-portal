@@ -65,9 +65,10 @@ describe("sign-up dialog for freelancers", () => {
 
 // Oktober 2026: LinkedIn und GitHub als Anmeldewege für beide Zielgruppen,
 // nur wenn der Anbieter eingerichtet ist (Schalter in netlify.toml).
-describe("LinkedIn and GitHub sign-in", () => {
+describe("Google, LinkedIn and GitHub sign-in", () => {
   async function render(audience: "client" | "freelancer", enabled: boolean) {
     vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_AUTH_GOOGLE_ENABLED", enabled ? "true" : "false");
     vi.stubEnv("NEXT_PUBLIC_AUTH_LINKEDIN_ENABLED", enabled ? "true" : "false");
     vi.stubEnv("NEXT_PUBLIC_AUTH_GITHUB_ENABLED", enabled ? "true" : "false");
     const { AuthDialog: Dialog } = await import("@/components/chat/dialogs");
@@ -87,14 +88,19 @@ describe("LinkedIn and GitHub sign-in", () => {
 
   it("offers both buttons to clients and freelancers when switched on", async () => {
     for (const markup of [await render("client", true), await render("freelancer", true)]) {
+      expect(markup).toContain("Mit Google fortfahren");
       expect(markup).toContain("Mit LinkedIn fortfahren");
       expect(markup).toContain("Mit GitHub fortfahren");
+      expect(markup).toContain("%2Fimages%2Fauth%2Fgoogle.png");
+      expect(markup).toContain("%2Fimages%2Fauth%2Flinkedin.png");
+      expect(markup).toContain("%2Fimages%2Fauth%2Fgithub.png");
       expect(markup).toContain("erst nach Ihrem Klick geöffnet");
     }
   });
 
   it("hides them while switched off", async () => {
     for (const markup of [await render("client", false), await render("freelancer", false)]) {
+      expect(markup).not.toContain("Mit Google fortfahren");
       expect(markup).not.toContain("Mit LinkedIn fortfahren");
       expect(markup).not.toContain("Mit GitHub fortfahren");
     }

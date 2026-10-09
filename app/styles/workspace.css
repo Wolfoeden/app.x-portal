@@ -3152,6 +3152,13 @@ a.secondary-action {
   opacity: 0.6;
 }
 
+.provider-logo {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  object-fit: contain;
+}
+
 .auth-dialog.is-checkout-auth { padding: 28px; }
 .auth-dialog.is-checkout-auth .auth-plan-summary { margin: 12px 0 14px; padding: 10px 12px; }
 .auth-dialog.is-checkout-auth .provider-buttons { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -4466,14 +4473,14 @@ a.secondary-action {
 .cookie-layer:not(.is-settings) .cookie-panel h2 { font-size: var(--fs-sm); letter-spacing: -.01em; line-height: 1.3; }
 .cookie-layer:not(.is-settings) .cookie-copy > p:last-child { margin-top: 6px; color: var(--muted); font-size: var(--fs-2xs); line-height: 1.5; }
 .cookie-layer:not(.is-settings) .cookie-copy a { color: var(--ink); }
-.cookie-layer:not(.is-settings) .cookie-actions { justify-content: flex-end; }
-.cookie-layer:not(.is-settings) .cookie-actions button { min-height: 36px; border-radius: var(--radius-sm); }
+.cookie-layer:not(.is-settings) .cookie-actions { flex-direction: column; align-items: stretch; }
+.cookie-layer:not(.is-settings) .cookie-actions button { width: 100%; min-height: 40px; border-radius: var(--radius-sm); }
 .cookie-layer:not(.is-settings) .cookie-actions button.is-primary { border-color: var(--ink); background: var(--ink); color: #fff; -webkit-text-fill-color: #fff; }
-/* Echte Wahl (Werbemessung): Ablehnen und Zustimmen sehen gleich aus und sind
-   gleich groß. Ein hervorgehobenes „Alle akzeptieren“ neben einem blassen
-   „Ablehnen“ lenkt die Entscheidung — das soll die Einwilligung nicht. */
-.cookie-actions button.is-choice { flex: 1 1 0; border-color: white; background: white; color: #090909; -webkit-text-fill-color: #090909; }
-.cookie-layer:not(.is-settings) .cookie-actions button.is-choice { border-color: var(--ink); background: var(--ink); color: #fff; -webkit-text-fill-color: #fff; }
+.cookie-actions button.is-settings-choice { border-color: currentColor; background: transparent; }
+.cookie-actions button.is-decline-choice { border-color: #fff; background: #fff; color: #090909; -webkit-text-fill-color: #090909; }
+.cookie-actions button.is-accept-choice { border-color: var(--xp-brand); background: var(--xp-brand); color: #fff; -webkit-text-fill-color: #fff; font-weight: 700; }
+.cookie-layer:not(.is-settings) .cookie-actions button.is-settings-choice { border-color: var(--ink); background: #fff; color: var(--ink); -webkit-text-fill-color: var(--ink); }
+.cookie-layer:not(.is-settings) .cookie-actions button.is-decline-choice { border-color: var(--ink); background: var(--ink); color: #fff; -webkit-text-fill-color: #fff; }
 @media (max-width: 520px) {
   .cookie-layer:not(.is-settings) { width: 100%; padding: 10px; }
 }
@@ -4572,7 +4579,7 @@ a.secondary-action {
 @media (max-width: 720px) {
   .cookie-layer { padding: 10px; }
   .cookie-panel { grid-template-columns: 1fr; padding: 22px; }
-  .cookie-actions { flex-direction: column-reverse; align-items: stretch; }
+  .cookie-actions { flex-direction: column; align-items: stretch; }
   .cookie-options { grid-template-columns: 1fr; }
 }
 

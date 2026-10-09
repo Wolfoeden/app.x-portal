@@ -40,12 +40,10 @@ export function FreelancerLanding({ contactPhotoUrl = null, caseStudies = publis
       <LandingIntake contactPhotoUrl={contactPhotoUrl} />
       <section className={`${styles.section} ${styles.inventoryStrip}`} aria-label="XPORTAL in Zahlen">
         <div className={`${styles.frame} ${styles.inventoryFrame}`}>
-          <div className={styles.inventoryMetric}><strong>2</strong><span>Entwickler im<br />Familienunternehmen</span></div>
-          <div className={`${styles.inventoryMetric} ${styles.inventoryPrimary}`}><span className={styles.onlineDot} aria-hidden="true" /><strong>210</strong><span>Profile online</span></div>
-          <div className={styles.inventoryMetricGroup}>
-            <div className={styles.inventoryMetric}><strong>51 %</strong><span>Erfolgsquote</span></div>
-            <div className={styles.inventoryMetric}><strong>3 Wochen</strong><span>durchschnittliche<br />Besetzungszeit</span></div>
-          </div>
+          <div className={styles.inventoryMetric}><strong>2</strong>{" "}<span>Entwickler im<br />Familienunternehmen</span></div>
+          <div className={`${styles.inventoryMetric} ${styles.inventoryPrimary}`}><strong>210</strong>{" "}<span>Profile online</span></div>
+          <div className={styles.inventoryMetric}><strong>51 %</strong>{" "}<span>Erfolgsquote</span></div>
+          <div className={styles.inventoryMetric}><strong>3 Wochen</strong>{" "}<span>durchschnittliche<br />Besetzungszeit</span></div>
         </div>
       </section>
       <section id="abgleich" className={styles.section} aria-labelledby="abgleich-title">
@@ -79,7 +77,7 @@ export function FreelancerLanding({ contactPhotoUrl = null, caseStudies = publis
       </section>
       <section className={styles.section} aria-labelledby="preise-title"><div className={styles.frame}>
         <div className={`${styles.splitHead} ${styles.singleHead}`}><h2 id="preise-title">14 Tage am eigenen Mandat testen.</h2></div>
-        <div className={styles.saasPlans}>{plans.map((plan) => <article key={plan.id} className={styles.priceCard}><p className={styles.priceName}>{plan.label}</p><p className={styles.priceValue}><strong>{plan.euro} €</strong><span>netto / Monat nach dem Trial</span></p><p>{plan.monthlyCredits.toLocaleString("de-DE")} Credits je bezahlter Monatsperiode</p><RecruitingLink href={`/anmelden?checkout=${plan.id}`} event="trial_cta_clicked" plan={plan.id} className={actionClass("primary")}>14 Tage kostenlos testen</RecruitingLink><p className={styles.trialDisclosure}>Karte erforderlich · anschließend automatische monatliche Verlängerung · monatlich zum Periodenende kündbar.</p></article>)}</div>
+        <div className={styles.saasPlans}>{plans.map((plan) => <article key={plan.id} className={styles.priceCard}><p className={styles.priceName}>{plan.label}</p><p className={styles.priceValue}><strong>{plan.euro} €</strong><span>netto / Monat nach dem Trial</span></p><p>{plan.monthlyCredits.toLocaleString("de-DE")} Credits je bezahlter Monatsperiode</p><RecruitingLink href={`/anmelden?checkout=${plan.id}`} event="trial_cta_clicked" plan={plan.id} className={actionClass("primary")}>14 Tage kostenlos testen</RecruitingLink></article>)}</div>
         <Link href="/preise" className={styles.textLink}>Tarife und Abrechnung im Detail →</Link>
       </div></section>
       <section id="fragen" className={styles.section}><div className={`${styles.frame} ${styles.faq}`}><div><p className={styles.eyebrow}>Vor dem Start</p><h2>Was Sie wissen sollten.</h2></div><Questions items={faq.map((item) => ({ question: item.question, answer: <p>{item.answer.map((part, index) => typeof part === "string" ? part : <Link key={index} href={part.href}>{part.label}</Link>)}</p> }))} /></div></section>
