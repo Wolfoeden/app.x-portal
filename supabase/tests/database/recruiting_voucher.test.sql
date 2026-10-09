@@ -58,7 +58,8 @@ select is(
 );
 
 update public.user_ai_credit_accounts
-   set voucher_trial_end = now() - interval '1 second',
+   set period_start = now() - interval '15 days',
+       voucher_trial_end = now() - interval '1 second',
        period_end = now() - interval '1 second'
  where user_id = 'a1111111-1111-4111-8111-111111111111';
 
