@@ -9,7 +9,6 @@ import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 const supportedOauthProviders = {
   google: "google",
   microsoft: "azure",
-  // Nur im Freelancer-Zugang (AuthDialog audience="freelancer").
   linkedin: "linkedin_oidc",
   github: "github",
 } as const satisfies Record<string, Provider>;
@@ -19,8 +18,7 @@ export type OauthProviderName = keyof typeof supportedOauthProviders;
 /**
  * Was der Anbieter herausgeben soll, und nicht mehr: bei LinkedIn die
  * OpenID-Angaben (Name, E-Mail, Bild). GitHub bleibt bei der Vorgabe von
- * Supabase (`user:email`); öffentliche Repositorys liest der Import ohne
- * Zugriffsrecht des Nutzers. Keine Nachrichten, keine Kontakte.
+ * Supabase (`user:email`). Keine Nachrichten, keine Kontakte.
  */
 const PROVIDER_SCOPES: Partial<Record<OauthProviderName, string>> = {
   microsoft: "email",

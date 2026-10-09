@@ -14,7 +14,7 @@ NEXT_PUBLIC_SITE_URL = "https://x-portal.eu"
 # Keep this production-only so deploy previews never advertise an OAuth route
 # whose temporary hostname is not explicitly allowlisted.
 NEXT_PUBLIC_AUTH_GOOGLE_ENABLED = "true"
-# LinkedIn (OIDC) und GitHub, nur im Freelancer-Zugang (/freelancer/apply).
+# LinkedIn (OIDC) und GitHub für Auftraggeber und Freelancer.
 # Beide Provider sind in Supabase eingerichtet (Oktober 2026); Einrichtung und
 # Prüfung: docs/freelancer-onboarding-import.md. Geprüft am 05.10.2026:
 # /auth/v1/authorize führt bei beiden auf die Anmeldeseite des Anbieters.

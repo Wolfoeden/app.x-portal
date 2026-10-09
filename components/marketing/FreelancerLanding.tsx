@@ -10,6 +10,7 @@ import { CaseStudies } from "./CaseStudies";
 import { breadcrumbStructuredData, faqStructuredData } from "@/lib/structured-data";
 import { salesCallHref } from "@/lib/sales/sales-call-links";
 import { Questions } from "./MarketingPage";
+import { LandingIntake } from "./LandingIntake";
 import { ProcessVideo } from "./ProcessVideo";
 import { faqAnswerText, landingFaq } from "./landing-faq";
 import { RecruitingLink } from "./RecruitingLink";
@@ -29,62 +30,30 @@ const processSteps = [
   { title: "Freelancer anfragen", text: "Profilbelege und offene Punkte prüfen, Auswahl speichern und den Kontakt bewusst anfragen.", icon: <StepIcon kind="contact" />, startsAt: 8.7 },
 ] as const;
 
-export function FreelancerLanding({ caseStudies = publishedCaseStudies() }: { stats?: LandingStats | null; contactPhotoUrl?: string | null; caseStudies?: readonly CaseStudy[] }) {
+export function FreelancerLanding({ contactPhotoUrl = null, caseStudies = publishedCaseStudies() }: { stats?: LandingStats | null; contactPhotoUrl?: string | null; caseStudies?: readonly CaseStudy[] }) {
   const plans = PUBLIC_PRICING_PLANS.filter((plan) => plan.billingModel === "fixed_monthly");
   const faq = landingFaq();
   return (
     <main id="main-content" className={styles.main} tabIndex={-1}>
       <JsonLd data={breadcrumbStructuredData(MARKETING_PAGE.find)} />
       <JsonLd data={{ "@context": "https://schema.org", "@type": "SoftwareApplication", name: "XPORTAL", applicationCategory: "BusinessApplication", operatingSystem: "Web", description: "Recruiting-Software für nachvollziehbare Freelancer-Auswahl und wiederkehrende Kundenmandate.", offers: plans.map(plan => ({ "@type": "Offer", price: plan.euro, priceCurrency: "EUR", description: `${plan.label}: netto pro Monat nach ${TRIAL_DAYS} Tagen Trial mit Karte, ${TRIAL_CREDITS} Trial-Credits insgesamt.` })) }} />
-      <header className={`${styles.section} ${styles.hero}`}>
-        <div className={`${styles.frame} ${styles.heroGrid}`}>
-          <div className={styles.heroCopy}>
-            <h1>Kundenanfrage rein.<br /><span>Prüfbare Auswahl raus.</span></h1>
-            <p className={styles.lead}>Strukturieren Sie Anforderungen, gleichen Sie Freelancer ab und speichern Sie Ihre Auswahl. Für das nächste Mandat und für die nächste Entscheidung.</p>
-            <div className={styles.actions}>
-              <RecruitingLink href="/preise#tarife" event="trial_cta_clicked" className={actionClass("primary")}>14 Tage kostenlos testen</RecruitingLink>
-              <RecruitingLink href="#produktablauf" event="demo_viewed" className={actionClass("secondary")}>Produktablauf ansehen</RecruitingLink>
-            </div>
-            <p className={styles.softwareNote}>Sie bezahlen die Software. Neue Kontaktanfragen und Beauftragungen sind provisionsfrei.</p>
-          </div>
-          <div className={styles.heroVisual} aria-label="Projektbeschreibung aus einer Plattform einfügen und passendes Profil anzeigen">
-            <div className={styles.glow} aria-hidden="true" />
-            <div className={styles.intakeStage}>
-              <ul className={styles.sourceLogos} aria-label="Mögliche Quellen einer Projektbeschreibung">
-                <li><Image src="/images/landing/source-freelancermap.png" alt="freelancermap" width={44} height={42} /></li>
-                <li><Image src="/images/landing/source-linkedin.png" alt="LinkedIn" width={42} height={42} /></li>
-                <li><Image src="/images/landing/source-arbeitsagentur.png" alt="Bundesagentur für Arbeit" width={42} height={42} /></li>
-                <li><Image src="/images/landing/source-upwork.png" alt="Upwork" width={42} height={42} /></li>
-              </ul>
-              <div className={styles.requestBubble}><span>XPORTAL</span><strong>Projektbeschreibung</strong></div>
-            </div>
-            <div className={`${styles.mockCard} ${styles.profileReveal}`}>
-              <div className={styles.mockBand} aria-hidden="true" />
-              <div className={styles.mockHead}>
-                <Image className={`${styles.mockAvatar} ${styles.mockAvatarImage}`} src="/images/landing/amelie-d.webp" alt="Porträt von Amelie D." width={52} height={52} priority />
-                <div><strong>Amelie D.</strong><span>KI-Entwicklerin · Agenten, RAG, TypeScript · remote</span></div>
-              </div>
-              <p className={styles.mockLabel}>Profilbeleg</p>
-              <ul className={styles.mockEvidence}>
-                <li><span className={styles.ok} aria-hidden="true">✓</span>AI Agents<em>in Projekten belegt</em></li>
-                <li><span className={styles.ok} aria-hidden="true">✓</span>TypeScript<em>im Profil genannt</em></li>
-              </ul>
-              <p className={styles.mockLabel}>Offener Punkt</p>
-              <ul className={styles.mockEvidence}>
-                <li><span className={styles.open} aria-hidden="true">?</span>Start November<em>wird angefragt</em></li>
-              </ul>
-            </div>
+      <LandingIntake contactPhotoUrl={contactPhotoUrl} />
+      <section className={`${styles.section} ${styles.inventoryStrip}`} aria-label="XPORTAL in Zahlen">
+        <div className={`${styles.frame} ${styles.inventoryFrame}`}>
+          <div className={styles.inventoryMetric}><strong>2</strong><span>Entwickler im<br />Familienunternehmen</span></div>
+          <div className={`${styles.inventoryMetric} ${styles.inventoryPrimary}`}><span className={styles.onlineDot} aria-hidden="true" /><strong>210</strong><span>Profile online</span></div>
+          <div className={styles.inventoryMetricGroup}>
+            <div className={styles.inventoryMetric}><strong>51 %</strong><span>Erfolgsquote</span></div>
+            <div className={styles.inventoryMetric}><strong>3 Wochen</strong><span>durchschnittliche<br />Besetzungszeit</span></div>
           </div>
         </div>
-      </header>
-      <section className={`${styles.section} ${styles.inventoryStrip}`} aria-label="Profile online"><div className={`${styles.frame} ${styles.inventoryFrame}`}><span className={styles.onlineDot} aria-hidden="true" /><strong>210</strong><span>Profile online</span></div></section>
+      </section>
       <section id="abgleich" className={styles.section} aria-labelledby="abgleich-title">
         <div className={`${styles.frame} ${styles.quote}`}>
           <div className={styles.quoteText}>
             <p className={styles.eyebrow}>Abgleich</p>
             <h2 id="abgleich-title">Jede Anforderung gegen echte Profilangaben geprüft.</h2>
-            <p>XPORTAL strukturiert die Ausschreibung und gleicht sie mit den vorhandenen Profilen ab. Was belegt ist, sehen Sie mit Beleg. Was unklar ist, bleibt als offener Punkt stehen, statt geraten zu werden.</p>
-            <RecruitingLink href="#produktablauf" event="demo_viewed" className={actionClass("secondary")}>Produktablauf ansehen</RecruitingLink>
+            <RecruitingLink href="#produktablauf" event="demo_viewed" className={actionClass("secondary", { className: styles.prominentSecondary })}>Produktablauf ansehen</RecruitingLink>
           </div>
           <div className={styles.quoteMedia}>
             <Image src="/images/landing/project-match.webp" alt="Eine Projektbeschreibung wird mit einer Auswahl von Freelancer-Profilen verbunden." width={1536} height={1024} sizes="(max-width: 860px) 100vw, 560px" loading="lazy" />
@@ -92,9 +61,8 @@ export function FreelancerLanding({ caseStudies = publishedCaseStudies() }: { st
         </div>
       </section>
       <section id="produktablauf" className={styles.section} aria-labelledby="produktablauf-title"><div className={styles.frame}>
-        <div className={styles.splitHead}>
+        <div className={`${styles.splitHead} ${styles.singleHead}`}>
           <div><p className={styles.eyebrow}>XPORTAL in Aktion</p><h2 id="produktablauf-title">Projekt einfügen. Profil prüfen. Kontakt anfragen.</h2></div>
-          <p>Das Kurzvideo zeigt den bestehenden Ablauf direkt im Produkt: Ausschreibung übernehmen, Anforderungen abgleichen und mit nachvollziehbaren Profilangaben weiterarbeiten.</p>
         </div>
         <div className={styles.videoPanel}><ProcessVideo steps={processSteps} /></div>
       </div></section>
@@ -102,7 +70,6 @@ export function FreelancerLanding({ caseStudies = publishedCaseStudies() }: { st
         <div className={`${styles.frame} ${styles.quote}`}>
           <div className={styles.quoteText}>
             <h2 id="kontakt-title">Passendes Profil gefunden?<br />Direkt ins Gespräch.</h2>
-            <p>Sie fragen den Freelancer über XPORTAL an. Er entscheidet selbst, ob er seine Kontaktdaten freigibt; danach sprechen Sie direkt miteinander. Ohne Provision und ohne Vermittlungsgebühr.</p>
             <RecruitingLink href="/preise#tarife" event="trial_cta_clicked" className={actionClass("primary")}>14 Tage kostenlos testen</RecruitingLink>
           </div>
           <div className={styles.quoteMedia}>
@@ -111,8 +78,8 @@ export function FreelancerLanding({ caseStudies = publishedCaseStudies() }: { st
         </div>
       </section>
       <section className={styles.section} aria-labelledby="preise-title"><div className={styles.frame}>
-        <div className={styles.splitHead}><h2 id="preise-title">14 Tage am eigenen Mandat testen.</h2><p>Einmalig {TRIAL_CREDITS} Credits innerhalb des gewählten Tarifs. Kein zusätzliches Gast- oder Registrierungsbonusguthaben. Verbrauchte Trial-Credits werden nicht aufgefüllt und lösen keine vorzeitige Abbuchung aus.</p></div>
-        <div className={styles.saasPlans}>{plans.map((plan) => <article key={plan.id} className={styles.priceCard}><p className={styles.priceName}>{plan.label}</p><p className={styles.priceValue}><strong>{plan.euro} €</strong><span>netto / Monat nach dem Trial</span></p><p>{plan.monthlyCredits.toLocaleString("de-DE")} Credits je bezahlter Monatsperiode</p><RecruitingLink href={`/chat?checkout=${plan.id}`} event="trial_cta_clicked" plan={plan.id} className={actionClass("primary")}>14 Tage kostenlos testen</RecruitingLink><p className={styles.trialDisclosure}>Karte erforderlich · anschließend automatische monatliche Verlängerung · monatlich zum Periodenende kündbar.</p></article>)}</div>
+        <div className={`${styles.splitHead} ${styles.singleHead}`}><h2 id="preise-title">14 Tage am eigenen Mandat testen.</h2></div>
+        <div className={styles.saasPlans}>{plans.map((plan) => <article key={plan.id} className={styles.priceCard}><p className={styles.priceName}>{plan.label}</p><p className={styles.priceValue}><strong>{plan.euro} €</strong><span>netto / Monat nach dem Trial</span></p><p>{plan.monthlyCredits.toLocaleString("de-DE")} Credits je bezahlter Monatsperiode</p><RecruitingLink href={`/anmelden?checkout=${plan.id}`} event="trial_cta_clicked" plan={plan.id} className={actionClass("primary")}>14 Tage kostenlos testen</RecruitingLink><p className={styles.trialDisclosure}>Karte erforderlich · anschließend automatische monatliche Verlängerung · monatlich zum Periodenende kündbar.</p></article>)}</div>
         <Link href="/preise" className={styles.textLink}>Tarife und Abrechnung im Detail →</Link>
       </div></section>
       <section id="fragen" className={styles.section}><div className={`${styles.frame} ${styles.faq}`}><div><p className={styles.eyebrow}>Vor dem Start</p><h2>Was Sie wissen sollten.</h2></div><Questions items={faq.map((item) => ({ question: item.question, answer: <p>{item.answer.map((part, index) => typeof part === "string" ? part : <Link key={index} href={part.href}>{part.label}</Link>)}</p> }))} /></div></section>

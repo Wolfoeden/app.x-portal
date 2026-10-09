@@ -91,16 +91,17 @@ export async function startSubscriptionCheckout(userId: string, plan: CheckoutPl
     });
     if (saved.error) throw saved.error;
   }
-  // Explicitly card only + always collection: a zero trial invoice must still
-  // collect a card. No automatic_tax switch without configured registrations.
+  // Always collect a payment method: a zero trial invoice must still collect
+  // one. Stripe chooses the eligible methods configured in the Dashboard.
+  // No automatic_tax switch without configured registrations.
   const session = await stripeRequest<Record<string, unknown>>("POST", "/checkout/sessions", {
     mode: "subscription", customer, client_reference_id: userId,
     line_items: [{ price: selectedPrice, quantity: 1 }],
-    payment_method_types: ["card"], payment_method_collection: "always",
+    payment_method_collection: "always",
     billing_address_collection: "required", tax_id_collection: { enabled: true },
     customer_update: { address: "auto", name: "auto" },
     expires_at: Math.floor(Date.parse(attempt.expires_at) / 1_000),
-    success_url: `${origin}/konto?billing=success`, cancel_url: `${origin}/preise?billing=cancelled`,
+    success_url: `${origin}/chat?billing=success`, cancel_url: `${origin}/preise?billing=cancelled`,
     metadata: { xportal_kind: RECRUITING_BILLING_KIND, xportal_user_id: userId, xportal_checkout_key: attempt.request_key, xportal_terms_version: SAAS_TERMS_VERSION },
     subscription_data: {
       ...(attempt.trial_eligible ? { trial_period_days: TRIAL_DAYS, trial_settings: { end_behavior: { missing_payment_method: "cancel" } } } : {}),

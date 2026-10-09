@@ -122,7 +122,7 @@ describe("sidebar and landing page in the placement model", () => {
 
   it("offers a bounded self-service trial", () => {
     const html = renderToStaticMarkup(createElement(FreelancerLanding));
-    for (const text of ["Projektbeschreibung", "Amelie D.", "Profilbeleg", "210", "Profile online", "14 Tage kostenlos testen"]) expect(html).toContain(text);
+    for (const text of ["Projektbeschreibung", "Roman D.", "Profilbeleg", "210", "Profile online", "2", "Familienunternehmen", "51 %", "Erfolgsquote", "3 Wochen", "Besetzungszeit", "14 Tage kostenlos testen"]) expect(html).toContain(text);
     expect(html).not.toContain("Anfrage ohne Konto");
   });
 
