@@ -16,6 +16,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
+import Image from "next/image";
 
 import {
   registerEmailAccount,
@@ -315,13 +316,13 @@ export function AuthDialog({
               <>
                 <div className="provider-buttons">
                   {GOOGLE_AUTH_ENABLED ? (
-                    <button type="button" onClick={() => void connectProvider("google")} disabled={Boolean(busy)}><span className="provider-letter" aria-hidden="true">G</span>{busy === "google" ? "Wird geöffnet …" : checkout ? "Google" : "Mit Google fortfahren"}</button>
+                    <button type="button" onClick={() => void connectProvider("google")} disabled={Boolean(busy)}><Image className="provider-logo" src="/images/auth/google.png" alt="" aria-hidden="true" width={24} height={24} />{busy === "google" ? "Wird geöffnet …" : checkout ? "Google" : "Mit Google fortfahren"}</button>
                   ) : null}
                   {linkedin ? (
-                    <button type="button" onClick={() => void connectProvider("linkedin")} disabled={Boolean(busy)}><span className="provider-letter linkedin" aria-hidden="true">in</span>{busy === "linkedin" ? "Wird geöffnet …" : checkout ? "LinkedIn" : "Mit LinkedIn fortfahren"}</button>
+                    <button type="button" onClick={() => void connectProvider("linkedin")} disabled={Boolean(busy)}><Image className="provider-logo" src="/images/auth/linkedin.png" alt="" aria-hidden="true" width={24} height={24} />{busy === "linkedin" ? "Wird geöffnet …" : checkout ? "LinkedIn" : "Mit LinkedIn fortfahren"}</button>
                   ) : null}
                   {github ? (
-                    <button type="button" onClick={() => void connectProvider("github")} disabled={Boolean(busy)}><span className="provider-letter github" aria-hidden="true">GH</span>{busy === "github" ? "Wird geöffnet …" : checkout ? "GitHub" : "Mit GitHub fortfahren"}</button>
+                    <button type="button" onClick={() => void connectProvider("github")} disabled={Boolean(busy)}><Image className="provider-logo" src="/images/auth/github.png" alt="" aria-hidden="true" width={24} height={24} />{busy === "github" ? "Wird geöffnet …" : checkout ? "GitHub" : "Mit GitHub fortfahren"}</button>
                   ) : null}
                   {MICROSOFT_AUTH_ENABLED ? (
                     <button type="button" onClick={() => void connectProvider("microsoft")} disabled={Boolean(busy)}><span className="provider-letter microsoft" aria-hidden="true">M</span>{busy === "microsoft" ? "Microsoft wird geöffnet …" : "Mit Microsoft fortfahren"}</button>

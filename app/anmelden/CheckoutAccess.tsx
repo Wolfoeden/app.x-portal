@@ -11,7 +11,7 @@ import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 import styles from "./checkout-access.module.css";
 
-export function CheckoutAccess({ plan }: { plan: CheckoutPlanId }) {
+export function CheckoutAccess({ plan }: { plan: CheckoutPlanId | null }) {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -24,7 +24,7 @@ export function CheckoutAccess({ plan }: { plan: CheckoutPlanId }) {
         if (!active) return;
         const claims = result.data?.claims as { sub?: string; is_anonymous?: boolean } | undefined;
         if (claims?.sub && claims.is_anonymous !== true) {
-          window.location.replace(`/api/billing/checkout?plan=${plan}`);
+          window.location.replace(plan ? `/api/billing/checkout?plan=${plan}` : "/chat");
           return;
         }
       } catch {
@@ -38,8 +38,8 @@ export function CheckoutAccess({ plan }: { plan: CheckoutPlanId }) {
     };
   }, [plan]);
 
-  const startCheckout = () => {
-    window.location.replace(`/api/billing/checkout?plan=${plan}`);
+  const continueAfterLogin = () => {
+    window.location.replace(plan ? `/api/billing/checkout?plan=${plan}` : "/chat");
   };
 
   return (
@@ -53,11 +53,11 @@ export function CheckoutAccess({ plan }: { plan: CheckoutPlanId }) {
         </section>
       ) : (
         <AuthDialog
-          initialMode="register"
-          checkout={checkoutDialogCopy(plan)}
-          destination={`/anmelden?checkout=${plan}`}
-          onClose={() => router.push("/preise#tarife")}
-          onAuthenticated={startCheckout}
+          initialMode={plan ? "register" : "login"}
+          checkout={plan ? checkoutDialogCopy(plan) : undefined}
+          destination={plan ? `/anmelden?checkout=${plan}` : "/chat"}
+          onClose={() => router.push(plan ? "/preise#tarife" : "/freelancer-finden")}
+          onAuthenticated={continueAfterLogin}
           showToast={(message) => setNotice(message)}
         />
       )}

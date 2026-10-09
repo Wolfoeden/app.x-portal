@@ -155,12 +155,12 @@ test.describe("geschützte Rollen-Journeys", () => {
 
   test("Marketing: Produkt, Verantwortungen, Preis und nächster Schritt sind sofort sichtbar", async ({ page }) => {
     await page.goto("/freelancer-finden");
-    await expect(page.getByRole("heading", { level: 1, name: /^Kundenanfrage rein\.\s*Prüfbare Auswahl raus\.$/u })).toBeVisible();
-    await expect(page.getByLabel("So entsteht ein nachvollziehbarer Match")).toBeVisible();
-    await expect(page.getByText("90 Credits", { exact: false }).first()).toBeVisible();
-    await expect(page.getByText("3 Credits", { exact: false }).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "Gespräch buchen" }).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "Kostenlos testen" }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /^Keine Bewerbungen\.\s*Nur noch Gespräche\.$/u })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Produktablauf ansehen" }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Anmelden" }).first()).toHaveAttribute("href", "/anmelden");
+    await expect(page.getByLabel("Projektbeschreibung einfügen")).toHaveValue("ai developer on chain for midnight starting november", { timeout: 8_000 });
+    await expect(page.getByRole("link", { name: "Profil von Roman D. im Chat öffnen" })).toBeVisible({ timeout: 8_000 });
+    await expect(page.getByText("210", { exact: true })).toBeVisible();
   });
 
   test("Admin: geschützte Betriebsansicht bleibt als Fixture abnehmbar", async ({ page }) => {

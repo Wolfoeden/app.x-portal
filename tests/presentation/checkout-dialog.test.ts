@@ -62,8 +62,12 @@ describe("booking a plan without an account", () => {
 
   it("uses a dedicated lightweight page before continuing to Stripe", () => {
     const source = readFileSync("app/anmelden/CheckoutAccess.tsx", "utf8");
+    const page = readFileSync("app/anmelden/page.tsx", "utf8");
     expect(source).toContain("checkoutDialogCopy(plan)");
     expect(source).toContain("/api/billing/checkout?plan=${plan}");
+    expect(source).toContain('plan ? "register" : "login"');
+    expect(source).toContain('plan ? `/api/billing/checkout?plan=${plan}` : "/chat"');
     expect(source).not.toContain("ChatWorkspace");
+    expect(page).not.toContain('redirect("/preise#tarife")');
   });
 });

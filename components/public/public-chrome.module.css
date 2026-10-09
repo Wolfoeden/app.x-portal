@@ -202,7 +202,7 @@
 @media (max-width: 1080px) {
   .headerInner { min-height: 60px; }
   .brand { padding-left: 24px; }
-  .navigation, .headerActions .secondaryAction { display: none; }
+  .navigation { display: none; }
   .headerActions { padding: 0 8px 0 0; }
   .menu { display: block; }
   .footer { width: calc(100% - 56px); }

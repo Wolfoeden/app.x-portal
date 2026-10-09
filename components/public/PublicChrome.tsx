@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { LegalFooter } from "@/components/LegalFooter";
-import { RecruitingLink } from "@/components/marketing/RecruitingLink";
 import { MARKETING_PAGE } from "@/lib/seo";
 
 import styles from "./public-chrome.module.css";
@@ -36,12 +35,9 @@ export function PublicHeader({ context }: { context?: string }) {
           <NavigationLinks />
         </nav>
         <div className={styles.headerActions}>
-          <Link href="/chat" prefetch={false} className={styles.secondaryAction}>
+          <Link href="/anmelden" prefetch={false} className={styles.primaryAction}>
             Anmelden
           </Link>
-          <RecruitingLink href="/preise#tarife" event="trial_cta_clicked" className={styles.primaryAction}>
-            14 Tage kostenlos testen
-          </RecruitingLink>
         </div>
         <details className={styles.menu}>
           <summary>
@@ -50,8 +46,7 @@ export function PublicHeader({ context }: { context?: string }) {
           </summary>
           <nav aria-label="Navigation">
             <NavigationLinks />
-            <Link href="/chat" prefetch={false}>Anmelden</Link>
-            <RecruitingLink href="/preise#tarife" event="trial_cta_clicked" className={styles.menuAction}>14 Tage kostenlos testen</RecruitingLink>
+            <Link href="/anmelden" prefetch={false} className={styles.menuAction}>Anmelden</Link>
           </nav>
         </details>
       </div>
