@@ -181,7 +181,7 @@ test.describe("geschützte Rollen-Journeys", () => {
       "/diese-seite-gibt-es-nicht",
     ]) {
       await page.goto(route);
-      const brand = page.getByRole("link", { name: "XPORTAL – Freelancer finden" });
+      const brand = page.getByRole("link", { name: "XPORTAL – Freelancer Index" });
       await expect(brand).toBeVisible();
       await expect(brand.locator("svg")).toHaveCount(0);
       await expect(page.locator("h1:visible")).toHaveCount(1);
