@@ -1,12 +1,12 @@
 "use client";
 
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import { TagInput } from "@/components/TagInput";
 import { AuthDialog } from "@/components/chat/dialogs";
 import { ShowcaseCard } from "@/components/chat/showcase-card";
 import type { AuthDialogMode } from "@/components/chat/shared";
-import { exampleApplicationPreview } from "@/lib/freelancer/application-preview";
+import { applicationPreviewProfile, exampleApplicationPreview } from "@/lib/freelancer/application-preview";
 import { signOut } from "@/lib/auth/browser";
 import { appPath } from "@/lib/app-path";
 import { placementRequestsEnabled } from "@/lib/placement/config";
@@ -146,7 +146,7 @@ export const APPLICANT_FAQ: ReadonlyArray<{ question: string; answer: string }> 
   {
     question: "Ich habe Lücken im Lebenslauf.",
     answer:
-      "Kein Problem. Wir schauen auf das, was Sie können. Ein Lebenslauf hilft bei der Sichtung, ist aber freiwillig.",
+      "Kein Problem. Wir schauen auf das, was Sie können. Ihr Lebenslauf ist die Grundlage für den Profilentwurf; Lücken dürfen darin sichtbar bleiben.",
   },
 ];
 
@@ -154,14 +154,12 @@ export const APPLICANT_FAQ: ReadonlyArray<{ question: string; answer: string }> 
  * Der Einstieg für abgemeldete Besucher, einschließlich des ersten
  * Bildschirms: Der Knopf dort öffnet denselben Dialog wie der unten, deshalb
  * rendert das Gate den Kopf selbst. Hinweise (Einladung, Herkunft) und das
- * Match-Protokoll kommen als fertige Server-Ausgabe von der Seite.
+ * weitere Hinweise kommen als fertige Server-Ausgabe von der Seite.
  */
 export function FreelancerAuthGate({
   notices = null,
-  protocol = null,
 }: {
   notices?: ReactNode;
-  protocol?: ReactNode;
 }) {
   const [dialogMode, setDialogMode] = useState<AuthDialogMode | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
@@ -213,7 +211,6 @@ export function FreelancerAuthGate({
         {actions}
         <p className={styles.hint}>Ein Konto schützt Ihre Angaben, bis XPORTAL das Profil freigibt.</p>
       </section>
-      {protocol}
       <section className={styles.gate} aria-labelledby="apply-paths-title">
         <p className={styles.eyebrow}>Auch ohne Freelance-Erfahrung</p>
         <h2 id="apply-paths-title">Ein Profil, drei Wege.</h2>
@@ -343,6 +340,42 @@ export function FreelancerDashboard({
   const [projectNotice, setProjectNotice] = useState<Notice>(null);
   const [projectBusy, setProjectBusy] = useState(false);
   const [strengthAt] = useState(() => new Date());
+  const [previewAt] = useState(() => new Date());
+  const [testQuery, setTestQuery] = useState(() => initialProfile.skills.slice(0, 2).join(" "));
+  const discoveryProfile = useMemo(() => {
+    const queryTerms = testQuery.split(/[^\p{L}\p{N}+#.]+/u).filter(Boolean);
+    const base = applicationPreviewProfile({
+      fullName: profile.displayName,
+      roleTitle: profile.roleTitle,
+      skills: profile.skills,
+      locationText: profile.locationText ?? "",
+      workModes: profile.workModes,
+      monthlySalary: profile.monthlySalary?.toString() ?? "",
+      hourlyRate: profile.hourlyRate?.toString() ?? "",
+      dayRate: profile.dayRate?.toString() ?? "",
+      currency: profile.currency,
+      availabilityStatus: profile.availabilityStatus,
+      availabilityFrom: profile.availabilityFrom ?? "",
+      bookingUrl: profile.bookingUrl ?? "",
+      seeking,
+      experienceSummary: profile.experienceSummary,
+      avatarUrl: profile.avatarUrl,
+      projects,
+      queryTerms,
+    }, previewAt);
+    const normalized = queryTerms.map((term) => term.toLocaleLowerCase("de-DE"));
+    return {
+      ...base,
+      id: profile.id,
+      verified: profile.verificationStatus === "operator_verified",
+      evidence: base.evidence
+        .map((entry) => ({
+          ...entry,
+          required: normalized.some((term) => entry.skill.toLocaleLowerCase("de-DE").includes(term)),
+        }))
+        .sort((left, right) => Number(right.required) - Number(left.required)),
+    };
+  }, [previewAt, profile, projects, seeking, testQuery]);
   // Live aus dem, was gerade im Formular steht: Wer ein Foto oder Projekt
   // ergänzt, sieht die Zahl sofort steigen.
   const strength = profileStrength({
@@ -759,6 +792,22 @@ export function FreelancerDashboard({
         />
       </section>
 
+      <section className={`${styles.section} ${styles.applyHero}`} aria-labelledby="discovery-preview-title">
+        <div>
+          <p className={styles.eyebrow}>Testansicht für Freelancer</p>
+          <h2 id="discovery-preview-title">So wird Ihr Profil für eine Anfrage eingeordnet.</h2>
+          <p className={styles.sectionHint}>Geben Sie Rolle, Branche oder Technologie ein. Die Vorschau hebt Überschneidungen hervor und wählt das dazu passendste öffentliche Referenzprojekt.</p>
+          <label className={styles.field}>
+            <span>Beispielanfrage</span>
+            <input value={testQuery} onChange={(event) => setTestQuery(event.target.value)} placeholder="z. B. React für Versicherungsportal" />
+            <span className={styles.hint}>Lokale Testansicht – keine echte Kundenanfrage.</span>
+          </label>
+        </div>
+        <aside className={styles.gateExample} aria-label="Profilkarte zur Beispielanfrage">
+          <ShowcaseCard profile={discoveryProfile} now={previewAt} href={appPath(`/profil/${profile.id}?via=share`)} />
+        </aside>
+      </section>
+
       <form className={styles.form} onSubmit={save}>
         <section className={styles.section}>
           <p className={styles.eyebrow}>Stammdaten</p>
@@ -824,6 +873,10 @@ export function FreelancerDashboard({
                 ))}
               </div>
             </div>
+            <label className={styles.field}>
+              <span>Monatsgehalt <span className={styles.optional}>· optional</span></span>
+              <input type="number" min="1" step="0.01" value={profile.monthlySalary ?? ""} onChange={(event) => update("monthlySalary", numberValue(event.target.value))} />
+            </label>
             <label className={styles.field}>
               <span>Stundensatz <span className={styles.optional}>· optional</span></span>
               <input type="number" min="1" step="0.01" value={profile.hourlyRate ?? ""} onChange={(event) => update("hourlyRate", numberValue(event.target.value))} />

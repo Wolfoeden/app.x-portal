@@ -59,6 +59,10 @@ describe("the live preview of an application", () => {
     expect(previewRate({ dayRate: "800", hourlyRate: "", currency: "EUR", seeking: "employment" })).toBe(EMPLOYMENT_RATE_LABEL);
   });
 
+  it("shows an entered monthly salary instead of the employment fallback", () => {
+    expect(previewRate({ monthlySalary: "6500", dayRate: "", hourlyRate: "", currency: "EUR", seeking: "employment" })).toMatch(/^6\.500\s€ \/ Monat$/u);
+  });
+
   it("has a made-up example for the entry page", () => {
     const example = exampleApplicationPreview(NOW);
     expect(example.displayName).toBe("Anna Beispiel");

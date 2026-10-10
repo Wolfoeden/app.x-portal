@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import { fetchProjects, replaceProjects, toDossierProject } from "@/lib/data/freelancer-projects";
-import type { ProfileProject } from "@/lib/profile/project-limits";
+import { pickHighlight, projectMatchScore, projectTeaser, type ProfileProject } from "@/lib/profile/project-limits";
 
 const PROFILE = "11111111-1111-4111-8111-111111111111";
 
@@ -86,5 +86,22 @@ describe("projects in the database", () => {
       sourceUrl: "https://example.com",
       period: "2023 – 2024",
     });
+  });
+
+  it("selects the reference that overlaps with the current request", () => {
+    const blockchain = { ...project, title: "Midnight Smart Contracts", industry: "Blockchain", technologies: ["Aiken", "Cardano"] };
+    const commerce = { ...project, title: "Shop-Plattform", industry: "Handel", technologies: ["React"] };
+    expect(projectMatchScore(blockchain, ["Blockchain", "Aiken Entwickler"])).toBeGreaterThan(projectMatchScore(commerce, ["Blockchain", "Aiken Entwickler"]));
+    expect(pickHighlight([commerce, blockchain], ["Blockchain", "Aiken Entwickler"])?.title).toBe("Midnight Smart Contracts");
+  });
+
+  it("puts only public project or research links on the compact card", () => {
+    expect(projectTeaser({ ...project, client: "Beispiel AG", link: "https://example.com/projekt" }, true)).toMatchObject({
+      href: "https://example.com/projekt",
+      linkLabel: "Beispiel AG ansehen",
+      relevant: true,
+    });
+    expect(projectTeaser({ ...project, sourceUrl: "https://private.example/cv" }).href).toBeNull();
+    expect(projectTeaser({ ...project, source: "research", sourceUrl: "https://example.com/referenz" }).href).toBe("https://example.com/referenz");
   });
 });

@@ -113,7 +113,7 @@ describe("CV draft request", () => {
     expect(body.instructions).toContain("Geburtsdatum");
   });
 
-  it("maps the model output into an unverified draft without client names", async () => {
+  it("maps explicit employer and project evidence into an unverified draft", async () => {
     const result = await realExtract(
       { pdf: PDF, filename: "lebenslauf.pdf", safetyIdentifier: "hash", now: new Date("2026-10-05T10:00:00Z") },
       {
@@ -129,6 +129,7 @@ describe("CV draft request", () => {
               industries: ["Versicherungen"],
               projects: [{
                 title: "Datenplattform für einen Versicherer",
+                client: "Beispiel Versicherung AG",
                 industry: "Versicherungen",
                 role: "Lead",
                 startedOn: "2024-01",
@@ -136,6 +137,7 @@ describe("CV draft request", () => {
                 ongoing: false,
                 technologies: ["Python", "dbt"],
                 outcome: "Eine Plattform für zwölf Teams aufgebaut.",
+                link: "https://example.com/referenz",
               }],
             },
             model: "m",
@@ -147,7 +149,7 @@ describe("CV draft request", () => {
     if (result.status !== "ok") return;
     expect(result.draft.source).toBe("cv");
     expect(result.draft.importedAt).toBe("2026-10-05T10:00:00.000Z");
-    expect(result.draft.projects[0]).toMatchObject({ client: null, verified: false, source: "application", startedOn: "2024-01", endedOn: null });
+    expect(result.draft.projects[0]).toMatchObject({ client: "Beispiel Versicherung AG", link: "https://example.com/referenz", verified: false, source: "application", startedOn: "2024-01", endedOn: null });
   });
 
   it("returns invalid_output for a malformed answer and failed for an error", async () => {

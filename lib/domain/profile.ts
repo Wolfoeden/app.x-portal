@@ -73,6 +73,7 @@ export const FreelancerProfileSchema = z
     qualifications: z.array(LabeledFactSchema).max(50),
     contractualCapabilities: z.array(LabeledFactSchema).max(50),
     referenceStatus: z.enum(["verified", "self_reported", "not_verified"]),
+    monthlySalary: ProfileRateSchema.nullable().default(null),
     hourlyRate: ProfileRateSchema.nullable(),
     dayRate: ProfileRateSchema.nullable(),
     minimumProjectBudget: ProfileRateSchema.nullable(),

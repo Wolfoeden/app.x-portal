@@ -438,19 +438,27 @@ export async function GET(
       !projectStillProcessing &&
       (project.brief_status === "ready" || project.brief_status === "manual") &&
       storedShortlist?.result_status === "ranked";
+    const projectTerms = brief.success ? [
+      brief.data.projectTitle,
+      brief.data.summary,
+      ...(brief.data.requiredSkills ?? []),
+      ...(brief.data.optionalSkills ?? []),
+      ...(brief.data.qualifications ?? []),
+      ...(brief.data.constraints ?? []),
+    ].filter((term): term is string => typeof term === "string" && term.trim().length > 0) : [];
     const [cvAwareProfiles, cvAwarePartialProfiles] = await Promise.all([
       attachFreelancerCvAccess(
         admin,
         profiles,
         user.isAnonymous,
         hasActionableCvShortlist,
-      ).then((list) => attachProfileExtras(admin, list)),
+      ).then((list) => attachProfileExtras(admin, list, projectTerms)),
       attachFreelancerCvAccess(
         admin,
         partialProfiles,
         user.isAnonymous,
         hasActionableCvShortlist,
-      ).then((list) => attachProfileExtras(admin, list)),
+      ).then((list) => attachProfileExtras(admin, list, projectTerms)),
     ]);
 
     // External research is charged and stored separately from the internal

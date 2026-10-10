@@ -117,6 +117,7 @@ const rateAmount = (max: number) =>
     .transform((value) => (typeof value === "number" ? value : null));
 
 const rateShape = {
+  monthlySalary: rateAmount(10_000_000),
   hourlyRate: rateAmount(100_000),
   dayRate: rateAmount(1_000_000),
   currency: z.enum(CURRENCIES).default("EUR"),
@@ -128,15 +129,15 @@ const rateShape = {
  * Angabe freiwillig.
  */
 function assertRatePairing(
-  value: { hourlyRate: number | null; dayRate: number | null; seeking?: Seeking },
+  value: { monthlySalary: number | null; hourlyRate: number | null; dayRate: number | null; seeking?: Seeking },
   context: z.RefinementCtx,
 ) {
   if (value.seeking === "employment") return;
-  if (value.hourlyRate === null && value.dayRate === null) {
+  if (value.monthlySalary === null && value.hourlyRate === null && value.dayRate === null) {
     context.addIssue({
       code: "custom",
       path: ["hourlyRate"],
-      message: "Bitte Stundensatz oder Tagessatz angeben.",
+      message: "Bitte Monatsgehalt, Stundensatz oder Tagessatz angeben.",
     });
   }
 }
@@ -194,18 +195,18 @@ export const FreelancerApplicationInputSchema = z
       .transform((value) => value.toLocaleLowerCase("en-US")),
     contactPhone: optionalText(40),
     websiteUrl: optionalHttpsUrl,
-    roleTitle: z.string().trim().min(2).max(160),
+    roleTitle: z.string().trim().max(160),
     // 2000, not the column's 4000: `TextFactSchema` in lib/domain/profile.ts
     // caps the summary at 2000, and a longer one would make
     // `mapFreelancerProfileRow` throw for every catalogue read, not just this
     // profile.
-    experienceSummary: z.string().trim().min(40).max(MAX_SUMMARY_LENGTH),
-    skills: tagList(MAX_SKILLS),
-    languages: tagList(MAX_LANGUAGES, 60),
+    experienceSummary: z.string().trim().max(MAX_SUMMARY_LENGTH),
+    skills: tagList(MAX_SKILLS).default([]),
+    languages: tagList(MAX_LANGUAGES, 60).default([]),
     qualifications: tagList(MAX_QUALIFICATIONS, 160).default([]),
     industries: tagList(MAX_INDUSTRIES, 80).default([]),
     locationText: optionalText(160),
-    workModes: z.array(z.enum(WORK_MODES)).min(1).max(3),
+    workModes: z.array(z.enum(WORK_MODES)).max(3).default([]),
     ...rateShape,
     availabilityStatus: z.enum(AVAILABILITY_STATUSES).default("unknown"),
     availabilityFrom: optionalDate,
@@ -270,20 +271,6 @@ export const FreelancerApplicationInputSchema = z
   .strict()
   .superRefine((value, context) => {
     assertRatePairing(value, context);
-    if (value.skills.length < 1) {
-      context.addIssue({
-        code: "custom",
-        path: ["skills"],
-        message: "Bitte mindestens einen Skill angeben.",
-      });
-    }
-    if (value.languages.length < 1) {
-      context.addIssue({
-        code: "custom",
-        path: ["languages"],
-        message: "Bitte mindestens eine Sprache angeben.",
-      });
-    }
   });
 
 export type FreelancerApplicationInput = z.infer<
@@ -310,6 +297,7 @@ export type ApplicationInsert = {
   location_text: string | null;
   /** The database CHECK constraints keep these columns inside their unions. */
   work_modes: WorkMode[];
+  monthly_salary_minor: number | null;
   hourly_rate_minor: number | null;
   day_rate_minor: number | null;
   currency: CurrencyCode | null;
@@ -355,6 +343,7 @@ export function applicationInsertFromInput(
 ): ApplicationInsert {
   const hourly = toMinor(input.hourlyRate);
   const day = toMinor(input.dayRate);
+  const monthly = toMinor(input.monthlySalary);
 
   return {
     status: "submitted",
@@ -371,9 +360,10 @@ export function applicationInsertFromInput(
     industries: input.industries,
     location_text: input.locationText,
     work_modes: input.workModes,
+    monthly_salary_minor: monthly,
     hourly_rate_minor: hourly,
     day_rate_minor: day,
-    currency: hourly === null && day === null ? null : input.currency,
+    currency: monthly === null && hourly === null && day === null ? null : input.currency,
     availability_status: input.availabilityStatus,
     availability_from: input.availabilityFrom,
     booking_url: input.bookingUrl,
@@ -399,8 +389,10 @@ export const ONBOARDING_INSERT_FIELDS = ["import_provenance", "capacity_days_per
 
 export type ApplicationRow = Omit<
   ApplicationInsert,
-  "reference_projects" | "photo_storage_path" | (typeof ONBOARDING_INSERT_FIELDS)[number]
+  "reference_projects" | "photo_storage_path" | "monthly_salary_minor" | (typeof ONBOARDING_INSERT_FIELDS)[number]
 > & {
+  /** Fehlt in Zeilen/Fixtures vor Migration 20261010120000. */
+  monthly_salary_minor?: number | null;
   /** Fehlen, solange Migration 20261006100000 nicht eingespielt ist. */
   reference_projects?: unknown;
   photo_storage_path?: string | null;
@@ -418,7 +410,7 @@ export type ApplicationRow = Omit<
 };
 
 export const APPLICATION_COLUMNS =
-  "id,status,submitted_by_user_id,full_name,contact_email,contact_phone,website_url,role_title,experience_summary,skills,languages,qualifications,industries,location_text,work_modes,hourly_rate_minor,day_rate_minor,currency,availability_status,availability_from,booking_url,applicant_note,cv_storage_path,cv_original_filename,cv_mime_type,cv_size_bytes,consent_at,source,review_notes,reviewed_by_user_id,reviewed_at,published_profile_id,created_at,updated_at,seeking,referral";
+  "id,status,submitted_by_user_id,full_name,contact_email,contact_phone,website_url,role_title,experience_summary,skills,languages,qualifications,industries,location_text,work_modes,monthly_salary_minor,hourly_rate_minor,day_rate_minor,currency,availability_status,availability_from,booking_url,applicant_note,cv_storage_path,cv_original_filename,cv_mime_type,cv_size_bytes,consent_at,source,review_notes,reviewed_by_user_id,reviewed_at,published_profile_id,created_at,updated_at,seeking,referral";
 
 /** Projekte und Foto (Migration 20261006100000), getrennt abfragbar. */
 export const APPLICATION_EXTRA_COLUMNS = "reference_projects,photo_storage_path";
@@ -583,6 +575,7 @@ export type ProfileInsert = {
   self_reported_facts: string[];
   references_summary: string | null;
   verification_status: VerificationStatus;
+  monthly_salary_minor: number | null;
   hourly_rate_minor: number | null;
   day_rate_minor: number | null;
   currency: CurrencyCode | null;
@@ -610,6 +603,7 @@ export function profileInsertFromDecision(
 ): ProfileInsert {
   const hourly = toMinor(decision.hourlyRate);
   const day = toMinor(decision.dayRate);
+  const monthly = toMinor(decision.monthlySalary);
   const verified = new Set(decision.verifiedFacts);
   const facts = candidateFacts(decision);
 
@@ -638,7 +632,8 @@ export function profileInsertFromDecision(
     verification_status: decision.verificationStatus,
     hourly_rate_minor: hourly,
     day_rate_minor: day,
-    currency: hourly === null && day === null ? null : decision.currency,
+    monthly_salary_minor: monthly,
+    currency: monthly === null && hourly === null && day === null ? null : decision.currency,
     profile_status: "active",
     availability_status: decision.availabilityStatus,
     availability_from: decision.availabilityFrom,
@@ -665,6 +660,7 @@ export function decisionDefaultsFromApplication(row: ApplicationRow) {
     hourlyRate:
       row.hourly_rate_minor === null ? "" : String(row.hourly_rate_minor / 100),
     dayRate: row.day_rate_minor === null ? "" : String(row.day_rate_minor / 100),
+    monthlySalary: row.monthly_salary_minor == null ? "" : String(row.monthly_salary_minor / 100),
     currency: row.currency ?? "EUR",
     availabilityStatus: row.availability_status,
     availabilityFrom: row.availability_from ?? "",

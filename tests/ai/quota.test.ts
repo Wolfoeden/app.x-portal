@@ -48,20 +48,20 @@ describe("provider cost reconciliation", () => {
     expect(calculateProviderCostCents(1_000_000, 1_000_000)).toBe(1540);
   });
 
-  it("gives no credits for guest sessions or registration", () => {
+  it("keeps guests at zero and gives registered accounts three analyses", () => {
     expect(GUEST_MONTHLY_CREDITS).toBe(0);
     expect(configuredInitialCredits(true)).toBe(0);
-    expect(ACCOUNT_MONTHLY_CREDITS).toBe(0);
-    expect(configuredInitialCredits(false)).toBe(0);
+    expect(ACCOUNT_MONTHLY_CREDITS).toBe(9);
+    expect(configuredInitialCredits(false)).toBe(9);
   });
 
-  it("does not promise analyses from registration bonus credits", () => {
+  it("derives the three starter analyses from the registered allowance", () => {
     // Die Zahl, die in der Oberfläche steht, muss aus den Kontingenten
     // folgen — sonst verspricht die Seite etwas, das die Abrechnung nicht hält.
     expect(Math.floor(GUEST_MONTHLY_CREDITS / BRIEF_ANALYSIS_CREDITS)).toBe(0);
     expect(
       Math.floor(ACCOUNT_MONTHLY_CREDITS / BRIEF_ANALYSIS_CREDITS),
-    ).toBe(0);
+    ).toBe(3);
   });
 
   it("honors zero as an explicit hard-stop configuration", () => {
@@ -93,7 +93,7 @@ describe("Kontingente, die die Datenbank auch annimmt", () => {
   it("jede erlaubte Zahl ist auch in der Datenbank erlaubt", () => {
     // Die Aufzählung ist die Kopie einer Prüfregel im Schema. Ändert sie sich
     // dort, muss sie sich hier mitändern — dieser Test ist die Erinnerung.
-    expect(ALLOWED_MONTHLY_CREDIT_TOTALS).toEqual([0, 10, 30, 63, 90, 100, 300, 500, 1_250, 3_000, 4_000]);
+    expect(ALLOWED_MONTHLY_CREDIT_TOTALS).toEqual([0, 9, 10, 30, 63, 90, 100, 300, 500, 1_250, 3_000, 4_000]);
     expect(ALLOWED_MONTHLY_CREDIT_TOTALS).toContain(ACCOUNT_MONTHLY_CREDITS);
     expect(ALLOWED_MONTHLY_CREDIT_TOTALS).toContain(GUEST_MONTHLY_CREDITS);
   });
@@ -106,20 +106,20 @@ describe("Kontingente, die die Datenbank auch annimmt", () => {
     expect(configuredInitialCredits(true)).toBe(GUEST_MONTHLY_CREDITS);
   });
 
-  it("does not restore a registration bonus even from a historically valid value", () => {
+  it("ignores a historic environment override and keeps the starter allowance", () => {
     process.env.AI_CREDITS_USER_TOTAL = "90";
-    expect(configuredInitialCredits(false)).toBe(0);
+    expect(configuredInitialCredits(false)).toBe(9);
   });
 
   it("lässt das feste 90-Credit-Trial nicht per Umgebung erhöhen", () => {
     process.env.AI_CREDITS_USER_TOTAL = "300";
-    expect(configuredInitialCredits(false)).toBe(0);
+    expect(configuredInitialCredits(false)).toBe(9);
   });
 
   it("keeps registration separate from the Stripe verified trial", () => {
     // Das eine Guthaben trägt alles: Analyse zu 3, Websuche zu 30 Credits.
-    expect(configuredInitialCredits(false)).toBe(0);
-    expect(ACCOUNT_MONTHLY_CREDITS).toBe(0);
+    expect(configuredInitialCredits(false)).toBe(9);
+    expect(ACCOUNT_MONTHLY_CREDITS).toBe(9);
   });
 
   it("does not revive an old guest bonus environment override", () => {

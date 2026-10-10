@@ -41,8 +41,7 @@ export function FreelancerLanding({ contactPhotoUrl = null, caseStudies = publis
       <section className={`${styles.section} ${styles.inventoryStrip}`} aria-label="XPORTAL in Zahlen">
         <div className={`${styles.frame} ${styles.inventoryFrame}`}>
           <div className={styles.inventoryMetric}><strong>2</strong>{" "}<span>Entwickler im<br />Familienunternehmen</span></div>
-          <div className={`${styles.inventoryMetric} ${styles.inventoryPrimary}`}><strong>210</strong>{" "}<span>Profile online</span></div>
-          <div className={styles.inventoryMetric}><strong>51 %</strong>{" "}<span>Erfolgsquote</span></div>
+          <div className={`${styles.inventoryMetric} ${styles.inventoryPrimary}`}><strong>210</strong>{" "}<span>Profile live</span></div>
           <div className={styles.inventoryMetric}><strong>3 Wochen</strong>{" "}<span>durchschnittliche<br />Besetzungszeit</span></div>
         </div>
       </section>

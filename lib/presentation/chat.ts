@@ -172,6 +172,13 @@ function formatRate(match: ShortlistMatch): string | null {
 }
 
 export function formatProfileRate(profile: FreelancerProfile): string | null {
+  if (profile.monthlySalary) {
+    return `${new Intl.NumberFormat("de-DE", {
+      style: "currency",
+      currency: profile.monthlySalary.currency,
+      maximumFractionDigits: 0,
+    }).format(profile.monthlySalary.amount)} / Monat`;
+  }
   if (profile.dayRate) {
     return `${new Intl.NumberFormat("de-DE", {
       style: "currency",

@@ -1,12 +1,9 @@
 .shell {
   min-height: 100vh;
-  background: var(--surface-soft);
   color: var(--ink);
-  padding: 0 clamp(20px, 5vw, 72px) 80px;
 }
 
 .inner {
-  max-width: 1040px;
   margin: 0 auto;
 }
 
@@ -16,26 +13,10 @@
 
 .eyebrow {
   margin: 0;
-  color: var(--muted-light);
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.header h1 {
-  margin: 10px 0 12px;
-  font-size: clamp(30px, 4.4vw, 46px);
-  letter-spacing: -0.045em;
-  line-height: 1.05;
 }
 
 .header p {
-  max-width: 620px;
   margin: 0 0 12px;
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1.6;
 }
 
 .header p:last-child {
@@ -47,7 +28,6 @@
   font-weight: 650;
 }
 
-.protocol { margin: 22px 0 30px; }
 
 .form {
   display: grid;
@@ -129,8 +109,7 @@
 
 .field input:focus-visible,
 .field select:focus-visible,
-.field textarea:focus-visible,
-.tagField input:focus-visible {
+.field textarea:focus-visible {
   border-color: var(--xp-brand);
   outline: var(--xp-field-focus-ring);
   outline-offset: 0;
@@ -146,13 +125,6 @@
 .error {
   color: #8d4138;
   font-size: var(--fs-2xs);
-}
-
-.invalid input,
-.invalid textarea,
-.invalid select,
-.invalid .tagBox {
-  border-color: #c88c84;
 }
 
 .tagBox {
@@ -279,13 +251,6 @@
   color: var(--muted);
 }
 
-.upload {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-}
-
 .uploadButton {
   display: inline-flex;
   align-items: center;
@@ -304,26 +269,6 @@
 
 .uploadButton:hover {
   border-color: #b9b9b1;
-}
-
-.uploadState {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.uploadState strong {
-  color: var(--ink);
-  font-weight: 650;
-}
-
-.uploadState button {
-  border: 0;
-  background: transparent;
-  color: #8d4138;
-  cursor: pointer;
-  font: inherit;
-  font-size: 12px;
-  text-decoration: underline;
 }
 
 .hiddenFile {
@@ -818,60 +763,6 @@
   line-height: 1.55;
 }
 
-/* Was die Person sucht: Freelance-Projekte, Festanstellung oder beides. */
-.seeking {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin: 0 0 18px;
-  border: 0;
-  padding: 0;
-}
-
-.seeking legend {
-  margin-bottom: 8px;
-  color: #33434b;
-  font-size: var(--fs-xs);
-  font-weight: 650;
-}
-
-.seekingOption {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  border: 1px solid #d9e2e7;
-  border-radius: 10px;
-  background: #fff;
-  padding: 12px 14px;
-  cursor: pointer;
-}
-
-.seekingOption[data-checked="true"] {
-  border-color: #1d6b5f;
-  background: #f1f8f5;
-}
-
-.seekingOption input {
-  margin-top: 3px;
-  accent-color: #1d6b5f;
-}
-
-.seekingOption span {
-  display: grid;
-  gap: 2px;
-}
-
-.seekingOption strong {
-  color: #20201e;
-  font-size: var(--fs-xs);
-}
-
-.seekingOption small {
-  color: #52636c;
-  font-size: var(--fs-2xs);
-  line-height: 1.45;
-}
-
 .welcome {
   border: 1px solid #cce3d6;
   border-radius: 12px;
@@ -880,12 +771,6 @@
   color: #2f5443;
   font-size: var(--fs-xs);
   line-height: 1.6;
-}
-
-@media (max-width: 760px) {
-  .seeking {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* Einstieg vor der Anmeldung: Nutzen und Knopf links, Profilvorschau rechts;
@@ -1070,18 +955,6 @@
   color: var(--ink);
 }
 
-/* Profilstärke unter der Vorschaukarte im Formular. */
-.previewStrength {
-  display: grid;
-  gap: 4px;
-  font-size: 13px;
-}
-
-.previewStrength meter {
-  width: 100%;
-  height: 8px;
-}
-
 /* Im Stil der öffentlichen Seiten (landing.module.css) -------------------
 
    Der Bereich hängt am Kopf der Website („Für Freelancer“) und soll nicht
@@ -1118,85 +991,6 @@
 @media (max-width: 1080px) { .inner { padding: 0 48px 72px; } }
 @media (max-width: 760px) { .inner { padding: 0 20px 64px; border-inline: 0; } .header { padding-top: 36px; } }
 
-/* „Profil schneller ausfüllen“ (ImportPanel.tsx) ------------------------- */
-
-.importPanel {
-  border: 1px solid #cfe6d9;
-  border-radius: 18px;
-  background: linear-gradient(180deg, #f6fbf8, var(--surface));
-  padding: 26px clamp(18px, 3vw, 30px) 26px;
-}
-
-.importPanel h2 {
-  margin: 6px 0 4px;
-  font-size: 18px;
-  letter-spacing: -0.02em;
-}
-
-.importLinked {
-  margin: -8px 0 16px;
-  color: var(--xp-brand);
-  font-size: var(--fs-2xs);
-  font-weight: 600;
-}
-
-.importOptions {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px;
-}
-
-.importOption {
-  display: grid;
-  align-content: start;
-  gap: 6px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-  padding: 14px 16px 16px;
-}
-
-.importOption > strong {
-  font-size: var(--xp-label-size);
-}
-
-.importOption > span {
-  color: var(--muted);
-  font-size: var(--fs-2xs);
-  line-height: 1.5;
-}
-
-.importOption .uploadButton {
-  justify-self: start;
-  margin-top: 4px;
-}
-
-.importRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.importRow input {
-  flex: 1 1 160px;
-  min-width: 0;
-  min-height: 42px;
-  border: 1px solid var(--xp-field-border);
-  border-radius: var(--xp-field-radius);
-  background: var(--xp-field-bg);
-  padding: var(--xp-field-padding);
-  color: var(--ink);
-  font: inherit;
-  font-size: var(--xp-field-font-size);
-}
-
-.importRow input:focus-visible {
-  border-color: var(--xp-brand);
-  outline: var(--xp-field-focus-ring);
-  outline-offset: 0;
-}
-
 .importNote {
   margin: 14px 0 0;
   color: var(--xp-ink);
@@ -1204,40 +998,69 @@
   line-height: 1.5;
 }
 
-.importMissing {
+/* Evidence-first onboarding: one compact intake beside the profile that is
+   assembled from CV and connected sources. */
+.simpleForm {
+  grid-template-columns: minmax(0, 1fr) 352px;
+  gap: 24px;
+}
+
+.sectionHeading, .connectionHeading, .sourceTitle { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sectionHeading { align-items: flex-start; margin-bottom: 24px; }
+.sectionHeading h2 { margin-top: 8px; font-family: var(--xp-display); font-size: clamp(24px, 3vw, 32px); font-weight: 400; line-height: 1.12; }
+.infoTip { display: inline-grid; flex: 0 0 24px; height: 24px; place-items: center; border: 1px solid #b9d7c8; border-radius: 50%; background: #f1faf5; color: #176141; font-size: 12px; font-weight: 750; }
+.simplePreview { grid-column: 2; grid-row: 1 / span 2; position: sticky; top: 24px; }
+.rateComposer {
   display: grid;
-  gap: 6px;
-  margin-top: 12px;
-  border-radius: 10px;
-  background: #fbf6ea;
-  padding: 10px 14px;
-  color: #6b5524;
-  font-size: var(--fs-2xs);
+  grid-template-columns: 1fr 1.3fr .65fr;
+  gap: 12px;
 }
 
-.importMissing ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.cvDrop {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 16px;
+  border: 1px solid #c6ded2;
+  border-radius: 14px;
+  background: #f6fbf8;
+  padding: 20px;
 }
 
-.importMissing a {
-  color: inherit;
-  text-underline-offset: 2px;
+.cvDrop[data-ready="true"] { border-style: solid; background: #eef8f2; }
+.cvDrop > div span, .cvDrop > p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.cvDrop > button,
+.connectionCard > button {
+  min-height: 42px;
+  border: 1px solid #193e30;
+  border-radius: 9px;
+  background: #fff;
+  padding: 0 15px;
+  color: #193e30;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+}
+.cvDrop > button:disabled, .connectionCard > button:disabled { cursor: wait; opacity: .55; }
+
+.connectionSection { display: grid; gap: 12px; margin-top: 26px; }
+.connectionHeading span { color: var(--muted); font-size: 11px; }
+.connectionGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.connectionCard { display: grid; align-content: space-between; min-width: 0; gap: 16px; border: 1px solid #e0e6e2; border-radius: 14px; padding: 16px; }
+.sourceHead { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; }
+.sourceHead > div { display: grid; min-width: 0; gap: 4px; }
+.sourceHead span { color: var(--muted); font-size: 11px; line-height: 1.45; }
+.connectionGrid > .error, .connectionGrid > .importNote { grid-column: 1 / -1; margin: 0; }
+.evidenceSummary { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--border); padding-top: 12px; }
+.blankConfirm { display: grid; gap: 8px; border: 1px solid #d8c99f; border-radius: 12px; background: #fffaf0; padding: 16px; }
+.blankConfirm p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.blankConfirm > div { display: flex; gap: 10px; }
+
+@media (max-width: 900px) {
+  .simpleForm { grid-template-columns: 1fr; }
+  .simplePreview { position: static; grid-column: 1; grid-row: auto; }
 }
 
-/* Woher ein übernommener Wert stammt, unter dem Feld. */
-.importedHint {
-  display: block;
-  margin-top: 6px;
-  color: var(--xp-brand);
-  font-size: var(--fs-2xs);
-  line-height: 1.45;
-}
-
-.importedHint::before {
-  content: "↳ ";
+@media (max-width: 640px) {
+  .rateComposer, .connectionGrid { grid-template-columns: 1fr; }
+  .cvDrop { grid-template-columns: 1fr; }
 }

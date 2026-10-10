@@ -4,11 +4,12 @@ import { BRIEF_ANALYSIS_CREDITS, CREDIT_PLANS, creditPlan, isCreditPlanId } from
 import { PUBLIC_PRICING_PLANS, START_CREDITS, meteredNetCents } from "@/lib/billing/plans";
 
 describe("Pricing- und Billingmodell", () => {
-  it("grants 90 credits only for a verified card trial and zero on signup", () => {
+  it("grants three free analyses on signup and keeps the larger card trial separate", () => {
     expect(CREDIT_PLANS.trial.billingModel).toBe("one_time");
     expect(CREDIT_PLANS.trial.grantCredits).toBe(90);
     expect(CREDIT_PLANS.trial.monthlyCredits).toBe(0);
-    expect(START_CREDITS).toBe(0);
+    expect(CREDIT_PLANS.starter).toMatchObject({ billingModel: "one_time", grantCredits: 9, euro: 0 });
+    expect(START_CREDITS).toBe(9);
     expect(CREDIT_PLANS.guest.grantCredits).toBe(0);
   });
 
@@ -30,15 +31,15 @@ describe("Pricing- und Billingmodell", () => {
     expect(CREDIT_PLANS.enterprise_flex.monthlyCredits).toBe(0);
   });
 
-  it("zeigt öffentlich genau Basic, Pro, Business und Enterprise", () => {
-    expect(PUBLIC_PRICING_PLANS.map((plan) => plan.id)).toEqual(["basic", "pro", "business", "enterprise_flex"]);
+  it("zeigt den kostenlosen Einstieg links vor den Bezahlplänen", () => {
+    expect(PUBLIC_PRICING_PLANS.map((plan) => plan.id)).toEqual(["starter", "basic", "pro", "business", "enterprise_flex"]);
     expect(Math.floor(CREDIT_PLANS.basic.monthlyCredits / BRIEF_ANALYSIS_CREDITS)).toBe(166);
   });
 
-  it("fällt bei unbekannter Stufe konservativ auf Trial oder Gast zurück", () => {
+  it("fällt bei unbekannter Stufe konservativ auf Starter oder Gast zurück", () => {
     expect(creditPlan("etwas-neues", true).id).toBe("guest");
-    expect(creditPlan("etwas-neues", false).id).toBe("trial");
+    expect(creditPlan("etwas-neues", false).id).toBe("starter");
     expect(isCreditPlanId("enterprise_flex")).toBe(true);
-    expect(isCreditPlanId("starter")).toBe(false);
+    expect(isCreditPlanId("starter")).toBe(true);
   });
 });

@@ -65,16 +65,15 @@ describe("freelancer onboarding before registration", () => {
     expect(markup.indexOf("Ein Profil, drei Wege.")).toBeGreaterThan(markup.indexOf("<dt>Unterlagen</dt>"));
   });
 
-  it("places notices after the first screen and the protocol after the facts", () => {
+  it("places notices after the first screen and omits the match protocol", () => {
     const markup = renderToStaticMarkup(
       createElement(FreelancerAuthGate, {
         notices: createElement("p", null, "HINWEIS"),
-        protocol: createElement("div", null, "PROTOKOLL"),
       }),
     );
     expect(markup.indexOf("HINWEIS")).toBeGreaterThan(markup.indexOf("</header>"));
-    expect(markup.indexOf("PROTOKOLL")).toBeGreaterThan(markup.indexOf("<dt>Unterlagen</dt>"));
-    expect(markup.indexOf("PROTOKOLL")).toBeLessThan(markup.indexOf("Ein Profil, drei Wege."));
+    expect(markup).not.toContain("Match-Protokoll");
+    expect(markup).not.toContain("Vom Profil zum nachvollziehbaren Match");
   });
 
   it("speaks to people who are not self-employed yet, without promising placement or benefits", () => {

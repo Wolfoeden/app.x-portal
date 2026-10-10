@@ -84,6 +84,7 @@ export const FreelancerProfileUpdateSchema = z
     industries: optionalTagList(MAX_INDUSTRIES, 80),
     locationText: optionalText(160),
     workModes: z.array(z.enum(WORK_MODES)).min(1).max(3),
+    monthlySalary: z.number().positive().max(10_000_000).nullable().default(null),
     hourlyRate: z.number().positive().max(100_000).nullable(),
     dayRate: z.number().positive().max(1_000_000).nullable(),
     currency: z.enum(CURRENCIES),
@@ -99,11 +100,11 @@ export const FreelancerProfileUpdateSchema = z
   })
   .strict()
   .superRefine((value, context) => {
-    if (value.hourlyRate === null && value.dayRate === null) {
+    if (value.monthlySalary === null && value.hourlyRate === null && value.dayRate === null) {
       context.addIssue({
         code: "custom",
         path: ["hourlyRate"],
-        message: "Bitte Stundensatz oder Tagessatz angeben.",
+        message: "Bitte Monatsgehalt, Stundensatz oder Tagessatz angeben.",
       });
     }
   });
@@ -123,6 +124,7 @@ export type EditableFreelancerProfile = {
   industries: string[];
   locationText: string | null;
   workModes: WorkMode[];
+  monthlySalary: number | null;
   hourlyRate: number | null;
   dayRate: number | null;
   currency: CurrencyCode;

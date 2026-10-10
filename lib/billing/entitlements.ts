@@ -5,7 +5,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 export type BillingEntitlement = {
   canRunAi: boolean;
   canUseRecruiting: boolean;
-  source: "trial" | "paid" | "legacy" | "none";
+  source: "starter" | "trial" | "paid" | "legacy" | "none";
   reason: string;
 };
 
@@ -20,7 +20,7 @@ export async function getBillingEntitlement(userId: string): Promise<BillingEnti
   return {
     canRunAi: row?.can_run_ai === true,
     canUseRecruiting: row?.can_use_recruiting === true,
-    source: row?.source === "trial" || row?.source === "paid" || row?.source === "legacy"
+    source: row?.source === "starter" || row?.source === "trial" || row?.source === "paid" || row?.source === "legacy"
       ? row.source : "none",
     reason: row?.reason ?? "billing_required",
   };

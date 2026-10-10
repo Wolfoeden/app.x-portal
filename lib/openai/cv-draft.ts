@@ -24,6 +24,7 @@ import { createOpenAiClient } from "./provider";
 
 const CvProjectSchema = z.object({
   title: z.string(),
+  client: z.string().nullable(),
   industry: z.string().nullable(),
   role: z.string().nullable(),
   startedOn: z.string().nullable(),
@@ -31,6 +32,7 @@ const CvProjectSchema = z.object({
   ongoing: z.boolean(),
   technologies: z.array(z.string()),
   outcome: z.string().nullable(),
+  link: z.string().nullable(),
 });
 
 export const CvDraftSchema = z.object({
@@ -57,8 +59,8 @@ export const CV_DRAFT_INSTRUCTIONS = [
   "skills: fachliche Kompetenzen, Technologien und Methoden, je höchstens drei Wörter, höchstens 25.",
   "languages: Sprachen mit Niveau, wenn genannt, z. B. „Englisch C1“ oder „Deutsch Muttersprache“.",
   "qualifications: Zertifikate und Abschlüsse, z. B. „AWS Solutions Architect Associate“ oder „M.Sc. Informatik“.",
-  "industries: Branchen, in denen gearbeitet wurde, z. B. „Versicherungen“.",
-  "projects: höchstens acht Projekte oder Stationen, die neuesten zuerst. Kein Kundenname im Titel; beschreibe die Aufgabe. startedOn und endedOn als JJJJ-MM, sonst null. outcome: ein bis zwei Sätze zu Aufgabe und Ergebnis, nur aus dem Dokument.",
+  "industries: Branchen aus ausdrücklich genannten Arbeitgebern, Kunden oder Projekten, z. B. „Versicherungen“. Eine Branche darf vorsichtig normalisiert, aber nicht ohne Beleg im Dokument ergänzt werden.",
+  "projects: höchstens acht Projekte oder berufliche Stationen, die neuesten zuerst. title beschreibt Aufgabe oder Station; client enthält den ausdrücklich genannten Arbeitgeber oder Kunden. role ist optional. startedOn und endedOn als JJJJ-MM, sonst null. outcome: ein bis zwei Sätze zu Aufgabe und Ergebnis, nur aus dem Dokument. link enthält nur eine im Dokument ausdrücklich angegebene HTTPS-Adresse zum Arbeitgeber oder Projekt, sonst null.",
   "Übernimm keine Angaben zu Geburtsdatum, Alter, Familienstand, Nationalität, Religion, Gesundheit, Anschrift, Telefonnummer oder E-Mail-Adresse.",
   "Schreibe auf Deutsch, auch wenn das Dokument englisch ist; Fachbegriffe und Technologienamen bleiben im Original.",
 ].join("\n");
@@ -90,9 +92,7 @@ function toProjects(projects: CvDraftOutput["projects"]): ProfileProject[] {
     const endedOn = project.ongoing ? null : month(project.endedOn);
     return [{
       title,
-      // Kundennamen bleiben draußen: Sie stehen oft unter Vertraulichkeit,
-      // und die Person trägt sie selbst ein, wenn sie sie zeigen will.
-      client: null,
+      client: text(project.client, PROJECT_LIMITS.client),
       industry: text(project.industry, PROJECT_LIMITS.industry),
       role: text(project.role, PROJECT_LIMITS.role),
       startedOn,
@@ -103,7 +103,7 @@ function toProjects(projects: CvDraftOutput["projects"]): ProfileProject[] {
         .filter((value): value is string => Boolean(value))
         .slice(0, MAX_TECHNOLOGIES),
       outcome: text(project.outcome, PROJECT_LIMITS.outcome),
-      link: null,
+      link: project.link?.startsWith("https://") ? text(project.link, PROJECT_LIMITS.url) : null,
       isPublic: true,
       verified: false,
       source: "application",

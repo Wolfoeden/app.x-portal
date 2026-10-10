@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CREDIT_PLANS, TRIAL_CREDITS } from "@/lib/billing/plans";
 import { IMPRINT_EMAIL } from "@/lib/legal/policy";
 import styles from "./billing-management.module.css";
-export type BillingStatusView = { planId: string; selectedPlanId?: string | null; subscriptionStatus: string | null; trialEnd: string | null; periodEnd: string | null; cancelAtPeriodEnd: boolean; latestInvoiceStatus: string | null; access: { canRunAi: boolean; canUseRecruiting: boolean; source: "trial" | "paid" | "legacy" | "none"; reason: string }; credits: { total: number; used: number; reserved: number; remaining: number } };
+export type BillingStatusView = { planId: string; selectedPlanId?: string | null; subscriptionStatus: string | null; trialEnd: string | null; periodEnd: string | null; cancelAtPeriodEnd: boolean; latestInvoiceStatus: string | null; access: { canRunAi: boolean; canUseRecruiting: boolean; source: "starter" | "trial" | "paid" | "legacy" | "none"; reason: string }; credits: { total: number; used: number; reserved: number; remaining: number } };
 export function billingDate(value: string | null): string {
   if (!value || Number.isNaN(new Date(value).getTime())) return "Noch nicht bestätigt";
   return new Intl.DateTimeFormat("de-DE", { dateStyle: "long", timeStyle: "short", timeZone: "Europe/Berlin" }).format(new Date(value));
@@ -110,22 +110,24 @@ export function BillingManagement({ initialStatus }: { initialStatus?: BillingSt
   };
   const plan = status ? CREDIT_PLANS[(status.selectedPlanId ?? status.planId) as keyof typeof CREDIT_PLANS] : null;
   const trial = status?.subscriptionStatus === "trialing" || status?.access.source === "trial";
+  const starter = status?.access.source === "starter";
   const cardlessTrial = trial && !status?.subscriptionStatus;
   const paymentIssue = ["past_due", "unpaid", "incomplete"].includes(status?.subscriptionStatus ?? "");
-  return <section className={styles.panel} aria-labelledby="billing-management-title"><header><p>Abrechnung und Zugang</p><h2 id="billing-management-title">{trial ? "Ihre kostenlose Testphase" : "Ihr Software-Abonnement"}</h2></header>
+  return <section className={styles.panel} aria-labelledby="billing-management-title"><header><p>Abrechnung und Zugang</p><h2 id="billing-management-title">{starter ? "Ihr kostenloser Einstieg" : trial ? "Ihre kostenlose Testphase" : "Ihr Software-Abonnement"}</h2></header>
     {loading ? <p role="status">Bestätigten Stripe-Status laden …</p> : null}
     {error ? <p className={styles.error} role="alert">{error} <a href="/chat?anmelden=1">Zur Anmeldung</a></p> : null}
     {checkoutMessage ? <p className={checkoutMessage.tone === "error" ? styles.error : styles.notice} role={checkoutMessage.tone === "error" ? "alert" : "status"}>{checkoutMessage.text}</p> : null}
     {notice ? <p className={styles.notice} role="status">{notice}</p> : null}
-    {status ? <><p className={styles.status}>{status.cancelAtPeriodEnd ? "Kündigung bestätigt" : trial ? "Trial aktiv" : status.access.source === "paid" ? "Bezahlte Periode aktiv" : status.access.source === "legacy" ? "Bestandsguthaben" : "Keine aktive Nutzungsberechtigung"}</p><dl className={styles.facts}>
+    {status ? <><p className={styles.status}>{status.cancelAtPeriodEnd ? "Kündigung bestätigt" : starter ? "3 kostenlose Anfragen" : trial ? "Trial aktiv" : status.access.source === "paid" ? "Bezahlte Periode aktiv" : status.access.source === "legacy" ? "Bestandsguthaben" : "Keine aktive Nutzungsberechtigung"}</p><dl className={styles.facts}>
       <div><dt>Gewählter Tarif</dt><dd>{plan?.label ?? status.planId}{plan?.billingModel === "fixed_monthly" ? ` · ${plan.euro} € netto / Monat, zzgl. USt.` : ""}</dd></div>
       {status.trialEnd ? <div><dt>{cardlessTrial ? "Testzugang bis" : status.cancelAtPeriodEnd ? "Trial-Zugang bis" : "Erste kostenpflichtige Verlängerung"}</dt><dd>{billingDate(status.trialEnd)}</dd></div> : null}
       {!trial && status.periodEnd ? <div><dt>{status.cancelAtPeriodEnd ? "Zugang bis" : "Laufende Periode bis"}</dt><dd>{billingDate(status.periodEnd)}</dd></div> : null}
       <div><dt>Verbleibendes Kontingent</dt><dd>{status.credits.remaining.toLocaleString("de-DE")} Credits</dd></div></dl>
       {trial ? <p>Einmalig {TRIAL_CREDITS} Credits insgesamt. Keine Auffüllung und keine vorzeitige Abbuchung bei Verbrauch. {cardlessTrial ? "Der Gutschein-Test endet automatisch; es ist keine Karte hinterlegt." : status.cancelAtPeriodEnd ? "Die erste kostenpflichtige Verlängerung ist gekündigt." : "Danach beginnt der gewählte Monatstarif automatisch. Stripe versucht die Zahlung; die Abbuchung ist damit noch nicht bestätigt."}</p> : null}
+      {starter ? <p>Einmalig drei Projektanalysen ohne Karte und ohne automatische Verlängerung. Danach wählen Sie selbst, ob Sie einen Tarif benötigen.</p> : null}
       {paymentIssue ? <p className={styles.error} role="alert">Zahlung offen oder zusätzliche Bestätigung erforderlich. Aktualisieren Sie Ihr Zahlungsmittel bei Stripe. Neue Monatscredits entstehen erst nach bestätigter Zahlung.</p> : null}
       {!status.access.canRunAi ? <p>Neue kostenpflichtige KI-Läufe sind derzeit nicht freigeschaltet. Projekte bleiben lesbar; Kontoverwaltung und Rechnungen bleiben erreichbar.</p> : null}
-      <div className={styles.actions}>{status.subscriptionStatus ? <button type="button" onClick={() => void action("portal")} disabled={Boolean(busy)}>{busy === "portal" ? "Stripe öffnen …" : "Zahlungsmittel und Rechnungen bei Stripe"}</button> : <a href="/preise#tarife">{cardlessTrial ? "Tarife ansehen" : "14 Tage kostenlos testen"}</a>}
+      <div className={styles.actions}>{status.subscriptionStatus ? <button type="button" onClick={() => void action("portal")} disabled={Boolean(busy)}>{busy === "portal" ? "Stripe öffnen …" : "Zahlungsmittel und Rechnungen bei Stripe"}</button> : <a href="/preise#tarife">{cardlessTrial || starter ? "Tarife ansehen" : "14 Tage kostenlos testen"}</a>}
         {status.subscriptionStatus && !status.cancelAtPeriodEnd && ["active", "trialing", "past_due"].includes(status.subscriptionStatus) ? <button type="button" onClick={() => setConfirmCancel(true)} disabled={Boolean(busy)}>{trial ? "Testphase kündigen" : "Zum Periodenende kündigen"}</button> : null}<button type="button" onClick={() => void refresh()} disabled={loading || Boolean(busy)}>Status aktualisieren</button></div>
       {confirmCancel ? <div className={styles.confirm} role="group" aria-label="Kündigung bestätigen"><p>{trial ? "Die erste kostenpflichtige Verlängerung kündigen?" : "Die nächste automatische Verlängerung kündigen?"} Zugang bleibt innerhalb des verbleibenden Kontingents bis zum bestätigten Enddatum erhalten.</p><button type="button" onClick={() => void action("cancel")} disabled={Boolean(busy)}>{busy === "cancel" ? "Kündigung bestätigen …" : "Kündigung jetzt bestätigen"}</button><button type="button" onClick={() => setConfirmCancel(false)} disabled={Boolean(busy)}>Zurück</button></div> : null}</> : null}
   </section>;

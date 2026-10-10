@@ -26,6 +26,7 @@ export type FreelancerProfileRow = {
     | "identity_checked"
     | "references_checked"
     | "operator_verified";
+  monthly_salary_minor?: number | null;
   hourly_rate_minor: number | null;
   day_rate_minor: number | null;
   currency: "EUR" | "USD" | "GBP" | null;
@@ -40,7 +41,7 @@ export type FreelancerProfileRow = {
 };
 
 const FREELANCER_PROFILE_SELECT =
-  "id,avatar_path,display_name,role_title,skill_tags,languages,location_text,work_modes,experience_summary,verified_facts,self_reported_facts,verification_status,hourly_rate_minor,day_rate_minor,currency,profile_status,availability_status,availability_from,availability_updated_at,intro_policy,booking_url,demo_status,version";
+  "id,avatar_path,display_name,role_title,skill_tags,languages,location_text,work_modes,experience_summary,verified_facts,self_reported_facts,verification_status,monthly_salary_minor,hourly_rate_minor,day_rate_minor,currency,profile_status,availability_status,availability_from,availability_updated_at,intro_policy,booking_url,demo_status,version";
 
 function normalizeFact(value: string): string {
   return value.normalize("NFKC").trim().toLocaleLowerCase("en-US");
@@ -130,10 +131,10 @@ function isSecureBookingUrl(value: string | null): value is string {
 }
 
 function rateFromMinor(
-  amount: number | null,
+  amount: number | null | undefined,
   currency: FreelancerProfileRow["currency"],
 ) {
-  if (amount === null || currency === null) return null;
+  if (amount == null || currency === null) return null;
   return { amount: amount / 100, currency };
 }
 
@@ -201,6 +202,7 @@ export function mapFreelancerProfileRow(
         : row.verification_status === "identity_checked"
           ? "self_reported"
           : "not_verified",
+    monthlySalary: rateFromMinor(row.monthly_salary_minor, row.currency),
     hourlyRate: rateFromMinor(row.hourly_rate_minor, row.currency),
     dayRate: rateFromMinor(row.day_rate_minor, row.currency),
     minimumProjectBudget: null,

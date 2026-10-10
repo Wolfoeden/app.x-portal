@@ -38,6 +38,9 @@ describe("the project on a card", () => {
       meta: "Versicherungen · seit 03/2025",
       technologies: ["LangChain", "Azure OpenAI", "Python", "RAG"],
       verified: false,
+      href: null,
+      linkLabel: null,
+      relevant: false,
     });
     expect(projectTeaser({ ...base, client: "Direktversicherer" }).meta).toBe("Direktversicherer · seit 03/2025");
   });

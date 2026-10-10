@@ -11,6 +11,7 @@ select has_column('public', 'freelancer_applications', 'photo_storage_path', 'Fo
 
 insert into public.freelancer_applications (
   id, full_name, contact_email, role_title, experience_summary, skills, languages, consent_at,
+  day_rate_minor, currency, cv_storage_path, cv_original_filename, cv_mime_type, cv_size_bytes,
   reference_projects, photo_storage_path
 ) values (
   'fa000000-0000-4000-8000-000000000001',
@@ -21,6 +22,12 @@ insert into public.freelancer_applications (
   array['testing'],
   array['de'],
   now(),
+  90000,
+  'EUR',
+  'incoming/0b5c2b9e-3c55-4a43-9a7e-2f1d6c7a8b90/0123456789abcdef0123456789abcdef.pdf',
+  'lebenslauf.pdf',
+  'application/pdf',
+  1024,
   '[{"title":"Wissenssuche","technologies":["RAG"],"isPublic":true}]'::jsonb,
   'incoming/0b5c2b9e-3c55-4a43-9a7e-2f1d6c7a8b90/avatar-0123456789abcdef0123456789abcdef.webp'
 );
@@ -32,7 +39,8 @@ select is(
 );
 
 insert into public.freelancer_applications (
-  id, full_name, contact_email, role_title, experience_summary, skills, languages, consent_at
+  id, full_name, contact_email, role_title, experience_summary, skills, languages, consent_at,
+  day_rate_minor, currency, cv_storage_path, cv_original_filename, cv_mime_type, cv_size_bytes
 ) values (
   'fa000000-0000-4000-8000-000000000002',
   'Extras Default',
@@ -41,7 +49,13 @@ insert into public.freelancer_applications (
   'Database fixture used only inside this rolled-back pgTAP test.',
   array['testing'],
   array['de'],
-  now()
+  now(),
+  90000,
+  'EUR',
+  'incoming/1b5c2b9e-3c55-4a43-9a7e-2f1d6c7a8b90/1123456789abcdef0123456789abcdef.pdf',
+  'lebenslauf.pdf',
+  'application/pdf',
+  1024
 );
 select ok(
   (select reference_projects = '[]'::jsonb and photo_storage_path is null

@@ -39,6 +39,7 @@ export type ReviewDefaults = {
   industries: string[];
   locationText: string;
   workModes: WorkMode[];
+  monthlySalary: string;
   hourlyRate: string;
   dayRate: string;
   currency: (typeof CURRENCIES)[number];
@@ -457,6 +458,16 @@ export function ReviewPanel({
             value={form.availabilityFrom}
             onChange={(event) => update("availabilityFrom", event.target.value)}
             type="date"
+          />
+        </label>
+        <label className={styles.field}>
+          <span>Monatsgehalt</span>
+          <input
+            value={form.monthlySalary}
+            onChange={(event) => update("monthlySalary", event.target.value)}
+            type="number"
+            min={1}
+            step="0.01"
           />
         </label>
         <label className={styles.field}>

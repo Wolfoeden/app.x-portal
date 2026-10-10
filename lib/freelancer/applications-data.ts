@@ -22,7 +22,7 @@ import { AVATAR_BUCKET, avatarMimeTypeFromPath } from "./avatar-limits";
 import { mintAvatarObjectPath } from "./avatar-storage";
 
 const LIST_COLUMNS =
-  "id,status,full_name,contact_email,role_title,location_text,skills,hourly_rate_minor,day_rate_minor,currency,availability_status,booking_url,cv_storage_path,created_at,reviewed_at,published_profile_id,seeking,referral";
+  "id,status,full_name,contact_email,role_title,location_text,skills,monthly_salary_minor,hourly_rate_minor,day_rate_minor,currency,availability_status,booking_url,cv_storage_path,created_at,reviewed_at,published_profile_id,seeking,referral";
 
 export type ApplicationListItem = {
   id: string;
@@ -32,6 +32,7 @@ export type ApplicationListItem = {
   role_title: string;
   location_text: string | null;
   skills: string[];
+  monthly_salary_minor: number | null;
   hourly_rate_minor: number | null;
   day_rate_minor: number | null;
   currency: string | null;

@@ -84,8 +84,8 @@ select is(
       'c1111111-1111-4111-8111-111111111111', false, 300
     ) s
   ),
-  '0:0',
-  'registration alone grants no credits despite a legacy initial allocation'
+  '9:9',
+  'registration grants exactly the one-time starter allowance despite a legacy initial allocation'
 );
 
 select is(
@@ -164,7 +164,7 @@ select is(
     ) s
   ),
   '100:0:60:40',
-  'guest conversion preserves historical balance and reservations without a bonus'
+  'guest conversion preserves a larger historical balance and reservations'
 );
 
 select is(

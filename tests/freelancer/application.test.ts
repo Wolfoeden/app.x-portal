@@ -85,6 +85,13 @@ describe("freelancer application input", () => {
     expect(insert.cv_storage_path).toBeNull();
   });
 
+  it("stores a declared monthly salary in minor units", () => {
+    const input = FreelancerApplicationInputSchema.parse(applicationPayload({ seeking: "employment", monthlySalary: "6500", hourlyRate: "" }));
+    const insert = applicationInsertFromInput(input, { submittedByUserId: null, consentAt: "2026-10-10T10:00:00.000Z" });
+    expect(insert.monthly_salary_minor).toBe(650_000);
+    expect(insert.currency).toBe("EUR");
+  });
+
   it("drops the currency when no rate was given at all", () => {
     // The application table pairs currency with a rate; the reviewer form is
     // what insists on an actual number before publishing.

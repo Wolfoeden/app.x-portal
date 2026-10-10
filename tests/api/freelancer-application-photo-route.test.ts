@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   conversion: vi.fn(),
   createSignedUploadUrl: vi.fn(),
   remove: vi.fn(),
+  list: vi.fn(),
+  download: vi.fn(),
   inserted: [] as Array<Record<string, unknown>>,
   pending: [] as Array<Record<string, unknown>>,
   pendingColumns: "",
@@ -30,7 +32,14 @@ vi.mock("@/lib/freelancer/avatar-storage", async (importOriginal) => ({
 }));
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminSupabaseClient: () => ({
-    storage: { from: () => ({ createSignedUploadUrl: mocks.createSignedUploadUrl, remove: mocks.remove }) },
+    storage: {
+      from: () => ({
+        createSignedUploadUrl: mocks.createSignedUploadUrl,
+        remove: mocks.remove,
+        list: mocks.list,
+        download: mocks.download,
+      }),
+    },
     from: () => {
       let op = "select";
       const builder: Record<string, unknown> = {
@@ -62,8 +71,10 @@ import { POST as submit } from "@/app/api/freelancer-applications/route";
 import { POST as ticket } from "@/app/api/freelancer-applications/photo-upload/route";
 import { APPLICATION_PHOTO_PATH_PATTERN } from "@/lib/freelancer/avatar-limits";
 import { signApplicationPhotoPath } from "@/lib/freelancer/avatar-storage";
+import { signCvObjectPath } from "@/lib/freelancer/cv-storage";
 
 const PHOTO = "incoming/33333333-3333-4333-8333-333333333333/avatar-0123456789abcdef0123456789abcdef.webp";
+const CV = "incoming/33333333-3333-4333-8333-333333333333/0123456789abcdef0123456789abcdef.pdf";
 
 function request(url: string, body: unknown, origin = "https://x-portal.eu") {
   return new Request(`https://x-portal.eu${url}`, {
@@ -84,6 +95,13 @@ function application(overrides: Record<string, unknown> = {}) {
     workModes: ["remote"],
     dayRate: "900",
     consent: true,
+    cv: {
+      storagePath: CV,
+      token: signCvObjectPath(CV),
+      originalFilename: "lebenslauf.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 8,
+    },
     projects: [{ title: "Service-Agent", technologies: ["Python"], isPublic: true }],
     photo: { storagePath: PHOTO, token: signApplicationPhotoPath(PHOTO) },
     ...overrides,
@@ -102,6 +120,11 @@ beforeEach(() => {
   mocks.conversion.mockResolvedValue(false);
   mocks.createSignedUploadUrl.mockResolvedValue({ data: { token: "upload-token" }, error: null });
   mocks.remove.mockResolvedValue({ error: null });
+  mocks.list.mockImplementation(async (folder: string) => ({
+    data: [{ name: CV.slice(CV.lastIndexOf("/") + 1), metadata: { size: 8, mimetype: "application/pdf" } }],
+    error: folder === CV.slice(0, CV.lastIndexOf("/")) ? null : new Error("unexpected folder"),
+  }));
+  mocks.download.mockResolvedValue({ data: new Blob(["%PDF-1.7"]), error: null });
   mocks.inserted = [];
   mocks.pending = [];
 });
