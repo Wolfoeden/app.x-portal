@@ -1,6 +1,6 @@
 import { CREDIT_PRICES } from "@/lib/ai/credit-policy";
 
-import { TRIAL_CREDITS, TRIAL_DAYS } from "./plans";
+import { CREDIT_PLANS, TRIAL_CREDITS, TRIAL_DAYS } from "./plans";
 
 /**
  * Die Credit-Regeln in Sätzen, an einer Stelle.
@@ -16,7 +16,7 @@ import { TRIAL_CREDITS, TRIAL_DAYS } from "./plans";
  */
 export const CREDIT_RULES = {
   guest: "Ohne Karte ist ein gekennzeichnetes Ergebnisbeispiel verfügbar. Neue Gäste erhalten kein Bonusguthaben.",
-  account: `Der ${TRIAL_DAYS}-Tage-Trial beginnt nach bestätigter E-Mail und serverseitig verifizierter Kartenhinterlegung bei Stripe mit einmalig ${TRIAL_CREDITS} Credits insgesamt. Neue Registrierung erzeugt kein zusätzliches Bonusguthaben.`,
+  account: `Ein bestätigtes Konto erhält einmalig ${CREDIT_PLANS.starter.grantCredits} Starter-Credits für drei Projektanalysen. Der ${TRIAL_DAYS}-Tage-Trial beginnt nach serverseitig verifizierter Kartenhinterlegung bei Stripe mit zusätzlich einmalig ${TRIAL_CREDITS} Credits insgesamt.`,
   noRefill: "Verbrauchte Trial-Credits füllen sich nicht auf und lösen keine vorzeitige Abbuchung aus. Legitim zugesagtes Bestandsguthaben bleibt erhalten.",
   failures: `Fällt die KI-Analyse aus, kostet sie nichts; eine technisch gescheiterte Recherche ebenfalls nicht. Eine Analyse kostet sonst ${CREDIT_PRICES.project_brief.credits} Credits, eine Recherche ${CREDIT_PRICES.research.credits}.`,
   placementWithoutPlan:

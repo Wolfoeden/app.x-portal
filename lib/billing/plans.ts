@@ -78,6 +78,18 @@ export const CREDIT_PLANS = {
     public: false,
     recommended: false,
   },
+  starter: {
+    id: "starter",
+    label: "Kostenlos",
+    billingModel: "one_time",
+    grantCredits: 9,
+    monthlyCredits: 0,
+    priceNetCents: 0,
+    purchasable: false,
+    euro: 0,
+    public: true,
+    recommended: false,
+  },
   basic: {
     id: "basic",
     label: "Basic",
@@ -166,14 +178,15 @@ export const CREDIT_PLANS = {
 export type CreditPlanId = keyof typeof CREDIT_PLANS;
 
 export const PUBLIC_PRICING_PLANS = [
+  CREDIT_PLANS.starter,
   CREDIT_PLANS.basic,
   CREDIT_PLANS.pro,
   CREDIT_PLANS.business,
   CREDIT_PLANS.enterprise_flex,
 ] as const;
 
-/** Account creation itself never grants credits. The verified Stripe trial does. */
-export const START_CREDITS = 0;
+/** Three project analyses at three credits each, once per confirmed account. */
+export const START_CREDITS = CREDIT_PLANS.starter.grantCredits;
 export const GUEST_TRIAL_CREDITS = CREDIT_PLANS.guest.grantCredits;
 
 export function isCreditPlanId(value: unknown): value is CreditPlanId {
@@ -185,7 +198,7 @@ export function creditPlan(
   isAnonymous = false,
 ): (typeof CREDIT_PLANS)[CreditPlanId] {
   if (isCreditPlanId(planId)) return CREDIT_PLANS[planId];
-  return isAnonymous ? CREDIT_PLANS.guest : CREDIT_PLANS.trial;
+  return isAnonymous ? CREDIT_PLANS.guest : CREDIT_PLANS.starter;
 }
 
 export function effectiveCreditPriceCents(plan: FixedMonthlyPlan): number {

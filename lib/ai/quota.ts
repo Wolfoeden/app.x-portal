@@ -1,6 +1,8 @@
 import "server-only";
 
 import {
+  ACCOUNT_MONTHLY_CREDITS,
+  GUEST_MONTHLY_CREDITS,
   creditPlan,
   type CreditPlanId,
 } from "@/lib/ai/credit-policy";
@@ -160,7 +162,7 @@ export function currentPeriodEndIso(now: Date = new Date()): string {
  * Werte, die Liste ist die Sicherung auf Anwendungsseite.
  */
 export const ALLOWED_MONTHLY_CREDIT_TOTALS: readonly number[] = [
-  0, 10, 30, 63, 90, 100, 300, 500, 1_250, 3_000, 4_000,
+  0, 9, 10, 30, 63, 90, 100, 300, 500, 1_250, 3_000, 4_000,
 ];
 
 /**
@@ -172,10 +174,10 @@ export const ALLOWED_MONTHLY_CREDIT_TOTALS: readonly number[] = [
  * Umgebung getippt hat, ist deutlich besser als gar keines.
  */
 export function configuredInitialCredits(isAnonymous: boolean): number {
-  // No environment override may reintroduce a guest or registration bonus.
-  // The database preserves existing balances and grants trial credits once.
-  void isAnonymous;
-  return 0;
+  // Gäste bleiben ohne Guthaben. Ein registriertes Konto erhält einmalig die
+  // drei kostenlosen Analysen des Starter-Tarifs; Umgebungsvariablen dürfen
+  // dieses feste Produktversprechen weder erhöhen noch abschalten.
+  return isAnonymous ? GUEST_MONTHLY_CREDITS : ACCOUNT_MONTHLY_CREDITS;
 }
 
 export function configuredDailyTokenLimit(

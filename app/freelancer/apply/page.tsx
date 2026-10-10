@@ -4,7 +4,6 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { linkedIdentities } from "@/lib/auth/linked-identities";
 import { PublicFooter, PublicHeader } from "@/components/public/PublicChrome";
-import { MatchProtocol } from "@/components/product/MatchProtocol";
 import { applicationExtrasAvailable } from "@/lib/freelancer/applications-data";
 import { loadFreelancerPortalState } from "@/lib/freelancer/profile-data";
 import { openInvite } from "@/lib/sourcing/conversion";
@@ -47,6 +46,7 @@ const previewProfile: EditableFreelancerProfile = {
   industries: ["SaaS", "Financial Services"],
   locationText: "Berlin",
   workModes: ["remote", "hybrid"],
+  monthlySalary: null,
   hourlyRate: 145,
   dayRate: 1120,
   currency: "EUR",
@@ -106,9 +106,9 @@ export default async function FreelancerApplyPage({
   // Zulauf einer Quelle zählen lässt.
   const rawReferral = (Array.isArray(params.quelle) ? params.quelle[0] : params.quelle)?.trim().toLowerCase();
   const referral = rawReferral && REFERRAL_PATTERN.test(rawReferral) ? rawReferral : null;
-  const invite = preview ? null : await openInvite(inviteToken);
+  const invite = preview || formPreview ? null : await openInvite(inviteToken);
 
-  const user = preview ? null : await getCurrentUser();
+  const user = preview || formPreview ? null : await getCurrentUser();
   const portalState =
     user && !user.isAnonymous
       ? await loadFreelancerPortalState(user.id)
@@ -127,12 +127,6 @@ export default async function FreelancerApplyPage({
     linkedinConnected: identities.providers.includes("linkedin_oidc"),
   };
   const welcome = referralWelcome(referral);
-  const protocolStep = portalState?.kind === "application"
-    ? portalState.status === "approved" ? 3 : 2
-    : portalState?.kind === "profile" || preview
-      ? 3
-      : 1;
-
   // Abgemeldet rendert das Gate den ersten Bildschirm selbst: Sein Knopf
   // öffnet den Anmeldedialog, und der lebt im Browser.
   const signedOut = !preview && !formPreview && (!user || user.isAnonymous);
@@ -154,23 +148,13 @@ export default async function FreelancerApplyPage({
     </>
   );
 
-  const protocol = (
-    <div className={styles.protocol}>
-      <MatchProtocol
-        variant="freelancer"
-        activeStep={protocolStep}
-        label="Vom Profil zum nachvollziehbaren Match"
-      />
-    </div>
-  );
-
   return (
     <>
       <PublicHeader context="Freelancer-Portal" />
       <main className={styles.shell} lang="de">
       <div className={styles.inner}>
         {signedOut ? (
-          <FreelancerAuthGate notices={notices} protocol={protocol} />
+          <FreelancerAuthGate notices={notices} />
         ) : (
           <>
             <header className={styles.header}>
@@ -183,7 +167,6 @@ export default async function FreelancerApplyPage({
               </p>
             </header>
             {notices}
-            {protocol}
           </>
         )}
 
@@ -196,7 +179,7 @@ export default async function FreelancerApplyPage({
             availabilityUpdatedAt={new Date().toISOString()}
           />
         ) : formPreview ? (
-          <ApplyForm referral={referral} extrasAvailable={extrasAvailable} {...importProps} />
+          <ApplyForm referral={referral} extrasAvailable={extrasAvailable} previewMode {...importProps} />
         ) : !user || user.isAnonymous ? null : portalState?.kind === "profile" ? (
           <FreelancerDashboard
             initialProfile={portalState.profile}

@@ -32,6 +32,7 @@ type ProfileRow = {
   verified_facts: string[];
   self_reported_facts: string[];
   verification_status: string;
+  monthly_salary_minor: number | null;
   hourly_rate_minor: number | null;
   day_rate_minor: number | null;
   currency: "EUR" | "USD" | "GBP" | null;
@@ -44,7 +45,7 @@ type ProfileRow = {
 };
 
 const PROFILE_COLUMNS =
-  "id,owner_user_id,display_name,role_title,skill_tags,languages,location_text,work_modes,experience_summary,verified_facts,self_reported_facts,verification_status,hourly_rate_minor,day_rate_minor,currency,profile_status,availability_status,availability_from,booking_url,avatar_path,version";
+  "id,owner_user_id,display_name,role_title,skill_tags,languages,location_text,work_modes,experience_summary,verified_facts,self_reported_facts,verification_status,monthly_salary_minor,hourly_rate_minor,day_rate_minor,currency,profile_status,availability_status,availability_from,booking_url,avatar_path,version";
 
 function valuesWithPrefix(values: readonly string[], prefix: string): string[] {
   const expected = `${prefix.toLocaleLowerCase("en-US")}:`;
@@ -76,6 +77,8 @@ function mapEditableProfile(row: ProfileRow): EditableFreelancerProfile {
     industries: valuesWithPrefix(row.skill_tags, "Industry"),
     locationText: row.location_text,
     workModes: row.work_modes,
+    monthlySalary:
+      row.monthly_salary_minor === null ? null : row.monthly_salary_minor / 100,
     hourlyRate:
       row.hourly_rate_minor === null ? null : row.hourly_rate_minor / 100,
     dayRate: row.day_rate_minor === null ? null : row.day_rate_minor / 100,
@@ -279,6 +282,8 @@ export async function updateOwnedFreelancerProfile(
   const selfReportedFacts = candidate
     .filter((entry) => !stillVerified.has(entry))
     .slice(0, MAX_FACTS_PER_COLUMN);
+  const monthlySalaryMinor =
+    input.monthlySalary === null ? null : Math.round(input.monthlySalary * 100);
   const hourlyRateMinor =
     input.hourlyRate === null ? null : Math.round(input.hourlyRate * 100);
   const dayRateMinor =
@@ -300,6 +305,7 @@ export async function updateOwnedFreelancerProfile(
       experience_summary: input.experienceSummary,
       verified_facts: verifiedFacts,
       self_reported_facts: selfReportedFacts,
+      monthly_salary_minor: monthlySalaryMinor,
       hourly_rate_minor: hourlyRateMinor,
       day_rate_minor: dayRateMinor,
       currency: input.currency,

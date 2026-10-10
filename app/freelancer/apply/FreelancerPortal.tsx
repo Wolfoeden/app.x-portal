@@ -146,7 +146,7 @@ export const APPLICANT_FAQ: ReadonlyArray<{ question: string; answer: string }> 
   {
     question: "Ich habe Lücken im Lebenslauf.",
     answer:
-      "Kein Problem. Wir schauen auf das, was Sie können. Ein Lebenslauf hilft bei der Sichtung, ist aber freiwillig.",
+      "Kein Problem. Wir schauen auf das, was Sie können. Ihr Lebenslauf ist die Grundlage für den Profilentwurf; Lücken dürfen darin sichtbar bleiben.",
   },
 ];
 
@@ -154,14 +154,12 @@ export const APPLICANT_FAQ: ReadonlyArray<{ question: string; answer: string }> 
  * Der Einstieg für abgemeldete Besucher, einschließlich des ersten
  * Bildschirms: Der Knopf dort öffnet denselben Dialog wie der unten, deshalb
  * rendert das Gate den Kopf selbst. Hinweise (Einladung, Herkunft) und das
- * Match-Protokoll kommen als fertige Server-Ausgabe von der Seite.
+ * weitere Hinweise kommen als fertige Server-Ausgabe von der Seite.
  */
 export function FreelancerAuthGate({
   notices = null,
-  protocol = null,
 }: {
   notices?: ReactNode;
-  protocol?: ReactNode;
 }) {
   const [dialogMode, setDialogMode] = useState<AuthDialogMode | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
@@ -213,7 +211,6 @@ export function FreelancerAuthGate({
         {actions}
         <p className={styles.hint}>Ein Konto schützt Ihre Angaben, bis XPORTAL das Profil freigibt.</p>
       </section>
-      {protocol}
       <section className={styles.gate} aria-labelledby="apply-paths-title">
         <p className={styles.eyebrow}>Auch ohne Freelance-Erfahrung</p>
         <h2 id="apply-paths-title">Ein Profil, drei Wege.</h2>
@@ -824,6 +821,10 @@ export function FreelancerDashboard({
                 ))}
               </div>
             </div>
+            <label className={styles.field}>
+              <span>Monatsgehalt <span className={styles.optional}>· optional</span></span>
+              <input type="number" min="1" step="0.01" value={profile.monthlySalary ?? ""} onChange={(event) => update("monthlySalary", numberValue(event.target.value))} />
+            </label>
             <label className={styles.field}>
               <span>Stundensatz <span className={styles.optional}>· optional</span></span>
               <input type="number" min="1" step="0.01" value={profile.hourlyRate ?? ""} onChange={(event) => update("hourlyRate", numberValue(event.target.value))} />

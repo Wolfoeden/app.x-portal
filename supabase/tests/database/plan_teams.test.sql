@@ -77,12 +77,10 @@ select lives_ok(
   'ein Konto darf die historische gekaufte Stufe tragen'
 );
 
-select throws_ok(
+select lives_ok(
   $$update public.user_ai_credit_accounts set plan_id = 'starter'
      where user_id = 'b2000000-0000-4000-8000-000000000001'$$,
-  '23514',
-  null,
-  'eine unbekannte Stufe wird abgelehnt'
+  'die kostenlose Starter-Stufe ist eine gueltige Stufe'
 );
 
 -- Der Trigger normalisiert, statt die Zeile abzulehnen: eine Gastsitzung

@@ -19,6 +19,7 @@ export type ApplicationPreviewInput = {
   skills: readonly string[];
   locationText: string;
   workModes: readonly WorkMode[];
+  monthlySalary?: string;
   hourlyRate: string;
   dayRate: string;
   currency: string;
@@ -40,12 +41,13 @@ const PREVIEW_SKILLS = 4;
 /** Für eine feste Stelle steht kein Honorar auf der Karte, sondern das. */
 export const EMPLOYMENT_RATE_LABEL = "Gehalt nach Absprache";
 
-function amount(value: string): number | null {
-  const parsed = Number(value.trim().replace(",", "."));
-  return value.trim() && Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+function amount(value: string | undefined): number | null {
+  const normalized = value?.trim() ?? "";
+  const parsed = Number(normalized.replace(",", "."));
+  return normalized && Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
-function formatRate(value: number, currency: string, unit: "Tag" | "Stunde"): string {
+function formatRate(value: number, currency: string, unit: "Monat" | "Tag" | "Stunde"): string {
   try {
     return `${new Intl.NumberFormat("de-DE", { style: "currency", currency, maximumFractionDigits: 0 }).format(value)} / ${unit}`;
   } catch {
@@ -54,7 +56,9 @@ function formatRate(value: number, currency: string, unit: "Tag" | "Stunde"): st
 }
 
 /** Tagessatz vor Stundensatz, wie auf den Ergebniskarten. */
-export function previewRate(input: Pick<ApplicationPreviewInput, "dayRate" | "hourlyRate" | "currency" | "seeking">): string | null {
+export function previewRate(input: Pick<ApplicationPreviewInput, "monthlySalary" | "dayRate" | "hourlyRate" | "currency" | "seeking">): string | null {
+  const monthly = amount(input.monthlySalary);
+  if (monthly !== null) return formatRate(monthly, input.currency, "Monat");
   if (input.seeking === "employment") return EMPLOYMENT_RATE_LABEL;
   const day = amount(input.dayRate);
   if (day !== null) return formatRate(day, input.currency, "Tag");
@@ -100,6 +104,7 @@ export function exampleApplicationPreview(now: Date): ShowcaseProfile {
       skills: ["React", "TypeScript", "Next.js", "Design Systems"],
       locationText: "Leipzig",
       workModes: ["remote", "hybrid"],
+      monthlySalary: "",
       hourlyRate: "",
       dayRate: "760",
       currency: "EUR",

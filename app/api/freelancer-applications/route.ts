@@ -193,6 +193,18 @@ export async function POST(request: Request) {
     }
 
     const input = parsed.data;
+    if (!input.cv) {
+      return NextResponse.json(
+        { error: "Bitte laden Sie Ihren Lebenslauf als PDF hoch." },
+        { status: 400 },
+      );
+    }
+    if (input.monthlySalary === null && input.hourlyRate === null && input.dayRate === null) {
+      return NextResponse.json(
+        { error: "Bitte Monatsgehalt, Stunden- oder Tagessatz angeben." },
+        { status: 400 },
+      );
+    }
     if (input.cv && !verifyCvObjectPath(input.cv.storagePath, input.cv.token)) {
       return NextResponse.json(
         { error: "Der Lebenslauf-Upload ist ungültig. Bitte erneut hochladen." },

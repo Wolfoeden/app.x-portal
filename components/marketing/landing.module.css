@@ -112,7 +112,7 @@
 @keyframes demoSend { 45% { transform: translateY(-2px) scale(.94); } 100% { transform: none; } }
 
 .inventoryStrip { background: #fbfdfc; }
-.inventoryFrame { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: stretch; gap: 0; padding-top: 26px; padding-bottom: 26px; }
+.inventoryFrame { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; gap: 0; padding-top: 26px; padding-bottom: 26px; }
 .section .inventoryFrame { padding-top: 26px; padding-bottom: 26px; }
 .inventoryMetric { display: flex; min-width: 0; flex-direction: column; align-items: center; justify-content: center; gap: 7px; padding: 10px 18px; text-align: center; }
 .inventoryMetric + .inventoryMetric { border-left: 1px solid var(--lp-line); }
@@ -223,7 +223,6 @@
   .faq { gap: 24px; }
   .inventoryFrame { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .inventoryMetric:nth-child(3) { border-top: 1px solid var(--lp-line); border-left: 0; }
-  .inventoryMetric:nth-child(4) { border-top: 1px solid var(--lp-line); }
 }
 
 @media (max-width: 640px) {

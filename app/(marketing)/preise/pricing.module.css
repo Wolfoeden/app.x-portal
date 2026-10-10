@@ -117,5 +117,5 @@
 .placement aside > span { color: var(--muted); font-size: var(--fs-xs); line-height: 1.55; }
 @media (max-width: 760px) { .placement { grid-template-columns: 1fr; padding: 40px 0; } }
 .finalCta > a { flex: none; }
-.trialCards { grid-template-columns: repeat(3,minmax(0,1fr)); }
-@media (max-width:900px) { .trialCards { grid-template-columns:1fr; } }
+.trialCards .checkoutNote { min-height: 116px; }
+@media (max-width:900px) { .trialCards { grid-template-columns:1fr; } .trialCards .checkoutNote { min-height: 0; } }
