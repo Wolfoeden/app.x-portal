@@ -1,12 +1,12 @@
 "use client";
 
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import { TagInput } from "@/components/TagInput";
 import { AuthDialog } from "@/components/chat/dialogs";
 import { ShowcaseCard } from "@/components/chat/showcase-card";
 import type { AuthDialogMode } from "@/components/chat/shared";
-import { exampleApplicationPreview } from "@/lib/freelancer/application-preview";
+import { applicationPreviewProfile, exampleApplicationPreview } from "@/lib/freelancer/application-preview";
 import { signOut } from "@/lib/auth/browser";
 import { appPath } from "@/lib/app-path";
 import { placementRequestsEnabled } from "@/lib/placement/config";
@@ -340,6 +340,42 @@ export function FreelancerDashboard({
   const [projectNotice, setProjectNotice] = useState<Notice>(null);
   const [projectBusy, setProjectBusy] = useState(false);
   const [strengthAt] = useState(() => new Date());
+  const [previewAt] = useState(() => new Date());
+  const [testQuery, setTestQuery] = useState(() => initialProfile.skills.slice(0, 2).join(" "));
+  const discoveryProfile = useMemo(() => {
+    const queryTerms = testQuery.split(/[^\p{L}\p{N}+#.]+/u).filter(Boolean);
+    const base = applicationPreviewProfile({
+      fullName: profile.displayName,
+      roleTitle: profile.roleTitle,
+      skills: profile.skills,
+      locationText: profile.locationText ?? "",
+      workModes: profile.workModes,
+      monthlySalary: profile.monthlySalary?.toString() ?? "",
+      hourlyRate: profile.hourlyRate?.toString() ?? "",
+      dayRate: profile.dayRate?.toString() ?? "",
+      currency: profile.currency,
+      availabilityStatus: profile.availabilityStatus,
+      availabilityFrom: profile.availabilityFrom ?? "",
+      bookingUrl: profile.bookingUrl ?? "",
+      seeking,
+      experienceSummary: profile.experienceSummary,
+      avatarUrl: profile.avatarUrl,
+      projects,
+      queryTerms,
+    }, previewAt);
+    const normalized = queryTerms.map((term) => term.toLocaleLowerCase("de-DE"));
+    return {
+      ...base,
+      id: profile.id,
+      verified: profile.verificationStatus === "operator_verified",
+      evidence: base.evidence
+        .map((entry) => ({
+          ...entry,
+          required: normalized.some((term) => entry.skill.toLocaleLowerCase("de-DE").includes(term)),
+        }))
+        .sort((left, right) => Number(right.required) - Number(left.required)),
+    };
+  }, [previewAt, profile, projects, seeking, testQuery]);
   // Live aus dem, was gerade im Formular steht: Wer ein Foto oder Projekt
   // ergänzt, sieht die Zahl sofort steigen.
   const strength = profileStrength({
@@ -754,6 +790,22 @@ export function FreelancerDashboard({
           total={metrics.bookingClicksTotal}
           recent={metrics.bookingClicks30Days}
         />
+      </section>
+
+      <section className={`${styles.section} ${styles.applyHero}`} aria-labelledby="discovery-preview-title">
+        <div>
+          <p className={styles.eyebrow}>Testansicht für Freelancer</p>
+          <h2 id="discovery-preview-title">So wird Ihr Profil für eine Anfrage eingeordnet.</h2>
+          <p className={styles.sectionHint}>Geben Sie Rolle, Branche oder Technologie ein. Die Vorschau hebt Überschneidungen hervor und wählt das dazu passendste öffentliche Referenzprojekt.</p>
+          <label className={styles.field}>
+            <span>Beispielanfrage</span>
+            <input value={testQuery} onChange={(event) => setTestQuery(event.target.value)} placeholder="z. B. React für Versicherungsportal" />
+            <span className={styles.hint}>Lokale Testansicht – keine echte Kundenanfrage.</span>
+          </label>
+        </div>
+        <aside className={styles.gateExample} aria-label="Profilkarte zur Beispielanfrage">
+          <ShowcaseCard profile={discoveryProfile} now={previewAt} href={appPath(`/profil/${profile.id}?via=share`)} />
+        </aside>
       </section>
 
       <form className={styles.form} onSubmit={save}>

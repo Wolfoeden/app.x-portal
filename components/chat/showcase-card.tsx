@@ -128,7 +128,7 @@ export function ShowcaseCard({ profile, now, href }: { profile: ShowcaseProfile;
         </span>
       ) : null}
       {profile.highlight ? (
-        <ProjectTeaserBlock teaser={profile.highlight} total={profile.projectCount ?? 1} />
+        <ProjectTeaserBlock teaser={profile.highlight} total={profile.projectCount ?? 1} links={!href} />
       ) : intro ? (
         <span className="showcase-card-teaser">
           <small>{intro.label}</small>

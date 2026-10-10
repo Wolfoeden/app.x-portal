@@ -74,18 +74,63 @@ export function projectPeriod(project: Pick<ProfileProject, "startedOn" | "ended
 }
 
 /** Was eine Karte von einem Projekt zeigt: Titel, Kunde oder Branche mit Zeitraum, vier Technologien. */
-export type ProjectTeaser = { title: string; meta: string | null; technologies: string[]; verified: boolean };
+export type ProjectTeaser = {
+  title: string;
+  meta: string | null;
+  technologies: string[];
+  verified: boolean;
+  /** Öffentlicher Projekt-/Arbeitgeberbeleg; niemals ein privater CV-Link. */
+  href?: string | null;
+  linkLabel?: string | null;
+  /** Das Projekt überschneidet sich mit Begriffen aus der aktuellen Anfrage. */
+  relevant?: boolean;
+};
 
-export function projectTeaser(project: ProfileProject): ProjectTeaser {
+export function projectTeaser(project: ProfileProject, relevant = false): ProjectTeaser {
+  const href = project.link?.startsWith("https://")
+    ? project.link
+    : project.source === "research" && project.sourceUrl?.startsWith("https://")
+      ? project.sourceUrl
+      : null;
   return {
     title: project.title,
     meta: [project.client ?? project.industry, projectPeriod(project)].filter(Boolean).join(" · ") || null,
     technologies: project.technologies.slice(0, 4),
     verified: project.verified,
+    href,
+    linkLabel: href ? (project.client ? `${project.client} ansehen` : "Projekt ansehen") : null,
+    relevant,
   };
 }
 
+const QUERY_STOPWORDS = new Set(["der", "die", "das", "den", "dem", "und", "oder", "ein", "eine", "einer", "mit", "für", "von", "auf", "aus", "zur", "zum", "the", "and", "for", "with"]);
+
+function words(values: readonly string[]): Set<string> {
+  return new Set(values.join(" ").toLocaleLowerCase("de-DE").split(/[^\p{L}\p{N}+#.]+/u).filter((word) => word.length >= 3 && !QUERY_STOPWORDS.has(word)));
+}
+
+/** Deterministisch das Referenzprojekt wählen, das die aktuelle Anfrage am besten belegt. */
+export function projectMatchScore(project: ProfileProject, queryTerms: readonly string[]): number {
+  const query = words(queryTerms);
+  if (!query.size) return 0;
+  const evidence = words([
+    project.title,
+    project.client ?? "",
+    project.industry ?? "",
+    project.role ?? "",
+    project.outcome ?? "",
+    ...project.technologies,
+  ]);
+  return [...query].reduce((score, word) => score + Number(evidence.has(word)), 0);
+}
+
 /** Das Projekt für die Karte: ein geprüftes zuerst, sonst das erste der Liste. */
-export function pickHighlight(projects: readonly ProfileProject[]): ProfileProject | null {
+export function pickHighlight(projects: readonly ProfileProject[], queryTerms: readonly string[] = []): ProfileProject | null {
+  if (queryTerms.length) {
+    const ranked = projects
+      .map((project, index) => ({ project, index, score: projectMatchScore(project, queryTerms) }))
+      .sort((left, right) => right.score - left.score || Number(right.project.verified) - Number(left.project.verified) || left.index - right.index);
+    if ((ranked[0]?.score ?? 0) > 0) return ranked[0]!.project;
+  }
   return projects.find((project) => project.verified) ?? projects[0] ?? null;
 }

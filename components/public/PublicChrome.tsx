@@ -4,14 +4,15 @@ import type { ReactNode } from "react";
 import { LegalFooter } from "@/components/LegalFooter";
 import { MARKETING_PAGE } from "@/lib/seo";
 
+import { PublicAppAction } from "./PublicAppAction";
 import styles from "./public-chrome.module.css";
 
-function NavigationLinks() {
+function NavigationLinks({ audience }: { audience: "business" | "freelancer" }) {
   return (
     <>
-      <Link href={MARKETING_PAGE.find.path}>Freelancer finden</Link>
-      <Link href={MARKETING_PAGE.pricing.path}>Preise</Link>
-      <Link href="/freelancer/apply">Für Freelancer</Link>
+      <Link href={MARKETING_PAGE.find.path}>{audience === "freelancer" ? "Für Unternehmen" : "Freelancer finden"}</Link>
+      <Link href={MARKETING_PAGE.pricing.path}>{audience === "freelancer" ? "Preise für Unternehmen" : "Preise"}</Link>
+      <Link href="/freelancer/apply">Freelancer-Portal</Link>
     </>
   );
 }
@@ -23,7 +24,11 @@ function NavigationLinks() {
  * beim Scrollen stehen; auf dem Telefon öffnet „Menü“ die Navigation — ein
  * `<details>`, damit es ohne JavaScript geht.
  */
-export function PublicHeader({ context }: { context?: string }) {
+export function PublicHeader({ context, authenticated = false, audience = "business" }: {
+  context?: string;
+  authenticated?: boolean;
+  audience?: "business" | "freelancer";
+}) {
   return (
     <header className={styles.header} data-public-surface>
       <div className={styles.headerInner}>
@@ -32,12 +37,12 @@ export function PublicHeader({ context }: { context?: string }) {
         </Link>
         {context ? <span className={styles.context}>{context}</span> : null}
         <nav className={styles.navigation} aria-label="Hauptnavigation">
-          <NavigationLinks />
+          <NavigationLinks audience={audience} />
         </nav>
         <div className={styles.headerActions}>
-          <Link href="/anmelden" prefetch={false} className={styles.primaryAction}>
-            Anmelden
-          </Link>
+          {authenticated ? <PublicAppAction className={styles.primaryAction} /> : (
+            <Link href="/anmelden" prefetch={false} className={styles.primaryAction}>Anmelden</Link>
+          )}
         </div>
         <details className={styles.menu}>
           <summary>
@@ -45,8 +50,10 @@ export function PublicHeader({ context }: { context?: string }) {
             <span className="sr-only">Menü</span>
           </summary>
           <nav aria-label="Navigation">
-            <NavigationLinks />
-            <Link href="/anmelden" prefetch={false} className={styles.menuAction}>Anmelden</Link>
+            <NavigationLinks audience={audience} />
+            {authenticated ? <PublicAppAction className={styles.menuAction} /> : (
+              <Link href="/anmelden" prefetch={false} className={styles.menuAction}>Anmelden</Link>
+            )}
           </nav>
         </details>
       </div>

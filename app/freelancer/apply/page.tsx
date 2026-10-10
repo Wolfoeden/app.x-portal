@@ -150,7 +150,7 @@ export default async function FreelancerApplyPage({
 
   return (
     <>
-      <PublicHeader context="Freelancer-Portal" />
+      <PublicHeader context="Freelancer-Portal" audience="freelancer" authenticated={!signedOut} />
       <main className={styles.shell} lang="de">
       <div className={styles.inner}>
         {signedOut ? (

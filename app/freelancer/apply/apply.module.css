@@ -1,12 +1,9 @@
 .shell {
   min-height: 100vh;
-  background: var(--surface-soft);
   color: var(--ink);
-  padding: 0 clamp(20px, 5vw, 72px) 80px;
 }
 
 .inner {
-  max-width: 1040px;
   margin: 0 auto;
 }
 
@@ -16,26 +13,10 @@
 
 .eyebrow {
   margin: 0;
-  color: var(--muted-light);
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.header h1 {
-  margin: 10px 0 12px;
-  font-size: clamp(30px, 4.4vw, 46px);
-  letter-spacing: -0.045em;
-  line-height: 1.05;
 }
 
 .header p {
-  max-width: 620px;
   margin: 0 0 12px;
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1.6;
 }
 
 .header p:last-child {
@@ -1020,10 +1001,14 @@
 /* Evidence-first onboarding: one compact intake beside the profile that is
    assembled from CV and connected sources. */
 .simpleForm {
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 22px;
+  grid-template-columns: minmax(0, 1fr) 352px;
+  gap: 24px;
 }
 
+.sectionHeading, .connectionHeading, .sourceTitle { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sectionHeading { align-items: flex-start; margin-bottom: 24px; }
+.sectionHeading h2 { margin-top: 8px; font-family: var(--xp-display); font-size: clamp(24px, 3vw, 32px); font-weight: 400; line-height: 1.12; }
+.infoTip { display: inline-grid; flex: 0 0 24px; height: 24px; place-items: center; border: 1px solid #b9d7c8; border-radius: 50%; background: #f1faf5; color: #176141; font-size: 12px; font-weight: 750; }
 .simplePreview { grid-column: 2; grid-row: 1 / span 2; position: sticky; top: 24px; }
 .rateComposer {
   display: grid;
@@ -1035,7 +1020,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px 16px;
-  border: 1px dashed #9fcdb5;
+  border: 1px solid #c6ded2;
   border-radius: 14px;
   background: #f6fbf8;
   padding: 20px;
@@ -1057,11 +1042,13 @@
 }
 .cvDrop > button:disabled, .connectionCard > button:disabled { cursor: wait; opacity: .55; }
 
-.connectionSection { display: grid; gap: 10px; margin-top: 22px; }
-.connectionGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.connectionCard { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
-.connectionCard > div { display: grid; gap: 3px; }
-.connectionCard > div span { color: var(--muted); font-size: 11px; line-height: 1.4; }
+.connectionSection { display: grid; gap: 12px; margin-top: 26px; }
+.connectionHeading span { color: var(--muted); font-size: 11px; }
+.connectionGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.connectionCard { display: grid; align-content: space-between; min-width: 0; gap: 16px; border: 1px solid #e0e6e2; border-radius: 14px; padding: 16px; }
+.sourceHead { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; }
+.sourceHead > div { display: grid; min-width: 0; gap: 4px; }
+.sourceHead span { color: var(--muted); font-size: 11px; line-height: 1.45; }
 .connectionGrid > .error, .connectionGrid > .importNote { grid-column: 1 / -1; margin: 0; }
 .evidenceSummary { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--border); padding-top: 12px; }
 .blankConfirm { display: grid; gap: 8px; border: 1px solid #d8c99f; border-radius: 12px; background: #fffaf0; padding: 16px; }
@@ -1076,5 +1063,4 @@
 @media (max-width: 640px) {
   .rateComposer, .connectionGrid { grid-template-columns: 1fr; }
   .cvDrop { grid-template-columns: 1fr; }
-  .connectionCard { align-items: flex-start; flex-direction: column; }
 }

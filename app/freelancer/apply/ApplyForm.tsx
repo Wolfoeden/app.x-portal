@@ -20,6 +20,7 @@ import type { ProfileProject } from "@/lib/profile/project-limits";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 import { ImportPanel } from "./ImportPanel";
+import { InfoTip } from "./InfoTip";
 import styles from "./apply.module.css";
 
 type UploadedCv = {
@@ -305,9 +306,10 @@ export function ApplyForm({
   return (
     <form className={`${styles.form} ${styles.simpleForm}`} onSubmit={handleSubmit} noValidate>
       <section className={`${styles.section} ${styles.intakeSection}`}>
-        <p className={styles.eyebrow}>Profil anlegen</p>
-        <h2>Drei Pflichtangaben. Den Rest bereitet XPORTAL vor.</h2>
-        <p className={styles.sectionHint}>Name, Vergütung und Lebenslauf sind Pflicht. GitHub und LinkedIn verbessern die Datengrundlage, sind aber freiwillig.</p>
+        <div className={styles.sectionHeading}>
+          <div><p className={styles.eyebrow}>Profil anlegen</p><h2>Drei Angaben.</h2></div>
+          <InfoTip label="Hinweis zu den Pflichtangaben">Name, Vergütung und Lebenslauf sind Pflicht. GitHub und LinkedIn verbessern die Datengrundlage, sind aber freiwillig.</InfoTip>
+        </div>
 
         <div className={styles.grid}>
           <label className={`${styles.field} ${styles.full}`}><span>Vor- und Nachname</span><input value={fullName} onChange={(event) => setFullName(event.target.value)} autoComplete="name" minLength={2} maxLength={120} required /></label>
@@ -319,7 +321,7 @@ export function ApplyForm({
 
           <div className={`${styles.cvDrop} ${styles.full}`} data-ready={Boolean(cv)}>
             <input ref={fileInputRef} className={styles.hiddenFile} type="file" accept={CV_ACCEPT} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadCv(file); }} />
-            <div><strong>Lebenslauf</strong>{" "}<span>PDF bis 10 MB · wird für den Profilentwurf ausgewertet</span></div>
+            <div><strong>Lebenslauf</strong><span>PDF bis 10 MB · wird für den Profilentwurf ausgewertet</span></div>
             <button type="button" onClick={() => fileInputRef.current?.click()} disabled={cvStatus !== "idle"}>{cvStatus === "uploading" ? "Wird hochgeladen …" : cvStatus === "analyzing" ? "KI wertet aus …" : cv ? "Andere PDF wählen" : "PDF hochladen"}</button>
             {cv ? <p><strong>{cv.originalFilename}</strong> · {formatFileSize(cv.sizeBytes)}</p> : null}
             {cvError ? <p className={styles.error} role="alert">{cvError}</p> : null}
@@ -328,7 +330,7 @@ export function ApplyForm({
         </div>
 
         <div className={styles.connectionSection}>
-          <div><strong>Profile verbinden</strong>{" "}<span>freiwillig</span></div>
+          <div className={styles.connectionHeading}><div><strong>Profile verbinden</strong><span>Freiwillig ergänzen</span></div><InfoTip label="Hinweis zu verbundenen Profilen">GitHub und LinkedIn ergänzen den Profilentwurf um relevante berufliche Informationen.</InfoTip></div>
           <ImportPanel githubLogin={githubLogin} linkedinConnected={linkedinConnected} onDraft={applyDraft} />
         </div>
 

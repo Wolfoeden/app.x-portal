@@ -6,6 +6,7 @@ import { fetchProfileLinks, fetchProjects } from "@/lib/data/freelancer-projects
 import { contactLinkFlags, type ContactLinkFlags } from "@/lib/profile/contact-links";
 import {
   pickHighlight,
+  projectMatchScore,
   projectTeaser,
   type ProfileLink,
   type ProfileProject,
@@ -53,12 +54,13 @@ export function cardExtrasFor(
   id: string,
   references: ReadonlyMap<string, string>,
   projects: ReadonlyMap<string, readonly ProfileProject[]>,
+  projectTerms: readonly string[] = [],
 ): CardExtras {
   const list = projects.get(id) ?? [];
-  const highlight = pickHighlight(list);
+  const highlight = pickHighlight(list, projectTerms);
   return {
     ...(references.size ? { referencesSummary: references.get(id) ?? null } : {}),
-    ...(list.length ? { highlight: highlight ? projectTeaser(highlight) : null, projectCount: list.length } : {}),
+    ...(list.length ? { highlight: highlight ? projectTeaser(highlight, projectMatchScore(highlight, projectTerms) > 0) : null, projectCount: list.length } : {}),
   };
 }
 
@@ -70,6 +72,7 @@ export function cardExtrasFor(
 export async function attachProfileExtras<T extends { id: string }>(
   admin: SupabaseClient,
   profiles: readonly T[],
+  projectTerms: readonly string[] = [],
 ): Promise<Array<T & CardExtras & { contactLinks?: ContactLinkFlags }>> {
   if (profiles.length === 0) return [...profiles];
   const ids = profiles.map((profile) => profile.id);
@@ -80,7 +83,7 @@ export async function attachProfileExtras<T extends { id: string }>(
   ]);
   return profiles.map((profile) => ({
     ...profile,
-    ...cardExtrasFor(profile.id, references, projects),
+    ...cardExtrasFor(profile.id, references, projects, projectTerms),
     ...(links ? { contactLinks: contactLinkFlags(links.get(profile.id) ?? []) } : {}),
   }));
 }

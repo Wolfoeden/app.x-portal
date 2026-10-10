@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 
 import { appPath } from "@/lib/app-path";
 import { startOauthUpgrade } from "@/lib/auth/browser";
 import type { ProfileDraft } from "@/lib/freelancer/import/draft";
 
 import styles from "./apply.module.css";
+import { InfoTip } from "./InfoTip";
 
 /** GitHub keeps the existing public-repository import; LinkedIn OIDC only confirms identity. */
 export function ImportPanel({ githubLogin, linkedinConnected, onDraft }: {
@@ -58,7 +60,7 @@ export function ImportPanel({ githubLogin, linkedinConnected, onDraft }: {
   return (
     <div className={styles.connectionGrid}>
       <div className={styles.connectionCard} data-connected={Boolean(githubLogin)}>
-        <div><strong>GitHub</strong><span>{githubLogin ? `Verbunden als @${githubLogin}` : "Öffentliche Projekte und Technologien übernehmen"}</span></div>
+        <div className={styles.sourceHead}><Image src="/images/auth/github.png" alt="" width={28} height={28} /><div><strong>GitHub</strong><span>{githubLogin ? `Verbunden als @${githubLogin}` : "Öffentliche Projekte und Technologien übernehmen"}</span></div></div>
         {githubLogin ? (
           <button type="button" onClick={() => void importGithub()} disabled={Boolean(busy)}>{busy === "github" ? "Wird ausgewertet …" : "GitHub auswerten"}</button>
         ) : (
@@ -66,7 +68,7 @@ export function ImportPanel({ githubLogin, linkedinConnected, onDraft }: {
         )}
       </div>
       <div className={styles.connectionCard} data-connected={linkedinConnected}>
-        <div><strong>LinkedIn</strong><span>{linkedinConnected ? "Identität verbunden" : "Optional verbinden; Arbeitgeberdaten kommen derzeit aus dem Lebenslauf"}</span></div>
+        <div className={styles.sourceHead}><Image src="/images/auth/linkedin.png" alt="" width={28} height={28} /><div><div className={styles.sourceTitle}><strong>LinkedIn</strong><InfoTip label="Hinweis zur LinkedIn-Auswertung">Nach der Verbindung wird ein KI-Agent die öffentlich erreichbare LinkedIn-Seite scrapen und relevante berufliche Informationen in das Profil übernehmen.</InfoTip></div><span>{linkedinConnected ? "Profil verbunden" : "Berufserfahrung und Branchen ergänzen"}</span></div></div>
         {linkedinConnected ? <span className={styles.connectedMark}>Verbunden</span> : (
           <button type="button" onClick={() => void connect("linkedin")} disabled={Boolean(busy)}>{busy === "linkedin" ? "Weiterleitung …" : "LinkedIn verbinden"}</button>
         )}

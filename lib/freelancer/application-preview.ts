@@ -3,7 +3,7 @@ import type { AvailabilityStatus, Seeking, WorkMode } from "@/lib/freelancer/lim
 import { placementRequestsEnabled } from "@/lib/placement/config";
 import { summaryExcerpt } from "@/lib/profile/excerpt";
 import type { ProfileField } from "@/lib/profile/identity";
-import { pickHighlight, projectTeaser, type ProfileProject } from "@/lib/profile/project-limits";
+import { pickHighlight, projectMatchScore, projectTeaser, type ProfileProject } from "@/lib/profile/project-limits";
 
 /**
  * Die Profilkarte, wie Kunden sie nach der Freigabe sehen, gebaut aus dem,
@@ -34,6 +34,8 @@ export type ApplicationPreviewInput = {
   avatarUrl?: string | null;
   /** Die Projekte aus dem Formular; auf der Karte steht nur, was gezeigt werden soll. */
   projects?: readonly ProfileProject[];
+  /** Begriffe einer lokalen Testanfrage; sie wählen nur die sichtbare Referenz. */
+  queryTerms?: readonly string[];
 };
 
 const PREVIEW_SKILLS = 4;
@@ -68,7 +70,7 @@ export function previewRate(input: Pick<ApplicationPreviewInput, "monthlySalary"
 
 export function applicationPreviewProfile(input: ApplicationPreviewInput, now: Date): ShowcaseProfile {
   const shown = (input.projects ?? []).filter((project) => project.isPublic && project.title.trim().length >= 3);
-  const highlight = pickHighlight(shown);
+  const highlight = pickHighlight(shown, input.queryTerms);
   return {
     id: "vorschau",
     displayName: input.fullName.trim() || "Ihr Name",
@@ -90,7 +92,7 @@ export function applicationPreviewProfile(input: ApplicationPreviewInput, now: D
     // Das Fachgebiet bestimmt erst der Server; die Vorschau zeigt ein neutrales Band.
     field: input.field ?? null,
     summaryExcerpt: summaryExcerpt(input.experienceSummary),
-    highlight: highlight ? projectTeaser(highlight) : null,
+    highlight: highlight ? projectTeaser(highlight, projectMatchScore(highlight, input.queryTerms ?? []) > 0) : null,
     projectCount: shown.length,
   };
 }

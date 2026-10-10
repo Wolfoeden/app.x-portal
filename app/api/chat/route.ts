@@ -730,17 +730,25 @@ async function processChatRequest(
       isAnonymous: user.isAnonymous,
     });
 
+    const projectTerms = [
+      extraction.brief.projectTitle,
+      extraction.brief.summary,
+      ...(extraction.brief.requiredSkills ?? []),
+      ...(extraction.brief.optionalSkills ?? []),
+      ...(extraction.brief.qualifications ?? []),
+      ...(extraction.brief.constraints ?? []),
+    ].filter((term): term is string => typeof term === "string" && term.trim().length > 0);
     const [presentedMatches, presentedPartialMatches] = await Promise.all([
       attachFreelancerCvAccess(
         admin,
         shortlist.matches.map(presentMatch),
         user.isAnonymous,
-      ).then((profiles) => attachProfileExtras(admin, profiles)),
+      ).then((profiles) => attachProfileExtras(admin, profiles, projectTerms)),
       attachFreelancerCvAccess(
         admin,
         shortlist.partialMatches.map(presentMatch),
         user.isAnonymous,
-      ).then((profiles) => attachProfileExtras(admin, profiles)),
+      ).then((profiles) => attachProfileExtras(admin, profiles, projectTerms)),
     ]);
 
     return NextResponse.json(
