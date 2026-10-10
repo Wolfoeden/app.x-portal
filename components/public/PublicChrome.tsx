@@ -10,7 +10,7 @@ import styles from "./public-chrome.module.css";
 function NavigationLinks({ audience }: { audience: "business" | "freelancer" }) {
   return (
     <>
-      <Link href={MARKETING_PAGE.find.path}>{audience === "freelancer" ? "Für Unternehmen" : "Freelancer finden"}</Link>
+      <Link href={MARKETING_PAGE.find.path}>{audience === "freelancer" ? "Für Unternehmen" : "Freelancer Index"}</Link>
       <Link href={MARKETING_PAGE.pricing.path}>{audience === "freelancer" ? "Preise für Unternehmen" : "Preise"}</Link>
       <Link href="/freelancer/apply">Freelancer-Portal</Link>
     </>
@@ -32,7 +32,7 @@ export function PublicHeader({ context, authenticated = false, audience = "busin
   return (
     <header className={styles.header} data-public-surface>
       <div className={styles.headerInner}>
-        <Link href={MARKETING_PAGE.find.path} className={styles.brand} aria-label="XPORTAL – Freelancer finden">
+        <Link href={MARKETING_PAGE.find.path} className={styles.brand} aria-label="XPORTAL – Freelancer Index">
           <span>XPORTAL</span>
         </Link>
         {context ? <span className={styles.context}>{context}</span> : null}
