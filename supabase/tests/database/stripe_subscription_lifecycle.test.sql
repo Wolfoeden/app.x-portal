@@ -41,8 +41,8 @@ select is(
       from public.user_ai_credit_accounts a
      where a.user_id = 'd3333333-3333-4333-8333-333333333333'
   ),
-  'trial:0:pending',
-  'checkout alone grants no paid credits'
+  'starter:9:pending',
+  'checkout alone grants no paid credits and preserves the starter allowance'
 );
 
 select throws_ok(
