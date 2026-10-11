@@ -1,5 +1,5 @@
 /* Rahmen und Schrift wie auf der Startseite (landing.module.css). */
-.main { box-sizing: border-box; width: min(100%, 1088px); margin: 0 auto; padding: 0 72px 8px; border-inline: 1px solid var(--xp-line); color: var(--ink); }
+.main { box-sizing: border-box; width: 100%; max-width: var(--xp-page-max); margin: 0 auto; padding: 0 var(--xp-page-gutter) 8px; color: var(--ink); }
 .main:focus { outline: none; }
 .main > nav { display: flex; flex-wrap: wrap; gap: 8px 22px; padding: 0 0 52px; font-size: var(--fs-sm); }
 .main > nav a { color: var(--ink); text-underline-offset: 4px; }

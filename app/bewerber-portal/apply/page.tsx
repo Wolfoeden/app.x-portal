@@ -17,10 +17,11 @@ import { ApplyForm } from "./ApplyForm";
 import { RememberReferral } from "./RememberReferral";
 import { REFERRAL_PATTERN } from "@/lib/freelancer/limits";
 import { referralWelcome } from "@/lib/freelancer/referrals";
+import { ApplicantLanding } from "./ApplicantLanding";
+import { APPLY_HERO } from "./applicant-copy";
+import { GateActions } from "./GateActions";
 import {
-  APPLY_HERO,
   FreelancerApplicationStatus,
-  FreelancerAuthGate,
   FreelancerDashboard,
 } from "./FreelancerPortal";
 import styles from "./apply.module.css";
@@ -96,6 +97,9 @@ export default async function FreelancerApplyPage({
   // Das Bewerbungsformular ohne Anmeldung ansehen, nur in der Entwicklung.
   const formPreview =
     process.env.NODE_ENV === "development" && params.preview === "form";
+  // Den Einstieg für Abgemeldete ohne Datenbank ansehen, nur in der Entwicklung.
+  const gatePreview =
+    process.env.NODE_ENV === "development" && params.preview === "gate";
 
   // Das Kennzeichen aus der Einladung wird beim **Aufruf** eingelöst, nicht
   // erst beim Absenden. Sonst ließe sich bei einer Einladung ohne Anmeldung
@@ -106,9 +110,9 @@ export default async function FreelancerApplyPage({
   // Zulauf einer Quelle zählen lässt.
   const rawReferral = (Array.isArray(params.quelle) ? params.quelle[0] : params.quelle)?.trim().toLowerCase();
   const referral = rawReferral && REFERRAL_PATTERN.test(rawReferral) ? rawReferral : null;
-  const invite = preview || formPreview ? null : await openInvite(inviteToken);
+  const invite = preview || formPreview || gatePreview ? null : await openInvite(inviteToken);
 
-  const user = preview || formPreview ? null : await getCurrentUser();
+  const user = preview || formPreview || gatePreview ? null : await getCurrentUser();
   const portalState =
     user && !user.isAnonymous
       ? await loadFreelancerPortalState(user.id)
@@ -120,15 +124,15 @@ export default async function FreelancerApplyPage({
   const extrasAvailable = formPreview || (showsForm && (await applicationExtrasAvailable().catch(() => false)));
   // Für den Importkasten: Ist die KI eingerichtet, und mit welchen Anbietern
   // ist das Konto verknüpft? (GitHub-Name vorbelegen, LinkedIn-Hinweis.)
-  const identities = showsForm ? await linkedIdentities() : { providers: [], githubLogin: null };
+  const identities = showsForm || portalState?.kind === "profile" ? await linkedIdentities() : { providers: [], githubLogin: null };
   const importProps = {
     cvImportAvailable: formPreview || Boolean(process.env.OPENAI_API_KEY?.trim()),
     githubLogin: identities.githubLogin,
     linkedinConnected: identities.providers.includes("linkedin_oidc"),
   };
   const welcome = referralWelcome(referral);
-  // Abgemeldet rendert das Gate den ersten Bildschirm selbst: Sein Knopf
-  // öffnet den Anmeldedialog, und der lebt im Browser.
+  // Abgemeldet zeigt die Seite den Einstieg (ApplicantLanding) über die volle
+  // Breite; die Anmeldeknöpfe darin und im Kopf öffnen den Dialog im Browser.
   const signedOut = !preview && !formPreview && (!user || user.isAnonymous);
 
   const notices = (
@@ -150,23 +154,27 @@ export default async function FreelancerApplyPage({
 
   return (
     <>
-      <PublicHeader context="Bewerber-Portal" authenticated={!signedOut} />
+      <PublicHeader context="Bewerber-Portal" authenticated={!signedOut} actions={signedOut ? <GateActions variant="header" /> : undefined} />
+      {signedOut ? (
+        <main className={styles.landingShell} lang="de">
+          <ApplicantLanding notices={notices} />
+        </main>
+      ) : (
       <main className={styles.shell} lang="de">
-      <div className={styles.inner}>
-        {signedOut ? (
-          <FreelancerAuthGate notices={notices} />
-        ) : (
+      <div className={hasProfile ? styles.innerWide : styles.inner}>
+        {/* Mit Profil trägt das Dashboard seine Überschrift selbst. */}
+        {hasProfile ? notices : (
           <>
             <header className={styles.header}>
               <p className={styles.eyebrow}>{APPLY_HERO.eyebrow}</p>
-              <h1>{hasProfile ? "Ihr Profil. Gefunden werden." : APPLY_HERO.title}</h1>
-              {hasProfile ? null : <p>{APPLY_HERO.lead}</p>}
+              <h1>{APPLY_HERO.title}</h1>
+              <p>{APPLY_HERO.lead}</p>
             </header>
             {notices}
           </>
         )}
 
-        {signedOut ? null : preview ? (
+        {preview ? (
           <FreelancerDashboard
             initialProfile={previewProfile}
             metrics={previewMetrics}
@@ -184,6 +192,8 @@ export default async function FreelancerApplyPage({
             projectsAvailable={portalState.projectsAvailable ?? false}
             seeking={portalState.seeking ?? "projects"}
             availabilityUpdatedAt={portalState.availabilityUpdatedAt ?? null}
+            githubLogin={importProps.githubLogin}
+            linkedinConnected={importProps.linkedinConnected}
           />
         ) : portalState?.kind === "application" ? (
           <>
@@ -212,6 +222,7 @@ export default async function FreelancerApplyPage({
         </p>
       </div>
       </main>
+      )}
       <PublicFooter />
     </>
   );

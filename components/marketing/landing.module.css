@@ -1,7 +1,6 @@
-/* Startseite im Raster: ein mittiger Rahmen mit feinen Linien links und
-   rechts, Abschnitte durch volle Linien getrennt, Überschriften in einer
-   dünnen Display-Schrift. Die Farben gelten nur hier und im Kopf der
-   öffentlichen Seiten. */
+/* Startseite über die volle Breite (Desktop-Entwurf, Oktober 2026): Flächen
+   bis an den Fensterrand, Inhalt im Rahmen bis 1600 px (--xp-page-*). Für den
+   Zweitbildschirm im Büro; schmale Fenster stapeln. */
 .main {
   --lp-ink: var(--xp-ink);
   --lp-ink-soft: var(--xp-ink-soft);
@@ -9,141 +8,150 @@
   --lp-line: var(--xp-line);
   --lp-soft: var(--xp-soft);
   --lp-brand: var(--xp-brand);
-  --lp-brand-deep: #0c5c3b;
   --lp-mint: #e9f5ee;
   overflow-x: clip;
   color: var(--lp-ink);
 }
 .main:focus { outline: none; }
-.trialDisclosure { max-width: 630px; color: var(--lp-muted); font-size: 12.5px; line-height: 1.65; margin: 18px 0 0; }
-.saasPlans { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; margin-top: 32px; }
-.saasPlans .priceCard { padding: 22px; }
-.saasPlans .priceValue strong { font-size: 36px; }
-.saasPlans .priceCard > p:not(.priceName):not(.priceValue):not(.trialDisclosure) { font-size: 13px; line-height: 1.6; }
-.saasPlans .priceCard > a { margin-top: auto; font-size: 13px; }
-@media (max-width:760px) { .saasPlans { grid-template-columns:1fr; } }
 .main h1, .main h2, .main h3 { margin: 0; color: var(--lp-ink); }
 .main h1, .main h2 { font-family: var(--xp-display); font-weight: 400; text-wrap: balance; }
-.main h2 { max-width: 760px; font-size: var(--xp-h2-size); line-height: 1.22; letter-spacing: var(--xp-h2-tracking); }
+.main h2 { max-width: 900px; font-size: clamp(32px, 2.6vw, 48px); line-height: 1.15; letter-spacing: -.035em; }
+.main h2 span { color: var(--lp-brand); }
 
-.section { border-bottom: 1px solid var(--lp-line); scroll-margin-top: 64px; }
-.frame { box-sizing: border-box; width: min(100%, 1088px); margin: 0 auto; padding: 96px 72px; border-inline: 1px solid var(--lp-line); }
-.eyebrow { margin: 0 0 14px; color: var(--lp-brand); font-size: var(--xp-eyebrow-size); font-weight: 600; }
-.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 30px; }
-.textLink { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: var(--lp-ink); font-size: 14.5px; font-weight: 500; text-decoration: none; text-underline-offset: 5px; }
-.textLink:hover { text-decoration: underline; }
-
-/* Knöpfe: components/ui/actions.module.css (actionClass). */
+.wrap { box-sizing: border-box; width: 100%; max-width: var(--xp-page-max); margin: 0 auto; padding-inline: var(--xp-page-gutter); }
+.section { scroll-margin-top: 76px; }
+.section > .wrap { padding-block: 104px; }
+.tinted { border-block: 1px solid var(--lp-line); background: #f7f8f7; }
+.eyebrow { margin: 0 0 14px; color: var(--lp-brand); font-size: 15px; font-weight: 600; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.textLink { color: var(--lp-ink); font-size: 16px; font-weight: 600; text-underline-offset: 5px; }
+.textLink:hover { color: var(--lp-brand); }
 .textLink:focus-visible { outline: 2px solid var(--lp-brand); outline-offset: 3px; }
+.sectionHead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px; margin-bottom: 48px; }
 
-
-/* Kopf der Seite: links Titel und Produktablauf, rechts die Profilkarte,
-   darunter das Eingabefeld über die ganze Breite des Rahmens. Nichts liegt
-   übereinander. */
-.hero { overflow-x: clip; }
-.hero .frame { padding-top: 64px; padding-bottom: 56px; }
-.heroScene { position: relative; }
-.heroStage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 420px); align-items: center; gap: 40px 64px; }
-.heroMain { grid-column: 1; grid-row: 1; display: grid; gap: 22px; min-width: 0; }
-.hero h1 { font-size: clamp(40px, 4.4vw, 58px); line-height: 1.08; letter-spacing: var(--xp-h1-tracking); overflow-wrap: normal; }
+/* Kopf: Mint-Fläche über die volle Breite. Links Titel und zwei Wege, rechts
+   die Profilkarte, darunter das Eingabefeld über die ganze Breite. Nichts
+   liegt übereinander. */
+.hero { border-bottom: 1px solid var(--xp-mint-line); background: var(--xp-mint); overflow-x: clip; }
+.hero > .wrap { padding-block: 88px 72px; }
+.heroScene { position: relative; display: grid; gap: 56px; }
+.heroStage { display: grid; grid-template-columns: minmax(0, 7fr) minmax(360px, 5fr); align-items: center; gap: 56px 72px; }
+.heroMain { display: grid; justify-items: start; gap: 28px; min-width: 0; }
+.hero h1 { font-size: clamp(44px, 3.6vw, 68px); font-weight: 500; line-height: 1.03; letter-spacing: -.045em; }
 .hero h1 span { color: var(--lp-brand); }
 .heroActions { display: flex; flex-wrap: wrap; gap: 12px; }
+.heroActions > a { min-height: 52px; padding-inline: 26px; font-size: 17px; }
+.heroNote { margin: 0; color: var(--lp-muted); font-size: 14px; }
 
-.profileLink { z-index: 3; grid-column: 2; grid-row: 1; display: flex; width: 100%; justify-self: end; color: inherit; text-decoration: none; opacity: 0; pointer-events: none; transform: translateY(24px) scale(.96); transition: opacity .6s ease, transform .7s cubic-bezier(.18,.82,.2,1); }
+.profileLink { z-index: 3; display: flex; justify-self: end; width: 100%; max-width: 560px; border-radius: 16px; color: inherit; text-decoration: none; opacity: 0; pointer-events: none; transform: translateY(24px) scale(.96); transition: opacity .6s ease, transform .7s cubic-bezier(.18,.82,.2,1); }
 .heroScene[data-revealed="true"] .profileLink { opacity: 1; pointer-events: auto; transform: none; }
-/* Die Karte selbst ist .showcase-card (app/styles/workspace.css); hier nur,
-   wie sie im Kopf steht. */
-.expertCard { width: 100%; height: auto; padding-bottom: 18px; }
-.expertAvatar { object-fit: cover; object-position: 50% 24%; }
-.profileLink:focus-visible { border-radius: var(--radius-md); outline: 3px solid color-mix(in srgb, var(--lp-brand) 30%, transparent); outline-offset: 4px; }
+.profileLink:focus-visible { outline: 3px solid color-mix(in srgb, var(--lp-brand) 30%, transparent); outline-offset: 4px; }
+.expertCard { width: 100%; padding: 28px; border-radius: 16px; box-shadow: 0 24px 60px rgba(16, 27, 23, .10); }
+.cardAvailability { border-radius: 999px; background: #e9f5ed; padding: 3px 12px; color: var(--lp-brand); font-size: 13px; font-weight: 600; }
+.cardAction { display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border-radius: var(--xp-action-radius); background: var(--xp-action-primary); color: #fff; font-size: 15px; font-weight: 500; }
+.profileLink:hover .cardAction { background: var(--xp-action-primary-hover); }
 
-/* Kompaktes Eingabefeld in voller Breite; die Quellen-Logos fallen von oben
-   hinein, links neben der Profilkarte. */
-.intakeDock { position: relative; z-index: 5; grid-column: 1 / -1; min-width: 0; }
-.landingComposer { position: relative; min-height: 64px; border-radius: 22px; box-shadow: 0 12px 34px rgba(16, 27, 23, .12); }
+/* Eingabefeld über die volle Breite, die Rollen rechts darüber wie im Chat. */
+.intakeDock { display: grid; gap: 12px; min-width: 0; }
+.roleChips { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; }
+.roleChips > span { color: var(--lp-muted); font-size: 14px; }
+.roleChips a { display: inline-flex; align-items: center; min-height: 36px; padding: 0 16px; border: 1px solid #d5dbe0; border-radius: 999px; background: #fff; color: var(--lp-ink); font-size: 14px; font-weight: 600; text-decoration: none; }
+.roleChips a:hover { border-color: var(--xp-action-secondary-border-hover); }
+.roleChips a:focus-visible { outline: 2px solid var(--lp-brand); outline-offset: 2px; }
+.composerArea { position: relative; z-index: 5; }
+.composerArea .landingComposer { position: relative; width: 100%; min-height: 76px; border-color: #cfd8d3; border-radius: 20px; box-shadow: 0 18px 48px rgba(16, 27, 23, .10); }
 .landingComposer :global(.composer-field) { padding-left: 0; }
-.landingComposer :global(textarea) { min-height: 60px; padding-top: 16px; padding-bottom: 16px; font-size: var(--fs-base); }
-.landingComposer :global(.composer-placeholder) { top: 16px; left: 18px; font-size: var(--fs-base); }
-.landingComposer :global(.composer-bottom) { padding-bottom: 8px; }
+.landingComposer :global(textarea) { min-height: 72px; padding-top: 24px; padding-bottom: 20px; font-size: 19px; }
+.landingComposer :global(.composer-placeholder) { top: 24px; left: 28px; font-size: 19px; }
+.landingComposer :global(.composer-bottom) { padding-bottom: 12px; }
 
 .sourceLogos { position: absolute; z-index: 7; inset: 0; margin: 0; padding: 0; list-style: none; pointer-events: none; }
 .sourceLogos li { position: absolute; top: -56px; left: var(--source-x); display: grid; place-items: center; width: 44px; height: 44px; overflow: hidden; border: 1px solid var(--lp-line); border-radius: 12px; background: #fff; box-shadow: 0 8px 24px rgba(16, 27, 23, .12); opacity: 0; }
 .heroScene[data-demo="true"] .sourceLogos li { animation: sourceChain 1.8s cubic-bezier(.2,.72,.22,1) both; }
-.sourceLogos li:nth-child(1) { --source-x: 4%; --target-x: 4%; animation-delay: 0s; }
-.sourceLogos li:nth-child(2) { --source-x: 14%; --target-x: 9%; animation-delay: .3s; }
-.sourceLogos li:nth-child(3) { --source-x: 24%; --target-x: 14%; animation-delay: .6s; }
-.sourceLogos li:nth-child(4) { --source-x: 34%; --target-x: 19%; animation-delay: .9s; }
+.sourceLogos li:nth-child(1) { --source-x: 4%; --target-x: 3%; animation-delay: 0s; }
+.sourceLogos li:nth-child(2) { --source-x: 12%; --target-x: 7%; animation-delay: .3s; }
+.sourceLogos li:nth-child(3) { --source-x: 20%; --target-x: 11%; animation-delay: .6s; }
+.sourceLogos li:nth-child(4) { --source-x: 28%; --target-x: 15%; animation-delay: .9s; }
 .sourceLogos img { width: 40px; height: 40px; object-fit: contain; }
 
 @keyframes sourceChain {
   0% { top: -56px; left: var(--source-x); opacity: 0; transform: rotate(-4deg) scale(.88); }
   20% { opacity: 1; }
-  72% { top: 10px; left: var(--target-x); opacity: 1; transform: rotate(0) scale(.8); }
-  100% { top: 14px; left: var(--target-x); opacity: 0; transform: scale(.5); }
+  72% { top: 16px; left: var(--target-x); opacity: 1; transform: rotate(0) scale(.8); }
+  100% { top: 20px; left: var(--target-x); opacity: 0; transform: scale(.5); }
 }
 
 .heroScene[data-demo-submitted="true"] .landingComposer :global(.send-button.is-project-match) { animation: demoSend .55s ease both; }
 @keyframes demoSend { 45% { transform: translateY(-2px) scale(.94); } 100% { transform: none; } }
 
-.inventoryStrip { background: #fbfdfc; }
-.inventoryFrame { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; gap: 0; padding-top: 26px; padding-bottom: 26px; }
-.section .inventoryFrame { padding-top: 26px; padding-bottom: 26px; }
-.inventoryMetric { display: flex; min-width: 0; flex-direction: column; align-items: center; justify-content: center; gap: 7px; padding: 10px 18px; text-align: center; }
-.inventoryMetric + .inventoryMetric { border-left: 1px solid var(--lp-line); }
-.inventoryMetric strong { flex: none; color: var(--lp-brand-deep); font-family: var(--xp-display); font-size: 34px; font-weight: 500; line-height: 1; letter-spacing: -.03em; white-space: nowrap; }
-.inventoryMetric span { min-width: 0; color: var(--lp-ink-soft); font-size: 12px; line-height: 1.3; }
+/* Vier Zusagen in einer Leiste. */
+.facts { border-bottom: 1px solid var(--lp-line); }
+.factsRow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.factsRow > div { display: flex; gap: 16px; padding: 36px 32px; color: var(--lp-brand); }
+.factsRow > div:first-child { padding-left: 0; }
+.factsRow > div:last-child { padding-right: 0; }
+.factsRow > div + div { border-left: 1px solid var(--lp-line); }
+.factsRow svg { flex: none; }
+.factsRow p { display: grid; gap: 4px; margin: 0; }
+.factsRow strong { color: var(--lp-ink); font-weight: 600; }
+.factsRow span { color: var(--lp-muted); font-size: 15px; }
 
-/* Bestand statt Logowand */
-
-/* Zusammenarbeit mit Personaldienstleistern: vier Fragen, vier Antworten */
-
-/* Vermittlung in drei Schritten */
-
-/* Selbst suchen: Video */
-.splitHead { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); align-items: end; gap: 48px; }
-.singleHead { grid-template-columns: minmax(0, 1fr); }
-.splitHead p:not(.eyebrow) { margin: 0; color: var(--lp-muted); font-size: 16.5px; line-height: 1.6; }
-.splitHead .actions { margin-top: 22px; }
-.videoPanel { margin-top: 48px; border: 1px solid var(--lp-line); padding: 24px; }
+/* So funktioniert es: drei Karten, darunter das Video. */
+.stepCards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin: 0; padding: 0; list-style: none; }
+.stepCards > li { display: flex; flex-direction: column; gap: 14px; border: 1px solid var(--lp-line); border-radius: 16px; padding: 32px; }
+.stepCards h3 { font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
+.stepCards p { margin: 0; color: var(--lp-muted); font-size: 16px; line-height: 1.6; }
+.stepNumber { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: #e9f5ed; color: var(--lp-brand); font-weight: 700; }
+.stepChips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 8px; }
+.stepChips > span { border: 1px solid var(--lp-line); border-radius: 999px; padding: 2px 10px; color: var(--lp-muted); font-size: 13px; }
+.stepChips > .chipStrong { border-color: transparent; background: #e9f5ed; color: var(--lp-brand); font-weight: 600; }
+.stepChips > .chipAction { border-color: transparent; border-radius: 6px; background: var(--xp-action-primary); padding: 6px 12px; color: #fff; font-weight: 500; }
+.stepRows { display: grid; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--xp-row-line); font-size: 14px; }
+.stepRows > span { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--xp-row-line); }
+.stepRows > span > span:last-child { color: var(--lp-muted); }
+.stepRows > .stepRowOpen, .stepRows > .stepRowOpen > span:last-child { color: var(--xp-open); }
+.videoPanel { margin-top: 48px; border: 1px solid var(--lp-line); border-radius: 16px; padding: 24px; scroll-margin-top: 96px; }
 .videoPanel .processLayout { margin: 0; }
 
-/* Begründung und Zahlen */
+/* Bild und Text nebeneinander. */
+.split { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: 48px 80px; }
+.splitImage { display: block; width: 100%; height: auto; max-height: 520px; border-radius: 16px; object-fit: cover; }
+.splitText { display: grid; justify-items: start; gap: 20px; }
+.splitText > p:not(.eyebrow) { max-width: 620px; margin: 0; font-size: 18px; line-height: 1.6; }
+.splitText .eyebrow { margin: 0; }
+.checks { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; font-size: 17px; }
+.checks li { display: flex; gap: 12px; }
+.checks li::before { content: "✓"; color: var(--lp-brand); font-weight: 700; }
 
-/* Rollen als Kacheln */
+/* Preise in Kürze. */
+.planCards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
+.planCard { display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--lp-line); border-radius: 16px; padding: 28px; background: #fff; }
+.planCard > p { margin: 0; color: var(--lp-muted); font-size: 15px; }
+.planCard > a { margin-top: auto; }
+.planCard > p + a { margin-top: 14px; }
+.planRecommended { border: 2px solid var(--lp-brand); padding: 27px; }
+.planName { display: flex; align-items: center; gap: 8px; color: var(--lp-brand) !important; font-size: 15px !important; font-weight: 600; }
+.planName span { border-radius: 999px; background: #e9f5ed; padding: 1px 8px; font-size: 12px; }
+.planPrice { color: var(--lp-ink) !important; font-family: var(--xp-display); font-size: 44px !important; letter-spacing: -.04em; line-height: 1.1; }
+.planPrice small { color: var(--lp-muted); font-family: var(--font-sans); font-size: 14px; letter-spacing: 0; }
+.trialDisclosure { max-width: 720px; margin: 24px 0 0; color: var(--lp-muted); font-size: 13px; line-height: 1.65; }
 
-/* Vom Match ins Gespräch */
-.main .quote { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); padding: 0 0 0 72px; }
-.quoteText { padding: 88px 48px 88px 0; }
-.main .quoteText h2 { font-size: clamp(26px, 2.6vw, 32px); }
-.quoteText p { margin: 20px 0 26px; color: var(--lp-muted); font-size: 16px; line-height: 1.65; }
-.quoteText > a { margin-top: 26px; }
-.quoteMedia { border-left: 1px solid var(--lp-line); }
-.quoteMedia img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* Fragen, links die Überschrift und die Ratgeber. */
+.faq { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 64px; }
+.faq summary { font-size: 16px; }
+.related { display: grid; justify-items: start; gap: 10px; margin-top: 28px; font-size: 15px; }
+.related a { color: var(--lp-ink); text-underline-offset: 4px; }
+.related a:hover { color: var(--lp-brand); }
 
-/* Für Unternehmen */
-
-.priceCard ul { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
-.priceCard li { display: flex; align-items: flex-start; gap: 10px; font-size: 15.5px; line-height: 1.4; }
-
-/* Preise */
-
-.priceCard { display: flex; flex-direction: column; border: 1px solid var(--lp-line); padding: 30px; background: #fff; }
-
-.priceName { margin: 0; color: var(--lp-brand); font-size: 14px; font-weight: 600; }
-.priceValue { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; margin: 10px 0 0; }
-.priceValue strong { font-family: var(--font-display), var(--font-sans); font-size: 44px; font-weight: 400; letter-spacing: -.045em; }
-.priceValue span { color: var(--lp-muted); font-size: 14px; }
-.priceCard ul { gap: 12px; margin: 24px 0 28px; }
-.priceCard li { font-size: 14.5px; }
-.priceCard li a { color: inherit; }
-
-/* Fragen */
-.faq { display: grid; grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); gap: 56px; }
-.faq .textLink { margin-top: 18px; }
-.faq summary { font-size: 15.5px; }
-
-/* Abschluss */
-.closing { border-bottom: 0; }
+/* Abschluss: dunkle Fläche über die volle Breite. */
+.closing { background: var(--xp-dark); color: #fff; }
+.closing > .wrap { padding-block: 96px; }
+.closing h2 { color: #fff; font-size: clamp(36px, 2.8vw, 52px); }
+.closing .splitText > p { color: #c9d8cf; }
+.closing .splitImage { max-height: 400px; }
+.closingSecondary { display: inline-flex; align-items: center; min-height: var(--xp-action-height); padding: 0 22px; border: 1px solid #5d7a6b; border-radius: var(--xp-action-radius); color: #fff; font-size: var(--xp-action-font-size); font-weight: var(--xp-action-weight); text-decoration: none; }
+.closingSecondary:hover { border-color: #fff; }
+.closingSecondary:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
 
 /* Ablauf als Video: links schmal die Schritte als Kapitel, rechts breit die
    Animation.
@@ -154,11 +162,11 @@
    auf 157,5 % der Rahmenbreite vergrößert und nach links oben verschoben.
    `object-fit` allein kann nur eine Achse beschneiden und hätte entweder die
    Liste im Video oder den leeren Rand oben und unten mitgezeigt. */
-.steps { display: grid; margin: 0; padding: 0; list-style: none; }
 .processLayout { display: grid; grid-template-columns: minmax(220px, 3.4fr) minmax(0, 8.6fr); align-items: center; gap: 32px; }
-.processVideo { position: relative; order: 2; aspect-ratio: 1219 / 1062; margin: 0; overflow: hidden; background: #eaf1ed; }
+.processVideo { position: relative; order: 2; aspect-ratio: 1219 / 1062; max-height: 720px; margin: 0 auto; width: 100%; overflow: hidden; background: #eaf1ed; }
 .processVideo video { position: absolute; top: -15.67%; left: -55.91%; display: block; width: 157.48%; max-width: none; height: auto; aspect-ratio: 3 / 2; background: #eaf1ed; }
 .processLayout .videoSteps { order: 1; grid-template-columns: 1fr; gap: 6px; margin: 0; }
+.steps { display: grid; margin: 0; padding: 0; list-style: none; }
 .stepButton { display: grid; width: 100%; height: 100%; align-content: start; padding: 14px 14px 16px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background-color 150ms ease; }
 .stepButton:hover { background: var(--lp-soft); }
 .stepButton:focus-visible { outline: 2px solid var(--lp-brand); outline-offset: 2px; }
@@ -173,44 +181,31 @@
 .stepTitle { color: var(--lp-ink); font-size: 16.5px; font-weight: 600; letter-spacing: -.015em; }
 .stepText { margin-top: 6px; color: var(--lp-muted); font-size: 14px; line-height: 1.55; }
 
-@media (max-width: 1080px) {
-  .frame { padding: 80px 48px; }
-  .heroStage { grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); gap: 28px 40px; }
-  .main .quote { padding-left: 48px; }
+@media (max-width: 1180px) {
+  .heroStage { grid-template-columns: minmax(0, 1fr) minmax(320px, 420px); gap: 40px; }
+  .factsRow, .planCards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .factsRow > div { padding: 28px 24px; }
+  .factsRow > div:nth-child(3) { padding-left: 0; border-left: 0; }
+  .factsRow > div:nth-child(n + 3) { border-top: 1px solid var(--lp-line); }
   .processLayout { grid-template-columns: minmax(200px, 4fr) minmax(0, 8fr); gap: 24px; }
 }
 
 @media (max-width: 960px) {
-  .splitHead, .faq { grid-template-columns: minmax(0, 1fr); }
-  .heroStage { grid-template-columns: minmax(0, 1fr); gap: 32px; }
-  .heroMain, .profileLink, .intakeDock { grid-column: auto; grid-row: auto; }
-  .profileLink { width: min(100%, 520px); justify-self: start; }
-  .splitHead { gap: 20px; }
-  .main .quote { grid-template-columns: minmax(0, 1fr); padding: 0; }
-  .quoteText { padding: 64px 48px; }
-  .quoteMedia { border-top: 1px solid var(--lp-line); border-left: 0; }
-  .faq { gap: 24px; }
-  .inventoryFrame { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .inventoryMetric:nth-child(3) { border-top: 1px solid var(--lp-line); border-left: 0; }
+  .heroStage, .split, .faq, .stepCards { grid-template-columns: minmax(0, 1fr); }
+  .profileLink { justify-self: start; }
+  .section > .wrap { padding-block: 72px; }
 }
 
 @media (max-width: 640px) {
-  .frame { padding: 56px 20px; border-inline: 0; }
-  .hero .frame { padding-top: 44px; padding-bottom: 36px; }
-  .actions > a { flex: 1 1 auto; }
-  .hero h1 { font-size: clamp(36px, 10.5vw, 52px); }
+  .hero > .wrap { padding-block: 44px 36px; }
   .heroActions > a { flex: 1 1 auto; }
-  .sourceLogos li:nth-child(1) { --target-x: 6%; }
-  .sourceLogos li:nth-child(2) { --target-x: 22%; }
-  .sourceLogos li:nth-child(3) { --target-x: 38%; }
-  .sourceLogos li:nth-child(4) { --target-x: 54%; }
+  .factsRow, .planCards { grid-template-columns: minmax(0, 1fr); }
+  .factsRow > div { padding: 20px 0; border-left: 0 !important; }
+  .factsRow > div + div { border-top: 1px solid var(--lp-line); }
+  .roleChips { justify-content: flex-start; }
+  .landingComposer :global(textarea), .landingComposer :global(.composer-placeholder) { font-size: 16px; }
   .landingComposer :global(.send-button.is-project-match) { width: var(--control-md); min-width: var(--control-md); padding: 0; }
   .landingComposer :global(.send-button.is-project-match span) { display: none; }
-  .quoteText { padding: 56px 20px; }
-  .inventoryFrame { grid-template-columns: minmax(0, 1fr); }
-  .inventoryMetric { justify-content: center; border-top: 1px solid var(--lp-line); border-left: 0 !important; padding: 16px 4px; }
-  .inventoryMetric:first-child { border-top: 0; }
-  .priceCard { padding: 24px 20px; }
   .videoPanel { padding: 0; border: 0; }
   .processLayout { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .processVideo { order: 0; }

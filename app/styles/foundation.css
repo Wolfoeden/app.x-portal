@@ -83,6 +83,16 @@
   --xp-soft: #f6f7f8;
   --xp-brand: #17804d;
   --xp-brand-soft: #eef8f2;
+  /* Desktop-Rahmen (Oktober 2026): Inhalt bis 1600 px mit 64 px Rand, Flächen
+     bis an den Fensterrand. Für den Zweitbildschirm im Büro. */
+  --xp-page-max: 1600px;
+  --xp-page-gutter: clamp(20px, 3.4vw, 64px);
+  --xp-mint: #eef6f1;
+  --xp-mint-line: #d9e8df;
+  --xp-card-line: #dfe5e1;
+  --xp-row-line: #edf0ee;
+  --xp-open: #7a5514;
+  --xp-dark: #10241b;
 
   --xp-display: var(--font-display), var(--font-sans);
   --xp-h1-size: clamp(36px, 4vw, 50px);

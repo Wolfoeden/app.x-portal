@@ -773,7 +773,7 @@
 .conversation {
   display: flex;
   flex-direction: column;
-  width: min(100%, 1240px);
+  width: min(100%, 1480px);
   min-height: 100%;
   margin: 0 auto;
   padding: 36px 40px 48px;
@@ -865,7 +865,7 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  width: min(100%, 1000px);
+  width: min(100%, 1400px);
   gap: 6px 8px;
   margin: 0 auto 8px;
 }
@@ -1923,12 +1923,12 @@ a.secondary-action {
   padding: 18px 40px 6px;
 }
 
-/* Das Eingabefeld waechst nicht mit: eine Zeile Text ueber die volle Breite
-   ist schlechter zu schreiben und zu lesen als ueber eine ruhige Spalte. */
+/* So breit wie die Unterhaltung (1480 px abzüglich Rand), damit Eingabe,
+   Vorschläge und Profile eine Kante haben (Desktop-Entwurf, Oktober 2026). */
 .composer,
 .selection-strip,
 .composer-credit-status {
-  width: min(100%, 1000px);
+  width: min(100%, 1400px);
   margin-right: auto;
   margin-left: auto;
 }

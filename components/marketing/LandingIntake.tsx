@@ -2,26 +2,36 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from "react";
 
-import { IconArrowRight, IconArrowUp, IconCheck } from "@/components/icons";
+import { IconArrowUp } from "@/components/icons";
 import { actionClass } from "@/components/ui/actions";
 import { saveProjectDraft } from "@/lib/recruiting/project-draft";
-import { SALES_CONTACT } from "@/lib/sales/sales-contact-model";
 
 import { RecruitingLink } from "./RecruitingLink";
 import styles from "./landing.module.css";
 
 const DEMO_BRIEF = "ai developer on chain for midnight starting november";
 
-export function LandingIntake({ contactPhotoUrl = null }: { contactPhotoUrl?: string | null }) {
+/**
+ * Kopf der Startseite über die volle Breite: links Titel und die zwei Wege,
+ * rechts die Profilkarte, darunter das Eingabefeld über die ganze Breite mit
+ * den Rollen-Vorschlägen. Karte und Vorschläge rendert der Server
+ * (FreelancerLanding); hier liegt nur, was im Browser läuft: die Demo im
+ * Eingabefeld und das Mitnehmen des Entwurfs in den Chat.
+ */
+export function LandingIntake({ profileId, note, roleChips, profileCard }: {
+  profileId: string;
+  note: string;
+  roleChips: ReactNode;
+  profileCard: ReactNode;
+}) {
   const [draft, setDraft] = useState("");
   const [demoDraft, setDemoDraft] = useState("");
   const [demoSubmitted, setDemoSubmitted] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [userEditing, setUserEditing] = useState(false);
   const userInteracted = useRef(false);
-  const profilePhotoUrl = contactPhotoUrl ?? "https://x-portal.eu/api/freelancer/avatar-image/c314d7c4-4428-45ac-ba54-1a657b9f6b62/avatar-84a397c000177b632748345e59baa596.jpg";
   const visibleDraft = userEditing ? draft : demoDraft;
 
   useEffect(() => {
@@ -91,22 +101,38 @@ export function LandingIntake({ contactPhotoUrl = null }: { contactPhotoUrl?: st
   return (
     <header className={`${styles.section} ${styles.hero}`}>
       <div
-        className={`${styles.frame} ${styles.heroScene}`}
+        className={`${styles.wrap} ${styles.heroScene}`}
         data-revealed={revealed ? "true" : "false"}
         data-demo={userEditing ? "false" : "true"}
         data-demo-submitted={demoSubmitted ? "true" : "false"}
       >
         <div className={styles.heroStage}>
-          {/* Titel und Produktablauf links, die Profilkarte rechts; darunter
-              das Eingabefeld über die ganze Breite: Wer die Botschaft liest,
-              kann sofort loslegen. */}
           <div className={styles.heroMain}>
             <h1>Weniger Bewerbungen.<br /><span>Mehr relevante Gespräche.</span></h1>
             <div className={styles.heroActions}>
+              <Link href="/chat" prefetch={false} className={actionClass("primary")}>Kostenlos starten</Link>
               <RecruitingLink href="#produktablauf" event="demo_viewed" className={actionClass("secondary")}>Produktablauf ansehen</RecruitingLink>
             </div>
+            <p className={styles.heroNote}>{note}</p>
           </div>
-          <div className={styles.intakeDock} aria-label="Projektbeschreibung in den Chat übernehmen">
+
+          <Link
+            href={`/chat?profil=${profileId}`}
+            prefetch={false}
+            className={styles.profileLink}
+            aria-label="Profil von Roman D. im Chat öffnen"
+            onClick={() => saveProjectDraft(visibleDraft)}
+          >
+            {profileCard}
+          </Link>
+        </div>
+
+        <div className={styles.intakeDock}>
+          <nav className={styles.roleChips} aria-label="Mit einer Rolle beginnen">
+            <span>Oder mit einer Rolle beginnen:</span>
+            {roleChips}
+          </nav>
+          <div className={styles.composerArea} aria-label="Projektbeschreibung in den Chat übernehmen">
             <ul className={styles.sourceLogos} aria-label="Mögliche Quellen einer Projektbeschreibung">
               <li><Image src="/images/landing/source-freelancermap.png" alt="freelancermap" width={44} height={42} /></li>
               <li><Image src="/images/landing/source-linkedin.png" alt="LinkedIn" width={42} height={42} /></li>
@@ -125,7 +151,7 @@ export function LandingIntake({ contactPhotoUrl = null }: { contactPhotoUrl?: st
                   rows={1}
                   maxLength={12_000}
                 />
-                {visibleDraft ? null : <span className="composer-placeholder" aria-hidden="true">Projektbeschreibung einfügen …</span>}
+                {visibleDraft ? null : <span className="composer-placeholder" aria-hidden="true">Projektbeschreibung einfügen – aus Ihrer Ausschreibung, von freelancermap oder LinkedIn …</span>}
               </div>
               <div className="composer-bottom">
                 <button className="send-button is-project-match" type="submit" disabled={!visibleDraft.trim()} aria-label="Projektbeschreibung im Chat abgleichen">
@@ -134,43 +160,7 @@ export function LandingIntake({ contactPhotoUrl = null }: { contactPhotoUrl?: st
               </div>
             </form>
           </div>
-
-          <Link
-            href={`/chat?profil=${SALES_CONTACT.profileId}`}
-            prefetch={false}
-            className={styles.profileLink}
-            aria-label="Profil von Roman D. im Chat öffnen"
-            onClick={() => saveProjectDraft(visibleDraft)}
-          >
-            {/* Dieselbe Profilkarte wie im Chat und in der Freelancer-Vorschau
-                (.showcase-card in app/styles/workspace.css). */}
-            <article className={`showcase-card ${styles.expertCard}`}>
-              <span className="pband">
-                <span className="pband-verified"><IconCheck size={11} /> Blockchain &amp; KI-Profil geprüft</span>
-              </span>
-              <span className="showcase-card-head">
-                <Image className={`profile-avatar has-image ${styles.expertAvatar}`} src={profilePhotoUrl} alt="Roman Dering" width={52} height={52} priority unoptimized />
-                <span className="showcase-card-identity">
-                  <strong>Roman D.</strong>
-                  <span>Senior Blockchain &amp; AI Automation Specialist</span>
-                  <span>Remote</span>
-                </span>
-              </span>
-              <span className="showcase-card-skills" aria-label="Fachgebiete">
-                <span>Blockchain</span><span>KI-Agenten</span><span>Automation</span><span>Web3</span><span>Smart Contracts</span>
-              </span>
-              <span className="showcase-card-teaser">
-                <small>Über mich</small>
-                <span>Entwicklung intelligenter Blockchain-, Automatisierungs- und KI-Lösungen für Unternehmen.</span>
-              </span>
-              <span className="showcase-card-facts">
-                <span className="availability available">Verfügbar ab November</span>
-              </span>
-              <span className="showcase-card-cta">Experte kontaktieren <IconArrowRight size={14} /></span>
-            </article>
-          </Link>
         </div>
-
       </div>
     </header>
   );

@@ -1,6 +1,6 @@
 /* Fallbeispiele im Raster der Startseite (landing.module.css). */
 .section { border-bottom: 1px solid var(--xp-line); scroll-margin-top: 64px; }
-.frame { box-sizing: border-box; width: min(100%, 1088px); margin: 0 auto; padding: 96px 72px; border-inline: 1px solid var(--xp-line); }
+.frame { box-sizing: border-box; width: 100%; max-width: var(--xp-page-max); margin: 0 auto; padding: 104px var(--xp-page-gutter); }
 .eyebrow { margin: 0 0 14px; color: var(--xp-brand); font-size: var(--xp-eyebrow-size); font-weight: 600; }
 .frame h2 { max-width: 760px; margin: 0; color: var(--xp-ink); font-family: var(--xp-display); font-size: var(--xp-h2-size); font-weight: 400; line-height: 1.22; letter-spacing: var(--xp-h2-tracking); text-wrap: balance; }
 .lead { max-width: 640px; margin: 22px 0 0; color: var(--xp-muted); font-size: var(--xp-lead-size); line-height: 1.65; }
@@ -31,7 +31,7 @@
 .case footer .outcome { color: var(--xp-muted); }
 .note { margin: 20px 0 0; color: var(--xp-muted); font-size: 13px; }
 
-@media (max-width: 1080px) { .frame { padding: 80px 48px; } }
+@media (max-width: 1080px) { .frame { padding-block: 80px; } }
 @media (max-width: 860px) { .columns { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 640px) {
   .frame { padding: 56px 20px; border-inline: 0; }

@@ -30,15 +30,16 @@ function NavigationLinks({ variant }: { variant: "bar" | "menu" }) {
 }
 
 /**
- * Kopf aller öffentlichen Seiten. Zwei Wege, wie bei Anbietern, die verkaufen
- * statt nur zeigen: „Gespräch buchen“ für alle, die lieber mit einem Menschen
- * sprechen, „Kostenlos testen“ für alle, die selbst suchen wollen. Bleibt
+ * Kopf aller öffentlichen Seiten, so breit wie der Inhalt (bis 1600 px).
+ * Rechts „Anmelden“ und „Kostenlos starten“; eine Seite mit eigenem
+ * Hauptschritt (Bewerber-Portal) gibt ihre Knöpfe als `actions` mit. Bleibt
  * beim Scrollen stehen; auf dem Telefon öffnet „Menü“ die Navigation — ein
  * `<details>`, damit es ohne JavaScript geht.
  */
-export function PublicHeader({ context, authenticated = false }: {
+export function PublicHeader({ context, authenticated = false, actions }: {
   context?: string;
   authenticated?: boolean;
+  actions?: ReactNode;
 }) {
   return (
     <header className={styles.header} data-public-surface>
@@ -51,9 +52,12 @@ export function PublicHeader({ context, authenticated = false }: {
           <NavigationLinks variant="bar" />
         </nav>
         <div className={styles.headerActions}>
-          {authenticated ? <PublicAppAction className={styles.primaryAction} /> : (
-            <Link href="/anmelden" prefetch={false} className={styles.primaryAction}>Anmelden</Link>
-          )}
+          {actions ?? (authenticated ? <PublicAppAction className={styles.primaryAction} /> : (
+            <>
+              <Link href="/anmelden" prefetch={false} className={styles.secondaryAction}>Anmelden</Link>
+              <Link href="/chat" prefetch={false} className={styles.primaryAction}>Kostenlos starten</Link>
+            </>
+          ))}
         </div>
         <details className={styles.menu}>
           <summary>
@@ -72,21 +76,35 @@ export function PublicHeader({ context, authenticated = false }: {
   );
 }
 
+/**
+ * Fußzeile in vier Spalten über die volle Breite: Marke, Angebote für
+ * Unternehmen, Bewerber-Portal, Rechtliches (die Pflichtlinks aus
+ * LegalFooter, untereinander).
+ */
 export function PublicFooter() {
   return (
     <footer className={styles.footer}>
-      <div className={styles.footerIntro}>
-        <div>
+      <div className={styles.footerInner}>
+        <div className={styles.footerBrand}>
           <strong>XPORTAL</strong>
-          <span>Match-Protokoll statt Black Box.</span>
+          <p>Talent Index, Compliance Check und KI-Webinare für Unternehmen. Ein Familienunternehmen aus Deutschland.</p>
         </div>
-        <p>
-          Anforderung, Profilbeleg und offene Frage bleiben getrennt sichtbar.
-          Sie entscheiden selbst.
-        </p>
-        <Link href="/bewerber-portal/apply">Bewerber-Portal ↗</Link>
+        <nav className={styles.footerColumn} aria-label="Für Unternehmen">
+          <p>Für Unternehmen</p>
+          {COMPANY_LINKS.map((link) => <Link key={link.label} href={link.href} prefetch={false}>{link.label}</Link>)}
+          <Link href={MARKETING_PAGE.pricing.path}>Preise</Link>
+        </nav>
+        <nav className={styles.footerColumn} aria-label="Für Bewerber">
+          <p>Für Bewerber</p>
+          <Link href="/bewerber-portal/apply">Bewerber-Portal</Link>
+          <Link href="/bewerber-portal/apply#fragen">Fragen und Antworten</Link>
+        </nav>
+        <div className={styles.footerColumn}>
+          <p>Rechtliches</p>
+          <LegalFooter className={styles.footerLegal} />
+        </div>
       </div>
-      <LegalFooter />
+      <div className={styles.footerBottom}><p>© XPORTAL</p></div>
     </footer>
   );
 }

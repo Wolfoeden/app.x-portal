@@ -10,7 +10,7 @@
   color: var(--sc-ink);
 }
 .page:focus { outline: none; }
-.split { box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); width: min(100%, 1088px); margin: 0 auto; border-inline: 1px solid var(--sc-line); }
+.split { box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); width: 100%; max-width: var(--xp-page-max); margin: 0 auto; padding-inline: var(--xp-page-gutter); }
 .formSide { padding: 72px 64px 88px; }
 .kicker { margin: 0 0 18px; color: var(--sc-brand); font-size: var(--xp-eyebrow-size); font-weight: 600; }
 .formSide h1 { margin: 0; font-family: var(--xp-display); font-size: var(--xp-h1-size); font-weight: 400; line-height: 1.1; letter-spacing: var(--xp-h1-tracking); text-wrap: balance; }

@@ -1,37 +1,37 @@
-/* Kopf im Raster der Startseite: Marke links in der Randspalte, deren Linie
-   auf breiten Bildschirmen genau auf der linken Rahmenlinie steht, rechts die
-   zwei Wege. */
+/* Kopf über die volle Breite: Marke, Navigation und rechts die zwei Wege,
+   im selben Rahmen wie der Inhalt (bis 1600 px, --xp-page-*). */
 .header {
   --chrome-ink: var(--xp-ink);
   --chrome-line: var(--xp-line);
-  --chrome-frame: 1088px;
   position: sticky;
   top: 0;
   z-index: 40;
   border-bottom: 1px solid var(--chrome-line);
-  background: color-mix(in srgb, #fff 90%, transparent);
+  background: color-mix(in srgb, #fff 92%, transparent);
   backdrop-filter: saturate(1.4) blur(12px);
 }
 
 .headerInner {
+  box-sizing: border-box;
   display: flex;
   align-items: stretch;
-  min-height: 64px;
+  gap: 48px;
+  width: 100%;
+  max-width: var(--xp-page-max);
+  min-height: 76px;
+  margin: 0 auto;
+  padding: 0 var(--xp-page-gutter);
 }
 
 .brand {
-  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   flex: 0 0 auto;
-  width: max(176px, calc((100% - var(--chrome-frame)) / 2));
-  padding-left: 40px;
-  border-right: 1px solid var(--chrome-line);
   color: var(--chrome-ink);
   font-family: var(--font-display), var(--font-sans);
-  font-size: 19px;
+  font-size: 22px;
   font-weight: 600;
-  letter-spacing: -.05em;
+  letter-spacing: -.04em;
   text-decoration: none;
 }
 
@@ -43,13 +43,12 @@
   display: flex;
   align-items: center;
   flex: 1 1 auto;
-  gap: 30px;
-  padding-left: 40px;
+  gap: 32px;
 }
 
 .navigation a {
   color: var(--chrome-ink);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 400;
   text-decoration: none;
 }
@@ -62,7 +61,7 @@
 
 /* „Für Unternehmen“: Knopf wie ein Navigationslink, darunter das Menü. */
 .navGroup { position: relative; display: flex; align-self: stretch; align-items: center; }
-.navGroupButton { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; padding: 0; color: var(--chrome-ink); font: inherit; font-size: 15px; cursor: pointer; }
+.navGroupButton { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; padding: 0; color: var(--chrome-ink); font: inherit; font-size: 16px; cursor: pointer; }
 .navGroupButton:hover, .navGroupButton:focus-visible { text-decoration: underline; text-underline-offset: 6px; }
 .navGroupButton svg { transition: transform 150ms ease; }
 .navGroupButton[aria-expanded="true"] svg { transform: rotate(180deg); }
@@ -72,7 +71,7 @@
 .navigation .navPanel a { display: block; border-radius: 6px; padding: 10px 12px; text-decoration: none; }
 .navigation .navPanel a:hover, .navigation .navPanel a:focus-visible { background: var(--surface-soft); text-decoration: none; }
 
-.headerActions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; margin-left: auto; padding: 0 24px; }
+.headerActions { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; margin-left: auto; }
 
 /* Dieselben Knöpfe wie components/ui/actions.module.css (kompakt), aus
    denselben Werten (--xp-action-*). Als eigene Klassen, weil der Kopf auch
@@ -123,32 +122,27 @@
 .menu nav .menuAction { margin-top: 6px; border-radius: var(--xp-action-radius); background: var(--xp-action-primary); color: #fff; font-weight: var(--xp-action-weight); text-align: center; }
 .menu nav .menuAction:hover { background: var(--xp-action-primary-hover); }
 
-/* So breit wie der Rahmen der Startseite, damit die Fußzeile zwischen
-   denselben Linien steht. */
-.footer {
-  width: min(100% - 80px, 1088px);
-  margin: 0 auto;
-  border-top: 1px solid var(--border);
-  padding: 30px 0;
-  color: var(--ink);
-}
-
-.footerIntro {
-  display: grid;
-  grid-template-columns: minmax(210px, .8fr) minmax(280px, 1.4fr) auto;
-  gap: 32px;
-  align-items: start;
-  font-size: var(--fs-sm);
-}
-
-.footerIntro > div { display: grid; gap: 5px; }
-/* Marke wie im Kopf: Display-Schrift mit grünem Quadrat. */
-.footerIntro strong { font-family: var(--font-display), var(--font-sans); font-size: 18px; font-weight: 600; letter-spacing: -.05em; }
-.footerIntro strong::before { content: ""; display: inline-block; width: 9px; height: 9px; margin-right: 8px; border-radius: 3px; background: radial-gradient(circle at 30% 30%, #2fb072, #0c5c3b); vertical-align: 1px; }
-.footerIntro span { color: var(--green); font-size: 13px; font-weight: 600; }
-.footerIntro p { max-width: 520px; margin: 0; color: var(--muted); line-height: 1.6; }
-.footerIntro > a { font-size: var(--fs-xs); text-underline-offset: 4px; }
-.footer :global(.legal-footer) { margin-top: 24px; }
+/* Fußzeile über die volle Breite, vier Spalten im Rahmen des Inhalts. */
+.footer { border-top: 1px solid var(--xp-line); color: var(--xp-ink); }
+.footerInner,
+.footerBottom { box-sizing: border-box; width: 100%; max-width: var(--xp-page-max); margin: 0 auto; padding-inline: var(--xp-page-gutter); }
+.footerInner { display: flex; flex-wrap: wrap; gap: 40px 64px; padding-top: 64px; padding-bottom: 48px; }
+.footerBrand { display: grid; flex: 2 1 320px; align-content: start; gap: 10px; }
+.footerBrand strong { font-family: var(--font-display), var(--font-sans); font-size: 22px; font-weight: 600; letter-spacing: -.04em; }
+.footerBrand p { max-width: 360px; margin: 0; color: var(--xp-muted); font-size: 15px; line-height: 1.55; }
+.footerColumn { display: grid; flex: 1 1 180px; align-content: start; gap: 10px; font-size: 15px; }
+.footerColumn > p { margin: 0; font-weight: 600; }
+.footerColumn a { color: var(--xp-ink); text-decoration: none; }
+.footerColumn a:hover { color: var(--xp-brand); text-decoration: underline; text-underline-offset: 4px; }
+/* Die Pflichtlinks (LegalFooter) untereinander statt mit Punkten. */
+.footerColumn .footerLegal { display: grid; justify-content: start; justify-items: start; gap: 10px; margin: 0; padding: 0; border: 0; color: var(--xp-ink); font-size: 15px; }
+.footerLegal nav { display: grid; justify-content: start; justify-items: start; gap: 10px; }
+.footerLegal nav > span { display: none; }
+.footerColumn .footerLegal a, .footerColumn .footerLegal button { color: var(--xp-ink); font-size: 15px; text-decoration: none; }
+.footerColumn .footerLegal button { padding: 0; text-align: left; }
+.footerColumn .footerLegal a:hover, .footerColumn .footerLegal button:hover { color: var(--xp-brand); text-decoration: underline; }
+.footerBottom { padding-bottom: 32px; }
+.footerBottom p { margin: 0; padding-top: 24px; border-top: 1px solid var(--xp-line); color: var(--xp-muted); font-size: 14px; }
 
 .documentIntro {
   display: grid;
@@ -209,27 +203,16 @@
   line-height: 1.45;
 }
 
-@media (max-width: 1439px) {
-  .brand { width: auto; padding-right: 32px; border-right: 0; }
-  .navigation { padding-left: 8px; }
-}
-
 @media (max-width: 1080px) {
-  .headerInner { min-height: 60px; }
-  .brand { padding-left: 24px; }
+  .headerInner { min-height: 60px; gap: 16px; padding-right: 8px; }
   .navigation { display: none; }
-  .headerActions { padding: 0 8px 0 0; }
   .menu { display: block; }
-  .footer { width: calc(100% - 56px); }
 }
 
 @media (max-width: 680px) {
-  .brand { padding-left: 20px; padding-right: 12px; }
-  .context { display: none; }
+  .headerActions .secondaryAction { display: none; }
   .headerActions .primaryAction { padding: 8px 13px; font-size: 14px; }
-  .menu { margin-right: 10px; }
-  .footer { width: calc(100% - 40px); }
-  .footerIntro { grid-template-columns: 1fr; gap: 18px; }
+  .menu { margin-right: 2px; }
   .documentIntro { grid-template-columns: 1fr; gap: 26px; margin-bottom: 40px; }
   .documentSignal { width: min(100%, 220px); }
 }
