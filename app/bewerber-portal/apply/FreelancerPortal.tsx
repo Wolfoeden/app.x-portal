@@ -177,7 +177,8 @@ export function FreelancerDashboard({
       seeking,
       experienceSummary: profile.experienceSummary,
       avatarUrl: profile.avatarUrl,
-      projects,
+      // Wie ein Kunde es sieht: Projekte in Prüfung zählen noch nicht.
+      projects: projects.filter((project) => project.approved !== false),
       queryTerms,
     }, previewAt);
     const normalized = queryTerms.map((term) => term.toLocaleLowerCase("de-DE"));
@@ -227,7 +228,12 @@ export function FreelancerDashboard({
         return;
       }
       setProjects(payload.projects);
-      setProjectNotice({ message: "Projekte gespeichert. Kunden sehen sie auf Karte und Profil.", tone: "success" });
+      setProjectNotice({
+        message: payload.projects.some((project) => project.approved === false)
+          ? "Projekte gespeichert. Neue oder geänderte Projekte sieht ein Kunde, sobald XPORTAL sie freigegeben hat."
+          : "Projekte gespeichert. Kunden sehen sie auf Karte und Profil.",
+        tone: "success",
+      });
     } catch {
       setProjectNotice({ message: "Keine Verbindung zum Server. Bitte erneut versuchen.", tone: "error" });
     } finally {
@@ -338,6 +344,7 @@ export function FreelancerDashboard({
           industries: profile.industries,
           locationText: profile.locationText,
           workModes: profile.workModes,
+          monthlySalary: profile.monthlySalary,
           hourlyRate: profile.hourlyRate,
           dayRate: profile.dayRate,
           currency: profile.currency,

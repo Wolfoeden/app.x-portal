@@ -33,7 +33,11 @@ export async function saveOwnedProjects(userId: string, inputs: readonly Project
     targetType: "freelancer_profile",
     targetId: id,
     outcome: "success",
-    metadata: { projects: inputs.length, stillVerified: merged.filter((project) => project.verified).length },
+    metadata: {
+      projects: inputs.length,
+      stillVerified: merged.filter((project) => project.verified).length,
+      awaitingApproval: merged.filter((project) => project.approved === false && !isHiddenProposal(project)).length,
+    },
     required: true,
   });
   return merged.filter((project) => !isHiddenProposal(project));

@@ -159,7 +159,7 @@ export async function loadAdminProfile(id: string, now = new Date()): Promise<Ad
       field: presented.field ?? null,
       rate: presented.rate,
       referencesSummary: row.references_summary,
-      projects: projects.filter((project) => project.isPublic).map(toDossierProject),
+      projects: projects.filter((project) => project.isPublic && project.approved !== false).map(toDossierProject),
       links: toDossierLinks(links),
     },
     { placement: placementRequestsEnabled() },

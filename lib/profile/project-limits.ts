@@ -48,6 +48,13 @@ export type ProfileProject = {
   verified: boolean;
   source: ProjectSource;
   sourceUrl: string | null;
+  /**
+   * Von XPORTAL freigegeben (Migration 20261011190000). `false`: neu oder
+   * geändert vom Freelancer, für Kunden unsichtbar, bis der Betreiber
+   * freigibt. Fehlt die Angabe, gilt das Projekt als freigegeben — nur der
+   * Weg über den Freelancer setzt `false`.
+   */
+  approved?: boolean;
 };
 
 export type ProfileLink = { kind: LinkKind; url: string };

@@ -11,6 +11,8 @@ import {
 import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { pendingProjectReviews } from "@/lib/data/freelancer-projects";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import {
   countApplicationsByStatus,
   listApplications,
@@ -93,9 +95,10 @@ export default async function FreelancerApplicationsPage({
   const activeReferral =
     params.quelle && REFERRAL_PATTERN.test(params.quelle) ? params.quelle : undefined;
 
-  const [applications, counts, ...referralApplications] = await Promise.all([
+  const [applications, counts, pendingProjects, ...referralApplications] = await Promise.all([
     listApplications({ status: activeStatus, referral: activeReferral }),
     countApplicationsByStatus(),
+    pendingProjectReviews(createAdminSupabaseClient()),
     ...KNOWN_REFERRALS.map((referral) => listApplications({ referral, limit: 1000 })),
   ]);
 
@@ -151,6 +154,29 @@ export default async function FreelancerApplicationsPage({
             },
           ]}
         />
+
+        {/* Freelancer pflegen ihr Profil nach der Freigabe selbst; neue oder
+            geänderte Referenzprojekte warten hier, bis sie freigegeben sind. */}
+        {pendingProjects.length ? (
+          <>
+            <AdminSectionHeader
+              title="Projekte zur Freigabe"
+              description="Von Freelancern neu angelegt oder geändert. Kunden sehen sie erst, wenn sie im Profil als „freigegeben“ gespeichert sind."
+              aside={`${pendingProjects.length} ${pendingProjects.length === 1 ? "Profil" : "Profile"}`}
+            />
+            <div className={styles.panel}>
+              <ul className={styles.pendingProjects}>
+                {pendingProjects.map((entry) => (
+                  <li key={entry.profileId}>
+                    <Link href={`/chat/admin/profile/${entry.profileId}`} prefetch={false}>{entry.displayName}</Link>
+                    <span>{entry.titles.join(" · ")}</span>
+                    <small>wartet seit {dateFormat.format(new Date(entry.since))}</small>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </>
+        ) : null}
 
         <nav className={styles.tabs} aria-label="Status-Filter">
           <Link
