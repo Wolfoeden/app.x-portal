@@ -1384,7 +1384,7 @@ export function ProfileCard({
   return (
     <article
       ref={cardRef}
-      className={`profile-card ${profile.recommendationRole === "primary" ? "is-primary" : ""} ${isPartial ? "is-partial" : ""} ${selected ? "is-selected" : ""}${highlight ? " is-highlight" : ""}`}
+      className={`profile-card ${profile.recommendationRole === "primary" ? "is-primary" : ""} ${isPartial ? "is-partial" : ""} ${selected ? "is-selected" : ""}${highlight ? " is-highlight" : ""}${collapsed ? " is-collapsed" : ""}`}
       // Nur die Animation der Karte selbst beendet den Puls — `animationend`
       // steigt aus dem ganzen Teilbaum auf.
       onAnimationEnd={(event) => {

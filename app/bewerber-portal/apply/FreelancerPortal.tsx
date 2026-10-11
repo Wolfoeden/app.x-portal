@@ -1,15 +1,14 @@
 "use client";
 
-import { useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 
 import { TagInput } from "@/components/TagInput";
-import { AuthDialog } from "@/components/chat/dialogs";
-import { ShowcaseCard } from "@/components/chat/showcase-card";
-import type { AuthDialogMode } from "@/components/chat/shared";
-import { applicationPreviewProfile, exampleApplicationPreview } from "@/lib/freelancer/application-preview";
+import { actionClass } from "@/components/ui/actions";
+import { MatchCard, type MatchCardRow } from "@/components/ui/MatchCard";
+import { applicationPreviewProfile } from "@/lib/freelancer/application-preview";
+import { mergeDraft, type DraftTarget, type ProfileDraft } from "@/lib/freelancer/import/draft";
 import { signOut } from "@/lib/auth/browser";
 import { appPath } from "@/lib/app-path";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 import {
   AVAILABILITY_LABELS,
   AVAILABILITY_STATUSES,
@@ -36,8 +35,9 @@ import { freelancerActions, FREELANCER_COMMAND_DONE, type FreelancerProfileComma
 import type { ProfileProject } from "@/lib/profile/project-limits";
 
 import styles from "./apply.module.css";
-import { InfoChip } from "./InfoTip";
+import { ImportPanel } from "./ImportPanel";
 import { PROJECT_EDITOR_CLASSES } from "./project-editor-classes";
+import work from "./profile-workspace.module.css";
 
 const tagClasses = {
   field: styles.field,
@@ -61,165 +61,6 @@ function apiError(payload: unknown, fallback: string): string {
   return fallback;
 }
 
-/**
- * Der erste Bildschirm für abgemeldete Besucher und für Angemeldete ohne
- * Profil: zuerst der eigene Nutzen, dann der Prüfprozess (UX-Review Oktober
- * 2026). Beide Stellen lesen denselben Text.
- */
-export const APPLY_HERO = {
-  eyebrow: "Bewerber-Portal",
-  title: "Profil veröffentlichen. Gefunden werden.",
-  lead: "Nicht blind bewerben. Erst prüfen: XPORTAL gleicht Ihr Profil mit Projektanfragen ab und meldet sich, wenn es passt.",
-} as const;
-
-/**
- * Was vor der Registrierung feststehen sollte (Audit P2, Freelancer-Aufnahme):
- * Kosten, Kontakt, Ablauf, Prüfumfang und Unterlagen — in dieser Reihenfolge,
- * damit der Nutzen vor dem Prüfprozess steht. Die Angaben folgen dem
- * Formular: Lebenslauf und Kalenderlink sind optional (ApplyForm.tsx,
- * lib/freelancer/application.ts), geprüft wird jede Angabe einzeln
- * (docs/operator-runbook.md). Kontaktdaten stehen in keinem öffentlichen
- * Profil (ShowcaseProfile in lib/freelancer/showcase.ts, ProfileDossier).
- */
-export function onboardingFacts(placement: boolean): ReadonlyArray<{ term: string; chip: string; text: string }> {
-  return [
-    {
-      term: "Kosten",
-      chip: "Kostenlos",
-      text: placement
-        ? "Keine. Registrierung, Profil und Kontaktanfragen sind für Sie kostenlos, eine Provision fällt für niemanden an."
-        : "Keine. Registrierung und Profil sind für Sie kostenlos.",
-    },
-    {
-      term: "Kontakt",
-      chip: "Kontaktdaten bleiben privat",
-      text: placement
-        ? "Unternehmen sehen Ihr freigegebenes Profil ohne E-Mail-Adresse und Telefonnummer. Passt eine Anfrage, meldet sich XPORTAL bei Ihnen und stellt Sie per E-Mail vor."
-        : "Unternehmen sehen Ihr freigegebenes Profil ohne E-Mail-Adresse und Telefonnummer. Haben Sie einen Kalenderlink hinterlegt, können sie darüber ein Erstgespräch buchen.",
-    },
-    {
-      term: "Ablauf",
-      chip: "So läuft es ab",
-      text: "Konto anlegen und E-Mail bestätigen, Profil in vier Abschnitten ausfüllen, Prüfung durch XPORTAL mit Rückfragen per E-Mail. Nach der Freigabe ist Ihr Profil im Matching auffindbar.",
-    },
-    {
-      term: "Prüfung",
-      chip: "Geprüft vor Freigabe",
-      text: "XPORTAL sichtet Ihre Angaben und gleicht einzelne mit Nachweisen ab, etwa Lebenslauf oder öffentlichem Berufsprofil. Nur diese erscheinen als „Von XPORTAL geprüft“; alles andere bleibt Ihre Angabe.",
-    },
-    {
-      term: "Unterlagen",
-      chip: "Lebenslauf hilft, ist kein Muss",
-      text: "Rolle, Kompetenzen, Sprachen, Verfügbarkeit und Honorar. Ein Lebenslauf als PDF (bis 10 MB) hilft bei der Prüfung, ein Kalenderlink ist optional.",
-    },
-  ];
-}
-
-/**
- * Fragen, die vor allem Menschen ohne Freelance-Erfahrung stellen. Keine
- * Zusage zu Förderung oder Leistungen: nur der Hinweis, wen man fragt.
- */
-export const APPLICANT_FAQ: ReadonlyArray<{ question: string; label: string; answer: string }> = [
-  {
-    question: "Muss ich schon selbstständig sein?",
-    label: "Auch ohne Selbstständigkeit",
-    answer:
-      "Nein. Sie können ein Profil anlegen, bevor Sie eine selbstständige Tätigkeit anmelden. Wie Sie arbeiten, klären Sie vor dem ersten Auftrag.",
-  },
-  {
-    question: "Ich suche eine feste Stelle. Bin ich hier richtig?",
-    label: "Auch für feste Stellen",
-    answer:
-      "Ja. Wählen Sie im Formular „Eine feste Stelle“. Ihr Profil erscheint dann nicht in der öffentlichen Freelancer-Suche; es sieht nur das XPORTAL-Team.",
-  },
-  {
-    question: "Ich beziehe Arbeitslosengeld oder Bürgergeld.",
-    label: "Arbeitslosengeld oder Bürgergeld",
-    answer:
-      "Teilen Sie einen Auftrag oder eine neue Stelle wie gewohnt Ihrer Agentur für Arbeit oder Ihrem Jobcenter mit. Wenn Sie sich selbstständig machen möchten, fragen Sie dort nach Förderung, etwa dem Gründungszuschuss (bei Arbeitslosengeld) oder dem Einstiegsgeld (bei Bürgergeld).",
-  },
-  {
-    question: "Ich habe Lücken im Lebenslauf.",
-    label: "Lücken im Lebenslauf",
-    answer:
-      "Kein Problem. Wir schauen auf das, was Sie können. Ihr Lebenslauf ist die Grundlage für den Profilentwurf; Lücken dürfen darin sichtbar bleiben.",
-  },
-];
-
-/**
- * Der Einstieg für abgemeldete Besucher, einschließlich des ersten
- * Bildschirms: Der Knopf dort öffnet denselben Dialog wie der unten, deshalb
- * rendert das Gate den Kopf selbst. Hinweise (Einladung, Herkunft) und das
- * weitere Hinweise kommen als fertige Server-Ausgabe von der Seite.
- */
-export function FreelancerAuthGate({
-  notices = null,
-}: {
-  notices?: ReactNode;
-}) {
-  const [dialogMode, setDialogMode] = useState<AuthDialogMode | null>(null);
-  const [notice, setNotice] = useState<Notice>(null);
-  const [shownAt] = useState(() => new Date());
-  return (
-    <>
-      <header className={`${styles.header} ${styles.applyHero}`}>
-        <div>
-          <p className={styles.eyebrow}>{APPLY_HERO.eyebrow}</p>
-          <h1>{APPLY_HERO.title}</h1>
-          <p>{APPLY_HERO.lead}</p>
-          <div className={styles.gateActions}>
-            <button className={styles.submit} type="button" onClick={() => setDialogMode("register")}>
-              Kostenlos Profil anlegen
-            </button>
-            <button className={styles.gateLogin} type="button" onClick={() => setDialogMode("login")}>
-              Schon registriert? Anmelden
-            </button>
-          </div>
-          {/* Was man vorher wissen will, als Stichwörter; die Erklärung steht
-              in der Info-Blase, nicht als eigener Abschnitt. */}
-          <ul className={styles.infoChips} aria-label="Gut zu wissen">
-            {onboardingFacts(placementRequestsEnabled()).map((fact) => (
-              <li key={fact.term}><InfoChip label={fact.chip}>{fact.text}</InfoChip></li>
-            ))}
-          </ul>
-          <ul className={styles.infoChips} aria-label="Auch ohne Freelance-Erfahrung">
-            {APPLICANT_FAQ.map((entry) => (
-              <li key={entry.label}><InfoChip label={entry.label}>{entry.answer}</InfoChip></li>
-            ))}
-          </ul>
-          {notice ? (
-            <p className={notice.tone === "error" ? styles.formError : styles.callout} role="status">
-              {notice.message}
-            </p>
-          ) : null}
-        </div>
-        <aside className={styles.gateExample} aria-labelledby="apply-example-title">
-          <p className={styles.eyebrow}>Profilvorschau</p>
-          <h2 id="apply-example-title">So sehen Unternehmen Ihr Profil</h2>
-          <ShowcaseCard profile={exampleApplicationPreview(shownAt)} now={shownAt} href={null} />
-          <p className={styles.hint}>Ein ausgedachtes Profil. Ihres zeigt nur, was Sie angeben und XPORTAL freigibt.</p>
-        </aside>
-      </header>
-      {notices}
-      {dialogMode ? (
-        <AuthDialog
-          initialMode={dialogMode}
-          audience="freelancer"
-          // Nach der Bestätigung per E-Mail zurück zum Formular, nicht in den Chat.
-          destination="/bewerber-portal/apply"
-          onClose={() => setDialogMode(null)}
-          onAuthenticated={() => window.location.reload()}
-          showToast={(message, tone) =>
-            setNotice({
-              message,
-              tone: tone === "error" ? "error" : "success",
-            })
-          }
-        />
-      ) : null}
-    </>
-  );
-}
 
 const applicationCopy = {
   submitted: {
@@ -279,11 +120,11 @@ function MetricCard({
   recent: number;
 }) {
   return (
-    <article className={styles.metricCard}>
+    <div className={work.metric}>
       <span>{label}</span>
       <strong>{total.toLocaleString("de-DE")}</strong>
-      <small>{recent.toLocaleString("de-DE")} in den letzten 30 Tagen</small>
-    </article>
+      <p>{recent.toLocaleString("de-DE")} in den letzten 30 Tagen</p>
+    </div>
   );
 }
 
@@ -295,6 +136,8 @@ export function FreelancerDashboard({
   projectsAvailable = false,
   seeking = "projects",
   availabilityUpdatedAt: initialAvailabilityUpdatedAt = null,
+  githubLogin = null,
+  linkedinConnected = false,
 }: {
   initialProfile: EditableFreelancerProfile;
   metrics: FreelancerMetrics;
@@ -303,6 +146,9 @@ export function FreelancerDashboard({
   projectsAvailable?: boolean;
   seeking?: "projects" | "employment" | "both";
   availabilityUpdatedAt?: string | null;
+  /** Für die GitHub- und LinkedIn-Auswertung (ImportPanel), wie im Bewerbungsformular. */
+  githubLogin?: string | null;
+  linkedinConnected?: boolean;
 }) {
   const [profile, setProfile] = useState(initialProfile);
   const [availabilityUpdatedAt, setAvailabilityUpdatedAt] = useState(initialAvailabilityUpdatedAt);
@@ -399,6 +245,37 @@ export function FreelancerDashboard({
     value: EditableFreelancerProfile[K],
   ) {
     setProfile((current) => ({ ...current, [key]: value }));
+  }
+
+  /**
+   * Übernimmt eine GitHub-Auswertung ins Formular, wie im Bewerbungsformular:
+   * Was schon dasteht, bleibt. Gespeichert wird erst mit „Änderungen
+   * speichern“ und „Projekte speichern“.
+   */
+  function applyImport(draft: ProfileDraft): number {
+    const current: DraftTarget = {
+      roleTitle: profile.roleTitle,
+      experienceSummary: profile.experienceSummary,
+      locationText: profile.locationText ?? "",
+      skills: profile.skills,
+      languages: profile.languages,
+      qualifications: profile.qualifications,
+      industries: profile.industries,
+      projects,
+    };
+    const { next, taken } = mergeDraft(current, projectsAvailable || preview ? draft : { ...draft, projects: [] });
+    setProfile((existing) => ({
+      ...existing,
+      roleTitle: next.roleTitle,
+      experienceSummary: next.experienceSummary,
+      locationText: next.locationText || null,
+      skills: next.skills,
+      languages: next.languages,
+      qualifications: next.qualifications,
+      industries: next.industries,
+    }));
+    setProjects(next.projects);
+    return taken.length;
   }
 
   /** Veröffentlichen, pausieren, pushen: sofort, ohne das Formular zu speichern. */
@@ -651,85 +528,52 @@ export function FreelancerDashboard({
     );
   }
 
+  const visible = profile.profileStatus === "active";
+  const openSteps = strength.steps.filter((step) => !step.done).slice(0, 3);
+  // Die Testansicht als Karte wie im Talent Index: je Suchbegriff eine Zeile,
+  // erfüllt mit Kompetenz aus dem Profil oder offen fürs Gespräch.
+  const knownTerms = [...profile.skills, ...profile.industries, profile.roleTitle].map((entry) => entry.toLocaleLowerCase("de-DE"));
+  const testTerms = [...new Set(testQuery.split(/[^\p{L}\p{N}+#.]+/u).filter((term) => term.length > 1))].slice(0, 6);
+  const openTerms = testTerms.filter((term) => !knownTerms.some((known) => known.includes(term.toLocaleLowerCase("de-DE"))));
+  const matchedEvidence = discoveryProfile.evidence.filter((entry) => entry.required).slice(0, 5);
+  const testRows: MatchCardRow[] = [
+    ...(matchedEvidence.length ? matchedEvidence : discoveryProfile.evidence.slice(0, 4)).map((entry) => ({ label: entry.skill, detail: entry.verified ? "belegt" : "angegeben" })),
+    ...openTerms.map((term) => ({ label: term, detail: "im Gespräch klären", open: true })),
+  ];
+  const metTerms = testTerms.length - openTerms.length;
+  const availabilityText = `${AVAILABILITY_LABELS[profile.availabilityStatus]}${profile.availabilityFrom ? ` ab ${new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" }).format(new Date(profile.availabilityFrom))}` : ""}`;
+  const initialsText = profile.displayName.slice(0, 2).toUpperCase();
+
   return (
-    <div className={styles.dashboard}>
-      <section className={styles.dashboardHead}>
-        <div className={styles.profileOverview}>
-          <div
-            className={styles.avatarPreview}
-            style={
-              profile.avatarUrl
-                ? {
-                    backgroundImage: `url(${JSON.stringify(profile.avatarUrl)})`,
-                  }
-                : undefined
-            }
-            aria-label={
-              profile.avatarUrl
-                ? "Aktuelles Profilbild"
-                : "Noch kein Profilbild"
-            }
-          >
-            {profile.avatarUrl
-              ? null
-              : profile.displayName.slice(0, 2).toUpperCase()}
-          </div>
-          <div className={styles.profileHeading}>
-            <p className={styles.eyebrow}>Freelancer-Dashboard</p>
-            <h2>{profile.displayName}</h2>
-            <p>
-              {profile.roleTitle}
-              {profile.locationText ? ` · ${profile.locationText}` : ""}
-            </p>
-            <input
-              ref={fileInputRef}
-              className={styles.hiddenFile}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) void uploadAvatar(file);
-              }}
-            />
-            <div className={styles.avatarActions}>
-              <button
-                className={styles.textButton}
-                type="button"
-                disabled={busy === "avatar"}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                {busy === "avatar" ? "Bitte warten …" : "Profilbild ändern"}
-              </button>
-              {profile.avatarUrl ? (
-                <button
-                  className={styles.textButton}
-                  type="button"
-                  onClick={() => void removeAvatar()}
-                >
-                  Entfernen
-                </button>
-              ) : null}
-            </div>
-          </div>
-        </div>
-        <div className={styles.dashboardControls}>
-          <div
-            className={`${styles.statusLine} ${
-              profile.profileStatus === "paused" ? styles.isPaused : ""
-            }`}
-          >
+    <div className={work.workspace}>
+      <nav className={work.nav} aria-label="Profilbereich">
+        <a href="#uebersicht" aria-current="location">Übersicht</a>
+        <a href="#profil-bearbeiten">Profil bearbeiten</a>
+        <a href="#projekte">Projekte</a>
+        <a href="#einsatz">Verfügbarkeit &amp; Honorar</a>
+        <a href="#verbinden">GitHub &amp; LinkedIn</a>
+        <a href="#anfragen">Anfragen</a>
+        <p>Konto</p>
+        <a href="#profil-loeschen">Profil löschen</a>
+        {!preview ? (
+          <button type="button" onClick={() => void signOut().then(() => window.location.reload())}>Abmelden</button>
+        ) : null}
+      </nav>
+
+      <div className={work.main}>
+        <header id="uebersicht" className={work.bar}>
+          <h1>Ihr Profil</h1>
+          <span className={visible ? work.status : `${work.status} ${work.isPaused}`}>
             <span aria-hidden="true" />
-            {profile.profileStatus === "active"
-              ? "Öffentlich sichtbar"
-              : "Profil pausiert"}
-          </div>
+            {visible ? "Öffentlich sichtbar" : "Profil pausiert"}
+          </span>
           {/* Je nach Stand: ansehen, bearbeiten, pushen — oder veröffentlichen. */}
-          <div className={styles.profileActions}>
-            {freelancerActions({ kind: "profile", profileId: profile.id, visible: profile.profileStatus === "active" }).map((action) =>
+          <div className={work.barActions}>
+            {freelancerActions({ kind: "profile", profileId: profile.id, visible }).map((action) =>
               "href" in action ? (
                 <a
                   key={action.key}
-                  className={styles.profileActionLink}
+                  className={actionClass("secondary", { compact: true })}
                   href={action.key === "edit" ? "#profil-bearbeiten" : appPath(action.href)}
                   target={action.external ? "_blank" : undefined}
                   rel={action.external ? "noopener noreferrer" : undefined}
@@ -741,7 +585,7 @@ export function FreelancerDashboard({
                 <button
                   key={action.key}
                   type="button"
-                  className={action.key === "publish" ? styles.profileActionPrimary : styles.profileActionLink}
+                  className={actionClass(action.key === "publish" || action.key === "push" ? "primary" : "secondary", { compact: true })}
                   title={action.hint}
                   disabled={commandBusy !== null}
                   onClick={() => void runCommand(action.command)}
@@ -750,72 +594,134 @@ export function FreelancerDashboard({
                 </button>
               ),
             )}
-            {profile.profileStatus === "active" ? (
-              <button type="button" className={styles.textButton} disabled={commandBusy !== null} onClick={() => void runCommand("pause")}>
+            {visible ? (
+              <button type="button" className={work.textButton} disabled={commandBusy !== null} onClick={() => void runCommand("pause")}>
                 Pausieren
               </button>
             ) : null}
           </div>
-          {!preview ? (
-            <button
-              className={styles.textButton}
-              type="button"
-              onClick={() =>
-                void signOut().then(() => window.location.reload())
-              }
-            >
-              Abmelden
-            </button>
-          ) : null}
-        </div>
-      </section>
+        </header>
 
-      <section className={styles.strength} aria-labelledby="profile-strength-title">
-        <div>
-          <p className={styles.eyebrow}>Profilstärke</p>
-          <h2 id="profile-strength-title">
-            {strength.done} von {strength.total} · {strength.level}
-          </h2>
-          <meter min={0} max={strength.total} value={strength.done} aria-label="Profilstärke" />
-          <p>
-            {strength.next ? (
-              <>
-                <strong>Nächster Schritt: {strength.next.label}.</strong> {strength.next.hint}
-              </>
-            ) : (
-              "Ihr Profil ist vollständig. Halten Sie Verfügbarkeit und Projekte aktuell."
-            )}
+        {notice ? (
+          <p className={notice.tone === "error" ? styles.formError : styles.callout} role="status">
+            {notice.message}
           </p>
-        </div>
-      </section>
+        ) : null}
 
-      <section className={styles.metrics} aria-label="Profilstatistik">
-        <MetricCard
-          label="Profilaufrufe"
-          total={metrics.profileViewsTotal}
-          recent={metrics.profileViews30Days}
-        />
-        <MetricCard
-          label="Klicks auf Buchungslink"
-          total={metrics.bookingClicksTotal}
-          recent={metrics.bookingClicks30Days}
-        />
-      </section>
+        <section className={work.metrics} aria-label="Profilstatistik">
+          <div className={work.metric}>
+            <span>Profilstärke</span>
+            <strong>{strength.done} von {strength.total} · {strength.level}</strong>
+            <meter min={0} max={strength.total} value={strength.done} aria-label="Profilstärke" />
+            <p>
+              {strength.next ? (
+                <><b>Nächster Schritt:</b> {strength.next.label}.</>
+              ) : (
+                "Ihr Profil ist vollständig. Halten Sie Verfügbarkeit und Projekte aktuell."
+              )}
+            </p>
+          </div>
+          <MetricCard label="Profilaufrufe" total={metrics.profileViewsTotal} recent={metrics.profileViews30Days} />
+          <MetricCard label="Klicks auf Buchungslink" total={metrics.bookingClicksTotal} recent={metrics.bookingClicks30Days} />
+          <div className={work.metric}>
+            <span>Verfügbarkeit</span>
+            <strong className={work.available}>{AVAILABILITY_LABELS[profile.availabilityStatus]}</strong>
+            <p>
+              {availabilityUpdatedAt
+                ? `bestätigt am ${new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" }).format(new Date(availabilityUpdatedAt))}. Pushen hält sie aktuell.`
+                : "Noch nicht bestätigt. Pushen hält sie aktuell."}
+            </p>
+          </div>
+        </section>
 
-      <section className={`${styles.section} ${styles.applyHero}`} aria-labelledby="discovery-preview-title">
-        <div>
-          <p className={styles.eyebrow}>Testansicht für Freelancer</p>
-          <h2 id="discovery-preview-title">So wird Ihr Profil für eine Anfrage eingeordnet.</h2>
-          <p className={styles.sectionHint}>Geben Sie Rolle, Branche oder Technologie ein. Die Vorschau hebt Überschneidungen hervor und wählt das dazu passendste öffentliche Referenzprojekt.</p>
-          <label className={styles.field}>
-            <span>Beispielanfrage</span>
-            <input value={testQuery} onChange={(event) => setTestQuery(event.target.value)} placeholder="z. B. React für Versicherungsportal" />
-            <span className={styles.hint}>Lokale Testansicht – keine echte Kundenanfrage.</span>
-          </label>
-        </div>
-        <aside className={styles.gateExample} aria-label="Profilkarte zur Beispielanfrage">
-          <ShowcaseCard profile={discoveryProfile} now={previewAt} href={appPath(`/profil/${profile.id}?via=share`)} />
-        </aside>
+        <section className={work.test} aria-labelledby="discovery-preview-title">
+          <div>
+            <h2 id="discovery-preview-title">Testansicht: So wird Ihr Profil für eine Anfrage eingeordnet.</h2>
+            <p>
+              Beispielanfrage: <strong>{testQuery.trim() || "noch keine"}</strong> · keine echte Kundenanfrage
+            </p>
+          </div>
+          <div className={work.cards}>
+            <div className={work.cardSlot}>
+              <p className={work.cardLabel}>So sieht das Unternehmen Sie</p>
+              <MatchCard
+                avatar={{ src: profile.avatarUrl, initials: initialsText }}
+                name={profile.displayName}
+                role={[profile.roleTitle, profile.workModes.map((mode) => WORK_MODE_LABELS[mode]).join(", ")].filter(Boolean).join(" · ")}
+                score={testTerms.length ? { text: `${metTerms} von ${testTerms.length}`, partial: metTerms < testTerms.length } : null}
+                rows={testRows}
+                facts={[
+                  { label: "Honorar", value: discoveryProfile.rate ?? "nicht angegeben" },
+                  { label: "Verfügbar", value: availabilityText },
+                ]}
+              />
+            </div>
+            <div className={work.cardSlot}>
+              <p className={work.cardLabel}>Passendstes Referenzprojekt</p>
+              <article className={work.card}>
+                {discoveryProfile.highlight ? (
+                  <>
+                    <strong>{discoveryProfile.highlight.title}</strong>
+                    {discoveryProfile.highlight.meta ? <span className={work.muted}>{discoveryProfile.highlight.meta}</span> : null}
+                    {discoveryProfile.highlight.technologies.length ? (
+                      <span className={work.chips}>
+                        {discoveryProfile.highlight.technologies.slice(0, 5).map((technology) => <span key={technology}>{technology}</span>)}
+                      </span>
+                    ) : null}
+                    <p>Zu jeder Anfrage zeigt XPORTAL das Projekt mit den meisten Überschneidungen.</p>
+                  </>
+                ) : (
+                  <p>Noch kein öffentliches Referenzprojekt. Ein Projekt mit Titel, Branche und Technologien zeigt, was Sie gemacht haben.</p>
+                )}
+                <a className={actionClass("secondary", { compact: true })} href="#projekte">Projekt hinzufügen</a>
+              </article>
+            </div>
+            <div className={work.cardSlot}>
+              <p className={work.cardLabel}>So passen Sie besser</p>
+              <article className={work.card}>
+                {openSteps.length ? (
+                  <ul className={work.steps}>
+                    {openSteps.map((step) => (
+                      <li key={step.key}><strong>{step.label}</strong><span>{step.hint}</span></li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>Ihr Profil ist vollständig. Halten Sie Verfügbarkeit und Projekte aktuell.</p>
+                )}
+                <button
+                  type="button"
+                  className={actionClass("primary", { compact: true })}
+                  disabled={commandBusy !== null}
+                  onClick={() => void runCommand(visible ? "push" : "publish")}
+                >
+                  {visible ? "Profil pushen" : "Profil veröffentlichen"}
+                </button>
+              </article>
+            </div>
+          </div>
+          <div className={work.testBar}>
+            {profile.skills.length ? (
+              <div className={work.testChips}>
+                <span>Andere Anfrage testen:</span>
+                {profile.skills.slice(0, 3).map((skill) => (
+                  <button key={skill} type="button" onClick={() => setTestQuery(skill)}>{skill}</button>
+                ))}
+              </div>
+            ) : null}
+            <label className={work.testInput}>
+              <span className="sr-only">Beispielanfrage</span>
+              <input value={testQuery} onChange={(event) => setTestQuery(event.target.value)} placeholder="Rolle, Branche oder Technologie eingeben, z. B. React für Versicherungsportal" />
+            </label>
+          </div>
+        </section>
+
+      <section id="verbinden" className={styles.section} aria-labelledby="connect-title">
+        <p className={styles.eyebrow}>Profile verbinden</p>
+        <h2 id="connect-title">GitHub und LinkedIn auswerten</h2>
+        <p className={styles.sectionHint}>
+          GitHub übernimmt öffentliche Projekte und Technologien in Ihr Profil, LinkedIn verbinden Sie hier ebenfalls. Was schon dasteht, bleibt. Danach unten speichern.
+        </p>
+        <ImportPanel githubLogin={githubLogin} linkedinConnected={linkedinConnected} onDraft={applyImport} />
       </section>
 
       <form id="profil-bearbeiten" className={styles.form} onSubmit={save}>
@@ -857,7 +763,7 @@ export function FreelancerDashboard({
           </div>
         </section>
 
-        <section className={styles.section}>
+        <section id="einsatz" className={styles.section}>
           <p className={styles.eyebrow}>Einsatz</p>
           <h2>Verfügbarkeit und Konditionen</h2>
           <div className={styles.grid}>
@@ -944,7 +850,7 @@ export function FreelancerDashboard({
         </div>
       </form>
 
-      <section className={styles.section} aria-labelledby="projects-title">
+      <section id="projekte" className={styles.section} aria-labelledby="projects-title">
         <p className={styles.eyebrow}>Referenzprojekte</p>
         <h2 id="projects-title">Woran Sie gearbeitet haben</h2>
         <p className={styles.sectionHint}>
@@ -970,7 +876,7 @@ export function FreelancerDashboard({
         )}
       </section>
 
-      <section className={`${styles.section} ${styles.dangerZone}`}>
+      <section id="profil-loeschen" className={`${styles.section} ${styles.dangerZone}`}>
         <p className={styles.eyebrow}>Gefahrenbereich</p>
         <h2>Profil dauerhaft löschen</h2>
         <p className={styles.sectionHint}>
@@ -983,6 +889,78 @@ export function FreelancerDashboard({
           </button>
         </div>
       </section>
+      </div>
+
+      <aside className={work.aside} aria-labelledby="public-profile-title">
+        <div className={work.asideHead}>
+          <h2 id="public-profile-title">Öffentliches Profil</h2>
+          <a href="#profil-bearbeiten">Bearbeiten</a>
+        </div>
+        <div className={work.person}>
+          <div
+            className={work.avatar}
+            style={profile.avatarUrl ? { backgroundImage: `url(${JSON.stringify(profile.avatarUrl)})` } : undefined}
+            aria-label={profile.avatarUrl ? "Aktuelles Profilbild" : "Noch kein Profilbild"}
+            role="img"
+          >
+            {profile.avatarUrl ? null : initialsText}
+          </div>
+          <div>
+            <strong>{profile.displayName}</strong>
+            <span>{profile.roleTitle}</span>
+            <span>{[profile.locationText, profile.workModes.map((mode) => WORK_MODE_LABELS[mode]).join(", ")].filter(Boolean).join(" · ")}</span>
+          </div>
+        </div>
+        <input
+          ref={fileInputRef}
+          className={styles.hiddenFile}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) void uploadAvatar(file);
+          }}
+        />
+        <div className={work.avatarActions}>
+          <button className={work.textButton} type="button" disabled={busy === "avatar"} onClick={() => fileInputRef.current?.click()}>
+            {busy === "avatar" ? "Bitte warten …" : "Profilbild ändern"}
+          </button>
+          {profile.avatarUrl ? (
+            <button className={work.textButton} type="button" onClick={() => void removeAvatar()}>Entfernen</button>
+          ) : null}
+        </div>
+        {profile.skills.length ? (
+          <div className={work.skillGroups}>
+            <p>Kernkompetenzen</p>
+            <span className={work.chipsStrong}>{profile.skills.slice(0, 4).map((skill) => <span key={skill}>{skill}</span>)}</span>
+            {profile.skills.length > 4 ? (
+              <>
+                <p>Weitere</p>
+                <span className={work.chips}>{profile.skills.slice(4, 12).map((skill) => <span key={skill}>{skill}</span>)}</span>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+        <dl className={work.facts}>
+          <dt>Honorar</dt><dd>{discoveryProfile.rate ?? "nicht angegeben"}</dd>
+          <dt>Verfügbar</dt><dd>{availabilityText}</dd>
+          {profile.languages.length ? <><dt>Sprachen</dt><dd>{profile.languages.join(", ")}</dd></> : null}
+          <dt>Prüfung</dt>
+          <dd className={profile.verificationStatus === "unverified" ? undefined : work.verified}>
+            {profile.verificationStatus === "operator_verified"
+              ? "Von XPORTAL geprüft"
+              : profile.verificationStatus === "references_checked"
+                ? "Referenzen geprüft"
+                : profile.verificationStatus === "identity_checked"
+                  ? "Identität geprüft"
+                  : "Noch nicht geprüft"}
+          </dd>
+        </dl>
+        <div id="anfragen" className={work.inquiries}>
+          <strong>Anfragen</strong>
+          <p>Noch keine Anfrage hier. Passt eine, meldet sich XPORTAL per E-Mail und stellt Sie vor.</p>
+        </div>
+      </aside>
     </div>
   );
 }

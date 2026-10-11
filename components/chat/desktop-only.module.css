@@ -1,0 +1,34 @@
+/* Hinweis vor dem Talent Index auf dem Handy (desktop-only.tsx).
+   Auf dem Desktop unsichtbar. Schmale Fenster und Handys quer sehen ihn statt
+   des Chats, bis „Trotzdem hier öffnen“ html[data-chat-on-mobile] setzt. */
+.notice { display: none; }
+
+@media (max-width: 860px), (max-height: 500px) and (pointer: coarse) {
+  :global(html:not([data-chat-on-mobile])) .notice {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    padding: 20px 24px 32px;
+    background: #fff;
+    color: var(--xp-ink);
+  }
+  :global(html:not([data-chat-on-mobile])) .notice ~ :global(.app-shell) { display: none; }
+}
+
+.brand { margin: 0; font-family: var(--xp-display); font-size: 19px; font-weight: 600; letter-spacing: -.04em; }
+
+.body { display: flex; flex-direction: column; gap: 20px; width: min(100%, 440px); margin: auto 0; padding: 32px 0; }
+.body h1 { margin: 0; font-family: var(--xp-display); font-size: 28px; font-weight: 500; line-height: 1.2; letter-spacing: -.03em; text-wrap: balance; }
+.body p { margin: 0; color: var(--xp-ink-soft); font-size: 16px; line-height: 1.55; }
+.body strong { color: var(--xp-ink); }
+
+.icon { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 16px; background: #e9f5ee; color: var(--xp-brand); }
+
+.actions { display: grid; gap: 10px; }
+
+.skip { align-self: center; min-height: 44px; padding: 0 12px; border: 0; background: none; color: var(--xp-muted); font: inherit; font-size: 14px; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+.skip:focus-visible { outline: 2px solid var(--xp-brand); outline-offset: 2px; }
+
+.legal { display: flex; justify-content: center; gap: 16px; font-size: 13px; }
+.legal a { color: var(--xp-muted); }

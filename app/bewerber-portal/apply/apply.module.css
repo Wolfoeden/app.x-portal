@@ -28,7 +28,6 @@
   font-weight: 650;
 }
 
-
 .form {
   display: grid;
   gap: 18px;
@@ -413,14 +412,7 @@
   color: var(--muted);
 }
 
-.dashboard {
-  display: grid;
-  gap: 18px;
-  margin-top: 28px;
-}
-
-.portalCard,
-.dashboardHead {
+.portalCard{
   margin-top: 28px;
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -429,32 +421,11 @@
   box-shadow: 0 8px 24px rgba(29, 29, 26, 0.035);
 }
 
-.dashboardHead {
-  display: flex;
-  min-height: 220px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 34px;
-  margin-top: 0;
-  border-color: var(--ink);
-  border-radius: 22px;
-  background: var(--ink);
-  color: var(--surface);
-  padding: 34px clamp(24px, 4vw, 42px);
-  box-shadow: 0 16px 38px rgba(28, 28, 25, 0.12);
-}
-
-.portalCard h2,
-.dashboardHead h2 {
+.portalCard h2{
   margin: 7px 0 9px;
   font-size: clamp(22px, 3vw, 30px);
   letter-spacing: -0.035em;
 }
-
-
-
-
-
 
 .portalCard > p:not(.eyebrow) {
   max-width: 640px;
@@ -464,170 +435,9 @@
   line-height: 1.6;
 }
 
-.dashboardHead .profileHeading > p:not(.eyebrow) {
-  max-width: 640px;
-  margin: 0;
-  color: rgba(255, 255, 255, 0.62);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.dashboardHead .eyebrow {
-  color: rgba(255, 255, 255, 0.48);
-}
-
-.profileOverview {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 22px;
-}
-
-.profileHeading {
-  min-width: 0;
-}
-
-.profileHeading h2 {
-  margin: 7px 0 3px;
-  font-size: clamp(26px, 3.4vw, 38px);
-}
-
-.avatarActions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 17px;
-}
-
-.dashboardHead .textButton {
-  padding: 0;
-  color: rgba(255, 255, 255, 0.7);
-  text-decoration-color: rgba(255, 255, 255, 0.3);
-}
-
-.dashboardHead .textButton:hover {
-  color: var(--surface);
-}
-
-.dashboardControls {
-  display: grid;
-  flex: 0 0 auto;
-  justify-items: end;
-  gap: 12px;
-}
-
-.statusLine {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: rgba(255, 255, 255, 0.68);
-  font-size: var(--fs-2xs);
-}
-
-.statusLine span {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #8fd19a;
-  box-shadow: 0 0 0 4px rgba(143, 209, 154, 0.12);
-}
-
-.statusLine.isPaused span {
-  background: #e0b06a;
-  box-shadow: 0 0 0 4px rgba(224, 176, 106, 0.12);
-}
-
 .metaLine {
   color: var(--muted-light) !important;
   font-size: var(--fs-2xs) !important;
-}
-
-.metrics {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.metricCard {
-  position: relative;
-  display: grid;
-  gap: 5px;
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  background: var(--surface);
-  padding: 26px 28px 28px;
-  overflow: hidden;
-}
-
-.metricCard::before {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  background: var(--ink);
-  content: "";
-}
-
-.metricCard span {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.metricCard strong {
-  font-size: 44px;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.05em;
-  line-height: 1.05;
-}
-
-.metricCard small {
-  color: var(--muted-light);
-  font-size: var(--fs-2xs);
-}
-
-/* Aktionen auf das eigene Profil: wirken sofort, ohne „Änderungen speichern“. */
-.profileActions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-}
-
-.profileActionLink,
-.profileActionPrimary {
-  display: inline-flex;
-  min-height: var(--xp-action-height-compact);
-  align-items: center;
-  border: 1px solid var(--xp-action-secondary-border);
-  border-radius: var(--xp-action-radius);
-  background: var(--surface);
-  padding: 0 14px;
-  color: var(--ink);
-  cursor: pointer;
-  font: inherit;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.profileActionLink:hover:not(:disabled) { border-color: var(--xp-action-secondary-border-hover); background: var(--xp-action-secondary-hover); }
-.profileActionPrimary { border-color: transparent; background: var(--xp-action-primary); color: #fff; }
-.profileActionPrimary:hover:not(:disabled) { background: var(--xp-action-primary-hover); }
-.profileActionLink:disabled, .profileActionPrimary:disabled { cursor: wait; opacity: .6; }
-
-.avatarPreview {
-  display: grid;
-  flex: 0 0 auto;
-  place-items: center;
-  width: 104px;
-  height: 104px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 50%;
-  background: #353532 center / cover no-repeat;
-  color: var(--surface);
-  font-size: 23px;
-  font-weight: 700;
 }
 
 .textButton {
@@ -691,37 +501,21 @@
     padding: 0 16px 56px;
   }
 
-  .topbar {
-    min-height: 58px;
-  }
+  
 
   .header {
     padding-top: 34px;
   }
 
-  .metrics {
-    grid-template-columns: 1fr;
-  }
+  
 
-  .dashboardHead {
-    display: grid;
-    min-height: 0;
-    gap: 28px;
-    padding: 26px 22px;
-  }
+  
 
-  .profileOverview {
-    align-items: flex-start;
-  }
+  
 
-  .avatarPreview {
-    width: 76px;
-    height: 76px;
-  }
+  
 
-  .dashboardControls {
-    justify-items: start;
-  }
+  
 }
 
 /* Begruessung fuer Eingeladene ---------------------------------------------
@@ -749,40 +543,6 @@
   line-height: 1.6;
 }
 
-/* Einstieg vor der Anmeldung: Nutzen und Knopf links, Profilvorschau rechts;
-   darunter Fakten, Protokoll und die drei Wege als eigene Karten. */
-.applyHero {
-  display: grid;
-  gap: 28px;
-  align-items: start;
-}
-
-.gateActions {
-  margin-top: 4px;
-}
-
-.gateActions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 18px;
-  margin-bottom: 10px;
-}
-
-.gateLogin {
-  border: 0;
-  background: none;
-  padding: 0;
-  color: var(--ink);
-  font: inherit;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
-
-.gateExample,
 .preview {
   display: grid;
   align-content: start;
@@ -792,7 +552,6 @@
   padding: 16px;
 }
 
-.gateExample h2,
 .preview h2 {
   margin: 0;
   font-size: var(--fs-sm);
@@ -803,13 +562,6 @@
 .preview {
   border: 1px dashed var(--border-strong);
   background: var(--surface);
-}
-
-@media (min-width: 880px) {
-  .applyHero {
-    grid-template-columns: minmax(0, 1fr) 320px;
-    column-gap: 40px;
-  }
 }
 
 @media (min-width: 1000px) {
@@ -831,47 +583,6 @@
   }
 }
 
-/* Profilstärke im Dashboard: Zahl, Balken, nächster Schritt. */
-.strength {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px 24px;
-  margin-top: 18px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--surface);
-  padding: 18px clamp(18px, 4vw, 30px);
-}
-
-.strength > div {
-  display: grid;
-  max-width: 620px;
-  gap: 6px;
-}
-
-.strength h2 {
-  margin: 0;
-  font-size: 18px;
-}
-
-.strength meter {
-  width: min(320px, 100%);
-  height: 10px;
-}
-
-.strength p:not(.eyebrow) {
-  margin: 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.55;
-}
-
-.strength strong {
-  color: var(--ink);
-}
-
 /* Im Stil der öffentlichen Seiten (landing.module.css) -------------------
 
    Der Bereich hängt am Kopf der Website („Für Freelancer“) und soll nicht
@@ -879,28 +590,20 @@
    dieselbe Display-Schrift, grüne Knöpfe, helle Flächen statt der dunklen
    Kopfkarte. */
 .shell { padding: 0 0 0; background: #fff; }
-.inner { box-sizing: border-box; width: min(100%, 1088px); max-width: none; padding: 0 72px 80px; border-inline: 1px solid var(--xp-line); }
+/* Formular und Bewerbungsstand in einer ruhigen Spalte, das Dashboard über
+   die volle Breite (Desktop-Entwurf, Oktober 2026). */
+.inner { box-sizing: border-box; width: 100%; max-width: calc(1088px + 2 * var(--xp-page-gutter)); padding: 0 var(--xp-page-gutter) 80px; }
+.innerWide { box-sizing: border-box; width: 100%; max-width: 1840px; margin: 0 auto; padding: 0 var(--xp-page-gutter) 64px; }
+.innerWide > .footer { margin-top: 48px; }
+.landingShell { color: var(--xp-ink); background: #fff; }
 .header { padding-top: 56px; }
 .eyebrow { color: var(--xp-brand); font-size: var(--xp-eyebrow-size); font-weight: 600; letter-spacing: 0; text-transform: none; }
 .header h1 { margin: 14px 0 16px; font-family: var(--xp-display); font-size: var(--xp-h1-size); font-weight: 400; line-height: 1.1; letter-spacing: var(--xp-h1-tracking); }
 .header p { max-width: 640px; color: var(--xp-muted); font-size: var(--xp-lead-size); line-height: 1.65; }
 .header .eyebrow { margin: 0; color: var(--green); font-size: 14px; font-weight: 600; }
-.header .gateExample h2 { margin: 0; font-family: var(--font-sans); font-size: var(--fs-sm); font-weight: 650; letter-spacing: 0; }
-.header .gateExample .hint { margin: 0; font-size: 12px; line-height: 1.5; }
-.header .gateActions { margin: 24px 0 0; }
-.applyHero h1 { font-size: clamp(32px, 3.6vw, 44px); }
-.portalCard h2, .dashboardHead h2, .profileHeading h2 { font-family: var(--xp-display); font-weight: 400; letter-spacing: -.035em; }
-.section, .metricCard, .portalCard { border-color: #e4e7ea; border-radius: 8px; }
 
-
-.dashboardHead { border: 1px solid #e4e7ea; border-radius: 8px; background: radial-gradient(120% 90% at 92% 100%, rgba(38, 160, 102, .3), transparent 62%), linear-gradient(160deg, #f4fbf7, #ddf1e6); color: var(--ink); box-shadow: none; }
-.dashboardHead .eyebrow { color: var(--green); }
-.dashboardHead .profileHeading > p:not(.eyebrow) { color: #5f6772; }
-.dashboardHead .textButton { color: var(--ink); text-decoration-color: rgba(16, 27, 23, .3); }
-.dashboardHead .textButton:hover { color: var(--green); }
-.statusLine { color: var(--ink-soft); }
-.avatarPreview { border: 3px solid #fff; background-color: #0f5c3b; color: #fff; font-family: var(--font-display), var(--font-sans); font-weight: 600; box-shadow: 0 10px 30px rgba(16, 27, 23, .12); }
-.metricCard::before { background: var(--green); }
+.portalCard h2{ font-family: var(--xp-display); font-weight: 400; letter-spacing: -.035em; }
+.section, .portalCard { border-color: #e4e7ea; border-radius: 8px; }
 
 @media (max-width: 1080px) { .inner { padding: 0 48px 72px; } }
 @media (max-width: 760px) { .inner { padding: 0 20px 64px; border-inline: 0; } .header { padding-top: 36px; } }
@@ -929,10 +632,7 @@
 .infoBubble { position: relative; display: inline-flex; }
 .infoBubble > [role="tooltip"] { position: absolute; bottom: calc(100% + 8px); left: 0; z-index: 20; width: max-content; max-width: min(320px, 80vw); border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 10px 12px; color: var(--ink-soft); font-size: 13px; font-weight: 400; line-height: 1.5; box-shadow: var(--shadow-soft); opacity: 0; pointer-events: none; transform: translateY(4px); transition: opacity 120ms ease, transform 120ms ease; }
 .infoBubble:hover > [role="tooltip"], .infoBubble:focus-within > [role="tooltip"] { opacity: 1; transform: none; }
-.infoChips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
-.infoChip { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); padding: 3px 6px 3px 12px; color: var(--ink-soft); cursor: help; font: inherit; font-size: 13px; }
-.infoChip > span { display: inline-grid; width: 18px; height: 18px; place-items: center; border-radius: 50%; background: var(--green-soft); color: var(--green); font-size: 11px; font-weight: 750; }
-.infoChip:hover, .infoChip:focus-visible { border-color: var(--green-border); }
+
 @media (prefers-reduced-motion: reduce) { .infoBubble > [role="tooltip"] { transition: none; } }
 .simplePreview { grid-column: 2; grid-row: 1 / span 2; position: sticky; top: 24px; }
 .rateComposer {

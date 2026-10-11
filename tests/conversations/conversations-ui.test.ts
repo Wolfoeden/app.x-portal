@@ -122,7 +122,9 @@ describe("sidebar and landing page in the placement model", () => {
 
   it("offers a bounded self-service trial", () => {
     const html = renderToStaticMarkup(createElement(FreelancerLanding));
-    for (const text of ["Projektbeschreibung", "Roman D.", "Profilbeleg", "210", "Profile live", "2", "Familienunternehmen", "3 Wochen", "Besetzungszeit", "14 Tage kostenlos testen"]) expect(html).toContain(text);
+    for (const text of ["Projektbeschreibung", "Roman D.", "Belege je Anforderung", "Provisionsfrei", "Analysen kostenlos", "14 Tage kostenlos testen"]) expect(html).toContain(text);
+    // Desktop-Entwurf (Oktober 2026): vier Zusagen statt einer Bestandszahl.
+    expect(html).not.toContain("Profile live");
     expect(html).not.toContain("Erfolgsquote");
     expect(html).not.toContain("Anfrage ohne Konto");
   });

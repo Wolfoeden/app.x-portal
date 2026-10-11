@@ -168,6 +168,15 @@ const SIDEBAR_COLLAPSED_STORAGE_KEY = "xportal.sidebar-collapsed.v1";
 /** Width of the icon rail the desktop sidebar collapses to. */
 const SIDEBAR_RAIL_WIDTH = 60;
 
+/**
+ * Auf dem Zweitbildschirm im Büro steht die Projektübersicht neben den
+ * Profilen offen (Desktop-Entwurf, Oktober 2026); schmaler bleibt sie zu,
+ * damit die Karten Platz haben.
+ */
+function detailsOpenByDefault(): boolean {
+  return typeof window !== "undefined" && window.matchMedia("(min-width: 1440px)").matches;
+}
+
 function clampSidebarWidth(value: number): number {
   return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, Math.round(value)));
 }
@@ -1708,6 +1717,7 @@ export function ChatWorkspace({
     setPartialProfiles(detail.partialProfiles.slice(0, 2));
     setMatchingStatus(detail.matchingStatus ?? null);
     setHasResult(Boolean(detail.brief));
+    if (!detailsTouchedRef.current) setDetailsOpen(Boolean(detail.brief) && detailsOpenByDefault());
     setAnalysisMode(detail.analysisMode ?? null);
     setAnalysisTrace(null);
     setExternalSearch(detail.externalSearch ?? null);
@@ -2204,7 +2214,7 @@ export function ChatWorkspace({
       setMatchingStatus(result.matchingStatus ?? null);
       setHasResult(true);
       trackFunnelEvent("result_seen", result.matchingStatus ?? "unclassified");
-      if (!detailsTouchedRef.current) setDetailsOpen(false);
+      if (!detailsTouchedRef.current) setDetailsOpen(detailsOpenByDefault());
       setAnalysisMode(result.mode ?? "ai");
       setAnalysisTrace(result.analysis ?? null);
       setExternalSearch(null);

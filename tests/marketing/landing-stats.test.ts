@@ -33,23 +33,25 @@ describe("summarizeLandingStats", () => {
 });
 
 describe("landing page inventory total", () => {
-  it("shows the requested concise online total instead of the former breakdown", () => {
+  // Desktop-Entwurf (Oktober 2026): Unter dem Kopf stehen vier Zusagen statt
+  // einer Bestandszahl; die Seite nennt keine Profilzahl mehr.
+  it("shows commitments instead of an inventory number", () => {
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     const html = renderToStaticMarkup(
       createElement(FreelancerLanding, {
         stats: { profiles: 67, projects: 1213, fields: [{ field: "ai", label: "KI & Agenten", count: 18 }] },
       }),
     );
-    expect(html).toMatch(/>210<\/strong>\s*<span>Profile live<\/span>/u);
+    for (const commitment of ["Provisionsfrei", "Analysen kostenlos", "Belege je Anforderung", "Ihre Daten bleiben Ihre"]) expect(html).toContain(commitment);
+    expect(html).not.toContain("Profile live");
     expect(html).not.toContain("67 freigegebene Profile");
     expect(html).not.toContain("KI &amp; Agenten: 18 Profile");
     expect(html).not.toContain("Projektbeschreibungen analysiert");
   });
 
-  it("keeps the total and removes the former workflow block", () => {
+  it("keeps the former workflow block out", () => {
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     const html = renderToStaticMarkup(createElement(FreelancerLanding));
-    expect(html).toMatch(/>210<\/strong>\s*<span>Profile live<\/span>/u);
     expect(html).not.toContain("Ein Arbeitsablauf für Ihre Mandate");
     expect(html).not.toContain("Von der Ausschreibung zur nachvollziehbaren Auswahl");
   });

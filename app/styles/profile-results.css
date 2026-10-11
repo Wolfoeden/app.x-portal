@@ -10,10 +10,34 @@
 .brief-optional { font-size: var(--fs-2xs); }
 
 .profile-shortlist .profile-stack-bar { justify-content: flex-end; margin-bottom: 12px; }
-.profile-shortlist .profile-list { gap: 20px; }
 
-.result-section .profile-card { grid-template-columns: 30px minmax(0, 1fr); }
-.result-section .profile-card.is-primary::before { left: 30px; background: var(--green); }
+/* Bis zu drei Profile nebeneinander (Desktop-Entwurf, Oktober 2026). Jede
+   Karte zeigt zuerst Person, Anforderungen mit Beleg, offene Punkte, Honorar
+   und die Anfrage; Referenzprojekt und alles Weitere öffnet „Belege zum
+   Projekt“. Schmaler als drei Spalten rücken sie in zwei oder eine. */
+.result-section .profile-list { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); align-items: start; gap: 20px; }
+.result-section .profile-list > div { min-width: 0; }
+.result-section .profile-card { grid-template-columns: minmax(0, 1fr); border-color: var(--xp-card-line); border-radius: 14px; }
+.result-section .profile-rank { display: none; }
+.result-section .profile-card.is-primary::before { left: 0; background: var(--green); }
+.result-section .profile-card.is-collapsed .profile-project-fit,
+.result-section .profile-card.is-collapsed .profile-references { display: none; }
+/* Kopf wie im Entwurf: Person oben, die Etiketten darunter; Anforderungen als
+   Zeilen mit Beleg rechts. */
+.result-section .profile-list .profile-header { flex-direction: column; gap: 8px; }
+.result-section .profile-list .profile-badges { justify-content: flex-start; }
+.result-section .profile-list .profile-evidence h4 { display: none; }
+.result-section .profile-list .profile-evidence-row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; }
+.result-section .profile-list .profile-evidence-row strong { flex-wrap: nowrap; min-width: 0; }
+.result-section .profile-list .profile-evidence-row > span { flex: none; max-width: 50%; text-align: right; }
+.result-section .profile-list .profile-evidence-row:last-child { border-bottom: 0; }
+.result-section .profile-list .profile-conversation { margin-top: 12px; }
+.result-section .profile-list .profile-footer > .profile-main-actions > .primary-action { flex: 1 1 100%; justify-content: center; }
+.result-section .profile-list .profile-evidence { margin-top: 14px; }
+/* Nebeneinander reichen Symbole: Lebenslauf, Kalender, LinkedIn und GitHub
+   stehen mit „Merken“ in einer Zeile, die Beschriftung bleibt für
+   Screenreader und als Tooltip. */
+.result-section .profile-list .profile-shortcut-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .result-section .profile-main { padding: 22px 22px 0; }
 .result-section .profile-footer { margin: 0 -22px; padding: 14px 22px; }
 .result-section .profile-identity h3 { font-size: var(--fs-lg); }

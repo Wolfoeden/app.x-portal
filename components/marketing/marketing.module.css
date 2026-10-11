@@ -5,8 +5,8 @@
 
 /* Knöpfe: components/ui/actions.module.css (actionClass). */
 .nextActions { display: flex; flex-wrap: wrap; gap: 12px; }
-/* Derselbe Rahmen wie auf der Startseite: 1088 px mit feinen Linien. */
-.main { box-sizing: border-box; width: min(100%, 1088px); margin: 0 auto; padding: 0 72px 8px; border-inline: 1px solid var(--xp-line); }
+/* Derselbe Rahmen wie auf der Startseite: bis 1600 px, Rand wie im Kopf. */
+.main { box-sizing: border-box; width: 100%; max-width: var(--xp-page-max); margin: 0 auto; padding: 0 var(--xp-page-gutter) 8px; }
 .main:focus { outline: none; }
 .breadcrumb { padding: 28px 0 0; color: var(--muted); font-size: var(--fs-xs); }
 .breadcrumb ol { display: flex; flex-wrap: wrap; list-style: none; gap: 10px; padding: 0; margin: 0; }
@@ -90,7 +90,7 @@
 .related a:hover { text-decoration: underline; text-underline-offset: 4px; }
 .related a span { font-size: 19px; }
 @media (max-width: 1080px) {
-  .main { padding: 0 48px 8px; }
+  .main { padding-bottom: 8px; }
   .hero { gap: 30px; }
   .section { grid-template-columns: 240px minmax(0, 1fr); gap: 36px; }
 }

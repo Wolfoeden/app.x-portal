@@ -19,7 +19,7 @@ import { MARKETING_CATEGORIES } from "@/lib/marketing-categories";
 import { MARKETING_PAGE, MARKETING_PAGES, absoluteUrl, pageMetadata } from "@/lib/seo";
 
 const routes = [
-  { Component: FindPage, page: MARKETING_PAGE.find, metadata: findMetadata, required: ["Weniger Bewerbungen", "Mehr relevante Gespräche", "Projektbeschreibung", "Roman D.", "210", "Profile live", "Familienunternehmen", "3 Wochen"] },
+  { Component: FindPage, page: MARKETING_PAGE.find, metadata: findMetadata, required: ["Weniger Bewerbungen", "Mehr relevante Gespräche", "Projektbeschreibung", "Roman D.", "Provisionsfrei", "Analysen kostenlos", "Belege je Anforderung", "Ihre Daten bleiben Ihre"] },
   { Component: ItPage, page: MARKETING_PAGE.it, metadata: itMetadata, required: ["IT-Freelancer", "React", "SAP", "Verfügbarkeit"] },
   { Component: MatchingPage, page: MARKETING_PAGE.matching, metadata: matchingMetadata, required: ["regelbasiert", "KI-gestütztes", "Nicht belegt"] },
   { Component: HowPage, page: MARKETING_PAGE.how, metadata: howMetadata, required: ["Requirement Extraction", "Credits", "Informationslücken"] },
@@ -77,7 +77,10 @@ describe("marketing pages rendered on the server", () => {
     const chat = readFileSync(new URL("../app/chat/page.tsx", import.meta.url), "utf8");
     // Permanent (308), damit die Signale der Domain bei der Landingpage landen.
     expect(root).toContain('permanentRedirect("/fuer-unternehmen")');
-    expect(chat).toContain("return <ChatWorkspace />");
+    // /chat bleibt der direkte Einstieg; auf dem Handy steht davor nur ein
+    // Hinweis (components/chat/desktop-only.tsx), keine Weiterleitung.
+    expect(chat).toContain("<ChatWorkspace />");
+    expect(chat).not.toMatch(/redirect/iu);
   });
 });
 
