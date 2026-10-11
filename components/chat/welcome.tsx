@@ -30,9 +30,11 @@ export function greetingFor(hour: number): string {
   return "Guten Abend";
 }
 
-/** Was hier eingegeben wird und was danach kommt, in einer Zeile. */
+/** Was hier eingegeben wird und was danach kommt, in einer Zeile. Talent
+ * Index ist das Angebot für Unternehmen: weniger Bewerbungen, mehr relevante
+ * Gespräche. */
 export const WELCOME_LEAD =
-  "Fügen Sie Ihre Projektbeschreibung ein. Sie erhalten bis zu drei passende Profile mit Honorar und offenen Fragen.";
+  "Weniger Bewerbungen. Mehr relevante Gespräche. Projekt einfügen und bis zu drei passende Profile mit Honorar und offenen Fragen sehen.";
 
 /**
  * Der Vorname aus dem Kontonamen, wie Google oder Microsoft ihn liefern.
