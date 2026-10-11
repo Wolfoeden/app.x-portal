@@ -49,9 +49,9 @@ describe("indexing rules", () => {
     expect(INDEXABLE_PATHS).toContain("/chat");
     // „Freelancer finden“ soll eine Seite tragen, nicht zwei.
     const top = SITEMAP_ENTRIES.filter((entry) => entry.priority === 1).map((entry) => entry.path);
-    expect(top).toEqual(["/freelancer-finden"]);
+    expect(top).toEqual(["/fuer-unternehmen"]);
     const finding = [CHAT_PAGE, ...MARKETING_PAGES].filter((page) => page.title.startsWith("Freelancer finden"));
-    expect(finding.map((page) => page.path)).toEqual(["/freelancer-finden"]);
+    expect(finding.map((page) => page.path)).toEqual(["/fuer-unternehmen"]);
   });
 
   it("lists every legal page a visitor must be able to find", () => {

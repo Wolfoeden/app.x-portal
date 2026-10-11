@@ -9,5 +9,5 @@ import { permanentRedirect } from "next/navigation";
  * for „Freelancer finden“, not to a temporary stop on the way there.
  */
 export default function RootPage() {
-  permanentRedirect("/freelancer-finden");
+  permanentRedirect("/fuer-unternehmen");
 }

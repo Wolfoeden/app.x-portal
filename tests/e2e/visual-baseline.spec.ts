@@ -8,8 +8,8 @@ const widths = [390, 768, 1280] as const;
 const pages = [
   { id: "guest", path: "/chat/preview?auth=guest&state=empty" },
   { id: "account", path: "/chat/preview?state=ranked" },
-  { id: "marketing", path: "/freelancer-finden" },
-  { id: "freelancer", path: "/freelancer/apply?preview=1" },
+  { id: "marketing", path: "/fuer-unternehmen" },
+  { id: "freelancer", path: "/bewerber-portal/apply?preview=1" },
   { id: "admin", path: "/chat/preview/admin-pages?view=users" },
   { id: "terms", path: "/terms" },
 ] as const;

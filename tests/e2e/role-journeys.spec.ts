@@ -146,7 +146,7 @@ test.describe("geschützte Rollen-Journeys", () => {
   });
 
   test("Freelancer: Profilverwaltung und Nachweise sind erreichbar", async ({ page }) => {
-    await page.goto("/freelancer/apply?preview=1");
+    await page.goto("/bewerber-portal/apply?preview=1");
     await expect(page.getByRole("heading", { level: 1, name: "Ihr Freelancer-Profil." })).toBeVisible();
     await expect(page.getByLabel("Vom Profil zum nachvollziehbaren Match")).toBeVisible();
     await expect(page.getByText("Regeln", { exact: true })).toBeVisible();
@@ -154,7 +154,7 @@ test.describe("geschützte Rollen-Journeys", () => {
   });
 
   test("Marketing: Produkt, Verantwortungen, Preis und nächster Schritt sind sofort sichtbar", async ({ page }) => {
-    await page.goto("/freelancer-finden");
+    await page.goto("/fuer-unternehmen");
     await expect(page.getByRole("heading", { level: 1, name: /^Keine Bewerbungen\.\s*Nur noch Gespräche\.$/u })).toBeVisible();
     await expect(page.getByRole("link", { name: "Produktablauf ansehen" }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Anmelden" }).first()).toHaveAttribute("href", "/anmelden");
@@ -181,7 +181,7 @@ test.describe("geschützte Rollen-Journeys", () => {
       "/diese-seite-gibt-es-nicht",
     ]) {
       await page.goto(route);
-      const brand = page.getByRole("link", { name: "XPORTAL – Freelancer Index" });
+      const brand = page.getByRole("link", { name: "XPORTAL – Für Unternehmen" });
       await expect(brand).toBeVisible();
       await expect(brand.locator("svg")).toHaveCount(0);
       await expect(page.locator("h1:visible")).toHaveCount(1);
@@ -208,9 +208,9 @@ test.describe("geschützte Rollen-Journeys", () => {
   });
 
   for (const route of [
-    "/freelancer-finden",
+    "/fuer-unternehmen",
     "/terms",
-    "/freelancer/apply?preview=1",
+    "/bewerber-portal/apply?preview=1",
     "/contact",
     "/privacy",
     "/booking/kein-gueltiger-link",

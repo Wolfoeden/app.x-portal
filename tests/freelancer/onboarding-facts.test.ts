@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { APPLICANT_PATHS, APPLY_HERO, FreelancerAuthGate, onboardingFacts } from "@/app/freelancer/apply/FreelancerPortal";
+import { APPLICANT_PATHS, APPLY_HERO, FreelancerAuthGate, onboardingFacts } from "@/app/bewerber-portal/apply/FreelancerPortal";
 
 function fact(term: string, placement = true): string {
   return onboardingFacts(placement).find((entry) => entry.term === term)!.text;

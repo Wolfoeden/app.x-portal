@@ -66,7 +66,7 @@ async function markOutreachSent(input: {
  */
 
 /** Wohin der Link führt. Dort ergänzt die Person ihre Angaben selbst. */
-const INVITE_PATH = "/freelancer/apply";
+const INVITE_PATH = "/bewerber-portal/apply";
 
 export type OutreachSendResult =
   | { sent: true; subject: string; body: string }

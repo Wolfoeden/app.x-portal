@@ -46,7 +46,7 @@ function authDestination(requestedDestination?: string) {
   ) {
     return appPath(requestedDestination);
   }
-  const freelancerPath = appPath("/freelancer/apply");
+  const freelancerPath = appPath("/bewerber-portal/apply");
   if (window.location.pathname === freelancerPath) return freelancerPath;
   if (window.location.pathname !== chatPath) return chatPath;
 

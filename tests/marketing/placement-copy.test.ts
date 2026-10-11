@@ -49,7 +49,7 @@ describe("recruiting SaaS commercial contract", () => {
     expect(html).toContain("am Tisch");
   });
   it("links the pricing page demo to an anchor the landing page has", () => {
-    expect(pricing()).toContain("/freelancer-finden#produktablauf");
+    expect(pricing()).toContain("/fuer-unternehmen#produktablauf");
     expect(landing()).toContain('id="produktablauf"');
   });
   it("preserves historical fee terms while excluding them from new charges", () => {
@@ -62,7 +62,7 @@ describe("recruiting SaaS commercial contract", () => {
     const html = landing();
     expect(html.indexOf("14 Tage kostenlos testen")).toBeLessThan(html.indexOf("Gespräch buchen"));
     expect(html).toContain('href="/gespraech?von=hero"');
-    expect(html).toContain('href="/freelancer/apply"');
+    expect(html).toContain('href="/bewerber-portal/apply"');
     expect(html).not.toContain("Kostenlos suchen");
   });
 });

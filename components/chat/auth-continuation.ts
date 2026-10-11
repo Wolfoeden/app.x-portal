@@ -208,7 +208,7 @@ export function authIntentCopy(intent: AuthIntent) {
 
 /**
  * Wer den Dialog öffnet. Der Kundenweg setzt eine Anfrage fort; wer sich
- * auf /freelancer/apply registriert, hat keine Anfrage, sondern legt ein
+ * auf /bewerber-portal/apply registriert, hat keine Anfrage, sondern legt ein
  * Profil an — und bekommt deshalb weder „Ihre Anfrage bleibt erhalten“ noch
  * einen Newsletter über passende Freelancer angeboten.
  */

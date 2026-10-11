@@ -12,7 +12,7 @@ function dialog(initialMode: "register" | "login" | "link" | "recover", audience
     createElement(AuthDialog, {
       initialMode,
       audience,
-      destination: "/freelancer/apply",
+      destination: "/bewerber-portal/apply",
       onClose: noop,
       onAuthenticated: noop,
       showToast: noop,
@@ -20,7 +20,7 @@ function dialog(initialMode: "register" | "login" | "link" | "recover", audience
   );
 }
 
-// UX-Review Oktober 2026: Wer sich auf /freelancer/apply registriert, sah den
+// UX-Review Oktober 2026: Wer sich auf /bewerber-portal/apply registriert, sah den
 // Dialog der Auftraggeber — mit „Ihre Anfrage bleibt erhalten“ und einem
 // Newsletter über passende Freelancer.
 describe("sign-up dialog for freelancers", () => {
@@ -79,7 +79,7 @@ describe("Google, LinkedIn and GitHub sign-in", () => {
       createElement(Dialog, {
         initialMode: "register",
         audience,
-        destination: "/freelancer/apply",
+        destination: "/bewerber-portal/apply",
         onClose: noop,
         onAuthenticated: noop,
         showToast: noop,

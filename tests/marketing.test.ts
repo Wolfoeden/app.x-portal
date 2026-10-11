@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
-import { metadata as findMetadata } from "@/app/(marketing)/freelancer-finden/page";
+import { metadata as findMetadata } from "@/app/(marketing)/fuer-unternehmen/page";
 import { FreelancerLanding as FindPage } from "@/components/marketing/FreelancerLanding";
 import ItPage, { metadata as itMetadata } from "@/app/(marketing)/it-freelancer-finden/page";
 import MatchingPage, { metadata as matchingMetadata } from "@/app/(marketing)/ki-freelancer-matching/page";
@@ -55,7 +55,7 @@ describe("marketing pages rendered on the server", () => {
       // Die Startseite beschreibt zusätzlich Leistung und sichtbare FAQ
       // (Oktober 2026, für Suchmaschinen und KI-Systeme); die übrigen
       // Ratgeberseiten bleiben bei der Brotkrümelnavigation.
-      expect(types).toEqual(page.path === "/freelancer-finden" ? ["BreadcrumbList", "SoftwareApplication", "FAQPage"] : ["BreadcrumbList"]);
+      expect(types).toEqual(page.path === "/fuer-unternehmen" ? ["BreadcrumbList", "SoftwareApplication", "FAQPage"] : ["BreadcrumbList"]);
       const breadcrumb = JSON.parse(json[0][1]);
       expect(breadcrumb.itemListElement.at(-1).item).toBe(absoluteUrl(page.path));
       expect(html).not.toContain('"@type":"Article"');
@@ -74,7 +74,7 @@ describe("marketing pages rendered on the server", () => {
     const root = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
     const chat = readFileSync(new URL("../app/chat/page.tsx", import.meta.url), "utf8");
     // Permanent (308), damit die Signale der Domain bei der Landingpage landen.
-    expect(root).toContain('permanentRedirect("/freelancer-finden")');
+    expect(root).toContain('permanentRedirect("/fuer-unternehmen")');
     expect(chat).toContain("return <ChatWorkspace />");
   });
 });

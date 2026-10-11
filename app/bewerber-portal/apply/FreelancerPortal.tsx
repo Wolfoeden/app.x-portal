@@ -237,7 +237,7 @@ export function FreelancerAuthGate({
           initialMode={dialogMode}
           audience="freelancer"
           // Nach der Bestätigung per E-Mail zurück zum Formular, nicht in den Chat.
-          destination="/freelancer/apply"
+          destination="/bewerber-portal/apply"
           onClose={() => setDialogMode(null)}
           onAuthenticated={() => window.location.reload()}
           showToast={(message, tone) =>

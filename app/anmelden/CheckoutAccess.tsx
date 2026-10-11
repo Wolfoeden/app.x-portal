@@ -112,7 +112,7 @@ export function CheckoutAccess({
 
   return (
     <main className={styles.shell} aria-busy={!ready}>
-      <Link className={styles.brand} href="/freelancer-finden">XPORTAL</Link>
+      <Link className={styles.brand} href="/fuer-unternehmen">XPORTAL</Link>
       {!ready ? (
         <section className={styles.loading} aria-live="polite">
           <span className={styles.spinner} aria-hidden="true" />
@@ -138,7 +138,7 @@ export function CheckoutAccess({
           checkout={plan ? checkoutDialogCopy(plan) : undefined}
           destination={destination}
           voucher={{ value: voucherCode, onChange: setVoucherCode }}
-          onClose={() => router.push(plan ? "/preise#tarife" : "/freelancer-finden")}
+          onClose={() => router.push(plan ? "/preise#tarife" : "/fuer-unternehmen")}
           onAuthenticated={continueAfterLogin}
           showToast={(message) => setNotice(message)}
         />

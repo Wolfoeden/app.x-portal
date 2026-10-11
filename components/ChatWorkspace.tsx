@@ -3258,7 +3258,7 @@ export function ChatWorkspace({
         onKeyDown={trapSidebarFocus}
       >
         <div className="sidebar-top">
-          <a className="product-mark" href="/freelancer-finden" aria-label="XPORTAL Produktseite">
+          <a className="product-mark" href="/fuer-unternehmen" aria-label="XPORTAL Produktseite">
             <span>XPORTAL</span>
           </a>
           <button
@@ -3420,7 +3420,7 @@ export function ChatWorkspace({
             <IconInfo size={18} />
             <span className="sidebar-row-label">So funktioniert XPORTAL</span>
           </a>
-          <a className="sidebar-row" href="/freelancer/apply" onClick={() => setSidebarOpen(false)} title={freelancerEntry.hint}>
+          <a className="sidebar-row" href="/bewerber-portal/apply" onClick={() => setSidebarOpen(false)} title={freelancerEntry.hint}>
             <IconUser size={18} />
             <span className="sidebar-row-label">{freelancerEntry.label}</span>
           </a>
@@ -3469,7 +3469,7 @@ export function ChatWorkspace({
                     Menue wieder zu schliessen. */}
                 <a
                   className="account-menu-item"
-                  href="/freelancer/apply"
+                  href="/bewerber-portal/apply"
                   onClick={() => { setAccountMenuOpen(false); setSidebarOpen(false); }}
                 >
                   {freelancerEntry.label}
