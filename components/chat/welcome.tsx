@@ -4,6 +4,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { EXAMPLE_BRIEFS, type ExampleBrief } from "./example-briefs";
 import { loadRegisteredShowcase } from "./registered-showcase";
+import type { GuidanceSuggestion } from "./search-guidance";
 
 const suggestions = EXAMPLE_BRIEFS;
 
@@ -183,6 +184,30 @@ export function SuggestionGrid({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * Vorschläge für den nächsten Schritt im Gespräch, an derselben Stelle wie
+ * die Rollen-Einstiege: rechts über dem Eingabefeld (components/chat/
+ * search-guidance.ts).
+ */
+export function NextStepGrid({
+  suggestions,
+  onPick,
+}: {
+  suggestions: GuidanceSuggestion[];
+  onPick: (suggestion: GuidanceSuggestion) => void;
+}) {
+  return (
+    <div className="suggestion-grid" role="group" aria-labelledby="next-step-title">
+      <span className="suggestion-grid-title" id="next-step-title">Nächster Schritt:</span>
+      {suggestions.map((suggestion) => (
+        <button key={suggestion.key} type="button" onClick={() => onPick(suggestion)}>
+          <span className="suggestion-label">{suggestion.label}</span>
+        </button>
+      ))}
     </div>
   );
 }

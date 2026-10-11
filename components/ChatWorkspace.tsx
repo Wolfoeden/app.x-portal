@@ -55,6 +55,7 @@ import {
   type ProfileFeedbackReason,
 } from "@/lib/freelancer/profile-feedback";
 import type { RegisteredShowcase, ShowcaseTheme } from "@/lib/freelancer/showcase";
+import { searchGuidance, type GuidanceSuggestion } from "./chat/search-guidance";
 import {
   freelancerActions,
   parseFreelancerPresence,
@@ -119,6 +120,7 @@ import {
 import { exampleBrief, exampleBriefForText, firstGap, withoutUnfilledPrompts } from "./chat/example-briefs";
 import {
   type GuidedSuggestion,
+  NextStepGrid,
   SuggestionGrid,
   WelcomeState,
 } from "./chat/welcome";
@@ -1215,6 +1217,7 @@ export function ChatWorkspace({
     previewResultState === "searching" ? "searching" : "idle",
   );
   const [draft, setDraft] = useState("");
+  const [criteriaRequest, setCriteriaRequest] = useState(0);
   useEffect(() => {
     if (preview || workspaceView !== "chat" || new URLSearchParams(window.location.search).has("project")) return;
     const saved = readProjectDraft();
@@ -3148,6 +3151,51 @@ export function ChatWorkspace({
       )
     : projectCollections;
   const emptyChat = !isTeamView && messages.length === 0 && !pendingAssistant;
+  /**
+   * Nächste Schritte nach einem Ergebnis: als Tipps in der Antwort und als
+   * Vorschläge über dem Eingabefeld. Wer beim ersten Mal kein passendes
+   * Profil sieht, soll weitersuchen statt aufzugeben.
+   */
+  const dismissedInProject = new Set(
+    (activeProject ? dismissedByProject[activeProject.id] ?? [] : []).map((entry) => entry.profileId),
+  );
+  const visibleProfileCount = profiles.filter((profile) => !dismissedInProject.has(profile.id)).length;
+  const guidance = hasResult && !pendingAssistant && !emptyChat
+    ? searchGuidance({
+        brief,
+        matchingStatus,
+        profileCount: visibleProfileCount,
+        partialCount: partialProfiles.filter((profile) => !dismissedInProject.has(profile.id)).length,
+        researchAvailable:
+          ((matchingStatus === "no_reliable_match" && (analysisTrace?.externalSearchAvailable ?? true)) ||
+            (profiles.length > 0 && visibleProfileCount === 0)) &&
+          externalSearch?.mode !== "openai",
+      })
+    : null;
+  const runGuidance = (suggestion: GuidanceSuggestion) => {
+    const { action } = suggestion;
+    if (action.kind === "criteria") {
+      setCriteriaRequest((current) => current + 1);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        document.getElementById("recovery-criteria")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }));
+      return;
+    }
+    if (action.kind === "scroll") {
+      const selector = action.target === "mandate" ? ".mandate-ask" : ".recovery-research";
+      document.querySelector(selector)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    setDraft(action.text);
+    requestAnimationFrame(() => {
+      const textarea = composerRef.current;
+      if (!textarea) return;
+      textarea.focus();
+      const gap = firstGap(textarea.value);
+      if (gap) textarea.setSelectionRange(gap.start, gap.end);
+      else textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    });
+  };
   // Nur solange der Shortcut-Hinweis allein steht: Mit dem Absenden beginnt
   // der Abgleich, und dessen Ergebnis soll nicht mit der Liste konkurrieren.
   const showGuideShowcase =
@@ -3769,6 +3817,8 @@ export function ChatWorkspace({
                     onRefineSearch={refineCurrentSearch}
                     onUpdateBrief={(message) => void sendMessage(message)}
                     busy={Boolean(pendingAssistant)}
+                    tips={guidance?.tips ?? []}
+                    criteriaRequest={criteriaRequest}
                     onSaveSearch={saveCurrentSearch}
                     onNeedCredits={() => openPricing("recherche")}
                     selectedProfileId={selectedProfileId}
@@ -3821,6 +3871,14 @@ export function ChatWorkspace({
               <button type="button" onClick={() => setContactOpen(true)}>Termin oder Kontakt</button>
             </div>
           ) : null}
+          {/* Vorschläge wie bei Chat-Assistenten: rechts über dem Eingabefeld.
+              Zu Beginn die Rollen-Einstiege, nach einem Ergebnis der nächste
+              sinnvolle Schritt. */}
+          {pendingAssistant ? null : guidance?.suggestions.length ? (
+            <NextStepGrid suggestions={guidance.suggestions} onPick={runGuidance} />
+          ) : (
+            <SuggestionGrid onSuggestion={startGuidedRequest} />
+          )}
           <form className={`composer ${freeUsageExhausted && isAccountUser ? "is-quota-exhausted" : ""}`} onSubmit={handleSubmit}>
             <label className="sr-only" htmlFor="chat-composer">Projekt oder Ergänzung beschreiben</label>
             {/* Der Platzhalter wird selbst gezeichnet, statt dem Attribut
@@ -3863,7 +3921,6 @@ export function ChatWorkspace({
               </button>
             </div>
           </form>
-          {emptyChat ? <SuggestionGrid onSuggestion={startGuidedRequest} /> : null}
           {/* Der laufende Zählerstand stand hier früher bei jeder Anfrage und
               lenkte vom Schreiben ab. Gemeldet wird nur noch der Moment, in dem
               das Guthaben aufgebraucht ist — und für einen Gast ist das der

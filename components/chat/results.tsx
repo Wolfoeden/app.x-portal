@@ -267,6 +267,8 @@ export function ResultSection({
   onDismissProfile,
   onRestoreProfile,
   previewMode = false,
+  tips = [],
+  criteriaRequest = 0,
 }: {
   brief: StructuredBrief | null;
   projectId: string | null;
@@ -307,6 +309,10 @@ export function ResultSection({
   onRestoreProfile?: (profileId: string) => void;
   /** Lokale Vorschau: Der Suchauftrag schickt nichts ab. */
   previewMode?: boolean;
+  /** Tipps für passendere Profile (search-guidance.ts), als Teil der Antwort. */
+  tips?: string[];
+  /** Zählt hoch, wenn ein Vorschlag über dem Eingabefeld die Kriterien öffnen soll. */
+  criteriaRequest?: number;
 }) {
   const launchState = agentLaunchState(isAccountUser, creditsRemaining);
   // „Passt nicht" blendet ein Profil in dieser Suche aus. Sind alle
@@ -348,6 +354,11 @@ export function ResultSection({
   const cardsCollapsible = !profileFocus;
   const [criteriaOpen, setCriteriaOpen] = useState(false);
   const canEditCriteria = Boolean(brief && onUpdateBrief) && matchingStatus !== "needs_clarification";
+  const [seenCriteriaRequest, setSeenCriteriaRequest] = useState(criteriaRequest);
+  if (criteriaRequest !== seenCriteriaRequest) {
+    setSeenCriteriaRequest(criteriaRequest);
+    if (canEditCriteria) setCriteriaOpen(true);
+  }
   const resultHeading =
     matchingStatus === "needs_clarification"
       ? "Bitte konkretisieren Sie die Anforderung"
@@ -423,6 +434,7 @@ export function ResultSection({
               />
             )}
           />
+          <SearchTips tips={tips} />
         </>
       ) : (
         <>
@@ -476,6 +488,7 @@ export function ResultSection({
           {/* Kostenlos und ohne Recherche-Credits: XPORTAL sucht selbst weiter.
               Nicht bei einer unklaren Anfrage — dort fehlt, wonach gesucht
               werden soll. */}
+          <SearchTips tips={tips} />
           {matchingStatus !== "needs_clarification" ? (
             <MandateCard projectId={projectId ?? null} guest={!isAccountUser} preview={previewMode} />
           ) : null}
@@ -2076,5 +2089,26 @@ export function SavedProfileList({
         />
       ))}
     </div>
+  );
+}
+
+/**
+ * „So finden Sie passendere Profile“: konkrete Hinweise zur Anfrage, als
+ * Antwort von XPORTAL. Dieselben Schritte stehen als Vorschläge über dem
+ * Eingabefeld (components/chat/search-guidance.ts).
+ */
+function SearchTips({ tips }: { tips: string[] }) {
+  if (!tips.length) return null;
+  return (
+    <article className="message-row assistant-message search-tips" aria-label="Tipps von XPORTAL">
+      <div className="message-avatar" aria-hidden="true"><IconSpark size={15} /></div>
+      <div className="message-content">
+        <div className="message-author">XPORTAL</div>
+        <p>So finden Sie passendere Profile:</p>
+        <ul>
+          {tips.map((tip) => <li key={tip}>{tip}</li>)}
+        </ul>
+      </div>
+    </article>
   );
 }
