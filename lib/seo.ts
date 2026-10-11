@@ -43,7 +43,7 @@ export const MARKETING_PAGE = {
     path: "/freelancer-finden",
     label: "Freelancer finden",
     title: "Freelancer finden für Recruiter und Unternehmen | XPORTAL",
-    description: "Freelancer finden für KI-Agenten, Software, SAP: Anfrage mit freigegebenen Profilen abgleichen, Belege sehen. Vorstellung kostenlos, Anbieter aus Deutschland.",
+    description: "Freelancer finden für KI-Agenten, Software, SAP: Projekttext einfügen, mit freigegebenen Profilen abgleichen, Belege sehen. Provisionsfrei, 14 Tage testen.",
     keywords: [
       "Freelancer finden",
       "Freelancer Vermittlung",

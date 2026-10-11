@@ -16,6 +16,7 @@ import { logEvent } from "@/lib/security/request";
  */
 export const BILLING_FUNNEL_ACTIONS = {
   checkoutStarted: "billing_checkout_started",
+  trialStarted: "billing_trial_started",
   subscriptionPaid: "billing_subscription_paid",
 } as const;
 
@@ -39,6 +40,29 @@ export async function recordCheckoutStarted(input: {
     });
   } catch {
     logEvent("billing_funnel_record_failed", { step: "checkout_started" });
+  }
+}
+
+/**
+ * Der Trial ist die Stufe zwischen Checkout und erster Zahlung. Er gehört wie
+ * die Zahlung zur Vertragsabwicklung und wird deshalb unabhängig von der
+ * Cookie-Einwilligung im Protokoll vermerkt, einmal je Konto.
+ */
+export async function recordTrialStarted(input: {
+  userId: string;
+  plan: string;
+  via: "stripe" | "voucher";
+}): Promise<void> {
+  try {
+    await writeAuditEvent({
+      actorUserId: input.userId,
+      action: BILLING_FUNNEL_ACTIONS.trialStarted,
+      targetType: "billing_subscription",
+      outcome: "success",
+      metadata: { plan: input.plan, via: input.via },
+    });
+  } catch {
+    logEvent("billing_funnel_record_failed", { step: "trial_started" });
   }
 }
 

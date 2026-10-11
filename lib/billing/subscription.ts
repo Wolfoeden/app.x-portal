@@ -3,6 +3,7 @@ import "server-only";
 import { recordRecruitingEvent } from "@/lib/analytics/recruiting-server";
 import { CREDIT_PLANS, TRIAL_CREDITS, TRIAL_DAYS, type FixedMonthlyPlan } from "@/lib/billing/plans";
 import { planForStripePriceId, VERIFIED_PRICE_IDS, type CheckoutPlanId } from "@/lib/billing/payment-links";
+import { recordTrialStarted } from "@/lib/billing/funnel";
 import { stripeRequest } from "@/lib/billing/stripe-api";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { SAAS_TERMS_REVIEW, SAAS_TERMS_VERSION } from "@/lib/legal/policy";
@@ -212,7 +213,10 @@ export async function syncStripeSubscription(subscriptionId: string, eventId: st
   const result: SubscriptionSyncResult = { userId, plan, isRecruiting: metadata.xportal_kind === RECRUITING_BILLING_KIND, trialActivated: row?.trial_activated === true, paidActivated: row?.paid_activated === true,
     firstPayment: row?.first_payment === true, cancelled: row?.cancelled === true, trialEnd, accessUntil: row?.access_until ?? null };
   const livemode = subscription.livemode === true;
-  if (result.trialActivated) await recordRecruitingEvent({ event: "trial_activated", userId, entityId: subscriptionId, plan: plan.id, livemode });
+  if (result.trialActivated) {
+    await recordRecruitingEvent({ event: "trial_activated", userId, entityId: subscriptionId, plan: plan.id, livemode });
+    if (livemode) await recordTrialStarted({ userId, plan: plan.id, via: "stripe" });
+  }
   if (result.paidActivated && invoiceId) await recordRecruitingEvent({ event: result.firstPayment ? "first_payment" : "subscription_renewed", userId, entityId: invoiceId, plan: plan.id, livemode });
   if (result.cancelled) await recordRecruitingEvent({ event: subscription.status === "trialing" ? "trial_cancelled" : "subscription_cancelled", userId, entityId: subscriptionId, plan: plan.id, livemode });
   return result;

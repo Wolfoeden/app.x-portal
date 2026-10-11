@@ -28,12 +28,14 @@ describe("revenue funnel", () => {
       "sales_call_viewed",
       "sales_call_requested",
       "sales_call_calendar_opened",
+      "project_chat_processed",
       "signup_funnel_search_started",
       "signup_funnel_result_seen",
       "signup_funnel_registration_started",
       "signup_funnel_signup_confirmed",
       "signup_funnel_pricing_viewed",
       "billing_checkout_started",
+      "billing_trial_started",
       "billing_subscription_paid",
       "placement_terms_accepted",
       "placement_introduced",
@@ -154,7 +156,7 @@ describe("revenue funnel", () => {
   it("shows empty steps as zero instead of hiding them", () => {
     const funnel = buildRevenueFunnel([], new Set());
 
-    expect(funnel.steps.map((entry) => entry.people)).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    expect(funnel.steps.map((entry) => entry.people)).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     expect(funnel.steps.every((entry) => entry.detail === null)).toBe(true);
   });
 
@@ -176,6 +178,7 @@ describe("revenue funnel", () => {
       "sales_call_viewed",
       "sales_call_requested",
       "sales_call_calendar_opened",
+      "analysis_completed",
       "search_started",
       "result_seen",
       "registration_started",
@@ -186,6 +189,7 @@ describe("revenue funnel", () => {
       "placement_fee_paid",
       "pricing_viewed",
       "checkout_started",
+      "trial_started",
       "subscription_paid",
     ]);
     expect(step(funnel, "placement_requested")?.people).toBe(2);
@@ -208,6 +212,30 @@ describe("revenue funnel", () => {
 
     expect(step(funnel, "placement_requested")?.people).toBe(0);
     expect(step(funnel, "placement_introduced")?.people).toBe(0);
+  });
+
+  // Suche und Registrierung zählt der Browser nur mit Einwilligung; die
+  // Analyse und der Trial stehen im Protokoll und fehlen deshalb nie.
+  it("counts analyses and trials from the server log, without browser consent", () => {
+    const funnel = buildRevenueFunnel(
+      [
+        row("project_chat_processed", "guest-1"),
+        row("project_chat_processed", "guest-1"),
+        row("project_chat_processed", "account-2"),
+        row("project_chat_processed", "admin-1"),
+        row("billing_trial_started", "account-2", { plan: "basic", via: "stripe" }),
+        row("billing_trial_started", "account-3", { plan: "pro", via: "voucher" }),
+      ],
+      new Set(["admin-1"]),
+    );
+
+    expect(step(funnel, "analysis_completed")?.people).toBe(2);
+    expect(step(funnel, "trial_started")).toEqual({
+      key: "trial_started",
+      label: "Trial gestartet",
+      people: 2,
+      detail: "1 per Gutschein",
+    });
   });
 
   it("shows no placement stages while the switch is off", () => {
