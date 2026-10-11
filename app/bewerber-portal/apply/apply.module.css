@@ -613,31 +613,36 @@
   font-size: var(--fs-2xs);
 }
 
-.statusSwitch {
-  display: inline-flex;
-  gap: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  padding: 4px;
+/* Aktionen auf das eigene Profil: wirken sofort, ohne „Änderungen speichern“. */
+.profileActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
 }
 
-.statusSwitch button {
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  padding: 9px 15px;
-  color: rgba(255, 255, 255, 0.62);
+.profileActionLink,
+.profileActionPrimary {
+  display: inline-flex;
+  min-height: var(--xp-action-height-compact);
+  align-items: center;
+  border: 1px solid var(--xp-action-secondary-border);
+  border-radius: var(--xp-action-radius);
+  background: var(--surface);
+  padding: 0 14px;
+  color: var(--ink);
   cursor: pointer;
   font: inherit;
-  font-size: 12px;
-  font-weight: 650;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-decoration: none;
 }
 
-.statusSwitch button.isActive {
-  background: var(--surface);
-  color: var(--ink);
-}
+.profileActionLink:hover:not(:disabled) { border-color: var(--xp-action-secondary-border-hover); background: var(--xp-action-secondary-hover); }
+.profileActionPrimary { border-color: transparent; background: var(--xp-action-primary); color: #fff; }
+.profileActionPrimary:hover:not(:disabled) { background: var(--xp-action-primary-hover); }
+.profileActionLink:disabled, .profileActionPrimary:disabled { cursor: wait; opacity: .6; }
 
 .avatarPreview {
   display: grid;
@@ -981,9 +986,6 @@
 .dashboardHead .textButton { color: var(--ink); text-decoration-color: rgba(16, 27, 23, .3); }
 .dashboardHead .textButton:hover { color: var(--green); }
 .statusLine { color: var(--ink-soft); }
-.statusSwitch { border-color: #dde1e5; background: rgba(255, 255, 255, .7); }
-.statusSwitch button { color: #5f6772; }
-.statusSwitch button.isActive { background: var(--xp-action-primary); color: #fff; }
 .avatarPreview { border: 3px solid #fff; background-color: #0f5c3b; color: #fff; font-family: var(--font-display), var(--font-sans); font-weight: 600; box-shadow: 0 10px 30px rgba(16, 27, 23, .12); }
 .metricCard::before { background: var(--green); }
 

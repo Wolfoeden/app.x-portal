@@ -85,7 +85,7 @@ export function PublicFooter() {
           Anforderung, Profilbeleg und offene Frage bleiben getrennt sichtbar.
           Sie entscheiden selbst.
         </p>
-        <Link href="/bewerber-portal/apply">Als Freelancer bewerben ↗</Link>
+        <Link href="/bewerber-portal/apply">Bewerber-Portal ↗</Link>
       </div>
       <LegalFooter />
     </footer>

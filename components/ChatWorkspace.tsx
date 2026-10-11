@@ -31,6 +31,7 @@ import {
   IconFolder,
   IconFolderPlus,
   IconInfo,
+  IconPen,
   IconMenu,
   IconPanelRight,
   IconSearch,
@@ -54,6 +55,12 @@ import {
   type ProfileFeedbackReason,
 } from "@/lib/freelancer/profile-feedback";
 import type { RegisteredShowcase, ShowcaseTheme } from "@/lib/freelancer/showcase";
+import {
+  freelancerActions,
+  parseFreelancerPresence,
+  type FreelancerAction,
+  type FreelancerProfileCommand,
+} from "@/lib/freelancer/presence";
 import { AccountSummary, CreditPlansDialog } from "./chat/account";
 import {
   exhaustedNotice,
@@ -1028,9 +1035,14 @@ function authViewFromClaims(data: unknown): AuthView {
     typeof wrapper.anonymous === "boolean"
       ? wrapper.anonymous
       : claims.is_anonymous !== false;
+  // Die Sitzungsauskunft trägt auch den Stand auf der Freelancer-Seite; ohne
+  // ihn stand in der Seitenleiste immer „Als Freelancer bewerben“.
+  const freelancerPresence = parseFreelancerPresence(wrapper.freelancerPresence);
   return {
     authenticated: wrapper.authenticated === false ? false : Boolean(userId),
     anonymous,
+    freelancer: freelancerPresence.kind,
+    freelancerPresence,
     admin:
       wrapper.admin === true ||
       claims.admin === true ||
@@ -1332,15 +1344,12 @@ export function ChatWorkspace({
    * angekommen. Das Ziel bleibt dieselbe Seite; sie entscheidet ohnehin selbst,
    * ob sie Formular, Status oder Dashboard zeigt.
    */
-  const freelancerEntry =
-    auth.freelancer === "profile"
-      ? { label: "Freelancer-Profil", hint: "Profil, Verfügbarkeit und Zahlen" }
-      : auth.freelancer === "application"
-        ? { label: "Freelancer-Profil", hint: "Ihre Bewerbung wird geprüft" }
-        : {
-            label: "Als Freelancer bewerben",
-            hint: "Profil einreichen und prüfen lassen",
-          };
+  const freelancerLinks = freelancerActions(auth.freelancerPresence ?? parseFreelancerPresence(null));
+  const freelancerActionIcon = (action: FreelancerAction) =>
+    action.key === "push" ? <IconArrowUp size={18} />
+      : action.key === "publish" ? <IconCheck size={18} />
+        : action.key === "edit" ? <IconPen size={18} />
+          : <IconUser size={18} />;
   const freeUsageExhausted = Boolean(
     usage && (usage.credits.exhausted || usage.credits.remaining <= 0),
   );
@@ -1507,6 +1516,28 @@ export function ChatWorkspace({
     setAuth(view);
     return view;
   }, [apiPaths.session]);
+
+  const [profileCommandBusy, setProfileCommandBusy] = useState(false);
+  const runProfileCommand = async (command: FreelancerProfileCommand) => {
+    if (profileCommandBusy) return;
+    setProfileCommandBusy(true);
+    try {
+      const response = await fetch(appPath("/api/freelancer/profile/status"), {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ command }),
+      });
+      const body = (await response.json().catch(() => ({}))) as { message?: string; error?: string };
+      if (!response.ok) throw new Error(body.error ?? "Das Profil konnte gerade nicht geändert werden.");
+      showToast(body.message ?? "Erledigt.", "neutral");
+      await refreshAuth();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Das Profil konnte gerade nicht geändert werden.", "error");
+    } finally {
+      setProfileCommandBusy(false);
+    }
+  };
 
   const refreshUsage = useCallback(async () => {
     void fetch(appPath("/api/billing/status"), { credentials: "same-origin", cache: "no-store" }).then(async response => {
@@ -3420,10 +3451,36 @@ export function ChatWorkspace({
             <IconInfo size={18} />
             <span className="sidebar-row-label">So funktioniert XPORTAL</span>
           </a>
-          <a className="sidebar-row" href="/bewerber-portal/apply" onClick={() => setSidebarOpen(false)} title={freelancerEntry.hint}>
-            <IconUser size={18} />
-            <span className="sidebar-row-label">{freelancerEntry.label}</span>
-          </a>
+          {/* Je nach Stand: bewerben, Bewerbung ansehen oder das eigene
+              Profil ansehen, bearbeiten, veröffentlichen, pushen. */}
+          {freelancerLinks.map((action) =>
+            "href" in action ? (
+              <a
+                key={action.key}
+                className="sidebar-row"
+                href={action.href}
+                target={action.external ? "_blank" : undefined}
+                rel={action.external ? "noopener noreferrer" : undefined}
+                onClick={() => setSidebarOpen(false)}
+                title={action.hint}
+              >
+                {freelancerActionIcon(action)}
+                <span className="sidebar-row-label">{action.label}</span>
+              </a>
+            ) : (
+              <button
+                key={action.key}
+                className="sidebar-row"
+                type="button"
+                title={action.hint}
+                disabled={profileCommandBusy}
+                onClick={() => void runProfileCommand(action.command)}
+              >
+                {freelancerActionIcon(action)}
+                <span className="sidebar-row-label">{action.label}</span>
+              </button>
+            ),
+          )}
         </nav>
         </div>
 
@@ -3472,7 +3529,7 @@ export function ChatWorkspace({
                   href="/bewerber-portal/apply"
                   onClick={() => { setAccountMenuOpen(false); setSidebarOpen(false); }}
                 >
-                  {freelancerEntry.label}
+                  {auth.freelancer === "none" ? "Als Freelancer bewerben" : "Bewerber-Portal"}
                 </a>
                 {isAccountUser ? (
                   <>

@@ -32,6 +32,7 @@ import type {
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { ProjectListEditor } from "@/components/profile/ProjectListEditor";
 import { profileStrength } from "@/lib/freelancer/profile-strength";
+import { freelancerActions, FREELANCER_COMMAND_DONE, type FreelancerProfileCommand } from "@/lib/freelancer/presence";
 import type { ProfileProject } from "@/lib/profile/project-limits";
 
 import styles from "./apply.module.css";
@@ -325,7 +326,7 @@ export function FreelancerDashboard({
   initialProjects = [],
   projectsAvailable = false,
   seeking = "projects",
-  availabilityUpdatedAt = null,
+  availabilityUpdatedAt: initialAvailabilityUpdatedAt = null,
 }: {
   initialProfile: EditableFreelancerProfile;
   metrics: FreelancerMetrics;
@@ -336,6 +337,8 @@ export function FreelancerDashboard({
   availabilityUpdatedAt?: string | null;
 }) {
   const [profile, setProfile] = useState(initialProfile);
+  const [availabilityUpdatedAt, setAvailabilityUpdatedAt] = useState(initialAvailabilityUpdatedAt);
+  const [commandBusy, setCommandBusy] = useState<FreelancerProfileCommand | null>(null);
   const [projects, setProjects] = useState(initialProjects);
   const [projectNotice, setProjectNotice] = useState<Notice>(null);
   const [projectBusy, setProjectBusy] = useState(false);
@@ -428,6 +431,40 @@ export function FreelancerDashboard({
     value: EditableFreelancerProfile[K],
   ) {
     setProfile((current) => ({ ...current, [key]: value }));
+  }
+
+  /** Veröffentlichen, pausieren, pushen: sofort, ohne das Formular zu speichern. */
+  async function runCommand(command: FreelancerProfileCommand) {
+    setNotice(null);
+    if (preview) {
+      if (command !== "push") update("profileStatus", command === "publish" ? "active" : "paused");
+      setNotice({ message: FREELANCER_COMMAND_DONE[command], tone: "success" });
+      return;
+    }
+    setCommandBusy(command);
+    try {
+      const response = await fetch(appPath("/api/freelancer/profile/status"), {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ command }),
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | { profileStatus?: "active" | "paused"; version?: number; availabilityUpdatedAt?: string | null; message?: string; error?: string }
+        | null;
+      if (!response.ok || !payload?.profileStatus || typeof payload.version !== "number") {
+        throw new Error(apiError(payload, "Das Profil konnte gerade nicht geändert werden."));
+      }
+      // Neue Version übernehmen, damit „Änderungen speichern“ danach nicht
+      // an einem Konflikt scheitert.
+      setProfile((current) => ({ ...current, profileStatus: payload.profileStatus!, version: payload.version! }));
+      if (payload.availabilityUpdatedAt) setAvailabilityUpdatedAt(payload.availabilityUpdatedAt);
+      setNotice({ message: payload.message ?? FREELANCER_COMMAND_DONE[command], tone: "success" });
+    } catch (error) {
+      setNotice({ message: error instanceof Error ? error.message : "Das Profil konnte gerade nicht geändert werden.", tone: "error" });
+    } finally {
+      setCommandBusy(null);
+    }
   }
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -718,25 +755,38 @@ export function FreelancerDashboard({
               ? "Öffentlich sichtbar"
               : "Profil pausiert"}
           </div>
-          <div className={styles.statusSwitch}>
-            <button
-              type="button"
-              className={
-                profile.profileStatus === "active" ? styles.isActive : ""
-              }
-              onClick={() => update("profileStatus", "active")}
-            >
-              Aktiv
-            </button>
-            <button
-              type="button"
-              className={
-                profile.profileStatus === "paused" ? styles.isActive : ""
-              }
-              onClick={() => update("profileStatus", "paused")}
-            >
-              Pausiert
-            </button>
+          {/* Je nach Stand: ansehen, bearbeiten, pushen — oder veröffentlichen. */}
+          <div className={styles.profileActions}>
+            {freelancerActions({ kind: "profile", profileId: profile.id, visible: profile.profileStatus === "active" }).map((action) =>
+              "href" in action ? (
+                <a
+                  key={action.key}
+                  className={styles.profileActionLink}
+                  href={action.key === "edit" ? "#profil-bearbeiten" : appPath(action.href)}
+                  target={action.external ? "_blank" : undefined}
+                  rel={action.external ? "noopener noreferrer" : undefined}
+                  title={action.hint}
+                >
+                  {action.label}
+                </a>
+              ) : (
+                <button
+                  key={action.key}
+                  type="button"
+                  className={action.key === "publish" ? styles.profileActionPrimary : styles.profileActionLink}
+                  title={action.hint}
+                  disabled={commandBusy !== null}
+                  onClick={() => void runCommand(action.command)}
+                >
+                  {commandBusy === action.command ? "Bitte warten …" : action.label}
+                </button>
+              ),
+            )}
+            {profile.profileStatus === "active" ? (
+              <button type="button" className={styles.textButton} disabled={commandBusy !== null} onClick={() => void runCommand("pause")}>
+                Pausieren
+              </button>
+            ) : null}
           </div>
           {!preview ? (
             <button
@@ -769,14 +819,6 @@ export function FreelancerDashboard({
             )}
           </p>
         </div>
-        <a
-          className={styles.uploadButton}
-          href={appPath(`/profil/${profile.id}?via=share`)}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          So sehen Kunden Ihr Profil ↗
-        </a>
       </section>
 
       <section className={styles.metrics} aria-label="Profilstatistik">
@@ -808,7 +850,7 @@ export function FreelancerDashboard({
         </aside>
       </section>
 
-      <form className={styles.form} onSubmit={save}>
+      <form id="profil-bearbeiten" className={styles.form} onSubmit={save}>
         <section className={styles.section}>
           <p className={styles.eyebrow}>Stammdaten</p>
           <h2>Öffentliches Profil</h2>
