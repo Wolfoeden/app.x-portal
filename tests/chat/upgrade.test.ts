@@ -32,17 +32,8 @@ function usage(planId: string, extra: Partial<AiUsageSnapshot["credits"]> = {}):
 }
 
 describe("exhausted credits", () => {
-  it("sends a guest to the free account with its start analyses, without a card", () => {
-    const notice = exhaustedNotice(usage("guest"), false);
-
-    expect(notice.text).toContain("3 Projektanalysen bereit, ohne Karte");
-    expect(notice.text).toContain("Ihre Eingabe bleibt erhalten");
-    expect(notice.text).not.toMatch(/im Monat|monatlich|Stripe/u);
-    expect(notice.action).toEqual({ kind: "signup", label: "Kostenlos anmelden" });
-  });
-
   it("tells a trial account that nothing refills and shows the way to a plan", () => {
-    const notice = exhaustedNotice(usage("trial"), true);
+    const notice = exhaustedNotice(usage("trial"));
 
     expect(notice.text).toContain("Ein neues Konto erzeugt kein Bonusguthaben");
     expect(notice.text).not.toContain("Neues Guthaben gibt es");
@@ -51,7 +42,7 @@ describe("exhausted credits", () => {
   });
 
   it("names the refill date for a subscription and offers a larger plan", () => {
-    const notice = exhaustedNotice(usage("pro", { subscriptionStatus: "active" }), true);
+    const notice = exhaustedNotice(usage("pro", { subscriptionStatus: "active" }));
 
     expect(notice.text).toContain("nach bestätigter Zahlung für die Periode ab 01.10.2026");
     expect(notice.action).toEqual({ kind: "pricing", label: "Größeren Tarif ansehen" });

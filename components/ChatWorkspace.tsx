@@ -5,7 +5,6 @@ import {
   type FormEvent,
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
-  type ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -95,7 +94,6 @@ import {
 } from "./chat/shared";
 import { RegisteredShowcasePanel } from "./chat/registered-showcase";
 import { bookingActionState, DirectBookingContext, ProjectDetails, ResultSection, SavedProfileList } from "./chat/results";
-import { MandateCard } from "./chat/mandate-card";
 import { ProfileSheet, ProfileSheetContext, type ProfileSheetRequest } from "./profile/profile-sheet";
 import type { ProfileDossier } from "@/lib/profile/dossier";
 import { profilePath } from "@/lib/profile/profile-link";
@@ -2374,9 +2372,25 @@ export function ChatWorkspace({
     ],
   );
 
+  /**
+   * Erst handeln, dann registrieren: Ein Gast ohne Guthaben sieht vorher
+   * keinen Hinweis. Startet er die Analyse, öffnet sich der kurze
+   * Registrierungsdialog; der Text bleibt gespeichert, und nach der Anmeldung
+   * läuft die Analyse von selbst los (handleAuthenticated).
+   */
+  const guestNeedsAccount = !isAccountUser && (!usage || freeUsageExhausted);
+  const submitDraft = () => {
+    if (!draft.trim() || pendingAssistant) return;
+    if (guestNeedsAccount) {
+      openAuth("analyze_project");
+      return;
+    }
+    void sendMessage(draft);
+  };
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    void sendMessage(draft);
+    submitDraft();
   };
 
   const runExternalFreelancerSearch = async () => {
@@ -2464,7 +2478,7 @@ export function ChatWorkspace({
   const handleComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      if (draft.trim() && !pendingAssistant) void sendMessage(draft);
+      submitDraft();
     }
   };
 
@@ -2831,6 +2845,11 @@ export function ChatWorkspace({
       );
     } else if (continuation?.intent === "save_search") {
       showToast("Ihre Suche ist jetzt dauerhaft Ihrem Konto zugeordnet.", "neutral");
+    } else if (continuation?.intent === "analyze_project") {
+      // Der Gast hatte „Projekt abgleichen“ schon gedrückt: Die Analyse läuft
+      // jetzt weiter, mit dem gespeicherten Text.
+      const savedBrief = readProjectDraft();
+      if (savedBrief?.trim()) void sendMessage(savedBrief);
     }
     setPendingProfileId(null);
     setPendingSaveProfileId(null);
@@ -3745,7 +3764,7 @@ export function ChatWorkspace({
               <button type="button" onClick={() => setContactOpen(true)}>Termin oder Kontakt</button>
             </div>
           ) : null}
-          <form className={`composer ${freeUsageExhausted ? "is-quota-exhausted" : ""}`} onSubmit={handleSubmit}>
+          <form className={`composer ${freeUsageExhausted && isAccountUser ? "is-quota-exhausted" : ""}`} onSubmit={handleSubmit}>
             <label className="sr-only" htmlFor="chat-composer">Projekt oder Ergänzung beschreiben</label>
             {/* Der Platzhalter wird selbst gezeichnet, statt dem Attribut
                 ueberlassen zu werden. Wird das Feld schmal — etwa weil die
@@ -3792,18 +3811,11 @@ export function ChatWorkspace({
               lenkte vom Schreiben ab. Gemeldet wird nur noch der Moment, in dem
               das Guthaben aufgebraucht ist — und für einen Gast ist das der
               Zeitpunkt, ein Konto anzulegen, keine Fehlermeldung. */}
-          {usage && freeUsageExhausted ? (
+          {usage && freeUsageExhausted && isAccountUser ? (
             <ExhaustedCreditStatus
-              notice={exhaustedNotice(usage, isAccountUser)}
-              onSignup={() => openAuth("generic")}
+              notice={exhaustedNotice(usage)}
               onPricing={() => openPricing("guthaben")}
-            >
-              {/* Ein Gast kann ohne Konto nicht analysieren. Statt nur zur
-                  Anmeldung zu schicken, nimmt XPORTAL den Text als Suchauftrag. */}
-              {!isAccountUser && emptyChat ? (
-                <MandateCard variant="paywall" brief={draft} guest preview={preview} />
-              ) : null}
-            </ExhaustedCreditStatus>
+            />
           ) : null}
         </div>
         {/* Eigene Gitterzeile unter dem Eingabefeld: steht im leeren Chat und
@@ -3972,28 +3984,19 @@ export function assistantAttribution(): {
 
 function ExhaustedCreditStatus({
   notice,
-  onSignup,
   onPricing,
-  children,
 }: {
   notice: ExhaustedNotice;
-  onSignup: () => void;
   onPricing: () => void;
-  children?: ReactNode;
 }) {
   return (
     <div className="composer-credit-status is-exhausted" role="status">
       <p>{notice.text}</p>
       {notice.action ? (
-        <button
-          type="button"
-          className="composer-signup"
-          onClick={notice.action.kind === "signup" ? onSignup : onPricing}
-        >
+        <button type="button" className="composer-signup" onClick={onPricing}>
           {notice.action.label}
         </button>
       ) : null}
-      {children}
     </div>
   );
 }

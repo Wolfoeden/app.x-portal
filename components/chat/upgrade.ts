@@ -1,11 +1,10 @@
 import {
-  BRIEF_ANALYSIS_CREDITS,
   CREDIT_PRICES,
   affordableCount,
   countLabel,
   creditPlan,
 } from "@/lib/ai/credit-policy";
-import { PUBLIC_PRICING_PLANS, START_CREDITS, TRIAL_CREDITS } from "@/lib/billing/plans";
+import { PUBLIC_PRICING_PLANS, TRIAL_CREDITS } from "@/lib/billing/plans";
 
 import type { AiUsageSnapshot } from "../chat-contract";
 
@@ -50,7 +49,7 @@ export function startCreditOutcome(): string {
 
 export type ExhaustedNotice = {
   text: string;
-  action: { kind: "signup" | "pricing"; label: string } | null;
+  action: { kind: "pricing"; label: string } | null;
 };
 
 function formatDate(value: string): string | null {
@@ -66,27 +65,13 @@ function formatDate(value: string): string | null {
 /**
  * Was unter dem Eingabefeld steht, wenn das Guthaben aufgebraucht ist.
  *
- * Drei Lagen, drei verschiedene Wahrheiten. Vorher bekam ein Gast das
- * Startguthaben „im Monat" versprochen, obwohl das Startguthaben einmalig ist, und
- * ein Konto im kostenlosen Start las „Neues Guthaben gibt es ab …" — für ein
- * Guthaben, das sich nie wieder auffüllt. Beides führte ins Leere: der eine
- * erwartete eine Auffüllung, die nicht kommt, der andere sah keinen Weg weiter.
+ * Nur für Konten, je nach Lage ein anderer Satz: Ein Konto im kostenlosen
+ * Start las früher „Neues Guthaben gibt es ab …" — für ein Guthaben, das sich
+ * nie wieder auffüllt.
  */
-export function exhaustedNotice(
-  usage: AiUsageSnapshot,
-  isAccountUser: boolean,
-): ExhaustedNotice {
-  if (!isAccountUser) {
-    // Seit dem 10.10.2026 bekommt jedes bestätigte Konto einmalig Start-Credits
-    // ohne Karte. Der Hinweis sagte trotzdem „nur mit Trial oder Tarif“ und
-    // schickte Gäste zur Kartenhinterlegung.
-    const analyses = Math.floor(START_CREDITS / BRIEF_ANALYSIS_CREDITS);
-    return {
-      text: `Für die Analyse brauchen Sie ein kostenloses Konto: Nach der Bestätigung Ihrer E-Mail stehen ${analyses} Projektanalysen bereit, ohne Karte und ohne Abo. Ihre Eingabe bleibt erhalten.`,
-      action: { kind: "signup", label: "Kostenlos anmelden" },
-    };
-  }
-
+export function exhaustedNotice(usage: AiUsageSnapshot): ExhaustedNotice {
+  // Gäste sehen hier nichts: Sie registrieren sich erst, wenn sie eine
+  // Analyse starten (Dialog „analyze_project“ in ChatWorkspace).
   const plan = creditPlan(usage.credits.planId);
   const keepWriting =
     "Ihre gespeicherten Projekte bleiben lesbar. Ihren noch nicht gesendeten Text bewahren wir in diesem Browser auf.";

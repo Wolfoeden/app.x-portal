@@ -1,3 +1,5 @@
+import { BRIEF_ANALYSIS_CREDITS } from "@/lib/ai/credit-policy";
+import { START_CREDITS } from "@/lib/billing/plans";
 import { placementRequestsEnabled } from "@/lib/placement/config";
 
 export type AuthIntent =
@@ -6,7 +8,9 @@ export type AuthIntent =
   | "contact_profile"
   | "book_profile"
   | "save_search"
-  | "external_research";
+  | "external_research"
+  /** Ein Gast hat „Projekt abgleichen“ gedrückt; die Analyse folgt nach der Anmeldung. */
+  | "analyze_project";
 
 export type AuthContinuation = {
   version: 1;
@@ -26,6 +30,7 @@ const INTENTS = new Set<AuthIntent>([
   "book_profile",
   "save_search",
   "external_research",
+  "analyze_project",
 ]);
 
 function safeId(value: unknown): string | null {
@@ -166,6 +171,20 @@ export function authIntentCopy(intent: AuthIntent) {
         title: "Suche mit einem Konto speichern",
         body: "Der Projektabgleich bleibt erhalten und steht Ihnen nach der Anmeldung dauerhaft zur Verfügung.",
         afterConfirmation: "Danach ist die Suche Ihrem Konto zugeordnet.",
+      };
+    case "analyze_project":
+      // Kurz: Der Nutzer hat schon gehandelt und will sein Ergebnis.
+      return {
+        eyebrow: "Projektanalyse",
+        title: "Kostenlos registrieren",
+        loginTitle: "Anmelden und analysieren",
+        body: "",
+        points: [
+          `${Math.floor(START_CREDITS / BRIEF_ANALYSIS_CREDITS)} Projektanalysen inklusive`,
+          "Keine Kreditkarte erforderlich",
+          "Ihre Eingaben bleiben erhalten",
+        ],
+        afterConfirmation: "Danach startet Ihre Analyse.",
       };
     case "external_research":
       return {

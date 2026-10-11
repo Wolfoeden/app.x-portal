@@ -5516,6 +5516,9 @@ a.showcase-card:hover .showcase-card-cta svg {
 .modal-card .auth-submit { min-height: var(--xp-action-height); border-radius: var(--xp-action-radius); padding: 0 20px; font-size: var(--xp-action-font-size); font-weight: var(--xp-action-weight); }
 .modal-card .primary-action:disabled,
 .modal-card .auth-submit:disabled { opacity: .45; }
+.modal-card .auth-points { display: grid; gap: 6px; margin: 12px 0 18px; padding: 0; list-style: none; color: var(--ink-soft); font-size: var(--fs-sm); }
+.modal-card .auth-points li { display: flex; align-items: center; gap: 8px; }
+.modal-card .auth-points svg { flex: none; color: var(--green); }
 .modal-card .email-login label { color: var(--xp-ink); font-size: var(--xp-label-size); font-weight: var(--xp-label-weight); }
 .modal-card .email-login input:not([type="checkbox"]) { height: auto; min-height: var(--xp-field-height); border: 1px solid var(--xp-field-border); border-radius: var(--xp-field-radius); background: var(--xp-field-bg); padding: var(--xp-field-padding); font-size: var(--xp-field-font-size); }
 .modal-card .email-login input:not([type="checkbox"]):focus { border-color: var(--xp-brand); box-shadow: none; outline: var(--xp-field-focus-ring); outline-offset: 0; background: var(--xp-field-bg-focus); }
