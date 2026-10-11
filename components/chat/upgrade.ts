@@ -1,10 +1,11 @@
 import {
+  BRIEF_ANALYSIS_CREDITS,
   CREDIT_PRICES,
   affordableCount,
   countLabel,
   creditPlan,
 } from "@/lib/ai/credit-policy";
-import { PUBLIC_PRICING_PLANS, TRIAL_CREDITS } from "@/lib/billing/plans";
+import { PUBLIC_PRICING_PLANS, START_CREDITS, TRIAL_CREDITS } from "@/lib/billing/plans";
 
 import type { AiUsageSnapshot } from "../chat-contract";
 
@@ -76,9 +77,13 @@ export function exhaustedNotice(
   isAccountUser: boolean,
 ): ExhaustedNotice {
   if (!isAccountUser) {
+    // Seit dem 10.10.2026 bekommt jedes bestätigte Konto einmalig Start-Credits
+    // ohne Karte. Der Hinweis sagte trotzdem „nur mit Trial oder Tarif“ und
+    // schickte Gäste zur Kartenhinterlegung.
+    const analyses = Math.floor(START_CREDITS / BRIEF_ANALYSIS_CREDITS);
     return {
-      text: `Für neue KI-Läufe benötigen Sie ein bestätigtes Konto und einen aktiven Trial oder Tarif. Der 14-Tage-Trial enthält einmalig ${TRIAL_CREDITS} Credits insgesamt und erfordert eine Karte bei Stripe. Ihre Eingabe bleibt erhalten. Ein Ergebnisbeispiel können Sie ohne Karte ansehen.`,
-      action: { kind: "pricing", label: "14 Tage kostenlos testen" },
+      text: `Für die Analyse brauchen Sie ein kostenloses Konto: Nach der Bestätigung Ihrer E-Mail stehen ${analyses} Projektanalysen bereit, ohne Karte und ohne Abo. Ihre Eingabe bleibt erhalten.`,
+      action: { kind: "signup", label: "Kostenlos anmelden" },
     };
   }
 

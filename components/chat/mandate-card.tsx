@@ -4,12 +4,10 @@ import { useEffect, useState, type FormEvent } from "react";
 
 import { appPath } from "@/lib/app-path";
 import {
-  PLACEMENT_TERMS,
-  PLACEMENT_TERMS_PATH,
-  placementRequestsEnabled,
-  placementTermsSummary,
-} from "@/lib/placement/config";
-import { MANDATE_CONFIRMATION } from "@/lib/placement/mandate-model";
+  MANDATE_CONFIRMATION,
+  MANDATE_RESPONSE_HOURS,
+  SEARCH_MANDATE_CONSENT_VERSION,
+} from "@/lib/placement/mandate-model";
 
 import { IconCheck } from "../icons";
 import { trackFunnelEvent } from "./funnel-events";
@@ -20,30 +18,35 @@ type View =
   | { kind: "done"; message: string };
 
 /**
- * „XPORTAL sucht für Sie“: der Suchauftrag unter einem Ergebnis.
+ * „XPORTAL sucht für Sie“: der Suchauftrag, provisionsfrei.
  *
- * Wer als Gast sucht, ein Ergebnis sieht und geht, war bisher verloren —
- * ohne Adresse gab es keinen Weg zurück. Diese Karte bietet den nächsten
- * Schritt an, der nichts kostet: XPORTAL stellt passende Freelancer
- * persönlich vor. Mit Treffern heißt das „diese Profile vorstellen lassen“,
- * ohne Treffer „für Sie suchen“.
+ * Zwei Stellen, ein Baustein:
+ * - `no_match`: unter einer Analyse, in der kein Profil genug passt
+ *   (60 % aller Suchen im Herbst 2026).
+ * - `paywall`: unter dem Hinweis, dass ein Gast ohne Guthaben nicht
+ *   analysieren kann. Dann geht der eingefügte Text mit; ein Projekt entsteht
+ *   erst auf dem Server.
  *
- * Erst ein Klick öffnet das Formular; zugeklappt ist die Karte eine Zeile und
- * konkurriert nicht mit den Profilen darüber.
+ * Zugeklappt ist die Karte eine Zeile und konkurriert nicht mit dem Rest.
  */
 export function MandateCard({
-  projectId,
-  hasMatches,
+  variant,
+  projectId = null,
+  brief = "",
   guest,
   preview = false,
 }: {
-  projectId: string | null;
-  hasMatches: boolean;
+  variant: "no_match" | "paywall";
+  projectId?: string | null;
+  brief?: string;
   guest: boolean;
   preview?: boolean;
 }) {
+  // An der Bezahlschranke steht der Auftrag als zweite Möglichkeit im selben
+  // Hinweis, nicht als zweiter Kasten in anderer Farbe darunter.
+  const embedded = variant === "paywall";
   const [view, setView] = useState<View>({ kind: "closed" });
-  const [contact, setContact] = useState({ email: "", company: "", name: "", phone: "", website: "" });
+  const [contact, setContact] = useState({ email: "", company: "", phone: "", website: "" });
   const [note, setNote] = useState("");
   const [accepted, setAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -51,7 +54,7 @@ export function MandateCard({
 
   // Liegt zu diesem Projekt schon ein Auftrag, steht das gleich da.
   useEffect(() => {
-    if (!projectId || preview || !placementRequestsEnabled()) return;
+    if (!projectId || preview) return;
     let active = true;
     void fetch(appPath(`/api/search-mandates?projectId=${encodeURIComponent(projectId)}`), { credentials: "same-origin" })
       .then((response) => (response.ok ? response.json() : null))
@@ -64,12 +67,13 @@ export function MandateCard({
     };
   }, [preview, projectId]);
 
-  if (!projectId || !placementRequestsEnabled()) return null;
+  const fromDraft = variant === "paywall";
+  if (fromDraft ? brief.trim().length < 20 : !projectId) return null;
 
-  const title = hasMatches ? "Diese Profile persönlich vorstellen lassen" : "XPORTAL sucht für Sie";
-  const lead = hasMatches
-    ? "XPORTAL prüft Verfügbarkeit und Honorar der passenden Freelancer und stellt Sie per E-Mail vor."
-    : "Kein Profil passt genug? XPORTAL sucht im Netzwerk weiter und stellt Ihnen passende Freelancer persönlich vor.";
+  const title = fromDraft ? "Oder: XPORTAL sucht für Sie" : "XPORTAL sucht für Sie";
+  const lead = fromDraft
+    ? `Ohne Konto und ohne Karte: Wir lesen Ihre Beschreibung, suchen passende Freelancer und melden uns innerhalb von ${MANDATE_RESPONSE_HOURS} Stunden per E-Mail.`
+    : `Im Bestand passt noch niemand genug. Wir suchen gezielt weiter und schicken Ihnen innerhalb von ${MANDATE_RESPONSE_HOURS} Stunden passende Profile per E-Mail.`;
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -87,15 +91,14 @@ export function MandateCard({
         credentials: "same-origin",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
-          projectId,
-          placementTermsVersion: PLACEMENT_TERMS.version,
+          ...(fromDraft ? { brief: brief.trim() } : { projectId }),
+          consentVersion: SEARCH_MANDATE_CONSENT_VERSION,
           ...(note.trim() ? { note } : {}),
           ...(guest
             ? {
                 guestContact: {
                   email: contact.email,
-                  company: contact.company,
-                  ...(contact.name.trim() ? { name: contact.name } : {}),
+                  ...(contact.company.trim() ? { company: contact.company } : {}),
                   ...(contact.phone.trim() ? { phone: contact.phone } : {}),
                   ...(contact.website ? { website: contact.website } : {}),
                 },
@@ -113,7 +116,7 @@ export function MandateCard({
         setError(body.error ?? "Der Suchauftrag konnte gerade nicht gesendet werden. Bitte versuchen Sie es erneut.");
         return;
       }
-      if (body.created) trackFunnelEvent("mandate_submitted", hasMatches ? "with_matches" : "no_match");
+      if (body.created) trackFunnelEvent("mandate_submitted", variant);
       setView({ kind: "done", message: body.message ?? MANDATE_CONFIRMATION });
     } catch {
       setError("Der Suchauftrag konnte gerade nicht gesendet werden. Bitte versuchen Sie es erneut.");
@@ -122,9 +125,11 @@ export function MandateCard({
     }
   };
 
+  const cardClass = `mandate-card${embedded ? " is-embedded" : ""}`;
+
   if (view.kind === "done") {
     return (
-      <section className="mandate-card is-done" aria-live="polite">
+      <section className={`${cardClass} is-done`} aria-live="polite">
         <span className="mandate-icon" aria-hidden="true"><IconCheck size={15} /></span>
         <div>
           <strong>Suchauftrag liegt vor</strong>
@@ -134,36 +139,41 @@ export function MandateCard({
     );
   }
 
+  if (view.kind === "closed" && embedded) {
+    return (
+      <div className="mandate-inline">
+        <p>
+          <strong>Oder ohne Konto und ohne Karte:</strong> XPORTAL sucht für Sie und meldet sich innerhalb von{" "}
+          {MANDATE_RESPONSE_HOURS} Stunden per E-Mail. Kostenlos, ohne Provision.
+        </p>
+        <button className="composer-signup is-secondary" type="button" onClick={() => setView({ kind: "form" })}>
+          Suchauftrag geben
+        </button>
+      </div>
+    );
+  }
+
   if (view.kind === "closed") {
     return (
-      <section className="mandate-card" aria-labelledby="mandate-title">
+      <section className={cardClass} aria-labelledby="mandate-title">
         <div>
           <strong id="mandate-title">{title}</strong>
-          <p>
-            {lead} Kostenlos bis zur Beauftragung.{" "}
-            {/* Fester Pfad statt salesCallHref: Ein Import hier landete in mehreren Client-Chunks. */}
-            <a href={appPath("/gespraech?von=chat")}>Lieber direkt sprechen?</a>
-          </p>
+          <p>{lead} Kostenlos, ohne Provision.</p>
         </div>
         <button className="primary-action" type="button" onClick={() => setView({ kind: "form" })}>
-          {hasMatches ? "Vorstellen lassen" : "Suchauftrag geben"}
+          Suchauftrag geben
         </button>
       </section>
     );
   }
 
   return (
-    <section className="mandate-card is-open" aria-labelledby="mandate-title">
+    <section className={`${cardClass} is-open`} aria-labelledby="mandate-title">
       <div>
         <strong id="mandate-title">{title}</strong>
         <p>{lead}</p>
       </div>
       <form className="placement-form" onSubmit={submit}>
-        <ul className="placement-terms">
-          {placementTermsSummary().map((line) => (
-            <li key={line}><span aria-hidden="true"><IconCheck size={13} /></span>{line}</li>
-          ))}
-        </ul>
         <div className="placement-fields">
           {guest ? (
             <label>
@@ -179,29 +189,15 @@ export function MandateCard({
             </label>
           ) : null}
           <label>
-            <span>Firma {guest ? null : <small>(optional)</small>}</span>
+            <span>Firma <small>(optional)</small></span>
             <input
               type="text"
               autoComplete="organization"
-              required={guest}
-              minLength={guest ? 2 : undefined}
               maxLength={200}
               value={contact.company}
               onChange={(event) => setContact((current) => ({ ...current, company: event.target.value }))}
             />
           </label>
-          {guest ? (
-            <label>
-              <span>Ihr Name <small>(optional)</small></span>
-              <input
-                type="text"
-                autoComplete="name"
-                maxLength={120}
-                value={contact.name}
-                onChange={(event) => setContact((current) => ({ ...current, name: event.target.value }))}
-              />
-            </label>
-          ) : null}
           <label>
             <span>Telefon <small>(optional, für Rückfragen)</small></span>
             <input
@@ -218,7 +214,7 @@ export function MandateCard({
               maxLength={1000}
               rows={3}
               value={note}
-              placeholder="z. B. Start im November, Tagessatz bis 900 €, Erfahrung mit AI Agents im Kundenservice"
+              placeholder="z. B. Start im November, Tagessatz bis 900 €, remote"
               onChange={(event) => setNote(event.target.value)}
             />
           </label>
@@ -234,16 +230,11 @@ export function MandateCard({
             onChange={(event) => setContact((current) => ({ ...current, website: event.target.value }))}
           />
         </div>
-        <p className="placement-privacy">
-          XPORTAL nutzt Ihre Angaben, um passende Freelancer vorzustellen. Bei einer Vorstellung erhält der Freelancer
-          Ihren Namen, Ihre E-Mail-Adresse und den Titel Ihres Projekts.{guest ? " Ein Konto brauchen Sie dafür nicht." : ""}
-        </p>
         <label className="placement-consent">
           <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} required />
           <span>
-            Ich stimme den{" "}
-            <a href={appPath(PLACEMENT_TERMS_PATH)} target="_blank" rel="noopener noreferrer">Vermittlungsbedingungen</a>{" "}
-            zu.
+            XPORTAL darf mich zu diesem Suchauftrag per E-Mail{contact.phone.trim() ? " und telefonisch" : ""} kontaktieren.
+            Die Angaben dienen nur diesem Auftrag (<a href="/privacy#suchauftrag" target="_blank" rel="noopener noreferrer">Datenschutz</a>).
           </span>
         </label>
         {error ? <p className="form-error" role="alert">{error}</p> : null}
@@ -254,7 +245,7 @@ export function MandateCard({
           <button
             className="primary-action"
             type="submit"
-            disabled={busy || !accepted || (guest && (!contact.email.trim() || contact.company.trim().length < 2))}
+            disabled={busy || !accepted || (guest && !contact.email.trim())}
           >
             {busy ? "Wird gesendet …" : "Suchauftrag senden"}
           </button>

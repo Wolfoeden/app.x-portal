@@ -4,9 +4,9 @@
  * und Tests teilen sie (lib/placement/mandates.ts liest und schreibt).
  *
  * Ein Suchauftrag ist noch keine Anfrage an einen bestimmten Freelancer. Er
- * hält fest, wer sucht, wie er erreichbar ist und dass er den
- * Vermittlungsbedingungen zugestimmt hat. Erst die Zuordnung durch den
- * Betreiber macht daraus Anfragen mit Honoraranspruch.
+ * hält fest, wer sucht, wie er erreichbar ist und dass er der Kontaktaufnahme
+ * zu diesem Auftrag zugestimmt hat. Neue Aufträge sind provisionsfrei; ältere
+ * mit Zustimmung zu den Vermittlungsbedingungen behalten ihre Fassung.
  */
 
 import { PLACEMENT_TERMS } from "./config";
@@ -48,9 +48,18 @@ export type Mandate = {
   handledAt: string | null;
 };
 
+/**
+ * Die Fassung der Einwilligung, mit der ein neuer Suchauftrag angenommen
+ * wird: Kontaktaufnahme zu genau diesem Auftrag, keine Provision.
+ */
+export const SEARCH_MANDATE_CONSENT_VERSION = "suchauftrag-2026-10-1";
+
+/** Wie schnell sich XPORTAL zu einem Suchauftrag meldet. */
+export const MANDATE_RESPONSE_HOURS = 48;
+
 /** Was der Kunde nach dem Absenden liest. */
 export const MANDATE_CONFIRMATION =
-  "Ihr Suchauftrag ist eingegangen. XPORTAL prüft passende Freelancer und meldet sich innerhalb eines Werktags per E-Mail.";
+  `Ihr Suchauftrag ist eingegangen. XPORTAL sucht passende Freelancer und meldet sich innerhalb von ${MANDATE_RESPONSE_HOURS} Stunden per E-Mail.`;
 
 /** Wenn zu diesem Projekt schon ein offener Auftrag liegt. */
 export const MANDATE_EXISTS =
@@ -87,7 +96,9 @@ export function briefLine(brief: {
  * Honorar — wer eine Vorstellung bekommt, soll nicht erst bei der Rechnung
  * davon erfahren.
  */
-export function mandateMailDraft(mandate: Pick<Mandate, "contactName" | "projectTitle" | "briefSummary">): {
+export function mandateMailDraft(
+  mandate: Pick<Mandate, "contactName" | "projectTitle" | "briefSummary"> & Partial<Pick<Mandate, "termsVersion">>,
+): {
   subject: string;
   body: string;
 } {
@@ -103,7 +114,9 @@ export function mandateMailDraft(mandate: Pick<Mandate, "contactName" | "project
       "",
       "Damit ich Ihnen die passenden Freelancer vorstellen kann, helfen mir kurz: die wichtigste Aufgabe, gewünschter Start und Ihr Budget bzw. Tagessatzrahmen.",
       "",
-      `Suche und Vorstellung sind kostenlos. Kommt es zur Beauftragung, berechnet XPORTAL einmalig ${t.feePercent} % des vereinbarten Honorars der ersten ${t.feeMonths} Monate (höchstens ${t.maxFeeDays} Projekttage), zuzüglich Umsatzsteuer.`,
+      mandate.termsVersion === t.version
+        ? `Suche und Vorstellung sind kostenlos. Kommt es zur Beauftragung, berechnet XPORTAL einmalig ${t.feePercent} % des vereinbarten Honorars der ersten ${t.feeMonths} Monate (höchstens ${t.maxFeeDays} Projekttage), zuzüglich Umsatzsteuer.`
+        : "Suche und Vorstellung sind kostenlos; eine Provision fällt nicht an.",
       "",
       "Viele Grüße",
       "Roman Dering",

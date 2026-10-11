@@ -5,6 +5,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -94,6 +95,7 @@ import {
 } from "./chat/shared";
 import { RegisteredShowcasePanel } from "./chat/registered-showcase";
 import { bookingActionState, DirectBookingContext, ProjectDetails, ResultSection, SavedProfileList } from "./chat/results";
+import { MandateCard } from "./chat/mandate-card";
 import { ProfileSheet, ProfileSheetContext, type ProfileSheetRequest } from "./profile/profile-sheet";
 import type { ProfileDossier } from "@/lib/profile/dossier";
 import { profilePath } from "@/lib/profile/profile-link";
@@ -3792,7 +3794,13 @@ export function ChatWorkspace({
               notice={exhaustedNotice(usage, isAccountUser)}
               onSignup={() => openAuth("generic")}
               onPricing={() => openPricing("guthaben")}
-            />
+            >
+              {/* Ein Gast kann ohne Konto nicht analysieren. Statt nur zur
+                  Anmeldung zu schicken, nimmt XPORTAL den Text als Suchauftrag. */}
+              {!isAccountUser && emptyChat ? (
+                <MandateCard variant="paywall" brief={draft} guest preview={preview} />
+              ) : null}
+            </ExhaustedCreditStatus>
           ) : null}
         </div>
         {/* Eigene Gitterzeile unter dem Eingabefeld: steht im leeren Chat und
@@ -3961,10 +3969,12 @@ function ExhaustedCreditStatus({
   notice,
   onSignup,
   onPricing,
+  children,
 }: {
   notice: ExhaustedNotice;
   onSignup: () => void;
   onPricing: () => void;
+  children?: ReactNode;
 }) {
   return (
     <div className="composer-credit-status is-exhausted" role="status">
@@ -3978,6 +3988,7 @@ function ExhaustedCreditStatus({
           {notice.action.label}
         </button>
       ) : null}
+      {children}
     </div>
   );
 }

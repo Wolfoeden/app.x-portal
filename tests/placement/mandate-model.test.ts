@@ -30,13 +30,19 @@ describe("search mandate rules", () => {
     expect(briefLine(null)).toBeNull();
   });
 
-  it("drafts the first answer with what is missing and the fee", () => {
-    const draft = mandateMailDraft({ contactName: "Kim", projectTitle: "AI Agent für den Support", briefSummary: "AI Agents, Python" });
+  it("drafts the first answer with what is missing, provisionsfrei for new mandates", () => {
+    const draft = mandateMailDraft({ contactName: "Kim", projectTitle: "AI Agent für den Support", briefSummary: "AI Agents, Python", termsVersion: "suchauftrag-2026-10-1" });
     expect(draft.subject).toBe("Ihr Suchauftrag bei XPORTAL: AI Agent für den Support");
     expect(draft.body).toMatch(/^Guten Tag Kim,/u);
     expect(draft.body).toContain("Verstanden haben wir: AI Agents, Python");
-    expect(draft.body).toContain(`${PLACEMENT_TERMS.feePercent} % des vereinbarten Honorars der ersten ${PLACEMENT_TERMS.feeMonths} Monate`);
+    expect(draft.body).toContain("eine Provision fällt nicht an");
+    expect(draft.body).not.toContain("% des vereinbarten Honorars");
     expect(mandateMailDraft({ contactName: null, projectTitle: null, briefSummary: null }).body).toMatch(/^Guten Tag,\n/u);
+  });
+
+  it("keeps the fee sentence for mandates given under the old placement terms", () => {
+    const draft = mandateMailDraft({ contactName: null, projectTitle: null, briefSummary: null, termsVersion: PLACEMENT_TERMS.version });
+    expect(draft.body).toContain(`${PLACEMENT_TERMS.feePercent} % des vereinbarten Honorars der ersten ${PLACEMENT_TERMS.feeMonths} Monate`);
   });
 
   it("says how long a mandate has been waiting", () => {

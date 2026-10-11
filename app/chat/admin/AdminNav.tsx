@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { BrandMark } from "@/components/BrandMark";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 
 import styles from "./admin-nav.module.css";
 
@@ -28,10 +27,7 @@ const GROUPS: ReadonlyArray<{ label: string | null; links: readonly NavLink[] }>
   {
     label: "Arbeit",
     links: [
-      // Nur mit eingeschaltetem Vermittlungsmodell; vorher gibt es dort nichts.
-      ...(placementRequestsEnabled()
-        ? [{ href: "/chat/admin/vermittlungen", label: "Vermittlungen" }]
-        : []),
+      { href: "/chat/admin/vermittlungen", label: "Suchaufträge" },
       { href: "/chat/admin/freelancers", label: "Bewerbungen" },
       { href: "/chat/admin/profile", label: "Profile" },
       { href: "/chat/admin/leads", label: "Leads" },

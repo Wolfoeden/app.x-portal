@@ -3982,6 +3982,11 @@ a.secondary-action {
 .mandate-card.is-open { display: grid; align-items: start; background: var(--surface); border-color: var(--border); }
 .mandate-card.is-open .placement-form { margin-top: 4px; }
 .mandate-card.is-done { justify-content: flex-start; flex-wrap: nowrap; }
+/* Im Hinweis an der Bezahlschranke: kein eigener Kasten. */
+.mandate-card.is-embedded { width: 100%; margin-top: 0; border: 0; border-top: 1px solid var(--amber-border); border-radius: 0; background: none; padding: 10px 0 0; }
+.mandate-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; width: 100%; border-top: 1px solid var(--amber-border); padding-top: 10px; }
+.mandate-inline p { flex: 1 1 280px; margin: 0; }
+.composer-signup.is-secondary { background: var(--surface); color: var(--ink); }
 .mandate-icon {
   display: inline-flex;
   flex: none;

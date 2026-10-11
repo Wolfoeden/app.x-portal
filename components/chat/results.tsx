@@ -423,7 +423,6 @@ export function ResultSection({
               />
             )}
           />
-          <MandateCard projectId={projectId} hasMatches guest={!isAccountUser} preview={previewMode} />
         </>
       ) : (
         <>
@@ -478,7 +477,7 @@ export function ResultSection({
               Nicht bei einer unklaren Anfrage — dort fehlt, wonach gesucht
               werden soll. */}
           {matchingStatus !== "needs_clarification" ? (
-            <MandateCard projectId={projectId} hasMatches={false} guest={!isAccountUser} preview={previewMode} />
+            <MandateCard variant="no_match" projectId={projectId} guest={!isAccountUser} preview={previewMode} />
           ) : null}
           <div className="search-recovery">
             <p>{shownPartials.length ? "Passt keines dieser Profile? Ihre Anfrage bleibt erhalten." : "Ihre Anfrage bleibt erhalten."}</p>
