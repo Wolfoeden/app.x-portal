@@ -33,6 +33,33 @@ const proposal: ProfileProject = {
 const owner = (projects: unknown[]) => ProjectListSchema.parse(projects);
 
 describe("owner project merge", () => {
+  // Oktober 2026: Neue oder geänderte Projekte warten auf Freigabe; das
+  // übrige Profil pflegt der Freelancer frei.
+  it("holds new and changed projects back until XPORTAL approves them", () => {
+    const approved = { ...checked, approved: true };
+    const [unchanged, changed, added] = mergeOwnerProjects(
+      [approved, { ...approved, title: "Altes Projekt" }],
+      owner([
+        { ...checked, verified: false },
+        { ...checked, title: "Altes Projekt", outcome: "Jetzt mit neuem Ergebnis." },
+        { title: "Neues Projekt", approved: true },
+      ]),
+    );
+    expect(unchanged).toMatchObject({ title: "Wissenssuche", approved: true, verified: true });
+    expect(changed).toMatchObject({ title: "Altes Projekt", approved: false, verified: false });
+    expect(added).toMatchObject({ title: "Neues Projekt", approved: false });
+  });
+
+  it("keeps a pending project pending until the operator approves it", () => {
+    const [project] = mergeOwnerProjects([{ ...checked, verified: false, approved: false }], owner([{ ...checked, verified: false }]));
+    expect(project).toMatchObject({ approved: false });
+  });
+
+  it("does not ask for a new approval when only the visibility changes", () => {
+    const [project] = mergeOwnerProjects([{ ...checked, approved: true }], owner([{ ...checked, isPublic: false }]));
+    expect(project).toMatchObject({ approved: true, isPublic: false });
+  });
+
   it("never lets the owner set the check mark", () => {
     const [project] = mergeOwnerProjects([], owner([{ title: "Eigenes Projekt", verified: true, source: "operator" }]));
     expect(project).toMatchObject({ title: "Eigenes Projekt", verified: false, source: "freelancer" });

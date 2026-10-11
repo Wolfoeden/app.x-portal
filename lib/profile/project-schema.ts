@@ -59,6 +59,8 @@ export const ProjectInputSchema = z
     verified: z.boolean().default(false),
     source: z.enum(PROJECT_SOURCES).default("operator"),
     sourceUrl: httpsUrl.nullable().optional().transform((value) => value ?? null),
+    // Nur der Betreiber setzt es; beim Freelancer bestimmt mergeOwnerProjects.
+    approved: z.boolean().optional(),
   })
   .strict()
   .superRefine((project, context) => {

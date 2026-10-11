@@ -79,7 +79,16 @@ export async function PATCH(request: Request) {
     });
     return NextResponse.json({ profile });
   } catch (error) {
-    if (error instanceof Response) return error;
+    // Die Datenschicht wirft Text-Antworten (404, 409). Als JSON, damit das
+    // Dashboard den Grund zeigt statt „konnte nicht gespeichert werden“.
+    if (error instanceof Response) {
+      if (error.status === 401 || error.status === 403) return error;
+      const message = (await error.text().catch(() => "")).trim();
+      return NextResponse.json(
+        { error: message || "Das Profil konnte nicht gespeichert werden." },
+        { status: error.status },
+      );
+    }
     return NextResponse.json(
       { error: "Das Profil konnte nicht gespeichert werden." },
       { status: 503 },

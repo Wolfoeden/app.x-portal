@@ -9,10 +9,16 @@ const PROFILE = "11111111-1111-4111-8111-111111111111";
 
 function client(answers: { select?: { data: unknown; error: unknown }; rpc?: { data: unknown; error: unknown } }) {
   const rpc = vi.fn(async () => answers.rpc ?? { data: 1, error: null });
+  const calls: Array<[string, ...unknown[]]> = [];
   const chain: Record<string, unknown> = {};
-  for (const method of ["select", "in", "eq", "order"]) chain[method] = () => chain;
+  for (const method of ["select", "in", "eq", "not", "is", "order", "limit"]) {
+    chain[method] = (...args: unknown[]) => {
+      calls.push([method, ...args]);
+      return chain;
+    };
+  }
   chain.then = (resolve: (value: unknown) => unknown) => Promise.resolve(answers.select ?? { data: [], error: null }).then(resolve);
-  return { client: { from: () => chain, rpc } as never, rpc };
+  return { client: { from: () => chain, rpc } as never, rpc, calls };
 }
 
 const project: ProfileProject = {
@@ -50,7 +56,40 @@ describe("projects in the database", () => {
       },
     });
     const projects = (await fetchProjects(db, [PROFILE], { publicOnly: true })).get(PROFILE)!;
-    expect(projects[0]).toMatchObject({ title: "A", startedOn: "2025-03", ongoing: true, technologies: [], verified: true });
+    expect(projects[0]).toMatchObject({ title: "A", startedOn: "2025-03", ongoing: true, technologies: [], verified: true, approved: false });
+  });
+
+  // Oktober 2026: Kunden sehen nur, was öffentlich und freigegeben ist.
+  it("shows customers only public projects XPORTAL has approved", async () => {
+    const { client: db, calls } = client({});
+    await fetchProjects(db, [PROFILE], { publicOnly: true });
+    expect(calls).toContainEqual(["eq", "is_public", true]);
+    expect(calls).toContainEqual(["not", "approved_at", "is", null]);
+    const { client: own, calls: ownCalls } = client({});
+    await fetchProjects(own, [PROFILE], { publicOnly: false });
+    expect(ownCalls.some(([method]) => method === "not")).toBe(false);
+  });
+
+  it("keeps an approval for an unchanged project and withdraws it for pending ones", async () => {
+    const { client: db, rpc } = client({
+      select: {
+        data: [{ title: "wissenssuche", verified_at: null, verified_by: null, approved_at: "2026-09-02T00:00:00Z", approved_by: "admin-0", created_at: "2026-08-01T00:00:00Z" }],
+        error: null,
+      },
+    });
+    await replaceProjects(
+      db,
+      PROFILE,
+      [{ ...project, verified: false }, { ...project, title: "Neu vom Freelancer", verified: false, approved: false }, { ...project, title: "Vom Betreiber", verified: false }],
+      "admin-1",
+    );
+    const payload = (rpc.mock.calls[0] as unknown as [string, { p_projects: Array<Record<string, unknown>> }])[1].p_projects;
+    expect(payload[0]).toMatchObject({ approved_at: "2026-09-02T00:00:00Z", approved_by: "admin-0" });
+    expect(payload[1]).toMatchObject({ approved_at: null, approved_by: null });
+    expect(payload[2]).toMatchObject({ approved_by: "admin-1" });
+    expect(payload[2]!.approved_at).toEqual(expect.any(String));
+    // Jeder Eintrag trägt den Schlüssel; nur ältere App-Versionen lassen ihn weg.
+    for (const entry of payload) expect(entry).toHaveProperty("approved_at");
   });
 
   it("keeps who checked first and when for an unchanged title, and records new checks", async () => {

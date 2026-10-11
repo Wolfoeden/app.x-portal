@@ -928,3 +928,11 @@
 
 .feedbackList { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; padding: 0; list-style: none; }
 .feedbackList li { padding: 5px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-soft); font-size: var(--fs-2xs); }
+
+/* Projekte zur Freigabe: je Profil eine Zeile mit den wartenden Titeln. */
+.pendingProjects { display: grid; margin: 0; padding: 0; list-style: none; }
+.pendingProjects li { display: grid; grid-template-columns: minmax(160px, .7fr) minmax(0, 2fr) auto; align-items: baseline; gap: 6px 16px; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: var(--fs-sm); }
+.pendingProjects li:last-child { border-bottom: 0; }
+.pendingProjects a { font-weight: 650; }
+.pendingProjects span { color: var(--ink-soft); }
+.pendingProjects small { color: var(--muted); white-space: nowrap; }

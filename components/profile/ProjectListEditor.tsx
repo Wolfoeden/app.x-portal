@@ -116,6 +116,11 @@ function ProjectFields({
         Projekt {index + 1}
         {proposal ? " · Vorschlag aus der Recherche, noch unsichtbar" : ""}
         {mode === "owner" && project.verified ? " · von XPORTAL geprüft" : ""}
+        {project.approved === false
+          ? mode === "owner"
+            ? " · in Prüfung, für Kunden noch nicht sichtbar"
+            : " · wartet auf Freigabe"
+          : ""}
       </legend>
       {proposal ? (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
@@ -216,6 +221,12 @@ function ProjectFields({
           <input type="checkbox" checked={project.isPublic} onChange={(event) => set("isPublic", event.target.checked)} />
           {mode === "admin" ? "öffentlich" : "im Profil zeigen"}
         </label>
+        {mode === "admin" ? (
+          <label style={{ display: "flex", gap: 6, alignItems: "center" }} title="Ohne Freigabe sieht kein Kunde das Projekt, auch wenn es öffentlich ist.">
+            <input type="checkbox" checked={project.approved !== false} onChange={(event) => set("approved", event.target.checked)} />
+            freigegeben
+          </label>
+        ) : null}
         {mode === "admin" ? (
           <label style={{ display: "flex", gap: 6, alignItems: "center" }} title="Nur setzen, wenn ein Nachweis vorliegt (Lebenslauf, Referenz, Gespräch).">
             <input type="checkbox" checked={project.verified} onChange={(event) => set("verified", event.target.checked)} />

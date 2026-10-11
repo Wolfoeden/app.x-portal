@@ -4,10 +4,12 @@ import type { ProjectInput } from "@/lib/profile/project-schema";
 /**
  * Was ein Freelancer an seinen Projekten ändern darf.
  *
- * Den Haken „geprüft“ setzt nur XPORTAL. Ein Freelancer behält ihn, solange
- * er das Projekt nicht inhaltlich ändert — sonst wäre geprüft, was niemand
- * gesehen hat. Vorschläge aus der Recherche sieht er nicht; sie bleiben beim
- * Speichern unverändert hinten in der Liste, bis der Betreiber entscheidet.
+ * Den Haken „geprüft“ und die Freigabe setzt nur XPORTAL. Ein Freelancer
+ * behält beides, solange er das Projekt nicht inhaltlich ändert. Ein neues
+ * oder geändertes Projekt wartet auf Freigabe und ist bis dahin für Kunden
+ * unsichtbar (Oktober 2026) — sonst stünde online, was niemand gesehen hat.
+ * Vorschläge aus der Recherche sieht er nicht; sie bleiben beim Speichern
+ * unverändert hinten in der Liste, bis der Betreiber entscheidet.
  */
 
 const normalized = (value: string) => value.trim().toLowerCase();
@@ -42,8 +44,14 @@ export function mergeOwnerProjects(previous: readonly ProfileProject[], incoming
       source: before?.source ?? "freelancer",
       sourceUrl: before?.sourceUrl ?? null,
       verified: false,
+      approved: false,
     };
-    return { ...candidate, verified: Boolean(before?.verified && sameContent(before, candidate)) };
+    const unchanged = Boolean(before && sameContent(before, candidate));
+    return {
+      ...candidate,
+      verified: Boolean(before?.verified && unchanged),
+      approved: Boolean(before && before.approved !== false && unchanged),
+    };
   });
   return [...merged, ...hidden];
 }

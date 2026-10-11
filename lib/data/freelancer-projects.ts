@@ -36,10 +36,11 @@ type ProjectRow = {
   source: ProjectSource;
   source_url: string | null;
   verified_at: string | null;
+  approved_at: string | null;
 };
 
 const PROJECT_COLUMNS =
-  "profile_id,position,title,client_label,industry,project_role,started_on,ended_on,ongoing,technologies,outcome,link_url,is_public,source,source_url,verified_at";
+  "profile_id,position,title,client_label,industry,project_role,started_on,ended_on,ongoing,technologies,outcome,link_url,is_public,source,source_url,verified_at,approved_at";
 
 /** Tabelle, Spalte oder Funktion fehlt: die Migration ist noch nicht eingespielt. */
 export function isMissingSchema(error: unknown): boolean {
@@ -66,10 +67,14 @@ function rowToProject(row: ProjectRow): ProfileProject {
     verified: Boolean(row.verified_at),
     source: row.source,
     sourceUrl: row.source_url,
+    approved: Boolean(row.approved_at),
   };
 }
 
-/** Projekte je Profil in fester Reihenfolge; `publicOnly` für alles, was Kunden sehen. */
+/**
+ * Projekte je Profil in fester Reihenfolge; `publicOnly` für alles, was
+ * Kunden sehen: öffentlich und von XPORTAL freigegeben.
+ */
 export async function fetchProjects(
   admin: SupabaseClient,
   ids: readonly string[],
@@ -79,7 +84,7 @@ export async function fetchProjects(
   const result = new Map<string, ProfileProject[]>();
   if (unique.length === 0) return result;
   let query = admin.from("freelancer_projects").select(PROJECT_COLUMNS).in("profile_id", unique);
-  if (options.publicOnly) query = query.eq("is_public", true);
+  if (options.publicOnly) query = query.eq("is_public", true).not("approved_at", "is", null);
   const { data, error } = await query.order("profile_id").order("position");
   if (error) {
     if (isMissingSchema(error)) return result;
@@ -125,7 +130,8 @@ export async function fetchProfileLinks(
  * Ersetzt die Projektliste eines Profils (RPC, ein Zug). Ein Haken
  * „geprüft“ behält Zeitpunkt und Person der ersten Prüfung, solange das
  * Projekt gleich heißt; sonst zählt die Prüfung ab jetzt und gehört
- * `actorId`.
+ * `actorId`. Dasselbe gilt für die Freigabe; `approved: false` nimmt sie
+ * zurück (neu oder geändert vom Freelancer).
  */
 export async function replaceProjects(
   admin: SupabaseClient,
@@ -135,11 +141,19 @@ export async function replaceProjects(
 ): Promise<number> {
   const { data: previous, error: readError } = await admin
     .from("freelancer_projects")
-    .select("title,verified_at,verified_by,created_at")
+    .select("title,verified_at,verified_by,approved_at,approved_by,created_at")
     .eq("profile_id", profileId);
   if (readError) throw readError;
+  type PreviousRow = {
+    title: string;
+    verified_at: string | null;
+    verified_by: string | null;
+    approved_at: string | null;
+    approved_by: string | null;
+    created_at: string;
+  };
   const known = new Map(
-    (previous as Array<{ title: string; verified_at: string | null; verified_by: string | null; created_at: string }>).map((row) => [
+    (previous as PreviousRow[]).map((row) => [
       row.title.trim().toLowerCase(),
       row,
     ]),
@@ -147,6 +161,7 @@ export async function replaceProjects(
   const now = new Date().toISOString();
   const payload = projects.map((project) => {
     const before = known.get(project.title.trim().toLowerCase());
+    const approved = project.approved !== false;
     return {
       title: project.title,
       client_label: project.client,
@@ -164,6 +179,8 @@ export async function replaceProjects(
       verified_at: project.verified ? (before?.verified_at ?? now) : null,
       // Wer zuerst geprüft hat, bleibt eingetragen, solange die Prüfung gilt.
       verified_by: project.verified ? (before?.verified_at ? before.verified_by : actorId) : null,
+      approved_at: approved ? (before?.approved_at ?? now) : null,
+      approved_by: approved ? (before?.approved_at ? before.approved_by : actorId) : null,
       created_at: before?.created_at ?? now,
     };
   });
@@ -173,6 +190,46 @@ export async function replaceProjects(
   });
   if (error) throw error;
   return typeof data === "number" ? data : payload.length;
+}
+
+export type PendingProjectReview = { profileId: string; displayName: string; titles: string[]; since: string };
+
+/**
+ * Projekte, die Freelancer neu angelegt oder geändert haben und die auf
+ * Freigabe warten, je Profil, das älteste Warten zuerst. Fehlt die Spalte
+ * noch (Migration 20261011190000), ist die Liste leer.
+ */
+export async function pendingProjectReviews(admin: SupabaseClient): Promise<PendingProjectReview[]> {
+  const { data, error } = await admin
+    .from("freelancer_projects")
+    .select("profile_id,title,updated_at")
+    .is("approved_at", null)
+    .eq("is_public", true)
+    .order("updated_at", { ascending: true })
+    .limit(200);
+  if (error) {
+    if (isMissingSchema(error)) return [];
+    throw error;
+  }
+  const byProfile = new Map<string, { titles: string[]; since: string }>();
+  for (const row of data as Array<{ profile_id: string; title: string; updated_at: string }>) {
+    const entry = byProfile.get(row.profile_id) ?? { titles: [], since: row.updated_at };
+    entry.titles.push(row.title);
+    byProfile.set(row.profile_id, entry);
+  }
+  if (byProfile.size === 0) return [];
+  const { data: profiles, error: profileError } = await admin
+    .from("freelancer_profiles")
+    .select("id,display_name")
+    .in("id", [...byProfile.keys()]);
+  if (profileError) throw profileError;
+  const names = new Map((profiles as Array<{ id: string; display_name: string }>).map((row) => [row.id, row.display_name]));
+  return [...byProfile.entries()].map(([profileId, entry]) => ({
+    profileId,
+    displayName: names.get(profileId) ?? "Unbekanntes Profil",
+    titles: entry.titles,
+    since: entry.since,
+  }));
 }
 
 export async function updateProfileLinks(

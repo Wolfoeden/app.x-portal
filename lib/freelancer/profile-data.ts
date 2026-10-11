@@ -316,7 +316,7 @@ export async function updateOwnedFreelancerProfile(
 
   const row = current as ProfileRow;
   if (row.version !== input.version) {
-    throw new Response("Das Profil wurde zwischenzeitlich geändert.", {
+    throw new Response("Das Profil wurde zwischenzeitlich geändert. Bitte laden Sie die Seite neu und speichern Sie dann erneut.", {
       status: 409,
     });
   }
@@ -377,7 +377,7 @@ export async function updateOwnedFreelancerProfile(
     .maybeSingle();
   if (error) throw error;
   if (!updated) {
-    throw new Response("Das Profil wurde zwischenzeitlich geändert.", {
+    throw new Response("Das Profil wurde zwischenzeitlich geändert. Bitte laden Sie die Seite neu und speichern Sie dann erneut.", {
       status: 409,
     });
   }
@@ -458,7 +458,7 @@ export async function attachAvatar(input: {
   if (updateError || !updated) {
     await admin.storage.from(AVATAR_BUCKET).remove([input.objectPath]);
     if (updateError) throw updateError;
-    throw new Response("Das Profil wurde zwischenzeitlich geändert.", {
+    throw new Response("Das Profil wurde zwischenzeitlich geändert. Bitte laden Sie die Seite neu und speichern Sie dann erneut.", {
       status: 409,
     });
   }
@@ -499,7 +499,7 @@ export async function removeAvatar(
     .maybeSingle();
   if (hideError) throw hideError;
   if (!hidden) {
-    throw new Response("Das Profil wurde zwischenzeitlich geändert.", {
+    throw new Response("Das Profil wurde zwischenzeitlich geändert. Bitte laden Sie die Seite neu und speichern Sie dann erneut.", {
       status: 409,
     });
   }
