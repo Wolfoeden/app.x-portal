@@ -77,7 +77,10 @@ describe("marketing pages rendered on the server", () => {
     const chat = readFileSync(new URL("../app/chat/page.tsx", import.meta.url), "utf8");
     // Permanent (308), damit die Signale der Domain bei der Landingpage landen.
     expect(root).toContain('permanentRedirect("/fuer-unternehmen")');
-    expect(chat).toContain("return <ChatWorkspace />");
+    // /chat bleibt der direkte Einstieg; auf dem Handy steht davor nur ein
+    // Hinweis (components/chat/desktop-only.tsx), keine Weiterleitung.
+    expect(chat).toContain("<ChatWorkspace />");
+    expect(chat).not.toMatch(/redirect/iu);
   });
 });
 

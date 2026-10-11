@@ -37,18 +37,19 @@
 .textLink:focus-visible { outline: 2px solid var(--lp-brand); outline-offset: 3px; }
 
 
-/* Kopf der Seite: links Titel, Produktablauf und Eingabefeld untereinander,
-   rechts die Profilkarte. Nichts liegt übereinander. */
+/* Kopf der Seite: links Titel und Produktablauf, rechts die Profilkarte,
+   darunter das Eingabefeld über die ganze Breite des Rahmens. Nichts liegt
+   übereinander. */
 .hero { overflow-x: clip; }
 .hero .frame { padding-top: 64px; padding-bottom: 56px; }
 .heroScene { position: relative; }
-.heroStage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 420px); align-items: center; gap: 32px 64px; }
-.heroMain { display: grid; gap: 22px; min-width: 0; }
+.heroStage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 420px); align-items: center; gap: 40px 64px; }
+.heroMain { grid-column: 1; grid-row: 1; display: grid; gap: 22px; min-width: 0; }
 .hero h1 { font-size: clamp(40px, 4.4vw, 58px); line-height: 1.08; letter-spacing: var(--xp-h1-tracking); overflow-wrap: normal; }
 .hero h1 span { color: var(--lp-brand); }
 .heroActions { display: flex; flex-wrap: wrap; gap: 12px; }
 
-.profileLink { z-index: 3; display: flex; width: 100%; justify-self: end; color: inherit; text-decoration: none; opacity: 0; pointer-events: none; transform: translateY(24px) scale(.96); transition: opacity .6s ease, transform .7s cubic-bezier(.18,.82,.2,1); }
+.profileLink { z-index: 3; grid-column: 2; grid-row: 1; display: flex; width: 100%; justify-self: end; color: inherit; text-decoration: none; opacity: 0; pointer-events: none; transform: translateY(24px) scale(.96); transition: opacity .6s ease, transform .7s cubic-bezier(.18,.82,.2,1); }
 .heroScene[data-revealed="true"] .profileLink { opacity: 1; pointer-events: auto; transform: none; }
 /* Die Karte selbst ist .showcase-card (app/styles/workspace.css); hier nur,
    wie sie im Kopf steht. */
@@ -56,8 +57,9 @@
 .expertAvatar { object-fit: cover; object-position: 50% 24%; }
 .profileLink:focus-visible { border-radius: var(--radius-md); outline: 3px solid color-mix(in srgb, var(--lp-brand) 30%, transparent); outline-offset: 4px; }
 
-/* Kompaktes Eingabefeld; die Quellen-Logos fallen von oben hinein. */
-.intakeDock { position: relative; z-index: 5; width: min(100%, 560px); margin-top: 8px; }
+/* Kompaktes Eingabefeld in voller Breite; die Quellen-Logos fallen von oben
+   hinein, links neben der Profilkarte. */
+.intakeDock { position: relative; z-index: 5; grid-column: 1 / -1; min-width: 0; }
 .landingComposer { position: relative; min-height: 64px; border-radius: 22px; box-shadow: 0 12px 34px rgba(16, 27, 23, .12); }
 .landingComposer :global(.composer-field) { padding-left: 0; }
 .landingComposer :global(textarea) { min-height: 60px; padding-top: 16px; padding-bottom: 16px; font-size: var(--fs-base); }
@@ -67,10 +69,10 @@
 .sourceLogos { position: absolute; z-index: 7; inset: 0; margin: 0; padding: 0; list-style: none; pointer-events: none; }
 .sourceLogos li { position: absolute; top: -56px; left: var(--source-x); display: grid; place-items: center; width: 44px; height: 44px; overflow: hidden; border: 1px solid var(--lp-line); border-radius: 12px; background: #fff; box-shadow: 0 8px 24px rgba(16, 27, 23, .12); opacity: 0; }
 .heroScene[data-demo="true"] .sourceLogos li { animation: sourceChain 1.8s cubic-bezier(.2,.72,.22,1) both; }
-.sourceLogos li:nth-child(1) { --source-x: 8%; --target-x: 6%; animation-delay: 0s; }
-.sourceLogos li:nth-child(2) { --source-x: 30%; --target-x: 16%; animation-delay: .3s; }
-.sourceLogos li:nth-child(3) { --source-x: 52%; --target-x: 26%; animation-delay: .6s; }
-.sourceLogos li:nth-child(4) { --source-x: 74%; --target-x: 36%; animation-delay: .9s; }
+.sourceLogos li:nth-child(1) { --source-x: 4%; --target-x: 4%; animation-delay: 0s; }
+.sourceLogos li:nth-child(2) { --source-x: 14%; --target-x: 9%; animation-delay: .3s; }
+.sourceLogos li:nth-child(3) { --source-x: 24%; --target-x: 14%; animation-delay: .6s; }
+.sourceLogos li:nth-child(4) { --source-x: 34%; --target-x: 19%; animation-delay: .9s; }
 .sourceLogos img { width: 40px; height: 40px; object-fit: contain; }
 
 @keyframes sourceChain {
@@ -181,6 +183,7 @@
 @media (max-width: 960px) {
   .splitHead, .faq { grid-template-columns: minmax(0, 1fr); }
   .heroStage { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .heroMain, .profileLink, .intakeDock { grid-column: auto; grid-row: auto; }
   .profileLink { width: min(100%, 520px); justify-self: start; }
   .splitHead { gap: 20px; }
   .main .quote { grid-template-columns: minmax(0, 1fr); padding: 0; }
