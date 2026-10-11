@@ -84,8 +84,9 @@ begin
     nullif(e.item ->> 'source_url', ''),
     nullif(e.item ->> 'verified_at', '')::timestamptz,
     nullif(e.item ->> 'verified_by', '')::uuid,
-    case when e.item ? 'approved_at' then nullif(e.item ->> 'approved_at', '')::timestamptz else now() end,
-    case when e.item ? 'approved_at' then nullif(e.item ->> 'approved_by', '')::uuid else null end,
+    -- `-> 'approved_at'` ist SQL-NULL nur, wenn der Schlüssel fehlt (JSON-null zählt als vorhanden).
+    case when (e.item -> 'approved_at') is not null then nullif(e.item ->> 'approved_at', '')::timestamptz else now() end,
+    case when (e.item -> 'approved_at') is not null then nullif(e.item ->> 'approved_by', '')::uuid else null end,
     coalesce(nullif(e.item ->> 'created_at', '')::timestamptz, now())
   from jsonb_array_elements(p_projects) with ordinality as e(item, ord);
 
