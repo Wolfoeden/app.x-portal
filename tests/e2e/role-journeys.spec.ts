@@ -155,7 +155,7 @@ test.describe("geschützte Rollen-Journeys", () => {
 
   test("Marketing: Produkt, Verantwortungen, Preis und nächster Schritt sind sofort sichtbar", async ({ page }) => {
     await page.goto("/fuer-unternehmen");
-    await expect(page.getByRole("heading", { level: 1, name: /^Keine Bewerbungen\.\s*Nur noch Gespräche\.$/u })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /^Weniger Bewerbungen\.\s*Mehr relevante Gespräche\.$/u })).toBeVisible();
     await expect(page.getByRole("link", { name: "Produktablauf ansehen" }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Anmelden" }).first()).toHaveAttribute("href", "/anmelden");
     await expect(page.getByLabel("Projektbeschreibung einfügen")).toHaveValue("ai developer on chain for midnight starting november", { timeout: 8_000 });

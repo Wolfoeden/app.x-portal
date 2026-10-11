@@ -6,7 +6,7 @@ import { actionClass } from "@/components/ui/actions";
 import { countLabel, CREDIT_PRICES, roundedExampleCount } from "@/lib/ai/credit-policy";
 import { CREDIT_PLANS, TRIAL_CREDITS, TRIAL_DAYS } from "@/lib/billing/plans";
 import { BUSINESS_ONLY_NOTICE } from "@/lib/legal/policy";
-import { MARKETING_PAGE, MARKETING_PAGES, pageMetadata } from "@/lib/seo";
+import { MARKETING_PAGE, pageMetadata } from "@/lib/seo";
 import { breadcrumbStructuredData } from "@/lib/structured-data";
 import { PricingContext } from "./PricingContext";
 import styles from "./pricing.module.css";
@@ -15,7 +15,6 @@ const questions = [
   { question: "Was passiert nach den 14 Tagen?", answer: <p>Nach dem tatsächlichen Stripe-Trial-Ende beginnt automatisch Ihr gewählter Monatstarif, sofern Sie nicht rechtzeitig kündigen. Das erste Abrechnungsdatum sehen Sie nach Aktivierung in Ihrem Konto. Stripe erstellt die Rechnung und versucht die Zahlung. Ein Zahlungsversuch garantiert keine erfolgreiche Abbuchung.</p> },
   { question: "Wie kündige ich den Trial?", answer: <p>Selbstständig im <Link href="/konto">Kontobereich</Link>, ohne Supportkontakt. Bei bestätigter Kündigung vor Trial-Ende erfolgt keine erste kostenpflichtige Verlängerung. Die verbleibenden Trial-Credits bleiben bis zum bestätigten Enddatum nutzbar. Nach einer bezahlten Periode kündigen Sie zum Ende der laufenden Monatsperiode.</p> },
   { question: "Was passiert bei aufgebrauchten Trial-Credits?", answer: <p>Das einmalige Trial-Kontingent wird nicht nachgefüllt. Verbrauchte Credits lösen keine vorzeitige Abbuchung aus. Ein erneuter Checkout, Kontowechsel oder Tarifwechsel startet keinen neuen Trial. Gespeicherte Projektinformationen bleiben lesbar.</p> },
-  { question: "Was kostet eine Freelancer-Beauftragung?", answer: <p>XPORTAL berechnet für neue Vorgänge keine Vermittlungsprovision, Erfolgsgebühr oder zusätzliche Beauftragungsgebühr. Der Tarif bezahlt die Software-Nutzung. Freelancer-Honorar und Vertrag vereinbaren Sie direkt mit dem Freelancer. Historische Verträge bleiben unverändert.</p> },
   { question: "Was geschieht bei einem Zahlungsfehler?", answer: <p>Sie erhalten einen Hinweis und können Ihr Zahlungsmittel in der Abrechnung aktualisieren. Ohne bestätigte Zahlung entstehen keine neuen Monatscredits. Nach Ende Ihrer vorhandenen Berechtigung sind neue kostenpflichtige KI-Läufe gesperrt; Projekte, Rechnungen und Kontoverwaltung bleiben erreichbar.</p> },
   { question: "Was gilt für bestehende Guthaben?", answer: <p>Legitim zugesagtes Bestandsguthaben bleibt erhalten. Ein neues bestätigtes Konto erhält einmalig 9 Starter-Credits für drei Projektanalysen. Die {TRIAL_CREDITS} zusätzlichen Trial-Credits gibt es erst nach serverseitig verifizierter Kartenhinterlegung; ein neues Konto oder Tarifwechsel vergibt das Starter-Guthaben nicht erneut.</p> },
 ];
@@ -71,7 +70,7 @@ function tiers(): Tier[] {
       audience: "Für einzelne Kundenmandate.",
       ...monthly(basic),
       inherits: starter.label,
-      features: ["Freelancer provisionsfrei anfragen", "Lebenslauf, Kalender und LinkedIn freigegebener Profile", "AI-Agent-Recherche", "Team mit bis zu 10 Personen"],
+      features: ["Profile provisionsfrei anfragen", "Lebenslauf, Kalender und LinkedIn freigegebener Profile", "AI-Agent-Recherche", "Team mit bis zu 10 Personen"],
     },
     {
       id: "pro",
@@ -114,11 +113,11 @@ export default function PricingPage() {
           <p className={styles.cardNote}>{tier.note}</p>
         </article>;
       })}</div>
-      <p className={styles.checkoutNote}>Der Trial beginnt nach bestätigter E-Mail und verifiziertem Stripe-Abschluss; Karte erforderlich. {BUSINESS_ONLY_NOTICE}</p>
+      <p className={styles.checkoutNote}>Der Trial beginnt nach bestätigter E-Mail und verifiziertem Stripe-Abschluss; Karte erforderlich. Neue Kontakte und Beauftragungen kosten keine Vermittlungsprovision und keine Erfolgsgebühr; Historische Verträge bleiben unverändert. {BUSINESS_ONLY_NOTICE}</p>
     </section>
     <section className={styles.actionSection} aria-labelledby="actions-title"><div className={styles.sectionIntro}><div><p className={styles.eyebrow}>Kontingent</p><h2 id="actions-title">Was verbraucht Credits?</h2></div><p>Den Verbrauch sehen Sie vor jeder Aktion. Fehlgeschlagene KI-Läufe kosten nichts.</p></div><div className={styles.actionGrid}>{Object.values(CREDIT_PRICES).map((price) => <article key={price.label}><p>{price.label}</p><strong>{price.credits} Credits</strong></article>)}</div></section>
     <section className={styles.faq}><div><p className={styles.eyebrow}>Abrechnung und Zugang</p><h2>Vor dem Start klar.</h2></div><Questions items={questions} /></section>
     <section className={styles.finalCta}><div><h2>Am nächsten Mandat ausprobieren.</h2><p>Drei Analysen kostenlos, danach {TRIAL_DAYS} Tage testen.</p></div><a href="#tarife" className={actionClass("primary")}>Tarif wählen</a></section>
-    <nav aria-label="Weiterlesen"><Link href="/datenwege">Datenwege ansehen</Link>{MARKETING_PAGES.filter(page => page.path !== MARKETING_PAGE.pricing.path).map(page => <Link key={page.path} href={page.path}>{page.label}</Link>)}</nav>
+    <nav aria-label="Weiterlesen"><Link href="/datenwege">Datenwege ansehen</Link></nav>
   </main>;
 }

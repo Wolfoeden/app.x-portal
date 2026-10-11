@@ -19,7 +19,7 @@ import { MARKETING_CATEGORIES } from "@/lib/marketing-categories";
 import { MARKETING_PAGE, MARKETING_PAGES, absoluteUrl, pageMetadata } from "@/lib/seo";
 
 const routes = [
-  { Component: FindPage, page: MARKETING_PAGE.find, metadata: findMetadata, required: ["Keine Bewerbungen", "Nur noch Gespräche", "Projektbeschreibung", "Roman D.", "210", "Profile live", "Familienunternehmen", "3 Wochen"] },
+  { Component: FindPage, page: MARKETING_PAGE.find, metadata: findMetadata, required: ["Weniger Bewerbungen", "Mehr relevante Gespräche", "Projektbeschreibung", "Roman D.", "210", "Profile live", "Familienunternehmen", "3 Wochen"] },
   { Component: ItPage, page: MARKETING_PAGE.it, metadata: itMetadata, required: ["IT-Freelancer", "React", "SAP", "Verfügbarkeit"] },
   { Component: MatchingPage, page: MARKETING_PAGE.matching, metadata: matchingMetadata, required: ["regelbasiert", "KI-gestütztes", "Nicht belegt"] },
   { Component: HowPage, page: MARKETING_PAGE.how, metadata: howMetadata, required: ["Requirement Extraction", "Credits", "Informationslücken"] },
@@ -44,7 +44,9 @@ describe("marketing pages rendered on the server", () => {
       expect(main).toMatch(/href="(?:\/chat(?:\?checkout=[a-z]+)?|\/preise#tarife|#tarife)"/u);
       expect(metadata).toEqual(pageMetadata(page));
       expect(metadata.alternates?.canonical).toBe(absoluteUrl(page.path));
-      for (const related of MARKETING_PAGES.filter((item) => item.path !== page.path)) {
+      // Oktober 2026: Die Preisseite nennt keine Freelancer-Ratgeber mehr;
+      // sie verweist nur auf die Datenwege.
+      for (const related of MARKETING_PAGES.filter((item) => item.path !== page.path && page.path !== MARKETING_PAGE.pricing.path)) {
         expect(main).toContain('href="' + related.path + '"');
       }
       const ids = [...html.matchAll(/\sid="([^"]+)"/gu)].map((match) => match[1]);

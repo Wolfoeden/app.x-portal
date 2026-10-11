@@ -37,53 +37,47 @@
 .textLink:focus-visible { outline: 2px solid var(--lp-brand); outline-offset: 3px; }
 
 
-/* Kopf der Seite */
+/* Kopf der Seite: links Titel, Produktablauf und Eingabefeld untereinander,
+   rechts die Profilkarte. Nichts liegt übereinander. */
 .hero { overflow-x: clip; }
-.hero .frame { padding-top: 72px; padding-bottom: 46px; }
-.heroScene { position: relative; overflow: visible; }
-.heroStage { position: relative; display: grid; grid-template-columns: minmax(0, .92fr) minmax(370px, 1.08fr); grid-template-rows: minmax(0, 1fr) auto; min-height: 550px; align-items: stretch; gap: 18px 72px; }
-.heroTitleBlock, .heroSupport { position: relative; z-index: 2; min-width: 0; transition: transform .65s cubic-bezier(.2,.8,.2,1); }
-.heroTitleBlock { grid-column: 1; grid-row: 1; align-self: start; padding-top: 52px; }
-.heroSupport { box-sizing: border-box; grid-column: 1; grid-row: 2; width: min(100%, 320px); justify-self: start; align-self: end; padding-bottom: 24px; }
-.heroScene[data-revealed="true"] .heroTitleBlock { transform: translateX(-4px); }
-.heroScene[data-revealed="true"] .heroSupport { transform: translateX(4px); }
-.hero h1 { font-size: var(--xp-h1-size); line-height: 1.08; letter-spacing: var(--xp-h1-tracking); }
+.hero .frame { padding-top: 64px; padding-bottom: 56px; }
+.heroScene { position: relative; }
+.heroStage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 420px); align-items: center; gap: 32px 64px; }
+.heroMain { display: grid; gap: 22px; min-width: 0; }
+.hero h1 { font-size: clamp(40px, 4.4vw, 58px); line-height: 1.08; letter-spacing: var(--xp-h1-tracking); overflow-wrap: normal; }
 .hero h1 span { color: var(--lp-brand); }
-.heroTitleBlock h1 { font-size: clamp(44px, 4.6vw, 62px); overflow-wrap: normal; }
-.lead { max-width: 520px; margin: 0; color: var(--lp-muted); font-size: 16px; line-height: 1.62; }
-.heroSupport .actions { align-items: stretch; flex-direction: column; margin-top: 0; }
-.heroSupport .actions > a { justify-content: center; width: 100%; }
+.heroActions { display: flex; flex-wrap: wrap; gap: 12px; }
 
-
-.profileLink { z-index: 3; display: flex; grid-row: 1 / 3; grid-column: 2; width: min(100%, 440px); justify-self: end; align-self: center; color: inherit; text-decoration: none; opacity: 0; pointer-events: none; transform: translateY(30px) scale(.94); transition: opacity .6s ease, transform .7s cubic-bezier(.18,.82,.2,1); }
-.heroScene[data-revealed="true"] .profileLink { opacity: 1; pointer-events: auto; transform: translateY(0) scale(1); }
+.profileLink { z-index: 3; display: flex; width: 100%; justify-self: end; color: inherit; text-decoration: none; opacity: 0; pointer-events: none; transform: translateY(24px) scale(.96); transition: opacity .6s ease, transform .7s cubic-bezier(.18,.82,.2,1); }
+.heroScene[data-revealed="true"] .profileLink { opacity: 1; pointer-events: auto; transform: none; }
 /* Die Karte selbst ist .showcase-card (app/styles/workspace.css); hier nur,
    wie sie im Kopf steht. */
 .expertCard { width: 100%; height: auto; padding-bottom: 18px; }
 .expertAvatar { object-fit: cover; object-position: 50% 24%; }
 .profileLink:focus-visible { border-radius: var(--radius-md); outline: 3px solid color-mix(in srgb, var(--lp-brand) 30%, transparent); outline-offset: 4px; }
 
-.intakeDock { position: relative; z-index: 5; width: min(100%, 820px); margin: 30px auto 0; padding-top: 42px; }
-.landingComposer { position: relative; min-height: 92px; border-radius: 30px; box-shadow: 0 18px 50px rgba(16, 27, 23, .14); }
+/* Kompaktes Eingabefeld; die Quellen-Logos fallen von oben hinein. */
+.intakeDock { position: relative; z-index: 5; width: min(100%, 560px); margin-top: 8px; }
+.landingComposer { position: relative; min-height: 64px; border-radius: 22px; box-shadow: 0 12px 34px rgba(16, 27, 23, .12); }
 .landingComposer :global(.composer-field) { padding-left: 0; }
-.landingComposer :global(textarea) { min-height: 90px; padding-top: 20px; padding-bottom: 20px; font-size: var(--fs-md); }
-.landingComposer :global(.composer-placeholder) { top: 20px; left: 20px; font-size: var(--fs-md); }
-.landingComposer :global(.composer-bottom) { padding-bottom: 10px; }
+.landingComposer :global(textarea) { min-height: 60px; padding-top: 16px; padding-bottom: 16px; font-size: var(--fs-base); }
+.landingComposer :global(.composer-placeholder) { top: 16px; left: 18px; font-size: var(--fs-base); }
+.landingComposer :global(.composer-bottom) { padding-bottom: 8px; }
 
-.sourceLogos { position: absolute; z-index: 7; inset: 0; height: 100%; margin: 0; padding: 0; list-style: none; pointer-events: none; }
-.sourceLogos li { position: absolute; top: -78px; left: var(--source-x); display: grid; place-items: center; width: 58px; height: 58px; overflow: hidden; border: 1px solid var(--lp-line); border-radius: 14px; background: #fff; box-shadow: 0 8px 24px rgba(16, 27, 23, .12); opacity: 0; }
-.heroScene[data-demo="true"] .sourceLogos li { animation: sourceChain 2.15s cubic-bezier(.2,.72,.22,1) both; }
-.sourceLogos li:nth-child(1) { --source-x: 10%; --target-x: 13%; animation-delay: 0s; }
-.sourceLogos li:nth-child(2) { --source-x: 34%; --target-x: 21%; animation-delay: .34s; }
-.sourceLogos li:nth-child(3) { --source-x: 58%; --target-x: 29%; animation-delay: .68s; }
-.sourceLogos li:nth-child(4) { --source-x: 82%; --target-x: 37%; animation-delay: 1.02s; }
-.sourceLogos img { width: 52px; height: 52px; object-fit: contain; }
+.sourceLogos { position: absolute; z-index: 7; inset: 0; margin: 0; padding: 0; list-style: none; pointer-events: none; }
+.sourceLogos li { position: absolute; top: -56px; left: var(--source-x); display: grid; place-items: center; width: 44px; height: 44px; overflow: hidden; border: 1px solid var(--lp-line); border-radius: 12px; background: #fff; box-shadow: 0 8px 24px rgba(16, 27, 23, .12); opacity: 0; }
+.heroScene[data-demo="true"] .sourceLogos li { animation: sourceChain 1.8s cubic-bezier(.2,.72,.22,1) both; }
+.sourceLogos li:nth-child(1) { --source-x: 8%; --target-x: 6%; animation-delay: 0s; }
+.sourceLogos li:nth-child(2) { --source-x: 30%; --target-x: 16%; animation-delay: .3s; }
+.sourceLogos li:nth-child(3) { --source-x: 52%; --target-x: 26%; animation-delay: .6s; }
+.sourceLogos li:nth-child(4) { --source-x: 74%; --target-x: 36%; animation-delay: .9s; }
+.sourceLogos img { width: 40px; height: 40px; object-fit: contain; }
 
 @keyframes sourceChain {
-  0% { top: -78px; left: var(--source-x); opacity: 0; transform: rotate(-4deg) scale(.88); }
-  12% { opacity: 1; }
-  72% { top: calc(100% - 168px); left: var(--target-x); opacity: 1; transform: rotate(0) scale(.8); }
-  100% { top: calc(100% - 126px); left: var(--target-x); opacity: 0; transform: scale(.5); }
+  0% { top: -56px; left: var(--source-x); opacity: 0; transform: rotate(-4deg) scale(.88); }
+  20% { opacity: 1; }
+  72% { top: 10px; left: var(--target-x); opacity: 1; transform: rotate(0) scale(.8); }
+  100% { top: 14px; left: var(--target-x); opacity: 0; transform: scale(.5); }
 }
 
 .heroScene[data-demo-submitted="true"] .landingComposer :global(.send-button.is-project-match) { animation: demoSend .55s ease both; }
@@ -179,20 +173,15 @@
 
 @media (max-width: 1080px) {
   .frame { padding: 80px 48px; }
-  .heroStage { grid-template-columns: minmax(0, .86fr) minmax(350px, 1.14fr); gap: 18px 42px; }
-  .heroTitleBlock h1 { font-size: clamp(40px, 4.7vw, 50px); }
+  .heroStage { grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); gap: 28px 40px; }
   .main .quote { padding-left: 48px; }
   .processLayout { grid-template-columns: minmax(200px, 4fr) minmax(0, 8fr); gap: 24px; }
 }
 
 @media (max-width: 960px) {
   .splitHead, .faq { grid-template-columns: minmax(0, 1fr); }
-  .heroStage { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; min-height: 0; gap: 26px; }
-  .heroTitleBlock { grid-column: 1; grid-row: 1; padding-top: 0; }
-  .heroSupport { grid-column: 1; grid-row: 2; width: min(100%, 320px); justify-self: start; align-self: auto; padding-bottom: 0; }
-  .profileLink { grid-column: 1; grid-row: 3; width: min(100%, 520px); justify-self: center; align-self: auto; }
-  .heroScene[data-revealed="true"] .heroTitleBlock, .heroScene[data-revealed="true"] .heroSupport { transform: none; }
-  .intakeDock { margin-top: 44px; }
+  .heroStage { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .profileLink { width: min(100%, 520px); justify-self: start; }
   .splitHead { gap: 20px; }
   .main .quote { grid-template-columns: minmax(0, 1fr); padding: 0; }
   .quoteText { padding: 64px 48px; }
@@ -206,20 +195,12 @@
   .frame { padding: 56px 20px; border-inline: 0; }
   .hero .frame { padding-top: 44px; padding-bottom: 36px; }
   .actions > a { flex: 1 1 auto; }
-  .heroStage { grid-template-columns: minmax(0, 1fr); }
-  .heroTitleBlock, .heroSupport, .profileLink { grid-column: 1; }
-  .heroTitleBlock { grid-row: 1; }
-  .heroSupport { grid-row: 2; }
-  .profileLink { grid-row: 3; }
-  .heroTitleBlock h1 { font-size: clamp(38px, 12vw, 56px); }
-  .intakeDock { padding-top: 34px; }
-  .sourceLogos { inset-inline: 4px; }
-  .sourceLogos li { width: 48px; height: 48px; }
-  .sourceLogos li:nth-child(1) { --target-x: 7%; }
-  .sourceLogos li:nth-child(2) { --target-x: 23%; }
-  .sourceLogos li:nth-child(3) { --target-x: 39%; }
-  .sourceLogos li:nth-child(4) { --target-x: 55%; }
-  .sourceLogos img { width: 44px; height: 44px; }
+  .hero h1 { font-size: clamp(36px, 10.5vw, 52px); }
+  .heroActions > a { flex: 1 1 auto; }
+  .sourceLogos li:nth-child(1) { --target-x: 6%; }
+  .sourceLogos li:nth-child(2) { --target-x: 22%; }
+  .sourceLogos li:nth-child(3) { --target-x: 38%; }
+  .sourceLogos li:nth-child(4) { --target-x: 54%; }
   .landingComposer :global(.send-button.is-project-match) { width: var(--control-md); min-width: var(--control-md); padding: 0; }
   .landingComposer :global(.send-button.is-project-match span) { display: none; }
   .quoteText { padding: 56px 20px; }

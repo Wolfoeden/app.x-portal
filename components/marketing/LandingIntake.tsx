@@ -96,20 +96,41 @@ export function LandingIntake({ contactPhotoUrl = null }: { contactPhotoUrl?: st
         data-demo={userEditing ? "false" : "true"}
         data-demo-submitted={demoSubmitted ? "true" : "false"}
       >
-        <ul className={styles.sourceLogos} aria-label="Mögliche Quellen einer Projektbeschreibung">
-          <li><Image src="/images/landing/source-freelancermap.png" alt="freelancermap" width={44} height={42} /></li>
-          <li><Image src="/images/landing/source-linkedin.png" alt="LinkedIn" width={42} height={42} /></li>
-          <li><Image src="/images/landing/source-arbeitsagentur.png" alt="Bundesagentur für Arbeit" width={42} height={42} /></li>
-          <li><Image src="/images/landing/source-upwork.png" alt="Upwork" width={42} height={42} /></li>
-        </ul>
         <div className={styles.heroStage}>
-          <div className={styles.heroTitleBlock}>
-            <h1>Keine Bewerbungen.<br /><span>Nur noch Gespräche.</span></h1>
-          </div>
-
-          <div className={styles.heroSupport}>
-            <div className={styles.actions}>
+          {/* Titel, darunter der Produktablauf und gleich das Eingabefeld:
+              Wer die Botschaft liest, kann sofort loslegen. */}
+          <div className={styles.heroMain}>
+            <h1>Weniger Bewerbungen.<br /><span>Mehr relevante Gespräche.</span></h1>
+            <div className={styles.heroActions}>
               <RecruitingLink href="#produktablauf" event="demo_viewed" className={actionClass("secondary")}>Produktablauf ansehen</RecruitingLink>
+            </div>
+            <div className={styles.intakeDock} aria-label="Projektbeschreibung in den Chat übernehmen">
+              <ul className={styles.sourceLogos} aria-label="Mögliche Quellen einer Projektbeschreibung">
+                <li><Image src="/images/landing/source-freelancermap.png" alt="freelancermap" width={44} height={42} /></li>
+                <li><Image src="/images/landing/source-linkedin.png" alt="LinkedIn" width={42} height={42} /></li>
+                <li><Image src="/images/landing/source-arbeitsagentur.png" alt="Bundesagentur für Arbeit" width={42} height={42} /></li>
+                <li><Image src="/images/landing/source-upwork.png" alt="Upwork" width={42} height={42} /></li>
+              </ul>
+              <form className={`composer ${styles.landingComposer}`} action="/chat" method="get" onSubmit={submit}>
+                <label className="sr-only" htmlFor="landing-project-brief">Projektbeschreibung einfügen</label>
+                <div className="composer-field">
+                  <textarea
+                    id="landing-project-brief"
+                    value={visibleDraft}
+                    onChange={(event) => setDraft(event.target.value)}
+                    onFocus={beginEditing}
+                    onKeyDown={handleKeyDown}
+                    rows={1}
+                    maxLength={12_000}
+                  />
+                  {visibleDraft ? null : <span className="composer-placeholder" aria-hidden="true">Projektbeschreibung einfügen …</span>}
+                </div>
+                <div className="composer-bottom">
+                  <button className="send-button is-project-match" type="submit" disabled={!visibleDraft.trim()} aria-label="Projektbeschreibung im Chat abgleichen">
+                    <span>Projekt abgleichen</span><IconArrowUp size={17} />
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
 
@@ -149,28 +170,6 @@ export function LandingIntake({ contactPhotoUrl = null }: { contactPhotoUrl?: st
           </Link>
         </div>
 
-        <div className={styles.intakeDock} aria-label="Projektbeschreibung in den Chat übernehmen">
-          <form className={`composer ${styles.landingComposer}`} action="/chat" method="get" onSubmit={submit}>
-            <label className="sr-only" htmlFor="landing-project-brief">Projektbeschreibung einfügen</label>
-            <div className="composer-field">
-              <textarea
-                id="landing-project-brief"
-                value={visibleDraft}
-                onChange={(event) => setDraft(event.target.value)}
-                onFocus={beginEditing}
-                onKeyDown={handleKeyDown}
-                rows={1}
-                maxLength={12_000}
-              />
-              {visibleDraft ? null : <span className="composer-placeholder" aria-hidden="true">Projektbeschreibung einfügen …</span>}
-            </div>
-            <div className="composer-bottom">
-              <button className="send-button is-project-match" type="submit" disabled={!visibleDraft.trim()} aria-label="Projektbeschreibung im Chat abgleichen">
-                <span>Projekt abgleichen</span><IconArrowUp size={17} />
-              </button>
-            </div>
-          </form>
-        </div>
       </div>
     </header>
   );

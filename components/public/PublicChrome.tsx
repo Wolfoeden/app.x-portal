@@ -14,7 +14,7 @@ import styles from "./public-chrome.module.css";
  * Arbeitsfläche), Compliance Check und KI-Webinar. Im Kopf ein Menü, im
  * Telefon-Menü dieselben drei Einträge als Gruppe.
  */
-function NavigationLinks({ audience, variant }: { audience: "business" | "freelancer"; variant: "bar" | "menu" }) {
+function NavigationLinks({ variant }: { variant: "bar" | "menu" }) {
   return (
     <>
       {variant === "bar" ? <CompanyMenu /> : (
@@ -23,7 +23,7 @@ function NavigationLinks({ audience, variant }: { audience: "business" | "freela
           {COMPANY_LINKS.map((link) => <Link key={link.label} href={link.href} prefetch={false}>{link.label}</Link>)}
         </div>
       )}
-      <Link href={MARKETING_PAGE.pricing.path}>{audience === "freelancer" ? "Preise für Unternehmen" : "Preise"}</Link>
+      <Link href={MARKETING_PAGE.pricing.path}>Preise</Link>
       <Link href="/bewerber-portal/apply">Bewerber-Portal</Link>
     </>
   );
@@ -36,10 +36,9 @@ function NavigationLinks({ audience, variant }: { audience: "business" | "freela
  * beim Scrollen stehen; auf dem Telefon öffnet „Menü“ die Navigation — ein
  * `<details>`, damit es ohne JavaScript geht.
  */
-export function PublicHeader({ context, authenticated = false, audience = "business" }: {
+export function PublicHeader({ context, authenticated = false }: {
   context?: string;
   authenticated?: boolean;
-  audience?: "business" | "freelancer";
 }) {
   return (
     <header className={styles.header} data-public-surface>
@@ -49,7 +48,7 @@ export function PublicHeader({ context, authenticated = false, audience = "busin
         </Link>
         {context ? <span className={styles.context}>{context}</span> : null}
         <nav className={styles.navigation} aria-label="Hauptnavigation">
-          <NavigationLinks audience={audience} variant="bar" />
+          <NavigationLinks variant="bar" />
         </nav>
         <div className={styles.headerActions}>
           {authenticated ? <PublicAppAction className={styles.primaryAction} /> : (
@@ -62,7 +61,7 @@ export function PublicHeader({ context, authenticated = false, audience = "busin
             <span className="sr-only">Menü</span>
           </summary>
           <nav aria-label="Navigation">
-            <NavigationLinks audience={audience} variant="menu" />
+            <NavigationLinks variant="menu" />
             {authenticated ? <PublicAppAction className={styles.menuAction} /> : (
               <Link href="/anmelden" prefetch={false} className={styles.menuAction}>Anmelden</Link>
             )}
