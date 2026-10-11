@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 
 import { AuthDialog } from "@/components/chat/dialogs";
 import type { AuthDialogMode } from "@/components/chat/shared";
@@ -41,7 +42,9 @@ export function GateActions({ variant }: { variant: "header" | "hero" | "closing
       {notice && variant !== "header" ? (
         <p className={notice.tone === "error" ? styles.noticeError : styles.notice} role="status">{notice.message}</p>
       ) : null}
-      {dialogMode ? (
+      {/* Ins Seitenende gehängt: Im Seitenkopf würde dessen Unschärfe-Effekt
+          (backdrop-filter) das feste Fenster auf die Kopfhöhe beschneiden. */}
+      {dialogMode ? createPortal(
         <AuthDialog
           initialMode={dialogMode}
           audience="freelancer"
@@ -50,7 +53,8 @@ export function GateActions({ variant }: { variant: "header" | "hero" | "closing
           onClose={() => setDialogMode(null)}
           onAuthenticated={() => window.location.reload()}
           showToast={(message, tone) => setNotice({ message, tone: tone === "error" ? "error" : "success" })}
-        />
+        />,
+        document.body,
       ) : null}
     </>
   );
