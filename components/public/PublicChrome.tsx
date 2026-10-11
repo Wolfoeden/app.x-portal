@@ -4,15 +4,27 @@ import type { ReactNode } from "react";
 import { LegalFooter } from "@/components/LegalFooter";
 import { MARKETING_PAGE } from "@/lib/seo";
 
+import { CompanyMenu } from "./CompanyMenu";
+import { COMPANY_LINKS } from "./company-links";
 import { PublicAppAction } from "./PublicAppAction";
 import styles from "./public-chrome.module.css";
 
-function NavigationLinks({ audience }: { audience: "business" | "freelancer" }) {
+/**
+ * „Für Unternehmen“ zeigt, was XPORTAL Firmen anbietet: Talent Index (die
+ * Arbeitsfläche), Compliance Check und KI-Webinar. Im Kopf ein Menü, im
+ * Telefon-Menü dieselben drei Einträge als Gruppe.
+ */
+function NavigationLinks({ variant }: { variant: "bar" | "menu" }) {
   return (
     <>
-      <Link href={MARKETING_PAGE.find.path}>{audience === "freelancer" ? "Für Unternehmen" : "Freelancer Index"}</Link>
-      <Link href={MARKETING_PAGE.pricing.path}>{audience === "freelancer" ? "Preise für Unternehmen" : "Preise"}</Link>
-      <Link href="/freelancer/apply">Freelancer-Portal</Link>
+      {variant === "bar" ? <CompanyMenu /> : (
+        <div className={styles.menuGroup} role="group" aria-labelledby="menu-company">
+          <span id="menu-company">Für Unternehmen</span>
+          {COMPANY_LINKS.map((link) => <Link key={link.label} href={link.href} prefetch={false}>{link.label}</Link>)}
+        </div>
+      )}
+      <Link href={MARKETING_PAGE.pricing.path}>Preise</Link>
+      <Link href="/bewerber-portal/apply">Bewerber-Portal</Link>
     </>
   );
 }
@@ -24,20 +36,19 @@ function NavigationLinks({ audience }: { audience: "business" | "freelancer" }) 
  * beim Scrollen stehen; auf dem Telefon öffnet „Menü“ die Navigation — ein
  * `<details>`, damit es ohne JavaScript geht.
  */
-export function PublicHeader({ context, authenticated = false, audience = "business" }: {
+export function PublicHeader({ context, authenticated = false }: {
   context?: string;
   authenticated?: boolean;
-  audience?: "business" | "freelancer";
 }) {
   return (
     <header className={styles.header} data-public-surface>
       <div className={styles.headerInner}>
-        <Link href={MARKETING_PAGE.find.path} className={styles.brand} aria-label="XPORTAL – Freelancer Index">
+        <Link href={MARKETING_PAGE.find.path} className={styles.brand} aria-label="XPORTAL – Für Unternehmen">
           <span>XPORTAL</span>
         </Link>
         {context ? <span className={styles.context}>{context}</span> : null}
         <nav className={styles.navigation} aria-label="Hauptnavigation">
-          <NavigationLinks audience={audience} />
+          <NavigationLinks variant="bar" />
         </nav>
         <div className={styles.headerActions}>
           {authenticated ? <PublicAppAction className={styles.primaryAction} /> : (
@@ -50,7 +61,7 @@ export function PublicHeader({ context, authenticated = false, audience = "busin
             <span className="sr-only">Menü</span>
           </summary>
           <nav aria-label="Navigation">
-            <NavigationLinks audience={audience} />
+            <NavigationLinks variant="menu" />
             {authenticated ? <PublicAppAction className={styles.menuAction} /> : (
               <Link href="/anmelden" prefetch={false} className={styles.menuAction}>Anmelden</Link>
             )}
@@ -73,7 +84,7 @@ export function PublicFooter() {
           Anforderung, Profilbeleg und offene Frage bleiben getrennt sichtbar.
           Sie entscheiden selbst.
         </p>
-        <Link href="/freelancer/apply">Als Freelancer bewerben ↗</Link>
+        <Link href="/bewerber-portal/apply">Bewerber-Portal ↗</Link>
       </div>
       <LegalFooter />
     </footer>

@@ -182,7 +182,9 @@ function MandateCard({
  * Seiten; das ist der Nachweis, auf dem ein späteres Honorar beruht.
  */
 export default async function PlacementRequestsPage() {
-  if (!placementRequestsEnabled()) notFound();
+  // Suchaufträge laufen auch ohne Vermittlungsmodell (provisionsfrei); die
+  // Seite bleibt deshalb immer erreichbar.
+  const placement = placementRequestsEnabled();
   const currentUser = await getCurrentUser();
   if (!currentUser || currentUser.isAnonymous) {
     redirect(`${appPath("/chat")}?admin-login=1`);
@@ -210,18 +212,18 @@ export default async function PlacementRequestsPage() {
   const due = rows.filter((row) => row.followUpDue).length;
 
   return (
-    <AdminSurface label="Administration · Vermittlungen">
+    <AdminSurface label="Administration · Suchaufträge">
       <AdminPageHeader
-        eyebrow="Admin / Vermittlungen"
-        title="Vermittlungen"
+        eyebrow="Admin / Suchaufträge"
+        title="Suchaufträge und Anfragen"
         description={
           <p>
-            Anfragen, denen der Kunde mit den Vermittlungsbedingungen ({PLACEMENT_TERMS.version})
-            zugestimmt hat. „Vorstellen“ schickt beiden Seiten eine Mail und gibt den Kalender frei.
+            Suchaufträge „XPORTAL sucht für Sie“: Der Kunde wartet auf eine Rückmeldung innerhalb von 48 Stunden.
+            Darunter ältere Anfragen aus dem Vermittlungsmodell ({PLACEMENT_TERMS.version}).
           </p>
         }
       />
-      {PLACEMENT_TERMS.status !== "approved" ? (
+      {placement && PLACEMENT_TERMS.status !== "approved" ? (
         <p className={styles.draft}>
           Die Vermittlungsbedingungen sind ein Entwurf. Vor dem Einschalten für Kunden rechtlich prüfen lassen.
         </p>
@@ -231,7 +233,7 @@ export default async function PlacementRequestsPage() {
 
       <AdminSectionHeader
         title={`Suchaufträge offen (${openMandates.length})`}
-        description="„XPORTAL sucht für Sie“: Der Kunde hat den Vermittlungsbedingungen zugestimmt. Freelancer zuordnen, dann unten wie jede Anfrage vorstellen."
+        description="Neue Aufträge sind provisionsfrei; der Kunde hat der Kontaktaufnahme zu diesem Auftrag zugestimmt. Antwort mit dem Mail-Entwurf, passende Profile zuordnen."
       />
       {!mandateResult.ok ? (
         <p className={styles.empty}>Suchaufträge sind noch nicht lesbar. Ist die Migration 20261003090000_suchauftraege eingespielt?</p>

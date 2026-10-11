@@ -90,18 +90,22 @@ describe("creating a mandate", () => {
     const result = await createMandate({ userId: USER, isGuest: true, projectId: PROJECT, contact, note: "Start im November", siteUrl: "https://x-portal.eu" });
 
     expect(result.created).toBe(true);
-    expect(mocks.order.slice(0, 2)).toEqual(["audit:placement_terms_accepted", "insert:search_mandates"]);
+    expect(mocks.order.slice(0, 2)).toEqual(["audit:search_mandate_consent", "insert:search_mandates"]);
     expect(mocks.audit).toHaveBeenCalledWith(
       expect.objectContaining({
-        action: "placement_terms_accepted",
+        action: "search_mandate_consent",
         targetType: "search_mandate",
         required: true,
-        metadata: expect.objectContaining({ mandate: true, guest: true, version: expect.any(String) }),
+        metadata: expect.objectContaining({ guest: true, version: "suchauftrag-2026-10-1" }),
       }),
     );
     const inserted = mocks.inserts.find((entry) => entry.table === "search_mandates")?.row as Record<string, unknown>;
-    expect(inserted).toMatchObject({ project_id: PROJECT, owner_user_id: USER, contact_email: "kunde@firma.invalid", note: "Start im November" });
+    expect(inserted).toMatchObject({
+      project_id: PROJECT, owner_user_id: USER, contact_email: "kunde@firma.invalid", note: "Start im November",
+      terms_version: "suchauftrag-2026-10-1",
+    });
     expect(mocks.deliver).toHaveBeenCalledWith(expect.objectContaining({ kind: "transactional", subject: "Suchauftrag: AI Agent für den Kundenservice" }));
+    expect(mocks.deliver.mock.calls[0][0].text).toContain("provisionsfrei");
   });
 
   it("returns the open mandate instead of a second one", async () => {

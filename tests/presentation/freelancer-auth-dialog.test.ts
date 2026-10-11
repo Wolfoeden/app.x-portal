@@ -12,7 +12,7 @@ function dialog(initialMode: "register" | "login" | "link" | "recover", audience
     createElement(AuthDialog, {
       initialMode,
       audience,
-      destination: "/freelancer/apply",
+      destination: "/bewerber-portal/apply",
       onClose: noop,
       onAuthenticated: noop,
       showToast: noop,
@@ -20,7 +20,7 @@ function dialog(initialMode: "register" | "login" | "link" | "recover", audience
   );
 }
 
-// UX-Review Oktober 2026: Wer sich auf /freelancer/apply registriert, sah den
+// UX-Review Oktober 2026: Wer sich auf /bewerber-portal/apply registriert, sah den
 // Dialog der Auftraggeber — mit „Ihre Anfrage bleibt erhalten“ und einem
 // Newsletter über passende Freelancer.
 describe("sign-up dialog for freelancers", () => {
@@ -53,11 +53,14 @@ describe("sign-up dialog for freelancers", () => {
     }
   });
 
-  it("leaves the client dialog as it was", () => {
+  it("keeps the client dialog for a plain sign-in neutral", () => {
     const login = dialog("login");
-    expect(login).toContain("Anmelden und direkt fortfahren");
+    expect(login).toContain(">Anmelden</h2>");
     const register = dialog("register", "client");
-    expect(register).toContain("Ihre Anfrage bleibt erhalten");
+    expect(register).toContain("Konto erstellen");
+    expect(register).toContain("Projekte, Merkliste und Gespräche");
+    // Ob es schon eine Anfrage gibt, weiß der Dialog ohne Anlass nicht.
+    expect(register).not.toContain("Ihre Anfrage bleibt erhalten");
     expect(register).toContain("Newsletter:");
     expect(register).toContain(BUSINESS_ONLY_NOTICE);
   });
@@ -76,7 +79,7 @@ describe("Google, LinkedIn and GitHub sign-in", () => {
       createElement(Dialog, {
         initialMode: "register",
         audience,
-        destination: "/freelancer/apply",
+        destination: "/bewerber-portal/apply",
         onClose: noop,
         onAuthenticated: noop,
         showToast: noop,

@@ -140,7 +140,7 @@ describe("browser authentication journeys", () => {
     vi.stubGlobal("window", {
       location: {
         origin: "https://x-portal.eu",
-        pathname: "/freelancer/apply",
+        pathname: "/bewerber-portal/apply",
         search: "",
       },
     });
@@ -151,7 +151,7 @@ describe("browser authentication journeys", () => {
       provider: "google",
       options: {
         redirectTo:
-          "https://x-portal.eu/auth/callback?next=%2Ffreelancer%2Fapply",
+          "https://x-portal.eu/auth/callback?next=%2Fbewerber-portal%2Fapply",
       },
     });
   });
@@ -217,7 +217,7 @@ describe("browser authentication journeys", () => {
     vi.stubGlobal("window", {
       location: {
         origin: "https://x-portal.eu",
-        pathname: "/freelancer/apply",
+        pathname: "/bewerber-portal/apply",
         search: "",
       },
     });
@@ -231,7 +231,7 @@ describe("browser authentication journeys", () => {
       expect.objectContaining({
         options: expect.objectContaining({
           emailRedirectTo:
-            "https://x-portal.eu/auth/complete?next=%2Ffreelancer%2Fapply&state=email-state",
+            "https://x-portal.eu/auth/complete?next=%2Fbewerber-portal%2Fapply&state=email-state",
         }),
       }),
     );

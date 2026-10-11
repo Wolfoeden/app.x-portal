@@ -62,10 +62,20 @@ const SALES_CALL_ENTRY_LABELS: Readonly<Record<string, string>> = {
   direct: "direkt",
 };
 
+/**
+ * Abgeschlossene Projektanalysen stehen im Betriebsprotokoll, unabhängig von
+ * der Cookie-Einwilligung. Seit die Browser-Stufen (Suche, Registrierung) eine
+ * Einwilligung brauchen, ist das die verlässliche Zahl für „wer hat XPORTAL
+ * wirklich benutzt“.
+ */
+const ANALYSIS_ACTION = "project_chat_processed";
+
 export const REVENUE_FUNNEL_ACTIONS = [
   ...SALES_CALL_STEPS.map((step) => step.key),
+  ANALYSIS_ACTION,
   ...CLIENT_STEPS.map((step) => `signup_funnel_${step.key}`),
   BILLING_FUNNEL_ACTIONS.checkoutStarted,
+  BILLING_FUNNEL_ACTIONS.trialStarted,
   BILLING_FUNNEL_ACTIONS.subscriptionPaid,
   ...PLACEMENT_STEPS.map((step) => step.action),
 ] as const;
@@ -129,6 +139,7 @@ export function buildRevenueFunnel(
   const pricingReasons = new Map<string, Set<string>>();
   const checkoutLoginRequired = new Set<string>();
   const renewals = new Set<string>();
+  const voucherTrials = new Set<string>();
   const paidPlans = new Map<string, number>();
   const agreedFees = new Map<string, number>();
   const paidFees = new Map<string, number>();
@@ -183,6 +194,17 @@ export function buildRevenueFunnel(
         set.add(person);
         pricingReasons.set(reason, set);
       }
+      continue;
+    }
+
+    if (row.action === ANALYSIS_ACTION) {
+      add("analysis_completed", person);
+      continue;
+    }
+
+    if (row.action === BILLING_FUNNEL_ACTIONS.trialStarted) {
+      add("trial_started", person);
+      if (row.metadata?.via === "voucher") voucherTrials.add(person);
       continue;
     }
 
@@ -256,6 +278,12 @@ export function buildRevenueFunnel(
 
   const steps: RevenueFunnelStep[] = [
     ...salesCallSteps,
+    {
+      key: "analysis_completed",
+      label: "Projekt analysiert",
+      people: count("analysis_completed"),
+      detail: null,
+    },
     ...clientSteps.slice(0, afterSignup),
     ...placementSteps,
     ...clientSteps.slice(afterSignup),
@@ -265,6 +293,14 @@ export function buildRevenueFunnel(
       people: count("checkout_started"),
       detail: checkoutLoginRequired.size
         ? `${numberFormat.format(checkoutLoginRequired.size)} mussten sich dafür erst anmelden`
+        : null,
+    },
+    {
+      key: "trial_started",
+      label: "Trial gestartet",
+      people: count("trial_started"),
+      detail: voucherTrials.size
+        ? `${numberFormat.format(voucherTrials.size)} per Gutschein`
         : null,
     },
     {

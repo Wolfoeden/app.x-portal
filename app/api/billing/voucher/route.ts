@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireCurrentUser } from "@/lib/auth/current-user";
+import { recordTrialStarted } from "@/lib/billing/funnel";
 import { checkoutPlan } from "@/lib/billing/subscription";
 import { redeemRecruitingVoucher } from "@/lib/billing/voucher";
 import { assertSameOrigin, readJsonWithLimit } from "@/lib/security/request";
@@ -31,6 +32,9 @@ export async function POST(request: Request) {
       code,
       planId: plan,
     });
+    if (result.status === "redeemed") {
+      await recordTrialStarted({ userId: user.id, plan, via: "voucher" });
+    }
     const stillActive = Boolean(
       result.trialEnd && new Date(result.trialEnd).getTime() > Date.now(),
     );

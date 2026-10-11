@@ -3,7 +3,8 @@ import "server-only";
 import { fetchProjects, projectsTableAvailable } from "@/lib/data/freelancer-projects";
 import { isHiddenProposal } from "@/lib/profile/project-merge";
 import { candidateFacts } from "./facts";
-import { MAX_FACTS_PER_COLUMN } from "./limits";
+import { MAX_FACTS_PER_COLUMN, type ApplicationStatus } from "./limits";
+import type { FreelancerPresence, FreelancerProfileCommand } from "./presence";
 import type {
   EditableFreelancerProfile,
   FreelancerMetrics,
@@ -151,25 +152,78 @@ export async function loadFreelancerMetrics(
  */
 export async function loadFreelancerPresence(
   userId: string,
-): Promise<"none" | "application" | "profile"> {
+): Promise<FreelancerPresence> {
   const admin = createAdminSupabaseClient();
 
   const { data: profile, error: profileError } = await admin
     .from("freelancer_profiles")
-    .select("id")
+    .select("id,profile_status")
     .eq("owner_user_id", userId)
     .maybeSingle();
   if (profileError) throw profileError;
-  if (profile) return "profile";
+  if (profile) {
+    const row = profile as { id: string; profile_status: string };
+    return { kind: "profile", profileId: row.id, visible: row.profile_status === "active" };
+  }
 
   const { data: application, error: applicationError } = await admin
     .from("freelancer_applications")
-    .select("id")
+    .select("status")
     .eq("submitted_by_user_id", userId)
+    .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (applicationError) throw applicationError;
-  return application ? "application" : "none";
+  return application
+    ? { kind: "application", status: (application as { status: ApplicationStatus }).status }
+    : { kind: "none" };
+}
+
+/**
+ * Veröffentlichen, pausieren oder „pushen“ (Verfügbarkeit bestätigen) mit
+ * einem Klick, ohne das ganze Formular. Gibt die neue Version zurück, damit
+ * ein offenes Formular danach ohne Konflikt speichert.
+ *
+ * Nur zwischen „active“ und „paused“: Ein archiviertes oder als nicht
+ * verfügbar markiertes Profil ändert hier niemand.
+ */
+export async function changeOwnedProfileState(
+  userId: string,
+  command: FreelancerProfileCommand,
+): Promise<{ profileStatus: "active" | "paused"; version: number; availabilityUpdatedAt: string | null }> {
+  const admin = createAdminSupabaseClient();
+  const { data: current, error: currentError } = await admin
+    .from("freelancer_profiles")
+    .select("id,profile_status")
+    .eq("owner_user_id", userId)
+    .maybeSingle();
+  if (currentError) throw currentError;
+  if (!current) throw new Response("Profil nicht gefunden.", { status: 404 });
+  const row = current as { id: string; profile_status: string };
+  if (row.profile_status !== "active" && row.profile_status !== "paused") {
+    throw new Response("Dieses Profil kann gerade nicht geändert werden.", { status: 409 });
+  }
+  if (command === "push" && row.profile_status !== "active") {
+    throw new Response("Veröffentlichen Sie Ihr Profil zuerst.", { status: 409 });
+  }
+  const patch =
+    command === "push"
+      ? { availability_updated_at: new Date().toISOString() }
+      : { profile_status: command === "publish" ? "active" : "paused" };
+  const { data: updated, error } = await admin
+    .from("freelancer_profiles")
+    .update(patch)
+    .eq("id", row.id)
+    .eq("owner_user_id", userId)
+    .select("profile_status,version,availability_updated_at")
+    .single();
+  if (error) throw error;
+  const result = updated as { profile_status: string; version: number; availability_updated_at: string | null };
+  return {
+    profileStatus: result.profile_status === "active" ? "active" : "paused",
+    version: result.version,
+    availabilityUpdatedAt: result.availability_updated_at,
+  };
 }
 
 export async function loadFreelancerPortalState(

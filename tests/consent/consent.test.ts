@@ -47,7 +47,7 @@ describe("Einwilligung für das Google-Ads-Tag", () => {
   it("lädt nur mit Zustimmung, mit ID und nicht auf Betreiberseiten", () => {
     const id = "AW-10826269095";
     expect(adsTagAllowed({ consent: "all", pathname: "/chat", id })).toBe(true);
-    expect(adsTagAllowed({ consent: "all", pathname: "/freelancer-finden", id })).toBe(true);
+    expect(adsTagAllowed({ consent: "all", pathname: "/fuer-unternehmen", id })).toBe(true);
     expect(adsTagAllowed({ consent: "essential", pathname: "/chat", id })).toBe(false);
     expect(adsTagAllowed({ consent: null, pathname: "/chat", id })).toBe(false);
     expect(adsTagAllowed({ consent: "all", pathname: "/chat", id: null })).toBe(false);

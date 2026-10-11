@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { APPLICANT_PATHS, APPLY_HERO, FreelancerAuthGate, onboardingFacts } from "@/app/freelancer/apply/FreelancerPortal";
+import { APPLICANT_FAQ, FreelancerAuthGate, onboardingFacts } from "@/app/bewerber-portal/apply/FreelancerPortal";
 
 function fact(term: string, placement = true): string {
   return onboardingFacts(placement).find((entry) => entry.term === term)!.text;
@@ -23,8 +23,10 @@ describe("freelancer onboarding before registration", () => {
     expect(fact("Kontakt", false)).not.toContain("stellt Sie per E-Mail vor");
   });
 
-  it("says who pays the placement fee only when placement is on", () => {
-    expect(fact("Kosten")).toContain("das Vermittlungshonorar zahlt der Auftraggeber");
+  it("promises no fee to anyone", () => {
+    // Neue Vorgänge sind provisionsfrei, auch für Auftraggeber.
+    expect(fact("Kosten")).toContain("eine Provision fällt für niemanden an");
+    expect(fact("Kosten")).not.toContain("Vermittlungshonorar");
     expect(fact("Kosten", false)).not.toContain("Vermittlungshonorar");
   });
 
@@ -39,30 +41,31 @@ describe("freelancer onboarding before registration", () => {
     expect(fact("Prüfung")).not.toMatch(/Kompetenz(prüfung|test)/u);
   });
 
-  it("leads with the benefit and a sign-up button, naming cost and review before it", () => {
+  // Oktober 2026: weniger erklären, mehr führen. Die Kernbotschaft oben, die
+  // Erklärungen als Info-Blasen statt als eigene Abschnitte.
+  it("leads with the core message and a sign-up button", () => {
     const markup = renderToStaticMarkup(createElement(FreelancerAuthGate));
     const hero = markup.slice(0, markup.indexOf("</header>"));
     expect(markup.match(/<h1>/gu)).toHaveLength(1);
-    expect(hero).toContain(`<h1>${APPLY_HERO.title}</h1>`);
-    expect(hero).toContain("Erstellen Sie Ihr kostenloses Profil.");
+    expect(hero).toContain("<h1>Profil veröffentlichen. Gefunden werden.</h1>");
+    expect(hero).toContain("Nicht blind bewerben. Erst prüfen");
     expect(hero).toContain("Kostenlos Profil anlegen");
     expect(hero).toContain("Schon registriert? Anmelden");
-    expect(hero).toContain("Sichtbar erst nach der Prüfung durch XPORTAL.");
     // Die Profilvorschau steht im ersten Bildschirm, neben dem Knopf.
     expect(hero).toContain("So sehen Unternehmen Ihr Profil");
   });
 
-  it("shows all facts before the second sign-up button", () => {
+  it("keeps every explanation, but in info bubbles instead of sections", () => {
     const markup = renderToStaticMarkup(createElement(FreelancerAuthGate));
-    const second = markup.indexOf("Kostenlos Profil anlegen", markup.indexOf("</header>"));
-    expect(markup).toContain("<dt>Kosten</dt>");
-    expect(markup.indexOf("<dt>Unterlagen</dt>")).toBeLessThan(second);
-    expect(markup.indexOf("<dt>Unterlagen</dt>")).toBeGreaterThan(markup.indexOf("</header>"));
-  });
-
-  it("keeps the three paths, but after the benefit", () => {
-    const markup = renderToStaticMarkup(createElement(FreelancerAuthGate));
-    expect(markup.indexOf("Ein Profil, drei Wege.")).toBeGreaterThan(markup.indexOf("<dt>Unterlagen</dt>"));
+    for (const fact of onboardingFacts(true)) {
+      expect(markup).toContain(fact.chip);
+      expect(markup).toContain('role="tooltip"');
+    }
+    for (const entry of APPLICANT_FAQ) expect(markup).toContain(entry.label);
+    expect(markup).not.toContain("Was Sie erwartet.");
+    expect(markup).not.toContain("Ein Profil, drei Wege.");
+    expect(markup).not.toContain("<details");
+    expect(markup.match(/Kostenlos Profil anlegen/gu)).toHaveLength(1);
   });
 
   it("places notices after the first screen and omits the match protocol", () => {
@@ -78,12 +81,8 @@ describe("freelancer onboarding before registration", () => {
 
   it("speaks to people who are not self-employed yet, without promising placement or benefits", () => {
     const markup = renderToStaticMarkup(createElement(FreelancerAuthGate));
-    expect(APPLICANT_PATHS.map((path) => path.title)).toEqual([
-      "Projekte als Freelancer",
-      "Eine feste Stelle",
-      "Auf dem Weg in die Selbstständigkeit",
-    ]);
-    expect(markup).toContain("Muss ich schon selbstständig sein?");
+    expect(markup).toContain("Auch ohne Selbstständigkeit");
+    expect(markup).toContain("Auch für feste Stellen");
     expect(markup).toContain("Gründungszuschuss");
     expect(markup).toContain("Einstiegsgeld");
     expect(markup).not.toMatch(/Arbeitnehmerüberlassung|ANÜ|garantiert|Anspruch auf/u);

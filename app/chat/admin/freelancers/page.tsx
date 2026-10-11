@@ -305,7 +305,7 @@ export default async function FreelancerApplicationsPage({
               </p>
               <p>
                 Freelancer bewerben sich über{" "}
-                <Link href="/freelancer/apply">/freelancer/apply</Link>. Sobald
+                <Link href="/bewerber-portal/apply">/bewerber-portal/apply</Link>. Sobald
                 eine Bewerbung eingeht, erscheint sie hier — zum
                 Freigeben klicken Sie dann rechts in der Zeile auf{" "}
                 <strong>Prüfen &amp; freigeben</strong>.

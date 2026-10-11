@@ -77,8 +77,12 @@ export function mandateNotice(input: {
   guest: boolean;
   projectTitle: string | null;
   briefSummary: string | null;
+  /** Der eingefügte Text, gekürzt: Ohne KI-Analyse ist er die einzige Beschreibung. */
+  requestExcerpt?: string | null;
   mandateId: string;
+  termsVersion?: string;
 }): Message {
+  const legacy = !input.termsVersion || input.termsVersion === PLACEMENT_TERMS.version;
   return {
     subject: `Suchauftrag: ${project(input.projectTitle)}`,
     text: [
@@ -86,13 +90,16 @@ export function mandateNotice(input: {
       "",
       `Projekt: ${project(input.projectTitle)}`,
       ...(input.briefSummary ? [`Anforderungen: ${input.briefSummary}`] : []),
+      ...(input.requestExcerpt ? ["", "Eingefügter Text:", input.requestExcerpt, ""] : []),
       `Kontakt: ${input.contactEmail}${input.name ? ` · ${input.name}` : ""}${input.company ? ` · ${input.company}` : ""}`,
       ...(input.phone ? [`Telefon: ${input.phone}`] : []),
       ...(input.note ? [`Notiz: ${input.note}`] : []),
       ...(input.guest
         ? ["Ohne Konto aufgegeben: Die E-Mail-Adresse ist nicht bestätigt. Vor der Vorstellung kurz prüfen."]
         : []),
-      `Vermittlungsbedingungen: ${PLACEMENT_TERMS.version} (zugestimmt)`,
+      legacy
+        ? `Vermittlungsbedingungen: ${PLACEMENT_TERMS.version} (zugestimmt)`
+        : `Einwilligung zur Kontaktaufnahme: ${input.termsVersion} (provisionsfrei)`,
       `Vorgang: ${input.mandateId}`,
       "",
       `Freelancer zuordnen: ${input.siteUrl}/chat/admin/vermittlungen`,

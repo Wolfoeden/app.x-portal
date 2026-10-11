@@ -39,6 +39,13 @@ const nextConfig: NextConfig = {
       // /home was the old landing page; external links and bookmarks still
       // point here.
       { source: "/home", destination: "/", permanent: true },
+      // Oktober 2026: neue Adressen für die Startseite für Unternehmen und
+      // das Bewerber-Portal. Alte Links, Lesezeichen und Einladungsmails
+      // landen dauerhaft auf der neuen Adresse, Parameter bleiben erhalten.
+      { source: "/freelancer-finden", destination: "/fuer-unternehmen", permanent: true },
+      { source: "/freelancer/apply", destination: "/bewerber-portal/apply", permanent: true },
+      { source: "/freelancer", destination: "/bewerber-portal/apply", permanent: true },
+      { source: "/bewerber-portal", destination: "/bewerber-portal/apply", permanent: false },
     ];
   },
   async headers() {

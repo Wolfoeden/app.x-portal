@@ -37,7 +37,8 @@ describe("welcome greeting", () => {
     );
 
     expect(markup).toContain(`<p class="welcome-lead">${WELCOME_LEAD}</p>`);
-    expect(WELCOME_LEAD).toContain("Projektbeschreibung ein");
+    expect(WELCOME_LEAD).toContain("Weniger Bewerbungen. Mehr relevante Gespräche.");
+    expect(WELCOME_LEAD).toContain("Projekt einfügen");
     expect(WELCOME_LEAD).toContain("bis zu drei passende Profile");
   });
 

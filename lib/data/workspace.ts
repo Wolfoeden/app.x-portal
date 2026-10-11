@@ -10,6 +10,7 @@ import {
   type ProjectRow,
 } from "@/lib/data/projects";
 import { loadFreelancerPresence } from "@/lib/freelancer/profile-data";
+import { NO_FREELANCER_PRESENCE, type FreelancerPresence } from "@/lib/freelancer/presence";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 /**
@@ -37,6 +38,8 @@ export type WorkspaceAuth = {
    * sein Profil, nicht das Formular, mit dem er es angelegt hat.
    */
   freelancer: "none" | "application" | "profile";
+  /** Dasselbe mit Profilkennung, Sichtbarkeit oder Bewerbungsstand. */
+  freelancerPresence: FreelancerPresence;
   user: { id: string; displayName: string | null; email: string | null } | null;
 };
 
@@ -64,13 +67,14 @@ export function presentWorkspaceAuth(
    * Datenbankabfrage rechtfertigt. Wer die Beschriftung braucht, reicht den
    * Wert herein; alle anderen bekommen „none" und zeigen den Einstieg.
    */
-  freelancer: WorkspaceAuth["freelancer"] = "none",
+  freelancer: FreelancerPresence = NO_FREELANCER_PRESENCE,
 ): WorkspaceAuth {
   return {
     authenticated: user !== null,
     anonymous: user?.isAnonymous ?? true,
     admin: user?.isAdmin ?? false,
-    freelancer,
+    freelancer: freelancer.kind,
+    freelancerPresence: freelancer,
     user: user
       ? { id: user.id, displayName: user.displayName, email: user.email }
       : null,
@@ -86,12 +90,12 @@ export function presentWorkspaceAuth(
  */
 async function freelancerPresenceFor(
   user: CurrentUser | null,
-): Promise<WorkspaceAuth["freelancer"]> {
-  if (!user || user.isAnonymous) return "none";
+): Promise<FreelancerPresence> {
+  if (!user || user.isAnonymous) return NO_FREELANCER_PRESENCE;
   try {
     return await loadFreelancerPresence(user.id);
   } catch {
-    return "none";
+    return NO_FREELANCER_PRESENCE;
   }
 }
 

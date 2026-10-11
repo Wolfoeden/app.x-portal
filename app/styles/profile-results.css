@@ -76,7 +76,6 @@
 
 .profile-collapse-toggle { margin: 0 0 16px; }
 .profile-more-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 16px; }
-.profile-more-actions .cv-action-group { display: grid; gap: 4px; }
 
 .result-section .profile-footer > .profile-main-actions { justify-content: flex-start; }
 .result-section .profile-footer > .profile-main-actions > * { flex: 0 0 auto; }
@@ -167,8 +166,8 @@
 .search-recovery > p { margin: 0; color: var(--ink-soft); font-size: var(--fs-sm); }
 .search-recovery .no-match-actions { margin-top: 10px; }
 .no-match-actions button { display: inline-flex; align-items: center; gap: 6px; }
-.no-match-actions button.is-primary { border-color: var(--ink); background: var(--ink); color: #fff; }
-.no-match-actions button.is-primary:hover { border-color: #000; background: #000; }
+.no-match-actions button.is-primary { border-color: transparent; background: var(--xp-action-primary); color: #fff; }
+.no-match-actions button.is-primary:hover { background: var(--xp-action-primary-hover); }
 .no-match-actions button[aria-expanded="true"] svg { transform: rotate(180deg); }
 .recovery-editor { margin-top: 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface-raised); padding: 12px 8px 12px; }
 .recovery-editor > p { margin: 0; padding: 0 7px 10px; color: var(--muted); font-size: var(--fs-xs); }

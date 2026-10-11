@@ -19,6 +19,18 @@ export const metadata: Metadata = {
 
 type Status = "sent" | "error" | "invalid";
 
+/**
+ * Betreff aus der Navigation („Für Unternehmen“ → Compliance Check,
+ * KI-Webinar). Nur bekannte Themen, damit kein Link beliebigen Text ins
+ * Formular schreibt.
+ */
+const SUBJECTS = new Set(["Compliance Check", "KI-Webinar"]);
+
+function subjectOf(value: string | string[] | undefined): string | undefined {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return raw && SUBJECTS.has(raw) ? raw : undefined;
+}
+
 function statusOf(value: string | string[] | undefined): Status | null {
   const raw = Array.isArray(value) ? value[0] : value;
   return raw === "sent" || raw === "error" || raw === "invalid" ? raw : null;
@@ -29,7 +41,9 @@ export default async function ContactPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const status = statusOf((await searchParams).status);
+  const params = await searchParams;
+  const status = statusOf(params.status);
+  const subject = subjectOf(params.betreff);
 
   return (
     <div className="xlegal" lang="de">
@@ -102,7 +116,7 @@ export default async function ContactPage({
             />
           </FormField>
           <FormField label="Betreff">
-            <input name="subject" minLength={3} maxLength={150} required />
+            <input name="subject" minLength={3} maxLength={150} required defaultValue={subject} />
           </FormField>
           <FormField label="Nachricht">
             <textarea name="message" rows={8} minLength={20} maxLength={5000} required />

@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
-import { metadata as findMetadata } from "@/app/(marketing)/freelancer-finden/page";
+import { metadata as findMetadata } from "@/app/(marketing)/fuer-unternehmen/page";
 import { FreelancerLanding as FindPage } from "@/components/marketing/FreelancerLanding";
 import ItPage, { metadata as itMetadata } from "@/app/(marketing)/it-freelancer-finden/page";
 import MatchingPage, { metadata as matchingMetadata } from "@/app/(marketing)/ki-freelancer-matching/page";
@@ -19,7 +19,7 @@ import { MARKETING_CATEGORIES } from "@/lib/marketing-categories";
 import { MARKETING_PAGE, MARKETING_PAGES, absoluteUrl, pageMetadata } from "@/lib/seo";
 
 const routes = [
-  { Component: FindPage, page: MARKETING_PAGE.find, metadata: findMetadata, required: ["Keine Bewerbungen", "Nur noch Gespräche", "Projektbeschreibung", "Roman D.", "210", "Profile live", "Familienunternehmen", "3 Wochen"] },
+  { Component: FindPage, page: MARKETING_PAGE.find, metadata: findMetadata, required: ["Weniger Bewerbungen", "Mehr relevante Gespräche", "Projektbeschreibung", "Roman D.", "210", "Profile live", "Familienunternehmen", "3 Wochen"] },
   { Component: ItPage, page: MARKETING_PAGE.it, metadata: itMetadata, required: ["IT-Freelancer", "React", "SAP", "Verfügbarkeit"] },
   { Component: MatchingPage, page: MARKETING_PAGE.matching, metadata: matchingMetadata, required: ["regelbasiert", "KI-gestütztes", "Nicht belegt"] },
   { Component: HowPage, page: MARKETING_PAGE.how, metadata: howMetadata, required: ["Requirement Extraction", "Credits", "Informationslücken"] },
@@ -44,7 +44,9 @@ describe("marketing pages rendered on the server", () => {
       expect(main).toMatch(/href="(?:\/chat(?:\?checkout=[a-z]+)?|\/preise#tarife|#tarife)"/u);
       expect(metadata).toEqual(pageMetadata(page));
       expect(metadata.alternates?.canonical).toBe(absoluteUrl(page.path));
-      for (const related of MARKETING_PAGES.filter((item) => item.path !== page.path)) {
+      // Oktober 2026: Die Preisseite nennt keine Freelancer-Ratgeber mehr;
+      // sie verweist nur auf die Datenwege.
+      for (const related of MARKETING_PAGES.filter((item) => item.path !== page.path && page.path !== MARKETING_PAGE.pricing.path)) {
         expect(main).toContain('href="' + related.path + '"');
       }
       const ids = [...html.matchAll(/\sid="([^"]+)"/gu)].map((match) => match[1]);
@@ -55,7 +57,7 @@ describe("marketing pages rendered on the server", () => {
       // Die Startseite beschreibt zusätzlich Leistung und sichtbare FAQ
       // (Oktober 2026, für Suchmaschinen und KI-Systeme); die übrigen
       // Ratgeberseiten bleiben bei der Brotkrümelnavigation.
-      expect(types).toEqual(page.path === "/freelancer-finden" ? ["BreadcrumbList", "SoftwareApplication", "FAQPage"] : ["BreadcrumbList"]);
+      expect(types).toEqual(page.path === "/fuer-unternehmen" ? ["BreadcrumbList", "SoftwareApplication", "FAQPage"] : ["BreadcrumbList"]);
       const breadcrumb = JSON.parse(json[0][1]);
       expect(breadcrumb.itemListElement.at(-1).item).toBe(absoluteUrl(page.path));
       expect(html).not.toContain('"@type":"Article"');
@@ -74,7 +76,7 @@ describe("marketing pages rendered on the server", () => {
     const root = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
     const chat = readFileSync(new URL("../app/chat/page.tsx", import.meta.url), "utf8");
     // Permanent (308), damit die Signale der Domain bei der Landingpage landen.
-    expect(root).toContain('permanentRedirect("/freelancer-finden")');
+    expect(root).toContain('permanentRedirect("/fuer-unternehmen")');
     expect(chat).toContain("return <ChatWorkspace />");
   });
 });

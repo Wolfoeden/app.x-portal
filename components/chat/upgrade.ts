@@ -49,7 +49,7 @@ export function startCreditOutcome(): string {
 
 export type ExhaustedNotice = {
   text: string;
-  action: { kind: "signup" | "pricing"; label: string } | null;
+  action: { kind: "pricing"; label: string } | null;
 };
 
 function formatDate(value: string): string | null {
@@ -65,23 +65,13 @@ function formatDate(value: string): string | null {
 /**
  * Was unter dem Eingabefeld steht, wenn das Guthaben aufgebraucht ist.
  *
- * Drei Lagen, drei verschiedene Wahrheiten. Vorher bekam ein Gast das
- * Startguthaben „im Monat" versprochen, obwohl das Startguthaben einmalig ist, und
- * ein Konto im kostenlosen Start las „Neues Guthaben gibt es ab …" — für ein
- * Guthaben, das sich nie wieder auffüllt. Beides führte ins Leere: der eine
- * erwartete eine Auffüllung, die nicht kommt, der andere sah keinen Weg weiter.
+ * Nur für Konten, je nach Lage ein anderer Satz: Ein Konto im kostenlosen
+ * Start las früher „Neues Guthaben gibt es ab …" — für ein Guthaben, das sich
+ * nie wieder auffüllt.
  */
-export function exhaustedNotice(
-  usage: AiUsageSnapshot,
-  isAccountUser: boolean,
-): ExhaustedNotice {
-  if (!isAccountUser) {
-    return {
-      text: `Für neue KI-Läufe benötigen Sie ein bestätigtes Konto und einen aktiven Trial oder Tarif. Der 14-Tage-Trial enthält einmalig ${TRIAL_CREDITS} Credits insgesamt und erfordert eine Karte bei Stripe. Ihre Eingabe bleibt erhalten. Ein Ergebnisbeispiel können Sie ohne Karte ansehen.`,
-      action: { kind: "pricing", label: "14 Tage kostenlos testen" },
-    };
-  }
-
+export function exhaustedNotice(usage: AiUsageSnapshot): ExhaustedNotice {
+  // Gäste sehen hier nichts: Sie registrieren sich erst, wenn sie eine
+  // Analyse starten (Dialog „analyze_project“ in ChatWorkspace).
   const plan = creditPlan(usage.credits.planId);
   const keepWriting =
     "Ihre gespeicherten Projekte bleiben lesbar. Ihren noch nicht gesendeten Text bewahren wir in diesem Browser auf.";

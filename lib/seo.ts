@@ -23,7 +23,7 @@ export type PublicPage = {
 
 /**
  * Die Arbeitsfläche. Ihr Titel nennt „Freelancer finden“ bewusst nicht mehr:
- * Für diesen Suchbegriff soll /freelancer-finden ranken, nicht zwei eigene
+ * Für diesen Suchbegriff soll /fuer-unternehmen ranken, nicht zwei eigene
  * Seiten gegeneinander.
  */
 export const CHAT_PAGE = {
@@ -40,10 +40,10 @@ export const MARKETING_PAGE = {
   // Die Startseite (/ leitet dauerhaft hierher) und die Seite für den
   // Suchbegriff „Freelancer finden“.
   find: {
-    path: "/freelancer-finden",
+    path: "/fuer-unternehmen",
     label: "Freelancer finden",
     title: "Freelancer finden für Recruiter und Unternehmen | XPORTAL",
-    description: "Freelancer finden für KI-Agenten, Software, SAP: Anfrage mit freigegebenen Profilen abgleichen, Belege sehen. Vorstellung kostenlos, Anbieter aus Deutschland.",
+    description: "Freelancer finden für KI-Agenten, Software, SAP: Projekttext einfügen, mit freigegebenen Profilen abgleichen, Belege sehen. Provisionsfrei, 14 Tage testen.",
     keywords: [
       "Freelancer finden",
       "Freelancer Vermittlung",
@@ -106,7 +106,7 @@ export const SITEMAP_ENTRIES = [
   CHAT_PAGE,
   ...MARKETING_PAGES,
   SALES_CALL_PAGE,
-  { path: "/freelancer/apply", priority: 0.7, changeFrequency: "monthly" },
+  { path: "/bewerber-portal/apply", priority: 0.7, changeFrequency: "monthly" },
   { path: "/vermittlungsbedingungen", priority: 0.4, changeFrequency: "yearly" },
   { path: "/contact", priority: 0.4, changeFrequency: "yearly" },
   { path: "/terms", priority: 0.3, changeFrequency: "yearly" },

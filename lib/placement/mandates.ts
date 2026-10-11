@@ -10,11 +10,11 @@ import { deliverEmail } from "@/lib/email/deliver";
 import { logEvent } from "@/lib/security/request";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
-import { PLACEMENT_TERMS } from "./config";
 import { DAY_MS, GUEST_LIMIT_ERROR, jsonResponse } from "./guest-contact";
 import {
   MANDATE_EXISTS,
   OPEN_MANDATE_STATUSES,
+  SEARCH_MANDATE_CONSENT_VERSION,
   briefLine,
   isMandateStatus,
   type Mandate,
@@ -56,11 +56,15 @@ export type CreateMandateResult =
   | { created: false; mandate: { id: string; status: MandateStatus }; message: string };
 
 /**
- * Legt einen Suchauftrag an. Der Aufrufer hat die Bedingungsfassung und — bei
+ * Legt einen Suchauftrag an. Der Aufrufer hat die Einwilligung und — bei
  * Gästen — Honigtopf und Grenze je Adresse schon geprüft.
  *
- * Erst die Zustimmung ins Protokoll, dann der Auftrag: Es darf keinen Auftrag
- * geben, zu dem die Fassung der Bedingungen fehlt.
+ * Immer zu einem schon analysierten Projekt, in dem kein Profil genug passte.
+ * Gäste analysieren seit Oktober 2026 erst nach der Registrierung; einen
+ * Auftrag aus bloß eingefügtem Text gibt es deshalb nicht mehr.
+ *
+ * Erst die Einwilligung ins Protokoll, dann der Auftrag: Es darf keinen
+ * Auftrag geben, zu dem die Fassung fehlt.
  */
 export async function createMandate(input: {
   userId: string;
@@ -72,17 +76,18 @@ export async function createMandate(input: {
 }): Promise<CreateMandateResult> {
   const admin = createAdminSupabaseClient();
 
-  const { data: project, error: projectError } = await admin
+  const { data, error: projectError } = await admin
     .from("projects")
-    .select("id,title,structured_brief")
+    .select("id,title,structured_brief,original_request")
     .eq("id", input.projectId)
     .eq("owner_user_id", input.userId)
     .maybeSingle();
   if (projectError) throw projectError;
-  if (!project) throw jsonResponse(404, "Projekt nicht gefunden.");
-
+  if (!data) throw jsonResponse(404, "Projekt nicht gefunden.");
+  const project = data as Row;
   const existing = await openMandateFor(admin, input.projectId);
   if (existing) return { created: false, mandate: existing, message: MANDATE_EXISTS };
+  const projectId = String(project.id);
 
   if (input.isGuest) {
     const { count, error } = await admin
@@ -98,19 +103,14 @@ export async function createMandate(input: {
   const acceptedAt = new Date().toISOString();
   await writeAuditEvent({
     actorUserId: input.userId,
-    action: "placement_terms_accepted",
+    action: "search_mandate_consent",
     targetType: "search_mandate",
     targetId: id,
     outcome: "success",
     metadata: {
-      version: PLACEMENT_TERMS.version,
-      feePercent: PLACEMENT_TERMS.feePercent,
-      feeMonths: PLACEMENT_TERMS.feeMonths,
-      maxFeeDays: PLACEMENT_TERMS.maxFeeDays,
-      protectionMonths: PLACEMENT_TERMS.protectionMonths,
+      version: SEARCH_MANDATE_CONSENT_VERSION,
       acceptedAt,
-      mandate: true,
-      ...(input.isGuest ? { guest: true, contactEmail: input.contact.email, company: input.contact.company } : {}),
+      ...(input.isGuest ? { guest: true, contactEmail: input.contact.email } : {}),
     },
     required: true,
   });
@@ -119,14 +119,14 @@ export async function createMandate(input: {
     .from("search_mandates")
     .insert({
       id,
-      project_id: input.projectId,
+      project_id: projectId,
       owner_user_id: input.userId,
       contact_email: input.contact.email,
       contact_company: input.contact.company,
       contact_name: input.contact.name,
       contact_phone: input.contact.phone,
       note: input.note,
-      terms_version: PLACEMENT_TERMS.version,
+      terms_version: SEARCH_MANDATE_CONSENT_VERSION,
       created_at: acceptedAt,
       updated_at: acceptedAt,
     })
@@ -135,7 +135,7 @@ export async function createMandate(input: {
   if (insertError) {
     // Zwei Klicks gleichzeitig: Der zweite trifft den Index für offene Aufträge.
     if ((insertError as { code?: string }).code === "23505") {
-      const raced = await openMandateFor(admin, input.projectId);
+      const raced = await openMandateFor(admin, projectId);
       if (raced) return { created: false, mandate: raced, message: MANDATE_EXISTS };
     }
     throw insertError;
@@ -147,10 +147,11 @@ export async function createMandate(input: {
     targetType: "search_mandate",
     targetId: id,
     outcome: "success",
-    metadata: { guest: input.isGuest, withNote: Boolean(input.note), withPhone: Boolean(input.contact.phone) },
+    metadata: { guest: input.isGuest, withNote: Boolean(input.note), withPhone: Boolean(input.contact.phone), fromDraft: !input.projectId },
   });
 
-  const brief = ProjectBriefSchema.safeParse((project as Row).structured_brief);
+  const brief = ProjectBriefSchema.safeParse(project.structured_brief);
+  const original = text(project.original_request);
   const notice = mandateNotice({
     siteUrl: input.siteUrl,
     contactEmail: input.contact.email,
@@ -159,9 +160,11 @@ export async function createMandate(input: {
     phone: input.contact.phone,
     note: input.note,
     guest: input.isGuest,
-    projectTitle: text((project as Row).title),
+    projectTitle: text(project.title),
     briefSummary: brief.success ? briefLine(brief.data) : null,
+    requestExcerpt: original ? (original.length > 1500 ? `${original.slice(0, 1500)} …` : original) : null,
     mandateId: id,
+    termsVersion: SEARCH_MANDATE_CONSENT_VERSION,
   });
   const delivered = await deliverEmail({ to: contactInbox(), ...notice, kind: "transactional" });
   if (!delivered.delivered) logEvent("mandate_notification_failed", { mandateId: id, reason: delivered.reason });

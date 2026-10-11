@@ -286,11 +286,15 @@ export function AuthDialog({
                 ? "Anmelden ohne Passwort"
                 : mode === "register"
                   ? intentCopy.title
-                  : freelancer
-                    ? FREELANCER_AUTH_COPY.loginTitle
-                    : checkout?.loginTitle ?? "Anmelden und direkt fortfahren"}
+                  : "loginTitle" in intentCopy && intentCopy.loginTitle
+                    ? intentCopy.loginTitle
+                    : "Anmelden und direkt fortfahren"}
         </h2>
-        {checkout && (mode === "login" || mode === "register") ? null : (
+        {"points" in intentCopy && intentCopy.points && (mode === "login" || mode === "register") ? (
+          <ul className="auth-points">
+            {intentCopy.points.map((point) => <li key={point}><IconCheck size={13} />{point}</li>)}
+          </ul>
+        ) : checkout && (mode === "login" || mode === "register") ? null : (
           <p>{mode === "set-password"
             ? "Legen Sie jetzt ein neues Passwort für Ihr bestätigtes Konto fest."
             : mode === "recover"

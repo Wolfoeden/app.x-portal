@@ -31,6 +31,7 @@ import {
   IconFolder,
   IconFolderPlus,
   IconInfo,
+  IconPen,
   IconMenu,
   IconPanelRight,
   IconSearch,
@@ -54,6 +55,13 @@ import {
   type ProfileFeedbackReason,
 } from "@/lib/freelancer/profile-feedback";
 import type { RegisteredShowcase, ShowcaseTheme } from "@/lib/freelancer/showcase";
+import { searchGuidance, type GuidanceSuggestion } from "./chat/search-guidance";
+import {
+  freelancerActions,
+  parseFreelancerPresence,
+  type FreelancerAction,
+  type FreelancerProfileCommand,
+} from "@/lib/freelancer/presence";
 import { AccountSummary, CreditPlansDialog } from "./chat/account";
 import {
   exhaustedNotice,
@@ -112,6 +120,7 @@ import {
 import { exampleBrief, exampleBriefForText, firstGap, withoutUnfilledPrompts } from "./chat/example-briefs";
 import {
   type GuidedSuggestion,
+  NextStepGrid,
   SuggestionGrid,
   WelcomeState,
 } from "./chat/welcome";
@@ -1028,9 +1037,14 @@ function authViewFromClaims(data: unknown): AuthView {
     typeof wrapper.anonymous === "boolean"
       ? wrapper.anonymous
       : claims.is_anonymous !== false;
+  // Die Sitzungsauskunft trägt auch den Stand auf der Freelancer-Seite; ohne
+  // ihn stand in der Seitenleiste immer „Als Freelancer bewerben“.
+  const freelancerPresence = parseFreelancerPresence(wrapper.freelancerPresence);
   return {
     authenticated: wrapper.authenticated === false ? false : Boolean(userId),
     anonymous,
+    freelancer: freelancerPresence.kind,
+    freelancerPresence,
     admin:
       wrapper.admin === true ||
       claims.admin === true ||
@@ -1203,6 +1217,7 @@ export function ChatWorkspace({
     previewResultState === "searching" ? "searching" : "idle",
   );
   const [draft, setDraft] = useState("");
+  const [criteriaRequest, setCriteriaRequest] = useState(0);
   useEffect(() => {
     if (preview || workspaceView !== "chat" || new URLSearchParams(window.location.search).has("project")) return;
     const saved = readProjectDraft();
@@ -1332,15 +1347,12 @@ export function ChatWorkspace({
    * angekommen. Das Ziel bleibt dieselbe Seite; sie entscheidet ohnehin selbst,
    * ob sie Formular, Status oder Dashboard zeigt.
    */
-  const freelancerEntry =
-    auth.freelancer === "profile"
-      ? { label: "Freelancer-Profil", hint: "Profil, Verfügbarkeit und Zahlen" }
-      : auth.freelancer === "application"
-        ? { label: "Freelancer-Profil", hint: "Ihre Bewerbung wird geprüft" }
-        : {
-            label: "Als Freelancer bewerben",
-            hint: "Profil einreichen und prüfen lassen",
-          };
+  const freelancerLinks = freelancerActions(auth.freelancerPresence ?? parseFreelancerPresence(null));
+  const freelancerActionIcon = (action: FreelancerAction) =>
+    action.key === "push" ? <IconArrowUp size={18} />
+      : action.key === "publish" ? <IconCheck size={18} />
+        : action.key === "edit" ? <IconPen size={18} />
+          : <IconUser size={18} />;
   const freeUsageExhausted = Boolean(
     usage && (usage.credits.exhausted || usage.credits.remaining <= 0),
   );
@@ -1507,6 +1519,28 @@ export function ChatWorkspace({
     setAuth(view);
     return view;
   }, [apiPaths.session]);
+
+  const [profileCommandBusy, setProfileCommandBusy] = useState(false);
+  const runProfileCommand = async (command: FreelancerProfileCommand) => {
+    if (profileCommandBusy) return;
+    setProfileCommandBusy(true);
+    try {
+      const response = await fetch(appPath("/api/freelancer/profile/status"), {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ command }),
+      });
+      const body = (await response.json().catch(() => ({}))) as { message?: string; error?: string };
+      if (!response.ok) throw new Error(body.error ?? "Das Profil konnte gerade nicht geändert werden.");
+      showToast(body.message ?? "Erledigt.", "neutral");
+      await refreshAuth();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Das Profil konnte gerade nicht geändert werden.", "error");
+    } finally {
+      setProfileCommandBusy(false);
+    }
+  };
 
   const refreshUsage = useCallback(async () => {
     void fetch(appPath("/api/billing/status"), { credentials: "same-origin", cache: "no-store" }).then(async response => {
@@ -2372,9 +2406,25 @@ export function ChatWorkspace({
     ],
   );
 
+  /**
+   * Erst handeln, dann registrieren: Ein Gast ohne Guthaben sieht vorher
+   * keinen Hinweis. Startet er die Analyse, öffnet sich der kurze
+   * Registrierungsdialog; der Text bleibt gespeichert, und nach der Anmeldung
+   * läuft die Analyse von selbst los (handleAuthenticated).
+   */
+  const guestNeedsAccount = !isAccountUser && (!usage || freeUsageExhausted);
+  const submitDraft = () => {
+    if (!draft.trim() || pendingAssistant) return;
+    if (guestNeedsAccount) {
+      openAuth("analyze_project");
+      return;
+    }
+    void sendMessage(draft);
+  };
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    void sendMessage(draft);
+    submitDraft();
   };
 
   const runExternalFreelancerSearch = async () => {
@@ -2462,7 +2512,7 @@ export function ChatWorkspace({
   const handleComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      if (draft.trim() && !pendingAssistant) void sendMessage(draft);
+      submitDraft();
     }
   };
 
@@ -2829,6 +2879,11 @@ export function ChatWorkspace({
       );
     } else if (continuation?.intent === "save_search") {
       showToast("Ihre Suche ist jetzt dauerhaft Ihrem Konto zugeordnet.", "neutral");
+    } else if (continuation?.intent === "analyze_project") {
+      // Der Gast hatte „Projekt abgleichen“ schon gedrückt: Die Analyse läuft
+      // jetzt weiter, mit dem gespeicherten Text.
+      const savedBrief = readProjectDraft();
+      if (savedBrief?.trim()) void sendMessage(savedBrief);
     }
     setPendingProfileId(null);
     setPendingSaveProfileId(null);
@@ -3096,6 +3151,51 @@ export function ChatWorkspace({
       )
     : projectCollections;
   const emptyChat = !isTeamView && messages.length === 0 && !pendingAssistant;
+  /**
+   * Nächste Schritte nach einem Ergebnis: als Tipps in der Antwort und als
+   * Vorschläge über dem Eingabefeld. Wer beim ersten Mal kein passendes
+   * Profil sieht, soll weitersuchen statt aufzugeben.
+   */
+  const dismissedInProject = new Set(
+    (activeProject ? dismissedByProject[activeProject.id] ?? [] : []).map((entry) => entry.profileId),
+  );
+  const visibleProfileCount = profiles.filter((profile) => !dismissedInProject.has(profile.id)).length;
+  const guidance = hasResult && !pendingAssistant && !emptyChat
+    ? searchGuidance({
+        brief,
+        matchingStatus,
+        profileCount: visibleProfileCount,
+        partialCount: partialProfiles.filter((profile) => !dismissedInProject.has(profile.id)).length,
+        researchAvailable:
+          ((matchingStatus === "no_reliable_match" && (analysisTrace?.externalSearchAvailable ?? true)) ||
+            (profiles.length > 0 && visibleProfileCount === 0)) &&
+          externalSearch?.mode !== "openai",
+      })
+    : null;
+  const runGuidance = (suggestion: GuidanceSuggestion) => {
+    const { action } = suggestion;
+    if (action.kind === "criteria") {
+      setCriteriaRequest((current) => current + 1);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        document.getElementById("recovery-criteria")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }));
+      return;
+    }
+    if (action.kind === "scroll") {
+      const selector = action.target === "mandate" ? ".mandate-ask" : ".recovery-research";
+      document.querySelector(selector)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    setDraft(action.text);
+    requestAnimationFrame(() => {
+      const textarea = composerRef.current;
+      if (!textarea) return;
+      textarea.focus();
+      const gap = firstGap(textarea.value);
+      if (gap) textarea.setSelectionRange(gap.start, gap.end);
+      else textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    });
+  };
   // Nur solange der Shortcut-Hinweis allein steht: Mit dem Absenden beginnt
   // der Abgleich, und dessen Ergebnis soll nicht mit der Liste konkurrieren.
   const showGuideShowcase =
@@ -3237,7 +3337,7 @@ export function ChatWorkspace({
         onKeyDown={trapSidebarFocus}
       >
         <div className="sidebar-top">
-          <a className="product-mark" href="/freelancer-finden" aria-label="XPORTAL Produktseite">
+          <a className="product-mark" href="/fuer-unternehmen" aria-label="XPORTAL Produktseite">
             <span>XPORTAL</span>
           </a>
           <button
@@ -3399,16 +3499,45 @@ export function ChatWorkspace({
             <IconInfo size={18} />
             <span className="sidebar-row-label">So funktioniert XPORTAL</span>
           </a>
-          <a className="sidebar-row" href="/freelancer/apply" onClick={() => setSidebarOpen(false)} title={freelancerEntry.hint}>
-            <IconUser size={18} />
-            <span className="sidebar-row-label">{freelancerEntry.label}</span>
-          </a>
+          {/* Je nach Stand: bewerben, Bewerbung ansehen oder das eigene
+              Profil ansehen, bearbeiten, veröffentlichen, pushen. */}
+          {freelancerLinks.map((action) =>
+            "href" in action ? (
+              <a
+                key={action.key}
+                className="sidebar-row"
+                href={action.href}
+                target={action.external ? "_blank" : undefined}
+                rel={action.external ? "noopener noreferrer" : undefined}
+                onClick={() => setSidebarOpen(false)}
+                title={action.hint}
+              >
+                {freelancerActionIcon(action)}
+                <span className="sidebar-row-label">{action.label}</span>
+              </a>
+            ) : (
+              <button
+                key={action.key}
+                className="sidebar-row"
+                type="button"
+                title={action.hint}
+                disabled={profileCommandBusy}
+                onClick={() => void runProfileCommand(action.command)}
+              >
+                {freelancerActionIcon(action)}
+                <span className="sidebar-row-label">{action.label}</span>
+              </button>
+            ),
+          )}
         </nav>
         </div>
 
         <div className="sidebar-footer">
           <div className="account-menu-wrap sidebar-account-menu-wrap" ref={accountMenuRef}>
-            {accountMenuOpen ? (
+            {/* Ohne Konto gibt es nichts zu verwalten und kein Guthaben: der
+                Knopf öffnet gleich die Anmeldung, wie „Anmelden“ auf jeder
+                anderen Seite. */}
+            {accountMenuOpen && isAccountUser ? (
               <div className="account-popover sidebar-account-popover" role="dialog" aria-label="Konto und Einstellungen">
                 <AccountSummary
                   usage={usage}
@@ -3445,10 +3574,10 @@ export function ChatWorkspace({
                     Menue wieder zu schliessen. */}
                 <a
                   className="account-menu-item"
-                  href="/freelancer/apply"
+                  href="/bewerber-portal/apply"
                   onClick={() => { setAccountMenuOpen(false); setSidebarOpen(false); }}
                 >
-                  {freelancerEntry.label}
+                  {auth.freelancer === "none" ? "Als Freelancer bewerben" : "Bewerber-Portal"}
                 </a>
                 {isAccountUser ? (
                   <>
@@ -3478,12 +3607,7 @@ export function ChatWorkspace({
                     <div className="menu-divider" />
                     <button className="account-menu-item" type="button" onClick={() => void signOut()}>Abmelden</button>
                   </>
-                ) : (
-                  <>
-                    <button className="account-menu-item" type="button" onClick={() => { setAccountMenuOpen(false); setSidebarOpen(false); openAuth("generic", undefined, "login"); }}>Anmelden oder Konto erstellen</button>
-                    <button className="account-menu-item" type="button" onClick={() => { setAccountMenuOpen(false); openCookieSettings(); }}>Cookie-Einstellungen verwalten</button>
-                  </>
-                )}
+                ) : null}
               </div>
             ) : null}
             <button
@@ -3491,8 +3615,13 @@ export function ChatWorkspace({
               type="button"
               aria-label={isAccountUser ? "Konto und Einstellungen öffnen" : "Anmelden oder Konto erstellen"}
               aria-haspopup="dialog"
-              aria-expanded={accountMenuOpen}
+              aria-expanded={isAccountUser ? accountMenuOpen : undefined}
               onClick={() => {
+                if (!isAccountUser) {
+                  setSidebarOpen(false);
+                  openAuth("generic", undefined, "login");
+                  return;
+                }
                 if (!accountMenuOpen) void refreshUsage();
                 setAccountMenuOpen((current) => !current);
               }}
@@ -3503,11 +3632,11 @@ export function ChatWorkspace({
               <span className="sidebar-account-copy">
                 <strong>{accountName ?? "Anmelden"}</strong>
                 <span>
-                  {usage
-                    ? usageSummary(usage, isAccountUser)
-                    : isAccountUser
-                      ? auth.user?.email ?? "Konto verwalten"
-                      : "Projekte dauerhaft speichern"}
+                  {!isAccountUser
+                    ? "Projekte dauerhaft speichern"
+                    : usage
+                      ? usageSummary(usage, isAccountUser)
+                      : auth.user?.email ?? "Konto verwalten"}
                 </span>
               </span>
             </button>
@@ -3688,6 +3817,8 @@ export function ChatWorkspace({
                     onRefineSearch={refineCurrentSearch}
                     onUpdateBrief={(message) => void sendMessage(message)}
                     busy={Boolean(pendingAssistant)}
+                    tips={guidance?.tips ?? []}
+                    criteriaRequest={criteriaRequest}
                     onSaveSearch={saveCurrentSearch}
                     onNeedCredits={() => openPricing("recherche")}
                     selectedProfileId={selectedProfileId}
@@ -3740,7 +3871,15 @@ export function ChatWorkspace({
               <button type="button" onClick={() => setContactOpen(true)}>Termin oder Kontakt</button>
             </div>
           ) : null}
-          <form className={`composer ${freeUsageExhausted ? "is-quota-exhausted" : ""}`} onSubmit={handleSubmit}>
+          {/* Vorschläge wie bei Chat-Assistenten: rechts über dem Eingabefeld.
+              Zu Beginn die Rollen-Einstiege, nach einem Ergebnis der nächste
+              sinnvolle Schritt. */}
+          {pendingAssistant ? null : guidance?.suggestions.length ? (
+            <NextStepGrid suggestions={guidance.suggestions} onPick={runGuidance} />
+          ) : (
+            <SuggestionGrid onSuggestion={startGuidedRequest} />
+          )}
+          <form className={`composer ${freeUsageExhausted && isAccountUser ? "is-quota-exhausted" : ""}`} onSubmit={handleSubmit}>
             <label className="sr-only" htmlFor="chat-composer">Projekt oder Ergänzung beschreiben</label>
             {/* Der Platzhalter wird selbst gezeichnet, statt dem Attribut
                 ueberlassen zu werden. Wird das Feld schmal — etwa weil die
@@ -3782,15 +3921,13 @@ export function ChatWorkspace({
               </button>
             </div>
           </form>
-          {emptyChat ? <SuggestionGrid onSuggestion={startGuidedRequest} /> : null}
           {/* Der laufende Zählerstand stand hier früher bei jeder Anfrage und
               lenkte vom Schreiben ab. Gemeldet wird nur noch der Moment, in dem
               das Guthaben aufgebraucht ist — und für einen Gast ist das der
               Zeitpunkt, ein Konto anzulegen, keine Fehlermeldung. */}
-          {usage && freeUsageExhausted ? (
+          {usage && freeUsageExhausted && isAccountUser ? (
             <ExhaustedCreditStatus
-              notice={exhaustedNotice(usage, isAccountUser)}
-              onSignup={() => openAuth("generic")}
+              notice={exhaustedNotice(usage)}
               onPricing={() => openPricing("guthaben")}
             />
           ) : null}
@@ -3810,6 +3947,8 @@ export function ChatWorkspace({
             <a href="/terms">AGB</a>
             <span aria-hidden="true">·</span>
             <a href="/contact">Kontakt</a>
+            <span aria-hidden="true">·</span>
+            <button type="button" onClick={() => openCookieSettings()}>Cookies</button>
           </span>
         </p>
           </>
@@ -3959,22 +4098,16 @@ export function assistantAttribution(): {
 
 function ExhaustedCreditStatus({
   notice,
-  onSignup,
   onPricing,
 }: {
   notice: ExhaustedNotice;
-  onSignup: () => void;
   onPricing: () => void;
 }) {
   return (
     <div className="composer-credit-status is-exhausted" role="status">
       <p>{notice.text}</p>
       {notice.action ? (
-        <button
-          type="button"
-          className="composer-signup"
-          onClick={notice.action.kind === "signup" ? onSignup : onPricing}
-        >
+        <button type="button" className="composer-signup" onClick={onPricing}>
           {notice.action.label}
         </button>
       ) : null}

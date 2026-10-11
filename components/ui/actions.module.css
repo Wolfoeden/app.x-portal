@@ -28,7 +28,6 @@
 .action.primary {
   background: var(--xp-action-primary);
   color: #fff;
-  box-shadow: var(--xp-action-primary-shadow);
 }
 .action.primary:hover:not(:disabled) { background: var(--xp-action-primary-hover); color: #fff; }
 

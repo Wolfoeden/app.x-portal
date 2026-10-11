@@ -24,7 +24,7 @@ export function ImportPanel({ githubLogin, linkedinConnected, onDraft }: {
     setError(null);
     setBusy(provider);
     try {
-      await startOauthUpgrade(provider, "/freelancer/apply");
+      await startOauthUpgrade(provider, "/bewerber-portal/apply");
     } catch {
       setBusy(null);
       setError("Die Verbindung konnte nicht hergestellt werden. Bitte erneut versuchen.");

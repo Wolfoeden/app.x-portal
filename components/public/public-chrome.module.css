@@ -60,6 +60,18 @@
   text-underline-offset: 6px;
 }
 
+/* „Für Unternehmen“: Knopf wie ein Navigationslink, darunter das Menü. */
+.navGroup { position: relative; display: flex; align-self: stretch; align-items: center; }
+.navGroupButton { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; padding: 0; color: var(--chrome-ink); font: inherit; font-size: 15px; cursor: pointer; }
+.navGroupButton:hover, .navGroupButton:focus-visible { text-decoration: underline; text-underline-offset: 6px; }
+.navGroupButton svg { transition: transform 150ms ease; }
+.navGroupButton[aria-expanded="true"] svg { transform: rotate(180deg); }
+.navPanel { position: absolute; top: 100%; left: -12px; z-index: 50; display: grid; min-width: 220px; margin: 0; border: 1px solid var(--chrome-line); border-radius: 10px; background: #fff; padding: 6px; list-style: none; box-shadow: var(--shadow-soft); }
+.navPanel[hidden] { display: none; }
+@media (hover: hover) { .navGroup:hover > .navPanel { display: grid; } }
+.navigation .navPanel a { display: block; border-radius: 6px; padding: 10px 12px; text-decoration: none; }
+.navigation .navPanel a:hover, .navigation .navPanel a:focus-visible { background: var(--surface-soft); text-decoration: none; }
+
 .headerActions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; margin-left: auto; padding: 0 24px; }
 
 /* Dieselben Knöpfe wie components/ui/actions.module.css (kompakt), aus
@@ -84,7 +96,7 @@
 }
 
 /* Zwei Klassen, damit Linkfarben von Textseiten (`.xlegal a`) nicht greifen. */
-.headerActions .primaryAction { background: var(--xp-action-primary); color: #fff; box-shadow: var(--xp-action-primary-shadow); }
+.headerActions .primaryAction { background: var(--xp-action-primary); color: #fff; }
 .headerActions .primaryAction:hover { background: var(--xp-action-primary-hover); }
 .headerActions .secondaryAction { border-color: var(--xp-action-secondary-border); background: #fff; color: var(--chrome-ink); }
 .headerActions .secondaryAction:hover { border-color: var(--xp-action-secondary-border-hover); background: var(--xp-action-secondary-hover); }
@@ -105,6 +117,9 @@
 .menu nav { position: absolute; right: 0; top: calc(100% + 10px); width: min(300px, calc(100vw - 32px)); display: grid; gap: 2px; border: 1px solid var(--chrome-line); border-radius: 10px; padding: 8px; background: #fff; box-shadow: var(--shadow-modal); }
 .menu nav a { border-radius: 6px; padding: 12px; color: var(--chrome-ink); font-size: 15px; text-decoration: none; }
 .menu nav a:hover { background: var(--surface-soft); }
+.menuGroup { display: grid; gap: 2px; border-bottom: 1px solid var(--chrome-line); padding-bottom: 6px; margin-bottom: 4px; }
+.menuGroup > span { padding: 8px 12px 2px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.menu nav .menuGroup a { padding-left: 20px; }
 .menu nav .menuAction { margin-top: 6px; border-radius: var(--xp-action-radius); background: var(--xp-action-primary); color: #fff; font-weight: var(--xp-action-weight); text-align: center; }
 .menu nav .menuAction:hover { background: var(--xp-action-primary-hover); }
 

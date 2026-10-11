@@ -12,7 +12,7 @@ import {
   pricingPath,
 } from "@/components/chat/upgrade";
 import type { AiUsageSnapshot } from "@/components/chat-contract";
-import { CREDIT_PLANS, START_CREDITS, TRIAL_CREDITS } from "@/lib/billing/plans";
+import { CREDIT_PLANS, START_CREDITS } from "@/lib/billing/plans";
 
 function usage(planId: string, extra: Partial<AiUsageSnapshot["credits"]> = {}): AiUsageSnapshot {
   return {
@@ -32,17 +32,8 @@ function usage(planId: string, extra: Partial<AiUsageSnapshot["credits"]> = {}):
 }
 
 describe("exhausted credits", () => {
-  it("promises a guest the one-time start credits, never a monthly refill", () => {
-    const notice = exhaustedNotice(usage("guest"), false);
-
-    expect(notice.text).toContain(`einmalig ${TRIAL_CREDITS} Credits insgesamt`);
-    expect(notice.text).toContain("Ihre Eingabe bleibt erhalten");
-    expect(notice.text).not.toMatch(/im Monat|monatlich/u);
-    expect(notice.action).toEqual({ kind: "pricing", label: "14 Tage kostenlos testen" });
-  });
-
   it("tells a trial account that nothing refills and shows the way to a plan", () => {
-    const notice = exhaustedNotice(usage("trial"), true);
+    const notice = exhaustedNotice(usage("trial"));
 
     expect(notice.text).toContain("Ein neues Konto erzeugt kein Bonusguthaben");
     expect(notice.text).not.toContain("Neues Guthaben gibt es");
@@ -51,7 +42,7 @@ describe("exhausted credits", () => {
   });
 
   it("names the refill date for a subscription and offers a larger plan", () => {
-    const notice = exhaustedNotice(usage("pro", { subscriptionStatus: "active" }), true);
+    const notice = exhaustedNotice(usage("pro", { subscriptionStatus: "active" }));
 
     expect(notice.text).toContain("nach bestätigter Zahlung für die Periode ab 01.10.2026");
     expect(notice.action).toEqual({ kind: "pricing", label: "Größeren Tarif ansehen" });

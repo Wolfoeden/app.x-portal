@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 const widths = [390, 768, 1280] as const;
 const targets = [
   { id: "guest", path: "/chat/preview?auth=guest&state=empty" },
-  { id: "marketing", path: "/freelancer-finden" },
+  { id: "marketing", path: "/fuer-unternehmen" },
   { id: "terms", path: "/terms" },
   { id: "pricing", path: "/chat/preview?state=ranked", pricing: true },
   { id: "admin", path: "/chat/preview/admin-pages?view=users" },

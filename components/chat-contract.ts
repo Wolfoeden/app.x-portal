@@ -6,6 +6,7 @@
  */
 
 import { appPath } from "@/lib/app-path";
+import type { FreelancerPresence } from "@/lib/freelancer/presence";
 import type { ProfileField } from "@/lib/profile/identity";
 import type { ProjectTeaser } from "@/lib/profile/project-limits";
 
@@ -381,6 +382,8 @@ export interface SessionResponse {
    * not for the form that created it.
    */
   freelancer?: "none" | "application" | "profile";
+  /** Profilkennung und Sichtbarkeit oder Bewerbungsstand (lib/freelancer/presence.ts). */
+  freelancerPresence?: FreelancerPresence;
   user: null | {
     id: string;
     displayName: string | null;
