@@ -50,7 +50,7 @@ export function FreelancerLanding({ contactPhotoUrl = null, caseStudies = publis
           <div className={styles.quoteText}>
             <p className={styles.eyebrow}>Abgleich</p>
             <h2 id="abgleich-title">Jede Anforderung gegen echte Profilangaben geprüft.</h2>
-            <RecruitingLink href="#produktablauf" event="demo_viewed" className={actionClass("secondary", { className: styles.prominentSecondary })}>Produktablauf ansehen</RecruitingLink>
+            <RecruitingLink href="#produktablauf" event="demo_viewed" className={actionClass("secondary")}>Produktablauf ansehen</RecruitingLink>
           </div>
           <div className={styles.quoteMedia}>
             <Image src="/images/landing/project-match.webp" alt="Eine Projektbeschreibung wird mit einer Auswahl von Freelancer-Profilen verbunden." width={1536} height={1024} sizes="(max-width: 860px) 100vw, 560px" loading="lazy" />

@@ -84,7 +84,7 @@ export function onboardingFacts(placement: boolean): ReadonlyArray<{ term: strin
     {
       term: "Kosten",
       text: placement
-        ? "Keine. Registrierung, Profil und Vermittlung sind für Sie kostenlos; das Vermittlungshonorar zahlt der Auftraggeber."
+        ? "Keine. Registrierung, Profil und Kontaktanfragen sind für Sie kostenlos, eine Provision fällt für niemanden an."
         : "Keine. Registrierung und Profil sind für Sie kostenlos.",
     },
     {

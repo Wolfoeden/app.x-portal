@@ -65,7 +65,6 @@
   border: 1px solid transparent;
   background: var(--xp-action-primary);
   color: #fff;
-  box-shadow: var(--xp-action-primary-shadow);
 }
 
 .card .primary:hover:not(:disabled) {

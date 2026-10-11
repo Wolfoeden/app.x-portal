@@ -286,9 +286,9 @@ export function AuthDialog({
                 ? "Anmelden ohne Passwort"
                 : mode === "register"
                   ? intentCopy.title
-                  : freelancer
-                    ? FREELANCER_AUTH_COPY.loginTitle
-                    : checkout?.loginTitle ?? "Anmelden und direkt fortfahren"}
+                  : "loginTitle" in intentCopy && intentCopy.loginTitle
+                    ? intentCopy.loginTitle
+                    : "Anmelden und direkt fortfahren"}
         </h2>
         {checkout && (mode === "login" || mode === "register") ? null : (
           <p>{mode === "set-password"

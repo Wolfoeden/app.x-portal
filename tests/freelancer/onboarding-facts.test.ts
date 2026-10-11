@@ -23,8 +23,10 @@ describe("freelancer onboarding before registration", () => {
     expect(fact("Kontakt", false)).not.toContain("stellt Sie per E-Mail vor");
   });
 
-  it("says who pays the placement fee only when placement is on", () => {
-    expect(fact("Kosten")).toContain("das Vermittlungshonorar zahlt der Auftraggeber");
+  it("promises no fee to anyone", () => {
+    // Neue Vorgänge sind provisionsfrei, auch für Auftraggeber.
+    expect(fact("Kosten")).toContain("eine Provision fällt für niemanden an");
+    expect(fact("Kosten")).not.toContain("Vermittlungshonorar");
     expect(fact("Kosten", false)).not.toContain("Vermittlungshonorar");
   });
 

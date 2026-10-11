@@ -356,7 +356,6 @@
   line-height: 1.2;
   white-space: nowrap;
   cursor: pointer;
-  box-shadow: var(--xp-action-primary-shadow);
 }
 
 .submit:hover:not(:disabled) { background: var(--xp-action-primary-hover); }

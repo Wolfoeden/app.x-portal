@@ -84,7 +84,7 @@
 }
 
 /* Zwei Klassen, damit Linkfarben von Textseiten (`.xlegal a`) nicht greifen. */
-.headerActions .primaryAction { background: var(--xp-action-primary); color: #fff; box-shadow: var(--xp-action-primary-shadow); }
+.headerActions .primaryAction { background: var(--xp-action-primary); color: #fff; }
 .headerActions .primaryAction:hover { background: var(--xp-action-primary-hover); }
 .headerActions .secondaryAction { border-color: var(--xp-action-secondary-border); background: #fff; color: var(--chrome-ink); }
 .headerActions .secondaryAction:hover { border-color: var(--xp-action-secondary-border-hover); background: var(--xp-action-secondary-hover); }

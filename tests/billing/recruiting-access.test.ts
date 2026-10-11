@@ -6,8 +6,7 @@ vi.mock("@/lib/auth/current-user", () => ({ requireCurrentUser: mocks.user }));
 vi.mock("@/lib/data/plan-teams", () => ({ findOwnerForMember: mocks.owner, addTeamMember: mocks.add, loadTeam: vi.fn(), removeTeamMember: vi.fn() }));
 vi.mock("@/lib/email/deliver", () => ({ deliverEmail: vi.fn() }));
 vi.mock("@/lib/audit/write", () => ({ writeAuditEvent: vi.fn() }));
-import { userHasPaidAccess } from "@/lib/billing/paid-access";
-import { getBillingEntitlement } from "@/lib/billing/entitlements";
+import { getBillingEntitlement, userHasRecruitingAccess } from "@/lib/billing/entitlements";
 import { POST } from "@/app/api/team/members/route";
 beforeEach(() => {
   vi.clearAllMocks();
@@ -17,13 +16,13 @@ beforeEach(() => {
 describe("server entitlement compatibility and team mutations", () => {
   it.each(["trial", "paid", "legacy"])("honors the centrally confirmed %s entitlement", async source => {
     mocks.rpc.mockResolvedValue({ data: [{ can_run_ai: false, can_use_recruiting: true, source, reason: "insufficient_credits" }], error: null });
-    expect(await userHasPaidAccess("owner")).toBe(true);
+    expect(await userHasRecruitingAccess("owner")).toBe(true);
     expect(await getBillingEntitlement("owner")).toMatchObject({ canRunAi: false, canUseRecruiting: true, source });
     expect(mocks.rpc).toHaveBeenCalledWith("get_recruiting_entitlement", { p_user_id: "owner" });
   });
   it.each([null, [], [{ can_use_recruiting: false, source: "none" }]])("fails closed for missing or expired entitlement %j", async data => {
     mocks.rpc.mockResolvedValue({ data, error: null });
-    expect(await userHasPaidAccess("owner")).toBe(false);
+    expect(await userHasRecruitingAccess("owner")).toBe(false);
   });
   it("denies a new team member before account lookup or sending when billing expired", async () => {
     mocks.rpc.mockResolvedValue({ data: [{ can_use_recruiting: false }], error: null });
@@ -34,6 +33,6 @@ describe("server entitlement compatibility and team mutations", () => {
   });
   it("propagates a failed entitlement lookup instead of granting access", async () => {
     mocks.rpc.mockResolvedValue({ data: null, error: new Error("database unavailable") });
-    await expect(userHasPaidAccess("owner")).rejects.toThrow("database unavailable");
+    await expect(userHasRecruitingAccess("owner")).rejects.toThrow("database unavailable");
   });
 });

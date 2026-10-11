@@ -29,7 +29,7 @@
 .booking-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; margin: 0 0 40px; font-size: 14.5px; }
 /* Knöpfe wie auf der Startseite: dieselben Werte wie
    components/ui/actions.module.css, aus app/styles/foundation.css. */
-.xlegal .booking-continue { display: inline-flex; align-items: center; justify-content: center; min-height: var(--xp-action-height); padding: var(--xp-action-padding); border: 1px solid transparent; border-radius: var(--xp-action-radius); background: var(--xp-action-primary); color: #fff; text-decoration: none; font: inherit; font-size: var(--xp-action-font-size); font-weight: var(--xp-action-weight); box-shadow: var(--xp-action-primary-shadow); }
+.xlegal .booking-continue { display: inline-flex; align-items: center; justify-content: center; min-height: var(--xp-action-height); padding: var(--xp-action-padding); border: 1px solid transparent; border-radius: var(--xp-action-radius); background: var(--xp-action-primary); color: #fff; text-decoration: none; font: inherit; font-size: var(--xp-action-font-size); font-weight: var(--xp-action-weight); }
 .xlegal .booking-continue:hover { background: var(--xp-action-primary-hover); }
 .xlegal .booking-continue:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 .xlegal .booking-actions a:not(.booking-continue):focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }

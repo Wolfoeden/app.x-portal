@@ -3410,7 +3410,10 @@ export function ChatWorkspace({
 
         <div className="sidebar-footer">
           <div className="account-menu-wrap sidebar-account-menu-wrap" ref={accountMenuRef}>
-            {accountMenuOpen ? (
+            {/* Ohne Konto gibt es nichts zu verwalten und kein Guthaben: der
+                Knopf öffnet gleich die Anmeldung, wie „Anmelden“ auf jeder
+                anderen Seite. */}
+            {accountMenuOpen && isAccountUser ? (
               <div className="account-popover sidebar-account-popover" role="dialog" aria-label="Konto und Einstellungen">
                 <AccountSummary
                   usage={usage}
@@ -3480,12 +3483,7 @@ export function ChatWorkspace({
                     <div className="menu-divider" />
                     <button className="account-menu-item" type="button" onClick={() => void signOut()}>Abmelden</button>
                   </>
-                ) : (
-                  <>
-                    <button className="account-menu-item" type="button" onClick={() => { setAccountMenuOpen(false); setSidebarOpen(false); openAuth("generic", undefined, "login"); }}>Anmelden oder Konto erstellen</button>
-                    <button className="account-menu-item" type="button" onClick={() => { setAccountMenuOpen(false); openCookieSettings(); }}>Cookie-Einstellungen verwalten</button>
-                  </>
-                )}
+                ) : null}
               </div>
             ) : null}
             <button
@@ -3493,8 +3491,13 @@ export function ChatWorkspace({
               type="button"
               aria-label={isAccountUser ? "Konto und Einstellungen öffnen" : "Anmelden oder Konto erstellen"}
               aria-haspopup="dialog"
-              aria-expanded={accountMenuOpen}
+              aria-expanded={isAccountUser ? accountMenuOpen : undefined}
               onClick={() => {
+                if (!isAccountUser) {
+                  setSidebarOpen(false);
+                  openAuth("generic", undefined, "login");
+                  return;
+                }
                 if (!accountMenuOpen) void refreshUsage();
                 setAccountMenuOpen((current) => !current);
               }}
@@ -3505,11 +3508,11 @@ export function ChatWorkspace({
               <span className="sidebar-account-copy">
                 <strong>{accountName ?? "Anmelden"}</strong>
                 <span>
-                  {usage
-                    ? usageSummary(usage, isAccountUser)
-                    : isAccountUser
-                      ? auth.user?.email ?? "Konto verwalten"
-                      : "Projekte dauerhaft speichern"}
+                  {!isAccountUser
+                    ? "Projekte dauerhaft speichern"
+                    : usage
+                      ? usageSummary(usage, isAccountUser)
+                      : auth.user?.email ?? "Konto verwalten"}
                 </span>
               </span>
             </button>
@@ -3818,6 +3821,8 @@ export function ChatWorkspace({
             <a href="/terms">AGB</a>
             <span aria-hidden="true">·</span>
             <a href="/contact">Kontakt</a>
+            <span aria-hidden="true">·</span>
+            <button type="button" onClick={() => openCookieSettings()}>Cookies</button>
           </span>
         </p>
           </>

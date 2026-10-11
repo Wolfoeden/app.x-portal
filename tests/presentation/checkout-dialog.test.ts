@@ -51,7 +51,7 @@ describe("booking a plan without an account", () => {
 
   it("offers the voucher on the ordinary header login too", () => {
     const markup = dialog("login", null, true);
-    expect(markup).toContain("Anmelden und direkt fortfahren");
+    expect(markup).toContain(">Anmelden</h2>");
     expect(markup).toContain("Gutscheincode");
     expect(markup).not.toContain("netto pro Monat");
   });

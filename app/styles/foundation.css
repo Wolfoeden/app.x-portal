@@ -98,9 +98,9 @@
   --xp-action-padding: 10px 20px;
   --xp-action-font-size: 15px;
   --xp-action-weight: 500;
-  --xp-action-primary: radial-gradient(circle at 50% 50%, #17804d, #0c5c3b);
-  --xp-action-primary-hover: radial-gradient(circle at 50% 50%, #17804d, #094a30);
-  --xp-action-primary-shadow: 0 1px 2px rgba(16, 27, 23, .18), 0 6px 16px rgba(23, 128, 77, .22), inset 0 1px 0 rgba(255, 255, 255, .14);
+  /* Ein Hauptknopf überall, flach: Startseite, Chat, Fenster, Formulare. */
+  --xp-action-primary: #17804d;
+  --xp-action-primary-hover: #126b40;
   --xp-action-secondary-border: #dde1e5;
   --xp-action-secondary-border-hover: #b9c0c7;
   --xp-action-secondary-hover: #fafbfb;

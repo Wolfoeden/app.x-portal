@@ -674,70 +674,8 @@
   white-space: nowrap;
 }
 
-.status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #bcbcb6;
-}
-
-.status-dot.is-ready {
-  background: var(--green);
-  box-shadow: 0 0 0 3px var(--green-soft);
-}
-
-.primary-action:hover,
-.send-button:hover:not(:disabled),
-.auth-submit:hover,
-.calendar-consent button:hover,
-.selected-side-card button:hover {
-  background: var(--ink-hover);
-}
-
-.credit-progress {
-  overflow: hidden;
-  height: 6px;
-  margin-top: 15px;
-  border-radius: var(--radius-pill);
-  background: var(--surface-hover);
-}
-
-.credit-progress > span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--ink-soft);
-  transition: width 220ms ease;
-}
-
-.is-low .credit-progress > span {
-  background: var(--amber);
-}
-
-.is-exhausted .credit-progress > span {
-  background: var(--danger);
-}
-
 .account-menu-wrap {
   position: relative;
-}
-
-.account-button {
-  display: grid;
-  width: var(--control-sm);
-  height: var(--control-sm);
-  cursor: pointer;
-  place-items: center;
-  border: 1px solid var(--border-strong);
-  border-radius: 50%;
-  background: var(--surface-soft);
-  color: var(--ink-soft);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-}
-
-.account-button:hover {
-  border-color: var(--border-hover);
 }
 
 .account-popover {
@@ -1341,24 +1279,27 @@ dd.is-unknown {
   gap: 5px;
 }
 
+/* Etiketten auf Profilkarten: eine Form wie Fachgebiet und Prüfung
+   (.pband-label), die Farbe sagt nur den Zustand. */
 .availability,
 .match-role {
+  border: 1px solid transparent;
   border-radius: var(--radius-pill);
-  padding: 4px 7px;
+  padding: 1px 8px;
   font-size: var(--fs-2xs);
-  font-weight: 710;
-  letter-spacing: 0.025em;
+  font-weight: 600;
+  line-height: 1.5;
   white-space: nowrap;
 }
 
 .match-role {
-  border: 1px solid var(--ink);
-  background: var(--ink);
-  color: #fff;
+  border-color: var(--border-strong);
+  background: var(--surface);
+  color: var(--ink);
 }
 
 .match-role.is-warning {
-  border-color: var(--amber);
+  border-color: var(--amber-border);
   background: var(--amber-soft);
   color: var(--amber);
 }
@@ -1815,18 +1756,49 @@ dd.is-unknown {
   gap: 6px;
   min-height: var(--control-md);
   cursor: pointer;
-  border-radius: var(--radius-sm);
+  border-radius: var(--xp-action-radius);
   padding: 0 12px;
   font-size: var(--fs-2xs);
   font-weight: 680;
   white-space: nowrap;
 }
 
-.primary-action {
-  border: 1px solid var(--ink);
-  background: var(--ink);
+/* Hauptknopf der App: eine Farbe, ein Radius, ein Hover, dieselben Werte wie
+   auf den öffentlichen Seiten (app/styles/foundation.css, --xp-action-*).
+   Die Regeln der einzelnen Stellen setzen nur noch Größe und Abstand. */
+.primary-action,
+.auth-submit,
+.composer-signup,
+.confirmation-state button,
+.calendar-consent button,
+.calendar-consent a.booking-link-action,
+.selected-side-card button,
+.account-name-form button,
+.account-upgrade,
+.plans-dialog > .plan-action,
+.credit-limit-row button,
+.external-links .external-booking-link {
+  border: 1px solid transparent;
+  border-radius: var(--xp-action-radius);
+  background: var(--xp-action-primary);
   color: #fff;
   text-decoration: none;
+}
+
+.primary-action:hover:not(:disabled),
+.auth-submit:hover:not(:disabled),
+.composer-signup:hover,
+.confirmation-state button:hover:not(:disabled),
+.calendar-consent button:hover:not(:disabled),
+.calendar-consent a.booking-link-action:hover,
+.selected-side-card button:hover:not(:disabled),
+.account-name-form button:hover:not(:disabled),
+.account-upgrade:hover,
+.plans-dialog > .plan-action:hover,
+.credit-limit-row button:hover:not(:disabled),
+.external-links .external-booking-link:hover {
+  background: var(--xp-action-primary-hover);
+  color: #fff;
 }
 
 .primary-action:disabled {
@@ -1835,7 +1807,8 @@ dd.is-unknown {
 }
 
 .secondary-action {
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--xp-action-secondary-border);
+  border-radius: var(--xp-action-radius);
   background: var(--surface);
 }
 
@@ -1848,7 +1821,8 @@ a.secondary-action {
 }
 
 .secondary-action:hover {
-  background: var(--surface-soft);
+  border-color: var(--xp-action-secondary-border-hover);
+  background: var(--xp-action-secondary-hover);
 }
 
 .cv-download-status {
@@ -2154,7 +2128,6 @@ a.secondary-action {
 .external-fact p { margin: 3px 0 0; color: var(--muted); font-size: var(--fs-2xs); line-height: 1.45; }
 .external-links { display: grid; gap: 6px; margin-top: 12px; }
 .external-links a { border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 7px 8px; color: var(--ink); text-align: center; text-decoration: none; font-size: var(--fs-2xs); font-weight: 650; }
-.external-links .external-booking-link { border-color: var(--ink); background: var(--ink); color: #fff; }
 .external-sources { overflow-wrap: anywhere; margin-bottom: 0; }
 .external-sources a { color: inherit; text-underline-offset: 2px; }
 .external-trace { border-top: 1px solid var(--border); padding-top: 9px; color: var(--muted); font-size: var(--fs-2xs); }
@@ -2182,9 +2155,21 @@ a.secondary-action {
   line-height: 1.4;
 }
 
+/* Aufgebraucht ist kein Fehler, sondern der Moment für den nächsten Schritt:
+   eine ruhige Karte mit einem Knopf statt roter Warnschrift. */
 .composer-credit-status.is-exhausted {
-  color: var(--danger);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  border: 1px solid var(--amber-border);
+  border-radius: var(--radius-sm);
+  background: var(--amber-raised);
+  padding: 11px 13px;
+  color: var(--ink-soft);
 }
+
+.composer-credit-status.is-exhausted p { margin: 0; }
 
 .composer-field {
   position: relative;
@@ -2228,10 +2213,14 @@ a.secondary-action {
   cursor: pointer;
   place-items: center;
   border-radius: 50%;
-  background: var(--ink);
+  background: var(--xp-action-primary);
   color: #fff;
   font-size: var(--fs-md);
   line-height: 1;
+}
+
+.send-button:hover:not(:disabled) {
+  background: var(--xp-action-primary-hover);
 }
 
 .send-button:disabled {
@@ -2335,7 +2324,7 @@ a.secondary-action {
 
 /* Imprint and privacy live in the line people actually read before typing,
    not only in a footer they never scroll to. */
-/* Vier Links statt zwei: auf schmalen Fenstern muss die Zeile umbrechen
+/* Fünf Links statt zwei: auf schmalen Fenstern muss die Zeile umbrechen
    dürfen, sonst schiebt sie den Satz davor aus dem Bild. */
 .composer-legal {
   display: inline-flex;
@@ -2346,13 +2335,20 @@ a.secondary-action {
   margin-left: 8px;
 }
 
-.composer-legal a {
+.composer-legal a,
+.composer-legal button {
+  border: 0;
+  background: none;
+  padding: 0;
   color: var(--muted);
+  font: inherit;
   text-decoration: underline;
   text-underline-offset: 2px;
+  cursor: pointer;
 }
 
-.composer-legal a:hover {
+.composer-legal a:hover,
+.composer-legal button:hover {
   color: var(--ink);
 }
 
@@ -2531,9 +2527,6 @@ a.secondary-action {
   min-height: var(--control-md);
   margin: 11px 0 6px;
   cursor: pointer;
-  border-radius: var(--radius-sm);
-  background: var(--ink);
-  color: #fff;
   font-size: var(--fs-2xs);
   font-weight: 650;
 }
@@ -2922,9 +2915,6 @@ a.secondary-action {
   min-height: 48px;
   margin-top: 10px;
   cursor: pointer;
-  border-radius: 12px;
-  background: var(--ink);
-  color: #fff;
   font-size: var(--fs-xs);
   font-weight: 680;
 }
@@ -2977,9 +2967,6 @@ a.secondary-action {
 .confirmation-state button {
   min-height: 34px;
   cursor: pointer;
-  border-radius: var(--radius-sm);
-  background: var(--ink);
-  color: #fff;
   padding: 0 13px;
   font-size: var(--fs-2xs);
   font-weight: 650;
@@ -3061,13 +3048,6 @@ a.secondary-action {
   border-radius: 50%;
   background: var(--green-soft);
   color: var(--green);
-}
-
-.placement-privacy {
-  margin: 0;
-  color: var(--muted);
-  font-size: var(--fs-2xs);
-  line-height: 1.5;
 }
 
 .placement-consent {
@@ -3439,9 +3419,6 @@ a.secondary-action {
   min-height: var(--control-lg);
   margin-top: 18px;
   cursor: pointer;
-  border-radius: var(--radius-sm);
-  background: var(--ink);
-  color: #fff;
   padding: 0 15px;
   font-size: var(--fs-2xs);
   font-weight: 680;
@@ -3460,13 +3437,9 @@ a.secondary-action {
   align-items: center;
   justify-content: center;
   margin-top: 18px;
-  border-radius: var(--radius-sm);
-  background: var(--ink);
-  color: #fff;
   padding: 0 15px;
   font-size: var(--fs-2xs);
   font-weight: 680;
-  text-decoration: none;
 }
 
 .booking-unavailable {
@@ -3986,7 +3959,8 @@ a.secondary-action {
 .mandate-card.is-embedded { width: 100%; margin-top: 0; border: 0; border-top: 1px solid var(--amber-border); border-radius: 0; background: none; padding: 10px 0 0; }
 .mandate-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; width: 100%; border-top: 1px solid var(--amber-border); padding-top: 10px; }
 .mandate-inline p { flex: 1 1 280px; margin: 0; }
-.composer-signup.is-secondary { background: var(--surface); color: var(--ink); }
+.composer-signup.is-secondary { border-color: var(--xp-action-secondary-border); background: var(--surface); color: var(--ink); }
+.composer-signup.is-secondary:hover { border-color: var(--xp-action-secondary-border-hover); background: var(--xp-action-secondary-hover); color: var(--ink); }
 .mandate-icon {
   display: inline-flex;
   flex: none;
@@ -4084,9 +4058,8 @@ a.secondary-action {
   color: var(--ink); font-size: var(--fs-sm);
 }
 .account-name-form button {
-  height: 30px; cursor: pointer;
-  border-radius: 8px; background: var(--ink); padding: 0 10px;
-  color: #fff; font-size: var(--fs-2xs); font-weight: 650;
+  height: 30px; cursor: pointer; padding: 0 10px;
+  font-size: var(--fs-2xs); font-weight: 650;
 }
 .account-name-form button:disabled { cursor: wait; opacity: .6; }
 .account-name-form .form-error { flex-basis: 100%; margin: 0; font-size: var(--fs-2xs); }
@@ -4128,13 +4101,10 @@ a.secondary-action {
 .account-upgrade {
   display: inline-flex; align-items: center; justify-content: center; gap: 7px;
   width: 100%;
-  min-height: 44px;
-  border: 1px solid var(--ink); border-radius: 12px;
-  background: var(--ink); padding: 10px 12px;
-  color: #fff; font: inherit; font-size: var(--fs-2xs); font-weight: 700;
+  min-height: 44px; padding: 10px 12px;
+  font: inherit; font-size: var(--fs-2xs); font-weight: 700;
   cursor: pointer;
 }
-.account-upgrade:hover { opacity: .9; }
 
 /* --- Plan-Dialog (Vorbild: Abrechnungsseite) --- */
 
@@ -4190,13 +4160,11 @@ a.secondary-action {
 
 .plans-dialog > .plan-action {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  border: 1px solid var(--ink); border-radius: var(--radius-sm);
-  background: var(--ink); padding: 11px 14px;
-  color: #fff; font: inherit; font-size: var(--fs-2xs); font-weight: 700;
-  cursor: pointer; text-decoration: none;
-  transition: background-color 120ms ease, border-color 120ms ease;
+  padding: 11px 14px;
+  font: inherit; font-size: var(--fs-2xs); font-weight: 700;
+  cursor: pointer;
+  transition: background-color 120ms ease;
 }
-.plans-dialog > .plan-action:hover { border-color: #000; background: #000; }
 
 @media (prefers-reduced-motion: reduce) {
   .plans-dialog > .plan-action { transition: none; }
@@ -4223,13 +4191,10 @@ a.secondary-action {
   .plans-billing-rail a { grid-column: 2; }
 }
 
-.composer-credit-status.is-exhausted { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .composer-signup {
-  border: 1px solid var(--ink); border-radius: var(--radius-sm);
-  background: var(--ink); padding: 8px 14px;
-  color: #fff; font: inherit; font-size: var(--fs-2xs); font-weight: 700; cursor: pointer;
+  padding: 8px 14px;
+  font: inherit; font-size: var(--fs-2xs); font-weight: 700; cursor: pointer;
 }
-.composer-signup:hover { opacity: .9; }
 
 /* ---------------------------------------------------- Plan-Team & Agenten */
 
@@ -4543,11 +4508,6 @@ a.secondary-action {
   transform: translateY(0);
 }
 
-.profile-actions .primary-action:hover {
-  border-color: #000;
-  background: #000;
-}
-
 .profile-actions .secondary-action:hover {
   border-color: var(--border-hover);
   background: var(--surface-hover);
@@ -4777,11 +4737,7 @@ a.secondary-action {
   flex: none;
   min-height: 40px;
   cursor: pointer;
-  border: 1px solid var(--ink);
-  border-radius: var(--radius-sm);
-  background: var(--ink);
   padding: 0 16px;
-  color: #fff;
   font: inherit;
   font-size: var(--fs-2xs);
   font-weight: 680;
@@ -4856,17 +4812,6 @@ a.secondary-action {
   }
 }
 
-/* Aufgebraucht ist kein Fehler, sondern der Moment für den nächsten Schritt:
-   eine ruhige Karte mit einem Knopf statt roter Warnschrift. */
-.composer-credit-status.is-exhausted {
-  border: 1px solid var(--amber-border);
-  border-radius: var(--radius-sm);
-  background: var(--amber-raised);
-  padding: 11px 13px;
-  color: var(--ink-soft);
-}
-.composer-credit-status.is-exhausted p { margin: 0; }
-
 /* Selbst angemeldete Profile unter einem Rollen-Shortcut. Auf der Flucht des
    Antworttexts, damit die Liste zur Nachricht darüber gehört. */
 .registered-showcase {
@@ -4902,9 +4847,9 @@ a.secondary-action {
   list-style: none;
 }
 
-/* Profilkarte: unter den Shortcuts und als Vorschau in der Bewerbung. Oben
-   das Band des Fachgebiets, darüber das Monogramm; die Fakten stehen unten
-   bündig, damit Karten einer Reihe gleich enden. */
+/* Profilkarte: unter den Shortcuts, als Vorschau in der Bewerbung und auf
+   der Startseite. Oben Fachgebiet und Prüfung, dann Monogramm und Name; die
+   Fakten stehen unten bündig, damit Karten einer Reihe gleich enden. */
 .showcase-card {
   display: flex;
   height: 100%;
@@ -4920,7 +4865,7 @@ a.secondary-action {
   transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
 }
 
-.showcase-card > :not(.pband) {
+.showcase-card > * {
   margin-inline: 14px;
 }
 
@@ -4931,46 +4876,34 @@ a.showcase-card:focus-visible {
   transform: translateY(-2px);
 }
 
-/* Band je Fachgebiet: Verlauf mit feinem Punktraster, ohne Bilddatei. */
+/* Kopfzeile jeder Profilkarte und -ansicht: Fachgebiet und Prüfung als
+   ruhige Etiketten, ohne farbiges Band. */
 .pband {
-  --band-a: #ecece7;
-  --band-b: #f5f5f1;
-  --band-ink: #4a4a44;
   display: flex;
-  min-height: 54px;
-  align-items: flex-start;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  background:
-    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.6) 1px, transparent 0) 0 0 / 9px 9px,
-    linear-gradient(120deg, var(--band-a), var(--band-b));
-  padding: 9px 12px;
+  gap: 6px;
+  padding-top: 14px;
 }
-
-.pband[data-field="ai"] { --band-a: #e9e2ff; --band-b: #d8ecff; --band-ink: #4b2f9e; }
-.pband[data-field="data"] { --band-a: #dbefff; --band-b: #ddf6ec; --band-ink: #0b5674; }
-.pband[data-field="frontend"] { --band-a: #ffe9d6; --band-b: #ffe2ef; --band-ink: #8c3a12; }
-.pband[data-field="software"] { --band-a: #e1e9fb; --band-b: #ecf0f6; --band-ink: #2a4787; }
-.pband[data-field="cloud"] { --band-a: #dbf1f5; --band-b: #e4eaff; --band-ink: #0f5a68; }
-.pband[data-field="sap"] { --band-a: #dde9ff; --band-b: #ebf3ff; --band-ink: #0b4ea0; }
-.pband[data-field="requirements"] { --band-a: #f3ecd8; --band-b: #e6f3e1; --band-ink: #5b4810; }
-.pband[data-field="business"] { --band-a: #fde4ea; --band-b: #fff0da; --band-ink: #8c2840; }
 
 .pband-label,
 .pband-verified {
   display: inline-flex;
   align-items: center;
   gap: 3px;
+  border: 1px solid var(--border);
   border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.82);
-  padding: 2px 8px;
-  color: var(--band-ink);
+  padding: 1px 8px;
+  color: var(--muted);
   font-size: var(--fs-2xs);
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.5;
 }
 
 .pband-verified {
+  border-color: var(--green-border);
+  background: var(--green-soft);
   color: var(--green);
 }
 
@@ -4996,8 +4929,6 @@ a.showcase-card:focus-visible {
 .showcase-card .profile-avatar {
   width: 52px;
   height: 52px;
-  margin-top: -32px;
-  box-shadow: 0 0 0 3px var(--surface);
   font-size: var(--fs-base);
 }
 
@@ -5184,11 +5115,10 @@ a.showcase-card:hover .showcase-card-cta svg {
   }
 }
 
-/* Die Ergebniskarte trägt dasselbe Band, schmaler und über die volle Breite. */
+/* Die Ergebniskarte trägt dieselbe Kopfzeile. */
 .profile-main > .pband {
-  min-height: 0;
-  margin: -17px -18px 12px;
-  padding: 7px 18px;
+  margin-bottom: 12px;
+  padding-top: 0;
 }
 
 .profile-evidence .fit-bar {
@@ -5275,8 +5205,8 @@ a.showcase-card:hover .showcase-card-cta svg {
 
 /* Detailansicht eines Profils: Panel im Chat und /profil/<id>. */
 .dossier .pband {
-  min-height: 96px;
-  padding: 14px 60px 14px 20px;
+  justify-content: flex-start;
+  padding: 20px 60px 0 20px;
 }
 
 .dossier-head {
@@ -5287,10 +5217,8 @@ a.showcase-card:hover .showcase-card-cta svg {
 }
 
 .dossier-head .profile-avatar {
-  width: 84px;
-  height: 84px;
-  margin-top: -58px;
-  box-shadow: 0 0 0 4px var(--surface);
+  width: 72px;
+  height: 72px;
   font-size: var(--fs-xl);
 }
 
@@ -5570,7 +5498,7 @@ a.showcase-card:hover .showcase-card-cta svg {
 /* Fenster im Stil der Website --------------------------------------------
 
    Dieselbe Sprache wie die öffentlichen Seiten (landing.module.css):
-   Überschrift in der Display-Schrift, grüner Verlaufsknopf für den
+   Überschrift in der Display-Schrift, der grüne Hauptknopf für den
    Hauptschritt, weißer Rahmenknopf daneben, Eingabefelder wie im
    Gesprächsformular. Gilt für jedes Fenster der App, damit keines aus der
    Reihe fällt. */
@@ -5586,14 +5514,8 @@ a.showcase-card:hover .showcase-card-cta svg {
 .modal-card .secondary-action,
 .modal-card .danger-action,
 .modal-card .auth-submit { min-height: var(--xp-action-height); border-radius: var(--xp-action-radius); padding: 0 20px; font-size: var(--xp-action-font-size); font-weight: var(--xp-action-weight); }
-.modal-card .primary-action,
-.modal-card .auth-submit { border: 1px solid transparent; background: var(--xp-action-primary); color: #fff; box-shadow: var(--xp-action-primary-shadow); }
-.modal-card .primary-action:hover:not(:disabled),
-.modal-card .auth-submit:hover:not(:disabled) { background: var(--xp-action-primary-hover); }
 .modal-card .primary-action:disabled,
-.modal-card .auth-submit:disabled { opacity: .45; box-shadow: none; }
-.modal-card .secondary-action { border-color: var(--xp-action-secondary-border); background: #fff; color: var(--ink); }
-.modal-card .secondary-action:hover:not(:disabled) { border-color: var(--xp-action-secondary-border-hover); background: var(--xp-action-secondary-hover); }
+.modal-card .auth-submit:disabled { opacity: .45; }
 .modal-card .email-login label { color: var(--xp-ink); font-size: var(--xp-label-size); font-weight: var(--xp-label-weight); }
 .modal-card .email-login input:not([type="checkbox"]) { height: auto; min-height: var(--xp-field-height); border: 1px solid var(--xp-field-border); border-radius: var(--xp-field-radius); background: var(--xp-field-bg); padding: var(--xp-field-padding); font-size: var(--xp-field-font-size); }
 .modal-card .email-login input:not([type="checkbox"]):focus { border-color: var(--xp-brand); box-shadow: none; outline: var(--xp-field-focus-ring); outline-offset: 0; background: var(--xp-field-bg-focus); }

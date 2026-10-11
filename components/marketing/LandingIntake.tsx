@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
 
-import { IconArrowUp, IconCheck } from "@/components/icons";
+import { IconArrowRight, IconArrowUp, IconCheck } from "@/components/icons";
 import { actionClass } from "@/components/ui/actions";
 import { saveProjectDraft } from "@/lib/recruiting/project-draft";
 import { SALES_CONTACT } from "@/lib/sales/sales-contact-model";
@@ -109,7 +109,7 @@ export function LandingIntake({ contactPhotoUrl = null }: { contactPhotoUrl?: st
 
           <div className={styles.heroSupport}>
             <div className={styles.actions}>
-              <RecruitingLink href="#produktablauf" event="demo_viewed" className={actionClass("secondary", { className: styles.prominentSecondary })}>Produktablauf ansehen</RecruitingLink>
+              <RecruitingLink href="#produktablauf" event="demo_viewed" className={actionClass("secondary")}>Produktablauf ansehen</RecruitingLink>
             </div>
           </div>
 
@@ -120,21 +120,31 @@ export function LandingIntake({ contactPhotoUrl = null }: { contactPhotoUrl?: st
             aria-label="Profil von Roman D. im Chat öffnen"
             onClick={() => saveProjectDraft(visibleDraft)}
           >
-            <article className={styles.expertCard}>
-              <div className={styles.verifiedBadge}><IconCheck size={14} /> Blockchain &amp; KI-Profil geprüft</div>
-              <div className={styles.expertProfile}>
-                <Image className={styles.chatProfileAvatar} src={profilePhotoUrl} alt="Roman Dering" width={68} height={68} priority unoptimized />
-                <div><h3>Roman D.</h3><p>Senior Blockchain &amp; AI Automation Specialist</p></div>
-              </div>
-              <div className={styles.expertSkills} aria-label="Fachgebiete">
+            {/* Dieselbe Profilkarte wie im Chat und in der Freelancer-Vorschau
+                (.showcase-card in app/styles/workspace.css). */}
+            <article className={`showcase-card ${styles.expertCard}`}>
+              <span className="pband">
+                <span className="pband-verified"><IconCheck size={11} /> Blockchain &amp; KI-Profil geprüft</span>
+              </span>
+              <span className="showcase-card-head">
+                <Image className={`profile-avatar has-image ${styles.expertAvatar}`} src={profilePhotoUrl} alt="Roman Dering" width={52} height={52} priority unoptimized />
+                <span className="showcase-card-identity">
+                  <strong>Roman D.</strong>
+                  <span>Senior Blockchain &amp; AI Automation Specialist</span>
+                  <span>Remote</span>
+                </span>
+              </span>
+              <span className="showcase-card-skills" aria-label="Fachgebiete">
                 <span>Blockchain</span><span>KI-Agenten</span><span>Automation</span><span>Web3</span><span>Smart Contracts</span>
-              </div>
-              <p className={styles.expertDescription}>Entwicklung intelligenter Blockchain-, Automatisierungs- und KI-Lösungen für Unternehmen.</p>
-              <div className={styles.expertFacts}>
-                <div><strong>Verfügbarkeit</strong><span>Ab November</span></div>
-                <div><strong>Einsatz</strong><span>Remote</span></div>
-              </div>
-              <span className={styles.expertAction}>Experte kontaktieren →</span>
+              </span>
+              <span className="showcase-card-teaser">
+                <small>Über mich</small>
+                <span>Entwicklung intelligenter Blockchain-, Automatisierungs- und KI-Lösungen für Unternehmen.</span>
+              </span>
+              <span className="showcase-card-facts">
+                <span className="availability available">Verfügbar ab November</span>
+              </span>
+              <span className="showcase-card-cta">Experte kontaktieren <IconArrowRight size={14} /></span>
             </article>
           </Link>
         </div>

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { fitCaption } from "@/components/profile/FitBar";
 import { summaryExcerpt } from "@/lib/profile/excerpt";
 import { profileField } from "@/lib/profile/field";
-import { MONOGRAM_TONES, monogramTone, PROFILE_FIELDS } from "@/lib/profile/identity";
+import { MONOGRAM_TONES, monogramTone } from "@/lib/profile/identity";
 
 const css = readFileSync(join(process.cwd(), "app/styles/workspace.css"), "utf8");
 
@@ -18,15 +18,6 @@ function luminance(hex: string): number {
 function contrast(foreground: string, background: string): number {
   const [light, dark] = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
   return (light! + 0.05) / (dark! + 0.05);
-}
-
-/** Der Chip liegt zu 82 % weiß über dem Band. */
-function chipBackground(band: string): string {
-  const mix = [1, 3, 5].map((start) => {
-    const channel = Number.parseInt(band.slice(start, start + 2), 16);
-    return Math.round(0.82 * 255 + 0.18 * channel).toString(16).padStart(2, "0");
-  });
-  return `#${mix.join("")}`;
 }
 
 describe("the monogram tone", () => {
@@ -64,14 +55,15 @@ describe("the field band", () => {
     expect(profileField("Berater", ["Kommunikation"])).toBeNull();
   });
 
-  it("styles every field with a readable label", () => {
-    for (const field of PROFILE_FIELDS.filter((entry) => entry !== "other")) {
-      const rule = css.match(
-        new RegExp(`\\.pband\\[data-field="${field}"\\] \\{ --band-a: (#[0-9a-f]{6}); --band-b: #[0-9a-f]{6}; --band-ink: (#[0-9a-f]{6}); \\}`, "u"),
-      );
-      expect(rule, field).not.toBeNull();
-      expect(contrast(rule![2]!, chipBackground(rule![1]!)), field).toBeGreaterThanOrEqual(4.5);
-    }
+  it("labels every field the same calm way, without a coloured band", () => {
+    // Oktober 2026: Das Pastellband mit Punktraster je Fachgebiet ist weg;
+    // das Fachgebiet steht als ruhiges Etikett wie die Prüfung daneben.
+    expect(css).not.toMatch(/\.pband\[data-field=/u);
+    expect(css).not.toContain("--band-a");
+    const label = css.match(/\.pband-label,\n\.pband-verified \{[^}]*color: var\(--muted\);/u);
+    expect(label).not.toBeNull();
+    const muted = readFileSync(join(process.cwd(), "app/styles/foundation.css"), "utf8").match(/--muted: (#[0-9a-f]{6});/u)?.[1];
+    expect(contrast(muted!, "#ffffff")).toBeGreaterThanOrEqual(4.5);
   });
 });
 

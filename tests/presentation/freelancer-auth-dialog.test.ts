@@ -53,11 +53,14 @@ describe("sign-up dialog for freelancers", () => {
     }
   });
 
-  it("leaves the client dialog as it was", () => {
+  it("keeps the client dialog for a plain sign-in neutral", () => {
     const login = dialog("login");
-    expect(login).toContain("Anmelden und direkt fortfahren");
+    expect(login).toContain(">Anmelden</h2>");
     const register = dialog("register", "client");
-    expect(register).toContain("Ihre Anfrage bleibt erhalten");
+    expect(register).toContain("Konto erstellen");
+    expect(register).toContain("Projekte, Merkliste und Gespräche");
+    // Ob es schon eine Anfrage gibt, weiß der Dialog ohne Anlass nicht.
+    expect(register).not.toContain("Ihre Anfrage bleibt erhalten");
     expect(register).toContain("Newsletter:");
     expect(register).toContain(BUSINESS_ONLY_NOTICE);
   });

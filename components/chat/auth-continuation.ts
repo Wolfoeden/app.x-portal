@@ -175,10 +175,13 @@ export function authIntentCopy(intent: AuthIntent) {
         afterConfirmation: "Danach können Sie die Recherche starten.",
       };
     default:
+      // Ohne bestimmten Schritt: „Anmelden“ im Kopf der Seite oder in der
+      // Seitenleiste. Ob schon eine Anfrage existiert, weiß der Dialog nicht.
       return {
-        eyebrow: "Arbeit sichern",
-        title: "Konto erstellen und direkt fortfahren",
-        body: "Ihre Anfrage bleibt erhalten und wird nach der Anmeldung wieder geöffnet.",
+        eyebrow: "XPORTAL-Konto",
+        title: "Konto erstellen",
+        loginTitle: "Anmelden",
+        body: "Projekte, Merkliste und Gespräche bleiben in Ihrem Konto gespeichert. Was Sie schon eingegeben haben, geht dabei nicht verloren.",
         afterConfirmation: "Danach geht es an dieser Stelle weiter.",
       };
   }
