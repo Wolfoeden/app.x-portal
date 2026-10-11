@@ -3934,49 +3934,23 @@ a.secondary-action {
   line-height: 1.45;
 }
 
-/* „XPORTAL sucht für Sie“ unter dem Ergebnis: zugeklappt eine Zeile mit
-   Knopf, geöffnet das Formular mit den Vermittlungsbedingungen. */
-.mandate-card {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px 18px;
-  margin-top: 14px;
-  border: 1px solid var(--green-border);
-  border-radius: var(--radius-md);
-  background: var(--green-soft);
-  padding: 14px 16px;
-}
-
-.mandate-card > div { min-width: 0; flex: 1 1 320px; }
-.mandate-card strong { display: block; font-size: var(--fs-sm); }
-.mandate-card p { margin: 4px 0 0; color: var(--ink-soft); font-size: var(--fs-xs); line-height: 1.5; }
-.mandate-card.is-open { display: grid; align-items: start; background: var(--surface); border-color: var(--border); }
-.mandate-card.is-open .placement-form { margin-top: 4px; }
-.mandate-card.is-done { justify-content: flex-start; flex-wrap: nowrap; }
-/* Im Hinweis an der Bezahlschranke: kein eigener Kasten. */
-.mandate-card.is-embedded { width: 100%; margin-top: 0; border: 0; border-top: 1px solid var(--amber-border); border-radius: 0; background: none; padding: 10px 0 0; }
-.mandate-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; width: 100%; border-top: 1px solid var(--amber-border); padding-top: 10px; }
-.mandate-inline p { flex: 1 1 280px; margin: 0; }
-.composer-signup.is-secondary { border-color: var(--xp-action-secondary-border); background: var(--surface); color: var(--ink); }
-.composer-signup.is-secondary:hover { border-color: var(--xp-action-secondary-border-hover); background: var(--xp-action-secondary-hover); color: var(--ink); }
-.mandate-icon {
-  display: inline-flex;
-  flex: none;
-  width: 28px;
-  height: 28px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--green);
-  color: #fff;
-}
-
-@media (max-width: 620px) {
-  .mandate-card .placement-fields { grid-template-columns: 1fr; }
-  .mandate-card .primary-action { width: 100%; }
-}
+/* Suchauftrag als Antwort von XPORTAL im Gespräch (components/chat/
+   mandate-card.tsx): Text wie jede Antwort, darunter Antwortknöpfe wie die
+   Rollen-Einstiege, keine eigene Karte. */
+.mandate-ask { margin-top: 22px; }
+.mandate-echo { margin-top: 18px; }
+.mandate-ask .message-content > p:first-of-type { color: var(--ink-soft); font-size: var(--fs-base); line-height: 1.7; }
+.mandate-reply { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.mandate-reply button { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; cursor: pointer; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); padding: 5px 14px; color: var(--ink); font: inherit; font-size: var(--fs-sm); font-weight: 600; }
+.mandate-reply button:hover:not(:disabled) { border-color: var(--border-hover); background: var(--surface-raised); }
+.mandate-reply button.is-primary { border-color: transparent; background: var(--xp-action-primary); color: #fff; }
+.mandate-reply button.is-primary:hover:not(:disabled) { background: var(--xp-action-primary-hover); }
+.mandate-reply button:disabled { cursor: default; opacity: .6; }
+.mandate-reply input[type="email"] { flex: 1 1 240px; min-height: 34px; border: 1px solid var(--border-strong); border-radius: var(--radius-pill); background: var(--surface); padding: 5px 14px; font: inherit; font-size: var(--fs-sm); }
+.mandate-ask .message-content > .mandate-consent { margin: 8px 0 0; color: var(--muted-light); font-size: var(--fs-2xs); line-height: 1.5; }
+.mandate-consent a { color: inherit; text-underline-offset: 2px; }
+.mandate-ask .message-content > .mandate-error { margin: 8px 0 0; color: var(--danger); font-size: var(--fs-xs); }
+.mandate-echo .message-content p { white-space: nowrap; }
 
 .project-destination-list {
   display: grid;

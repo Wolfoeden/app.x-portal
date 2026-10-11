@@ -14,14 +14,14 @@ export const dynamic = "force-dynamic";
 /**
  * Suchauftrag: „XPORTAL sucht für Sie“, provisionsfrei.
  *
- * Sechs von zehn Suchen fanden im Bestand keinen passenden Freelancer, und
- * Gäste kommen ohne Guthaben gar nicht bis zur Analyse. Beide gingen bisher
- * ohne Adresse. Ein Suchauftrag hält Projekt und Kontakt fest; der Betreiber
- * sucht gezielt und meldet sich innerhalb von 48 Stunden.
+ * Sechs von zehn Suchen fanden im Bestand keinen passenden Freelancer und
+ * gingen bisher ohne Adresse. Ein Suchauftrag hält Projekt und Kontakt fest;
+ * der Betreiber sucht gezielt und meldet sich innerhalb von 48 Stunden.
  *
- * Mit Projekt (nach einer Analyse ohne Treffer) oder mit dem eingefügten Text
- * (vor der Analyse). Gäste nennen ihre E-Mail; Honigtopf und Grenze je Adresse
- * teilt die Route mit app/api/introductions über lib/placement/guest-contact.ts.
+ * Immer zu einem analysierten Projekt. Gäste (ältere Projekte aus der Zeit vor
+ * der Registrierungspflicht) nennen ihre E-Mail; Honigtopf und Grenze je
+ * Adresse teilt die Route mit app/api/introductions über
+ * lib/placement/guest-contact.ts.
  */
 
 const optionalText = (max: number) =>
@@ -37,8 +37,7 @@ const phone = z
 
 const InputSchema = z
   .object({
-    projectId: z.string().uuid().optional(),
-    brief: z.string().trim().min(20).max(12_000).optional(),
+    projectId: z.string().uuid(),
     consentVersion: z.literal(SEARCH_MANDATE_CONSENT_VERSION),
     note: optionalText(1000),
     /** Nur ohne Konto Pflicht; mit Konto gilt die Adresse des Kontos. */
@@ -58,10 +57,7 @@ const InputSchema = z
       .strict()
       .optional(),
   })
-  .strict()
-  .refine((input) => Boolean(input.projectId) !== Boolean(input.brief), {
-    message: "Projekt oder Beschreibung angeben, nicht beides.",
-  });
+  .strict();
 
 const NO_STORE = { "Cache-Control": "private, no-store" };
 
@@ -117,8 +113,7 @@ export async function POST(request: Request) {
     const result = await createMandate({
       userId: user.id,
       isGuest: user.isAnonymous,
-      projectId: input.projectId ?? null,
-      brief: input.brief ?? null,
+      projectId: input.projectId,
       contact,
       note: input.note,
       siteUrl: SITE_URL,

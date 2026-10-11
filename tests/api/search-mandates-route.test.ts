@@ -16,7 +16,6 @@ import { GET, POST } from "@/app/api/search-mandates/route";
 import { SEARCH_MANDATE_CONSENT_VERSION } from "@/lib/placement/mandate-model";
 
 const PROJECT = "22222222-2222-4222-8222-222222222222";
-const BRIEF = "Wir suchen ab November einen React-Entwickler, remote, sechs Monate.";
 
 function post(body: unknown) {
   return POST(new Request("https://x-portal.eu/api/search-mandates", {
@@ -42,13 +41,13 @@ describe("search mandate route", () => {
     expect((await response.json()).mandate).toMatchObject({ id: "historical" });
   });
 
-  it("takes a guest's pasted text with only an e-mail address", async () => {
-    const response = await post({ brief: BRIEF, consentVersion: SEARCH_MANDATE_CONSENT_VERSION, guestContact: { email: "Kunde@Firma.de" } });
+  it("takes a guest's project with only an e-mail address", async () => {
+    const response = await post({ projectId: PROJECT, consentVersion: SEARCH_MANDATE_CONSENT_VERSION, guestContact: { email: "Kunde@Firma.de" } });
 
     expect(response.status).toBe(201);
     expect(await response.json()).toMatchObject({ created: true, message: expect.stringContaining("48 Stunden") });
     expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({
-      userId: "guest-1", isGuest: true, projectId: null, brief: BRIEF,
+      userId: "guest-1", isGuest: true, projectId: PROJECT,
       contact: { email: "kunde@firma.de", company: null, name: null, phone: null },
     }));
   });
@@ -59,31 +58,32 @@ describe("search mandate route", () => {
 
     expect(response.status).toBe(201);
     expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({
-      projectId: PROJECT, brief: null, contact: expect.objectContaining({ email: "recruiter@agentur.de" }),
+      projectId: PROJECT, contact: expect.objectContaining({ email: "recruiter@agentur.de" }),
     }));
   });
 
   it("refuses without the consent to be contacted", async () => {
-    const response = await post({ brief: BRIEF, guestContact: { email: "kunde@firma.de" } });
+    const response = await post({ projectId: PROJECT, guestContact: { email: "kunde@firma.de" } });
     expect(response.status).toBe(400);
     expect((await response.json()).error).toContain("kontaktieren");
     expect(mocks.create).not.toHaveBeenCalled();
   });
 
-  it("refuses a request with both a project and a text", async () => {
-    const response = await post({ projectId: PROJECT, brief: BRIEF, consentVersion: SEARCH_MANDATE_CONSENT_VERSION, guestContact: { email: "kunde@firma.de" } });
+  // Seit Oktober 2026 gibt es keinen Auftrag aus bloß eingefügtem Text mehr.
+  it("refuses a pasted text without an analysed project", async () => {
+    const response = await post({ brief: "Wir suchen ab November einen React-Entwickler, remote.", consentVersion: SEARCH_MANDATE_CONSENT_VERSION, guestContact: { email: "kunde@firma.de" } });
     expect(response.status).toBe(400);
     expect(mocks.create).not.toHaveBeenCalled();
   });
 
   it("drops a bot that fills the hidden field", async () => {
-    const response = await post({ brief: BRIEF, consentVersion: SEARCH_MANDATE_CONSENT_VERSION, guestContact: { email: "bot@spam.de", website: "https://spam.example" } });
+    const response = await post({ projectId: PROJECT, consentVersion: SEARCH_MANDATE_CONSENT_VERSION, guestContact: { email: "bot@spam.de", website: "https://spam.example" } });
     expect(response.status).toBe(400);
     expect(mocks.create).not.toHaveBeenCalled();
   });
 
   it("asks a guest for an address", async () => {
-    const response = await post({ brief: BRIEF, consentVersion: SEARCH_MANDATE_CONSENT_VERSION });
+    const response = await post({ projectId: PROJECT, consentVersion: SEARCH_MANDATE_CONSENT_VERSION });
     expect(response.status).toBe(400);
     expect((await response.json()).error).toContain("E-Mail");
   });

@@ -3,8 +3,6 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import { writeAuditEvent } from "@/lib/audit/write";
-import { deriveProjectTitle } from "@/lib/data/projects";
-import { buildDeterministicBrief } from "@/lib/openai/brief";
 import { contactInbox } from "@/lib/contact/messages";
 import { fetchActiveBookableRealProfiles } from "@/lib/data/freelancers";
 import { buildShortlist, ProjectBriefSchema, type FreelancerProfile } from "@/lib/domain";
@@ -61,10 +59,9 @@ export type CreateMandateResult =
  * Legt einen Suchauftrag an. Der Aufrufer hat die Einwilligung und — bei
  * Gästen — Honigtopf und Grenze je Adresse schon geprüft.
  *
- * Zwei Wege: zu einem schon analysierten Projekt (kein passender Treffer) oder
- * direkt aus dem eingefügten Text, wenn die Analyse noch nicht möglich war
- * (Gast ohne Guthaben). Dann entsteht hier ein Projekt im Entwurf, ohne
- * KI-Aufruf; der Betreiber liest den Text selbst.
+ * Immer zu einem schon analysierten Projekt, in dem kein Profil genug passte.
+ * Gäste analysieren seit Oktober 2026 erst nach der Registrierung; einen
+ * Auftrag aus bloß eingefügtem Text gibt es deshalb nicht mehr.
  *
  * Erst die Einwilligung ins Protokoll, dann der Auftrag: Es darf keinen
  * Auftrag geben, zu dem die Fassung fehlt.
@@ -72,47 +69,24 @@ export type CreateMandateResult =
 export async function createMandate(input: {
   userId: string;
   isGuest: boolean;
-  projectId?: string | null;
-  brief?: string | null;
+  projectId: string;
   contact: MandateContact;
   note: string | null;
   siteUrl: string;
 }): Promise<CreateMandateResult> {
   const admin = createAdminSupabaseClient();
 
-  let project: Row;
-  if (input.projectId) {
-    const { data, error: projectError } = await admin
-      .from("projects")
-      .select("id,title,structured_brief,original_request")
-      .eq("id", input.projectId)
-      .eq("owner_user_id", input.userId)
-      .maybeSingle();
-    if (projectError) throw projectError;
-    if (!data) throw jsonResponse(404, "Projekt nicht gefunden.");
-    project = data as Row;
-    const existing = await openMandateFor(admin, input.projectId);
-    if (existing) return { created: false, mandate: existing, message: MANDATE_EXISTS };
-  } else {
-    const draftText = input.brief?.trim() ?? "";
-    if (draftText.length < 20) throw jsonResponse(400, "Bitte beschreiben Sie Ihr Projekt in ein paar Sätzen.");
-    const brief = buildDeterministicBrief({ originalRequest: draftText });
-    const { data, error: insertError } = await admin
-      .from("projects")
-      .insert({
-        owner_user_id: input.userId,
-        title: deriveProjectTitle(draftText),
-        original_request: brief.originalRequest,
-        structured_brief: brief,
-        brief_schema_version: "freelancer-brief-v2",
-        brief_status: "pending",
-        status: "draft",
-      })
-      .select("id,title,structured_brief,original_request")
-      .single();
-    if (insertError) throw insertError;
-    project = data as Row;
-  }
+  const { data, error: projectError } = await admin
+    .from("projects")
+    .select("id,title,structured_brief,original_request")
+    .eq("id", input.projectId)
+    .eq("owner_user_id", input.userId)
+    .maybeSingle();
+  if (projectError) throw projectError;
+  if (!data) throw jsonResponse(404, "Projekt nicht gefunden.");
+  const project = data as Row;
+  const existing = await openMandateFor(admin, input.projectId);
+  if (existing) return { created: false, mandate: existing, message: MANDATE_EXISTS };
   const projectId = String(project.id);
 
   if (input.isGuest) {

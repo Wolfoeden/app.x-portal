@@ -108,32 +108,6 @@ describe("creating a mandate", () => {
     expect(mocks.deliver.mock.calls[0][0].text).toContain("provisionsfrei");
   });
 
-  // Ein Gast ohne Guthaben kommt nicht bis zur Analyse. Sein Text wird zum
-  // Projekt im Entwurf, ohne KI-Aufruf; der Betreiber liest ihn in der Mail.
-  it("creates a draft project from the pasted text when there was no analysis", async () => {
-    mocks.answers.set("projects:insert", () => ({
-      data: { id: PROJECT, title: "Wir suchen ab November einen React-Entwickler", structured_brief: null, original_request: "Wir suchen ab November einen React-Entwickler, remote, 6 Monate." },
-      error: null,
-    }));
-    const result = await createMandate({
-      userId: USER, isGuest: true, brief: "Wir suchen ab November einen React-Entwickler, remote, 6 Monate.",
-      contact: { ...contact, company: null }, note: null, siteUrl: "https://x-portal.eu",
-    });
-
-    expect(result.created).toBe(true);
-    const project = mocks.inserts.find((entry) => entry.table === "projects")?.row as Record<string, unknown>;
-    expect(project).toMatchObject({ owner_user_id: USER, status: "draft", brief_status: "pending" });
-    expect(mocks.order).toEqual(expect.arrayContaining(["insert:projects", "audit:search_mandate_consent", "insert:search_mandates"]));
-    expect(mocks.deliver.mock.calls[0][0].text).toContain("Wir suchen ab November einen React-Entwickler, remote, 6 Monate.");
-  });
-
-  it("refuses a description that is too short to search for", async () => {
-    await expect(
-      createMandate({ userId: USER, isGuest: true, brief: "React", contact, note: null, siteUrl: "https://x-portal.eu" }),
-    ).rejects.toMatchObject({ status: 400 });
-    expect(mocks.inserts).toHaveLength(0);
-  });
-
   it("returns the open mandate instead of a second one", async () => {
     mocks.answers.set("search_mandates:read", () => ({ data: { id: MANDATE, status: "in_progress" }, error: null }));
     const result = await createMandate({ userId: USER, isGuest: false, projectId: PROJECT, contact, note: null, siteUrl: "https://x-portal.eu" });
