@@ -420,7 +420,6 @@
 }
 
 .portalCard,
-.gate,
 .dashboardHead {
   margin-top: 28px;
   border: 1px solid var(--border);
@@ -446,43 +445,16 @@
 }
 
 .portalCard h2,
-.gate h2,
 .dashboardHead h2 {
   margin: 7px 0 9px;
   font-size: clamp(22px, 3vw, 30px);
   letter-spacing: -0.035em;
 }
 
-.onboardingFacts {
-  display: grid;
-  gap: 10px;
-  max-width: 680px;
-  margin: 18px 0 20px;
-  font-size: 13px;
-  line-height: 1.55;
-}
 
-.onboardingFacts div {
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  gap: 12px;
-}
 
-.onboardingFacts dt {
-  font-weight: 650;
-}
 
-.onboardingFacts dd {
-  margin: 0;
-  color: var(--muted);
-}
 
-@media (max-width: 520px) {
-  .onboardingFacts div {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 2px;
-  }
-}
 
 .portalCard > p:not(.eyebrow) {
   max-width: 640px;
@@ -785,35 +757,8 @@
   align-items: start;
 }
 
-.header .heroHint {
-  margin: 4px 0 0;
-  color: var(--muted);
-  font-size: var(--fs-xs);
-}
-
-.gate .gateActions {
+.gateActions {
   margin-top: 4px;
-}
-
-.paths {
-  display: grid;
-  gap: 8px;
-  margin: 16px 0 4px;
-  padding: 0;
-  list-style: none;
-}
-
-.paths li {
-  display: grid;
-  border-left: 3px solid #1d6b5f;
-  padding: 2px 0 2px 12px;
-  color: var(--muted);
-  font-size: var(--fs-xs);
-  line-height: 1.5;
-}
-
-.paths strong {
-  color: var(--ink);
 }
 
 .gateActions {
@@ -851,38 +796,6 @@
 .preview h2 {
   margin: 0;
   font-size: var(--fs-sm);
-}
-
-.faq {
-  margin-top: 18px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--surface);
-  padding: 22px clamp(18px, 4vw, 34px) 8px;
-}
-
-.faq h2 {
-  margin: 0 0 8px;
-  font-size: 18px;
-}
-
-.faq details {
-  border-top: 1px solid var(--border);
-}
-
-.faq summary {
-  padding: 12px 0;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.faq details p {
-  max-width: 640px;
-  margin: 0 0 14px;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.6;
 }
 
 /* Die Vorschau der eigenen Karte: im Formular nach „Zusammenarbeit“, auf
@@ -976,8 +889,8 @@
 .header .gateExample .hint { margin: 0; font-size: 12px; line-height: 1.5; }
 .header .gateActions { margin: 24px 0 0; }
 .applyHero h1 { font-size: clamp(32px, 3.6vw, 44px); }
-.portalCard h2, .gate h2, .dashboardHead h2, .profileHeading h2 { font-family: var(--xp-display); font-weight: 400; letter-spacing: -.035em; }
-.section, .metricCard, .gate, .portalCard { border-color: #e4e7ea; border-radius: 8px; }
+.portalCard h2, .dashboardHead h2, .profileHeading h2 { font-family: var(--xp-display); font-weight: 400; letter-spacing: -.035em; }
+.section, .metricCard, .portalCard { border-color: #e4e7ea; border-radius: 8px; }
 
 
 .dashboardHead { border: 1px solid #e4e7ea; border-radius: 8px; background: radial-gradient(120% 90% at 92% 100%, rgba(38, 160, 102, .3), transparent 62%), linear-gradient(160deg, #f4fbf7, #ddf1e6); color: var(--ink); box-shadow: none; }
@@ -1009,7 +922,18 @@
 .sectionHeading, .connectionHeading, .sourceTitle { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .sectionHeading { align-items: flex-start; margin-bottom: 24px; }
 .sectionHeading h2 { margin-top: 8px; font-family: var(--xp-display); font-size: clamp(24px, 3vw, 32px); font-weight: 400; line-height: 1.12; }
-.infoTip { display: inline-grid; flex: 0 0 24px; height: 24px; place-items: center; border: 1px solid #b9d7c8; border-radius: 50%; background: #f1faf5; color: #176141; font-size: 12px; font-weight: 750; }
+.infoTip { display: inline-grid; flex: 0 0 24px; width: 24px; height: 24px; place-items: center; border: 1px solid #b9d7c8; border-radius: 50%; background: #f1faf5; padding: 0; color: #176141; cursor: help; font: inherit; font-size: 12px; font-weight: 750; }
+
+/* Info-Blase: Stichwort oder „i“, die Erklärung erscheint beim Zeigen,
+   beim Antippen (Fokus) und für Screenreader über aria-describedby. */
+.infoBubble { position: relative; display: inline-flex; }
+.infoBubble > [role="tooltip"] { position: absolute; bottom: calc(100% + 8px); left: 0; z-index: 20; width: max-content; max-width: min(320px, 80vw); border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 10px 12px; color: var(--ink-soft); font-size: 13px; font-weight: 400; line-height: 1.5; box-shadow: var(--shadow-soft); opacity: 0; pointer-events: none; transform: translateY(4px); transition: opacity 120ms ease, transform 120ms ease; }
+.infoBubble:hover > [role="tooltip"], .infoBubble:focus-within > [role="tooltip"] { opacity: 1; transform: none; }
+.infoChips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
+.infoChip { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); padding: 3px 6px 3px 12px; color: var(--ink-soft); cursor: help; font: inherit; font-size: 13px; }
+.infoChip > span { display: inline-grid; width: 18px; height: 18px; place-items: center; border-radius: 50%; background: var(--green-soft); color: var(--green); font-size: 11px; font-weight: 750; }
+.infoChip:hover, .infoChip:focus-visible { border-color: var(--green-border); }
+@media (prefers-reduced-motion: reduce) { .infoBubble > [role="tooltip"] { transition: none; } }
 .simplePreview { grid-column: 2; grid-row: 1 / span 2; position: sticky; top: 24px; }
 .rateComposer {
   display: grid;

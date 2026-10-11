@@ -158,13 +158,9 @@ export default async function FreelancerApplyPage({
         ) : (
           <>
             <header className={styles.header}>
-              <p className={styles.eyebrow}>{hasProfile ? "Profilverwaltung" : APPLY_HERO.eyebrow}</p>
-              <h1>{hasProfile ? "Ihr Freelancer-Profil." : APPLY_HERO.title}</h1>
-              <p>
-                {hasProfile
-                  ? "Hier aktualisieren Sie Ihre Angaben, steuern die Sichtbarkeit und sehen, wie Kunden mit Ihrem Profil interagieren."
-                  : APPLY_HERO.lead}
-              </p>
+              <p className={styles.eyebrow}>{APPLY_HERO.eyebrow}</p>
+              <h1>{hasProfile ? "Ihr Profil. Gefunden werden." : APPLY_HERO.title}</h1>
+              {hasProfile ? null : <p>{APPLY_HERO.lead}</p>}
             </header>
             {notices}
           </>

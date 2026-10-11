@@ -147,7 +147,7 @@ test.describe("geschützte Rollen-Journeys", () => {
 
   test("Freelancer: Profilverwaltung und Nachweise sind erreichbar", async ({ page }) => {
     await page.goto("/bewerber-portal/apply?preview=1");
-    await expect(page.getByRole("heading", { level: 1, name: "Ihr Freelancer-Profil." })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Ihr Profil. Gefunden werden." })).toBeVisible();
     await expect(page.getByLabel("Vom Profil zum nachvollziehbaren Match")).toBeVisible();
     await expect(page.getByText("Regeln", { exact: true })).toBeVisible();
     await expect(page.getByText("Anna Beispiel", { exact: true }).first()).toBeVisible();

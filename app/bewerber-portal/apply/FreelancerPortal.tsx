@@ -36,6 +36,7 @@ import { freelancerActions, FREELANCER_COMMAND_DONE, type FreelancerProfileComma
 import type { ProfileProject } from "@/lib/profile/project-limits";
 
 import styles from "./apply.module.css";
+import { InfoChip } from "./InfoTip";
 import { PROJECT_EDITOR_CLASSES } from "./project-editor-classes";
 
 const tagClasses = {
@@ -66,9 +67,9 @@ function apiError(payload: unknown, fallback: string): string {
  * 2026). Beide Stellen lesen denselben Text.
  */
 export const APPLY_HERO = {
-  eyebrow: "Für Freelancer und IT-Fachkräfte",
-  title: "Mit Ihren Kompetenzen bei passenden Projektanfragen sichtbar werden.",
-  lead: "Erstellen Sie Ihr kostenloses Profil. Nach der Freigabe wird es bei passenden Anfragen berücksichtigt; XPORTAL meldet sich, wenn eine Anfrage passt.",
+  eyebrow: "Bewerber-Portal",
+  title: "Profil veröffentlichen. Gefunden werden.",
+  lead: "Nicht blind bewerben. Erst prüfen: XPORTAL gleicht Ihr Profil mit Projektanfragen ab und meldet sich, wenn es passt.",
 } as const;
 
 /**
@@ -80,72 +81,66 @@ export const APPLY_HERO = {
  * (docs/operator-runbook.md). Kontaktdaten stehen in keinem öffentlichen
  * Profil (ShowcaseProfile in lib/freelancer/showcase.ts, ProfileDossier).
  */
-export function onboardingFacts(placement: boolean): ReadonlyArray<{ term: string; text: string }> {
+export function onboardingFacts(placement: boolean): ReadonlyArray<{ term: string; chip: string; text: string }> {
   return [
     {
       term: "Kosten",
+      chip: "Kostenlos",
       text: placement
         ? "Keine. Registrierung, Profil und Kontaktanfragen sind für Sie kostenlos, eine Provision fällt für niemanden an."
         : "Keine. Registrierung und Profil sind für Sie kostenlos.",
     },
     {
       term: "Kontakt",
+      chip: "Kontaktdaten bleiben privat",
       text: placement
         ? "Unternehmen sehen Ihr freigegebenes Profil ohne E-Mail-Adresse und Telefonnummer. Passt eine Anfrage, meldet sich XPORTAL bei Ihnen und stellt Sie per E-Mail vor."
         : "Unternehmen sehen Ihr freigegebenes Profil ohne E-Mail-Adresse und Telefonnummer. Haben Sie einen Kalenderlink hinterlegt, können sie darüber ein Erstgespräch buchen.",
     },
     {
       term: "Ablauf",
+      chip: "So läuft es ab",
       text: "Konto anlegen und E-Mail bestätigen, Profil in vier Abschnitten ausfüllen, Prüfung durch XPORTAL mit Rückfragen per E-Mail. Nach der Freigabe ist Ihr Profil im Matching auffindbar.",
     },
     {
       term: "Prüfung",
+      chip: "Geprüft vor Freigabe",
       text: "XPORTAL sichtet Ihre Angaben und gleicht einzelne mit Nachweisen ab, etwa Lebenslauf oder öffentlichem Berufsprofil. Nur diese erscheinen als „Von XPORTAL geprüft“; alles andere bleibt Ihre Angabe.",
     },
     {
       term: "Unterlagen",
+      chip: "Lebenslauf hilft, ist kein Muss",
       text: "Rolle, Kompetenzen, Sprachen, Verfügbarkeit und Honorar. Ein Lebenslauf als PDF (bis 10 MB) hilft bei der Prüfung, ein Kalenderlink ist optional.",
     },
   ];
 }
 
 /**
- * Die drei Wege, auf denen Menschen zu XPORTAL kommen. Wer über die Agentur
- * für Arbeit oder das Jobcenter kommt, ist oft (noch) nicht selbstständig und
- * soll sich trotzdem angesprochen fühlen. Bewusst ohne
- * „Arbeitnehmerüberlassung“: Die bietet XPORTAL nicht an (AGB § 10).
- */
-export const APPLICANT_PATHS: ReadonlyArray<{ title: string; text: string }> = [
-  { title: "Projekte als Freelancer", text: "Sie arbeiten selbstständig oder möchten es werden." },
-  { title: "Eine feste Stelle", text: "Sie suchen eine Anstellung und zeigen, was Sie können." },
-  {
-    title: "Auf dem Weg in die Selbstständigkeit",
-    text: "Sie müssen noch nicht selbstständig sein, um ein Profil anzulegen.",
-  },
-];
-
-/**
  * Fragen, die vor allem Menschen ohne Freelance-Erfahrung stellen. Keine
  * Zusage zu Förderung oder Leistungen: nur der Hinweis, wen man fragt.
  */
-export const APPLICANT_FAQ: ReadonlyArray<{ question: string; answer: string }> = [
+export const APPLICANT_FAQ: ReadonlyArray<{ question: string; label: string; answer: string }> = [
   {
     question: "Muss ich schon selbstständig sein?",
+    label: "Auch ohne Selbstständigkeit",
     answer:
       "Nein. Sie können ein Profil anlegen, bevor Sie eine selbstständige Tätigkeit anmelden. Wie Sie arbeiten, klären Sie vor dem ersten Auftrag.",
   },
   {
     question: "Ich suche eine feste Stelle. Bin ich hier richtig?",
+    label: "Auch für feste Stellen",
     answer:
       "Ja. Wählen Sie im Formular „Eine feste Stelle“. Ihr Profil erscheint dann nicht in der öffentlichen Freelancer-Suche; es sieht nur das XPORTAL-Team.",
   },
   {
     question: "Ich beziehe Arbeitslosengeld oder Bürgergeld.",
+    label: "Arbeitslosengeld oder Bürgergeld",
     answer:
       "Teilen Sie einen Auftrag oder eine neue Stelle wie gewohnt Ihrer Agentur für Arbeit oder Ihrem Jobcenter mit. Wenn Sie sich selbstständig machen möchten, fragen Sie dort nach Förderung, etwa dem Gründungszuschuss (bei Arbeitslosengeld) oder dem Einstiegsgeld (bei Bürgergeld).",
   },
   {
     question: "Ich habe Lücken im Lebenslauf.",
+    label: "Lücken im Lebenslauf",
     answer:
       "Kein Problem. Wir schauen auf das, was Sie können. Ihr Lebenslauf ist die Grundlage für den Profilentwurf; Lücken dürfen darin sichtbar bleiben.",
   },
@@ -165,17 +160,6 @@ export function FreelancerAuthGate({
   const [dialogMode, setDialogMode] = useState<AuthDialogMode | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [shownAt] = useState(() => new Date());
-  const actions = (
-    <div className={styles.gateActions}>
-      <button className={styles.submit} type="button" onClick={() => setDialogMode("register")}>
-        Kostenlos Profil anlegen
-      </button>
-      <button className={styles.gateLogin} type="button" onClick={() => setDialogMode("login")}>
-        Schon registriert? Anmelden
-      </button>
-    </div>
-  );
-
   return (
     <>
       <header className={`${styles.header} ${styles.applyHero}`}>
@@ -183,8 +167,26 @@ export function FreelancerAuthGate({
           <p className={styles.eyebrow}>{APPLY_HERO.eyebrow}</p>
           <h1>{APPLY_HERO.title}</h1>
           <p>{APPLY_HERO.lead}</p>
-          {actions}
-          <p className={styles.heroHint}>Kostenlos. Sichtbar erst nach der Prüfung durch XPORTAL.</p>
+          <div className={styles.gateActions}>
+            <button className={styles.submit} type="button" onClick={() => setDialogMode("register")}>
+              Kostenlos Profil anlegen
+            </button>
+            <button className={styles.gateLogin} type="button" onClick={() => setDialogMode("login")}>
+              Schon registriert? Anmelden
+            </button>
+          </div>
+          {/* Was man vorher wissen will, als Stichwörter; die Erklärung steht
+              in der Info-Blase, nicht als eigener Abschnitt. */}
+          <ul className={styles.infoChips} aria-label="Gut zu wissen">
+            {onboardingFacts(placementRequestsEnabled()).map((fact) => (
+              <li key={fact.term}><InfoChip label={fact.chip}>{fact.text}</InfoChip></li>
+            ))}
+          </ul>
+          <ul className={styles.infoChips} aria-label="Auch ohne Freelance-Erfahrung">
+            {APPLICANT_FAQ.map((entry) => (
+              <li key={entry.label}><InfoChip label={entry.label}>{entry.answer}</InfoChip></li>
+            ))}
+          </ul>
           {notice ? (
             <p className={notice.tone === "error" ? styles.formError : styles.callout} role="status">
               {notice.message}
@@ -195,44 +197,10 @@ export function FreelancerAuthGate({
           <p className={styles.eyebrow}>Profilvorschau</p>
           <h2 id="apply-example-title">So sehen Unternehmen Ihr Profil</h2>
           <ShowcaseCard profile={exampleApplicationPreview(shownAt)} now={shownAt} href={null} />
-          <p className={styles.hint}>
-            Ein ausgedachtes Profil. Ihres zeigt nur, was Sie angeben und XPORTAL freigibt.
-          </p>
+          <p className={styles.hint}>Ein ausgedachtes Profil. Ihres zeigt nur, was Sie angeben und XPORTAL freigibt.</p>
         </aside>
       </header>
       {notices}
-      <section className={styles.gate} aria-labelledby="apply-facts-title">
-        <p className={styles.eyebrow}>Kostenlos für Sie</p>
-        <h2 id="apply-facts-title">Was Sie erwartet.</h2>
-        <dl className={styles.onboardingFacts}>
-          {onboardingFacts(placementRequestsEnabled()).map((fact) => (
-            <div key={fact.term}><dt>{fact.term}</dt><dd>{fact.text}</dd></div>
-          ))}
-        </dl>
-        {actions}
-        <p className={styles.hint}>Ein Konto schützt Ihre Angaben, bis XPORTAL das Profil freigibt.</p>
-      </section>
-      <section className={styles.gate} aria-labelledby="apply-paths-title">
-        <p className={styles.eyebrow}>Auch ohne Freelance-Erfahrung</p>
-        <h2 id="apply-paths-title">Ein Profil, drei Wege.</h2>
-        <ul className={styles.paths}>
-          {APPLICANT_PATHS.map((path) => (
-            <li key={path.title}>
-              <strong>{path.title}</strong>
-              <span>{path.text}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-      <section className={styles.faq} aria-labelledby="apply-faq-title">
-        <h2 id="apply-faq-title">Häufige Fragen</h2>
-        {APPLICANT_FAQ.map((entry) => (
-          <details key={entry.question}>
-            <summary>{entry.question}</summary>
-            <p>{entry.answer}</p>
-          </details>
-        ))}
-      </section>
       {dialogMode ? (
         <AuthDialog
           initialMode={dialogMode}
