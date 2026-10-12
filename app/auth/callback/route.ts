@@ -17,7 +17,13 @@ export async function GET(request: Request) {
   );
 
   if (!code) {
-    destination.searchParams.set("auth_error", "missing_code");
+    // Supabase meldet eine gescheiterte Verbindung (etwa: GitHub gehört schon
+    // einem anderen Konto) als `error_code` statt eines Codes.
+    const providerError = url.searchParams.get("error_code");
+    destination.searchParams.set(
+      "auth_error",
+      providerError === "identity_already_exists" ? "identity_already_exists" : providerError ? "link_failed" : "missing_code",
+    );
     return NextResponse.redirect(destination);
   }
 
