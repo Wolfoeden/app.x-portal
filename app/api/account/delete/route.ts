@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireCurrentUser } from "@/lib/auth/current-user";
+import { CV_BUCKET } from "@/lib/freelancer/application";
+import { AVATAR_BUCKET } from "@/lib/freelancer/avatar-storage";
 import { deleteOwnedFreelancerProfile } from "@/lib/freelancer/profile-data";
 import {
   assertSameOrigin,
@@ -21,6 +23,31 @@ export const GUEST_DELETE_PHRASE = "LÖSCHEN";
 
 function expectedConfirmation(email: string | null): string {
   return email?.trim() ? email.trim().toLocaleLowerCase("en-US") : GUEST_DELETE_PHRASE;
+}
+
+/**
+ * Eine noch nicht geprüfte Bewerbung samt Lebenslauf und Foto geht mit dem
+ * Konto. Bliebe sie stehen, verlöre sie nur ihren Besitzer, und ihre
+ * E-Mail-Adresse wäre für eine neue Bewerbung gesperrt.
+ */
+async function deleteOpenApplications(admin: ReturnType<typeof createAdminSupabaseClient>, userId: string) {
+  const { data, error } = await admin
+    .from("freelancer_applications")
+    .select("id,cv_storage_path,photo_storage_path")
+    .eq("submitted_by_user_id", userId)
+    .in("status", ["submitted", "in_review"]);
+  if (error) throw error;
+  const open = (data ?? []) as Array<{ id: string; cv_storage_path: string | null; photo_storage_path: string | null }>;
+  if (!open.length) return;
+  const { error: deleteError } = await admin
+    .from("freelancer_applications")
+    .delete()
+    .in("id", open.map((row) => row.id));
+  if (deleteError) throw deleteError;
+  const cvPaths = open.map((row) => row.cv_storage_path).filter((path): path is string => Boolean(path));
+  const photoPaths = open.map((row) => row.photo_storage_path).filter((path): path is string => Boolean(path));
+  if (cvPaths.length) await admin.storage.from(CV_BUCKET).remove(cvPaths);
+  if (photoPaths.length) await admin.storage.from(AVATAR_BUCKET).remove(photoPaths);
 }
 
 export async function DELETE(request: Request) {
@@ -57,6 +84,7 @@ export async function DELETE(request: Request) {
     // A freelancer profile is public professional data and must not become an
     // ownerless catalogue row when the associated auth account disappears.
     await deleteOwnedFreelancerProfile(user.id);
+    await deleteOpenApplications(admin, user.id);
     const { error: preparationError } = await admin.rpc(
       "prepare_user_deletion",
       { p_user_id: user.id },

@@ -13,6 +13,9 @@ const mocks = vi.hoisted(() => ({
   download: vi.fn(),
   inserted: [] as Array<Record<string, unknown>>,
   pending: [] as Array<Record<string, unknown>>,
+  orphaned: [] as Array<Record<string, unknown>>,
+  deletedIds: [] as string[],
+  insertError: null as { code: string } | null,
   pendingColumns: "",
 }));
 
@@ -42,13 +45,21 @@ vi.mock("@/lib/supabase/admin", () => ({
     },
     from: () => {
       let op = "select";
+      let ownerless = false;
       const builder: Record<string, unknown> = {
         select: (columns?: string) => {
           if (op === "select") mocks.pendingColumns = columns ?? "";
           return builder;
         },
         eq: () => builder,
-        in: () => builder,
+        is: () => {
+          ownerless = true;
+          return builder;
+        },
+        in: (_column: string, values: string[]) => {
+          if (op === "delete") mocks.deletedIds.push(...values);
+          return builder;
+        },
         delete: () => {
           op = "delete";
           return builder;
@@ -58,9 +69,11 @@ vi.mock("@/lib/supabase/admin", () => ({
           mocks.inserted.push(row);
           return builder;
         },
-        single: async () => ({ data: { id: "application-1" }, error: null }),
+        single: async () => (mocks.insertError ? { data: null, error: mocks.insertError } : { data: { id: "application-1" }, error: null }),
         then: (resolve: (value: unknown) => unknown) =>
-          Promise.resolve(op === "select" ? { data: mocks.pending, error: null } : { data: null, error: null }).then(resolve),
+          Promise.resolve(
+            op === "select" ? { data: ownerless ? mocks.orphaned : mocks.pending, error: null } : { data: null, error: null },
+          ).then(resolve),
       };
       return builder;
     },
@@ -127,6 +140,9 @@ beforeEach(() => {
   mocks.download.mockResolvedValue({ data: new Blob(["%PDF-1.7"]), error: null });
   mocks.inserted = [];
   mocks.pending = [];
+  mocks.orphaned = [];
+  mocks.deletedIds = [];
+  mocks.insertError = null;
 });
 
 describe("POST /api/freelancer-applications/photo-upload", () => {
@@ -190,5 +206,25 @@ describe("POST /api/freelancer-applications with projects and photo", () => {
     mocks.pending = [{ id: "old", cv_storage_path: null, photo_storage_path: stale }];
     expect((await submit(request("/api/freelancer-applications", application({ photo: null })))).status).toBe(201);
     expect(mocks.remove).toHaveBeenCalledWith([stale]);
+  });
+});
+
+// Oktober 2026: Nach dem Löschen eines Kontos blieb seine offene Bewerbung
+// ohne Besitzer stehen und sperrte die Adresse für jede neue Bewerbung.
+describe("POST /api/freelancer-applications with an open application on the same address", () => {
+  it("replaces an open application whose account no longer exists", async () => {
+    const oldCv = "incoming/55555555-5555-4555-8555-555555555555/fedcba9876543210fedcba9876543210.pdf";
+    mocks.orphaned = [{ id: "orphan", cv_storage_path: oldCv, photo_storage_path: null }];
+    expect((await submit(request("/api/freelancer-applications", application({ photo: null })))).status).toBe(201);
+    expect(mocks.deletedIds).toEqual(["orphan"]);
+    expect(mocks.remove).toHaveBeenCalledWith([oldCv]);
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ metadata: expect.objectContaining({ replacedPending: 1 }) }));
+  });
+
+  it("says why when another account's open application holds the address", async () => {
+    mocks.insertError = { code: "23505" };
+    const response = await submit(request("/api/freelancer-applications", application({ photo: null })));
+    expect(response.status).toBe(409);
+    expect((await response.json()).error).toContain("bereits eine offene Bewerbung");
   });
 });
