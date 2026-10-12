@@ -302,13 +302,25 @@ export async function POST(request: Request) {
 
     // A resubmission replaces only this authenticated applicant's own pending
     // entry. An email address alone is not an ownership credential.
+    const pendingColumns = extras ? "id,cv_storage_path,photo_storage_path" : "id,cv_storage_path";
     const { data: pendingRows, error: pendingError } = await admin
       .from("freelancer_applications")
-      .select(extras ? "id,cv_storage_path,photo_storage_path" : "id,cv_storage_path")
+      .select(pendingColumns)
       .eq("submitted_by_user_id", user.id)
       .in("status", ["submitted", "in_review"]);
     if (pendingError) throw pendingError;
-    const pending = (pendingRows ?? []) as unknown as Array<{
+    // Eine offene Bewerbung ohne Konto (das alte Konto wurde gelöscht) mit
+    // genau dieser Adresse: Sie gehört niemandem mehr, sperrt aber die Adresse
+    // (ein offener Eintrag je E-Mail). Die Adresse ist die bestätigte des
+    // eigenen Kontos (oben geprüft); die neue Bewerbung ersetzt sie.
+    const { data: orphanedRows, error: orphanedError } = await admin
+      .from("freelancer_applications")
+      .select(pendingColumns)
+      .is("submitted_by_user_id", null)
+      .eq("contact_email", insert.contact_email)
+      .in("status", ["submitted", "in_review"]);
+    if (orphanedError) throw orphanedError;
+    const pending = [...(pendingRows ?? []), ...(orphanedRows ?? [])] as unknown as Array<{
       id: string;
       cv_storage_path: string | null;
       photo_storage_path?: string | null;
@@ -344,6 +356,14 @@ export async function POST(request: Request) {
       .insert(row)
       .select("id")
       .single();
+    // Ein offener Eintrag je E-Mail-Adresse: Was dann noch kollidiert, gehört
+    // einem anderen Konto und wird nicht überschrieben.
+    if (error?.code === "23505") {
+      return NextResponse.json(
+        { error: "Zu dieser E-Mail-Adresse liegt bereits eine offene Bewerbung vor. Bitte schreiben Sie uns über das Kontaktformular." },
+        { status: 409 },
+      );
+    }
     if (error) throw error;
 
     // Kam die Person über eine Einladung, wird der recherchierte Kandidat als
