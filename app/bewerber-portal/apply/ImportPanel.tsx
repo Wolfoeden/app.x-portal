@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 
 import { appPath } from "@/lib/app-path";
-import { startOauthUpgrade } from "@/lib/auth/browser";
+import { connectOauthIdentity } from "@/lib/auth/browser";
 import type { ProfileDraft } from "@/lib/freelancer/import/draft";
 
 import styles from "./apply.module.css";
@@ -24,10 +24,11 @@ export function ImportPanel({ githubLogin, linkedinConnected, onDraft }: {
     setError(null);
     setBusy(provider);
     try {
-      await startOauthUpgrade(provider, "/bewerber-portal/apply");
+      // Verbindet mit dem angemeldeten Konto, ohne je das Konto zu wechseln.
+      await connectOauthIdentity(provider, "/bewerber-portal/apply");
     } catch {
       setBusy(null);
-      setError("Die Verbindung konnte nicht hergestellt werden. Bitte erneut versuchen.");
+      setError("Die Verbindung konnte nicht hergestellt werden. Sie bleiben in Ihrem Konto angemeldet; bitte später erneut versuchen.");
     }
   }
 

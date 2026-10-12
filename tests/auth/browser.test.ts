@@ -21,6 +21,7 @@ vi.mock("@/lib/supabase/browser", () => ({
 
 import {
   completeEmailAuthSession,
+  connectOauthIdentity,
   registerEmailAccount,
   requestPasswordRecovery,
   requestSignInLink,
@@ -408,5 +409,30 @@ describe("browser authentication journeys", () => {
 
     expect(auth.setSession).not.toHaveBeenCalled();
     expect(auth.exchangeCodeForSession).not.toHaveBeenCalled();
+  });
+
+  // Oktober 2026: „GitHub verbinden“ im Profil meldete ein angemeldetes Konto
+  // über GitHub neu an. GitHubs E-Mail-Adresse war eine andere, also legte
+  // Supabase ein zweites Konto an und wechselte hinein.
+  it("connects GitHub to the signed-in account without ever switching accounts", async () => {
+    auth.getClaims.mockResolvedValue({ data: { claims: { sub: "owner-1", is_anonymous: false } }, error: null });
+    vi.stubGlobal("window", { location: { origin: "https://x-portal.eu", pathname: "/bewerber-portal/apply", search: "" } });
+
+    await connectOauthIdentity("github", "/bewerber-portal/apply");
+
+    expect(auth.linkIdentity).toHaveBeenCalledWith({
+      provider: "github",
+      options: { redirectTo: "https://x-portal.eu/auth/callback?next=%2Fbewerber-portal%2Fapply" },
+    });
+    expect(auth.signInWithOAuth).not.toHaveBeenCalled();
+    expect(auth.signInAnonymously).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed connection instead of signing in with the provider", async () => {
+    auth.getClaims.mockResolvedValue({ data: { claims: { sub: "owner-1", is_anonymous: false } }, error: null });
+    auth.linkIdentity.mockResolvedValueOnce({ data: {}, error: new Error("Manual linking is disabled") });
+
+    await expect(connectOauthIdentity("linkedin", "/bewerber-portal/apply")).rejects.toThrow("Manual linking is disabled");
+    expect(auth.signInWithOAuth).not.toHaveBeenCalled();
   });
 });

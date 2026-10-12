@@ -86,10 +86,21 @@ const previewMetrics: FreelancerMetrics = {
   bookingClicks30Days: 13,
 };
 
+/** Rückmeldung, wenn „GitHub/LinkedIn verbinden“ scheiterte. Das Konto bleibt dasselbe. */
+function signedInLinkError(code: string | undefined) {
+  if (code === "identity_already_exists") {
+    return "Dieses GitHub- oder LinkedIn-Konto ist bereits mit einem anderen XPORTAL-Konto verbunden. Sie sind weiter in Ihrem Konto angemeldet, es wurde nichts geändert. Löschen Sie das andere Konto oder schreiben Sie uns über das Kontaktformular.";
+  }
+  if (code === "link_failed") {
+    return "Die Verbindung konnte nicht hergestellt werden. Sie sind weiter in Ihrem Konto angemeldet, es wurde nichts geändert.";
+  }
+  return null;
+}
+
 export default async function FreelancerApplyPage({
   searchParams,
 }: {
-  searchParams: Promise<{ preview?: string; e?: string | string[]; quelle?: string | string[] }>;
+  searchParams: Promise<{ preview?: string; e?: string | string[]; quelle?: string | string[]; auth_error?: string | string[] }>;
 }) {
   const params = await searchParams;
   const preview =
@@ -131,6 +142,7 @@ export default async function FreelancerApplyPage({
     linkedinConnected: identities.providers.includes("linkedin_oidc"),
   };
   const welcome = referralWelcome(referral);
+  const linkError = signedInLinkError(Array.isArray(params.auth_error) ? params.auth_error[0] : params.auth_error);
   // Abgemeldet zeigt die Seite den Einstieg (ApplicantLanding) über die volle
   // Breite; die Anmeldeknöpfe darin und im Kopf öffnen den Dialog im Browser.
   const signedOut = !preview && !formPreview && (!user || user.isAnonymous);
@@ -139,6 +151,7 @@ export default async function FreelancerApplyPage({
     <>
       {referral ? <RememberReferral referral={referral} /> : null}
       {welcome && !hasProfile ? <p className={styles.welcome}>{welcome}</p> : null}
+      {linkError && user && !user.isAnonymous ? <p className={styles.error} role="alert">{linkError}</p> : null}
       {invite && !invite.alreadyConverted ? (
         <p className={styles.invited}>
           Schön, dass Sie da sind, {invite.fullName.split(/\s+/u)[0]}.

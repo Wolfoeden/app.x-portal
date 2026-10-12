@@ -110,6 +110,16 @@ export async function prepareGuestClaim() {
   }
 }
 
+function oauthOptions(providerName: OauthProviderName, requestedDestination?: string) {
+  const destination = authDestination(requestedDestination);
+  const redirectTo = `${siteUrl()}${appPath("/auth/callback")}?next=${encodeURIComponent(destination)}`;
+  const scopes = PROVIDER_SCOPES[providerName];
+  return {
+    redirectTo,
+    ...(scopes ? { scopes } : {}),
+  };
+}
+
 export async function startOauthUpgrade(
   providerName: OauthProviderName,
   requestedDestination?: string,
@@ -118,13 +128,7 @@ export async function startOauthUpgrade(
   const claims = await ensureGuestSession();
   await prepareGuestClaim();
   const provider = supportedOauthProviders[providerName];
-  const destination = authDestination(requestedDestination);
-  const redirectTo = `${siteUrl()}${appPath("/auth/callback")}?next=${encodeURIComponent(destination)}`;
-  const scopes = PROVIDER_SCOPES[providerName];
-  const options = {
-    redirectTo,
-    ...(scopes ? { scopes } : {}),
-  };
+  const options = oauthOptions(providerName, requestedDestination);
 
   if (claims.is_anonymous === true) {
     const { error } = await supabase.auth.linkIdentity({
@@ -137,6 +141,31 @@ export async function startOauthUpgrade(
   const { error } = await supabase.auth.signInWithOAuth({
     provider,
     options,
+  });
+  if (error) throw error;
+}
+
+/**
+ * GitHub oder LinkedIn mit dem angemeldeten Konto verbinden (Profil-Import).
+ *
+ * Anders als die Anmeldung wechselt das nie das Konto: Gehört die Identität
+ * schon einem anderen Konto, scheitert die Verbindung (`auth_error` im
+ * Rückweg), statt dort anzumelden oder mit der E-Mail-Adresse des Anbieters
+ * ein zweites Konto anzulegen. Ohne Konto bleibt es die Anmeldung.
+ */
+export async function connectOauthIdentity(
+  providerName: OauthProviderName,
+  requestedDestination?: string,
+) {
+  const supabase = getBrowserSupabaseClient();
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims?.sub || claims.is_anonymous === true) {
+    return startOauthUpgrade(providerName, requestedDestination);
+  }
+  const { error } = await supabase.auth.linkIdentity({
+    provider: supportedOauthProviders[providerName],
+    options: oauthOptions(providerName, requestedDestination),
   });
   if (error) throw error;
 }
