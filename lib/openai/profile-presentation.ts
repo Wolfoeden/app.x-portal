@@ -56,12 +56,19 @@ export type PresentationOutput = z.infer<typeof OutputSchema>;
 export const PRESENTATION_INSTRUCTIONS = [
   "Du bereitest das öffentliche Profil eines Freelancers für Recruiter auf. Ein Recruiter soll in einer Sekunde sehen, was die Person kann.",
   "Verwende nur, was in den Angaben steht. Erfinde nichts, ergänze nichts aus Allgemeinwissen, keine Wertungen wie „erfahren“, „Experte“ oder „hervorragend“, wenn sie nicht wörtlich dort stehen.",
-  "headline: genau ein Satz auf Deutsch, höchstens 160 Zeichen, ohne Namen und ohne Ich-Form: was die Person in Projekten übernimmt, z. B. „SAP-FI/CO- und S/4HANA-Projekte von der Anforderung bis zum Rollout.“ Geben die Angaben keinen solchen Satz her, null.",
-  "summaryDe: die Zusammenfassung sinngemäß und vollständig auf Deutsch, ohne Kürzungen und ohne Zusätze. Ist sie schon deutsch oder fehlt sie, null.",
-  "focusAreas: zwei bis vier Schwerpunkte mit kurzem deutschem Titel (höchstens vier Wörter). Jeder Schwerpunkt enthält drei bis sechs Kompetenzen, wörtlich aus der Liste „Kompetenzen“ kopiert. Steht eine Kompetenz doppelt in zwei Sprachen, nimm nur eine davon, bevorzugt die deutsche. Die wichtigsten Kompetenzen zuerst; nicht jede Kompetenz muss vorkommen.",
-  "industries: die Branchen ohne Dopplungen, auf Deutsch, höchstens fünf.",
+  "Alle Texte, die du schreibst, sind auf Deutsch. Fachbegriffe und Produktnamen (SAP FI/CO, S/4HANA, React) bleiben im Original.",
+  "headline: eine kurze Wortgruppe auf Deutsch, höchstens 140 Zeichen, ohne Namen, ohne Ich-Form und ohne Verb im Infinitiv am Ende: was die Person in Projekten übernimmt. Beispiel: „SAP-FI/CO- und S/4HANA-Projekte von der Anforderung bis zum Rollout.“ Geben die Angaben keine solche Aussage her, null.",
+  "summaryDe: Ist die Zusammenfassung nicht auf Deutsch, übersetze sie vollständig und sinngemäß ins Deutsche, ohne Kürzungen und ohne Zusätze. Gib niemals den englischen Text zurück. Ist sie schon deutsch oder fehlt sie, null.",
+  "focusAreas: zwei bis vier Schwerpunkte mit kurzem deutschem Titel (höchstens vier Wörter). Jeder Schwerpunkt enthält drei bis sechs Kompetenzen, wörtlich aus der Liste „Kompetenzen“ kopiert. Steht eine Kompetenz in zwei Sprachen in der Liste (z. B. „Projektmanagement“ und „Project Management“), nimm nur eine davon, die deutsche. Die wichtigsten Kompetenzen zuerst; nicht jede Kompetenz muss vorkommen.",
+  "industries: die Branchen auf Deutsch, jede nur einmal, höchstens fünf. „Finance & Accounting“ und „Finanzen & Rechnungswesen“ sind dieselbe Branche: nur „Finanzen & Rechnungswesen“.",
   "educationShort: der höchste Abschluss kurz mit Hochschule, z. B. „M.Sc., TU Ilmenau“, höchstens 40 Zeichen; fehlt einer, null.",
 ].join("\n");
+
+/**
+ * Teil des Fingerabdrucks im Zwischenspeicher: Ändern sich Anweisung oder
+ * Prüfung, entsteht jede Aufbereitung beim nächsten Aufruf neu.
+ */
+export const PRESENTATION_VERSION = 2;
 
 export const PRESENTATION_TIMEOUT_MS = 20_000;
 const MAX_OUTPUT_TOKENS = 1_500;
@@ -79,6 +86,11 @@ function clean(value: string | null | undefined, max: number): string | null {
  * der Liste (in deren Schreibweise), keine leeren oder doppelten Einträge,
  * alles in festen Längen.
  */
+function sameText(a: string, b: string): boolean {
+  const normalize = (value: string) => value.toLocaleLowerCase("de-DE").replace(/[^\p{L}\p{N}]+/gu, "");
+  return normalize(a) === normalize(b);
+}
+
 export function presentationFromOutput(output: PresentationOutput, input: PresentationInput): ProfilePresentation {
   const known = new Map(input.skills.map((skill) => [skill.trim().toLocaleLowerCase("de-DE"), skill.trim()]));
   const used = new Set<string>();
@@ -101,7 +113,12 @@ export function presentationFromOutput(output: PresentationOutput, input: Presen
   const industries = [...new Set(output.industries.map((value) => clean(value, 60)).filter((value): value is string => Boolean(value)))].slice(0, 5);
   return {
     headline: clean(output.headline, 200),
-    summaryDe: input.summary ? clean(output.summaryDe, 2_400) : null,
+    // Ein „übersetzter“ Text, der dem Original gleicht, ist keine Übersetzung;
+    // die Seite zeigt dann das Original, ohne „automatisch übersetzt“.
+    summaryDe:
+      input.summary && output.summaryDe && !sameText(output.summaryDe, input.summary)
+        ? clean(output.summaryDe, 2_400)
+        : null,
     focusAreas,
     industries,
     educationShort: clean(output.educationShort, 60),

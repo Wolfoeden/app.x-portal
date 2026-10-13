@@ -96,6 +96,16 @@ describe("presentation output check", () => {
     expect(presentation.summaryDe).toBe("Arbeitet an SAP.");
   });
 
+  // Oktober 2026: Das Modell gab die englische Zusammenfassung als
+  // „Übersetzung“ zurück; die Seite hätte sie als übersetzt ausgewiesen.
+  it("drops a translation that is just the original text", () => {
+    const presentation = presentationFromOutput(
+      { headline: null, summaryDe: "Works on SAP. ", focusAreas: [], industries: [], educationShort: null },
+      input,
+    );
+    expect(presentation.summaryDe).toBeNull();
+  });
+
   it("drops a translation when the profile has no summary", () => {
     const presentation = presentationFromOutput(
       { headline: null, summaryDe: "Erfunden.", focusAreas: [], industries: [], educationShort: null },

@@ -7,6 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { isMissingSchema } from "@/lib/data/freelancer-projects";
 import {
   generateProfilePresentation,
+  PRESENTATION_VERSION,
   type PresentationInput,
   type ProfilePresentation,
 } from "@/lib/openai/profile-presentation";
@@ -26,6 +27,7 @@ const RETRY_AFTER_MS = 24 * 60 * 60_000;
 
 export function presentationInputHash(input: PresentationInput): string {
   const normalized = {
+    version: PRESENTATION_VERSION,
     role: input.role.trim(),
     summary: input.summary?.trim() ?? null,
     skills: input.skills.map((value) => value.trim()),
