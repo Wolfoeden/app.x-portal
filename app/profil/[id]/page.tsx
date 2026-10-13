@@ -4,8 +4,7 @@ import { after } from "next/server";
 import "@/app/styles/legal.css";
 
 import { previewDossiers, previewProfiles } from "@/components/chat/preview-fixtures";
-import { ProfileDossier } from "@/components/profile/ProfileDossier";
-import { ProfilePageActions } from "@/components/profile/ProfilePageActions";
+import { PublicProfilePage } from "@/components/profile/PublicProfilePage";
 import styles from "@/components/profile/public-profile.module.css";
 import {
   PublicDocumentIntro,
@@ -14,7 +13,8 @@ import {
 } from "@/components/public/PublicChrome";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { loadPublicProfileView, type PublicProfileView } from "@/lib/freelancer/public-profile";
+import { refreshProfilePresentation } from "@/lib/freelancer/profile-presentation";
+import { loadProfilePageView, type PublicProfileView } from "@/lib/freelancer/public-profile";
 import { placementBookingAllowed } from "@/lib/placement/requests";
 import { placementRequestsEnabled } from "@/lib/placement/config";
 import {
@@ -23,6 +23,7 @@ import {
   profileUrl,
 } from "@/lib/profile/profile-link";
 import { SITE_URL } from "@/lib/seo";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -43,18 +44,32 @@ function previewView(id: string): PublicProfileView | null {
   if (process.env.NODE_ENV !== "development" || id !== "vorschau") return null;
   const base = previewProfiles[0];
   const dossier = previewDossiers[base.id]!;
+  const skills = dossier.skills.map((skill) => skill.value);
+  const summary = `${dossier.summary ?? ""} Davor sechs Jahre in Produktteams von Handel und Logistik: Design-System aufgebaut, Frontend-Architektur auf Next.js umgestellt, Teams von vier bis acht Entwicklern fachlich geführt.`;
   return {
     profile: { ...base, id: "vorschau" },
-    dossier: {
-      ...dossier,
-      id: "vorschau",
-      summary: `${dossier.summary ?? ""} Davor sechs Jahre in Produktteams von Handel und Logistik: Design-System aufgebaut, Frontend-Architektur auf Next.js umgestellt, Teams von vier bis acht Entwicklern fachlich geführt.`,
+    dossier: { ...dossier, id: "vorschau", summary },
+    // Wie es mit Unterlagen und fertiger Aufbereitung aussieht.
+    documents: { cv: true, links: { linkedin: true, github: true } },
+    presentation: {
+      stale: false,
+      input: { role: dossier.role, summary, skills, industries: [], qualifications: [] },
+      presentation: {
+        headline: "Frontends für Banken und Versicherungen, vom Designsystem bis zur barrierefreien Formularstrecke.",
+        summaryDe: null,
+        focusAreas: [
+          { title: "Frontend", skills: skills.slice(0, 3) },
+          { title: "Qualität und Team", skills: skills.slice(3, 6) },
+        ].filter((area) => area.skills.length),
+        industries: ["Versicherungen", "Banken"],
+        educationShort: null,
+      },
     },
   };
 }
 
 async function loadProfile(id: string): Promise<(PublicProfileView & { shownAt: Date }) | null> {
-  const view = previewView(id) ?? (UUID.test(id) ? await loadPublicProfileView(id).catch(() => null) : null);
+  const view = previewView(id) ?? (UUID.test(id) ? await loadProfilePageView(id).catch(() => null) : null);
   return view ? { ...view, shownAt: new Date() } : null;
 }
 
@@ -115,7 +130,7 @@ export default async function ProfilePage({ params, searchParams }: Params & Sea
   const directBooking =
     isAccountUser && user ? await placementBookingAllowed(user, id).catch(() => false) : false;
 
-  const { profile, dossier, shownAt } = view;
+  const { profile, shownAt } = view;
   const action = profilePageAction({
     profileId: profile.id,
     placement: placementRequestsEnabled(),
@@ -139,34 +154,33 @@ export default async function ProfilePage({ params, searchParams }: Params & Sea
     }).catch(() => undefined),
   );
 
+  // Fehlt die Aufbereitung für diesen Inhaltsstand, entsteht sie nach der
+  // Antwort; der nächste Aufruf zeigt sie. Die Seite wartet nie darauf.
+  const presentation = view.presentation;
+  if (profile.id !== "vorschau" && presentation?.stale) after(() =>
+    refreshProfilePresentation(createAdminSupabaseClient(), profile.id, presentation.input).catch(() => undefined),
+  );
+
+  const bookingHref =
+    action.kind === "booking"
+      ? action.href
+      : profile.bookingUrl
+        ? `/api/freelancers/${profile.id}/book${via === "lead" ? "?via=lead" : ""}`
+        : null;
+
   return (
-    <div className="xlegal" lang="de">
+    <>
       <PublicHeader context="Freelancer-Profil" />
-      <main className={`xlegal-document ${styles.page}`}>
-        {/* „Geprüft“ versprach mehr, als XPORTAL tut: Profile werden vor der
-            Freigabe gesichtet, ihre Angaben aber nicht unabhängig geprüft —
-            so steht es auch in den FAQ der Startseite. */}
-        <p className={styles.eyebrow}>Von XPORTAL freigegebenes Profil</p>
-        <div className={styles.card}>
-          <ProfileDossier dossier={dossier} now={shownAt} headingLevel={1} />
-          <ProfilePageActions
-            profile={profile}
-            action={action}
-            shareUrl={profileUrl(SITE_URL, profile.id, "share")}
-          />
-        </div>
-        <aside className={styles.aside}>
-          <div>
-            <h2>Mehrere Profile vergleichen?</h2>
-            <p>
-              Beschreiben Sie Ihr Projekt in einem Satz. XPORTAL gleicht es mit allen Profilen ab und zeigt,
-              welche Anforderungen jedes Profil belegt und was offen ist.
-            </p>
-          </div>
-          <Link className={styles.secondary} href="/chat">Passende Freelancer finden</Link>
-        </aside>
+      <main className={styles.page} lang="de">
+        <PublicProfilePage
+          view={view}
+          action={action}
+          bookingHref={bookingHref}
+          shareUrl={profileUrl(SITE_URL, profile.id, "share")}
+          now={shownAt}
+        />
       </main>
       <PublicFooter />
-    </div>
+    </>
   );
 }

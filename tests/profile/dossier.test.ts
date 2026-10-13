@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { previewDossiers } from "@/components/chat/preview-fixtures";
 import { ProfileDossier } from "@/components/profile/ProfileDossier";
-import { ProfilePageActions } from "@/components/profile/ProfilePageActions";
+import { ProfileContactCard } from "@/components/profile/ProfileContactCard";
 import { FreelancerProfileSchema } from "@/lib/domain";
 import { buildProfileDossier } from "@/lib/profile/dossier";
 import type { ProfilePageAction } from "@/lib/profile/profile-link";
@@ -88,24 +88,49 @@ describe("the dossier view", () => {
   });
 });
 
-describe("the actions on the profile page", () => {
+describe("the contact box on the profile page", () => {
   const profile = { ...previewDossiers["preview-anna"]!, id: "11111111-1111-4111-8111-111111111111" };
-  const render = (action: ProfilePageAction) =>
+  const render = (action: ProfilePageAction, bookingHref: string | null, cvHref: string | null = null) =>
     renderToStaticMarkup(
-      createElement(ProfilePageActions, {
+      createElement(ProfileContactCard, {
+        firstName: "Anna",
         profile: { id: profile.id, displayName: "Anna Keller" } as never,
         action,
+        bookingHref,
         shareUrl: `https://x-portal.eu/profil/${profile.id}?via=share`,
+        cvHref,
       }),
     );
 
-  it("links to the calendar, or to the request, depending on the model", () => {
-    expect(
-      render({ kind: "booking", href: `/api/freelancers/${profile.id}/book`, label: "Erstgespräch vereinbaren", hint: "Termin selbst wählen" }),
-    ).toContain(`href="/api/freelancers/${profile.id}/book"`);
-    const request = render({ kind: "link", href: "/chat", label: "Projekt beschreiben und anfragen", hint: "Kostenlos" });
-    expect(request).toContain("Projekt beschreiben und anfragen");
-    expect(request).not.toContain("/book");
-    expect(request).toContain("Link kopieren");
+  it("books directly when the tariff allows it", () => {
+    const markup = render(
+      { kind: "booking", href: `/api/freelancers/${profile.id}/book`, label: "Termin buchen", hint: "In Ihrem Tarif enthalten" },
+      `/api/freelancers/${profile.id}/book`,
+    );
+    expect(markup).toContain(`href="/api/freelancers/${profile.id}/book"`);
+    expect(markup).toContain("Termin buchen");
+    expect(markup).toContain("Link kopieren");
+    expect(markup).not.toContain("Anfrage über XPORTAL senden");
+  });
+
+  // Oktober 2026: Recruiter aus der Lead-Mail sahen nur „Im Arbeitsbereich
+  // öffnen“, obwohl ein Kalender hinterlegt war.
+  it("offers the calendar and the request side by side for a guest", () => {
+    const markup = render(
+      { kind: "link", href: `/chat?profil=${profile.id}`, label: "Im Arbeitsbereich öffnen", hint: "Anforderungen hinterlegen" },
+      `/api/freelancers/${profile.id}/book?via=lead`,
+      `/chat?profil=${profile.id}`,
+    );
+    expect(markup).toContain(`href="/api/freelancers/${profile.id}/book?via=lead"`);
+    expect(markup).toContain("Anfrage über XPORTAL senden");
+    expect(markup).not.toContain("Im Arbeitsbereich öffnen");
+    expect(markup).toContain(">Lebenslauf</a>");
+    expect(markup).toContain("E-Mail-Adresse und Telefonnummer bleiben privat.");
+  });
+
+  it("makes the request the main way without a calendar", () => {
+    const markup = render({ kind: "link", href: "/chat", label: "Im Arbeitsbereich öffnen", hint: "Kostenlos" }, null);
+    expect(markup).not.toContain("Termin buchen");
+    expect(markup).toContain("Anfrage über XPORTAL senden");
   });
 });
