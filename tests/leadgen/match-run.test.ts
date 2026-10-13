@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   listDrafts: vi.fn(),
   claimDraft: vi.fn(),
   discardDraft: vi.fn(),
+  discardOrphans: vi.fn(),
   existingDrafts: vi.fn(),
   extract: vi.fn(),
 }));
@@ -42,6 +43,7 @@ vi.mock("@/lib/leadgen/leads-data", () => ({
   listPreparedDrafts: mocks.listDrafts,
   claimPreparedDraft: mocks.claimDraft,
   discardPreparedDraft: mocks.discardDraft,
+  discardOrphanedDrafts: mocks.discardOrphans,
 }));
 vi.mock("@/lib/leadgen/demand", () => ({
   recordLeadMatch: mocks.recordMatch,
@@ -160,6 +162,7 @@ beforeEach(() => {
   mocks.saveDraft.mockResolvedValue(undefined);
   mocks.claimDraft.mockResolvedValue({ claimed: true, leadId: 1 });
   mocks.discardDraft.mockResolvedValue(true);
+  mocks.discardOrphans.mockResolvedValue(0);
   mocks.listDrafts.mockResolvedValue([ENTWURF]);
   mocks.leads.mockResolvedValue({ data: [], error: null });
   // Das Modell liefert denselben Brief, den der deterministische Weg baut.
@@ -173,6 +176,26 @@ beforeEach(() => {
 });
 
 describe("Vorbereiten: der Abgleich", () => {
+  // Oktober 2026: Vier Entwürfe vom September warteten ewig, weil ihre Leads
+  // nach 30 Tagen gelöscht wurden. Der Lauf räumt solche Entwürfe weg.
+  it("verwirft Entwürfe, deren Lead nicht mehr existiert", async () => {
+    mocks.leads.mockResolvedValue({ data: [], error: null });
+    mocks.discardOrphans.mockResolvedValue(4);
+
+    const result = await runLeadPreparePass({ senderEmail: "info@x-portal.eu" });
+
+    expect(mocks.discardOrphans).toHaveBeenCalledTimes(1);
+    expect(result.discarded).toBe(4);
+  });
+
+  it("räumt im Probelauf nichts weg", async () => {
+    mocks.leads.mockResolvedValue({ data: [], error: null });
+
+    await runLeadPreparePass({ senderEmail: "info@x-portal.eu", dryRun: true });
+
+    expect(mocks.discardOrphans).not.toHaveBeenCalled();
+  });
+
   it("legt bei einem Treffer einen Entwurf an und verschickt nichts", async () => {
     mocks.leads.mockResolvedValue({ data: [lead({ id: 1, text: TREFFER })], error: null });
 

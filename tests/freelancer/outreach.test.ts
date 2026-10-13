@@ -52,7 +52,7 @@ describe("Art.-14-Pflichtangaben", () => {
     const body = draft().body;
     expect(body).toContain("Suchportal");
     expect(body).not.toContain("Ich betreibe XPORTAL");
-    expect(body).toContain("— XPORTAL");
+    expect(body).toContain("Produktmanager · XPORTAL");
   });
 
   it("setzt den Abmeldelink, sobald einer übergeben wird", () => {

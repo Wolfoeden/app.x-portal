@@ -9,6 +9,8 @@
  * mit Zustimmung zu den Vermittlungsbedingungen behalten ihre Fassung.
  */
 
+import { SIGNATURE_LINES } from "@/lib/email/signature";
+
 import { PLACEMENT_TERMS } from "./config";
 
 export const MANDATE_STATUSES = ["open", "in_progress", "introduced", "closed", "declined"] as const;
@@ -118,9 +120,7 @@ export function mandateMailDraft(
         ? `Suche und Vorstellung sind kostenlos. Kommt es zur Beauftragung, berechnet XPORTAL einmalig ${t.feePercent} % des vereinbarten Honorars der ersten ${t.feeMonths} Monate (höchstens ${t.maxFeeDays} Projekttage), zuzüglich Umsatzsteuer.`
         : "Suche und Vorstellung sind kostenlos; eine Provision fällt nicht an.",
       "",
-      "Viele Grüße",
-      "Roman Dering",
-      "XPORTAL",
+      ...SIGNATURE_LINES,
     ].join("\n"),
   };
 }

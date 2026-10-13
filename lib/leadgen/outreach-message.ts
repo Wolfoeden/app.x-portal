@@ -2,6 +2,7 @@ import {
   IMPRINT_EMAIL,
   PROVIDER_IMPRINT_LINES,
 } from "@/lib/legal/policy";
+import { SIGNATURE_LINES } from "@/lib/email/signature";
 
 /**
  * Der Rahmen der Akquise-Mail.
@@ -255,8 +256,7 @@ export function buildLeadEmail(input: LeadMessageInput): string {
         ]
       : []),
     "",
-    "Viele Grüße",
-    `${SENDER_PERSON} — XPORTAL`,
+    ...SIGNATURE_LINES,
     "",
     ...legalFooter({
       senderEmail: input.senderEmail,
@@ -502,8 +502,7 @@ export function buildMatchEmail(input: {
     "",
     "Das Ansehen der Profile ist kostenlos. Der Termin ist ein Erstgespräch, noch keine Beauftragung.",
     "",
-    "Viele Grüße",
-    `${SENDER_PERSON} — XPORTAL`,
+    ...SIGNATURE_LINES,
     "",
     ...legalFooter({
       senderEmail: input.senderEmail,

@@ -12,6 +12,8 @@
  * zu einem konkreten Projekt ist etwas anderes als ein Serienversand.
  */
 
+import { SIGNATURE_LINES } from "@/lib/email/signature";
+
 export const CONTACT_STAGES = [
   "new",
   "contacted",
@@ -358,7 +360,7 @@ export function contactMailDraft(contact: Pick<Contact, "company" | "contactName
     "",
     "Passt ein kurzer Austausch in den nächsten Tagen?",
     "",
-    "Viele Grüße",
+    ...SIGNATURE_LINES,
     "",
     "—",
     `Ihre Adresse stammt aus ${contact.emailSourceUrl ? contact.emailSourceUrl : "einer öffentlichen Quelle zu Ihrem Unternehmen"}. Wenn Sie keine weiteren Nachrichten wünschen, genügt eine kurze Antwort; ich trage Sie dann aus.`,

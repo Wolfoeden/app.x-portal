@@ -18,6 +18,7 @@ import { placementRequestsEnabled } from "@/lib/placement/config";
 import { profileUrl } from "@/lib/profile/profile-link";
 import {
   claimPreparedDraft,
+  discardOrphanedDrafts,
   discardPreparedDraft,
   listPreparedDrafts,
   recordLeadRun,
@@ -265,6 +266,10 @@ export async function runLeadPreparePass(
   const profileCatalogVersion = catalogVersion(profiles);
   const origin = publicMailOrigin();
 
+  // Entwürfe ohne Lead (von der Aufbewahrungsfrist gelöscht) können nie
+  // raus und würden im Admin ewig warten.
+  const verworfen = options.dryRun ? 0 : await discardOrphanedDrafts();
+
   // Leads, für die schon ein Entwurf bereitliegt, werden übergangen. Sie
   // jeden Morgen neu abzugleichen hieße, einen wartenden Entwurf täglich
   // durch einen fast gleichen zu ersetzen — und das Datum, an dem er
@@ -449,7 +454,7 @@ export async function runLeadPreparePass(
     sent: 0,
     archived,
     skipped,
-    discarded: 0,
+    discarded: verworfen,
     outcomes,
     remaining: Math.max(leads.length - examined, 0),
     dailyBudgetLeft: 0,
