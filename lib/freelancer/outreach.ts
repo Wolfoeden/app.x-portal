@@ -19,6 +19,8 @@
  * nicht, wofür er sich einträgt.
  */
 
+import { SIGNER_TITLE } from "@/lib/email/signature";
+
 export type OutreachChannel = "email" | "linkedin" | "website" | "other";
 
 export type OutreachCandidate = {
@@ -226,6 +228,7 @@ function linkedinBody(input: {
     "",
     `Viele Grüße`,
     input.senderName,
+    `${SIGNER_TITLE} · XPORTAL`,
   ].join("\n");
 }
 
@@ -267,7 +270,8 @@ function emailBody(input: {
       : []),
     "",
     `Viele Grüße`,
-    `${input.senderName} — XPORTAL`,
+    input.senderName,
+    `${SIGNER_TITLE} · XPORTAL`,
     input.senderEmail,
   ].join("\n");
 }

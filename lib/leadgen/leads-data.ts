@@ -763,6 +763,53 @@ export async function savePreparedDraft(input: {
   if (error) throw error;
 }
 
+/**
+ * Einen wartenden Entwurf im Admin verwerfen. Nur Entwürfe: Was verschickt
+ * ist oder gerade verschickt wird, bleibt als Beleg stehen.
+ *
+ * Anders als `discardPreparedDraft` (Tageslauf) geht der Lead nicht zurück in
+ * die Warteschlange, sondern wird abgelegt. Sonst legte der nächste Lauf
+ * denselben Entwurf wieder an.
+ */
+export async function discardOutreachDraft(
+  outreachId: string,
+): Promise<{ discarded: boolean; leadId: number | null }> {
+  const admin = requireServiceRole();
+  const { data, error } = await admin
+    .from("leadgen_outreach")
+    .delete()
+    .eq("id", outreachId)
+    .eq("state", "draft")
+    .select("lead_id");
+  if (error) throw error;
+  const row = (data ?? [])[0] as { lead_id: number | null } | undefined;
+  if (!row) return { discarded: false, leadId: null };
+  if (row.lead_id !== null) {
+    await updateLead({ id: row.lead_id, status: "dismissed", archived: true });
+  }
+  return { discarded: true, leadId: row.lead_id };
+}
+
+/**
+ * Entwürfe, deren Lead nicht mehr existiert, löschen.
+ *
+ * Die Aufbewahrungsfrist löscht Leads nach 30 Tagen; der Fremdschlüssel setzt
+ * dabei `lead_id` auf null. Ein Entwurf ohne Lead hat keine Adresse mehr und
+ * kann nie verschickt werden, stand aber als „wartet“ im Admin (im September
+ * blieben so vier liegen).
+ */
+export async function discardOrphanedDrafts(): Promise<number> {
+  const admin = requireServiceRole();
+  const { data, error } = await admin
+    .from("leadgen_outreach")
+    .delete()
+    .eq("state", "draft")
+    .is("lead_id", null)
+    .select("id");
+  if (error) throw error;
+  return (data ?? []).length;
+}
+
 export async function listPreparedDrafts(limit = 50): Promise<PreparedDraft[]> {
   const admin = requireServiceRole();
   const { data, error } = await admin.rpc("list_leadgen_prepared_drafts", {

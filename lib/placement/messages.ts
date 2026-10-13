@@ -1,3 +1,4 @@
+import { SIGNATURE_LINES } from "@/lib/email/signature";
 import { PLACEMENT_TERMS, PLACEMENT_TERMS_PATH } from "./config";
 
 /**
@@ -27,7 +28,7 @@ function greeting(name: string | null): string {
   return name?.trim() ? `Guten Tag ${name.trim()},` : "Guten Tag,";
 }
 
-const SIGNATURE = ["Viele Grüße", "Roman Dering", "XPORTAL"];
+const SIGNATURE = SIGNATURE_LINES;
 
 /** An den Betreiber: eine neue Anfrage wartet auf die Vorstellung. */
 export function placementRequestNotice(input: {

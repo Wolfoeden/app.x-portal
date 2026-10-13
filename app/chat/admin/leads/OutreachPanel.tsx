@@ -114,6 +114,36 @@ export function OutreachPanel({
     }
   }
 
+  /** Ein Entwurf, der nicht rausgehen soll, verschwindet aus „Wartet“. */
+  async function verwerfen(row: OutreachRow) {
+    if (!window.confirm("Diesen Entwurf verwerfen? Er wird nicht verschickt.")) return;
+    setBusy(row.outreach_id);
+    setFehler((vorher) => {
+      const rest = { ...vorher };
+      delete rest[row.outreach_id];
+      return rest;
+    });
+    try {
+      const response = await fetch(appPath(`/api/admin/outreach/${row.outreach_id}`), {
+        method: "DELETE",
+        credentials: "same-origin",
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as { error?: string };
+        setFehler((vorher) => ({
+          ...vorher,
+          [row.outreach_id]: payload.error || `Fehler ${response.status}.`,
+        }));
+        return;
+      }
+      router.refresh();
+    } catch {
+      setFehler((vorher) => ({ ...vorher, [row.outreach_id]: "Verwerfen ist gescheitert." }));
+    } finally {
+      setBusy(null);
+    }
+  }
+
   if (!rows.length) {
     return (
       <div className={styles.panel}>
@@ -227,8 +257,18 @@ export function OutreachPanel({
                             onClick={() => void verschicken(row)}
                           >
                             {busy === row.outreach_id
-                              ? "Verschickt …"
+                              ? "Bitte warten …"
                               : "Jetzt verschicken"}
+                          </button>
+                        ) : null}
+                        {view === "prepared" && row.state === "draft" ? (
+                          <button
+                            type="button"
+                            className={styles.linkButton}
+                            disabled={busy === row.outreach_id}
+                            onClick={() => void verwerfen(row)}
+                          >
+                            Verwerfen
                           </button>
                         ) : null}
                       </div>
