@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import ContactPage from "@/app/contact/page";
+import { contactInquiryFromForm } from "@/lib/contact/inquiry";
 import { topicsFromQuery } from "@/lib/contact/topics";
 import { SALES_CONTACT } from "@/lib/sales/sales-contact-model";
 
@@ -12,17 +13,16 @@ async function render(query: Record<string, string | string[]> = {}): Promise<st
   return renderToStaticMarkup(await ContactPage({ searchParams: Promise.resolve(query) }));
 }
 
-function checked(markup: string, value: string): boolean {
-  return new RegExp(`<input[^>]*value="${value}"[^>]*checked=""`, "u").test(markup)
-    || new RegExp(`<input[^>]*checked=""[^>]*value="${value}"`, "u").test(markup);
+function selected(markup: string, value: string): boolean {
+  return new RegExp(`<option value="${value}" selected=""`, "u").test(markup);
 }
 
-// Oktober 2026: Die Kontaktseite folgt dem Telefonleitfaden (KI-Agenten,
-// bekannte Einsatzfälle, Kompetenzen) und bleibt der Kontaktweg für alles.
+// Oktober 2026: Die Kontaktseite folgt dem Telefonleitfaden und bleibt kurz
+// (Rückmeldung: zu viel Text, zu viele Häkchen). Ein Thema statt neun
+// Häkchen; wer über das Menü kommt, landet oben mit passender Überschrift.
 describe("contact page", () => {
-  it("shows the person, phone and calendar from the call", async () => {
+  it("shows the person, phone and calendar", async () => {
     const markup = await render();
-    expect(markup).toContain("Wir haben telefoniert?");
     expect(markup).toContain(SALES_CONTACT.name);
     expect(markup).toContain("Produktmanager");
     expect(markup).toContain('href="tel:+491758934338"');
@@ -30,37 +30,41 @@ describe("contact page", () => {
     expect(markup).toContain("https://calendly.com/romandering/30min?utm_source=x-portal");
   });
 
-  it("names the five known use cases and the three competences", async () => {
+  it("lists the five use cases and three competences in one line each", async () => {
     const markup = await render();
     for (const title of [
-      "Kundenservice automatisieren",
-      "Vertrieb automatisieren",
-      "Daten auswerten, auf Störungen reagieren",
-      "Mitarbeiterwissen zentralisieren",
-      "Lagerhallen optimieren",
+      "Kundenservice",
+      "Vertrieb",
+      "Daten und Störungen",
+      "Mitarbeiterwissen",
+      "Lager und Logistik",
       "KI-Schulungen",
-      "Cybersecurity-Anforderungsmanagement",
-      "ISMS und ISO/IEC 27001",
+      "Cybersecurity-Anforderungen",
+      "ISMS und ISO 27001",
     ]) {
-      expect(markup).toContain(title);
+      expect(markup).toContain(`<strong>${title}</strong>`);
     }
-    for (const id of ["ki-agenten", "ki-schulungen", "informationssicherheit", "anfrage"]) {
-      expect(markup).toContain(`id="${id}"`);
-    }
+    expect(markup).not.toContain('type="checkbox"');
+    expect(markup).toContain('id="anfrage"');
   });
 
-  it("ticks the topic from a link sent after the call", async () => {
-    const markup = await render({ thema: "lager", weg: "rueckruf" });
-    expect(checked(markup, "lager")).toBe(true);
-    expect(checked(markup, "kundenservice")).toBe(false);
-    expect(checked(markup, "rueckruf")).toBe(true);
+  it("puts the topic from the menu into the headline and the form", async () => {
+    const training = await render({ thema: "schulung" });
+    expect(training).toContain("KI sicher im Alltag nutzen.");
+    expect(selected(training, "schulung")).toBe(true);
+
+    const security = await render({ thema: "iso27001" });
+    expect(security).toContain("die Audits standhält.");
+    expect(selected(security, "iso27001")).toBe(true);
+
+    expect(await render()).toContain("Weniger Routinearbeit.");
   });
 
   it("keeps the old menu links working", async () => {
     expect(topicsFromQuery(undefined, "Compliance Check")).toEqual(["iso27001"]);
     expect(topicsFromQuery(undefined, "KI-Webinar")).toEqual(["schulung"]);
     expect(topicsFromQuery(["vertrieb,unbekannt", "LAGER"], undefined)).toEqual(["vertrieb", "lager"]);
-    expect(checked(await render({ betreff: "KI-Webinar" }), "schulung")).toBe(true);
+    expect(selected(await render({ betreff: "KI-Webinar" }), "schulung")).toBe(true);
   });
 
   it("posts to the contact route without JavaScript", async () => {
@@ -68,6 +72,15 @@ describe("contact page", () => {
     expect(markup).toContain('action="/api/contact"');
     expect(markup).toContain('method="post"');
     expect(markup).toContain("Eingegangen");
-    expect(checked(markup, "email")).toBe(true);
+  });
+
+  it("calls back when a phone number is given, otherwise answers by mail", () => {
+    const form = (fields: Record<string, string>) => {
+      const data = new FormData();
+      for (const [key, value] of Object.entries(fields)) data.append(key, value);
+      return contactInquiryFromForm(data) as { way: string };
+    };
+    expect(form({ topic: "lager", phone: "+49 30 123456" }).way).toBe("rueckruf");
+    expect(form({ topic: "lager" }).way).toBe("email");
   });
 });

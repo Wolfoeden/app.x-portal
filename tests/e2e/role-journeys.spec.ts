@@ -158,7 +158,7 @@ test.describe("geschützte Rollen-Journeys", () => {
     await expect(page.getByRole("heading", { level: 1, name: /^Weniger Bewerbungen\.\s*Mehr relevante Gespräche\.$/u })).toBeVisible();
     await expect(page.getByRole("link", { name: "Produktablauf ansehen" }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Anmelden" }).first()).toHaveAttribute("href", "/anmelden");
-    await expect(page.getByLabel("Projektbeschreibung einfügen")).toHaveValue("ai developer on chain for midnight starting november", { timeout: 8_000 });
+    await expect(page.getByLabel("Projektbeschreibung einfügen")).toHaveValue("KI-Entwickler für Midnight-Blockchain, remote, ab November", { timeout: 8_000 });
     await expect(page.getByRole("link", { name: "Profil von Roman D. im Chat öffnen" })).toBeVisible({ timeout: 8_000 });
     await expect(page.getByText("210", { exact: true })).toBeVisible();
   });

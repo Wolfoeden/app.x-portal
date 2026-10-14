@@ -70,7 +70,9 @@ export function contactInquiryFromForm(form: FormData): unknown {
     email: field("email"),
     company: field("company"),
     phone: field("phone"),
-    way: field("way") || "email",
+    // Die Seite fragt nicht mehr eigens nach dem Rückweg: Wer eine Nummer
+    // angibt, bekommt einen Rückruf, sonst eine E-Mail.
+    way: field("way") || (field("phone").trim() ? "rueckruf" : "email"),
     message: field("message"),
     website: field("website"),
   };

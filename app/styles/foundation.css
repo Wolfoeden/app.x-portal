@@ -93,6 +93,9 @@
   --xp-row-line: #edf0ee;
   --xp-open: #7a5514;
   --xp-dark: #10241b;
+  /* Rahmen der öffentlichen Seiten nach dem Vorbild von apollo.io: Kopf und
+     Fußzeile auf hellem Grau, der Inhalt als weiße Karte darauf. */
+  --xp-frame: #e9e8e3;
 
   --xp-display: var(--font-display), var(--font-sans);
   --xp-h1-size: clamp(36px, 4vw, 50px);

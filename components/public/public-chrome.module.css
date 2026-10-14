@@ -98,6 +98,10 @@
   white-space: nowrap;
 }
 
+/* „Anmelden“ als Text wie bei apollo.io; die Knöpfe daneben tragen das Gewicht. */
+.headerActions .textAction { display: inline-flex; align-items: center; min-height: var(--xp-action-height-compact); padding: 0 6px; color: var(--chrome-ink); font-size: var(--xp-action-font-size); font-weight: var(--xp-action-weight); text-decoration: none; white-space: nowrap; }
+.headerActions .textAction:hover { text-decoration: underline; text-underline-offset: 5px; }
+
 /* Zwei Klassen, damit Linkfarben von Textseiten (`.xlegal a`) nicht greifen. */
 .headerActions .primaryAction { background: var(--xp-action-primary); color: #fff; }
 .headerActions .primaryAction:hover { background: var(--xp-action-primary-hover); }
@@ -125,6 +129,10 @@
 .menu nav .menuGroup a { padding-left: 20px; }
 .menu nav .menuAction { margin-top: 6px; border-radius: var(--xp-action-radius); background: var(--xp-action-primary); color: #fff; font-weight: var(--xp-action-weight); text-align: center; }
 .menu nav .menuAction:hover { background: var(--xp-action-primary-hover); }
+
+/* Grauer Rahmen: Kopf ohne Linie auf dem Grau, der Inhalt als weiße Karte. */
+.header[data-framed] { border-bottom-color: transparent; background: color-mix(in srgb, var(--xp-frame) 94%, transparent); }
+.frame { margin-inline: clamp(8px, 1.4vw, 20px); border-radius: clamp(14px, 1.4vw, 22px); background: #fff; overflow: clip; }
 
 /* Fußzeile über die volle Breite, vier Spalten im Rahmen des Inhalts. */
 .footer { border-top: 1px solid var(--xp-line); color: var(--xp-ink); }
@@ -207,6 +215,12 @@
   line-height: 1.45;
 }
 
+/* Zwischen Desktop und Tablet passt der dritte Knopf nicht neben die
+   Navigation; „Gespräch vereinbaren“ steht dann im Menü der Seite selbst. */
+@media (max-width: 1320px) {
+  .headerActions .secondaryAction { display: none; }
+}
+
 @media (max-width: 1080px) {
   .headerInner { min-height: 60px; gap: 16px; padding-right: 8px; }
   .navigation { display: none; }
@@ -214,7 +228,7 @@
 }
 
 @media (max-width: 680px) {
-  .headerActions .secondaryAction { display: none; }
+  .headerActions .textAction { display: none; }
   .headerActions .primaryAction { padding: 8px 13px; font-size: 14px; }
   .menu { margin-right: 2px; }
   .documentIntro { grid-template-columns: 1fr; gap: 26px; margin-bottom: 40px; }

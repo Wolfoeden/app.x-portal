@@ -1,6 +1,6 @@
 .shell {
   color: var(--ink);
-  background: var(--surface);
+  background: var(--xp-frame);
 }
 
 /* Knöpfe: components/ui/actions.module.css (actionClass). */

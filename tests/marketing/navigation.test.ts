@@ -18,9 +18,10 @@ describe("public navigation", () => {
     expect(header).toMatch(/href="\/chat"[^>]*>Talent Index</u);
     expect(header).toContain("Selbst finden");
     expect(header).toContain("Mit uns umsetzen");
-    expect(header).toMatch(/href="\/contact#ki-agenten"[^>]*><strong>KI-Agenten</u);
-    expect(header).toMatch(/href="\/contact#ki-schulungen"[^>]*><strong>KI-Schulungen</u);
-    expect(header).toMatch(/href="\/contact#informationssicherheit"[^>]*><strong>Cybersecurity &amp; ISO 27001</u);
+    // Oben auf der Kontaktseite, nicht mitten hinein (Rückmeldung 14.10.).
+    expect(header).toMatch(/href="\/contact"[^>]*><strong>KI-Agenten</u);
+    expect(header).toMatch(/href="\/contact\?thema=schulung"[^>]*><strong>KI-Schulungen</u);
+    expect(header).toMatch(/href="\/contact\?thema=iso27001"[^>]*><strong>Cybersecurity &amp; ISO 27001</u);
     expect(header).not.toContain("Freelancer Index");
   });
 
