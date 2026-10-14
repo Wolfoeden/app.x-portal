@@ -22,7 +22,23 @@ import {
  * In Next 16 heißt diese Datei `proxy.ts`; `middleware.ts` ist derselbe
  * Mechanismus unter dem alten Namen und wird beim Build als veraltet gemeldet.
  */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+
 export default function proxy(request: NextRequest) {
+  // 14.10.2026: Das Profil-Panel im Talent Index ist weg. Links mit
+  // `/chat?profil=<id>` (Mails, Lesezeichen, geteilte Links) führen direkt
+  // auf die Profilseite; das Projekt (`projekt`) kommt mit.
+  const linkedProfile = request.nextUrl.pathname === "/chat" ? request.nextUrl.searchParams.get("profil") : null;
+  if (linkedProfile && UUID.test(linkedProfile)) {
+    const target = request.nextUrl.clone();
+    const project = request.nextUrl.searchParams.get("projekt");
+    target.pathname = `/profil/${linkedProfile.toLowerCase()}`;
+    target.search = "";
+    target.searchParams.set("via", "share");
+    if (project && UUID.test(project)) target.searchParams.set("projekt", project);
+    return NextResponse.redirect(target, 307);
+  }
+
   const nonce = crypto.randomUUID().replaceAll("-", "");
   const reportOnlyPolicy = buildContentSecurityPolicy({
     nonce,

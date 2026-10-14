@@ -43,7 +43,6 @@ import { placementRequestsEnabled } from "@/lib/placement/config";
 import { profilePath } from "@/lib/profile/profile-link";
 import { monogramTone, PROFILE_FIELD_LABELS } from "@/lib/profile/identity";
 import { FitBar, type FitSegment } from "../profile/FitBar";
-import { ProfileSheetContext } from "../profile/profile-sheet";
 import { ProjectTeaserBlock } from "../profile/ProjectTeaserBlock";
 
 import { factPreview } from "./fact-preview";
@@ -1356,7 +1355,10 @@ export function ProfileCard({
   const [cvDownloadState, setCvDownloadState] = useState<"idle" | "loading" | "error">("idle");
   const [cvDownloadError, setCvDownloadError] = useState<string | null>(null);
   const cardRef = useProfileImpression(profile, projectId);
-  const openProfile = useContext(ProfileSheetContext);
+  // Das vollständige Profil ist die Profilseite (14.10.2026: das Seitenpanel
+  // im Chat ist weg). Sie öffnet in einem neuen Tab, damit Ergebnisse und
+  // Verlauf hier stehen bleiben; mit Projekt zeigt sie die Belege dazu.
+  const profilePage = appPath(`${profilePath(profile.id, "chat")}${projectId ? `&projekt=${encodeURIComponent(projectId)}` : ""}`);
   // Einmal, nicht dauernd: eine Karte, die weiterpulsiert, liest sich als
   // Aufforderung statt als Hinweis und zieht den Blick von den Karten daneben
   // ab, die man gerade vergleichen will.
@@ -1477,38 +1479,22 @@ export function ProfileCard({
           ) : null}
         </p>
 
-        {onToggleCollapsed || openProfile ? (
-          <div className="profile-detail-actions">
-            {onToggleCollapsed ? (
-              <button
-                className="profile-collapse-toggle"
-                type="button"
-                onClick={onToggleCollapsed}
-                aria-expanded={!collapsed}
-              >
-                <span aria-hidden="true"><IconChevronDown size={14} /></span>
-                {collapsed ? "Belege zum Projekt" : "Belege schließen"}
-              </button>
-            ) : null}
-            {openProfile ? (
-              <button
-                className="profile-collapse-toggle is-sheet"
-                type="button"
-                aria-haspopup="dialog"
-                onClick={() =>
-                  openProfile({
-                    id: profile.id,
-                    via: "results",
-                    header: { displayName: profile.displayName, role: profile.role, avatarUrl: profile.avatarUrl ?? null, field: profile.field ?? null },
-                    result: profile,
-                  })
-                }
-              >
-                Vollständiges Profil <IconArrowRight size={13} />
-              </button>
-            ) : null}
-          </div>
-        ) : null}
+        <div className="profile-detail-actions">
+          {onToggleCollapsed ? (
+            <button
+              className="profile-collapse-toggle"
+              type="button"
+              onClick={onToggleCollapsed}
+              aria-expanded={!collapsed}
+            >
+              <span aria-hidden="true"><IconChevronDown size={14} /></span>
+              {collapsed ? "Belege zum Projekt" : "Belege schließen"}
+            </button>
+          ) : null}
+          <a className="profile-collapse-toggle" href={profilePage} target="_blank" rel="noopener noreferrer">
+            Vollständiges Profil <IconArrowRight size={13} />
+          </a>
+        </div>
 
         {collapsed ? null : (
         <>
@@ -1557,7 +1543,7 @@ export function ProfileCard({
 
         <div className="profile-actions profile-more-actions">
           <button className="secondary-action" type="button" onClick={selected ? onContact : onSelect}>Kontaktwege anzeigen</button>
-          <ProfileShare profileId={profile.id} projectId={projectId} />
+          <ProfileShare profileId={profile.id} />
         </div>
         </>
         )}
@@ -1641,13 +1627,12 @@ export function ProfileCard({
 
 
 /**
- * Das Profil als eigene Seite: öffnen, um es ohne den Chat zu zeigen, oder
- * den Link kopieren, um es weiterzugeben. Der kopierte Link trägt kein
- * Projekt; wer ihn bekommt, sieht nur das Profil.
+ * Den Link aufs Profil kopieren, um es weiterzugeben. Er trägt kein Projekt;
+ * wer ihn bekommt, sieht nur das Profil. Öffnen geht über „Vollständiges
+ * Profil“ oben an der Karte.
  */
-function ProfileShare({ profileId, projectId }: { profileId: string; projectId: string | null }) {
+function ProfileShare({ profileId }: { profileId: string }) {
   const [copy, setCopy] = useState<"idle" | "copied" | "failed">("idle");
-  const ownPage = `${profilePath(profileId, "chat")}${projectId ? `&projekt=${encodeURIComponent(projectId)}` : ""}`;
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(`${window.location.origin}${appPath(profilePath(profileId, "share"))}`);
@@ -1658,9 +1643,6 @@ function ProfileShare({ profileId, projectId }: { profileId: string; projectId: 
   };
   return (
     <>
-      <a className="secondary-action" href={appPath(ownPage)} target="_blank" rel="noopener noreferrer">
-        Profilseite öffnen
-      </a>
       <button className="secondary-action" type="button" onClick={() => void copyLink()}>
         {copy === "copied" ? <><IconCheck size={13} /> Link kopiert</> : copy === "failed" ? "Kopieren nicht möglich" : "Link kopieren"}
       </button>

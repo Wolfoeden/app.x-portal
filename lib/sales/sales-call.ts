@@ -6,7 +6,7 @@ import { salesCalendarUrl } from "./sales-call-model";
 import { SALES_CONTACT } from "./sales-contact-model";
 
 /**
- * Der Kalender für „Gespräch buchen“ und die Kontaktseite: `SALES_CALL_URL`
+ * Der Kalender der Kontaktseite („Gespräch vereinbaren“): `SALES_CALL_URL`
  * (etwa ein Calendly-Ereignis), sonst der Kalender des Ansprechpartners
  * (`SALES_CONTACT.calendarUrl`). Ohne gültigen https-Link bleibt es beim
  * Rückruf.

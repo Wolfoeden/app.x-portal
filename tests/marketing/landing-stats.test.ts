@@ -59,8 +59,8 @@ describe("landing page inventory total", () => {
   it("offers the sales call next to the self-service path with tracked entries", () => {
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     const html = renderToStaticMarkup(createElement(FreelancerLanding));
-    for (const entry of ["hero"]) {
-      expect(html).toContain(`href="/gespraech?von=${entry}"`);
+    for (const entry of ["hero", "closing"]) {
+      expect(html).toContain(`href="/contact?thema=freelancer&amp;von=${entry}"`);
     }
     expect(html).toContain("14 Tage kostenlos testen");
   });

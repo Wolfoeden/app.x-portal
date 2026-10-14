@@ -24,8 +24,6 @@
 .reach dd { margin: 0; font-weight: 600; }
 .reach a { color: var(--xp-ink); text-decoration: none; }
 .reach a:hover { color: var(--xp-brand); }
-.bookButton { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; border-radius: 10px; background: var(--xp-ink); color: #fff; font-weight: 600; text-decoration: none; }
-.bookButton:hover { background: #24302b; }
 
 /* Angebote ------------------------------------------------------------------ */
 .section { padding-block: 64px 56px; }

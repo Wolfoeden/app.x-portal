@@ -264,38 +264,28 @@ export default function PrivacyPage() {
           <h2>7. Kontaktanfragen</h2>
           <div>
             <p>
-              Wenn Sie über <a href="/gespraech">„Gespräch buchen“</a> ein
-              Gespräch anfragen, verarbeiten wir Firma, Namen, E-Mail-Adresse,
-              die gesuchte Rolle und die freiwilligen Angaben (Telefon, Start,
-              Dauer, Tagessatz-Rahmen, Notiz), um Sie zu kontaktieren, das
-              Gespräch zu führen und Ihnen passende Freelancer vorzustellen.
-              Die Anfrage legen wir als Kontakt in unserer Kundenverwaltung an
-              und schicken Ihnen eine Bestätigung per E-Mail. Rechtsgrundlage
-              ist Art. 6 Abs. 1 lit. b DSGVO (Anbahnung eines Vertrags).
-            </p>
-            <p>
-              Für die Terminwahl nutzen wir einen <strong>Terminbuchungsdienst
-              mit Sitz in den USA</strong>. Er wird nicht eingebettet: Erst wenn
-              Sie „Termin wählen“ anklicken, öffnet sich seine Seite, und wir
-              übergeben dabei Ihren Namen, Ihre E-Mail-Adresse und die gesuchte
-              Rolle beziehungsweise die gewählten Themen, damit Sie sie nicht
-              noch einmal eingeben müssen. Dieselbe Seite öffnen die Links
-              „Erstgespräch vereinbaren“ und „Termin direkt buchen“ auf der
-              Kontaktseite, dort ohne übergebene Angaben. Dies ist eine
-              Übermittlung in ein Drittland; zu den Garantien siehe Abschnitt
-              9.
-            </p>
-            <p>
               Wenn Sie das <a href="/contact">Kontaktformular</a> nutzen,
               verarbeiten wir Ihren Namen, Ihre E-Mail-Adresse, die gewählten
               Themen, den Text Ihrer Nachricht und die freiwilligen Angaben
               (Unternehmen, Telefonnummer, gewünschter Rückweg), um das
               Anliegen zu bearbeiten und zu beantworten. Betrifft die Anfrage
-              KI-Agenten, KI-Schulungen, Cybersecurity oder ISO 27001, legen
-              wir sie zusätzlich als Kontakt in unserer Kundenverwaltung an.
+              die Suche nach Freelancern, KI-Agenten, KI-Schulungen,
+              Cybersecurity oder ISO 27001, legen wir sie zusätzlich als
+              Kontakt in unserer Kundenverwaltung an.
               Weitere Angaben erheben wir dabei nicht; insbesondere speichern
               wir zu einer Kontaktanfrage weder IP-Adresse noch Browserkennung
               oder Referrer.
+            </p>
+            <p>
+              Für die Terminwahl nutzen wir einen <strong>Terminbuchungsdienst
+              mit Sitz in den USA</strong>. Er wird nicht eingebettet: Erst wenn
+              Sie auf der Kontaktseite „Gespräch vereinbaren“ oder nach einer
+              Anfrage „Termin wählen“ anklicken, öffnet sich seine Seite. Nach
+              einer Anfrage übergeben wir dabei Ihren Namen, Ihre
+              E-Mail-Adresse und die gewählten Themen, damit Sie sie nicht noch
+              einmal eingeben müssen; sonst übergeben wir keine Angaben. Dies
+              ist eine Übermittlung in ein Drittland; zu den Garantien siehe
+              Abschnitt 9.
             </p>
             <p>
               Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO, soweit Ihr

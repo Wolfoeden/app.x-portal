@@ -17,9 +17,13 @@ describe("recruiting SaaS commercial contract", () => {
       expect(html).not.toMatch(/10 % Honorar|Zahlen bei Beauftragung|Kostenlos bis zur Beauftragung/u);
     }
   });
-  it("keeps the product walkthrough in the hero and the trial terms out of it", () => {
+  // 14.10.2026: Der Kopf hat eine Hauptaktion; Hinweistext und Ablauf-Link
+  // darunter sind weg, das Video steht weiter unten (#produktablauf).
+  it("keeps the hero to one action, without walkthrough text or trial terms", () => {
     const hero = landing().match(/<header\b[\s\S]*?<\/header>/u)?.[0] ?? "";
-    expect(hero).toContain("Produktablauf ansehen");
+    expect(hero).toContain("Passende Freelancer finden");
+    for (const phrase of ["Produktablauf ansehen", "Die Analyse startet", "trainieren keine KI"]) expect(hero).not.toContain(phrase);
+    expect(landing()).not.toContain("So funktioniert der Talent Index");
     expect(hero).not.toContain("14 Tage kostenlos testen");
     for (const phrase of ["Karte bei Stripe erforderlich", "Credits insgesamt", "automatischer Verlängerung", "Vor Trial-Ende kündigen"]) expect(hero).not.toContain(phrase);
   });
@@ -60,8 +64,9 @@ describe("recruiting SaaS commercial contract", () => {
   });
   it("keeps the operator call and freelancer signup secondary to self service", () => {
     const html = landing();
-    expect(html.indexOf("14 Tage kostenlos testen")).toBeLessThan(html.indexOf("Gespräch buchen"));
-    expect(html).toContain('href="/gespraech?von=hero"');
+    expect(html.indexOf("Projekt abgleichen")).toBeLessThan(html.indexOf("Gespräch vereinbaren"));
+    expect(html).toContain('href="/contact?thema=freelancer&amp;von=hero"');
+    expect(html).not.toContain("/gespraech");
     expect(html).toContain('href="/bewerber-portal/apply"');
     expect(html).not.toContain("Kostenlos suchen");
   });

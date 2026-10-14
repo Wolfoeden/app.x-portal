@@ -56,10 +56,9 @@ vi.mock("@/lib/supabase/admin", () => ({
   }),
 }));
 
-import { mintAnswerToken } from "@/lib/placement/answer-token";
 import {
-  recordAnswer,
   recordEngagement,
+  recordRoleAnswer,
   recordFeeStatus,
   sendDueFollowUps,
 } from "@/lib/placement/engagements";
@@ -245,15 +244,15 @@ describe("follow-ups", () => {
   });
 });
 
-describe("answers from the email", () => {
+describe("answers from „Gespräche“", () => {
   it("records a reported engagement and tells the operator", async () => {
-    const token = mintAnswerToken(REQUEST, "client")!;
+    const role = "client" as const;
     given("intro_bookings", INTRO);
     given("engagements", null);
     given("freelancer_profiles", { display_name: "Mira Falk" });
     given("projects", { title: "Datenplattform" });
 
-    const result = await recordAnswer(token, "engaged", "https://x-portal.eu");
+    const result = await recordRoleAnswer(REQUEST, role, "engaged", "https://x-portal.eu");
 
     expect(result).toEqual({ recorded: true, requestId: REQUEST, clientUserId: "client-1", role: "client" });
     expect(writesTo("intro_bookings")[0].values).toMatchObject({ outcome: "engaged", outcome_source: "client" });
@@ -261,11 +260,11 @@ describe("answers from the email", () => {
   });
 
   it("keeps a reported engagement when a later answer says otherwise, but stores what each side said", async () => {
-    const token = mintAnswerToken(REQUEST, "freelancer")!;
+    const role = "freelancer" as const;
     given("intro_bookings", { ...INTRO, outcome: "engaged", client_outcome: "engaged" });
     given("engagements", null);
 
-    await recordAnswer(token, "talking", "https://x-portal.eu");
+    await recordRoleAnswer(REQUEST, role, "talking", "https://x-portal.eu");
 
     const update = writesTo("intro_bookings")[0].values as Record<string, unknown>;
     expect(update).toMatchObject({ freelancer_outcome: "talking" });
@@ -274,11 +273,11 @@ describe("answers from the email", () => {
   });
 
   it("records the client's own answer next to the combined outcome", async () => {
-    const token = mintAnswerToken(REQUEST, "client")!;
+    const role = "client" as const;
     given("intro_bookings", INTRO);
     given("engagements", null);
 
-    await recordAnswer(token, "no_engagement", "https://x-portal.eu");
+    await recordRoleAnswer(REQUEST, role, "no_engagement", "https://x-portal.eu");
 
     expect(writesTo("intro_bookings")[0].values).toMatchObject({
       client_outcome: "no_engagement",
@@ -288,17 +287,13 @@ describe("answers from the email", () => {
   });
 
   it("changes nothing once the engagement is recorded", async () => {
-    const token = mintAnswerToken(REQUEST, "client")!;
+    const role = "client" as const;
     given("intro_bookings", INTRO);
     given("engagements", { id: "engagement-1", fee_status: "open", fee_minor: 1 });
 
-    const result = await recordAnswer(token, "no_engagement", "https://x-portal.eu");
+    const result = await recordRoleAnswer(REQUEST, role, "no_engagement", "https://x-portal.eu");
 
     expect(result.recorded).toBe(false);
     expect(writesTo("intro_bookings")).toEqual([]);
-  });
-
-  it("rejects a forged link", async () => {
-    await expect(recordAnswer("abc.def", "engaged", "https://x-portal.eu")).rejects.toMatchObject({ status: 404 });
   });
 });

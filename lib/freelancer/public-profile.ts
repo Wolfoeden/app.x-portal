@@ -45,7 +45,7 @@ async function hasDownloadableCv(admin: ReturnType<typeof createAdminSupabaseCli
 }
 
 /**
- * Ein Profil für die eigene Profilseite und das Seitenpanel im Chat.
+ * Ein Profil für die eigene Profilseite (`/profil/<id>`).
  *
  * Dieselbe Darstellung wie auf der Merkliste: ohne Bewertung gegen ein
  * Projekt, weil weder Seite noch Panel eines kennen. Nur aktive, echte

@@ -7,7 +7,6 @@ import { IconArrowUp } from "@/components/icons";
 import { saveProjectDraft } from "@/lib/recruiting/project-draft";
 import { salesCallHref } from "@/lib/sales/sales-call-links";
 
-import { RecruitingLink } from "./RecruitingLink";
 import styles from "./landing.module.css";
 
 const DEMO_BRIEF = "KI-Entwickler für Midnight-Blockchain, remote, ab November";
@@ -19,6 +18,9 @@ const DEMO_BRIEF = "KI-Entwickler für Midnight-Blockchain, remote, ab November"
  * sofort da, die Demo beginnt nach einem Augenblick.
  */
 const DEMO_DELAY_MS = 600;
+
+/** Bis zu dieser Höhe wächst das Feld mit dem Text; erst darüber scrollt es. */
+const FIELD_MAX_HEIGHT = 320;
 
 /**
  * Kopf der Startseite nach dem Vorbild von apollo.io (Oktober 2026): Titel in
@@ -39,7 +41,19 @@ export function LandingIntake({ profileId, note, roleChips, profileCard }: {
   const [demoSubmitted, setDemoSubmitted] = useState(false);
   const [userEditing, setUserEditing] = useState(false);
   const userInteracted = useRef(false);
+  const fieldRef = useRef<HTMLTextAreaElement>(null);
   const visibleDraft = userEditing ? draft : demoDraft;
+
+  // Eine Zeile hoch, wächst mit dem Text: kein Scrollbalken im Feld
+  // (Rückmeldung 14.10.2026: „zu dick“, „ohne diesen Scroll“).
+  useEffect(() => {
+    const field = fieldRef.current;
+    if (!field) return;
+    field.style.height = "auto";
+    const height = Math.min(field.scrollHeight, FIELD_MAX_HEIGHT);
+    field.style.height = `${height}px`;
+    field.style.overflowY = field.scrollHeight > FIELD_MAX_HEIGHT ? "auto" : "hidden";
+  }, [visibleDraft]);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -127,6 +141,7 @@ export function LandingIntake({ profileId, note, roleChips, profileCard }: {
             <label className="sr-only" htmlFor="landing-project-brief">Projektbeschreibung einfügen</label>
             <div className="composer-field">
               <textarea
+                ref={fieldRef}
                 id="landing-project-brief"
                 value={visibleDraft}
                 onChange={(event) => setDraft(event.target.value)}
@@ -146,10 +161,6 @@ export function LandingIntake({ profileId, note, roleChips, profileCard }: {
 
           <p className={styles.heroOr}><span>oder mit einer Rolle beginnen</span></p>
           <nav className={styles.roleChips} aria-label="Mit einer Rolle beginnen">{roleChips}</nav>
-          <p className={styles.heroTerms}>
-            Die Analyse startet nach einer kostenlosen Registrierung. Ihre Eingaben trainieren keine KI.{" "}
-            <RecruitingLink href="#produktablauf" event="demo_viewed" className={styles.heroTermsLink}>Produktablauf ansehen</RecruitingLink>
-          </p>
         </div>
       </header>
 
@@ -157,10 +168,10 @@ export function LandingIntake({ profileId, note, roleChips, profileCard }: {
         <div className={`${styles.wrap} ${styles.showcaseInner}`}>
           <p className={styles.showcaseLabel}>So sieht ein Treffer aus</p>
           <Link
-            href={`/chat?profil=${profileId}`}
+            href={`/profil/${profileId}`}
             prefetch={false}
             className={styles.profileLink}
-            aria-label="Profil von Roman D. im Talent Index öffnen"
+            aria-label="Profil von Roman D. öffnen"
             onClick={() => saveProjectDraft(visibleDraft)}
           >
             {profileCard}

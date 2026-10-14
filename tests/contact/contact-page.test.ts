@@ -1,11 +1,20 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
+const mocks = vi.hoisted(() => ({ audit: vi.fn(async () => undefined) }));
+
 vi.mock("server-only", () => ({}));
+vi.mock("next/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/server")>()),
+  after: (task: () => unknown) => void task(),
+}));
+vi.mock("@/lib/audit/write", () => ({ writeAuditEvent: mocks.audit }));
+vi.mock("@/lib/auth/current-user", () => ({ getCurrentUser: async () => null }));
 
 import ContactPage from "@/app/contact/page";
 import { contactInquiryFromForm } from "@/lib/contact/inquiry";
 import { topicsFromQuery } from "@/lib/contact/topics";
+import { salesCallHref } from "@/lib/sales/sales-call-links";
 import { SALES_CONTACT } from "@/lib/sales/sales-contact-model";
 
 async function render(query: Record<string, string | string[]> = {}): Promise<string> {
@@ -27,7 +36,9 @@ describe("contact page", () => {
     expect(markup).toContain("Produktmanager");
     expect(markup).toContain('href="tel:+491758934338"');
     expect(markup).toContain(SALES_CONTACT.phone);
-    expect(markup).toContain("https://calendly.com/romandering/30min?utm_source=x-portal");
+    // Ein Kalenderknopf, über /contact/termin gezählt, nicht zwei.
+    expect(markup.match(/href="\/contact\/termin"/gu)).toHaveLength(1);
+    expect(markup).toContain(">Gespräch vereinbaren<");
   });
 
   it("lists the five use cases and three competences in one line each", async () => {
@@ -58,6 +69,22 @@ describe("contact page", () => {
     expect(selected(security, "iso27001")).toBe(true);
 
     expect(await render()).toContain("Weniger Routinearbeit.");
+  });
+
+  // 14.10.2026: „Gespräch vereinbaren“ hatte eine eigene Seite. Jetzt führt
+  // es hierher; von den Seiten zum Talent Index mit dem Thema Freelancer.
+  it("is the page behind every „Gespräch vereinbaren“", async () => {
+    expect(salesCallHref("hero")).toBe("/contact?thema=freelancer&von=hero");
+    const markup = await render({ thema: "freelancer", von: "hero" });
+    expect(markup).toContain("Sprechen wir über Ihr Projekt.");
+    expect(selected(markup, "freelancer")).toBe(true);
+    expect(mocks.audit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "sales_call_viewed", metadata: expect.objectContaining({ via: "hero", topic: "freelancer" }) }),
+    );
+
+    mocks.audit.mockClear();
+    await render({ von: "evil" });
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ metadata: expect.objectContaining({ via: "direct" }) }));
   });
 
   it("keeps the old menu links working", async () => {

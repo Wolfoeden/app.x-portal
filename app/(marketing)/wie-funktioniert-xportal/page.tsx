@@ -30,7 +30,7 @@ export default function HowXportalWorksPage() {
 
       <ContentSection id="eingabe" label="Schritt 1" title="Sie beschreiben Ihr Projekt">
         <p>Der Einstieg erfolgt im Chat. Sie können eine Aufgabe in wenigen Sätzen beschreiben oder eine vorhandene Projektbeschreibung einfügen. Benennen Sie das gewünschte Ergebnis und die dafür erforderlichen Fähigkeiten.</p>
-        <p>Wenn sie bereits feststehen, ergänzen Sie Sprache, Arbeitsmodus, Ort, Startfenster, Dauer und Budget. Kennzeichnen Sie Muss-Anforderungen, Wünsche und Alternativen möglichst deutlich. Der Einstieg ist als Gast ohne Registrierung möglich.</p>
+        <p>Wenn sie bereits feststehen, ergänzen Sie Sprache, Arbeitsmodus, Ort, Startfenster, Dauer und Budget. Kennzeichnen Sie Muss-Anforderungen, Wünsche und Alternativen möglichst deutlich. Die ersten Projektanalysen sind kostenlos; Sie brauchen dafür nur ein Konto, keine Karte.</p>
         <p>Nachrichten im weiteren Dialog können die Anforderungen ergänzen oder korrigieren. Die strukturierte Übersicht dient dazu, die erfassten Angaben zu kontrollieren.</p>
       </ContentSection>
 

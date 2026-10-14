@@ -109,7 +109,7 @@ export default function PricingPage() {
           <div className={styles.features}>{tier.inherits ? <p>Alles aus {tier.inherits}, plus:</p> : null}<ul>{tier.features.map((feature) => <li key={feature}>{feature}</li>)}</ul></div>
           {free
             ? <RecruitingLink href="/chat" event="signup_started" plan="starter" className={actionClass("secondary", { block: true })}>Kostenlos starten</RecruitingLink>
-            : <RecruitingLink href={`/anmelden?checkout=${tier.id}`} event="trial_cta_clicked" plan={tier.id} className={actionClass(plan.recommended ? "primary" : "secondary", { block: true })}>{TRIAL_DAYS} Tage testen</RecruitingLink>}
+            : <RecruitingLink href={`/anmelden?checkout=${tier.id}`} event="trial_cta_clicked" plan={tier.id} className={actionClass(plan.recommended ? "primary" : "secondary", { block: true })}>{TRIAL_DAYS} Tage kostenlos testen</RecruitingLink>}
           <p className={styles.cardNote}>{tier.note}</p>
         </article>;
       })}</div>

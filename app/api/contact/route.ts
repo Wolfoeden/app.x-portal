@@ -23,7 +23,7 @@ import { berlinToday } from "@/lib/crm/contacts-model";
 import { deliverEmail } from "@/lib/email/deliver";
 import { SALES_CALL_KIND } from "@/lib/sales/sales-call-links";
 import { salesCalendarUrl } from "@/lib/sales/sales-call-model";
-import { salesCallUrl } from "@/lib/sales/sales-call";
+import { mintSalesCallToken, salesCallUrl } from "@/lib/sales/sales-call";
 import {
   assertSameOrigin,
   getClientIp,
@@ -46,16 +46,20 @@ export const dynamic = "force-dynamic";
  * sollte nicht davon abhängen, dass JavaScript lädt. Deshalb auch die
  * Weiterleitung mit 303 statt einer JSON-Antwort.
  *
- * Jede Anfrage landet in `contact_requests`. Geht es um KI-Agenten oder eine
- * der Kompetenzen, steht sie zusätzlich als Gesprächsanfrage im CRM, mit
- * Wiedervorlage heute — dieselbe Liste wie „Gespräch buchen“.
+ * Jede Anfrage landet in `contact_requests`. Geht es um Freelancer, KI-Agenten
+ * oder eine der Kompetenzen, steht sie zusätzlich als Gesprächsanfrage im
+ * CRM, mit Wiedervorlage heute. Seit /gespraech in dieser Seite aufgegangen
+ * ist (14.10.2026), zählt sie auch als „Gespräch angefragt“ im Umsatzweg,
+ * und die Danke-Ansicht bekommt ein Token für den vorausgefüllten Kalender.
  */
 function contactUrl(
   request: Request,
   state: "sent" | "error" | "invalid",
+  token?: string | null,
 ): URL {
   const url = new URL(appPath("/contact"), request.url);
   url.searchParams.set("status", state);
+  if (token) url.searchParams.set("t", token);
   url.hash = "anfrage";
   return url;
 }
@@ -209,8 +213,19 @@ export async function POST(request: NextRequest) {
         crm: Boolean(crmId),
       },
     });
+    if (crmId) {
+      await writeAuditEvent({
+        actorUserId: null,
+        action: "sales_call_requested",
+        targetType: "crm_contacts",
+        targetId: crmId,
+        outcome: "success",
+        traceId,
+        metadata: { topics: inquiry.topics.join(","), phone: Boolean(inquiry.phone) },
+      }).catch(() => undefined);
+    }
 
-    return NextResponse.redirect(contactUrl(request, "sent"), 303);
+    return NextResponse.redirect(contactUrl(request, "sent", crmId ? mintSalesCallToken(crmId) : null), 303);
   } catch (error) {
     if (error instanceof Response) return error;
     await writeAuditEvent({

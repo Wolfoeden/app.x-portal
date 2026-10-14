@@ -1,15 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { after } from "next/server";
 
 import { CaptchaField } from "@/components/CaptchaField";
 import { ContactPerson } from "@/components/marketing/ContactPerson";
 import { PublicFooter, PublicFrame, PublicHeader } from "@/components/public/PublicChrome";
 import { ActionButton, FormField, Notice } from "@/components/ui/Primitives";
 import { actionClass } from "@/components/ui/actions";
+import { writeAuditEvent } from "@/lib/audit/write";
+import { getCurrentUser } from "@/lib/auth/current-user";
 import { CONTACT_TOPICS, topicsFromQuery, type ContactTopicKey } from "@/lib/contact/topics";
 import { CONTACT_RESPONSE_PROMISE, IMPRINT_EMAIL } from "@/lib/legal/policy";
-import { salesCalendarUrl } from "@/lib/sales/sales-call-model";
-import { salesCallUrl } from "@/lib/sales/sales-call";
+import { SALES_CALENDAR_PATH, isSalesCallEntry } from "@/lib/sales/sales-call-model";
+import { readSalesCallToken, salesCallUrl } from "@/lib/sales/sales-call";
 import { salesContactPhotoUrl } from "@/lib/sales/sales-contact";
 import { phoneHref, SALES_CONTACT } from "@/lib/sales/sales-contact-model";
 import { CONTACT_PAGE, pageMetadata } from "@/lib/seo";
@@ -47,7 +50,6 @@ const ICON = {
   school: ["M1.5 6 8 3l6.5 3L8 9z", "M4 7.3V11c1 1.3 2.4 2 4 2s3-.7 4-2V7.3"],
   list: ["M3.5 2.5h9v11h-9z", "M5.5 5.5h5M5.5 8h5M5.5 10.5h3"],
   shield: ["M8 1.5 13.5 3.5v4c0 3.3-2.3 5.8-5.5 7-3.2-1.2-5.5-3.7-5.5-7v-4z", "m5.5 8 1.8 1.8L10.5 6.5"],
-  calendar: ["M2.5 3.5h11v10h-11z", "M2.5 6.5h11M5.5 2v3M10.5 2v3"],
 } as const;
 
 /** Was wir übernehmen: eine Zeile je Angebot, in der Reihenfolge des Leitfadens. */
@@ -65,9 +67,10 @@ const OFFERS: readonly { topic: ContactTopicKey; icon: keyof typeof ICON; title:
 /**
  * Der Kopf passt sich an, wenn jemand über „KI-Schulungen“ oder
  * „Cybersecurity & ISO 27001“ im Menü kommt (`?thema=`). So steht oben, was
- * gesucht war, und niemand landet mitten auf der Seite.
+ * gesucht war, und niemand landet mitten auf der Seite. „Gespräch
+ * vereinbaren“ auf den Seiten zum Talent Index kommt mit `thema=freelancer`.
  */
-const HEROES: Record<"agent" | "schulung" | "security", { eyebrow: string; title: string; accent: string; lead: string }> = {
+const HEROES: Record<"agent" | "schulung" | "security" | "freelancer", { eyebrow: string; title: string; accent: string; lead: string }> = {
   agent: {
     eyebrow: "KI-Agenten · KI-Schulungen · Informationssicherheit",
     title: "Weniger Routinearbeit.",
@@ -86,11 +89,18 @@ const HEROES: Record<"agent" | "schulung" | "security", { eyebrow: string; title
     accent: "die Audits standhält.",
     lead: "Anforderungen aus NIS2 und Kundenverträgen im Griff, ISMS aufgebaut, Zertifizierung vorbereitet.",
   },
+  freelancer: {
+    eyebrow: "Talent Index · Freelancer finden",
+    title: "Sprechen wir über Ihr Projekt.",
+    accent: "Passende Freelancer, provisionsfrei.",
+    lead: "In 30 Minuten wissen Sie, ob wir passende KI-, Software- oder Digital-Freelancer für Ihr Vorhaben haben.",
+  },
 };
 
 function heroFor(topic: ContactTopicKey | undefined) {
   if (topic === "schulung") return HEROES.schulung;
   if (topic === "cybersecurity" || topic === "iso27001") return HEROES.security;
+  if (topic === "freelancer") return HEROES.freelancer;
   return HEROES.agent;
 }
 
@@ -98,6 +108,12 @@ function heroFor(topic: ContactTopicKey | undefined) {
  * Die Kontaktseite: oben, worum es geht, und wie man uns erreicht; darunter
  * die Angebote in einer Zeile je Kachel und das Formular. Bewusst kurz
  * (Rückmeldung vom 14.10.: zu viel Text, zu viele Häkchen).
+ *
+ * Zugleich die Seite hinter jedem „Gespräch vereinbaren“: Seit 14.10.2026
+ * gibt es dafür keine zweite Seite mehr (/gespraech leitet hierher). Der
+ * Aufruf zählt im Umsatzweg als „Kontaktseite aufgerufen“, mit `?von=` als
+ * Herkunft; der Kalenderknopf geht über /contact/termin, damit auch der
+ * Klick zählt.
  *
  * Das Formular bleibt ein gewöhnliches HTML-Formular an /api/contact, ohne
  * eigenes JavaScript. Es ist zugleich der Kontaktweg aus dem Impressum;
@@ -108,9 +124,31 @@ export default async function ContactPage({ searchParams }: { searchParams: Prom
   const status = statusOf(first(params.status));
   const topic = topicsFromQuery(params.thema, params.betreff)[0];
   const hero = heroFor(topic);
-  const calendarBase = salesCallUrl();
-  const calendarHref = calendarBase ? salesCalendarUrl(calendarBase) : null;
-  const photoUrl = await salesContactPhotoUrl();
+  const calendarHref = salesCallUrl() ? SALES_CALENDAR_PATH : null;
+  // Nach dem Absenden: Kalender mit Name und Adresse aus der Anfrage.
+  const token = status === "sent" ? first(params.t) : undefined;
+  const bookingHref = calendarHref && token && readSalesCallToken(token) ? `${calendarHref}?t=${encodeURIComponent(token)}` : calendarHref;
+  const [photoUrl, user] = await Promise.all([
+    salesContactPhotoUrl(),
+    status ? null : getCurrentUser().catch(() => null),
+  ]);
+
+  if (!status) {
+    const via = first(params.von);
+    after(() =>
+      writeAuditEvent({
+        actorUserId: user?.id ?? null,
+        action: "sales_call_viewed",
+        targetType: "sales_call",
+        outcome: "success",
+        metadata: {
+          via: isSalesCallEntry(via) ? via : "direct",
+          topic: topic ?? null,
+          account: !user ? "none" : user.isAnonymous ? "guest" : "registered",
+        },
+      }).catch(() => undefined),
+    );
+  }
 
   return (
     <div className={styles.shell}>
@@ -129,8 +167,8 @@ export default async function ContactPage({ searchParams }: { searchParams: Prom
               <p className={styles.lead}>{hero.lead}</p>
               <div className={styles.heroActions}>
                 {calendarHref ? (
-                  <a href={calendarHref} target="_blank" rel="noopener noreferrer" className={actionClass("primary", { className: styles.bigAction })}>
-                    Erstgespräch vereinbaren
+                  <a href={calendarHref} target="_blank" rel="noopener noreferrer nofollow" className={actionClass("primary", { className: styles.bigAction })}>
+                    Gespräch vereinbaren
                   </a>
                 ) : null}
                 <a href="#anfrage" className={actionClass("secondary", { className: styles.bigAction })}>
@@ -147,12 +185,6 @@ export default async function ContactPage({ searchParams }: { searchParams: Prom
                 <dt>E-Mail</dt>
                 <dd><a href={`mailto:${IMPRINT_EMAIL}`}>{IMPRINT_EMAIL}</a></dd>
               </dl>
-              {calendarHref ? (
-                <a href={calendarHref} target="_blank" rel="noopener noreferrer" className={styles.bookButton}>
-                  <Icon paths={ICON.calendar} size={18} />
-                  Termin buchen · 30 Min.
-                </a>
-              ) : null}
             </aside>
           </div>
         </section>
@@ -184,7 +216,7 @@ export default async function ContactPage({ searchParams }: { searchParams: Prom
                 <Notice title="Eingegangen" tone="success" role="status">
                   <p>
                     Danke, Ihre Anfrage ist angekommen. Eine Bestätigung geht an Ihre E-Mail-Adresse.
-                    {calendarHref ? <> Lieber gleich einen Termin? <a href={calendarHref} target="_blank" rel="noopener noreferrer">Termin wählen</a></> : null}
+                    {bookingHref ? <> Lieber gleich einen Termin? <a href={bookingHref} target="_blank" rel="noopener noreferrer nofollow">Termin wählen</a></> : null}
                   </p>
                 </Notice>
               ) : null}
@@ -252,7 +284,7 @@ export default async function ContactPage({ searchParams }: { searchParams: Prom
       </main>
       </PublicFrame>
 
-      <PublicFooter />
+      <PublicFooter framed />
     </div>
   );
 }

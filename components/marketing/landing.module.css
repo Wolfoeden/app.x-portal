@@ -39,19 +39,19 @@
 .heroSwitch { display: grid; grid-template-columns: 1fr 1fr; width: min(100%, 520px); margin-top: 10px; border: 1px solid var(--lp-line); border-radius: 14px; background: #f3f4f3; padding: 4px; }
 .heroSwitch a { display: grid; place-items: center; min-height: 48px; border-radius: 10px; color: var(--lp-ink); font-size: 16px; font-weight: 500; text-decoration: none; }
 .heroSwitch a:hover { background: #fff; }
-.heroSwitch .switchActive, .heroSwitch .switchActive:hover { background: var(--lp-ink); color: #fff; }
+.heroSwitch .switchActive, .heroSwitch .switchActive:hover { background: var(--xp-frame); color: #fff; }
 .heroSwitch a:focus-visible { outline: 2px solid var(--lp-brand); outline-offset: 2px; }
 .heroPill { display: inline-flex; align-items: center; gap: 6px; margin: 0; border-radius: 999px; background: #f3f4f3; padding: 4px 12px; color: var(--lp-muted); font-size: 13px; }
-.heroOr { display: flex; align-items: center; gap: 14px; width: min(100%, 760px); margin: 6px 0 0; color: var(--lp-muted); font-size: 14px; }
+.heroOr { display: flex; align-items: center; gap: 14px; width: min(100%, 1040px); margin: 6px 0 0; color: var(--lp-muted); font-size: 14px; }
 .heroOr::before, .heroOr::after { content: ""; flex: 1; border-top: 1px solid var(--lp-line); }
-.heroTerms { max-width: 640px; margin: 4px 0 0; color: var(--lp-muted); font-size: 13px; }
-.heroTermsLink { color: var(--lp-ink); text-underline-offset: 3px; }
 
-.landingComposer { position: relative; width: min(100%, 760px); min-height: 76px; margin-top: 10px; border-color: #cfd8d3; border-radius: 20px; box-shadow: 0 18px 48px rgba(16, 27, 23, .10); text-align: left; }
+/* Das Eingabefeld (14.10.2026): breit und eine Zeile hoch, ohne
+   Scrollbalken. Längerer Text lässt es wachsen (LandingIntake). */
+.landingComposer { position: relative; align-items: center; width: min(100%, 1040px); margin-top: 10px; border-color: #cfd8d3; border-radius: 18px; box-shadow: 0 18px 48px rgba(16, 27, 23, .10); text-align: left; }
 .landingComposer :global(.composer-field) { padding-left: 0; }
-.landingComposer :global(textarea) { min-height: 84px; padding-top: 20px; padding-bottom: 16px; font-size: 18px; line-height: 1.45; }
-.landingComposer :global(.composer-placeholder) { top: 22px; left: 28px; font-size: 18px; }
-.landingComposer :global(.composer-bottom) { padding-bottom: 12px; }
+.landingComposer :global(textarea) { min-height: 64px; max-height: none; overflow-y: hidden; padding: 19px 4px 19px 24px; font-size: 18px; line-height: 1.45; }
+.landingComposer :global(.composer-placeholder) { top: 19px; left: 24px; font-size: 18px; }
+.landingComposer :global(.composer-bottom) { align-self: flex-end; padding: 0 10px 10px 0; }
 .heroCenter[data-demo-submitted="true"] .landingComposer :global(.send-button.is-project-match) { animation: demoSend .55s ease both; }
 @keyframes demoSend { 45% { transform: translateY(-2px) scale(.94); } 100% { transform: none; } }
 
@@ -84,20 +84,7 @@
 .factsRow span { color: var(--lp-muted); font-size: 15px; }
 
 /* So funktioniert es: drei Karten, darunter das Video. */
-.stepCards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin: 0; padding: 0; list-style: none; }
-.stepCards > li { display: flex; flex-direction: column; gap: 14px; border: 1px solid var(--lp-line); border-radius: 16px; padding: 32px; }
-.stepCards h3 { font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
-.stepCards p { margin: 0; color: var(--lp-muted); font-size: 16px; line-height: 1.6; }
-.stepNumber { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: #e9f5ed; color: var(--lp-brand); font-weight: 700; }
-.stepChips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 8px; }
-.stepChips > span { border: 1px solid var(--lp-line); border-radius: 999px; padding: 2px 10px; color: var(--lp-muted); font-size: 13px; }
-.stepChips > .chipStrong { border-color: transparent; background: #e9f5ed; color: var(--lp-brand); font-weight: 600; }
-.stepChips > .chipAction { border-color: transparent; border-radius: 6px; background: var(--xp-action-primary); padding: 6px 12px; color: #fff; font-weight: 500; }
-.stepRows { display: grid; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--xp-row-line); font-size: 14px; }
-.stepRows > span { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--xp-row-line); }
-.stepRows > span > span:last-child { color: var(--lp-muted); }
-.stepRows > .stepRowOpen, .stepRows > .stepRowOpen > span:last-child { color: var(--xp-open); }
-.videoPanel { margin-top: 48px; border: 1px solid var(--lp-line); border-radius: 16px; padding: 24px; scroll-margin-top: 96px; }
+.videoPanel { border: 1px solid var(--lp-line); border-radius: 16px; padding: 24px; scroll-margin-top: 96px; }
 .videoPanel .processLayout { margin: 0; }
 
 /* Bild und Text nebeneinander. */
@@ -131,14 +118,16 @@
 .related a:hover { color: var(--lp-brand); }
 
 /* Abschluss: dunkle Fläche über die volle Breite. */
-.closing { background: var(--xp-dark); color: #fff; }
+/* Hell statt dunkel (14.10.2026): Der Rahmen ist jetzt tannengrün; ein
+   dunkler Block am Ende der weißen Karte verschwamm mit ihm. */
+.closing { background: var(--lp-mint); color: var(--lp-ink); }
 .closing > .wrap { padding-block: 96px; }
-.closing h2 { color: #fff; font-size: clamp(36px, 2.8vw, 52px); }
-.closing .splitText > p { color: #c9d8cf; }
+.closing h2 { color: var(--lp-ink); font-size: clamp(36px, 2.8vw, 52px); }
+.closing .splitText > p { color: var(--lp-ink-soft); }
 .closing .splitImage { max-height: 400px; }
-.closingSecondary { display: inline-flex; align-items: center; min-height: var(--xp-action-height); padding: 0 22px; border: 1px solid #5d7a6b; border-radius: var(--xp-action-radius); color: #fff; font-size: var(--xp-action-font-size); font-weight: var(--xp-action-weight); text-decoration: none; }
-.closingSecondary:hover { border-color: #fff; }
-.closingSecondary:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.closingSecondary { display: inline-flex; align-items: center; min-height: var(--xp-action-height); padding: 0 22px; border: 1px solid #b9cfc2; border-radius: var(--xp-action-radius); background: #fff; color: var(--lp-ink); font-size: var(--xp-action-font-size); font-weight: var(--xp-action-weight); text-decoration: none; }
+.closingSecondary:hover { border-color: var(--lp-ink); }
+.closingSecondary:focus-visible { outline: 2px solid var(--lp-brand); outline-offset: 3px; }
 
 /* Ablauf als Video: links schmal die Schritte als Kapitel, rechts breit die
    Animation.
@@ -177,7 +166,7 @@
 }
 
 @media (max-width: 960px) {
-  .split, .faq, .stepCards { grid-template-columns: minmax(0, 1fr); }
+  .split, .faq { grid-template-columns: minmax(0, 1fr); }
   .section > .wrap { padding-block: 72px; }
 }
 

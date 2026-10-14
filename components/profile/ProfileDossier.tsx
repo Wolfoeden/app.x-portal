@@ -7,9 +7,8 @@ import { initials } from "../chat/shared";
 import { IconArrowUpRight, IconCheck, IconInfo } from "../icons";
 
 /*
- * Die Detailansicht eines Profils: im Seitenpanel des Chats und auf
- * `/profil/<id>`. Ohne Hooks, damit die Profilseite sie auf dem Server
- * rendert. Was der Freelancer nur angibt, bleibt als Angabe erkennbar; der
+ * Die Detailansicht eines Profils auf `/profil/<id>`. Ohne Hooks, damit die
+ * Profilseite sie auf dem Server rendert. Was der Freelancer nur angibt, bleibt als Angabe erkennbar; der
  * Haken steht nur bei dem, was XPORTAL geprüft hat.
  */
 

@@ -10,10 +10,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * „Termin wählen“ auf der Danke-Seite: zählt den Klick und leitet zum
- * Kalender weiter, vorausgefüllt mit Name, Adresse und gesuchter Rolle aus
- * der Anfrage. Ohne gültiges Token geht es zum Kalender ohne Vorbelegung,
- * ohne eingerichteten Kalender zurück zur Seite.
+ * „Gespräch vereinbaren“ auf der Kontaktseite: zählt den Klick und leitet
+ * zum Kalender weiter. Nach einer Anfrage trägt der Link ein Token; dann ist
+ * der Kalender mit Name, Adresse und Thema aus der Anfrage vorausgefüllt.
+ * Ohne gültiges Token geht es zum Kalender ohne Vorbelegung, ohne
+ * eingerichteten Kalender zurück zur Seite.
  */
 export async function GET(request: Request) {
   const base = salesCallUrl();

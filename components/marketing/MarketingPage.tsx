@@ -4,22 +4,30 @@ import type { ReactNode } from "react";
 import { JsonLd } from "@/components/JsonLd";
 import { actionClass } from "@/components/ui/actions";
 import { MatchProtocol } from "@/components/product/MatchProtocol";
+import { CREDIT_PRICES } from "@/lib/ai/credit-policy";
+import { CREDIT_PLANS } from "@/lib/billing/plans";
 import { salesCallHref, type SalesCallEntry } from "@/lib/sales/sales-call-links";
-import { MARKETING_PAGES, type PublicPage } from "@/lib/seo";
+import { MARKETING_PAGE, MARKETING_PAGES, type PublicPage } from "@/lib/seo";
 import { breadcrumbStructuredData } from "@/lib/structured-data";
-import { RecruitingLink } from "./RecruitingLink";
 import styles from "./marketing.module.css";
 
-export function ProjectLink({ children = "14 Tage kostenlos testen" }: { children?: ReactNode }) {
+const FREE_ANALYSES = Math.floor(CREDIT_PLANS.starter.grantCredits / CREDIT_PRICES.project_brief.credits);
+
+/**
+ * Derselbe Einstieg wie auf der Startseite und im Kopf: „Kostenlos starten“
+ * führt in den Talent Index. Bis 14.10.2026 stand hier „14 Tage kostenlos
+ * testen“ mit Karte — „kostenlos“ führte so auf zwei verschiedene Angebote.
+ */
+export function ProjectLink({ children = "Kostenlos starten" }: { children?: ReactNode }) {
   return (
-    <RecruitingLink href="/preise#tarife" event="trial_cta_clicked" className={actionClass("primary")}>
-      {children}<span aria-hidden="true">↗</span>
-    </RecruitingLink>
+    <Link href="/chat" prefetch={false} className={actionClass("primary")}>
+      {children}
+    </Link>
   );
 }
 
 /** Der zweite Weg neben dem Chat: ein Gespräch mit XPORTAL. */
-export function SalesCallLink({ entry, children = "Gespräch buchen" }: { entry: SalesCallEntry; children?: ReactNode }) {
+export function SalesCallLink({ entry, children = "Gespräch vereinbaren" }: { entry: SalesCallEntry; children?: ReactNode }) {
   return (
     <Link href={salesCallHref(entry)} prefetch={false} className={actionClass("secondary")}>
       {children}
@@ -42,7 +50,7 @@ export function MarketingPage({
       <JsonLd data={breadcrumbStructuredData(page)} />
       <nav aria-label="Brotkrümelnavigation" className={styles.breadcrumb}>
         <ol>
-          <li><Link href="/chat" prefetch={false}>XPORTAL</Link></li>
+          <li><Link href={MARKETING_PAGE.find.path}>XPORTAL</Link></li>
           <li><span aria-current="page">{page.label}</span></li>
         </ol>
       </nav>
@@ -54,7 +62,7 @@ export function MarketingPage({
           <div className={styles.heroActions}>
             <ProjectLink />
             <SalesCallLink entry="role_page" />
-            <span className={styles.subtle}>Karte erforderlich · 90 Credits insgesamt · danach gewählter Monatstarif</span>
+            <span className={styles.subtle}>{FREE_ANALYSES} Projektanalysen kostenlos · ohne Kreditkarte · provisionsfrei</span>
           </div>
         </div>
         {aside}

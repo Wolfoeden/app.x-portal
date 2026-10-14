@@ -91,32 +91,24 @@ export const MARKETING_PAGE = {
 
 export const MARKETING_PAGES = Object.values(MARKETING_PAGE);
 
-/** „Gespräch buchen“: nicht in der Weiterlesen-Liste, aber im Index. */
-export const SALES_CALL_PAGE = {
-  path: "/gespraech",
-  label: "Gespräch buchen",
-  title: "Gespräch buchen: Freelancer für KI, SAP und Software | XPORTAL",
-  description:
-    "30 Minuten, kostenlos: Erzählen Sie, wen Sie suchen. XPORTAL prüft den Bestand und stellt passende Freelancer vor. Honorar nur bei Beauftragung.",
-  priority: 0.9,
-  changeFrequency: "monthly",
-} as const satisfies PublicPage;
-
-/** Kontakt: KI-Agenten, KI-Schulungen, Informationssicherheit und alle übrigen Anliegen. */
+/**
+ * Kontakt und „Gespräch vereinbaren“ (seit 14.10.2026 eine Seite; /gespraech
+ * leitet hierher): Freelancer, KI-Agenten, KI-Schulungen,
+ * Informationssicherheit und alle übrigen Anliegen.
+ */
 export const CONTACT_PAGE = {
   path: "/contact",
   label: "Kontakt",
-  title: "KI-Agenten, KI-Schulungen und ISO 27001: Kontakt | XPORTAL",
+  title: "Kontakt: Freelancer, KI-Agenten, KI-Schulungen, ISO 27001 | XPORTAL",
   description:
-    "KI-Agenten für Kundenservice, Vertrieb, Datenauswertung, Wissen und Lager. Dazu KI-Schulungen, Cybersecurity-Anforderungsmanagement und ISMS nach ISO 27001. Erstgespräch in 30 Minuten.",
-  priority: 0.8,
+    "Erstgespräch in 30 Minuten: passende Freelancer aus dem Talent Index, KI-Agenten für Kundenservice, Vertrieb und Daten, KI-Schulungen und ISMS nach ISO 27001.",
+  priority: 0.9,
   changeFrequency: "monthly",
 } as const satisfies PublicPage;
 
 export const SITEMAP_ENTRIES = [
   CHAT_PAGE,
   ...MARKETING_PAGES,
-  SALES_CALL_PAGE,
   CONTACT_PAGE,
   { path: "/bewerber-portal/apply", priority: 0.7, changeFrequency: "monthly" },
   { path: "/vermittlungsbedingungen", priority: 0.4, changeFrequency: "yearly" },

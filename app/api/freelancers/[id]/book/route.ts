@@ -17,6 +17,7 @@ import {
   getClientIp,
   pseudonymizeIp,
 } from "@/lib/security/request";
+import { profilePath } from "@/lib/profile/profile-link";
 import { consumeRateLimit } from "@/lib/security/shared-rate-limit";
 
 export const runtime = "nodejs";
@@ -35,13 +36,13 @@ export async function GET(
 
     // Im Vermittlungsmodell öffnet sich der Kalender nach der Vorstellung
     // oder mit bezahltem Tarif. Wer sonst hier landet — aus einem alten
-    // Link, einer Lead-Mail oder von Hand —, fragt über „Gespräch buchen“
-    // an, mit diesem Profil vorausgewählt.
+    // Link, einer Lead-Mail oder von Hand —, kommt auf die Profilseite und
+    // fragt dort an.
     if (placementRequestsEnabled()) {
       const user = await getCurrentUser().catch(() => null);
       if (!(await placementBookingAllowed(user, parsed.data))) {
         return NextResponse.redirect(
-          new URL(appPath(`/chat?profil=${parsed.data}`), request.url),
+          new URL(appPath(profilePath(parsed.data, "share")), request.url),
           302,
         );
       }
@@ -49,11 +50,11 @@ export async function GET(
 
     const destination = await loadBookingDestination(parsed.data);
     if (!destination) {
-      // Ohne Kalender stellt XPORTAL vor: „Gespräch buchen“ mit diesem
-      // Profil, statt einer leeren Fehlerseite.
+      // Ohne Kalender stellt XPORTAL vor: die Profilseite mit ihrer
+      // Anfrage, statt einer leeren Fehlerseite.
       if (placementRequestsEnabled()) {
         return NextResponse.redirect(
-          new URL(appPath(`/chat?profil=${parsed.data}`), request.url),
+          new URL(appPath(profilePath(parsed.data, "share")), request.url),
           302,
         );
       }

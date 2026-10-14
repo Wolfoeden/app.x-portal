@@ -67,14 +67,11 @@ export function Modal({
   onClose,
   children,
   size = "default",
-  variant = "dialog",
 }: {
   titleId: string;
   onClose: () => void;
   children: ReactNode;
   size?: "default" | "large";
-  /** `sheet`: rechts angedockt, auf dem Handy von unten — für Profile. */
-  variant?: "dialog" | "sheet";
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const cardRef = useRef<HTMLElement>(null);
@@ -119,8 +116,8 @@ export function Modal({
     };
   }, []);
   return (
-    <div className={`modal-backdrop${variant === "sheet" ? " is-sheet" : ""}`} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section ref={cardRef} className={`modal-card ${size === "large" ? "is-large" : ""}${variant === "sheet" ? " is-sheet" : ""}`} role="dialog" aria-modal="true" aria-labelledby={titleId}>
+    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <section ref={cardRef} className={`modal-card ${size === "large" ? "is-large" : ""}`} role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <button ref={closeRef} className="modal-close" type="button" onClick={onClose} aria-label="Dialog schließen"><IconClose size={17} /></button>
         {children}
       </section>

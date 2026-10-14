@@ -5128,67 +5128,6 @@ a.showcase-card:hover .showcase-card-cta svg {
   gap: 6px;
 }
 
-/* Profil-Panel: rechts angedockt, unter 720 px als Blatt von unten. */
-.modal-backdrop.is-sheet {
-  place-items: stretch end;
-  padding: 0;
-}
-
-.modal-card.is-sheet {
-  width: min(100%, 560px);
-  height: 100dvh;
-  max-height: 100dvh;
-  border-radius: 22px 0 0 22px;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .modal-card.is-sheet {
-    animation: sheet-in 220ms ease-out;
-  }
-}
-
-@keyframes sheet-in {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-}
-
-@media (max-width: 720px) {
-  .modal-backdrop.is-sheet {
-    place-items: end stretch;
-  }
-
-  .modal-card.is-sheet {
-    width: 100%;
-    height: auto;
-    max-height: 92dvh;
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  }
-}
-
-.profile-sheet {
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-}
-
-.profile-sheet-actions {
-  position: sticky;
-  bottom: 0;
-  margin-top: auto;
-  border-top: 1px solid var(--border);
-  background: var(--surface);
-  padding: 14px 20px 16px;
-}
-
-.profile-sheet-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.profile-sheet-hint,
 .dossier-muted {
   margin: 6px 0 0;
   color: var(--muted-light);
@@ -5196,7 +5135,7 @@ a.showcase-card:hover .showcase-card-cta svg {
   line-height: 1.5;
 }
 
-/* Detailansicht eines Profils: Panel im Chat und /profil/<id>. */
+/* Detailansicht eines Profils: /profil/<id>. */
 .dossier .pband {
   justify-content: flex-start;
   padding: 20px 60px 0 20px;
@@ -5449,14 +5388,6 @@ a.showcase-card:hover .showcase-card-cta svg {
   .dossier-facts > div {
     grid-template-columns: 1fr;
     gap: 2px;
-  }
-}
-
-/* Unter dem Desktop-Zoom zählt die Sichtfeldhöhe mit (siehe oben). */
-@media (min-width: 1220px) {
-  .modal-card.is-sheet {
-    height: calc(100dvh / var(--ui-zoom));
-    max-height: calc(100dvh / var(--ui-zoom));
   }
 }
 

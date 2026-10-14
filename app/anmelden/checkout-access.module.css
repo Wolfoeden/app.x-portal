@@ -49,3 +49,15 @@
 @media (prefers-reduced-motion: reduce) {
   .spinner { animation-duration: 1.6s; }
 }
+
+/* Die Pflichtlinks unten, über dem Anmeldefenster wie die Marke oben. */
+.legal {
+  position: fixed;
+  z-index: 1001;
+  right: 0;
+  bottom: 14px;
+  left: 0;
+  display: flex;
+  justify-content: center;
+  font-size: 13px;
+}

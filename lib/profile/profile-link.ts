@@ -97,10 +97,12 @@ export function profilePageAction(input: {
       hint: "E-Mail bestätigen und Trial oder Tarif aktivieren · Kontakt nur mit Freigabe",
     };
   }
+  // Ohne Projekt: erst beschreiben, dann anfragen. Bis 14.10.2026 führte
+  // das ins Profil-Panel des Talent Index, das es nicht mehr gibt.
   return {
     kind: "link",
-    href: `/chat?profil=${encodeURIComponent(input.profileId)}`,
-    label: "Im Arbeitsbereich öffnen",
-    hint: "Anforderungen hinterlegen, Profil prüfen und Kontakt selbstständig anfragen",
+    href: "/chat",
+    label: "Projekt beschreiben",
+    hint: "Im Talent Index Anforderungen hinterlegen, dann den Kontakt selbstständig anfragen",
   };
 }

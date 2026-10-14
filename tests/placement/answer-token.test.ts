@@ -4,7 +4,6 @@ vi.mock("server-only", () => ({}));
 
 import {
   answerTokensConfigured,
-  answerUrl,
   mintAnswerToken,
   readAnswerToken,
 } from "@/lib/placement/answer-token";
@@ -52,13 +51,5 @@ describe("answer links in follow-up emails", () => {
 
     expect(answerTokensConfigured()).toBe(false);
     expect(mintAnswerToken(REQUEST, "client")).toBeNull();
-  });
-
-  it("puts the preselected answer next to the token", () => {
-    const url = new URL(answerUrl("https://x-portal.eu", "abc.def", "engaged"));
-
-    expect(url.pathname).toBe("/vermittlung/antwort");
-    expect(url.searchParams.get("t")).toBe("abc.def");
-    expect(url.searchParams.get("a")).toBe("engaged");
   });
 });

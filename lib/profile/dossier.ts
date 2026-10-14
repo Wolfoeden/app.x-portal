@@ -4,9 +4,8 @@ import type { WorkMode } from "@/lib/freelancer/limits";
 import type { ProfileField } from "@/lib/profile/identity";
 
 /**
- * Das vollständige Profil für die Detailansicht: im Seitenpanel des Chats und
- * auf `/profil/<id>`. Eine Quelle für beide, damit Kunden überall dasselbe
- * sehen.
+ * Das vollständige Profil für die Detailansicht auf `/profil/<id>` (bis
+ * 14.10.2026 auch im Seitenpanel des Chats, das es nicht mehr gibt).
  *
  * Alles, was der Freelancer nur angibt, bleibt als Angabe erkennbar; „geprüft“
  * steht nur dort, wo XPORTAL einen Nachweis gesehen hat. Die Ansicht bewertet
