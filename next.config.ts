@@ -37,8 +37,8 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       // /home was the old landing page; external links and bookmarks still
-      // point here.
-      { source: "/home", destination: "/", permanent: true },
+      // point here. Straight to the landing page, not via `/` (one hop).
+      { source: "/home", destination: "/fuer-unternehmen", permanent: true },
       // Oktober 2026: neue Adressen für die Startseite für Unternehmen und
       // das Bewerber-Portal. Alte Links, Lesezeichen und Einladungsmails
       // landen dauerhaft auf der neuen Adresse, Parameter bleiben erhalten.
@@ -46,6 +46,13 @@ const nextConfig: NextConfig = {
       { source: "/freelancer/apply", destination: "/bewerber-portal/apply", permanent: true },
       { source: "/freelancer", destination: "/bewerber-portal/apply", permanent: true },
       { source: "/bewerber-portal", destination: "/bewerber-portal/apply", permanent: false },
+      // 14.10.2026: „Gespräch vereinbaren“ hatte eine eigene Seite neben der
+      // Kontaktseite. Jetzt ist es eine Seite; `?von=` bleibt fürs Zählen.
+      { source: "/gespraech", destination: "/contact", permanent: true },
+      { source: "/gespraech/termin", destination: "/contact/termin", permanent: true },
+      // „Wie ging es weiter?“ hatte bis 30.09.2026 eine eigene Seite. Seitdem
+      // beantwortet man das unter „Gespräche“, mit demselben Token (`t`).
+      { source: "/vermittlung/antwort", destination: "/gespraeche", permanent: true },
     ];
   },
   async headers() {

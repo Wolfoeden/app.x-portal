@@ -1,14 +1,15 @@
 /**
  * Die Themen der Kontaktseite (/contact), in der Reihenfolge des
  * Telefonleitfadens: erst die bekannten Einsatzfälle für KI-Agenten, dann die
- * Kompetenzen rund um sichere KI, zuletzt alles andere.
+ * Kompetenzen rund um sichere KI, dann Freelancer über den Talent Index
+ * (früher die eigene Seite /gespraech), zuletzt alles andere.
  *
  * Ohne Server- und zod-Abhängigkeit, weil Seite, Route, Menü und Tests sie
  * teilen. Der Schlüssel steht in Links (`/contact?thema=kundenservice`) und
  * im Formular; geändert wird er deshalb nicht.
  */
 
-export type ContactTopicGroup = "agent" | "competence" | "other";
+export type ContactTopicGroup = "agent" | "competence" | "recruiting" | "other";
 
 export type ContactTopic = {
   key: string;
@@ -26,6 +27,7 @@ export const CONTACT_TOPICS = [
   { key: "schulung", label: "KI-Schulung", group: "competence" },
   { key: "cybersecurity", label: "Cybersecurity-Anforderungen", group: "competence" },
   { key: "iso27001", label: "ISMS / ISO 27001", group: "competence" },
+  { key: "freelancer", label: "Freelancer finden", group: "recruiting" },
   { key: "anderes", label: "Etwas anderes", group: "other" },
 ] as const satisfies readonly ContactTopic[];
 
@@ -41,7 +43,7 @@ export function contactTopicLabel(key: ContactTopicKey): string {
   return BY_KEY.get(key)!.label;
 }
 
-/** Ein Thema, zu dem XPORTAL selbst etwas anbietet (Agent oder Kompetenz). */
+/** Ein Thema, zu dem XPORTAL selbst etwas anbietet (Agent, Kompetenz, Freelancer). */
 export function isBusinessTopic(key: ContactTopicKey): boolean {
   return BY_KEY.get(key)!.group !== "other";
 }

@@ -145,7 +145,7 @@ describe("revenue funnel", () => {
 
     expect(step(funnel, "sales_call_viewed")).toEqual({
       key: "sales_call_viewed",
-      label: "Gesprächsseite aufgerufen",
+      label: "Kontaktseite aufgerufen",
       people: 3,
       detail: "2 Kopfzeile · 1 Preise",
     });

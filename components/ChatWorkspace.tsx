@@ -20,7 +20,6 @@ import { openCookieSettings } from "@/components/CookieConsent";
 import { LegalFooter } from "@/components/LegalFooter";
 import {
   IconAlertCircle,
-  IconArrowRight,
   IconArrowUp,
   IconBookmark,
   IconCheck,
@@ -101,10 +100,7 @@ import {
   type ToastState,
 } from "./chat/shared";
 import { RegisteredShowcasePanel } from "./chat/registered-showcase";
-import { bookingActionState, DirectBookingContext, ProjectDetails, ResultSection, SavedProfileList } from "./chat/results";
-import { ProfileSheet, ProfileSheetContext, type ProfileSheetRequest } from "./profile/profile-sheet";
-import type { ProfileDossier } from "@/lib/profile/dossier";
-import { profilePath } from "@/lib/profile/profile-link";
+import { DirectBookingContext, ProjectDetails, ResultSection, SavedProfileList } from "./chat/results";
 import { appPath } from "@/lib/app-path";
 import { resultScroll, type ShownResult } from "./chat/result-scroll";
 import {
@@ -347,8 +343,6 @@ interface ChatWorkspaceProps {
     resultState?: "ranked" | "no_match" | "searching";
     /** Selbst angemeldete Profile für den Shortcut, ohne Datenbank. */
     showcase?: RegisteredShowcase;
-    /** Vollständige Profile für das Seitenpanel, ohne Datenbank. */
-    dossiers?: Record<string, ProfileDossier>;
     collections?: ProjectCollectionItem[];
     conversations?: ConversationItem[];
   };
@@ -2760,59 +2754,6 @@ export function ChatWorkspace({
     }
   };
 
-  // Das Seitenpanel für ein Profil. Die Adresse trägt `?profil=<id>`: Die
-  // Zurück-Taste schließt das Panel, ein geteilter Link öffnet es wieder.
-  const [profileSheet, setProfileSheet] = useState<ProfileSheetRequest | null>(null);
-  const profileSheetPushed = useRef(false);
-  const openProfileSheet = useCallback((request: ProfileSheetRequest) => {
-    setProfileSheet(request);
-    const url = new URL(window.location.href);
-    if (url.searchParams.get("profil") === request.id) return;
-    url.searchParams.set("profil", request.id);
-    window.history.pushState(window.history.state, "", url);
-    profileSheetPushed.current = true;
-  }, []);
-  const closeProfileSheet = useCallback(() => {
-    if (profileSheetPushed.current) {
-      // Der Eintrag stammt vom Öffnen; zurück schließt über `popstate`.
-      profileSheetPushed.current = false;
-      window.history.back();
-      return;
-    }
-    setProfileSheet(null);
-    const url = new URL(window.location.href);
-    if (url.searchParams.has("profil")) {
-      url.searchParams.delete("profil");
-      window.history.replaceState(window.history.state, "", url);
-    }
-  }, []);
-  useEffect(() => {
-    const syncProfileSheet = () => {
-      if (new URL(window.location.href).searchParams.has("profil")) return;
-      profileSheetPushed.current = false;
-      setProfileSheet(null);
-    };
-    window.addEventListener("popstate", syncProfileSheet);
-    // Ein geteilter Link mit `?profil=` öffnet das Panel beim Laden.
-    const linked = new URL(window.location.href).searchParams.get("profil");
-    if (linked && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(linked)) {
-      queueMicrotask(() => setProfileSheet({ id: linked, via: "link" }));
-    }
-    return () => window.removeEventListener("popstate", syncProfileSheet);
-  }, []);
-
-  /** Aus dem Panel zurück zum Eingabefeld: Anfragen laufen über ein Projekt. */
-  const describeProject = () => {
-    closeProfileSheet();
-    requestAnimationFrame(() => {
-      const textarea = composerRef.current;
-      if (!textarea) return;
-      textarea.focus();
-      const gap = firstGap(textarea.value);
-      if (gap) textarea.setSelectionRange(gap.start, gap.end);
-    });
-  };
-
   const requestBooking = (profile: FreelancerProfileResult) => {
     // Im Vermittlungsmodell ist der Knopf eine Anfrage, auch ohne Kalender:
     // Er öffnet den Anfrage-Dialog, für Gäste nach der Anmeldung.
@@ -3257,118 +3198,10 @@ export function ChatWorkspace({
     !pendingAssistant &&
     !hasResult;
 
-  /**
-   * Die Knöpfe unten im Profil-Panel. Aus dem Suchergebnis: anfragen wie auf
-   * der Karte. Sonst gibt es noch kein Projekt, an das eine Anfrage gebunden
-   * werden kann — der Knopf führt zurück ins Eingabefeld.
-   */
-  const profileSheetActions = (request: ProfileSheetRequest) => {
-    const pageHref = appPath(profilePath(request.id, request.via === "results" ? "chat" : request.via === "shortcut" ? "shortcut" : "share"));
-    const pageLink = (
-      <a className="secondary-action" href={pageHref} target="_blank" rel="noopener noreferrer">
-        Profilseite öffnen
-      </a>
-    );
-    const result = request.result;
-    if (result) {
-      const action = bookingActionState(result, isAccountUser, placementRequestsEnabled(), directBooking);
-      return (
-        <>
-          <div className="profile-sheet-buttons">
-            {action.kind === "bookable" ? (
-              <a
-                className="primary-action"
-                href={appPath(`/api/freelancers/${result.id}/book`)}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => requestBooking(result)}
-              >
-                {action.label} <IconArrowRight size={13} />
-              </a>
-            ) : (
-              <button
-                className="primary-action"
-                type="button"
-                disabled={action.disabled}
-                onClick={() => {
-                  closeProfileSheet();
-                  requestBooking(result);
-                }}
-              >
-                {action.label}
-                {action.disabled ? null : <IconArrowRight size={13} />}
-              </button>
-            )}
-            {pageLink}
-          </div>
-          <p className="profile-sheet-hint">{action.hint}</p>
-        </>
-      );
-    }
-    const firstName = request.header?.displayName.split(/\s+/u)[0] ?? null;
-    // Ohne Projekt: Wer zahlt, bucht direkt; alle anderen fragen über
-    // „Gespräch buchen“ an, mit diesem Profil vorausgewählt.
-    if (placementRequestsEnabled() && directBooking) {
-      return (
-        <>
-          <div className="profile-sheet-buttons">
-            <a
-              className="primary-action"
-              href={appPath(`/api/freelancers/${request.id}/book`)}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Termin buchen <IconArrowRight size={13} />
-            </a>
-            {pageLink}
-          </div>
-          <p className="profile-sheet-hint">
-            In Ihrem Tarif enthalten · Sie wählen den Termin im Kalender{firstName ? ` von ${firstName}` : ""}.
-          </p>
-        </>
-      );
-    }
-    if (placementRequestsEnabled()) {
-      return (
-        <>
-          <div className="profile-sheet-buttons">
-            <a
-              className="primary-action"
-              href={appPath("/preise#tarife")}
-            >
-              14 Tage kostenlos testen <IconArrowRight size={13} />
-            </a>
-            {pageLink}
-          </div>
-          <p className="profile-sheet-hint">
-            Für neue Kontaktanfragen ist ein aktiver Trial oder Tarif erforderlich. Neue Vorgänge sind provisionsfrei. Oder{" "}
-            <button className="text-button" type="button" onClick={describeProject}>beschreiben Sie Ihr Projekt</button>{" "}
-            und sehen Sie weitere passende Profile.
-          </p>
-        </>
-      );
-    }
-    return (
-      <>
-        <div className="profile-sheet-buttons">
-          <button className="primary-action" type="button" onClick={describeProject}>
-            Projekt beschreiben <IconArrowRight size={13} />
-          </button>
-          {pageLink}
-        </div>
-        <p className="profile-sheet-hint">
-          Anfragen laufen über ein Projekt: Beschreiben Sie es kurz, XPORTAL gleicht es ab, danach fragen Sie
-          {firstName ? ` ${firstName}` : " das Profil"} direkt an.
-        </p>
-      </>
-    );
-  };
-
   // Eingeklappt wird nur die Desktop-Leiste; mobil bleibt sie ein Panel.
   const railSidebar = sidebarCollapsed && !mobileLayout;
 
   return (
-    <ProfileSheetContext.Provider value={openProfileSheet}>
     <DirectBookingContext.Provider value={directBooking}>
     <div
       className={`app-shell ${detailsOpen ? "" : "details-hidden"}${emptyChat ? " is-empty-chat" : ""}${profileFocus ? " is-profile-focus" : ""}${isResizingSidebar ? " is-resizing-sidebar" : ""}`}
@@ -4120,19 +3953,9 @@ export function ChatWorkspace({
         />
       ) : null}
 
-      {profileSheet ? (
-        <ProfileSheet
-          request={profileSheet}
-          initial={previewData?.dossiers?.[profileSheet.id] ?? null}
-          onClose={closeProfileSheet}
-          actions={profileSheetActions(profileSheet)}
-        />
-      ) : null}
-
       {toast ? <div className={`toast ${toast.tone}`} role="status" key={toast.id}>{toast.message}</div> : null}
     </div>
     </DirectBookingContext.Provider>
-    </ProfileSheetContext.Provider>
   );
 }
 

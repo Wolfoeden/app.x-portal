@@ -61,13 +61,6 @@ export function readAnswerToken(token: unknown): { requestId: string; role: Answ
   return { requestId, role: role === "c" ? "client" : "freelancer" };
 }
 
-export function answerUrl(siteUrl: string, token: string, answer?: string): string {
-  const url = new URL("/vermittlung/antwort", siteUrl);
-  url.searchParams.set("t", token);
-  if (answer) url.searchParams.set("a", answer);
-  return url.toString();
-}
-
 /** Der Link aus dem Mail-Hinweis: das Gespräch mit der offenen Frage, ohne Anmeldung. */
 export function conversationUrl(siteUrl: string, token: string): string {
   const url = new URL("/gespraeche", siteUrl);

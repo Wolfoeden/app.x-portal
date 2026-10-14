@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { LegalFooter } from "@/components/LegalFooter";
-import { salesCallHref } from "@/lib/sales/sales-call-links";
 import { MARKETING_PAGE } from "@/lib/seo";
 
 import { CompanyMenu } from "./CompanyMenu";
@@ -34,11 +33,12 @@ function NavigationLinks({ variant }: { variant: "bar" | "menu" }) {
 
 /**
  * Kopf aller öffentlichen Seiten, so breit wie der Inhalt (bis 1600 px).
- * Rechts wie bei apollo.io: „Anmelden“ als Text, „Gespräch vereinbaren“
- * umrandet, „Kostenlos starten“ gefüllt. Eine Seite mit eigenem Hauptschritt
+ * Rechts „Anmelden“ als Text und „Kostenlos starten“ gefüllt. Ein Gespräch
+ * vereinbart man über „Kontakt“ (14.10.2026: der eigene Knopf dafür führte
+ * auf eine zweite Kontaktseite und ist weg). Eine Seite mit eigenem Hauptschritt
  * (Bewerber-Portal) gibt ihre Knöpfe als `actions` mit. Bleibt beim Scrollen
  * stehen; auf dem Telefon öffnet „Menü“ die Navigation — ein `<details>`,
- * damit es ohne JavaScript geht. `framed`: auf dem grauen Rahmen
+ * damit es ohne JavaScript geht. `framed`: auf dem grünen Rahmen
  * (PublicFrame) statt auf Weiß.
  */
 export function PublicHeader({ context, authenticated = false, actions, framed = false }: {
@@ -61,7 +61,6 @@ export function PublicHeader({ context, authenticated = false, actions, framed =
           {actions ?? (authenticated ? <PublicAppAction className={styles.primaryAction} /> : (
             <>
               <Link href="/anmelden" prefetch={false} className={styles.textAction}>Anmelden</Link>
-              <Link href={salesCallHref("header")} prefetch={false} className={styles.secondaryAction}>Gespräch vereinbaren</Link>
               <Link href="/chat" prefetch={false} className={styles.primaryAction}>Kostenlos starten</Link>
             </>
           ))}
@@ -84,9 +83,9 @@ export function PublicHeader({ context, authenticated = false, actions, framed =
 }
 
 /**
- * Der Inhalt einer öffentlichen Seite als weiße Karte auf dem grauen Rahmen
- * (nach dem Vorbild von apollo.io). Kopf (`framed`) und Fußzeile stehen
- * außerhalb auf dem Grau.
+ * Der Inhalt einer öffentlichen Seite als weiße Karte auf dem grünen Rahmen
+ * (nach dem Vorbild von apollo.io). Kopf und Fußzeile (beide `framed`)
+ * stehen außerhalb auf dem Grün.
  */
 export function PublicFrame({ children }: { children: ReactNode }) {
   return <div className={styles.frame}>{children}</div>;
@@ -97,9 +96,9 @@ export function PublicFrame({ children }: { children: ReactNode }) {
  * Unternehmen, Bewerber-Portal, Rechtliches (die Pflichtlinks aus
  * LegalFooter, untereinander).
  */
-export function PublicFooter() {
+export function PublicFooter({ framed = false }: { framed?: boolean }) {
   return (
-    <footer className={styles.footer}>
+    <footer className={styles.footer} data-framed={framed ? "true" : undefined}>
       <div className={styles.footerInner}>
         <div className={styles.footerBrand}>
           <strong>XPORTAL</strong>

@@ -81,8 +81,7 @@
    denselben Werten (--xp-action-*). Als eigene Klassen, weil der Kopf auch
    in Client-Seiten steht (Fehlerseite, Anmeldeabschluss) und die
    Klassenzuordnung des gemeinsamen Moduls dort JavaScript kosten würde. */
-.primaryAction,
-.secondaryAction {
+.primaryAction {
   box-sizing: border-box;
   min-height: var(--xp-action-height-compact);
   display: inline-flex;
@@ -98,16 +97,14 @@
   white-space: nowrap;
 }
 
-/* „Anmelden“ als Text wie bei apollo.io; die Knöpfe daneben tragen das Gewicht. */
+/* „Anmelden“ als Text wie bei apollo.io; der Knopf daneben trägt das Gewicht. */
 .headerActions .textAction { display: inline-flex; align-items: center; min-height: var(--xp-action-height-compact); padding: 0 6px; color: var(--chrome-ink); font-size: var(--xp-action-font-size); font-weight: var(--xp-action-weight); text-decoration: none; white-space: nowrap; }
 .headerActions .textAction:hover { text-decoration: underline; text-underline-offset: 5px; }
 
 /* Zwei Klassen, damit Linkfarben von Textseiten (`.xlegal a`) nicht greifen. */
 .headerActions .primaryAction { background: var(--xp-action-primary); color: #fff; }
 .headerActions .primaryAction:hover { background: var(--xp-action-primary-hover); }
-.headerActions .secondaryAction { border-color: var(--xp-action-secondary-border); background: #fff; color: var(--chrome-ink); }
-.headerActions .secondaryAction:hover { border-color: var(--xp-action-secondary-border-hover); background: var(--xp-action-secondary-hover); }
-.primaryAction:focus-visible, .secondaryAction:focus-visible { outline: 2px solid var(--xp-brand); outline-offset: 3px; }
+.primaryAction:focus-visible { outline: 2px solid var(--xp-brand); outline-offset: 3px; }
 
 .menu { display: none; position: relative; align-self: center; margin-right: 16px; }
 .menu summary { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 6px; cursor: pointer; list-style: none; }
@@ -130,8 +127,25 @@
 .menu nav .menuAction { margin-top: 6px; border-radius: var(--xp-action-radius); background: var(--xp-action-primary); color: #fff; font-weight: var(--xp-action-weight); text-align: center; }
 .menu nav .menuAction:hover { background: var(--xp-action-primary-hover); }
 
-/* Grauer Rahmen: Kopf ohne Linie auf dem Grau, der Inhalt als weiße Karte. */
+/* Grüner Rahmen: Kopf ohne Linie auf dem Tannengrün, weiße Schrift, der
+   Hauptknopf in Limette. Das Menü darunter bleibt weiß mit dunkler Schrift. */
 .header[data-framed] { border-bottom-color: transparent; background: color-mix(in srgb, var(--xp-frame) 94%, transparent); }
+.header[data-framed] .brand,
+.header[data-framed] .navigation > a,
+.header[data-framed] .navGroupButton,
+.header[data-framed] .headerActions .textAction { color: var(--xp-frame-ink); }
+.header[data-framed] .brand:focus-visible,
+.header[data-framed] .navigation > a:focus-visible,
+.header[data-framed] .navGroupButton:focus-visible,
+.header[data-framed] .headerActions .textAction:focus-visible,
+.header[data-framed] .menu summary:focus-visible { outline: 2px solid var(--xp-frame-ink); outline-offset: 3px; }
+.header[data-framed] .menuIcon,
+.header[data-framed] .menuIcon::before,
+.header[data-framed] .menuIcon::after { background: var(--xp-frame-ink); }
+.header[data-framed] .menu[open] .menuIcon { background: transparent; }
+.header[data-framed] .headerActions .primaryAction { background: var(--xp-accent); color: var(--xp-frame); font-weight: 600; }
+.header[data-framed] .headerActions .primaryAction:hover { background: var(--xp-accent-hover); }
+.header[data-framed] .primaryAction:focus-visible { outline-color: var(--xp-accent); }
 .frame { margin-inline: clamp(8px, 1.4vw, 20px); border-radius: clamp(14px, 1.4vw, 22px); background: #fff; overflow: clip; }
 
 /* Fußzeile über die volle Breite, vier Spalten im Rahmen des Inhalts. */
@@ -155,6 +169,21 @@
 .footerColumn .footerLegal a:hover, .footerColumn .footerLegal button:hover { color: var(--xp-brand); text-decoration: underline; }
 .footerBottom { padding-bottom: 32px; }
 .footerBottom p { margin: 0; padding-top: 24px; border-top: 1px solid var(--xp-line); color: var(--xp-muted); font-size: 14px; }
+
+/* Auf dem grünen Rahmen: weiße Schrift, Hover in Limette. */
+.footer[data-framed] { border-top-color: transparent; color: var(--xp-frame-ink); }
+.footer[data-framed] .footerBrand p,
+.footer[data-framed] .footerBottom p { color: var(--xp-frame-muted); }
+.footer[data-framed] .footerBottom p { border-top-color: var(--xp-frame-line); }
+.footer[data-framed] .footerColumn a,
+.footer[data-framed] .footerColumn .footerLegal,
+.footer[data-framed] .footerColumn .footerLegal a,
+.footer[data-framed] .footerColumn .footerLegal button { color: var(--xp-frame-ink); }
+.footer[data-framed] .footerColumn a:hover,
+.footer[data-framed] .footerColumn .footerLegal a:hover,
+.footer[data-framed] .footerColumn .footerLegal button:hover { color: var(--xp-accent); }
+.footer[data-framed] a:focus-visible,
+.footer[data-framed] button:focus-visible { outline-color: var(--xp-frame-ink); }
 
 .documentIntro {
   display: grid;
@@ -213,12 +242,6 @@
   font-size: var(--fs-sm);
   font-weight: 650;
   line-height: 1.45;
-}
-
-/* Zwischen Desktop und Tablet passt der dritte Knopf nicht neben die
-   Navigation; „Gespräch vereinbaren“ steht dann im Menü der Seite selbst. */
-@media (max-width: 1320px) {
-  .headerActions .secondaryAction { display: none; }
 }
 
 @media (max-width: 1080px) {

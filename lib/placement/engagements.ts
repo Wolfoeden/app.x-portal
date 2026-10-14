@@ -9,7 +9,6 @@ import {
   answerTokensConfigured,
   conversationUrl,
   mintAnswerToken,
-  readAnswerToken,
   type AnswerRole,
 } from "./answer-token";
 import { PLACEMENT_TERMS, placementFeeCents } from "./config";
@@ -354,30 +353,6 @@ export async function sendDueFollowUps(siteUrl: string, now = new Date()) {
   return { sent, failed };
 }
 
-/** Was die Antwortseite zeigt, bevor jemand klickt. */
-export async function describeAnswerRequest(token: string) {
-  const parsed = readAnswerToken(token);
-  if (!parsed) return null;
-  const admin = createAdminSupabaseClient();
-  const { data } = await admin
-    .from("intro_bookings")
-    .select("id,status,project_id,freelancer_profile_id,outcome")
-    .eq("id", parsed.requestId)
-    .maybeSingle();
-  const row = data as { id: string; status: string; project_id: string; freelancer_profile_id: string; outcome: PlacementOutcome | null } | null;
-  if (!row) return null;
-  const [profile, project] = await Promise.all([
-    admin.from("freelancer_profiles").select("display_name").eq("id", row.freelancer_profile_id).maybeSingle(),
-    admin.from("projects").select("title").eq("id", row.project_id).maybeSingle(),
-  ]);
-  return {
-    role: parsed.role,
-    freelancerName: (profile.data as { display_name?: string } | null)?.display_name ?? "den Freelancer",
-    projectTitle: (project.data as { title?: string | null } | null)?.title ?? null,
-    outcome: row.outcome,
-  };
-}
-
 /**
  * Eine Antwort speichern, aus „Gespräche“ oder über den Link aus der Mail.
  *
@@ -428,11 +403,4 @@ export async function recordRoleAnswer(
     if (!result.delivered) logEvent("placement_outcome_notice_failed", { requestId: intro.id, reason: result.reason });
   }
   return { recorded: true, requestId: intro.id, clientUserId: intro.owner_user_id, role };
-}
-
-/** Die Antwort über den Link aus der Mail: Vorgang und Seite stehen im Token. */
-export async function recordAnswer(token: string, answer: PlacementOutcome, siteUrl: string) {
-  const parsed = readAnswerToken(token);
-  if (!parsed) throw new Response("Dieser Link ist ungültig.", { status: 404 });
-  return recordRoleAnswer(parsed.requestId, parsed.role, answer, siteUrl);
 }

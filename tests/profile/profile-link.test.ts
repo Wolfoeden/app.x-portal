@@ -51,14 +51,14 @@ describe("the button on the profile page", () => {
     expect(href.searchParams.get("profile")).toBe(ID);
   });
 
-  it("keeps users without a project in the self-service workspace with this profile", () => {
+  it("sends users without a project to describe one in the Talent Index", () => {
     expect(profilePageAction({ ...base, placement: true })).toMatchObject({
       kind: "link",
-      href: `/chat?profil=${ID}`,
-      label: "Im Arbeitsbereich öffnen",
+      href: "/chat",
+      label: "Projekt beschreiben",
     });
     expect(profilePageAction({ ...base, placement: true, isAccountUser: true, directBooking: false })).toMatchObject({
-      href: `/chat?profil=${ID}`,
+      href: "/chat",
     });
   });
 

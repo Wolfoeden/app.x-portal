@@ -83,13 +83,13 @@ describe("GET /api/freelancers/[id]/book", () => {
     expect(mocks.audit).not.toHaveBeenCalled();
   });
 
-  it("führt ohne Kalender zurück zum Profil im Arbeitsbereich", async () => {
+  it("führt ohne Kalender zurück auf die Profilseite", async () => {
     mocks.destination.mockResolvedValue(null);
 
     const response = await aufruf("?via=lead");
 
     expect(response.status).toBe(302);
-    expect(new URL(response.headers.get("location")!).pathname).toBe("/chat");
+    expect(new URL(response.headers.get("location")!).pathname).toBe(`/profil/${PROFIL_ID}`);
     expect(mocks.audit).not.toHaveBeenCalled();
   });
 });
@@ -100,7 +100,7 @@ describe("GET /api/freelancers/[id]/book im Vermittlungsmodell", () => {
   });
 
   // Der Kalender vor der Vorstellung (und ohne bezahlten Tarif) wäre der Weg
-  // an der Anfrage vorbei: Es geht zu „Gespräch buchen“ mit diesem Profil.
+  // an der Anfrage vorbei: Es geht auf die Profilseite mit ihrer Anfrage.
   it("schickt ohne Freigabe zur Anfrage statt in den Kalender", async () => {
     mocks.currentUser.mockResolvedValue(null);
     mocks.allowed.mockResolvedValue(false);
@@ -108,8 +108,7 @@ describe("GET /api/freelancers/[id]/book im Vermittlungsmodell", () => {
 
     expect(response.status).toBe(302);
     const location = new URL(response.headers.get("location")!);
-    expect(location.pathname).toBe("/chat");
-    expect(location.searchParams.get("profil")).toMatch(/^[0-9a-f-]{36}$/u);
+    expect(location.pathname).toBe(`/profil/${PROFIL_ID}`);
     expect(mocks.destination).not.toHaveBeenCalled();
     expect(mocks.event).not.toHaveBeenCalled();
   });

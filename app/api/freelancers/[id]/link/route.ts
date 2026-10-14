@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/auth/current-user";
 import { placementRequestsEnabled } from "@/lib/placement/config";
 import { placementBookingAllowed } from "@/lib/placement/requests";
 import { contactLinkTarget, isContactLinkKind } from "@/lib/profile/contact-links";
+import { profilePath } from "@/lib/profile/profile-link";
 import { consumeRateLimit } from "@/lib/security/shared-rate-limit";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -22,7 +23,7 @@ const NO_STORE = { "Cache-Control": "private, no-store, max-age=0" };
  * Wie der Kalender (`../book`): im Vermittlungsmodell mit bezahltem Tarif,
  * nach einer Vorstellung durch den Betreiber oder als Betreiber; ohne das
  * Modell mit Konto. Alle anderen — und jeder Aufruf ohne hinterlegten Link —
- * landen bei „Gespräch buchen“ mit diesem Profil.
+ * landen auf der Profilseite und fragen dort an.
  */
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   const { id: rawId } = await context.params;
@@ -31,7 +32,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   const profileId = parsed.data;
   const kind = new URL(request.url).searchParams.get("kind");
   const fallback = () =>
-    NextResponse.redirect(new URL(appPath(`/chat?profil=${profileId}`), request.url), {
+    NextResponse.redirect(new URL(appPath(profilePath(profileId, "share")), request.url), {
       status: 302,
       headers: NO_STORE,
     });

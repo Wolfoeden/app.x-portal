@@ -96,47 +96,11 @@ export function FreelancerLanding({ contactPhotoUrl = null, caseStudies = publis
         </div>
       </section>
 
-      <section id="produktablauf" className={styles.section} aria-labelledby="produktablauf-title">
+      {/* 14.10.2026: Überschrift und die drei Schrittkarten sind weg (zu viel
+          Text); das Video zeigt den Ablauf selbst. `#produktablauf` bleibt als
+          Sprungziel für alte Links. */}
+      <section id="produktablauf" className={styles.section} aria-label="Produktablauf im Video">
         <div className={styles.wrap}>
-          <div className={styles.sectionHead}>
-            <div>
-              <p className={styles.eyebrow}>So funktioniert der Talent Index</p>
-              <h2 id="produktablauf-title">Projekt einfügen. Profil prüfen. Kontakt anfragen.</h2>
-            </div>
-            <a href="#video" className={styles.textLink}>Produktablauf im Video ansehen →</a>
-          </div>
-          <ol className={styles.stepCards}>
-            <li>
-              <span className={styles.stepNumber} aria-hidden="true">1</span>
-              <h3>Projekttext einfügen</h3>
-              <p>Aus Ihrer Ausschreibung, von freelancermap oder LinkedIn. XPORTAL ordnet Muss-, Kern- und optionale Anforderungen.</p>
-              <div className={styles.stepChips} aria-hidden="true">
-                <span className={styles.chipStrong}>Muss: React</span>
-                <span className={styles.chipStrong}>Muss: TypeScript</span>
-                <span>Optional: Design Systems</span>
-                <span>Hybrid, Berlin</span>
-              </div>
-            </li>
-            <li>
-              <span className={styles.stepNumber} aria-hidden="true">2</span>
-              <h3>Profile mit Belegen vergleichen</h3>
-              <p>Bis zu drei passende Profile nebeneinander. Jede Anforderung mit Beleg, offene Punkte fürs Erstgespräch.</p>
-              <div className={styles.stepRows} aria-hidden="true">
-                <span><span>✓ React</span><span>belegt</span></span>
-                <span><span>✓ TypeScript</span><span>belegt</span></span>
-                <span className={styles.stepRowOpen}><span>Startdatum</span><span>klären</span></span>
-              </div>
-            </li>
-            <li>
-              <span className={styles.stepNumber} aria-hidden="true">3</span>
-              <h3>Provisionsfrei anfragen</h3>
-              <p>Sie fragen an, der Freelancer gibt seinen Kontakt frei. Kein Treffer? XPORTAL sucht per Suchauftrag weiter.</p>
-              <div className={styles.stepChips} aria-hidden="true">
-                <span className={styles.chipAction}>Freelancer anfragen</span>
-                <span>Suchauftrag erstellen</span>
-              </div>
-            </li>
-          </ol>
           <div id="video" className={styles.videoPanel}><ProcessVideo steps={processSteps} /></div>
         </div>
       </section>
@@ -206,7 +170,7 @@ export function FreelancerLanding({ contactPhotoUrl = null, caseStudies = publis
             <p>Fügen Sie die nächste Ausschreibung ein und sehen Sie, wer wirklich passt.</p>
             <div className={styles.actions}>
               <Link href="/chat" prefetch={false} className={actionClass("primary")}>Kostenlos starten</Link>
-              <Link href={salesCallHref("hero")} prefetch={false} className={styles.closingSecondary}>Gespräch buchen</Link>
+              <Link href={salesCallHref("closing")} prefetch={false} className={styles.closingSecondary}>Gespräch vereinbaren</Link>
             </div>
           </div>
           <Image className={styles.splitImage} src="/images/landing/project-conversation.webp" alt="Auftraggeber und Freelancer besprechen gemeinsam eine Projektbeschreibung am Tisch." width={1536} height={1024} sizes="(max-width: 960px) 100vw, 760px" loading="lazy" />

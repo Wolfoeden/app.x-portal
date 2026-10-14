@@ -129,7 +129,9 @@ export function PublicProfilePage({
   const summary = presentation?.summaryDe ?? dossier.summary;
   const translated = Boolean(presentation?.summaryDe && dossier.summary);
   const documents = view.documents ?? { cv: false, links: { linkedin: false, github: false } };
-  const workspaceHref = `/chat?profil=${encodeURIComponent(dossier.id)}`;
+  // Den Lebenslauf gibt es zu einem Projekt im Talent Index (an der Karte im
+  // Ergebnis); die Seite selbst liefert ihn nicht aus.
+  const workspaceHref = "/chat";
   const linkHref = (kind: "linkedin" | "github") => `/api/freelancers/${encodeURIComponent(dossier.id)}/link?kind=${kind}`;
 
   const tiles = [
@@ -193,7 +195,7 @@ export function PublicProfilePage({
                   <DocumentRow
                     href={workspaceHref}
                     title="Lebenslauf (PDF)"
-                    detail="im Arbeitsbereich"
+                    detail="im Talent Index, zu Ihrem Projekt"
                     icon={<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"><path d="M4 1.5h5.5L12.5 4.5v10H4z" /><path d="M9.5 1.5v3h3" strokeLinecap="round" /></svg>}
                   />
                 ) : null}

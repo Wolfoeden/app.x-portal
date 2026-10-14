@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { AuthDialog } from "@/components/chat/dialogs";
+import { LegalFooter } from "@/components/LegalFooter";
 import { checkoutDialogCopy } from "@/components/chat/checkout-intent";
 import type { CheckoutPlanId } from "@/lib/billing/payment-links";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
@@ -144,6 +145,8 @@ export function CheckoutAccess({
         />
       )}
       {notice ? <p className={styles.notice} role="status">{notice}</p> : null}
+      {/* Impressum und Datenschutz von jeder Seite aus erreichbar, auch hier. */}
+      <LegalFooter className={styles.legal} />
     </main>
   );
 }

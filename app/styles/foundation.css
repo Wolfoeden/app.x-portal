@@ -94,8 +94,16 @@
   --xp-open: #7a5514;
   --xp-dark: #10241b;
   /* Rahmen der öffentlichen Seiten nach dem Vorbild von apollo.io: Kopf und
-     Fußzeile auf hellem Grau, der Inhalt als weiße Karte darauf. */
-  --xp-frame: #e9e8e3;
+     Fußzeile auf dem Rahmen, der Inhalt als weiße Karte darauf. Seit
+     14.10.2026 Tannengrün statt hellem Grau (Rückmeldung: „ein passendes
+     Grün“, moderner). Darauf weiße Schrift; die Limette nur als Fläche mit
+     dunkler Schrift, etwa „Kostenlos starten“ im Kopf. */
+  --xp-frame: #0e3a2b;
+  --xp-frame-ink: #ffffff;
+  --xp-frame-muted: rgba(255, 255, 255, .7);
+  --xp-frame-line: rgba(255, 255, 255, .14);
+  --xp-accent: #c5f26b;
+  --xp-accent-hover: #b5e85a;
 
   --xp-display: var(--font-display), var(--font-sans);
   --xp-h1-size: clamp(36px, 4vw, 50px);

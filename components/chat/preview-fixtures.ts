@@ -529,7 +529,7 @@ export const previewConversations: ConversationItem[] = [
 ];
 
 /**
- * Vollständige Profile für das Seitenpanel und `/profil/vorschau`, ohne
+ * Vollständige Profile für `/profil/vorschau`, ohne
  * Datenbank. Kim und Anna zeigen alle Teile — Projekte als Zeitleiste,
  * Links, geprüfte und angegebene Kompetenzen —, die übrigen nur, was die
  * Karte ohnehin weiß.

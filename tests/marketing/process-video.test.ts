@@ -40,7 +40,7 @@ describe("the process video", () => {
     const html = renderToStaticMarkup(createElement(FreelancerLanding));
     for (const title of ["Projekttext kopieren", "Bei XPORTAL einfügen", "Freelancer anfragen"]) expect(html).toContain(title);
     expect(html).toContain("/videos/ablauf.webm");
-    expect(html).toContain('href="#produktablauf"');
+    expect(html).toContain('id="produktablauf"');
     expect(html).not.toContain("Ein Arbeitsablauf für Ihre Mandate");
     expect(html).not.toContain("Einfügen. Buchen.");
   });

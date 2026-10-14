@@ -3,7 +3,7 @@ import { IconArrowUpRight } from "@/components/icons";
 
 /**
  * Das Referenzprojekt auf einer Karte: worum es ging, für wen und wann, mit
- * welchen Werkzeugen. Mehr steht im Profil-Panel.
+ * welchen Werkzeugen. Mehr steht auf der Profilseite.
  */
 export function ProjectTeaserBlock({ teaser, total, links = true }: { teaser: ProjectTeaser; total: number; links?: boolean }) {
   const label = [teaser.relevant ? "Passend zur Anfrage" : null, total > 1 ? `Referenzprojekt · ${total} insgesamt` : "Referenzprojekt", teaser.verified ? "geprüft" : null]

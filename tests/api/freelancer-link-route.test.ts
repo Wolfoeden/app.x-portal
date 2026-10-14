@@ -28,7 +28,8 @@ import { contactLinkFlags, isAllowedContactLink } from "@/lib/profile/contact-li
 
 const PROFIL_ID = "11111111-1111-4111-8111-111111111111";
 const KONTO = { id: "22222222-2222-4222-8222-222222222222", isAnonymous: false, isAdmin: false };
-const GESPRAECH = `/chat?profil=${PROFIL_ID}`;
+// Seit 14.10.2026 ohne Profil-Panel im Talent Index: zurück auf die Profilseite.
+const GESPRAECH = `/profil/${PROFIL_ID}?via=share`;
 
 function aufruf(kind = "linkedin") {
   return GET(new Request(`https://x-portal.eu/api/freelancers/${PROFIL_ID}/link?kind=${kind}`), {

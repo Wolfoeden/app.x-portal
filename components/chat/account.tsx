@@ -277,7 +277,6 @@ export function CreditPlansDialog({
                 usage.credits.cancelAtPeriodEnd,
               ) : "Zahlungsstatus wird geladen"}</span>
             </div>
-            <a href="/konto">Testphase, Zahlungen und Rechnungen <IconArrowUpRight size={12} /></a>
           </div>
         ) : null}
       </section>

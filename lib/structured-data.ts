@@ -68,7 +68,8 @@ export function breadcrumbStructuredData(page: PublicPage) {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "XPORTAL", item: absoluteUrl("/chat") },
+      // Wie das Logo im Kopf: die Startseite für Unternehmen, nicht die App.
+      { "@type": "ListItem", position: 1, name: "XPORTAL", item: absoluteUrl("/fuer-unternehmen") },
       { "@type": "ListItem", position: 2, name: page.label, item: absoluteUrl(page.path) },
     ],
   };
