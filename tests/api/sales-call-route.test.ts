@@ -15,6 +15,7 @@ vi.mock("@/lib/crm/contacts-data", () => ({ recordInboundLead: mocks.record }));
 
 import { POST } from "@/app/api/sales-call/route";
 import { readSalesCallToken } from "@/lib/sales/sales-call";
+import { SALES_CONTACT } from "@/lib/sales/sales-contact-model";
 
 const CONTACT = "0b5c2b9e-3c55-4a43-9a7e-2f1d6c7a8b90";
 const ORIGINAL = { ...process.env };
@@ -141,10 +142,10 @@ describe("POST /api/sales-call", () => {
     expect(mocks.record).not.toHaveBeenCalled();
   });
 
-  it("works without a calendar", async () => {
+  it("falls back to the contact's own calendar without SALES_CALL_URL", async () => {
     delete process.env.SALES_CALL_URL;
     await POST(request(valid));
     const toSender = mocks.deliver.mock.calls[1]![0];
-    expect(toSender.text).not.toContain("calendly");
+    expect(toSender.text).toContain(SALES_CONTACT.calendarUrl);
   });
 });

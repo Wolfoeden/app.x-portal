@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { type FormEvent, type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from "react";
 
@@ -12,6 +11,14 @@ import { RecruitingLink } from "./RecruitingLink";
 import styles from "./landing.module.css";
 
 const DEMO_BRIEF = "ai developer on chain for midnight starting november";
+
+/**
+ * Wann die Demo im Eingabefeld zu tippen beginnt. Früher wartete sie gut drei
+ * Sekunden auf eine Animation mit Quellen-Logos, und die Profilkarte kam erst
+ * danach (rund fünf Sekunden nach dem Laden). Beides ist weg: Die Karte steht
+ * sofort da, die Demo beginnt nach einem Augenblick.
+ */
+const DEMO_DELAY_MS = 600;
 
 /**
  * Kopf der Startseite über die volle Breite: links Titel und die zwei Wege,
@@ -29,7 +36,6 @@ export function LandingIntake({ profileId, note, roleChips, profileCard }: {
   const [draft, setDraft] = useState("");
   const [demoDraft, setDemoDraft] = useState("");
   const [demoSubmitted, setDemoSubmitted] = useState(false);
-  const [revealed, setRevealed] = useState(false);
   const [userEditing, setUserEditing] = useState(false);
   const userInteracted = useRef(false);
   const visibleDraft = userEditing ? draft : demoDraft;
@@ -46,7 +52,6 @@ export function LandingIntake({ profileId, note, roleChips, profileCard }: {
       later(() => {
         setDemoDraft(DEMO_BRIEF);
         setDemoSubmitted(true);
-        setRevealed(true);
       }, 0);
       return () => timers.forEach((timer) => window.clearTimeout(timer));
     }
@@ -62,15 +67,11 @@ export function LandingIntake({ profileId, note, roleChips, profileCard }: {
           return;
         }
         later(() => {
-          if (userInteracted.current) return;
-          setDemoSubmitted(true);
-          later(() => {
-            if (!userInteracted.current) setRevealed(true);
-          }, 420);
+          if (!userInteracted.current) setDemoSubmitted(true);
         }, 180);
       };
       typeNext();
-    }, 3_250);
+    }, DEMO_DELAY_MS);
 
     return () => timers.forEach((timer) => window.clearTimeout(timer));
   }, []);
@@ -95,14 +96,12 @@ export function LandingIntake({ profileId, note, roleChips, profileCard }: {
     setDraft(visibleDraft);
     setUserEditing(true);
     setDemoSubmitted(false);
-    setRevealed(true);
   };
 
   return (
     <header className={`${styles.section} ${styles.hero}`}>
       <div
         className={`${styles.wrap} ${styles.heroScene}`}
-        data-revealed={revealed ? "true" : "false"}
         data-demo={userEditing ? "false" : "true"}
         data-demo-submitted={demoSubmitted ? "true" : "false"}
       >
@@ -133,12 +132,6 @@ export function LandingIntake({ profileId, note, roleChips, profileCard }: {
             {roleChips}
           </nav>
           <div className={styles.composerArea} aria-label="Projektbeschreibung in den Chat übernehmen">
-            <ul className={styles.sourceLogos} aria-label="Mögliche Quellen einer Projektbeschreibung">
-              <li><Image src="/images/landing/source-freelancermap.png" alt="freelancermap" width={44} height={42} /></li>
-              <li><Image src="/images/landing/source-linkedin.png" alt="LinkedIn" width={42} height={42} /></li>
-              <li><Image src="/images/landing/source-arbeitsagentur.png" alt="Bundesagentur für Arbeit" width={42} height={42} /></li>
-              <li><Image src="/images/landing/source-upwork.png" alt="Upwork" width={42} height={42} /></li>
-            </ul>
             <form className={`composer ${styles.landingComposer}`} action="/chat" method="get" onSubmit={submit}>
               <label className="sr-only" htmlFor="landing-project-brief">Projektbeschreibung einfügen</label>
               <div className="composer-field">

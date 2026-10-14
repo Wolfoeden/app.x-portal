@@ -5,26 +5,28 @@ import { LegalFooter } from "@/components/LegalFooter";
 import { MARKETING_PAGE } from "@/lib/seo";
 
 import { CompanyMenu } from "./CompanyMenu";
-import { COMPANY_LINKS } from "./company-links";
+import { COMPANY_LINK_GROUPS, COMPANY_LINKS, CONTACT_PATH } from "./company-links";
 import { PublicAppAction } from "./PublicAppAction";
 import styles from "./public-chrome.module.css";
 
 /**
- * „Für Unternehmen“ zeigt, was XPORTAL Firmen anbietet: Talent Index (die
- * Arbeitsfläche), Compliance Check und KI-Webinar. Im Kopf ein Menü, im
- * Telefon-Menü dieselben drei Einträge als Gruppe.
+ * „Für Unternehmen“ zeigt, was XPORTAL Firmen anbietet: selbst finden
+ * (Talent Index) und mit uns umsetzen (KI-Agenten, KI-Schulungen,
+ * Cybersecurity & ISO 27001). Im Kopf ein Menü, im Telefon-Menü dieselben
+ * Einträge als Gruppen. „Kontakt“ steht daneben, nicht nur in der Fußzeile.
  */
 function NavigationLinks({ variant }: { variant: "bar" | "menu" }) {
   return (
     <>
-      {variant === "bar" ? <CompanyMenu /> : (
-        <div className={styles.menuGroup} role="group" aria-labelledby="menu-company">
-          <span id="menu-company">Für Unternehmen</span>
-          {COMPANY_LINKS.map((link) => <Link key={link.label} href={link.href} prefetch={false}>{link.label}</Link>)}
+      {variant === "bar" ? <CompanyMenu /> : COMPANY_LINK_GROUPS.map((group, index) => (
+        <div key={group.label} className={styles.menuGroup} role="group" aria-labelledby={`menu-company-${index}`}>
+          <span id={`menu-company-${index}`}>{group.label}</span>
+          {group.links.map((link) => <Link key={link.label} href={link.href} prefetch={false}>{link.label}</Link>)}
         </div>
-      )}
+      ))}
       <Link href={MARKETING_PAGE.pricing.path}>Preise</Link>
       <Link href="/bewerber-portal/apply">Bewerber-Portal</Link>
+      <Link href={CONTACT_PATH} prefetch={false}>Kontakt</Link>
     </>
   );
 }
@@ -87,7 +89,7 @@ export function PublicFooter() {
       <div className={styles.footerInner}>
         <div className={styles.footerBrand}>
           <strong>XPORTAL</strong>
-          <p>Talent Index, Compliance Check und KI-Webinare für Unternehmen. Ein Familienunternehmen aus Deutschland.</p>
+          <p>Talent Index, KI-Agenten, KI-Schulungen und Informationssicherheit für Unternehmen. Ein Familienunternehmen aus Deutschland.</p>
         </div>
         <nav className={styles.footerColumn} aria-label="Für Unternehmen">
           <p>Für Unternehmen</p>

@@ -3,14 +3,15 @@
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 
-import { COMPANY_LINKS } from "./company-links";
+import { COMPANY_LINK_GROUPS } from "./company-links";
 import styles from "./public-chrome.module.css";
 
 /**
- * „Für Unternehmen“ im Kopf: ein Menü mit Talent Index (die Arbeitsfläche
- * unter /chat) und den beiden Angeboten über das Kontaktformular. Die Links
- * stehen immer im HTML (nur versteckt), damit sie ohne JavaScript und für
- * Suchmaschinen da sind; auf Geräten mit Maus öffnet schon das Überfahren.
+ * „Für Unternehmen“ im Kopf: ein Menü in zwei Spalten, „Selbst finden“
+ * (Talent Index unter /chat) und „Mit uns umsetzen“ (KI-Agenten und
+ * Kompetenzen auf der Kontaktseite). Die Links stehen immer im HTML (nur
+ * versteckt), damit sie ohne JavaScript und für Suchmaschinen da sind; auf
+ * Geräten mit Maus öffnet schon das Überfahren.
  */
 export function CompanyMenu() {
   const [open, setOpen] = useState(false);
@@ -45,13 +46,19 @@ export function CompanyMenu() {
         Für Unternehmen
         <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="m3 4.5 3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
-      <ul id={panelId} className={styles.navPanel} hidden={!open}>
-        {COMPANY_LINKS.map((link) => (
-          <li key={link.label}>
-            <Link href={link.href} prefetch={false} onClick={() => setOpen(false)}>{link.label}</Link>
-          </li>
+      <div id={panelId} className={styles.navPanel} hidden={!open}>
+        {COMPANY_LINK_GROUPS.map((group) => (
+          <div key={group.label} className={styles.navColumn} role="group" aria-label={group.label}>
+            <span aria-hidden="true">{group.label}</span>
+            {group.links.map((link) => (
+              <Link key={link.label} href={link.href} prefetch={false} onClick={() => setOpen(false)}>
+                <strong>{link.label}</strong>
+                <small>{link.note}</small>
+              </Link>
+            ))}
+          </div>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }

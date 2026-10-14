@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import { mintSalesCallToken, readSalesCallToken, salesCallUrl } from "@/lib/sales/sales-call";
+import { SALES_CONTACT } from "@/lib/sales/sales-contact-model";
 
 const CONTACT = "0b5c2b9e-3c55-4a43-9a7e-2f1d6c7a8b90";
 const ORIGINAL = { ...process.env };
@@ -54,12 +55,12 @@ describe("sales call token", () => {
 });
 
 describe("salesCallUrl", () => {
-  it("returns only a valid https calendar", () => {
+  it("returns only a valid https calendar, else the contact's own", () => {
     process.env.SALES_CALL_URL = " https://calendly.com/xportal/20min ";
     expect(salesCallUrl()).toBe("https://calendly.com/xportal/20min");
     process.env.SALES_CALL_URL = "http://calendly.com/xportal";
-    expect(salesCallUrl()).toBeNull();
+    expect(salesCallUrl()).toBe(SALES_CONTACT.calendarUrl);
     delete process.env.SALES_CALL_URL;
-    expect(salesCallUrl()).toBeNull();
+    expect(salesCallUrl()).toBe(SALES_CONTACT.calendarUrl);
   });
 });
