@@ -1,0 +1,117 @@
+/* Die Kontaktseite /contact: Kopf mit Ansprechpartner, Einsatzfälle,
+   Ablauf, Kompetenzen (dunkles Band), Formular. Im Rahmen der übrigen
+   öffentlichen Seiten (--xp-page-*). */
+
+.shell { background: #fff; color: var(--xp-ink); }
+.wrap { box-sizing: border-box; width: 100%; max-width: var(--xp-page-max); margin: 0 auto; padding-inline: var(--xp-page-gutter); }
+.eyebrow { margin: 0; color: var(--xp-brand); font-size: 15px; font-weight: 600; }
+.small, .muted { margin: 0; color: var(--xp-muted); font-size: 14px; line-height: 1.5; }
+.muted { font-size: 16px; }
+.bigAction { min-height: 52px; padding-inline: 24px; font-size: 17px; font-weight: 600; }
+.textLink { color: var(--xp-brand); font-size: 15px; font-weight: 600; text-decoration: none; }
+.textLink:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+/* Kopf ---------------------------------------------------------------------- */
+.hero { border-bottom: 1px solid var(--xp-mint-line); background: var(--xp-mint); }
+.heroGrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 460px); align-items: center; gap: 40px 72px; padding-block: 72px 64px; }
+.heroMain { display: grid; gap: 24px; min-width: 0; }
+.heroMain h1 { max-width: 900px; margin: 0; font-family: var(--xp-display); font-size: clamp(36px, 3.4vw, 60px); font-weight: 500; line-height: 1.05; letter-spacing: -.045em; text-wrap: balance; }
+.heroMain h1 span { display: block; color: var(--xp-brand); }
+.lead { max-width: 760px; margin: 0; color: #3d4742; font-size: clamp(17px, 1.2vw, 21px); line-height: 1.55; }
+.heroActions { display: flex; flex-wrap: wrap; gap: 12px 16px; }
+
+.contactCard { display: grid; gap: 16px; border: 1px solid var(--xp-card-line); border-radius: 18px; background: #fff; padding: 28px; box-shadow: 0 24px 60px rgba(16, 27, 23, .1); }
+.cardEyebrow { margin: 0; color: #0f5f39; font-size: 14px; font-weight: 600; }
+.cardText { margin: 0; color: #3d4742; font-size: 15px; }
+.person { border-top: 1px solid var(--xp-row-line); padding-top: 16px; }
+.reach { display: grid; grid-template-columns: 80px 1fr; gap: 8px 12px; margin: 0; font-size: 15px; }
+.reach dt { color: var(--xp-muted); }
+.reach dd { margin: 0; font-weight: 600; }
+.reach a { color: var(--xp-ink); text-decoration: none; }
+.reach a:hover { color: var(--xp-brand); }
+.bookButton { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; border-radius: 10px; background: var(--xp-ink); color: #fff; font-weight: 600; text-decoration: none; }
+.bookButton:hover { background: #24302b; }
+
+/* Abschnitte ---------------------------------------------------------------- */
+.section { padding-block: 80px 24px; }
+.section h2, .request h2, .bridge h2 { margin: 6px 0 0; font-family: var(--xp-display); font-size: clamp(28px, 2.4vw, 40px); font-weight: 500; letter-spacing: -.035em; line-height: 1.12; }
+.sectionLead { max-width: 760px; margin: 12px 0 0; color: var(--xp-muted); font-size: 17px; line-height: 1.6; }
+
+.cases { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 36px; }
+.case { display: flex; flex-direction: column; gap: 12px; border: 1px solid var(--xp-card-line); border-radius: 16px; padding: 26px; }
+.case h3, .competence h3 { margin: 0; font-size: 20px; font-weight: 600; }
+.case p, .competence p { margin: 0; color: #3d4742; line-height: 1.55; }
+.case ul { display: grid; gap: 4px; margin: 0; padding-left: 18px; color: #3d4742; }
+.case .start { margin-top: auto; border-top: 1px solid var(--xp-row-line); padding-top: 12px; color: #0f5f39; font-size: 15px; }
+.caseIcon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: #e6f2eb; color: #0f5f39; }
+.caseDark { border-color: var(--xp-ink); background: var(--xp-ink); color: #fff; }
+.caseDark p { color: #c9d3ce; }
+.caseDark .caseIcon { background: #1f2d27; color: #8fd4ad; }
+.caseDark .textLink, .dark .textLink { margin-top: auto; color: #8fd4ad; }
+
+.steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 28px 0 0; padding: 0; list-style: none; counter-reset: none; }
+.steps li { display: grid; align-content: start; gap: 6px; border-top: 3px solid var(--xp-brand); padding-top: 16px; }
+.steps li + li { border-top-color: #b9cfc2; }
+.steps li > span:first-child { color: var(--xp-brand); font-size: 14px; font-weight: 600; }
+.steps strong { font-size: 18px; }
+.steps li > span:last-child { color: var(--xp-muted); line-height: 1.5; }
+
+.dark { margin-top: 64px; background: var(--xp-ink); color: #fff; }
+.dark .section { padding-block: 80px; }
+.dark .eyebrow { color: #8fd4ad; }
+.dark .sectionLead { color: #c9d3ce; }
+.competences { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 36px; }
+.competence { display: flex; flex-direction: column; gap: 14px; border: 1px solid #2c3a34; border-radius: 16px; background: #17251f; padding: 28px; scroll-margin-top: 96px; }
+.competence p { color: #c9d3ce; }
+.competence .caseIcon { background: #1f2d27; color: #8fd4ad; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.tags li { border: 1px solid #34453d; border-radius: 999px; padding: 3px 11px; color: #dfe7e3; font-size: 13px; }
+
+.bridge { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px 40px; padding-block: 48px; border-bottom: 1px solid var(--xp-line); }
+.bridge h2 { margin: 0; font-size: 24px; }
+.bridge p { max-width: 720px; margin: 6px 0 0; color: var(--xp-muted); }
+
+/* Anfrage ------------------------------------------------------------------- */
+.request { background: #f7f9f8; scroll-margin-top: 76px; }
+.requestGrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 400px); align-items: start; gap: 40px 72px; padding-block: 72px 88px; }
+.form { display: grid; gap: 22px; max-width: 860px; min-width: 0; }
+.fieldset { margin: 0; border: 0; padding: 0; }
+.fieldset legend { margin-bottom: 10px; padding: 0; font-weight: 600; }
+.fieldset legend span { color: var(--xp-muted); font-size: 14px; font-weight: 400; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; box-sizing: border-box; border: 1px solid #d5dbe0; border-radius: 999px; background: #fff; padding: 0 14px; font-size: 15px; cursor: pointer; }
+.chip input { margin: 0; accent-color: var(--xp-brand); }
+.chip:has(input:checked) { border-color: var(--xp-brand); background: #e6f2eb; color: #0f5f39; font-weight: 600; }
+.chip:has(input:focus-visible) { outline: 2px solid var(--xp-brand); outline-offset: 2px; }
+.fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 20px; }
+.ways { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+.ways label { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; cursor: pointer; }
+.ways input { margin: 0; accent-color: var(--xp-brand); }
+.honeypot { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.submitRow { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+
+.next { display: grid; gap: 16px; }
+.nextBox { border: 1px solid var(--xp-card-line); border-radius: 16px; background: #fff; padding: 24px; }
+.nextBox h3 { margin: 0 0 12px; font-size: 18px; }
+.nextBox ol { display: grid; gap: 10px; margin: 0; padding-left: 20px; color: #3d4742; line-height: 1.5; }
+.nextNote { padding: 0 4px; font-size: 15px; }
+.nextNote p { margin: 4px 0 0; color: var(--xp-muted); }
+
+@media (max-width: 1100px) {
+  .heroGrid, .requestGrid { grid-template-columns: minmax(0, 1fr); }
+  .cases, .competences { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 16px; }
+}
+
+@media (max-width: 680px) {
+  .heroGrid { padding-block: 32px; gap: 24px; }
+  .contactCard { padding: 18px; border-radius: 14px; }
+  .bigAction { flex: 1 1 100%; }
+  .section { padding-block: 48px 8px; }
+  .dark { margin-top: 40px; }
+  .dark .section { padding-block: 48px; }
+  .cases, .competences, .steps, .fields { grid-template-columns: minmax(0, 1fr); }
+  .case, .competence { padding: 20px; }
+  .case ul { display: none; }
+  .requestGrid { padding-block: 40px 56px; }
+}

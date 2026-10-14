@@ -5,11 +5,13 @@ const mocks = vi.hoisted(() => ({
   insert: vi.fn(),
   consume: vi.fn(),
   deliver: vi.fn(),
+  record: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/audit/write", () => ({ writeAuditEvent: mocks.audit }));
 vi.mock("@/lib/email/deliver", () => ({ deliverEmail: mocks.deliver }));
+vi.mock("@/lib/crm/contacts-data", () => ({ recordInboundLead: mocks.record }));
 vi.mock("@/lib/security/shared-rate-limit", () => ({
   consumeRateLimit: mocks.consume,
 }));
@@ -28,9 +30,11 @@ vi.mock("@/lib/supabase/admin", () => ({
 import { POST } from "@/app/api/contact/route";
 import { contactInbox } from "@/lib/contact/messages";
 
-function request(fields: Record<string, string>, origin = "https://x-portal.eu") {
+function request(fields: Record<string, string | string[]>, origin = "https://x-portal.eu") {
   const body = new FormData();
-  for (const [key, value] of Object.entries(fields)) body.append(key, value);
+  for (const [key, value] of Object.entries(fields)) {
+    for (const entry of Array.isArray(value) ? value : [value]) body.append(key, entry);
+  }
   return new Request("https://x-portal.eu/api/contact", {
     method: "POST",
     headers: { origin },
@@ -39,9 +43,10 @@ function request(fields: Record<string, string>, origin = "https://x-portal.eu")
 }
 
 const validFields = {
+  topic: ["anderes"],
   fullName: "Erika Mustermann",
   email: "Erika@Example.COM",
-  subject: "Frage zum Enterprise-Plan",
+  way: "email",
   message: "Wir suchen laufend Freelancer und würden gern mehr erfahren.",
 };
 
@@ -59,6 +64,7 @@ beforeEach(() => {
     error: null,
   });
   mocks.deliver.mockResolvedValue({ delivered: true });
+  mocks.record.mockResolvedValue({ id: "99999999-2222-4333-8444-555555555555", created: true });
 });
 
 describe("POST /api/contact", () => {
@@ -72,7 +78,7 @@ describe("POST /api/contact", () => {
         full_name: "Erika Mustermann",
         // Kleingeschrieben, weil die Spalte genau das als CHECK verlangt.
         email: "erika@example.com",
-        subject: "Frage zum Enterprise-Plan",
+        subject: "Etwas anderes",
         source: "contact_form",
       }),
     );
@@ -110,8 +116,8 @@ describe("POST /api/contact", () => {
     expect(mocks.consume).not.toHaveBeenCalled();
   });
 
-  it("sends a too-short message back to the form", async () => {
-    const response = await POST(request({ ...validFields, message: "zu kurz" }));
+  it("sends a request without topic and with too short a text back to the form", async () => {
+    const response = await POST(request({ ...validFields, topic: [], message: "zu kurz" }));
 
     expect(response.status).toBe(303);
     expect(response.headers.get("location")).toContain("status=invalid");
@@ -157,7 +163,7 @@ describe("POST /api/contact", () => {
     expect(mocks.audit).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "contact_request_saved",
-        metadata: { notified: true, acknowledged: true },
+        metadata: expect.objectContaining({ notified: true, acknowledged: true }),
       }),
     );
   });
@@ -174,9 +180,9 @@ describe("POST /api/contact", () => {
       .map((call) => call[0] as { to: string; subject: string; text: string })
       .find((message) => message.to === "erika@example.com");
 
-    expect(acknowledgement?.subject).toContain(validFields.subject);
+    expect(acknowledgement?.subject).toContain("Etwas anderes");
     expect(acknowledgement?.text).toContain(`> ${validFields.message}`);
-    expect(acknowledgement?.text).toContain(`> Betreff: ${validFields.subject}`);
+    expect(acknowledgement?.text).toContain("> Betreff: Etwas anderes");
     expect(acknowledgement?.text).toContain(validFields.fullName);
   });
 
@@ -215,7 +221,7 @@ describe("POST /api/contact", () => {
     expect(mocks.audit).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "contact_request_saved",
-        metadata: { notified: false, acknowledged: false },
+        metadata: expect.objectContaining({ notified: false, acknowledged: false }),
       }),
     );
   });
@@ -232,5 +238,85 @@ describe("POST /api/contact", () => {
     expect(mocks.audit).toHaveBeenCalledWith(
       expect.objectContaining({ action: "contact_request_failed" }),
     );
+  });
+
+  /**
+   * Eine Anfrage zu KI-Agenten soll nicht nur in einem Postfach stehen: Sie
+   * kommt als Gesprächsanfrage ins CRM, mit Wiedervorlage heute.
+   */
+  it("records an inquiry about AI agents in the CRM and links it in the notification", async () => {
+    await POST(
+      request({
+        ...validFields,
+        topic: ["kundenservice", "lager"],
+        company: "Muster GmbH",
+        phone: "+49 30 1234567",
+        way: "rueckruf",
+        message: "",
+      }),
+    );
+
+    expect(mocks.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ subject: "Kundenservice, Lager und Logistik" }),
+    );
+    const row = mocks.insert.mock.calls[0][0] as { message: string };
+    expect(row.message).toContain("Unternehmen: Muster GmbH");
+    expect(row.message).toContain("Telefon: +49 30 1234567");
+    expect(row.message).toContain("Gewünschte Rückmeldung: Rückruf");
+
+    expect(mocks.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        company: "Muster GmbH",
+        contactName: "Erika Mustermann",
+        email: "erika@example.com",
+        kind: "Gesprächsanfrage (Website)",
+        focus: "Kundenservice, Lager und Logistik",
+      }),
+      expect.objectContaining({ source: "website_kontakt" }),
+    );
+
+    const notification = mocks.deliver.mock.calls
+      .map((call) => call[0] as { to: string; subject: string; text: string })
+      .find((message) => message.to === contactInbox());
+    expect(notification?.subject).toContain("Rückruf");
+    expect(notification?.text).toContain("/chat/admin/kontakte/99999999-2222-4333-8444-555555555555");
+
+    const acknowledgement = mocks.deliver.mock.calls
+      .map((call) => call[0] as { to: string; text: string })
+      .find((message) => message.to === "erika@example.com");
+    expect(acknowledgement?.text).toContain("https://calendly.com/");
+  });
+
+  it("keeps other questions out of the CRM", async () => {
+    await POST(request(validFields));
+    expect(mocks.record).not.toHaveBeenCalled();
+  });
+
+  it("still saves the request when the CRM entry fails", async () => {
+    mocks.record.mockRejectedValue(new Error("crm down"));
+    const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const response = await POST(request({ ...validFields, topic: ["vertrieb"] }));
+
+    expect(response.headers.get("location")).toContain("status=sent");
+    expect(mocks.insert).toHaveBeenCalled();
+    errors.mockRestore();
+  });
+
+  it("notes a callback request without a phone number", async () => {
+    await POST(request({ ...validFields, way: "rueckruf" }));
+    const row = mocks.insert.mock.calls[0][0] as { message: string };
+    expect(row.message).toContain("keine Telefonnummer angegeben");
+  });
+
+  it("rejects a phone number with letters", async () => {
+    const response = await POST(request({ ...validFields, phone: "ruf mich an" }));
+    expect(response.headers.get("location")).toContain("status=invalid");
+    expect(mocks.insert).not.toHaveBeenCalled();
+  });
+
+  it("ignores topics it does not know", async () => {
+    await POST(request({ ...validFields, topic: ["anderes", "<script>"] }));
+    expect(mocks.insert).toHaveBeenCalledWith(expect.objectContaining({ subject: "Etwas anderes" }));
   });
 });

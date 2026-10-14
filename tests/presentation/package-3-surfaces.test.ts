@@ -36,9 +36,13 @@ describe("Paket 3: Sekundärflächen und interne Werkzeuge", () => {
     expect(markup).toContain("Der nächste Schritt bleibt sichtbar.");
   });
 
-  it("führt Kontakt, Recht, Fehler und Buchung durch denselben Seitenkopf", () => {
+  it("führt Recht, Fehler und Buchung durch denselben Seitenkopf", () => {
+    // Die Kontaktseite ist seit Oktober 2026 eine Angebotsseite mit eigenem
+    // Kopf (KI-Agenten, Kompetenzen); Kopf- und Fußzeile teilt sie weiter.
+    const contact = source("app/contact/page.tsx");
+    expect(contact).toContain("PublicHeader");
+    expect(contact).toContain("PublicFooter");
     for (const path of [
-      "app/contact/page.tsx",
       "app/imprint/page.tsx",
       "app/privacy/page.tsx",
       "app/terms/page.tsx",

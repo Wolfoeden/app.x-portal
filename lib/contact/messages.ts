@@ -10,9 +10,9 @@ import {
  * Bisher landete eine Anfrage nur in `contact_requests`: Der Absender bekam
  * keine Bestätigung, und im Postfach kam nichts an. Wer über das Impressum
  * schrieb, konnte nicht wissen, ob die Nachricht angekommen ist, und niemand
- * erfuhr, dass sie da ist, ohne die Tabelle von Hand anzusehen. Eine
- * Oberfläche, die Anfragen anzeigt, gibt es nicht — die Benachrichtigung ist
- * deshalb der einzige Weg, auf dem eine Anfrage tatsächlich gelesen wird.
+ * erfuhr, dass sie da ist, ohne die Tabelle von Hand anzusehen. Anfragen zu
+ * KI-Agenten und Kompetenzen stehen zusätzlich im CRM (Admin → Kontakte);
+ * alle anderen erreichen den Betreiber nur über diese Benachrichtigung.
  */
 
 /**
@@ -46,11 +46,14 @@ function quoted(text: string): string[] {
  * und der Umstand, dass die Nachricht sichtbar als zitierte Eingabe
  * gekennzeichnet ist und nicht als unsere eigene Aussage auftritt.
  */
-export function contactAcknowledgementMessage(input: {
-  fullName: string;
-  subject: string;
-  message: string;
-}): { subject: string; text: string } {
+export function contactAcknowledgementMessage(
+  input: {
+    fullName: string;
+    subject: string;
+    message: string;
+  },
+  options: { calendarUrl?: string | null } = {},
+): { subject: string; text: string } {
   return {
     subject: `Ihre Nachricht an XPORTAL: ${input.subject}`,
     text: [
@@ -65,6 +68,9 @@ export function contactAcknowledgementMessage(input: {
       ">",
       ...quoted(input.message),
       "",
+      ...(options.calendarUrl
+        ? ["Wenn Sie gleich einen Termin für ein 30-Minuten-Gespräch wählen möchten:", options.calendarUrl, ""]
+        : []),
       "Diese Bestätigung ist automatisch erzeugt; antworten müssen Sie darauf",
       "nicht. Falls Sie uns nicht geschrieben haben, hat jemand Ihre Adresse in",
       "unser Formular eingetragen — schreiben Sie uns, wenn Sie das geklärt",
@@ -84,14 +90,17 @@ export function contactAcknowledgementMessage(input: {
  * deshalb steht die Adresse des Absenders im Text, damit sich die Antwort ohne
  * Umweg über die Datenbank schreiben lässt.
  */
-export function contactNotificationMessage(input: {
-  fullName: string;
-  email: string;
-  subject: string;
-  message: string;
-}): { subject: string; text: string } {
+export function contactNotificationMessage(
+  input: {
+    fullName: string;
+    email: string;
+    subject: string;
+    message: string;
+  },
+  options: { callback?: boolean; crmUrl?: string | null } = {},
+): { subject: string; text: string } {
   return {
-    subject: `Kontaktformular: ${input.subject}`,
+    subject: `Kontaktformular: ${input.subject}${options.callback ? " · Rückruf" : ""}`,
     text: [
       `Von:     ${input.fullName}`,
       `Adresse: ${input.email}`,
@@ -100,6 +109,7 @@ export function contactNotificationMessage(input: {
       "Nachricht:",
       input.message,
       "",
+      ...(options.crmUrl ? [`Im CRM (Wiedervorlage heute): ${options.crmUrl}`, ""] : []),
       "—",
       "Automatisch erzeugt aus dem Kontaktformular auf https://x-portal.eu/contact.",
       "Die Anfrage steht vollständig in der Tabelle contact_requests.",

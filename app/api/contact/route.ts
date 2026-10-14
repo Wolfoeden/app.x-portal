@@ -1,16 +1,29 @@
 import { randomUUID } from "node:crypto";
 
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 
 import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
+import {
+  CONTACT_INQUIRY_SOURCE,
+  ContactInquirySchema,
+  contactInquiryFromForm,
+  inquiryMessage,
+  inquirySubject,
+  isBusinessInquiry,
+  type ContactInquiry,
+} from "@/lib/contact/inquiry";
 import {
   contactAcknowledgementMessage,
   contactInbox,
   contactNotificationMessage,
 } from "@/lib/contact/messages";
+import { recordInboundLead } from "@/lib/crm/contacts-data";
+import { berlinToday } from "@/lib/crm/contacts-model";
 import { deliverEmail } from "@/lib/email/deliver";
+import { SALES_CALL_KIND } from "@/lib/sales/sales-call-links";
+import { salesCalendarUrl } from "@/lib/sales/sales-call-model";
+import { salesCallUrl } from "@/lib/sales/sales-call";
 import {
   assertSameOrigin,
   getClientIp,
@@ -19,37 +32,67 @@ import {
 } from "@/lib/security/request";
 import { CAPTCHA_FIELD, verifyCaptcha } from "@/lib/security/captcha";
 import { consumeRateLimit } from "@/lib/security/shared-rate-limit";
+import { SITE_URL } from "@/lib/seo";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Der Kontaktweg aus dem Impressum.
+ * Der Kontaktweg aus dem Impressum und das Formular der Kontaktseite.
  *
  * Bewusst ein gewöhnliches Formular mit `method="post"` statt eines
  * fetch-Aufrufs: Der Weg, über den jemand einen Anbieter erreichen können muss,
  * sollte nicht davon abhängen, dass JavaScript lädt. Deshalb auch die
  * Weiterleitung mit 303 statt einer JSON-Antwort.
+ *
+ * Jede Anfrage landet in `contact_requests`. Geht es um KI-Agenten oder eine
+ * der Kompetenzen, steht sie zusätzlich als Gesprächsanfrage im CRM, mit
+ * Wiedervorlage heute — dieselbe Liste wie „Gespräch buchen“.
  */
-const ContactSchema = z
-  .object({
-    fullName: z.string().trim().min(2).max(100),
-    email: z.string().trim().email().max(160),
-    subject: z.string().trim().min(3).max(150),
-    message: z.string().trim().min(20).max(5_000),
-    website: z.string().max(200).optional().default(""),
-  })
-  .strict();
-
 function contactUrl(
   request: Request,
   state: "sent" | "error" | "invalid",
 ): URL {
   const url = new URL(appPath("/contact"), request.url);
   url.searchParams.set("status", state);
-  url.hash = "formular";
+  url.hash = "anfrage";
   return url;
+}
+
+/**
+ * Ins CRM, damit der Rückruf nicht nur in einem Postfach steht. Scheitert
+ * das, bleibt die Anfrage trotzdem gültig: Sie liegt schon in
+ * `contact_requests`, und die Mail geht trotzdem raus.
+ */
+async function recordInCrm(inquiry: ContactInquiry, subject: string, message: string): Promise<string | null> {
+  if (!isBusinessInquiry(inquiry)) return null;
+  try {
+    const lead = await recordInboundLead(
+      {
+        company: inquiry.company ?? "Ohne Firmenangabe",
+        contactName: inquiry.fullName,
+        roleTitle: null,
+        kind: SALES_CALL_KIND,
+        region: null,
+        focus: subject.slice(0, 400),
+        email: inquiry.email,
+        emailKind: "personal",
+        emailSourceUrl: null,
+        projectUrl: null,
+        note: message.slice(0, 2_000),
+      },
+      {
+        source: CONTACT_INQUIRY_SOURCE,
+        today: berlinToday(),
+        eventBody: `Anfrage über die Kontaktseite: ${subject}\n${message}`,
+      },
+    );
+    return lead.id;
+  } catch (error) {
+    console.error("contact inquiry crm failed", error);
+    return null;
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -63,13 +106,7 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData();
-    const parsed = ContactSchema.safeParse({
-      fullName: String(formData.get("fullName") ?? ""),
-      email: String(formData.get("email") ?? "").toLocaleLowerCase("en-US"),
-      subject: String(formData.get("subject") ?? ""),
-      message: String(formData.get("message") ?? ""),
-      website: String(formData.get("website") ?? ""),
-    });
+    const parsed = ContactInquirySchema.safeParse(contactInquiryFromForm(formData));
     if (!parsed.success) {
       // Nur der Grund, keine Eingaben. Diese Zweige schreiben kein Audit;
       // ohne eine Spur lässt sich später nicht sagen, ob jemand am Formular
@@ -77,10 +114,11 @@ export async function POST(request: NextRequest) {
       logEvent("contact_rejected", { reason: "invalid_form" });
       return NextResponse.redirect(contactUrl(request, "invalid"), 303);
     }
+    const inquiry = parsed.data;
 
     // Ein Bot, der das Honigtopf-Feld ausgefüllt hat, bekommt dieselbe Antwort
     // wie ein Mensch. Gespeichert wird nichts.
-    if (parsed.data.website) {
+    if (inquiry.website) {
       return NextResponse.redirect(contactUrl(request, "sent"), 303);
     }
 
@@ -109,19 +147,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.redirect(contactUrl(request, "error"), 303);
     }
 
+    const subject = inquirySubject(inquiry);
+    const message = inquiryMessage(inquiry);
     const admin = createAdminSupabaseClient();
     const { data, error } = await admin
       .from("contact_requests")
       .insert({
-        full_name: parsed.data.fullName,
-        email: parsed.data.email,
-        subject: parsed.data.subject,
-        message: parsed.data.message,
+        full_name: inquiry.fullName,
+        email: inquiry.email,
+        subject,
+        message,
         source: "contact_form",
       })
       .select("id")
       .single();
     if (error) throw error;
+
+    const crmId = await recordInCrm(inquiry, subject, message);
+    const base = salesCallUrl();
+    const calendarUrl = base ? salesCalendarUrl(base, { fullName: inquiry.fullName, email: inquiry.email, role: subject }) : null;
 
     // Erst gespeichert, dann verschickt — und ein gescheiterter Versand macht
     // die Anfrage nicht ungültig. Sie steht bereits in der Tabelle; eine
@@ -131,17 +175,21 @@ export async function POST(request: NextRequest) {
     // Nebenläufig, nicht nacheinander: Der Versandweg hält keinen
     // Verbindungspool, jede Nachricht baut ihre eigene SMTP-Verbindung auf.
     // Nacheinander wartete der Absender des Formulars zweimal darauf.
+    const mail = { fullName: inquiry.fullName, email: inquiry.email, subject, message };
     const [notification, acknowledgement] = await Promise.all([
       deliverEmail({
         to: contactInbox(),
-        ...contactNotificationMessage(parsed.data),
+        ...contactNotificationMessage(mail, {
+          callback: inquiry.way === "rueckruf",
+          crmUrl: crmId ? `${SITE_URL}${appPath(`/chat/admin/kontakte/${crmId}`)}` : null,
+        }),
         // Keine Werbung, sondern die Weitergabe einer Anfrage, die jemand
         // gerade selbst abgeschickt hat. Die Sperrliste haelt sie nicht auf.
         kind: "transactional",
       }),
       deliverEmail({
-        to: parsed.data.email,
-        ...contactAcknowledgementMessage(parsed.data),
+        to: inquiry.email,
+        ...contactAcknowledgementMessage(mail, { calendarUrl: isBusinessInquiry(inquiry) ? calendarUrl : null }),
         kind: "transactional",
       }),
     ]);
@@ -156,6 +204,9 @@ export async function POST(request: NextRequest) {
       metadata: {
         notified: notification.delivered,
         acknowledged: acknowledgement.delivered,
+        topics: inquiry.topics.join(",") || null,
+        way: inquiry.way,
+        crm: Boolean(crmId),
       },
     });
 

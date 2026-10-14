@@ -102,13 +102,24 @@ export const SALES_CALL_PAGE = {
   changeFrequency: "monthly",
 } as const satisfies PublicPage;
 
+/** Kontakt: KI-Agenten, KI-Schulungen, Informationssicherheit und alle übrigen Anliegen. */
+export const CONTACT_PAGE = {
+  path: "/contact",
+  label: "Kontakt",
+  title: "KI-Agenten, KI-Schulungen und ISO 27001: Kontakt | XPORTAL",
+  description:
+    "KI-Agenten für Kundenservice, Vertrieb, Datenauswertung, Wissen und Lager. Dazu KI-Schulungen, Cybersecurity-Anforderungsmanagement und ISMS nach ISO 27001. Erstgespräch in 30 Minuten.",
+  priority: 0.8,
+  changeFrequency: "monthly",
+} as const satisfies PublicPage;
+
 export const SITEMAP_ENTRIES = [
   CHAT_PAGE,
   ...MARKETING_PAGES,
   SALES_CALL_PAGE,
+  CONTACT_PAGE,
   { path: "/bewerber-portal/apply", priority: 0.7, changeFrequency: "monthly" },
   { path: "/vermittlungsbedingungen", priority: 0.4, changeFrequency: "yearly" },
-  { path: "/contact", priority: 0.4, changeFrequency: "yearly" },
   { path: "/terms", priority: 0.3, changeFrequency: "yearly" },
   { path: "/privacy", priority: 0.3, changeFrequency: "yearly" },
   { path: "/datenwege", priority: 0.3, changeFrequency: "yearly" },

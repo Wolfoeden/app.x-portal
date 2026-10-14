@@ -43,8 +43,7 @@
 .heroActions > a { min-height: 52px; padding-inline: 26px; font-size: 17px; }
 .heroNote { margin: 0; color: var(--lp-muted); font-size: 14px; }
 
-.profileLink { z-index: 3; display: flex; justify-self: end; width: 100%; max-width: 560px; border-radius: 16px; color: inherit; text-decoration: none; opacity: 0; pointer-events: none; transform: translateY(24px) scale(.96); transition: opacity .6s ease, transform .7s cubic-bezier(.18,.82,.2,1); }
-.heroScene[data-revealed="true"] .profileLink { opacity: 1; pointer-events: auto; transform: none; }
+.profileLink { z-index: 3; display: flex; justify-self: end; width: 100%; max-width: 560px; border-radius: 16px; color: inherit; text-decoration: none; }
 .profileLink:focus-visible { outline: 3px solid color-mix(in srgb, var(--lp-brand) 30%, transparent); outline-offset: 4px; }
 .expertCard { width: 100%; padding: 28px; border-radius: 16px; box-shadow: 0 24px 60px rgba(16, 27, 23, .10); }
 .cardAvailability { border-radius: 999px; background: #e9f5ed; padding: 3px 12px; color: var(--lp-brand); font-size: 13px; font-weight: 600; }
@@ -64,22 +63,6 @@
 .landingComposer :global(textarea) { min-height: 72px; padding-top: 24px; padding-bottom: 20px; font-size: 19px; }
 .landingComposer :global(.composer-placeholder) { top: 24px; left: 28px; font-size: 19px; }
 .landingComposer :global(.composer-bottom) { padding-bottom: 12px; }
-
-.sourceLogos { position: absolute; z-index: 7; inset: 0; margin: 0; padding: 0; list-style: none; pointer-events: none; }
-.sourceLogos li { position: absolute; top: -56px; left: var(--source-x); display: grid; place-items: center; width: 44px; height: 44px; overflow: hidden; border: 1px solid var(--lp-line); border-radius: 12px; background: #fff; box-shadow: 0 8px 24px rgba(16, 27, 23, .12); opacity: 0; }
-.heroScene[data-demo="true"] .sourceLogos li { animation: sourceChain 1.8s cubic-bezier(.2,.72,.22,1) both; }
-.sourceLogos li:nth-child(1) { --source-x: 4%; --target-x: 3%; animation-delay: 0s; }
-.sourceLogos li:nth-child(2) { --source-x: 12%; --target-x: 7%; animation-delay: .3s; }
-.sourceLogos li:nth-child(3) { --source-x: 20%; --target-x: 11%; animation-delay: .6s; }
-.sourceLogos li:nth-child(4) { --source-x: 28%; --target-x: 15%; animation-delay: .9s; }
-.sourceLogos img { width: 40px; height: 40px; object-fit: contain; }
-
-@keyframes sourceChain {
-  0% { top: -56px; left: var(--source-x); opacity: 0; transform: rotate(-4deg) scale(.88); }
-  20% { opacity: 1; }
-  72% { top: 16px; left: var(--target-x); opacity: 1; transform: rotate(0) scale(.8); }
-  100% { top: 20px; left: var(--target-x); opacity: 0; transform: scale(.5); }
-}
 
 .heroScene[data-demo-submitted="true"] .landingComposer :global(.send-button.is-project-match) { animation: demoSend .55s ease both; }
 @keyframes demoSend { 45% { transform: translateY(-2px) scale(.94); } 100% { transform: none; } }
@@ -220,6 +203,4 @@
 
 @media (prefers-reduced-motion: reduce) {
   .stepButton { transition: none; }
-  .profileLink { transition: none; }
-  .sourceLogos li { animation: none; opacity: 0; }
 }

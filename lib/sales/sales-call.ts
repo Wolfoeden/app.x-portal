@@ -3,14 +3,19 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { salesCalendarUrl } from "./sales-call-model";
+import { SALES_CONTACT } from "./sales-contact-model";
 
 /**
- * Der Kalender für „Gespräch buchen“ (`SALES_CALL_URL`, etwa ein
- * Calendly-Ereignis). Ohne gültigen https-Link bleibt es beim Rückruf.
+ * Der Kalender für „Gespräch buchen“ und die Kontaktseite: `SALES_CALL_URL`
+ * (etwa ein Calendly-Ereignis), sonst der Kalender des Ansprechpartners
+ * (`SALES_CONTACT.calendarUrl`). Ohne gültigen https-Link bleibt es beim
+ * Rückruf.
  */
 export function salesCallUrl(): string | null {
-  const raw = process.env.SALES_CALL_URL?.trim();
-  return raw && salesCalendarUrl(raw) ? raw : null;
+  for (const raw of [process.env.SALES_CALL_URL?.trim(), SALES_CONTACT.calendarUrl]) {
+    if (raw && salesCalendarUrl(raw)) return raw;
+  }
+  return null;
 }
 
 /**

@@ -278,17 +278,24 @@ export default function PrivacyPage() {
               mit Sitz in den USA</strong>. Er wird nicht eingebettet: Erst wenn
               Sie „Termin wählen“ anklicken, öffnet sich seine Seite, und wir
               übergeben dabei Ihren Namen, Ihre E-Mail-Adresse und die gesuchte
-              Rolle, damit Sie sie nicht noch einmal eingeben müssen. Dies ist
-              eine Übermittlung in ein Drittland; zu den Garantien siehe
-              Abschnitt 9.
+              Rolle beziehungsweise die gewählten Themen, damit Sie sie nicht
+              noch einmal eingeben müssen. Dieselbe Seite öffnen die Links
+              „Erstgespräch vereinbaren“ und „Termin direkt buchen“ auf der
+              Kontaktseite, dort ohne übergebene Angaben. Dies ist eine
+              Übermittlung in ein Drittland; zu den Garantien siehe Abschnitt
+              9.
             </p>
             <p>
               Wenn Sie das <a href="/contact">Kontaktformular</a> nutzen,
-              verarbeiten wir Ihren Namen, Ihre E-Mail-Adresse, den Betreff und
-              den Text Ihrer Nachricht, um das Anliegen zu bearbeiten und zu
-              beantworten. Weitere Angaben erheben wir dabei nicht; insbesondere
-              speichern wir zu einer Kontaktanfrage weder IP-Adresse noch
-              Browserkennung oder Referrer.
+              verarbeiten wir Ihren Namen, Ihre E-Mail-Adresse, die gewählten
+              Themen, den Text Ihrer Nachricht und die freiwilligen Angaben
+              (Unternehmen, Telefonnummer, gewünschter Rückweg), um das
+              Anliegen zu bearbeiten und zu beantworten. Betrifft die Anfrage
+              KI-Agenten, KI-Schulungen, Cybersecurity oder ISO 27001, legen
+              wir sie zusätzlich als Kontakt in unserer Kundenverwaltung an.
+              Weitere Angaben erheben wir dabei nicht; insbesondere speichern
+              wir zu einer Kontaktanfrage weder IP-Adresse noch Browserkennung
+              oder Referrer.
             </p>
             <p>
               Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO, soweit Ihr
@@ -303,8 +310,8 @@ export default function PrivacyPage() {
               Wir löschen eine Anfrage, sobald sie erledigt ist und keine
               gesetzliche Aufbewahrungspflicht entgegensteht. Führt die Anfrage
               zu einem Vertrag, kann sie als Handelsbrief längeren gesetzlichen
-              Fristen unterliegen. Eine automatische Empfangsbestätigung per
-              E-Mail versenden wir nicht.
+              Fristen unterliegen. Nach dem Absenden erhalten Sie eine
+              automatische Empfangsbestätigung per E-Mail mit Ihrer Nachricht.
             </p>
           </div>
         </section>
@@ -545,7 +552,7 @@ export default function PrivacyPage() {
           </div>
         </section>
 
-        <p className="xlegal-updated">Stand: 6. Oktober 2026</p>
+        <p className="xlegal-updated">Stand: 14. Oktober 2026</p>
       </main>
 
       <PublicFooter />

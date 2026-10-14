@@ -65,10 +65,14 @@
 .navGroupButton:hover, .navGroupButton:focus-visible { text-decoration: underline; text-underline-offset: 6px; }
 .navGroupButton svg { transition: transform 150ms ease; }
 .navGroupButton[aria-expanded="true"] svg { transform: rotate(180deg); }
-.navPanel { position: absolute; top: 100%; left: -12px; z-index: 50; display: grid; min-width: 220px; margin: 0; border: 1px solid var(--chrome-line); border-radius: 10px; background: #fff; padding: 6px; list-style: none; box-shadow: var(--shadow-soft); }
+.navPanel { position: absolute; top: 100%; left: -12px; z-index: 50; display: grid; grid-template-columns: repeat(2, 260px); border: 1px solid var(--chrome-line); border-radius: 12px; background: #fff; box-shadow: var(--shadow-soft); }
 .navPanel[hidden] { display: none; }
 @media (hover: hover) { .navGroup:hover > .navPanel { display: grid; } }
-.navigation .navPanel a { display: block; border-radius: 6px; padding: 10px 12px; text-decoration: none; }
+.navColumn { display: grid; align-content: start; gap: 2px; padding: 12px; }
+.navColumn + .navColumn { border-left: 1px solid var(--xp-row-line); background: #fbfcfb; border-radius: 0 12px 12px 0; }
+.navColumn > span { padding: 4px 10px 6px; color: var(--xp-muted); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.navigation .navPanel a { display: grid; border-radius: 8px; padding: 9px 10px; text-decoration: none; }
+.navPanel small { color: var(--xp-muted); font-size: 13px; }
 .navigation .navPanel a:hover, .navigation .navPanel a:focus-visible { background: var(--surface-soft); text-decoration: none; }
 
 .headerActions { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; margin-left: auto; }
