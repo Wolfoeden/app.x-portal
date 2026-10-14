@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { LegalFooter } from "@/components/LegalFooter";
+import { salesCallHref } from "@/lib/sales/sales-call-links";
 import { MARKETING_PAGE } from "@/lib/seo";
 
 import { CompanyMenu } from "./CompanyMenu";
@@ -33,18 +34,21 @@ function NavigationLinks({ variant }: { variant: "bar" | "menu" }) {
 
 /**
  * Kopf aller öffentlichen Seiten, so breit wie der Inhalt (bis 1600 px).
- * Rechts „Anmelden“ und „Kostenlos starten“; eine Seite mit eigenem
- * Hauptschritt (Bewerber-Portal) gibt ihre Knöpfe als `actions` mit. Bleibt
- * beim Scrollen stehen; auf dem Telefon öffnet „Menü“ die Navigation — ein
- * `<details>`, damit es ohne JavaScript geht.
+ * Rechts wie bei apollo.io: „Anmelden“ als Text, „Gespräch vereinbaren“
+ * umrandet, „Kostenlos starten“ gefüllt. Eine Seite mit eigenem Hauptschritt
+ * (Bewerber-Portal) gibt ihre Knöpfe als `actions` mit. Bleibt beim Scrollen
+ * stehen; auf dem Telefon öffnet „Menü“ die Navigation — ein `<details>`,
+ * damit es ohne JavaScript geht. `framed`: auf dem grauen Rahmen
+ * (PublicFrame) statt auf Weiß.
  */
-export function PublicHeader({ context, authenticated = false, actions }: {
+export function PublicHeader({ context, authenticated = false, actions, framed = false }: {
   context?: string;
   authenticated?: boolean;
   actions?: ReactNode;
+  framed?: boolean;
 }) {
   return (
-    <header className={styles.header} data-public-surface>
+    <header className={styles.header} data-public-surface data-framed={framed ? "true" : undefined}>
       <div className={styles.headerInner}>
         <Link href={MARKETING_PAGE.find.path} className={styles.brand} aria-label="XPORTAL – Für Unternehmen">
           <span>XPORTAL</span>
@@ -56,7 +60,8 @@ export function PublicHeader({ context, authenticated = false, actions }: {
         <div className={styles.headerActions}>
           {actions ?? (authenticated ? <PublicAppAction className={styles.primaryAction} /> : (
             <>
-              <Link href="/anmelden" prefetch={false} className={styles.secondaryAction}>Anmelden</Link>
+              <Link href="/anmelden" prefetch={false} className={styles.textAction}>Anmelden</Link>
+              <Link href={salesCallHref("header")} prefetch={false} className={styles.secondaryAction}>Gespräch vereinbaren</Link>
               <Link href="/chat" prefetch={false} className={styles.primaryAction}>Kostenlos starten</Link>
             </>
           ))}
@@ -76,6 +81,15 @@ export function PublicHeader({ context, authenticated = false, actions }: {
       </div>
     </header>
   );
+}
+
+/**
+ * Der Inhalt einer öffentlichen Seite als weiße Karte auf dem grauen Rahmen
+ * (nach dem Vorbild von apollo.io). Kopf (`framed`) und Fußzeile stehen
+ * außerhalb auf dem Grau.
+ */
+export function PublicFrame({ children }: { children: ReactNode }) {
+  return <div className={styles.frame}>{children}</div>;
 }
 
 /**

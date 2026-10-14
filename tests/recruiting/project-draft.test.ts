@@ -3,7 +3,7 @@ import { clearProjectDraft, PROJECT_DRAFT_KEY, PROJECT_DRAFT_MAX_AGE_MS, readPro
 const values = new Map<string,string>();
 beforeEach(() => {
   values.clear();
-  vi.stubGlobal("sessionStorage", {getItem: (key:string) => values.get(key) ?? null, setItem: (key:string,value:string) => values.set(key,value), removeItem:(key:string) => values.delete(key)});
+  vi.stubGlobal("localStorage", {getItem: (key:string) => values.get(key) ?? null, setItem: (key:string,value:string) => values.set(key,value), removeItem:(key:string) => values.delete(key)});
 });
 afterEach(() => vi.unstubAllGlobals());
 describe("project continuity", () => {
@@ -19,8 +19,12 @@ describe("project continuity", () => {
       values.set(PROJECT_DRAFT_KEY,value); expect(readProjectDraft()).toBeNull();
     }
   });
+  it("keeps the draft where a new tab can read it (email confirmation link)", () => {
+    saveProjectDraft("SAP-FI/CO-Berater ab November");
+    expect(values.get(PROJECT_DRAFT_KEY)).toContain("SAP-FI/CO-Berater ab November");
+  });
   it("surfaces unavailable storage to the caller", () => {
-    vi.stubGlobal("sessionStorage", {setItem: () => {throw new Error("disabled");}, getItem: () => null, removeItem: () => {throw new Error("disabled");}});
+    vi.stubGlobal("localStorage", {setItem: () => {throw new Error("disabled");}, getItem: () => null, removeItem: () => {throw new Error("disabled");}});
     expect(saveProjectDraft("important draft")).toBe(false);
     expect(readProjectDraft()).toBeNull();
   });

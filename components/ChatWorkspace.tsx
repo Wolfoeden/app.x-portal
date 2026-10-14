@@ -1226,12 +1226,22 @@ export function ChatWorkspace({
     previewResultState === "searching" ? "searching" : "idle",
   );
   const [draft, setDraft] = useState("");
+  /** Von der Startseite abgeschickt (`?start=1`): Die Analyse startet ohne zweiten Klick. */
+  const [autoStartDraft, setAutoStartDraft] = useState(false);
   const [criteriaRequest, setCriteriaRequest] = useState(0);
   useEffect(() => {
     if (preview || workspaceView !== "chat" || new URLSearchParams(window.location.search).has("project")) return;
     const saved = readProjectDraft();
     if (saved) queueMicrotask(() => setDraft(current => current || saved));
   }, [preview, workspaceView]);
+  useEffect(() => {
+    // Wer auf dem Handy einen Projekttext von der Startseite schickt, will
+    // das Ergebnis sehen, nicht den Hinweis auf den Desktop
+    // (components/chat/desktop-only.tsx).
+    if (!preview && new URLSearchParams(window.location.search).has("start")) {
+      document.documentElement.dataset.chatOnMobile = "true";
+    }
+  }, [preview]);
   /** Die Shortcut-Nachricht, unter der die selbst angemeldeten Profile der Rolle stehen. */
   const [guideShowcase, setGuideShowcase] = useState<{ messageId: string; theme: ShowcaseTheme } | null>(null);
   const [pendingAssistant, setPendingAssistant] = useState<PendingAssistant | null>(null);
@@ -2007,6 +2017,22 @@ export function ChatWorkspace({
             startGuidedRequestRef.current?.(example);
           }
         }
+        /**
+         * Von der Startseite abgeschickt (`?start=1`): Der Projekttext liegt
+         * schon im Speicher (lib/recruiting/project-draft.ts). Bisher musste
+         * man hier ein zweites Mal „Projekt abgleichen“ drücken; jetzt läuft
+         * die Analyse von selbst los, sobald der Text im Feld steht.
+         */
+        if (workspaceView === "chat" && searchParams.has("start")) {
+          searchParams.delete("start");
+          const cleanUrl = `${window.location.pathname}${
+            searchParams.size ? `?${searchParams.toString()}` : ""
+          }${window.location.hash}`;
+          window.history.replaceState({}, "", cleanUrl);
+          if (!requestedProjectId && !prefill?.trim() && readProjectDraft()) {
+            setAutoStartDraft(true);
+          }
+        }
         const refreshRecovery = sessionStorage.getItem(REFRESH_RECOVERY_KEY);
         if (refreshRecovery) {
           sessionStorage.removeItem(REFRESH_RECOVERY_KEY);
@@ -2436,6 +2462,22 @@ export function ChatWorkspace({
     event.preventDefault();
     submitDraft();
   };
+
+  // Der Start von der Startseite läuft über denselben Weg wie ein Klick: mit
+  // Guthaben die Analyse, ohne den Registrierungsdialog.
+  const submitDraftRef = useRef(submitDraft);
+  const autoStartedRef = useRef(false);
+  useEffect(() => {
+    submitDraftRef.current = submitDraft;
+  });
+  useEffect(() => {
+    if (!autoStartDraft || autoStartedRef.current || !draft.trim() || pendingAssistant) return;
+    autoStartedRef.current = true;
+    queueMicrotask(() => {
+      setAutoStartDraft(false);
+      submitDraftRef.current();
+    });
+  }, [autoStartDraft, draft, pendingAssistant]);
 
   const runExternalFreelancerSearch = async () => {
     if (!activeProject?.id || externalSearchState === "searching") return;

@@ -15,7 +15,10 @@ export const DESKTOP_LINK_MAIL = `mailto:?subject=${encodeURIComponent("XPORTAL 
  * Auf dem Handy steht vor dem Talent Index dieser Hinweis (Oktober 2026: die
  * App ist für den Zweitbildschirm im Büro gebaut). Ob er erscheint, regelt
  * allein CSS über die Fensterbreite; der Server liefert ihn immer mit, damit
- * nichts aufblitzt. „Trotzdem hier öffnen“ zeigt den Chat wie bisher.
+ * nichts aufblitzt. „Trotzdem hier öffnen“ ist der Hauptknopf: Nur 4 von 38
+ * Aufrufen des Talent Index kamen vom Handy, die übrigen blieben hier stehen.
+ * Wer von der Startseite mit einem Projekttext kommt (`?start=1`), sieht den
+ * Hinweis gar nicht erst (ChatWorkspace setzt `data-chat-on-mobile`).
  */
 export function DesktopOnlyNotice() {
   return (
@@ -33,10 +36,10 @@ export function DesktopOnlyNotice() {
           Öffnen Sie <strong>x-portal.eu/chat</strong> am Computer. Dort sehen Sie Profile, Belege und Ihr Projekt nebeneinander.
         </p>
         <div className={styles.actions}>
-          <a className={actionClass("primary", { block: true })} href={DESKTOP_LINK_MAIL}>Link per E-Mail senden</a>
-          <Link className={actionClass("secondary", { block: true })} href="/fuer-unternehmen">Zur Startseite</Link>
+          <OpenOnMobileButton className={actionClass("primary", { block: true })} />
+          <a className={actionClass("secondary", { block: true })} href={DESKTOP_LINK_MAIL}>Link per E-Mail senden</a>
         </div>
-        <OpenOnMobileButton className={styles.skip} />
+        <Link className={styles.skip} href="/fuer-unternehmen">Zur Startseite</Link>
       </div>
       <nav className={styles.legal} aria-label="Rechtliches">
         <a href="/imprint">Impressum</a>

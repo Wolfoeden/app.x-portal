@@ -18,6 +18,8 @@ describe("talent index on a phone", () => {
     expect(markup).toContain("Link per E-Mail senden");
     expect(markup).toContain('href="/fuer-unternehmen"');
     expect(markup).toContain("Trotzdem hier öffnen");
+    // Der Hauptknopf öffnet den Talent Index hier, nicht der Link per E-Mail.
+    expect(markup.indexOf("Trotzdem hier öffnen")).toBeLessThan(markup.indexOf("Link per E-Mail senden"));
     expect(markup).toContain('href="/imprint"');
   });
 

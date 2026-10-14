@@ -329,6 +329,7 @@ export default function PrivacyPage() {
               <li><code>xportal_guest_claim</code>: einmaliger, HTTP-only geschützter Übertragungsnachweis für maximal 30 Minuten.</li>
               <li><code>xportal_email_auth_state</code>: HTTP-only Sicherheitsstatus für E-Mail-Links, maximal eine Stunde.</li>
               <li><code>sessionStorage</code>: vorübergehende Projekt-, Profil-, Anfrage- und Wiederherstellungsdaten bis zum Schließen des Browser-Tabs oder früherer programmgesteuerter Löschung.</li>
+              <li><code>localStorage</code>: Ihr noch nicht ausgewerteter Projekttext und der nächste Schritt (etwa „Analyse starten“), damit beides eine Anmeldung per E-Mail-Link in einem neuen Tab übersteht; höchstens 24 Stunden, nach der Analyse gelöscht.</li>
             </ul>
             <p>
               Diese Speicherungen sind für ausdrücklich angeforderte Funktionen
