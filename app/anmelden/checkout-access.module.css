@@ -50,14 +50,21 @@
   .spinner { animation-duration: 1.6s; }
 }
 
-/* Die Pflichtlinks unten, über dem Anmeldefenster wie die Marke oben. */
-.legal {
+/* Die Pflichtlinks unten, über dem Anmeldefenster wie die Marke oben: eine
+   helle Fläche, damit sie auf dem abgedunkelten Hintergrund lesbar bleiben.
+   Zwei Klassen, damit die Regeln aus .legal-footer (Linie, Abstand) weichen. */
+.shell .legal {
   position: fixed;
   z-index: 1001;
-  right: 0;
   bottom: 14px;
-  left: 0;
-  display: flex;
-  justify-content: center;
+  left: 50%;
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  margin: 0;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .94);
   font-size: 13px;
+  transform: translateX(-50%);
 }
