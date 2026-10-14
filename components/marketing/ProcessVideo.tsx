@@ -60,6 +60,24 @@ export function ProcessVideo({ steps }: { steps: readonly ProcessStep[] }) {
     readReducedMotionOnServer,
   );
 
+  // Das Standbild lädt erst, wenn der Abschnitt näher kommt. Vorher stand es
+  // unter den ersten Anfragen der Startseite, obwohl es weit unten liegt.
+  const [posterNeeded, setPosterNeeded] = useState(false);
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        setPosterNeeded(true);
+        observer.disconnect();
+      },
+      { rootMargin: "600px 0px" },
+    );
+    observer.observe(video);
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video || reducedMotion) return;
@@ -131,7 +149,7 @@ export function ProcessVideo({ steps }: { steps: readonly ProcessStep[] }) {
           playsInline
           preload="none"
           controls={reducedMotion}
-          poster={appPath("/images/landing/ablauf-poster.webp")}
+          poster={posterNeeded ? appPath("/images/landing/ablauf-poster.webp") : undefined}
           width={1920}
           height={1280}
           aria-label="Kurzvideo: Eine Ausschreibung wird kopiert, bei XPORTAL eingefügt, ein passendes Profil geprüft und der Kontakt angefragt."

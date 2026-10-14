@@ -50,3 +50,17 @@ Cache-Control = "private, no-store"
 for = "/api/*"
 [headers.values]
 Cache-Control = "private, no-store"
+
+# Bilder und Videos der öffentlichen Seiten tragen keinen Hash im Namen und
+# kamen bisher mit max-age=0: Jeder Seitenaufruf fragte jedes Bild neu an.
+# Ein Tag im Browser, danach im Hintergrund erneuert; ein ausgetauschtes Bild
+# ist spätestens am nächsten Tag überall zu sehen.
+[[headers]]
+for = "/images/*"
+[headers.values]
+Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+
+[[headers]]
+for = "/videos/*"
+[headers.values]
+Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"

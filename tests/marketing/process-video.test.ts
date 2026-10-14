@@ -27,7 +27,8 @@ describe("the process video", () => {
     const html = renderToStaticMarkup(createElement(ProcessVideo, { steps }));
     expect(html).toContain('preload="none"');
     expect(html).toContain("muted");
-    expect(html).toContain('poster="/images/landing/ablauf-poster.webp"');
+    // Auch das Standbild: Es kommt erst, wenn der Abschnitt näher rückt.
+    expect(html).not.toContain("poster=");
     expect(html.indexOf("/videos/ablauf.webm")).toBeLessThan(html.indexOf("/videos/ablauf.mp4"));
     expect(html).not.toContain("autoplay");
     for (const step of steps) expect(html).toContain(`>${step.title}</strong>`);

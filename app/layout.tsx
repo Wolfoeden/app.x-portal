@@ -17,6 +17,10 @@ const inter = Inter({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-inter",
+  // Nicht vorladen: Auf dem Telefon konkurrierten 48 KB Schrift mit dem
+  // ersten Bild der Seite. Der Fließtext steht bis dahin in der angepassten
+  // Ersatzschrift; die Überschrift (Sora) lädt weiter vorab.
+  preload: false,
 });
 
 // Überschriften der öffentlichen Seiten: eine geometrische Display-Schrift in

@@ -53,8 +53,9 @@ export const config = {
     {
       // Statische Dateien und die API brauchen keine Nonce. Prefetches werden
       // ausgenommen, damit eine Nonce nicht in einer vorgeladenen Antwort
-      // landet und dort veraltet.
-      source: "/((?!api|_next/static|_next/image|favicon.ico).*)",
+      // landet und dort veraltet. Bilder, Videos und Symbole aus `public/`
+      // ebenso: Sie liefen bisher bei jedem Abruf durch die Funktion.
+      source: "/((?!api|_next/static|_next/image|favicon.ico|images/|videos/|icon.png|apple-icon.png|robots.txt|sitemap.xml).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },
