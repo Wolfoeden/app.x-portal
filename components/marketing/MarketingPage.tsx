@@ -7,7 +7,7 @@ import { MatchProtocol } from "@/components/product/MatchProtocol";
 import { CREDIT_PRICES } from "@/lib/ai/credit-policy";
 import { CREDIT_PLANS } from "@/lib/billing/plans";
 import { salesCallHref, type SalesCallEntry } from "@/lib/sales/sales-call-links";
-import { MARKETING_PAGE, MARKETING_PAGES, type PublicPage } from "@/lib/seo";
+import { MARKETING_PAGES, type PublicPage } from "@/lib/seo";
 import { breadcrumbStructuredData } from "@/lib/structured-data";
 import styles from "./marketing.module.css";
 
@@ -50,7 +50,7 @@ export function MarketingPage({
       <JsonLd data={breadcrumbStructuredData(page)} />
       <nav aria-label="Brotkrümelnavigation" className={styles.breadcrumb}>
         <ol>
-          <li><Link href={MARKETING_PAGE.find.path}>XPORTAL</Link></li>
+          <li><Link href="/">XPORTAL</Link></li>
           <li><span aria-current="page">{page.label}</span></li>
         </ol>
       </nav>

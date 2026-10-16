@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
-import { SALES_CALL_PATH, salesCalendarUrl } from "@/lib/sales/sales-call-model";
+import { isSalesCallEntry, SALES_CALL_PATH, salesCalendarUrl } from "@/lib/sales/sales-call-model";
 import { readSalesCallToken, salesCallUrl } from "@/lib/sales/sales-call";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -10,8 +10,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * „Gespräch vereinbaren“ auf der Kontaktseite: zählt den Klick und leitet
- * zum Kalender weiter. Nach einer Anfrage trägt der Link ein Token; dann ist
+ * „Gespräch vereinbaren“ auf der Kontaktseite und „Erstgespräch buchen“ im
+ * Kopf, auf der Startseite und in der Fußzeile (`?von=`): zählt den Klick
+ * und leitet zum Kalender weiter. Nach einer Anfrage trägt der Link ein Token; dann ist
  * der Kalender mit Name, Adresse und Thema aus der Anfrage vorausgefüllt.
  * Ohne gültiges Token geht es zum Kalender ohne Vorbelegung, ohne
  * eingerichteten Kalender zurück zur Seite.
@@ -20,7 +21,9 @@ export async function GET(request: Request) {
   const base = salesCallUrl();
   if (!base) return NextResponse.redirect(new URL(appPath(SALES_CALL_PATH), request.url), 303);
 
-  const contactId = readSalesCallToken(new URL(request.url).searchParams.get("t"));
+  const params = new URL(request.url).searchParams;
+  const von = params.get("von");
+  const contactId = readSalesCallToken(params.get("t"));
   let prefill: { fullName: string; email: string | null; role: string | null } | undefined;
   if (contactId) {
     try {
@@ -42,7 +45,7 @@ export async function GET(request: Request) {
     targetType: "crm_contacts",
     targetId: contactId,
     outcome: "success",
-    metadata: { prefilled: Boolean(prefill) },
+    metadata: { prefilled: Boolean(prefill), via: isSalesCallEntry(von) ? von : "direct" },
   }).catch(() => undefined);
 
   return NextResponse.redirect(salesCalendarUrl(base, prefill) ?? base, 303);

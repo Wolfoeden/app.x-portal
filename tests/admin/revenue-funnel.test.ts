@@ -25,6 +25,7 @@ function step(funnel: ReturnType<typeof buildRevenueFunnel>, key: string) {
 describe("revenue funnel", () => {
   it("reads every step from search to paid subscription", () => {
     expect(REVENUE_FUNNEL_ACTIONS).toEqual([
+      "praxis_viewed",
       "sales_call_viewed",
       "sales_call_requested",
       "sales_call_calendar_opened",
@@ -156,7 +157,7 @@ describe("revenue funnel", () => {
   it("shows empty steps as zero instead of hiding them", () => {
     const funnel = buildRevenueFunnel([], new Set());
 
-    expect(funnel.steps.map((entry) => entry.people)).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    expect(funnel.steps.map((entry) => entry.people)).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     expect(funnel.steps.every((entry) => entry.detail === null)).toBe(true);
   });
 
@@ -175,6 +176,7 @@ describe("revenue funnel", () => {
     );
 
     expect(funnel.steps.map((entry) => entry.key)).toEqual([
+      "praxis_viewed",
       "sales_call_viewed",
       "sales_call_requested",
       "sales_call_calendar_opened",

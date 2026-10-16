@@ -1,27 +1,48 @@
 /**
- * Was XPORTAL Unternehmen anbietet, in zwei Gruppen: selbst finden (Talent
- * Index, die bestehende Arbeitsfläche) und mit uns umsetzen (KI-Agenten und
- * die Kompetenzen rund um sichere KI). Die zweite Gruppe führt oben auf die
- * Kontaktseite; `?thema=` passt Überschrift und Formular an, statt mitten in
- * die Seite zu springen.
+ * Die Wege im Kopf und in der Fußzeile der öffentlichen Seiten (Entwurf 3,
+ * 16.10.2026). Oben nur vier: Live-Demo, Leistungen und Über uns sind
+ * Abschnitte der Startseite, dazu die Preise. Talent Index, Kontakt und
+ * Bewerber-Portal stehen im Telefon-Menü und in der Fußzeile.
+ *
+ * Die Leistungen mit uns führen auf die Kontaktseite; `?thema=` passt dort
+ * Überschrift und Formular an.
  */
-export type CompanyLink = { label: string; href: string; note: string };
+import { SALES_CALENDAR_PATH } from "@/lib/sales/sales-call-links";
 
-export const COMPANY_LINK_GROUPS: readonly { label: string; links: readonly CompanyLink[] }[] = [
-  {
-    label: "Selbst finden",
-    links: [{ label: "Talent Index", href: "/chat", note: "Projekt beschreiben, passende Freelancer sehen" }],
-  },
-  {
-    label: "Mit uns umsetzen",
-    links: [
-      { label: "KI-Agenten", href: "/contact", note: "Kundenservice, Vertrieb, Daten, Wissen, Lager" },
-      { label: "KI-Schulungen", href: "/contact?thema=schulung", note: "Für Teams und Führungskräfte" },
-      { label: "Cybersecurity & ISO 27001", href: "/contact?thema=iso27001", note: "Anforderungen, ISMS, Audits" },
-    ],
-  },
-];
-
-export const COMPANY_LINKS: readonly CompanyLink[] = COMPANY_LINK_GROUPS.flatMap((group) => group.links);
+export type ChromeLink = { label: string; href: string };
 
 export const CONTACT_PATH = "/contact";
+
+export const MAIN_NAVIGATION: readonly ChromeLink[] = [
+  { label: "Live-Demo", href: "/#demo" },
+  { label: "Leistungen", href: "/#leistungen" },
+  { label: "Preise", href: "/preise" },
+  { label: "Über uns", href: "/#ueber" },
+];
+
+export const MENU_EXTRA_LINKS: readonly ChromeLink[] = [
+  { label: "Talent Index", href: "/fuer-unternehmen" },
+  { label: "Kontakt", href: CONTACT_PATH },
+  { label: "Bewerber-Portal", href: "/bewerber-portal/apply" },
+];
+
+export const SERVICE_LINKS: readonly ChromeLink[] = [
+  { label: "KI-Agenten", href: CONTACT_PATH },
+  { label: "KI-Schulungen", href: `${CONTACT_PATH}?thema=schulung` },
+  { label: "Informationssicherheit", href: `${CONTACT_PATH}?thema=iso27001` },
+  { label: "Talent Index", href: "/fuer-unternehmen" },
+];
+
+export const FOOTER_COLUMNS: readonly { label: string; links: readonly ChromeLink[] }[] = [
+  { label: "Leistungen", links: SERVICE_LINKS },
+  {
+    label: "XPORTAL",
+    links: [
+      { label: "Über uns", href: "/#ueber" },
+      { label: "Preise", href: "/preise" },
+      { label: "Erstgespräch buchen", href: `${SALES_CALENDAR_PATH}?von=footer` },
+      { label: "Anmelden", href: "/anmelden" },
+    ],
+  },
+  { label: "Für Freelancer", links: [{ label: "Bewerber-Portal", href: "/bewerber-portal/apply" }] },
+];

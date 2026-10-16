@@ -16,8 +16,9 @@ export const SALES_CALENDAR_PATH = "/contact/termin";
 export const SALES_CALL_KIND = "Gesprächsanfrage (Website)";
 
 /**
- * Woher ein Klick auf „Gespräch vereinbaren“ kam. Steht als `?von=` in den
- * Links und wird beim Aufruf der Kontaktseite gezählt; anderes wird
+ * Woher ein Klick auf „Gespräch vereinbaren“ oder „Erstgespräch buchen“ kam.
+ * Steht als `?von=` in den Links und wird beim Aufruf der Kontaktseite und
+ * beim Öffnen des Kalenders (/contact/termin) gezählt; anderes wird
  * verworfen.
  */
 export const SALES_CALL_ENTRIES = [
@@ -32,6 +33,8 @@ export const SALES_CALL_ENTRIES = [
   "chat",
   "profile",
   "mail",
+  "footer",
+  "praxis",
 ] as const;
 export type SalesCallEntry = (typeof SALES_CALL_ENTRIES)[number];
 

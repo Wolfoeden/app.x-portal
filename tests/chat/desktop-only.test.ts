@@ -16,7 +16,8 @@ describe("talent index on a phone", () => {
     expect(markup).toContain("Der Talent Index ist derzeit nur für den Desktop.");
     expect(markup).toContain("x-portal.eu/chat</strong> am Computer");
     expect(markup).toContain("Link per E-Mail senden");
-    expect(markup).toContain('href="/fuer-unternehmen"');
+    // Seit 16.10.2026 ist die Startseite wieder `/`.
+    expect(markup).toContain('href="/"');
     expect(markup).toContain("Trotzdem hier öffnen");
     // Der Hauptknopf öffnet den Talent Index hier, nicht der Link per E-Mail.
     expect(markup.indexOf("Trotzdem hier öffnen")).toBeLessThan(markup.indexOf("Link per E-Mail senden"));

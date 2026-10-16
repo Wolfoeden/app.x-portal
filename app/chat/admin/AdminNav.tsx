@@ -32,6 +32,7 @@ const GROUPS: ReadonlyArray<{ label: string | null; links: readonly NavLink[] }>
       { href: "/chat/admin/profile", label: "Profile" },
       { href: "/chat/admin/leads", label: "Leads" },
       { href: "/chat/admin/kontakte", label: "Kontakte" },
+      { href: "/chat/admin/praxis", label: "Praxisseite" },
       { href: "/chat/admin/demand", label: "Nachfrage" },
     ],
   },

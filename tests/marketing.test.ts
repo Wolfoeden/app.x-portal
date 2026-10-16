@@ -72,11 +72,12 @@ describe("marketing pages rendered on the server", () => {
     }
   });
 
-  it("routes the root through product context and keeps the direct app entry", () => {
+  it("serves the start page at the root and keeps the direct app entry", () => {
     const root = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
     const chat = readFileSync(new URL("../app/chat/page.tsx", import.meta.url), "utf8");
-    // Permanent (308), damit die Signale der Domain bei der Landingpage landen.
-    expect(root).toContain('permanentRedirect("/fuer-unternehmen")');
+    // Seit 16.10.2026 (Entwurf 3) ist `/` die Startseite, keine Weiterleitung.
+    expect(root).toContain("<HomeLanding");
+    expect(root).not.toMatch(/redirect/iu);
     // /chat bleibt der direkte Einstieg; auf dem Handy steht davor nur ein
     // Hinweis (components/chat/desktop-only.tsx), keine Weiterleitung.
     expect(chat).toContain("<ChatWorkspace />");
