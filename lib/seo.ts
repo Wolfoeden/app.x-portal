@@ -22,6 +22,21 @@ export type PublicPage = {
 };
 
 /**
+ * Die Startseite (seit 16.10.2026, Entwurf 3): KI für den Mittelstand mit der
+ * Live-Demo des Talent Index. Vorher leitete `/` auf /fuer-unternehmen.
+ */
+export const HOME_PAGE = {
+  path: "/",
+  label: "Startseite",
+  title: "Mit KI effizienter arbeiten: KI-Agenten, Schulungen, ISO 27001 | XPORTAL",
+  description:
+    "Sehen Sie live, was unsere KI kann: der Talent Index mit echten Profilen. Dasselbe bauen wir für Ihr Unternehmen – KI-Agenten, KI-Schulungen, Informationssicherheit. Erstgespräch in 30 Minuten.",
+  keywords: ["KI im Mittelstand", "KI-Agenten", "KI-Schulung", "EU AI Act Art. 4", "ISO 27001", "Talent Index"],
+  priority: 1,
+  changeFrequency: "weekly",
+} as const satisfies PublicPage;
+
+/**
  * Die Arbeitsfläche. Ihr Titel nennt „Freelancer finden“ bewusst nicht mehr:
  * Für diesen Suchbegriff soll /fuer-unternehmen ranken, nicht zwei eigene
  * Seiten gegeneinander.
@@ -37,8 +52,8 @@ export const CHAT_PAGE = {
 } as const satisfies PublicPage;
 
 export const MARKETING_PAGE = {
-  // Die Startseite (/ leitet dauerhaft hierher) und die Seite für den
-  // Suchbegriff „Freelancer finden“.
+  // Der Einstieg in den Talent Index und die Seite für den Suchbegriff
+  // „Freelancer finden“. Bis 16.10.2026 auch die Startseite.
   find: {
     path: "/fuer-unternehmen",
     label: "Freelancer finden",
@@ -52,7 +67,7 @@ export const MARKETING_PAGE = {
       "AI Agents Freelancer",
       "DSGVO",
     ],
-    priority: 1,
+    priority: 0.9,
     changeFrequency: "monthly",
   },
   it: {
@@ -107,6 +122,7 @@ export const CONTACT_PAGE = {
 } as const satisfies PublicPage;
 
 export const SITEMAP_ENTRIES = [
+  HOME_PAGE,
   CHAT_PAGE,
   ...MARKETING_PAGES,
   CONTACT_PAGE,
@@ -127,6 +143,8 @@ export const NON_INDEXABLE_PREFIXES = [
   "/gespraeche",
   "/booking/",
   "/auth/",
+  // Die Praxisseite kommt per Mail nach einem Anruf, nicht über die Suche.
+  "/praxis",
   // Consistent with the existing noindex headers for /chat/* in netlify.toml.
   "/chat/",
 ] as const;

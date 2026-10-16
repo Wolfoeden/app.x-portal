@@ -2,44 +2,37 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { LegalFooter } from "@/components/LegalFooter";
-import { MARKETING_PAGE } from "@/lib/seo";
+import { SALES_CALENDAR_PATH } from "@/lib/sales/sales-call-links";
+import { phoneHref, SALES_CONTACT } from "@/lib/sales/sales-contact-model";
 
-import { CompanyMenu } from "./CompanyMenu";
-import { COMPANY_LINK_GROUPS, COMPANY_LINKS, CONTACT_PATH } from "./company-links";
+import { CONTACT_PATH, FOOTER_COLUMNS, MAIN_NAVIGATION, MENU_EXTRA_LINKS } from "./company-links";
 import { PublicAppAction } from "./PublicAppAction";
 import styles from "./public-chrome.module.css";
 
-/**
- * „Für Unternehmen“ zeigt, was XPORTAL Firmen anbietet: selbst finden
- * (Talent Index) und mit uns umsetzen (KI-Agenten, KI-Schulungen,
- * Cybersecurity & ISO 27001). Im Kopf ein Menü, im Telefon-Menü dieselben
- * Einträge als Gruppen. „Kontakt“ steht daneben, nicht nur in der Fußzeile.
- */
-function NavigationLinks({ variant }: { variant: "bar" | "menu" }) {
+/** Der Kalender für das Erstgespräch, mit Herkunft für den Umsatzweg. */
+export function callHref(entry: "header" | "menu" | "footer"): string {
+  return `${SALES_CALENDAR_PATH}?von=${entry}`;
+}
+
+function PhoneIcon() {
   return (
-    <>
-      {variant === "bar" ? <CompanyMenu /> : COMPANY_LINK_GROUPS.map((group, index) => (
-        <div key={group.label} className={styles.menuGroup} role="group" aria-labelledby={`menu-company-${index}`}>
-          <span id={`menu-company-${index}`}>{group.label}</span>
-          {group.links.map((link) => <Link key={link.label} href={link.href} prefetch={false}>{link.label}</Link>)}
-        </div>
-      ))}
-      <Link href={MARKETING_PAGE.pricing.path}>Preise</Link>
-      <Link href="/bewerber-portal/apply">Bewerber-Portal</Link>
-      <Link href={CONTACT_PATH} prefetch={false}>Kontakt</Link>
-    </>
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3.5 2.5h2.5l1.2 3-1.6 1.1a8 8 0 0 0 3.8 3.8l1.1-1.6 3 1.2v2.5a1 1 0 0 1-1 1A11 11 0 0 1 2.5 3.5a1 1 0 0 1 1-1z" />
+    </svg>
   );
 }
 
 /**
- * Kopf aller öffentlichen Seiten, so breit wie der Inhalt (bis 1600 px).
- * Rechts „Anmelden“ als Text und „Kostenlos starten“ gefüllt. Ein Gespräch
- * vereinbart man über „Kontakt“ (14.10.2026: der eigene Knopf dafür führte
- * auf eine zweite Kontaktseite und ist weg). Eine Seite mit eigenem Hauptschritt
- * (Bewerber-Portal) gibt ihre Knöpfe als `actions` mit. Bleibt beim Scrollen
- * stehen; auf dem Telefon öffnet „Menü“ die Navigation — ein `<details>`,
- * damit es ohne JavaScript geht. `framed`: auf dem grünen Rahmen
- * (PublicFrame) statt auf Weiß.
+ * Kopf aller öffentlichen Seiten (Entwurf 3, 16.10.2026): links die Marke
+ * und vier Wege — Live-Demo, Leistungen, Preise, Über uns —, rechts
+ * „Anmelden“, die Telefonnummer und „Erstgespräch buchen“. Der Knopf öffnet
+ * den Kalender (über /contact/termin, damit der Klick zählt). Auf dem grünen
+ * Rahmen (`framed`) ist er weiß, auf Weiß tannengrün; die frühere Limette
+ * ist weg.
+ *
+ * Eine Seite mit eigenem Hauptschritt (Bewerber-Portal) gibt ihre Knöpfe als
+ * `actions` mit. Auf dem Telefon öffnet „Menü“ die Navigation — ein
+ * `<details>`, damit es ohne JavaScript geht.
  */
 export function PublicHeader({ context, authenticated = false, actions, framed = false }: {
   context?: string;
@@ -50,20 +43,28 @@ export function PublicHeader({ context, authenticated = false, actions, framed =
   return (
     <header className={styles.header} data-public-surface data-framed={framed ? "true" : undefined}>
       <div className={styles.headerInner}>
-        <Link href={MARKETING_PAGE.find.path} className={styles.brand} aria-label="XPORTAL – Für Unternehmen">
+        <Link href="/" className={styles.brand} aria-label="XPORTAL – Startseite">
           <span>XPORTAL</span>
         </Link>
         {context ? <span className={styles.context}>{context}</span> : null}
         <nav className={styles.navigation} aria-label="Hauptnavigation">
-          <NavigationLinks variant="bar" />
+          {MAIN_NAVIGATION.map((link) => <Link key={link.label} href={link.href} prefetch={false}>{link.label}</Link>)}
         </nav>
         <div className={styles.headerActions}>
-          {actions ?? (authenticated ? <PublicAppAction className={styles.primaryAction} /> : (
+          {actions ?? (
             <>
-              <Link href="/anmelden" prefetch={false} className={styles.textAction}>Anmelden</Link>
-              <Link href="/chat" prefetch={false} className={styles.primaryAction}>Kostenlos starten</Link>
+              {authenticated ? <PublicAppAction className={styles.textAction} /> : (
+                <Link href="/anmelden" prefetch={false} className={styles.textAction}>Anmelden</Link>
+              )}
+              <a href={phoneHref(SALES_CONTACT.phone)} className={styles.phoneAction}>
+                <PhoneIcon />
+                <span>{SALES_CONTACT.phone}</span>
+              </a>
+              <a href={callHref("header")} target="_blank" rel="noopener noreferrer nofollow" className={styles.primaryAction}>
+                Erstgespräch buchen
+              </a>
             </>
-          ))}
+          )}
         </div>
         <details className={styles.menu}>
           <summary>
@@ -71,10 +72,12 @@ export function PublicHeader({ context, authenticated = false, actions, framed =
             <span className="sr-only">Menü</span>
           </summary>
           <nav aria-label="Navigation">
-            <NavigationLinks variant="menu" />
+            {[...MAIN_NAVIGATION, ...MENU_EXTRA_LINKS].map((link) => <Link key={link.label} href={link.href} prefetch={false}>{link.label}</Link>)}
+            <a href={phoneHref(SALES_CONTACT.phone)}>Anrufen: {SALES_CONTACT.phone}</a>
             {authenticated ? <PublicAppAction className={styles.menuAction} /> : (
-              <Link href="/anmelden" prefetch={false} className={styles.menuAction}>Anmelden</Link>
+              <Link href="/anmelden" prefetch={false}>Anmelden</Link>
             )}
+            <a href={callHref("menu")} target="_blank" rel="noopener noreferrer nofollow" className={styles.menuAction}>Erstgespräch buchen</a>
           </nav>
         </details>
       </div>
@@ -92,9 +95,8 @@ export function PublicFrame({ children }: { children: ReactNode }) {
 }
 
 /**
- * Fußzeile in vier Spalten über die volle Breite: Marke, Angebote für
- * Unternehmen, Bewerber-Portal, Rechtliches (die Pflichtlinks aus
- * LegalFooter, untereinander).
+ * Fußzeile: Marke, Leistungen, XPORTAL, Für Freelancer, Rechtliches (die
+ * Pflichtlinks aus LegalFooter, untereinander).
  */
 export function PublicFooter({ framed = false }: { framed?: boolean }) {
   return (
@@ -102,18 +104,19 @@ export function PublicFooter({ framed = false }: { framed?: boolean }) {
       <div className={styles.footerInner}>
         <div className={styles.footerBrand}>
           <strong>XPORTAL</strong>
-          <p>Talent Index, KI-Agenten, KI-Schulungen und Informationssicherheit für Unternehmen. Ein Familienunternehmen aus Deutschland.</p>
+          <p>KI für den Mittelstand. Ein Familienunternehmen aus Deutschland.</p>
+          <p><a href={phoneHref(SALES_CONTACT.phone)}>{SALES_CONTACT.phone}</a> · <Link href={CONTACT_PATH} prefetch={false}>Kontakt</Link></p>
         </div>
-        <nav className={styles.footerColumn} aria-label="Für Unternehmen">
-          <p>Für Unternehmen</p>
-          {COMPANY_LINKS.map((link) => <Link key={link.label} href={link.href} prefetch={false}>{link.label}</Link>)}
-          <Link href={MARKETING_PAGE.pricing.path}>Preise</Link>
-        </nav>
-        <nav className={styles.footerColumn} aria-label="Für Bewerber">
-          <p>Für Bewerber</p>
-          <Link href="/bewerber-portal/apply">Bewerber-Portal</Link>
-          <Link href="/bewerber-portal/apply#fragen">Fragen und Antworten</Link>
-        </nav>
+        {FOOTER_COLUMNS.map((column) => (
+          <nav key={column.label} className={styles.footerColumn} aria-label={column.label}>
+            <p>{column.label}</p>
+            {column.links.map((link) => link.href.startsWith(SALES_CALENDAR_PATH) ? (
+              <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer nofollow">{link.label}</a>
+            ) : (
+              <Link key={link.label} href={link.href} prefetch={false}>{link.label}</Link>
+            ))}
+          </nav>
+        ))}
         <div className={styles.footerColumn}>
           <p>Rechtliches</p>
           <LegalFooter className={styles.footerLegal} />

@@ -37,8 +37,8 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       // /home was the old landing page; external links and bookmarks still
-      // point here. Straight to the landing page, not via `/` (one hop).
-      { source: "/home", destination: "/fuer-unternehmen", permanent: true },
+      // point here. Since 16.10.2026 the start page is `/` again.
+      { source: "/home", destination: "/", permanent: true },
       // Oktober 2026: neue Adressen für die Startseite für Unternehmen und
       // das Bewerber-Portal. Alte Links, Lesezeichen und Einladungsmails
       // landen dauerhaft auf der neuen Adresse, Parameter bleiben erhalten.

@@ -1,13 +1,31 @@
-import { permanentRedirect } from "next/navigation";
+import { HomeLanding } from "@/components/home/HomeLanding";
+import styles from "@/components/marketing/marketing.module.css";
+import { PublicFooter, PublicFrame, PublicHeader } from "@/components/public/PublicChrome";
+import { activeProfileCount } from "@/lib/marketing/profile-count";
+import { salesContactPhotoUrl } from "@/lib/sales/sales-contact";
+import { HOME_PAGE, pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata(HOME_PAGE);
+
+/** Profilzahl und Foto ändern sich selten; die Seite wird stündlich neu gebaut. */
+export const revalidate = 3600;
 
 /**
- * The root starts with product context. The working application remains one
- * deliberate click away; campaign visitors no longer arrive in a tool before
- * they can understand evidence, limits and price.
- *
- * Permanent (308): the domain's links and signals belong to the landing page
- * for „Freelancer finden“, not to a temporary stop on the way there.
+ * Die Startseite (Entwurf 3, 16.10.2026): KI für den Mittelstand, mit der
+ * Live-Demo des Talent Index als Beweis. Bis zum 16.10.2026 leitete `/`
+ * dauerhaft auf /fuer-unternehmen; die Seite bleibt als Einstieg in den
+ * Talent Index und für den Suchbegriff „Freelancer finden“.
  */
-export default function RootPage() {
-  permanentRedirect("/fuer-unternehmen");
+export default async function HomePage() {
+  const [profiles, photoUrl] = await Promise.all([activeProfileCount(), salesContactPhotoUrl()]);
+  return (
+    <div className={styles.shell}>
+      <a href="#main-content" className="skip-link">Zum Inhalt</a>
+      <PublicHeader framed />
+      <PublicFrame>
+        <HomeLanding profiles={profiles} photoUrl={photoUrl} />
+      </PublicFrame>
+      <PublicFooter framed />
+    </div>
+  );
 }

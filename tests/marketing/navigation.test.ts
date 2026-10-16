@@ -2,45 +2,57 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { PublicHeader } from "@/components/public/PublicChrome";
+import { PublicFooter, PublicHeader } from "@/components/public/PublicChrome";
 import nextConfig from "@/next.config";
 import { MARKETING_PAGE } from "@/lib/seo";
 
-// Oktober 2026: „Für Unternehmen“ als Menü in zwei Gruppen (selbst finden:
-// Talent Index; mit uns umsetzen: KI-Agenten, KI-Schulungen, Cybersecurity &
-// ISO 27001), „Bewerber-Portal“ statt „Freelancer-Portal“, neue Adressen.
+// 16.10.2026 (Entwurf 3): oben nur Live-Demo, Leistungen, Preise, Über uns;
+// rechts Anmelden, Telefon und „Erstgespräch buchen“ (weiß, keine Limette).
 describe("public navigation", () => {
   const header = renderToStaticMarkup(createElement(PublicHeader));
+  const framed = renderToStaticMarkup(createElement(PublicHeader, { framed: true }));
+  const footer = renderToStaticMarkup(createElement(PublicFooter));
+  const bar = header.slice(header.indexOf('aria-label="Hauptnavigation"'), header.indexOf("</nav>"));
 
-  it("groups the company offers under one menu", () => {
-    expect(header).toContain("Für Unternehmen");
-    expect(header).toContain('href="/chat"');
-    expect(header).toMatch(/href="\/chat"[^>]*>Talent Index</u);
-    expect(header).toContain("Selbst finden");
-    expect(header).toContain("Mit uns umsetzen");
-    // Oben auf der Kontaktseite, nicht mitten hinein (Rückmeldung 14.10.).
-    expect(header).toMatch(/href="\/contact"[^>]*><strong>KI-Agenten</u);
-    expect(header).toMatch(/href="\/contact\?thema=schulung"[^>]*><strong>KI-Schulungen</u);
-    expect(header).toMatch(/href="\/contact\?thema=iso27001"[^>]*><strong>Cybersecurity &amp; ISO 27001</u);
-    expect(header).not.toContain("Freelancer Index");
+  it("shows four ways in the bar, all leading into the start page or the prices", () => {
+    expect([...bar.matchAll(/<a [^>]*href="([^"]+)"[^>]*>([^<]+)</gu)].map((match) => [match[2], match[1]])).toEqual([
+      ["Live-Demo", "/#demo"],
+      ["Leistungen", "/#leistungen"],
+      ["Preise", "/preise"],
+      ["Über uns", "/#ueber"],
+    ]);
+    expect(header).not.toContain("Für Unternehmen");
+    expect(header).not.toContain("Kostenlos starten");
   });
 
-  it("puts Kontakt into the main navigation, not only into the footer", () => {
-    expect(header).toMatch(/href="\/contact"[^>]*>Kontakt</u);
+  it("books the first call from the header and shows the phone number", () => {
+    expect(header).toMatch(/href="\/contact\/termin\?von=header"[^>]*>Erstgespräch buchen</u);
+    expect(header).toContain('href="tel:+491758934338"');
+    expect(header).toMatch(/href="\/anmelden"[^>]*>Anmelden</u);
+    expect(framed).toContain('data-framed="true"');
   });
 
-  it("calls the applicant side Bewerber-Portal at its new address", () => {
-    expect(header).toMatch(/href="\/bewerber-portal\/apply"[^>]*>Bewerber-Portal</u);
+  it("keeps Talent Index, Kontakt and Bewerber-Portal in the phone menu and the footer", () => {
+    for (const html of [header, footer]) {
+      expect(html).toMatch(/href="\/fuer-unternehmen"[^>]*>Talent Index</u);
+      expect(html).toMatch(/href="\/contact"[^>]*>Kontakt</u);
+      expect(html).toMatch(/href="\/bewerber-portal\/apply"[^>]*>Bewerber-Portal</u);
+    }
     expect(header).not.toContain("Freelancer-Portal");
   });
 
-  it("serves the company landing page at /fuer-unternehmen", () => {
+  it("brands every page with a link to the start page", () => {
+    expect(header).toMatch(/aria-label="XPORTAL – Startseite" href="\/"/u);
+  });
+
+  it("serves the Talent Index landing page at /fuer-unternehmen", () => {
     expect(MARKETING_PAGE.find.path).toBe("/fuer-unternehmen");
   });
 
   it("keeps old links working with permanent redirects", async () => {
     const redirects = await nextConfig.redirects!();
     expect(redirects).toEqual(expect.arrayContaining([
+      expect.objectContaining({ source: "/home", destination: "/", permanent: true }),
       expect.objectContaining({ source: "/freelancer-finden", destination: "/fuer-unternehmen", permanent: true }),
       expect.objectContaining({ source: "/freelancer/apply", destination: "/bewerber-portal/apply", permanent: true }),
     ]));

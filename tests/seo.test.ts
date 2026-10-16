@@ -45,11 +45,12 @@ describe("indexing rules", () => {
     expect(NON_INDEXABLE_PREFIXES).toContain("/booking/");
   });
 
-  it("keeps the product indexable and puts the landing page first", () => {
+  it("keeps the product indexable and puts the start page first", () => {
     expect(INDEXABLE_PATHS).toContain("/chat");
-    // „Freelancer finden“ soll eine Seite tragen, nicht zwei.
+    // Seit 16.10.2026 ist `/` wieder die Startseite (Entwurf 3).
     const top = SITEMAP_ENTRIES.filter((entry) => entry.priority === 1).map((entry) => entry.path);
-    expect(top).toEqual(["/fuer-unternehmen"]);
+    expect(top).toEqual(["/"]);
+    // „Freelancer finden“ soll eine Seite tragen, nicht zwei.
     const finding = [CHAT_PAGE, ...MARKETING_PAGES].filter((page) => page.title.startsWith("Freelancer finden"));
     expect(finding.map((page) => page.path)).toEqual(["/fuer-unternehmen"]);
   });

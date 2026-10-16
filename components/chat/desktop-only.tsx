@@ -39,7 +39,7 @@ export function DesktopOnlyNotice() {
           <OpenOnMobileButton className={actionClass("primary", { block: true })} />
           <a className={actionClass("secondary", { block: true })} href={DESKTOP_LINK_MAIL}>Link per E-Mail senden</a>
         </div>
-        <Link className={styles.skip} href="/fuer-unternehmen">Zur Startseite</Link>
+        <Link className={styles.skip} href="/">Zur Startseite</Link>
       </div>
       <nav className={styles.legal} aria-label="Rechtliches">
         <a href="/imprint">Impressum</a>

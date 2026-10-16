@@ -5,16 +5,22 @@ import { AdminPageHeader, AdminSurface } from "@/components/admin/AdminDataPrimi
 import { Card, StatusBadge, cockpitStyles as styles } from "@/components/admin/Cockpit";
 import { appPath } from "@/lib/app-path";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { getPraxisActivity } from "@/lib/admin/praxis-activity";
 import { getContact } from "@/lib/crm/contacts-data";
 import {
   CONTACT_STAGE_LABELS,
   EMAIL_KIND_LABELS,
   berlinToday,
   isFollowUpDue,
+  mailtoHref,
   type ContactEvent,
 } from "@/lib/crm/contacts-model";
+import { mintPraxisToken } from "@/lib/sales/praxis";
+import { praxisLink, praxisMailDraft } from "@/lib/sales/praxis-model";
+import { SITE_URL } from "@/lib/seo";
 
 import { ContactEditor } from "./ContactEditor";
+import { PraxisConsent } from "./PraxisConsent";
 
 export const metadata: Metadata = {
   title: "Kontakt | XPORTAL",
@@ -69,6 +75,9 @@ export default async function ContactPage({ params }: { params: Promise<{ id: st
   if (!found) notFound();
   const { contact, events } = found;
   const due = isFollowUpDue(contact, berlinToday());
+  const link = praxisLink(SITE_URL, mintPraxisToken(contact.id));
+  const mail = praxisMailDraft(contact, link);
+  const praxis = (await getPraxisActivity(contact.id).catch(() => null))?.contacts[0] ?? null;
 
   return (
     <AdminSurface label="Administration · Kontakt">
@@ -125,6 +134,36 @@ export default async function ContactPage({ params }: { params: Promise<{ id: st
                 <dd>{contact.source}</dd>
                 <dt>Zuletzt angeschrieben</dt>
                 <dd>{contact.lastContactedAt ? dateTime(contact.lastContactedAt) : "—"}</dd>
+              </dl>
+            </div>
+          </Card>
+          <Card title="Praxisseite nach dem Anruf" className={styles.span12}>
+            <div className={styles.cardBody} style={{ display: "grid", gap: 12 }}>
+              <p className={styles.muted}>
+                Nur mit dem „Ja“ aus dem Telefonat: erst notieren, dann die Mail mit dem Link schicken. Die Seite ist für alle
+                gleich; das Kürzel im Link zeigt hier, ob geöffnet, was markiert und ob der Kalender geöffnet wurde.
+              </p>
+              <PraxisConsent contactId={contact.id} />
+              <label className={styles.field}>
+                Link für diesen Kontakt
+                <input className={styles.input} readOnly value={link} />
+              </label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                {contact.email && contact.stage !== "do_not_contact" ? (
+                  <a className={styles.buttonPrimary} href={mailtoHref(contact.email, mail)}>Mail mit Link schreiben</a>
+                ) : (
+                  <span className={styles.muted}>{contact.stage === "do_not_contact" ? "Nicht kontaktieren." : "Keine E-Mail-Adresse hinterlegt."}</span>
+                )}
+                {/* Ohne Kürzel: der eigene Blick auf die Seite zählt nicht beim Kontakt. */}
+                <a className={styles.button} href="/praxis" target="_blank" rel="noopener noreferrer">Seite ansehen ↗</a>
+              </div>
+              <dl className={styles.facts}>
+                <dt>Geöffnet</dt>
+                <dd>{praxis?.lastViewedAt ? `${dateTime(praxis.lastViewedAt)}${praxis.views > 1 ? ` · ${praxis.views}×` : ""}` : "—"}</dd>
+                <dt>Interesse</dt>
+                <dd>{praxis?.interests.length ? praxis.interests.join(", ") : "—"}</dd>
+                <dt>Kalender geöffnet</dt>
+                <dd>{praxis?.calendarOpenedAt ? dateTime(praxis.calendarOpenedAt) : "—"}</dd>
               </dl>
             </div>
           </Card>

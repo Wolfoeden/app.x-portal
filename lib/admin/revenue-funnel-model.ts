@@ -37,12 +37,15 @@ const PLACEMENT_STEPS = [
 ] as const;
 
 /**
- * Der zweite Weg zum Umsatz: „Gespräch vereinbaren“ auf der Kontaktseite
- * (bis 14.10.2026 die eigene Seite /gespraech). Seitenaufrufe zählen je
- * Aufruf (die Seite kennt keine Person), Anfragen und Kalenderklicks je
- * Kontakt.
+ * Der zweite Weg zum Umsatz: das Erstgespräch — über die Praxisseite nach
+ * einem Anruf, die Kontaktseite (bis 14.10.2026 die eigene Seite
+ * /gespraech) oder „Erstgespräch buchen“ im Kopf und auf der Startseite.
+ * Seitenaufrufe ohne Kürzel zählen je Aufruf (die Seite kennt keine
+ * Person), sonst und bei Anfragen und Kalenderklicks je Kontakt.
  */
 const SALES_CALL_STEPS = [
+  // Seit 16.10.2026: die Seite hinter dem Link in der Mail nach dem Anruf.
+  { key: "praxis_viewed", label: "Praxisseite geöffnet" },
   { key: "sales_call_viewed", label: "Kontaktseite aufgerufen" },
   { key: "sales_call_requested", label: "Gespräch angefragt" },
   { key: "sales_call_calendar_opened", label: "Kalender geöffnet" },
@@ -60,6 +63,8 @@ const SALES_CALL_ENTRY_LABELS: Readonly<Record<string, string>> = {
   chat: "Chat",
   profile: "Profilseite",
   mail: "Mail",
+  footer: "Fußzeile",
+  praxis: "Praxisseite",
   direct: "direkt",
 };
 

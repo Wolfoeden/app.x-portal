@@ -279,13 +279,27 @@ export default function PrivacyPage() {
             <p>
               Für die Terminwahl nutzen wir einen <strong>Terminbuchungsdienst
               mit Sitz in den USA</strong>. Er wird nicht eingebettet: Erst wenn
-              Sie auf der Kontaktseite „Gespräch vereinbaren“ oder nach einer
-              Anfrage „Termin wählen“ anklicken, öffnet sich seine Seite. Nach
-              einer Anfrage übergeben wir dabei Ihren Namen, Ihre
-              E-Mail-Adresse und die gewählten Themen, damit Sie sie nicht noch
-              einmal eingeben müssen; sonst übergeben wir keine Angaben. Dies
-              ist eine Übermittlung in ein Drittland; zu den Garantien siehe
-              Abschnitt 9.
+              Sie „Erstgespräch buchen“, „Gespräch vereinbaren“, eine der
+              angezeigten freien Zeiten oder nach einer Anfrage „Termin wählen“
+              anklicken, öffnet sich seine Seite. Nach einer Anfrage übergeben
+              wir dabei Ihren Namen, Ihre E-Mail-Adresse und die gewählten
+              Themen, damit Sie sie nicht noch einmal eingeben müssen; auf der
+              Seite mit den Praxisbeispielen nur, was Sie dort selbst
+              eingetragen oder markiert haben; sonst übergeben wir keine
+              Angaben. Die freien Zeiten fragt unser Server ab, ohne Angaben zu
+              Ihnen. Dies ist eine Übermittlung in ein Drittland; zu den
+              Garantien siehe Abschnitt 9.
+            </p>
+            <p>
+              Haben Sie am Telefon zugestimmt, dass wir Ihnen Praxisbeispiele
+              per E-Mail schicken, enthält der Link in dieser Mail ein Kürzel.
+              Öffnen Sie die Seite darüber, speichern wir zu Ihrem Kontakt in
+              unserer Kundenverwaltung, wann Sie sie geöffnet, welche Beispiele
+              Sie mit „Das will ich auch“ markiert und ob Sie den Kalender
+              geöffnet haben, und nutzen das zur Vorbereitung des Gesprächs
+              (Art. 6 Abs. 1 lit. f DSGVO). Diese Einträge löschen wir mit
+              unserem Betriebsprotokoll nach spätestens zwei Jahren. Ohne
+              Kürzel zählen wir nur, dass die Seite aufgerufen wurde.
             </p>
             <p>
               Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO, soweit Ihr

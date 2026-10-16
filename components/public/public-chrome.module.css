@@ -59,23 +59,11 @@
   text-underline-offset: 6px;
 }
 
-/* „Für Unternehmen“: Knopf wie ein Navigationslink, darunter das Menü. */
-.navGroup { position: relative; display: flex; align-self: stretch; align-items: center; }
-.navGroupButton { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; padding: 0; color: var(--chrome-ink); font: inherit; font-size: 16px; cursor: pointer; }
-.navGroupButton:hover, .navGroupButton:focus-visible { text-decoration: underline; text-underline-offset: 6px; }
-.navGroupButton svg { transition: transform 150ms ease; }
-.navGroupButton[aria-expanded="true"] svg { transform: rotate(180deg); }
-.navPanel { position: absolute; top: 100%; left: -12px; z-index: 50; display: grid; grid-template-columns: repeat(2, 260px); border: 1px solid var(--chrome-line); border-radius: 12px; background: #fff; box-shadow: var(--shadow-soft); }
-.navPanel[hidden] { display: none; }
-@media (hover: hover) { .navGroup:hover > .navPanel { display: grid; } }
-.navColumn { display: grid; align-content: start; gap: 2px; padding: 12px; }
-.navColumn + .navColumn { border-left: 1px solid var(--xp-row-line); background: #fbfcfb; border-radius: 0 12px 12px 0; }
-.navColumn > span { padding: 4px 10px 6px; color: var(--xp-muted); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
-.navigation .navPanel a { display: grid; border-radius: 8px; padding: 9px 10px; text-decoration: none; }
-.navPanel small { color: var(--xp-muted); font-size: 13px; }
-.navigation .navPanel a:hover, .navigation .navPanel a:focus-visible { background: var(--surface-soft); text-decoration: none; }
+.headerActions { display: flex; align-items: center; gap: 12px 20px; flex: 0 0 auto; margin-left: auto; }
 
-.headerActions { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; margin-left: auto; }
+/* Die Telefonnummer neben dem Knopf: wer angerufen wurde, ruft zurück. */
+.headerActions .phoneAction { display: inline-flex; align-items: center; gap: 8px; color: var(--chrome-ink); font-size: var(--xp-action-font-size); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.headerActions .phoneAction:hover { text-decoration: underline; text-underline-offset: 5px; }
 
 /* Dieselben Knöpfe wie components/ui/actions.module.css (kompakt), aus
    denselben Werten (--xp-action-*). Als eigene Klassen, weil der Kopf auch
@@ -102,8 +90,8 @@
 .headerActions .textAction:hover { text-decoration: underline; text-underline-offset: 5px; }
 
 /* Zwei Klassen, damit Linkfarben von Textseiten (`.xlegal a`) nicht greifen. */
-.headerActions .primaryAction { background: var(--xp-action-primary); color: #fff; }
-.headerActions .primaryAction:hover { background: var(--xp-action-primary-hover); }
+.headerActions .primaryAction { background: var(--xp-frame); color: #fff; font-weight: 600; }
+.headerActions .primaryAction:hover { background: color-mix(in srgb, var(--xp-frame) 88%, #fff); }
 .primaryAction:focus-visible { outline: 2px solid var(--xp-brand); outline-offset: 3px; }
 
 .menu { display: none; position: relative; align-self: center; margin-right: 16px; }
@@ -121,31 +109,29 @@
 .menu nav { position: absolute; right: 0; top: calc(100% + 10px); width: min(300px, calc(100vw - 32px)); display: grid; gap: 2px; border: 1px solid var(--chrome-line); border-radius: 10px; padding: 8px; background: #fff; box-shadow: var(--shadow-modal); }
 .menu nav a { border-radius: 6px; padding: 12px; color: var(--chrome-ink); font-size: 15px; text-decoration: none; }
 .menu nav a:hover { background: var(--surface-soft); }
-.menuGroup { display: grid; gap: 2px; border-bottom: 1px solid var(--chrome-line); padding-bottom: 6px; margin-bottom: 4px; }
-.menuGroup > span { padding: 8px 12px 2px; color: var(--muted); font-size: 13px; font-weight: 600; }
-.menu nav .menuGroup a { padding-left: 20px; }
-.menu nav .menuAction { margin-top: 6px; border-radius: var(--xp-action-radius); background: var(--xp-action-primary); color: #fff; font-weight: var(--xp-action-weight); text-align: center; }
-.menu nav .menuAction:hover { background: var(--xp-action-primary-hover); }
+.menu nav .menuAction { margin-top: 6px; border-radius: var(--xp-action-radius); background: var(--xp-frame); color: #fff; font-weight: var(--xp-action-weight); text-align: center; }
+.menu nav .menuAction:hover { background: color-mix(in srgb, var(--xp-frame) 88%, #fff); }
 
 /* Grüner Rahmen: Kopf ohne Linie auf dem Tannengrün, weiße Schrift, der
-   Hauptknopf in Limette. Das Menü darunter bleibt weiß mit dunkler Schrift. */
+   Hauptknopf weiß (Entwurf 3: keine Limette mehr). Das Menü darunter bleibt
+   weiß mit dunkler Schrift. */
 .header[data-framed] { border-bottom-color: transparent; background: color-mix(in srgb, var(--xp-frame) 94%, transparent); }
 .header[data-framed] .brand,
 .header[data-framed] .navigation > a,
-.header[data-framed] .navGroupButton,
-.header[data-framed] .headerActions .textAction { color: var(--xp-frame-ink); }
+.header[data-framed] .headerActions .textAction,
+.header[data-framed] .headerActions .phoneAction { color: var(--xp-frame-ink); }
 .header[data-framed] .brand:focus-visible,
 .header[data-framed] .navigation > a:focus-visible,
-.header[data-framed] .navGroupButton:focus-visible,
 .header[data-framed] .headerActions .textAction:focus-visible,
+.header[data-framed] .headerActions .phoneAction:focus-visible,
 .header[data-framed] .menu summary:focus-visible { outline: 2px solid var(--xp-frame-ink); outline-offset: 3px; }
 .header[data-framed] .menuIcon,
 .header[data-framed] .menuIcon::before,
 .header[data-framed] .menuIcon::after { background: var(--xp-frame-ink); }
 .header[data-framed] .menu[open] .menuIcon { background: transparent; }
-.header[data-framed] .headerActions .primaryAction { background: var(--xp-accent); color: var(--xp-frame); font-weight: 600; }
-.header[data-framed] .headerActions .primaryAction:hover { background: var(--xp-accent-hover); }
-.header[data-framed] .primaryAction:focus-visible { outline-color: var(--xp-accent); }
+.header[data-framed] .headerActions .primaryAction { background: #fff; color: var(--xp-frame); }
+.header[data-framed] .headerActions .primaryAction:hover { background: #e8f1ec; }
+.header[data-framed] .primaryAction:focus-visible { outline-color: #fff; }
 .frame { margin-inline: clamp(8px, 1.4vw, 20px); border-radius: clamp(14px, 1.4vw, 22px); background: #fff; overflow: clip; }
 
 /* Fußzeile über die volle Breite, vier Spalten im Rahmen des Inhalts. */
@@ -156,6 +142,8 @@
 .footerBrand { display: grid; flex: 2 1 320px; align-content: start; gap: 10px; }
 .footerBrand strong { font-family: var(--font-display), var(--font-sans); font-size: 22px; font-weight: 600; letter-spacing: -.04em; }
 .footerBrand p { max-width: 360px; margin: 0; color: var(--xp-muted); font-size: 15px; line-height: 1.55; }
+.footerBrand a { color: inherit; font-weight: 600; text-decoration: none; }
+.footerBrand a:hover { text-decoration: underline; text-underline-offset: 4px; }
 .footerColumn { display: grid; flex: 1 1 180px; align-content: start; gap: 10px; font-size: 15px; }
 .footerColumn > p { margin: 0; font-weight: 600; }
 .footerColumn a { color: var(--xp-ink); text-decoration: none; }
@@ -170,7 +158,7 @@
 .footerBottom { padding-bottom: 32px; }
 .footerBottom p { margin: 0; padding-top: 24px; border-top: 1px solid var(--xp-line); color: var(--xp-muted); font-size: 14px; }
 
-/* Auf dem grünen Rahmen: weiße Schrift, Hover in Limette. */
+/* Auf dem grünen Rahmen: weiße Schrift, beim Überfahren unterstrichen. */
 .footer[data-framed] { border-top-color: transparent; color: var(--xp-frame-ink); }
 .footer[data-framed] .footerBrand p,
 .footer[data-framed] .footerBottom p { color: var(--xp-frame-muted); }
@@ -179,9 +167,10 @@
 .footer[data-framed] .footerColumn .footerLegal,
 .footer[data-framed] .footerColumn .footerLegal a,
 .footer[data-framed] .footerColumn .footerLegal button { color: var(--xp-frame-ink); }
+.footer[data-framed] .footerBrand a { color: var(--xp-frame-ink); }
 .footer[data-framed] .footerColumn a:hover,
 .footer[data-framed] .footerColumn .footerLegal a:hover,
-.footer[data-framed] .footerColumn .footerLegal button:hover { color: var(--xp-accent); }
+.footer[data-framed] .footerColumn .footerLegal button:hover { color: var(--xp-frame-ink); text-decoration: underline; text-underline-offset: 4px; }
 .footer[data-framed] a:focus-visible,
 .footer[data-framed] button:focus-visible { outline-color: var(--xp-frame-ink); }
 
@@ -244,6 +233,10 @@
   line-height: 1.45;
 }
 
+@media (max-width: 1320px) {
+  .headerActions .phoneAction span { display: none; }
+}
+
 @media (max-width: 1080px) {
   .headerInner { min-height: 60px; gap: 16px; padding-right: 8px; }
   .navigation { display: none; }
@@ -251,7 +244,8 @@
 }
 
 @media (max-width: 680px) {
-  .headerActions .textAction { display: none; }
+  .headerActions .textAction,
+  .headerActions .phoneAction { display: none; }
   .headerActions .primaryAction { padding: 8px 13px; font-size: 14px; }
   .menu { margin-right: 2px; }
   .documentIntro { grid-template-columns: 1fr; gap: 26px; margin-bottom: 40px; }
