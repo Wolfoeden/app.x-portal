@@ -1,10 +1,20 @@
 {
-  "clientJavaScriptGzipTotalBytes": 526000,
+  "clientJavaScriptGzipTotalBytes": 560000,
   "clientJavaScriptGzipLargestBytes": 120000,
-  "clientCssGzipTotalBytes": 58500,
+  "clientCssGzipTotalBytes": 66000,
   "clientCssGzipLargestBytes": 22000,
   "publicAssetsTotalBytes": 250000,
   "publicAssetLargestBytes": 150000,
   "publicVideoTotalBytes": 2400000,
-  "publicVideoLargestBytes": 1300000
+  "publicVideoLargestBytes": 1300000,
+  "publicPages": [
+    "index",
+    "contact",
+    "praxis",
+    "preise",
+    "fuer-unternehmen",
+    "privacy"
+  ],
+  "publicPageCssGzipBytes": 26000,
+  "publicPageJavaScriptGzipBytes": 175000
 }

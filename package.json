@@ -20,6 +20,7 @@
     "test:visual-baseline": "playwright test tests/e2e/visual-baseline.spec.ts",
     "test:visual-release": "playwright test tests/e2e/release-visual.spec.ts",
     "check:performance": "node scripts/check-performance-budget.mjs",
+    "measure:performance": "node scripts/measure-performance.mjs",
     "test:watch": "vitest",
     "test:rls": "supabase test db",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm check:performance"
