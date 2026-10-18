@@ -36,9 +36,10 @@ describe("contact page", () => {
     expect(markup).toContain("Produktmanager");
     expect(markup).toContain('href="tel:+491758934338"');
     expect(markup).toContain(SALES_CONTACT.phone);
-    // Ein Kalenderknopf, über /contact/termin gezählt, nicht zwei.
-    expect(markup.match(/href="\/contact\/termin"/gu)).toHaveLength(1);
-    expect(markup).toContain(">Gespräch vereinbaren<");
+    // Seit 18.10.2026 direkt zum Kalender (der Klick zählt nebenher); ein
+    // Knopf, nicht zwei.
+    expect(markup).toMatch(/href="https:\/\/calendly\.com\/romandering\/30min\?utm_source=x-portal"[^>]*>Gespräch vereinbaren</u);
+    expect(markup).not.toContain("/contact/termin");
   });
 
   it("lists the five use cases and three competences in one line each", async () => {

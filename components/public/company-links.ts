@@ -7,9 +7,10 @@
  * Die Leistungen mit uns führen auf die Kontaktseite; `?thema=` passt dort
  * Überschrift und Formular an.
  */
-import { SALES_CALENDAR_PATH } from "@/lib/sales/sales-call-links";
+import { SALES_CALENDAR_HREF, type SalesCallEntry } from "@/lib/sales/sales-call-model";
 
-export type ChromeLink = { label: string; href: string };
+/** `calendar`: der Link öffnet den Kalender und zählt den Klick mit dieser Herkunft. */
+export type ChromeLink = { label: string; href: string; calendar?: SalesCallEntry };
 
 export const CONTACT_PATH = "/contact";
 
@@ -40,7 +41,7 @@ export const FOOTER_COLUMNS: readonly { label: string; links: readonly ChromeLin
     links: [
       { label: "Über uns", href: "/#ueber" },
       { label: "Preise", href: "/preise" },
-      { label: "Erstgespräch buchen", href: `${SALES_CALENDAR_PATH}?von=footer` },
+      { label: "Erstgespräch buchen", href: SALES_CALENDAR_HREF, calendar: "footer" },
       { label: "Anmelden", href: "/anmelden" },
     ],
   },

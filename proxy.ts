@@ -19,6 +19,11 @@ import {
  * entsteht vorerst nur die Report-Only-Fassung — siehe `lib/security/csp.ts`
  * für den geplanten Rollentausch.
  *
+ * Seit 18.10.2026 nur noch im Talent Index und auf den Profilseiten, die je
+ * Anfrage entstehen. Die öffentlichen Seiten kommen fertig aus dem CDN; dort
+ * stand nie eine Nonce im HTML, jeder Aufruf erzeugte nur Verstoßmeldungen an
+ * /api/csp-report und kostete eine Edge-Funktion vor dem ersten Byte.
+ *
  * In Next 16 heißt diese Datei `proxy.ts`; `middleware.ts` ist derselbe
  * Mechanismus unter dem alten Namen und wird beim Build als veraltet gemeldet.
  */
@@ -65,13 +70,20 @@ export default function proxy(request: NextRequest) {
 }
 
 export const config = {
+  // Beim Build gelesen, deshalb ausgeschrieben statt berechnet. Prefetches
+  // werden ausgenommen, damit eine Nonce nicht in einer vorgeladenen Antwort
+  // landet und dort veraltet. `/chat/:path*` umfasst auch `/chat` selbst
+  // (für die Weiterleitung `?profil=`).
   matcher: [
     {
-      // Statische Dateien und die API brauchen keine Nonce. Prefetches werden
-      // ausgenommen, damit eine Nonce nicht in einer vorgeladenen Antwort
-      // landet und dort veraltet. Bilder, Videos und Symbole aus `public/`
-      // ebenso: Sie liefen bisher bei jedem Abruf durch die Funktion.
-      source: "/((?!api|_next/static|_next/image|favicon.ico|images/|videos/|icon.png|apple-icon.png|robots.txt|sitemap.xml).*)",
+      source: "/chat/:path*",
+      missing: [
+        { type: "header", key: "next-router-prefetch" },
+        { type: "header", key: "purpose", value: "prefetch" },
+      ],
+    },
+    {
+      source: "/profil/:path*",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },

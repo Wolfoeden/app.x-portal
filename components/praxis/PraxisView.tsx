@@ -21,7 +21,6 @@ type Props = {
   slots: readonly CallSlot[];
   calendarBase: string | null;
   token: string | null;
-  photoUrl: string;
 };
 
 /** Zählt Interesse und Kalenderklicks; ein Fehler ändert nichts an der Seite. */
@@ -68,7 +67,8 @@ function CaseVisual({ kind }: { kind: PraxisCase["visual"] }) {
  * auch“. Was angeklickt ist, steht im Termin (als Notiz im Kalender) und im
  * Admin. Gebucht wird im Kalender selbst, in einem neuen Tab.
  */
-export function PraxisView({ cases, slots, calendarBase, token, photoUrl }: Props) {
+export function PraxisView({ cases, slots, calendarBase, token }: Props) {
+  const { small, large } = SALES_CONTACT.photo;
   const [picked, setPicked] = useState<readonly PraxisInterest[]>([]);
   const [slot, setSlot] = useState<string | null>(slots[0]?.start ?? null);
   const [name, setName] = useState("");
@@ -98,7 +98,7 @@ export function PraxisView({ cases, slots, calendarBase, token, photoUrl }: Prop
         <div className={`${home.wrap} ${styles.heroGrid}`}>
           <div className={styles.heroCopy}>
             <p className={styles.heroPerson}>
-              <img src={photoUrl} alt="" width={52} height={52} />
+              <img src={small} alt="" width={52} height={52} />
               <span><strong>{SALES_CONTACT.name}</strong> · XPORTAL<br />Danke für unser Telefonat.</span>
             </p>
             <div>
@@ -115,7 +115,7 @@ export function PraxisView({ cases, slots, calendarBase, token, photoUrl }: Prop
 
           <aside id="termin" className={styles.booking} aria-labelledby="booking-title">
             <div className={styles.bookingHead}>
-              <img src={photoUrl} alt="" width={48} height={48} />
+              <img src={small} alt="" width={48} height={48} />
               <div>
                 <p id="booking-title"><strong>Erstgespräch mit {SALES_CONTACT.name}</strong></p>
                 <p>30 Minuten · Telefon oder Video · kostenlos</p>
@@ -208,7 +208,7 @@ export function PraxisView({ cases, slots, calendarBase, token, photoUrl }: Prop
 
       <section className={styles.person} aria-label="Ihr Ansprechpartner">
         <div className={`${home.wrap} ${styles.personGrid}`}>
-          <img src={photoUrl} alt={SALES_CONTACT.name} width={120} height={120} />
+          <img src={large} alt={SALES_CONTACT.name} width={120} height={120} loading="lazy" decoding="async" />
           <div className={styles.personQuote}>
             <p>„Im Erstgespräch zeige ich Ihnen, was davon in Ihrem Unternehmen Zeit spart.“</p>
             <p><strong>{SALES_CONTACT.name}</strong> · XPORTAL · <a href={phoneHref(SALES_CONTACT.phone)}>{SALES_CONTACT.phone}</a></p>

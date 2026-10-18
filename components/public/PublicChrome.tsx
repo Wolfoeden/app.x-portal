@@ -2,17 +2,12 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { LegalFooter } from "@/components/LegalFooter";
-import { SALES_CALENDAR_PATH } from "@/lib/sales/sales-call-links";
 import { phoneHref, SALES_CONTACT } from "@/lib/sales/sales-contact-model";
 
+import { CalendarLink } from "./CalendarLink";
 import { CONTACT_PATH, FOOTER_COLUMNS, MAIN_NAVIGATION, MENU_EXTRA_LINKS } from "./company-links";
 import { PublicAppAction } from "./PublicAppAction";
 import styles from "./public-chrome.module.css";
-
-/** Der Kalender für das Erstgespräch, mit Herkunft für den Umsatzweg. */
-export function callHref(entry: "header" | "menu" | "footer"): string {
-  return `${SALES_CALENDAR_PATH}?von=${entry}`;
-}
 
 function PhoneIcon() {
   return (
@@ -26,7 +21,7 @@ function PhoneIcon() {
  * Kopf aller öffentlichen Seiten (Entwurf 3, 16.10.2026): links die Marke
  * und vier Wege — Live-Demo, Leistungen, Preise, Über uns —, rechts
  * „Anmelden“, die Telefonnummer und „Erstgespräch buchen“. Der Knopf öffnet
- * den Kalender (über /contact/termin, damit der Klick zählt). Auf dem grünen
+ * den Kalender direkt (`CalendarLink` zählt den Klick). Auf dem grünen
  * Rahmen (`framed`) ist er weiß, auf Weiß tannengrün; die frühere Limette
  * ist weg.
  *
@@ -60,9 +55,9 @@ export function PublicHeader({ context, authenticated = false, actions, framed =
                 <PhoneIcon />
                 <span>{SALES_CONTACT.phone}</span>
               </a>
-              <a href={callHref("header")} target="_blank" rel="noopener noreferrer nofollow" className={styles.primaryAction}>
+              <CalendarLink entry="header" className={styles.primaryAction}>
                 Erstgespräch buchen
-              </a>
+              </CalendarLink>
             </>
           )}
         </div>
@@ -77,7 +72,7 @@ export function PublicHeader({ context, authenticated = false, actions, framed =
             {authenticated ? <PublicAppAction className={styles.menuAction} /> : (
               <Link href="/anmelden" prefetch={false}>Anmelden</Link>
             )}
-            <a href={callHref("menu")} target="_blank" rel="noopener noreferrer nofollow" className={styles.menuAction}>Erstgespräch buchen</a>
+            <CalendarLink entry="menu" className={styles.menuAction}>Erstgespräch buchen</CalendarLink>
           </nav>
         </details>
       </div>
@@ -110,8 +105,8 @@ export function PublicFooter({ framed = false }: { framed?: boolean }) {
         {FOOTER_COLUMNS.map((column) => (
           <nav key={column.label} className={styles.footerColumn} aria-label={column.label}>
             <p>{column.label}</p>
-            {column.links.map((link) => link.href.startsWith(SALES_CALENDAR_PATH) ? (
-              <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer nofollow">{link.label}</a>
+            {column.links.map((link) => link.calendar ? (
+              <CalendarLink key={link.label} entry={link.calendar}>{link.label}</CalendarLink>
             ) : (
               <Link key={link.label} href={link.href} prefetch={false}>{link.label}</Link>
             ))}

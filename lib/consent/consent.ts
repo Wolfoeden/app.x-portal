@@ -57,6 +57,19 @@ export function parseConsent(cookieHeader: string): ConsentChoice | null {
   return null;
 }
 
+/**
+ * Steht im `<head>` jeder Seite und läuft vor dem ersten Zeichnen: Ist schon
+ * eine Wahl gespeichert, markiert es das Wurzelelement, und das CSS blendet
+ * den Hinweis aus (`html[data-consent="set"]`). So steht der Hinweis für
+ * neue Besucher sofort im HTML (vorher erschien er erst nach dem
+ * JavaScript und war auf dem Telefon das größte, also zuletzt gezeichnete
+ * Element), ohne bei allen anderen kurz aufzublitzen.
+ *
+ * Der Hash dieses Texts steht in der Nonce-Richtlinie (`lib/security/csp.ts`);
+ * wer ihn ändert, ändert dort den Hash mit (der Test rechnet nach).
+ */
+export const CONSENT_PAINT_SCRIPT = `if(/(?:^|;\\s*)${CONSENT_COOKIE}=${CONSENT_VERSION}\\.(?:all|essential)(?:;|$)/.test(document.cookie))document.documentElement.dataset.consent="set"`;
+
 /** Betreiberseiten messen nicht; dort sieht niemand eine Anzeige. */
 const UNTRACKED_PATH = /^\/chat\/admin(?:\/|$)/u;
 

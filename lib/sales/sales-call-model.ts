@@ -5,7 +5,10 @@
  * Kalenderlink und die Links auf die Seite.
  */
 
+import { SALES_CONTACT } from "./sales-contact-model";
+
 export {
+  SALES_CALENDAR_CLICK_PATH,
   SALES_CALENDAR_PATH,
   SALES_CALL_ENTRIES,
   SALES_CALL_KIND,
@@ -43,3 +46,11 @@ export function salesCalendarUrl(
   url.searchParams.set("utm_source", "x-portal");
   return url.toString();
 }
+
+/**
+ * „Erstgespräch buchen“ ohne Vorbelegung: der Kalender des Ansprechpartners,
+ * direkt verlinkt und schon beim Build berechnet. Ein abweichendes
+ * `SALES_CALL_URL` gilt nur serverseitig (Vorbelegung, freie Termine auf
+ * /praxis); wer den Kalender wechselt, ändert `SALES_CONTACT.calendarUrl`.
+ */
+export const SALES_CALENDAR_HREF = salesCalendarUrl(SALES_CONTACT.calendarUrl) ?? SALES_CONTACT.calendarUrl;
