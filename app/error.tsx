@@ -7,6 +7,7 @@ import {
   PublicFooter,
   PublicHeader,
 } from "@/components/public/PublicChrome";
+import { appPath } from "@/lib/app-path";
 
 /**
  * Die Fehlerseite innerhalb des Layouts.
@@ -43,7 +44,7 @@ export default function ErrorPage({
           <button type="button" className="booking-continue" onClick={reset}>
             Erneut versuchen
           </button>
-          <Link href="/chat">Zur Startseite</Link>
+          <a href={appPath("/chat")}>Zur Startseite</a>
         </div>
 
         {error.digest ? (

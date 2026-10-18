@@ -5,6 +5,7 @@ import { EXAMPLE_BRIEFS, exampleBriefPath } from "@/components/chat/example-brie
 import { actionClass } from "@/components/ui/actions";
 import { MatchCard } from "@/components/ui/MatchCard";
 import { CREDIT_PRICES } from "@/lib/ai/credit-policy";
+import { appPath } from "@/lib/app-path";
 import { CREDIT_PLANS, PUBLIC_PRICING_PLANS, TRIAL_CREDITS, TRIAL_DAYS } from "@/lib/billing/plans";
 import type { LandingStats } from "@/lib/marketing/landing-stats";
 import { publishedCaseStudies, type CaseStudy } from "@/lib/marketing/case-studies";
@@ -129,7 +130,7 @@ export function FreelancerLanding({ caseStudies = publishedCaseStudies() }: { st
               <p className={styles.planName}>{CREDIT_PLANS.starter.label}</p>
               <p className={styles.planPrice}>0 €</p>
               <p>{freeAnalyses} Projektanalysen, ohne Karte</p>
-              <Link href="/chat" prefetch={false} className={actionClass("secondary", { block: true })}>Kostenlos starten</Link>
+              <a href={appPath("/chat")} className={actionClass("secondary", { block: true })}>Kostenlos starten</a>
             </article>
             {plans.map((plan) => (
               <article key={plan.id} className={plan.recommended ? `${styles.planCard} ${styles.planRecommended}` : styles.planCard}>
@@ -167,7 +168,7 @@ export function FreelancerLanding({ caseStudies = publishedCaseStudies() }: { st
             <h2 id="abschluss-title">Das nächste Mandat wartet.</h2>
             <p>Fügen Sie die nächste Ausschreibung ein und sehen Sie, wer wirklich passt.</p>
             <div className={styles.actions}>
-              <Link href="/chat" prefetch={false} className={actionClass("primary")}>Kostenlos starten</Link>
+              <a href={appPath("/chat")} className={actionClass("primary")}>Kostenlos starten</a>
               <Link href={salesCallHref("closing")} prefetch={false} className={styles.closingSecondary}>Gespräch vereinbaren</Link>
             </div>
           </div>

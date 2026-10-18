@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 
 import { ChatWorkspace } from "@/components/ChatWorkspace";
 
@@ -13,6 +14,9 @@ export const metadata: Metadata = {
   },
 };
 
-export default function MyTeamPage() {
+// Je Anfrage, damit die Nonce-CSP greift: siehe `NONCE_ROUTES` in
+// lib/security/csp.ts.
+export default async function MyTeamPage() {
+  await connection();
   return <ChatWorkspace view="team" />;
 }

@@ -135,7 +135,7 @@ export default async function BookingHandoffPage({
         >
           Weiter zur Buchungsseite
         </a>
-        <Link href="/chat">Abbrechen</Link>
+        <a href={appPath("/chat")}>Abbrechen</a>
       </div>
 
       <p className="booking-note">

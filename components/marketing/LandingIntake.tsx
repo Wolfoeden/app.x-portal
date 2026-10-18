@@ -4,6 +4,7 @@ import Link from "next/link";
 import { type FormEvent, type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from "react";
 
 import { IconArrowUp } from "@/components/icons";
+import { appPath } from "@/lib/app-path";
 import { saveProjectDraft } from "@/lib/recruiting/project-draft";
 import { salesCallHref } from "@/lib/sales/sales-call-links";
 
@@ -167,15 +168,16 @@ export function LandingIntake({ profileId, note, roleChips, profileCard }: {
       <section className={styles.showcase} aria-label="Beispiel für einen Treffer">
         <div className={`${styles.wrap} ${styles.showcaseInner}`}>
           <p className={styles.showcaseLabel}>So sieht ein Treffer aus</p>
-          <Link
-            href={`/profil/${profileId}`}
-            prefetch={false}
+          {/* Voller Seitenaufruf: Die Profilseite hat ihre eigene CSP
+              (`NONCE_ROUTES` in lib/security/csp.ts). */}
+          <a
+            href={appPath(`/profil/${profileId}`)}
             className={styles.profileLink}
             aria-label="Profil von Roman D. öffnen"
             onClick={() => saveProjectDraft(visibleDraft)}
           >
             {profileCard}
-          </Link>
+          </a>
         </div>
       </section>
     </>

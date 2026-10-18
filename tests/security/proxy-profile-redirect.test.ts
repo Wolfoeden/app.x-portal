@@ -32,9 +32,15 @@ describe("proxy: /chat?profil=", () => {
 });
 
 // 18.10.2026: Der Proxy läuft nur noch, wo Seiten je Anfrage entstehen; die
-// öffentlichen Seiten kommen ohne Edge-Funktion aus dem CDN.
+// öffentlichen Seiten kommen ohne Edge-Funktion aus dem CDN. Gespräche und
+// Merkliste zeigen denselben Talent Index und gehören dazu.
 describe("proxy: where it runs", () => {
-  it("covers the Talent Index and the profile pages, nothing else", () => {
-    expect(config.matcher.map((entry) => entry.source)).toEqual(["/chat/:path*", "/profil/:path*"]);
+  it("covers the Talent Index, its views and the profile pages, nothing else", () => {
+    expect(config.matcher.map((entry) => entry.source)).toEqual([
+      "/chat/:path*",
+      "/profil/:path*",
+      "/gespraeche/:path*",
+      "/mein-team/:path*",
+    ]);
   });
 });

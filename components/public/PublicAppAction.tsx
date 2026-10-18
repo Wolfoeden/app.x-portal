@@ -1,12 +1,29 @@
 "use client";
 
-import Link from "next/link";
-import { useState, type MouseEvent } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 
-/** Immediate route feedback without a full-screen loader or layout shift. */
+import { appPath } from "@/lib/app-path";
+
+/**
+ * Immediate route feedback without a full-screen loader or layout shift.
+ *
+ * Ein gewöhnlicher Link statt `<Link>`: Der Talent Index muss als eigenes
+ * Dokument laden, sonst bliebe die CSP der Seite stehen, von der man kommt
+ * (`NONCE_ROUTES` in lib/security/csp.ts).
+ */
 export function PublicAppAction({ className }: { className: string }) {
   const [loading, setLoading] = useState(false);
   const [reducedMotion] = useState(() => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+  // Zurück aus dem Verlauf (bfcache) steht die Seite so da, wie man sie
+  // verlassen hat; ohne das drehte sich der Hinweis weiter.
+  useEffect(() => {
+    const reset = (event: PageTransitionEvent) => {
+      if (event.persisted) setLoading(false);
+    };
+    window.addEventListener("pageshow", reset);
+    return () => window.removeEventListener("pageshow", reset);
+  }, []);
 
   function start(event: MouseEvent<HTMLAnchorElement>) {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -14,9 +31,8 @@ export function PublicAppAction({ className }: { className: string }) {
   }
 
   return (
-    <Link
-      href="/chat"
-      prefetch
+    <a
+      href={appPath("/chat")}
       className={className}
       aria-label={loading ? "App wird gestartet" : "App starten"}
       onClick={start}
@@ -31,6 +47,6 @@ export function PublicAppAction({ className }: { className: string }) {
           </line>
         </svg>
       ) : "App starten"}
-    </Link>
+    </a>
   );
 }

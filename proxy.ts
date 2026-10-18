@@ -19,10 +19,11 @@ import {
  * entsteht vorerst nur die Report-Only-Fassung — siehe `lib/security/csp.ts`
  * für den geplanten Rollentausch.
  *
- * Seit 18.10.2026 nur noch im Talent Index und auf den Profilseiten, die je
- * Anfrage entstehen. Die öffentlichen Seiten kommen fertig aus dem CDN; dort
- * stand nie eine Nonce im HTML, jeder Aufruf erzeugte nur Verstoßmeldungen an
- * /api/csp-report und kostete eine Edge-Funktion vor dem ersten Byte.
+ * Er läuft nur auf `NONCE_ROUTES` (lib/security/csp.ts), und die entstehen
+ * alle je Anfrage. Die öffentlichen Seiten kommen fertig aus dem CDN; dort
+ * steht nie eine Nonce im HTML, jeder Aufruf erzeugte nur Verstoßmeldungen an
+ * /api/csp-report und kostete eine Edge-Funktion vor dem ersten Byte. Bis
+ * 18.10.2026 galt das auch für /chat selbst, das bis dahin vorgerendert war.
  *
  * In Next 16 heißt diese Datei `proxy.ts`; `middleware.ts` ist derselbe
  * Mechanismus unter dem alten Namen und wird beim Build als veraltet gemeldet.
@@ -73,7 +74,7 @@ export const config = {
   // Beim Build gelesen, deshalb ausgeschrieben statt berechnet. Prefetches
   // werden ausgenommen, damit eine Nonce nicht in einer vorgeladenen Antwort
   // landet und dort veraltet. `/chat/:path*` umfasst auch `/chat` selbst
-  // (für die Weiterleitung `?profil=`).
+  // (für die Weiterleitung `?profil=`). Dieselbe Liste wie `NONCE_ROUTES`.
   matcher: [
     {
       source: "/chat/:path*",
@@ -84,6 +85,20 @@ export const config = {
     },
     {
       source: "/profil/:path*",
+      missing: [
+        { type: "header", key: "next-router-prefetch" },
+        { type: "header", key: "purpose", value: "prefetch" },
+      ],
+    },
+    {
+      source: "/gespraeche/:path*",
+      missing: [
+        { type: "header", key: "next-router-prefetch" },
+        { type: "header", key: "purpose", value: "prefetch" },
+      ],
+    },
+    {
+      source: "/mein-team/:path*",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },

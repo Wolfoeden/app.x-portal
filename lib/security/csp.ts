@@ -12,12 +12,42 @@
  * `'strict-dynamic'` sorgt dafür, dass von dort nachgeladene Skripte die
  * Erlaubnis erben, ohne dass die Herkunft einzeln aufgezählt werden muss.
  *
+ * Das gilt nur für die Seiten in `NONCE_ROUTES` — die, auf denen fremde
+ * Inhalte stehen: Talent Index, Gespräche, Merkliste und Profilseiten. Eine
+ * Nonce kann Next nur beim Rendern einer Anfrage setzen. Eine beim Build
+ * vorgerenderte Seite (○ in der Build-Ausgabe, auch mit `revalidate`) trägt
+ * keine; unter der Nonce-Fassung liefen dort weder die Chunks noch die
+ * Inline-Skripte mit den RSC-Daten (`self.__next_f.push(…)`), denn neben
+ * `'strict-dynamic'` ignorieren Browser auch `'self'`. Die Seite bliebe ohne
+ * JavaScript. So war es bis 18.10.2026 auf /chat: Jeder Aufruf meldete jeden
+ * Chunk als Verstoß. Deshalb entstehen alle Seiten in `NONCE_ROUTES` je
+ * Anfrage (`connection()` in `app/chat/layout.tsx`, `app/gespraeche` und
+ * `app/mein-team`, `force-dynamic` in `app/profil/[id]`), und der Proxy
+ * läuft nur dort.
+ *
+ * Alle übrigen Seiten — Startseite, Marketing, Rechtliches, Kontakt — behalten
+ * dauerhaft die Fassung mit `'unsafe-inline'` und ausgeschriebenen Herkünften.
+ * Hashes statt einer Nonce helfen dort nicht: `experimental.sri` versieht nur
+ * die eingebundenen Chunks mit `integrity`, nicht die Inline-Skripte mit den
+ * RSC-Daten, und deren Inhalt ändert sich je Seite, je Build und bei
+ * `revalidate` mit jedem Neubau. Alles je Anfrage zu rendern hieße, diese
+ * Seiten aus dem CDN zu nehmen. Vertretbar ist die Ausnahme, weil sie beim
+ * Build feststehen und nichts Fremdes zeigen.
+ *
+ * Eine Richtlinie gilt für das Dokument, nicht für die Route: Wer von einer
+ * statischen Seite per `<Link>` nach /chat wechselt, bleibt unter deren
+ * Fassung. Links von außen in `NONCE_ROUTES` sind deshalb gewöhnliche
+ * `<a>`-Links mit vollem Seitenaufruf; innerhalb bleibt es bei `<Link>`.
+ *
  * Ausgerollt wird in zwei Schritten: Die durchgesetzte Richtlinie bleibt
- * vorerst die alte, die Nonce-Fassung läuft daneben als
+ * vorerst die alte, die Nonce-Fassung läuft auf `NONCE_ROUTES` daneben als
  * `Content-Security-Policy-Report-Only`. Erst wenn eine Woche ohne echte
- * Meldungen vergangen ist, tauschen die beiden die Rollen. Ein Umschalten ohne
- * diesen Zwischenschritt würde jede übersehene Inline-Stelle sofort zu einer
- * weißen Seite machen.
+ * Meldungen vergangen ist, wird sie dort durchgesetzt: In `proxy.ts` heißt
+ * der Header dann `content-security-policy`, auf der Anfrage wie auf der
+ * Antwort. Die Fassung aus `next.config.ts` bleibt auf allen Seiten stehen;
+ * auf `NONCE_ROUTES` gelten dann beide, und ein Skript muss beide erfüllen.
+ * Ein Umschalten ohne diesen Zwischenschritt würde jede übersehene
+ * Inline-Stelle sofort zu einer weißen Seite machen.
  */
 
 export type ContentSecurityPolicyOptions = {
@@ -29,6 +59,19 @@ export type ContentSecurityPolicyOptions = {
 };
 
 export const CSP_REPORT_PATH = "/api/csp-report";
+
+/**
+ * Die Seiten mit der Nonce-Fassung, jeweils samt allem darunter. `proxy.ts`
+ * schreibt seinen Matcher aus (er wird beim Build gelesen); der Test hält ihn
+ * mit dieser Liste gleich.
+ */
+export const NONCE_ROUTES = ["/chat", "/profil", "/gespraeche", "/mein-team"] as const;
+
+/** Ob ein Link auf eine Seite mit der Nonce-Fassung führt. */
+export function rendersWithNonce(href: string): boolean {
+  const pathname = href.split(/[?#]/u, 1)[0];
+  return NONCE_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
 
 /**
  * Die Herkuenfte, die hCaptcha braucht.
@@ -61,8 +104,9 @@ const GOOGLE_ADS_FRAME_ORIGINS =
 
 /**
  * Das einzige eigene Inline-Skript: `CONSENT_PAINT_SCRIPT` aus
- * `lib/consent/consent.ts` im `<head>`. Es trägt keine Nonce (die statischen
- * Seiten entstehen beim Build), deshalb steht sein Hash in der
+ * `lib/consent/consent.ts` im `<head>`. Es trägt keine Nonce: Das
+ * Wurzel-Layout gilt auch für die statischen Seiten und könnte sie nur lesen,
+ * wenn jede Seite je Anfrage entstünde. Deshalb steht sein Hash in der
  * Nonce-Fassung. Die durchgesetzte Fassung bekommt ihn nicht: Neben einem
  * Hash ignorieren Browser `'unsafe-inline'`.
  */

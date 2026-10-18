@@ -5,6 +5,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { actionClass } from "@/components/ui/actions";
 import { MatchProtocol } from "@/components/product/MatchProtocol";
 import { CREDIT_PRICES } from "@/lib/ai/credit-policy";
+import { appPath } from "@/lib/app-path";
 import { CREDIT_PLANS } from "@/lib/billing/plans";
 import { salesCallHref, type SalesCallEntry } from "@/lib/sales/sales-call-links";
 import { MARKETING_PAGES, type PublicPage } from "@/lib/seo";
@@ -17,12 +18,15 @@ const FREE_ANALYSES = Math.floor(CREDIT_PLANS.starter.grantCredits / CREDIT_PRIC
  * Derselbe Einstieg wie auf der Startseite und im Kopf: „Kostenlos starten“
  * führt in den Talent Index. Bis 14.10.2026 stand hier „14 Tage kostenlos
  * testen“ mit Karte — „kostenlos“ führte so auf zwei verschiedene Angebote.
+ *
+ * Ein gewöhnlicher Link statt `<Link>`: Der Talent Index lädt als eigenes
+ * Dokument mit seiner eigenen CSP (`NONCE_ROUTES` in lib/security/csp.ts).
  */
 export function ProjectLink({ children = "Kostenlos starten" }: { children?: ReactNode }) {
   return (
-    <Link href="/chat" prefetch={false} className={actionClass("primary")}>
+    <a href={appPath("/chat")} className={actionClass("primary")}>
       {children}
-    </Link>
+    </a>
   );
 }
 

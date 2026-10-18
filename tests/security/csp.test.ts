@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -8,7 +10,10 @@ import {
   CONSENT_PAINT_SCRIPT_HASH,
   CSP_REPORT_GROUP,
   CSP_REPORT_PATH,
+  NONCE_ROUTES,
+  rendersWithNonce,
 } from "@/lib/security/csp";
+import { config } from "@/proxy";
 
 function directive(policy: string, name: string): string | undefined {
   return policy
@@ -42,7 +47,10 @@ const GOOGLE_ADS_FRAME_SOURCES = [
 ];
 
 describe("content security policy", () => {
-  it("keeps the enforced policy on 'unsafe-inline' until the nonce rollout flips", () => {
+  // 18.10.2026: Für die vorgerenderten Seiten ist das kein Zwischenstand
+  // mehr, sondern die Fassung auf Dauer. Dort steht keine Nonce im HTML, und
+  // Hashes passen nicht zu den RSC-Inline-Skripten (lib/security/csp.ts).
+  it("keeps 'unsafe-inline' in the enforced policy, which prerendered pages rely on", () => {
     const scriptSrc =
       directive(buildContentSecurityPolicy({ isProduction: true }), "script-src") ?? "";
 
@@ -176,5 +184,86 @@ describe("content security policy", () => {
 
     expect(policy).not.toContain("report-uri");
     expect(policy).not.toContain("report-to");
+  });
+});
+
+const REPO = path.resolve(import.meta.dirname, "../..");
+
+function filesBelow(directory: string, name: RegExp): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const target = path.join(directory, entry.name);
+    if (entry.isDirectory()) return filesBelow(target, name);
+    return name.test(entry.name) ? [target] : [];
+  });
+}
+
+/** `connection()` oder `force-dynamic`: Die Seite entsteht je Anfrage. */
+function rendersPerRequest(file: string): boolean {
+  const source = readFileSync(file, "utf8");
+  return /await connection\(\)/u.test(source) || /export const dynamic = "force-dynamic"/u.test(source);
+}
+
+/**
+ * 18.10.2026: Die Nonce-Fassung gilt nur auf Seiten, die je Anfrage entstehen.
+ * Auf einer vorgerenderten Seite steht keine Nonce im HTML; die Fassung
+ * blockiert dort jeden Chunk. So war es auf /chat, bis dieser Test kam.
+ */
+describe("content security policy: where the nonce applies", () => {
+  it("runs the proxy exactly on the nonce routes", () => {
+    expect(config.matcher.map((entry) => entry.source)).toEqual(
+      NONCE_ROUTES.map((route) => `${route}/:path*`),
+    );
+  });
+
+  it("renders every page below a nonce route per request", () => {
+    for (const route of NONCE_ROUTES) {
+      const directory = path.join(REPO, "app", route);
+      const pages = filesBelow(directory, /^page\.tsx$/u);
+      expect(pages.length, route).toBeGreaterThan(0);
+
+      for (const page of pages) {
+        // Die Seite selbst oder ein Layout zwischen ihr und der Route.
+        const layouts: string[] = [];
+        for (let dir = path.dirname(page); dir.startsWith(directory); dir = path.dirname(dir)) {
+          const layout = path.join(dir, "layout.tsx");
+          if (existsSync(layout)) layouts.push(layout);
+        }
+        expect(
+          [page, ...layouts].some(rendersPerRequest),
+          `${path.relative(REPO, page)} wird vorgerendert und bekäme keine Nonce`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  // Eine Richtlinie gilt für das Dokument. Ein `<Link>` von einer statischen
+  // Seite in den Talent Index ließe ihn unter `'unsafe-inline'` laufen.
+  it("enters the nonce routes from elsewhere with a full page load", () => {
+    const inside = NONCE_ROUTES.map((route) => path.join(REPO, "app", route) + path.sep);
+    const sources = [
+      ...filesBelow(path.join(REPO, "app"), /\.tsx$/u),
+      ...filesBelow(path.join(REPO, "components"), /\.tsx$/u),
+    ].filter((file) => !inside.some((directory) => file.startsWith(directory)));
+
+    const offenders = sources.flatMap((file) =>
+      [...readFileSync(file, "utf8").matchAll(/<Link\b[^<]*?\bhref=\{?\s*["'`]([^"'`]*)/gu)]
+        .filter((match) => rendersWithNonce(match[1]))
+        .map((match) => `${path.relative(REPO, file)}: ${match[1]}`),
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it("recognises links into the nonce routes and nothing else", () => {
+    expect(rendersWithNonce("/chat")).toBe(true);
+    expect(rendersWithNonce("/chat?anmelden=1")).toBe(true);
+    expect(rendersWithNonce("/chat/admin/leads")).toBe(true);
+    expect(rendersWithNonce("/profil/c314d7c4-4428-45ac-ba54-1a657b9f6b62")).toBe(true);
+    expect(rendersWithNonce("/gespraeche#offen")).toBe(true);
+    expect(rendersWithNonce("/mein-team")).toBe(true);
+
+    expect(rendersWithNonce("/")).toBe(false);
+    expect(rendersWithNonce("/chatbot")).toBe(false);
+    expect(rendersWithNonce("/anmelden?checkout=basic")).toBe(false);
+    expect(rendersWithNonce("/fuer-unternehmen")).toBe(false);
   });
 });

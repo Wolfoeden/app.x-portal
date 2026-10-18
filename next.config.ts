@@ -8,9 +8,10 @@ const configuredBasePath = process.env.NEXT_PUBLIC_APP_BASE_PATH
   ?.trim()
   .replace(/^\/+|\/+$/gu, "");
 const basePath = configuredBasePath ? `/${configuredBasePath}` : undefined;
-// Die durchgesetzte Fassung — vorerst noch mit `unsafe-inline`. Die
-// Nonce-Fassung läuft daneben als Report-Only aus `proxy.ts`; erst wenn deren
-// Meldungen leer bleiben, tauschen die beiden die Rollen.
+// Die durchgesetzte Fassung mit `unsafe-inline`, auf allen Seiten. Für die
+// vorgerenderten bleibt sie die einzige; auf `NONCE_ROUTES` kommt aus
+// `proxy.ts` die Nonce-Fassung dazu, vorerst als Report-Only und nach einer
+// Woche ohne Meldungen durchgesetzt. Siehe lib/security/csp.ts.
 const contentSecurityPolicy = buildContentSecurityPolicy({ isProduction });
 
 const buildVersion =

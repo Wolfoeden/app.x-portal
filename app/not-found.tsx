@@ -6,6 +6,7 @@ import {
   PublicFooter,
   PublicHeader,
 } from "@/components/public/PublicChrome";
+import { appPath } from "@/lib/app-path";
 
 export const metadata: Metadata = {
   title: "Seite nicht gefunden | XPORTAL",
@@ -35,9 +36,9 @@ export default function NotFound() {
         </PublicDocumentIntro>
 
         <div className="booking-actions">
-          <Link className="booking-continue" href="/chat">
+          <a className="booking-continue" href={appPath("/chat")}>
             Zur Freelancer-Suche
-          </Link>
+          </a>
           <Link href="/contact">Etwas melden</Link>
         </div>
       </main>
