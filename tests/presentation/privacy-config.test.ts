@@ -41,7 +41,7 @@ describe("production privacy and authentication configuration", () => {
 
   it("shows the requested cookie actions in their deliberate order", () => {
     const banner = repositoryFile("components/CookieConsent.tsx");
-    const css = repositoryFile("app/styles/workspace.css");
+    const css = repositoryFile("app/styles/shared.css");
 
     expect(banner).toContain("Google Ads");
     expect(banner).toContain("in die USA");
@@ -67,7 +67,7 @@ describe("production privacy and authentication configuration", () => {
   });
 
   it("keeps the primary cookie action readable outside the landing-page scope", () => {
-    const css = repositoryFile("app/styles/workspace.css");
+    const css = repositoryFile("app/styles/shared.css");
     const rule = css.match(/\.cookie-actions button\.is-primary\s*\{([^}]*)\}/u)?.[1];
 
     expect(rule).toContain("background: white");

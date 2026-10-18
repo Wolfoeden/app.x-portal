@@ -78,7 +78,6 @@ describe("praxis page", () => {
     cases: praxisCases(68),
     slots,
     calendarBase: "https://calendly.com/romandering/30min",
-    token: null,
   }));
 
   it("greets without a company or a person", () => {
@@ -109,7 +108,6 @@ describe("praxis page", () => {
       cases: praxisCases(null),
       slots: [],
       calendarBase: "https://calendly.com/romandering/30min",
-      token: null,
     }));
     expect(fallback).toContain("Termin wählen");
     expect(fallback).toContain("Alle freien Zeiten ansehen");

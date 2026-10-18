@@ -4,8 +4,8 @@
  * Abschnitte der Startseite, dazu die Preise. Talent Index, Kontakt und
  * Bewerber-Portal stehen im Telefon-Menü und in der Fußzeile.
  *
- * Die Leistungen mit uns führen auf die Kontaktseite; `?thema=` passt dort
- * Überschrift und Formular an.
+ * Die Leistungen mit uns führen auf die Kontaktseite; die Seite je Thema
+ * (`/contact/schulung`) passt Überschrift und Formular an.
  */
 import { SALES_CALENDAR_HREF, type SalesCallEntry } from "@/lib/sales/sales-call-model";
 
@@ -29,8 +29,8 @@ export const MENU_EXTRA_LINKS: readonly ChromeLink[] = [
 
 export const SERVICE_LINKS: readonly ChromeLink[] = [
   { label: "KI-Agenten", href: CONTACT_PATH },
-  { label: "KI-Schulungen", href: `${CONTACT_PATH}?thema=schulung` },
-  { label: "Informationssicherheit", href: `${CONTACT_PATH}?thema=iso27001` },
+  { label: "KI-Schulungen", href: `${CONTACT_PATH}/schulung` },
+  { label: "Informationssicherheit", href: `${CONTACT_PATH}/iso27001` },
   { label: "Talent Index", href: "/fuer-unternehmen" },
 ];
 

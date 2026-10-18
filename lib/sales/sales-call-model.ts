@@ -13,6 +13,7 @@ export {
   SALES_CALL_ENTRIES,
   SALES_CALL_KIND,
   SALES_CALL_PATH,
+  SALES_CALL_VIEW_PATH,
   isSalesCallEntry,
   salesCallHref,
   type SalesCallEntry,

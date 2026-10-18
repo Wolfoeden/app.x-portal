@@ -1,0 +1,127 @@
+/*
+ * Das Eingabefeld für Projekttexte: im Talent Index und auf der Startseite
+ * des Talent Index (/fuer-unternehmen, LandingIntake). Eigene Datei, damit
+ * die öffentliche Seite nicht das ganze Chat-CSS laden muss (18.10.2026).
+ */
+
+/* Eine Zeile, kein Kasten. Das Feld und der Sendeknopf standen untereinander,
+   was den Rahmen auf rund 100 px Hoehe brachte — fuer eine Zeile Text. Sie
+   stehen jetzt nebeneinander.
+
+   Ausgerichtet wird am unteren Rand: das Feld waechst beim Tippen bis 180 px,
+   und der Knopf soll dabei unten bleiben und nicht in der Mitte mitwandern. */
+.composer {
+  width: min(100%, 1400px);
+  margin-right: auto;
+  margin-left: auto;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: 26px;
+  background: var(--surface);
+  box-shadow: 0 7px 28px rgba(20, 20, 18, 0.075);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.composer:focus-within {
+  border-color: #a8a8a1;
+  box-shadow: 0 10px 34px rgba(20, 20, 18, 0.1);
+}
+
+.composer-field {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex: 1;
+}
+
+.composer textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 50px;
+  max-height: 180px;
+  resize: none;
+  overflow-y: auto;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  padding: 14px 4px 14px 20px;
+  font-size: var(--fs-base);
+  line-height: 1.45;
+}
+
+.composer textarea::placeholder {
+  color: var(--placeholder);
+}
+
+/* Nur noch der Sendeknopf steht hier, jetzt neben dem Feld statt darunter. */
+.composer-bottom {
+  display: flex;
+  flex: none;
+  align-items: center;
+  padding: 0 6px 5px 0;
+}
+
+.send-button {
+  display: grid;
+  width: var(--control-md);
+  height: var(--control-md);
+  cursor: pointer;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--xp-action-primary);
+  color: #fff;
+  font-size: var(--fs-md);
+  line-height: 1;
+}
+
+.send-button:hover:not(:disabled) {
+  background: var(--xp-action-primary-hover);
+}
+
+.send-button:disabled {
+  cursor: not-allowed;
+  background: #deded9;
+  color: #9b9b96;
+}
+
+.send-button.is-project-match {
+  display: inline-flex;
+  width: auto;
+  min-width: 154px;
+  gap: 8px;
+  border-radius: var(--radius-pill);
+  padding: 0 15px;
+  font-size: var(--fs-xs);
+  font-weight: 680;
+}
+
+/* Platzhalter im Eingabefeld -------------------------------------------- */
+
+.composer-placeholder {
+  position: absolute;
+  top: 14px;
+  right: 4px;
+  left: 20px;
+  overflow: hidden;
+  color: var(--placeholder);
+  font-size: var(--fs-base);
+  line-height: 1.45;
+  pointer-events: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .send-button.is-project-match {
+    min-width: 44px;
+    padding: 0 12px;
+  }
+
+  .send-button.is-project-match span {
+    display: none;
+  }
+}

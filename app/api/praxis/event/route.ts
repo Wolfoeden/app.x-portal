@@ -13,17 +13,20 @@ export const dynamic = "force-dynamic";
 
 const EventSchema = z.object({
   t: z.string().max(200).nullish(),
-  kind: z.enum(["interest", "calendar"]),
+  kind: z.enum(["view", "interest", "calendar"]),
   interests: z.array(z.string()).max(PRAXIS_INTERESTS.length).default([]),
   slot: z.boolean().optional(),
+  /** Wie viele freie Zeiten die Seite beim Aufruf zeigte. */
+  slots: z.number().int().min(0).max(20).optional(),
 });
 
 /**
- * Was auf der Praxisseite (/praxis) angeklickt wird: „Das will ich auch“
- * (welche Beispiele, als Schlüssel) und das Öffnen des Kalenders. Mit
- * gültigem Kürzel aus dem Mail-Link dem CRM-Kontakt zugeordnet, sonst ohne
- * Zuordnung. Keine Namen, keine Adressen — die tippt der Besucher erst im
- * Kalender ein.
+ * Was auf der Praxisseite (/praxis) passiert: der Aufruf (seit 18.10.2026
+ * vom Browser gemeldet, weil die Seite statisch aus dem CDN kommt),
+ * „Das will ich auch“ (welche Beispiele, als Schlüssel) und das Öffnen des
+ * Kalenders. Mit gültigem Kürzel aus dem Mail-Link dem CRM-Kontakt
+ * zugeordnet, sonst ohne Zuordnung. Keine Namen, keine Adressen — die tippt
+ * der Besucher erst im Kalender ein.
  *
  * Antwortet immer mit 204, auch bei Unsinn: Die Seite wartet nicht darauf,
  * und eine Fehlermeldung hilft niemandem, der nur klicken wollte.
@@ -42,7 +45,16 @@ export async function POST(request: NextRequest) {
 
     const contactId = readPraxisToken(parsed.data.t);
     const interests = [...new Set(parsed.data.interests.filter(isPraxisInterest))].join(",") || null;
-    if (parsed.data.kind === "interest") {
+    if (parsed.data.kind === "view") {
+      await writeAuditEvent({
+        actorUserId: null,
+        action: "praxis_viewed",
+        targetType: "crm_contacts",
+        targetId: contactId,
+        outcome: "success",
+        metadata: { linked: Boolean(contactId), slots: parsed.data.slots ?? null },
+      });
+    } else if (parsed.data.kind === "interest") {
       await writeAuditEvent({
         actorUserId: null,
         action: "praxis_interest",

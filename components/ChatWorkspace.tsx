@@ -16,6 +16,7 @@ import { BRIEF_ANALYSIS_CREDITS, EXTERNAL_SEARCH_CREDITS } from "@/lib/ai/credit
 import { saveProjectDraft, readProjectDraft, clearProjectDraft } from "@/lib/recruiting/project-draft";
 import { trackRecruitingEvent } from "@/lib/analytics/recruiting-client";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser";
+import Link from "next/link";
 import { openCookieSettings } from "@/components/CookieConsent";
 import { LegalFooter } from "@/components/LegalFooter";
 import {
@@ -3831,7 +3832,7 @@ export function ChatWorkspace({
             <span aria-hidden="true">·</span>
             <a href="/terms">AGB</a>
             <span aria-hidden="true">·</span>
-            <a href="/contact">Kontakt</a>
+            <Link href="/contact" prefetch={false}>Kontakt</Link>
             <span aria-hidden="true">·</span>
             <button type="button" onClick={() => openCookieSettings()}>Cookies</button>
           </span>

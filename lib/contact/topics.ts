@@ -5,8 +5,9 @@
  * (früher die eigene Seite /gespraech), zuletzt alles andere.
  *
  * Ohne Server- und zod-Abhängigkeit, weil Seite, Route, Menü und Tests sie
- * teilen. Der Schlüssel steht in Links (`/contact?thema=kundenservice`) und
- * im Formular; geändert wird er deshalb nicht.
+ * teilen. Der Schlüssel steht in Links (`/contact/kundenservice`, früher
+ * `/contact?thema=kundenservice`) und im Formular; geändert wird er
+ * deshalb nicht.
  */
 
 export type ContactTopicGroup = "agent" | "competence" | "recruiting" | "other";

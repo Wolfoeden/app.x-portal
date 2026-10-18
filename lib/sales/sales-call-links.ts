@@ -22,6 +22,9 @@ export const SALES_CALENDAR_PATH = "/contact/termin";
  */
 export const SALES_CALENDAR_CLICK_PATH = "/api/sales-call/click";
 
+/** Der Aufruf der (statischen) Kontaktseite, gemeldet vom Browser. */
+export const SALES_CALL_VIEW_PATH = "/api/sales-call/view";
+
 /** So erscheint die Anfrage im CRM; die Kontaktliste filtert nach diesem Typ. */
 export const SALES_CALL_KIND = "Gesprächsanfrage (Website)";
 
@@ -53,9 +56,9 @@ export function isSalesCallEntry(value: unknown): value is SalesCallEntry {
 }
 
 /**
- * Von den Seiten zum Talent Index geht es um Freelancer; die Kontaktseite
- * wählt dieses Thema dann vor und zeigt die passende Überschrift.
+ * Von den Seiten zum Talent Index geht es um Freelancer: die Kontaktseite
+ * zu diesem Thema, mit passender Überschrift und Vorauswahl.
  */
 export function salesCallHref(entry: SalesCallEntry): string {
-  return `${SALES_CALL_PATH}?thema=freelancer&von=${entry}`;
+  return `${SALES_CALL_PATH}/freelancer?von=${entry}`;
 }

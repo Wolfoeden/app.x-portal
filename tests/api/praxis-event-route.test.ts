@@ -34,6 +34,20 @@ beforeEach(() => {
 });
 
 describe("POST /api/praxis/event", () => {
+  // 18.10.2026: Die Seite ist statisch; den Aufruf meldet der Browser.
+  it("records a visit, assigned to the contact of the link", async () => {
+    expect((await send({ t: "gültig", kind: "view", slots: 3 })).status).toBe(204);
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({
+      action: "praxis_viewed",
+      targetType: "crm_contacts",
+      targetId: CONTACT,
+      metadata: { linked: true, slots: 3 },
+    }));
+    mocks.audit.mockClear();
+    await send({ t: "gefälscht", kind: "view" });
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ targetId: null, metadata: { linked: false, slots: null } }));
+  });
+
   it("records marked examples as keys, assigned to the contact of the link", async () => {
     const response = await send({ t: "gültig", kind: "interest", interests: ["anfragen", "servicewissen", "<script>"] });
     expect(response.status).toBe(204);

@@ -6,6 +6,7 @@ import { type FormEvent, type KeyboardEvent, type ReactNode, useEffect, useRef, 
 import { IconArrowUp } from "@/components/icons";
 import { saveProjectDraft } from "@/lib/recruiting/project-draft";
 import { salesCallHref } from "@/lib/sales/sales-call-links";
+import "@/app/styles/composer.css";
 
 import styles from "./landing.module.css";
 
