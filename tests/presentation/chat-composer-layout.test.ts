@@ -2,7 +2,9 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const workspace = readFileSync("components/ChatWorkspace.tsx", "utf8");
-const css = readFileSync("app/styles/workspace.css", "utf8");
+// Seit 18.10.2026 liegt das Eingabefeld selbst in composer.css (auch auf
+// /fuer-unternehmen), die Chat-Varianten bleiben in workspace.css.
+const css = readFileSync("app/styles/workspace.css", "utf8") + readFileSync("app/styles/composer.css", "utf8");
 
 /** Der CSS-Block eines Selektors, ohne Media Queries auseinanderzunehmen. */
 function blocks(selector: string): string[] {

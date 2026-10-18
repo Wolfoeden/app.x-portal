@@ -66,7 +66,9 @@
 .showcaseLabel { margin: 0; color: #0f5f39; font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
 .profileLink { display: flex; width: min(100%, 560px); border-radius: 16px; color: inherit; text-align: left; text-decoration: none; }
 .profileLink:focus-visible { outline: 3px solid color-mix(in srgb, var(--lp-brand) 30%, transparent); outline-offset: 4px; }
-.expertCard { width: 100%; padding: 28px; border-radius: 16px; box-shadow: 0 24px 60px rgba(16, 27, 23, .10); }
+/* Abstand und Ecken kommen von der Karte selbst (match-card.module.css); eine
+   zweite Angabe hier hing von der Reihenfolge der Stylesheets ab und galt nie. */
+.expertCard { width: 100%; box-shadow: 0 24px 60px rgba(16, 27, 23, .10); }
 .cardAvailability { border-radius: 999px; background: #e9f5ed; padding: 3px 12px; color: var(--lp-brand); font-size: 13px; font-weight: 600; }
 .cardAction { display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border-radius: var(--xp-action-radius); background: var(--xp-action-primary); color: #fff; font-size: 15px; font-weight: 500; }
 .profileLink:hover .cardAction { background: var(--xp-action-primary-hover); }
@@ -174,7 +176,6 @@
   .heroCenter { gap: 16px; padding-block: 40px 36px; }
   .heroSwitch a { min-height: 44px; padding-inline: 8px; font-size: 14px; }
   .showcaseInner { padding: 28px 16px 32px; border-radius: 16px; }
-  .expertCard { padding: 20px; }
   .factsRow, .planCards { grid-template-columns: minmax(0, 1fr); }
   .factsRow > div { padding: 20px 0; border-left: 0 !important; }
   .factsRow > div + div { border-top: 1px solid var(--lp-line); }

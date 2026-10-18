@@ -1,5 +1,6 @@
 import Script from "next/script";
 
+import "@/app/styles/captcha.css";
 import { captchaSiteKey } from "@/lib/security/captcha";
 
 /**

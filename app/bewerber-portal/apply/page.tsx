@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import "@/app/styles/app-surface";
 
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { linkedIdentities } from "@/lib/auth/linked-identities";

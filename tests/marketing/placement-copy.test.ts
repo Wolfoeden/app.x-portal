@@ -65,7 +65,7 @@ describe("recruiting SaaS commercial contract", () => {
   it("keeps the operator call and freelancer signup secondary to self service", () => {
     const html = landing();
     expect(html.indexOf("Projekt abgleichen")).toBeLessThan(html.indexOf("Gespräch vereinbaren"));
-    expect(html).toContain('href="/contact?thema=freelancer&amp;von=hero"');
+    expect(html).toContain('href="/contact/freelancer?von=hero"');
     expect(html).not.toContain("/gespraech");
     expect(html).toContain('href="/bewerber-portal/apply"');
     expect(html).not.toContain("Kostenlos suchen");

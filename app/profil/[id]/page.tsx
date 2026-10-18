@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { after } from "next/server";
 import "@/app/styles/legal.css";
+import "@/app/styles/app-surface";
 
 import { previewDossiers, previewProfiles } from "@/components/chat/preview-fixtures";
 import { PublicProfilePage } from "@/components/profile/PublicProfilePage";

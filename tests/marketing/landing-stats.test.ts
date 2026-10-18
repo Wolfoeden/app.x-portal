@@ -60,7 +60,7 @@ describe("landing page inventory total", () => {
     vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     const html = renderToStaticMarkup(createElement(FreelancerLanding));
     for (const entry of ["hero", "closing"]) {
-      expect(html).toContain(`href="/contact?thema=freelancer&amp;von=${entry}"`);
+      expect(html).toContain(`href="/contact/freelancer?von=${entry}"`);
     }
     expect(html).toContain("14 Tage kostenlos testen");
   });

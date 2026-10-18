@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import "@/app/styles/legal.css";
 import { CookieSettingsButton } from "@/components/CookieConsent";
 import { actionClass } from "@/components/ui/actions";
@@ -264,7 +265,7 @@ export default function PrivacyPage() {
           <h2>7. Kontaktanfragen</h2>
           <div>
             <p>
-              Wenn Sie das <a href="/contact">Kontaktformular</a> nutzen,
+              Wenn Sie das <Link href="/contact" prefetch={false}>Kontaktformular</Link> nutzen,
               verarbeiten wir Ihren Namen, Ihre E-Mail-Adresse, die gewählten
               Themen, den Text Ihrer Nachricht und die freiwilligen Angaben
               (Unternehmen, Telefonnummer, gewünschter Rückweg), um das

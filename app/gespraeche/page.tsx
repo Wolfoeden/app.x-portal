@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import "@/app/styles/app-surface";
 
 import { ChatWorkspace } from "@/components/ChatWorkspace";
 

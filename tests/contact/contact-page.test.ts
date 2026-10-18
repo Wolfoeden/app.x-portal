@@ -1,30 +1,50 @@
+import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ audit: vi.fn(async () => undefined) }));
+const mocks = vi.hoisted(() => ({
+  audit: vi.fn(async () => "trace"),
+  rateLimit: vi.fn(async () => ({ allowed: true, retryAfterSeconds: 0 })),
+  currentUser: vi.fn(async () => null as unknown),
+}));
 
 vi.mock("server-only", () => ({}));
-vi.mock("next/server", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("next/server")>()),
-  after: (task: () => unknown) => void task(),
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/navigation")>()),
+  useRouter: () => ({ replace: vi.fn() }),
 }));
 vi.mock("@/lib/audit/write", () => ({ writeAuditEvent: mocks.audit }));
-vi.mock("@/lib/auth/current-user", () => ({ getCurrentUser: async () => null }));
+vi.mock("@/lib/security/shared-rate-limit", () => ({ consumeRateLimit: mocks.rateLimit }));
+vi.mock("@/lib/auth/current-user", () => ({ getCurrentUser: mocks.currentUser }));
 
+import { POST as viewed } from "@/app/api/sales-call/view/route";
+import { ContactStatusNotice, legacyTopicPath } from "@/app/contact/ContactNotice";
+import ContactTopicPage, { generateStaticParams } from "@/app/contact/[thema]/page";
 import ContactPage from "@/app/contact/page";
 import { contactInquiryFromForm } from "@/lib/contact/inquiry";
-import { topicsFromQuery } from "@/lib/contact/topics";
+import { CONTACT_TOPICS, topicsFromQuery } from "@/lib/contact/topics";
 import { salesCallHref } from "@/lib/sales/sales-call-links";
 import { SALES_CONTACT } from "@/lib/sales/sales-contact-model";
 
-async function render(query: Record<string, string | string[]> = {}): Promise<string> {
-  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
-  return renderToStaticMarkup(await ContactPage({ searchParams: Promise.resolve(query) }));
+async function render(thema?: string): Promise<string> {
+  return renderToStaticMarkup(thema ? await ContactTopicPage({ params: Promise.resolve({ thema }) }) : ContactPage());
 }
 
 function selected(markup: string, value: string): boolean {
   return new RegExp(`<option value="${value}" selected=""`, "u").test(markup);
 }
+
+function view(body: unknown) {
+  return viewed(new Request("https://x-portal.eu/api/sales-call/view", {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: "https://x-portal.eu", host: "x-portal.eu" },
+    body: JSON.stringify(body),
+  }) as never);
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 // Oktober 2026: Die Kontaktseite folgt dem Telefonleitfaden und bleibt kurz
 // (Rückmeldung: zu viel Text, zu viele Häkchen). Ein Thema statt neun
@@ -60,46 +80,70 @@ describe("contact page", () => {
     expect(markup).toContain('id="anfrage"');
   });
 
-  it("puts the topic from the menu into the headline and the form", async () => {
-    const training = await render({ thema: "schulung" });
+  // 18.10.2026: je Thema eine statische Seite statt `?thema=`, damit die
+  // Seite aus dem CDN kommt und die Überschrift nicht nachträglich wechselt.
+  it("puts the topic of the page into the headline and the form", async () => {
+    const training = await render("schulung");
     expect(training).toContain("KI sicher im Alltag nutzen.");
     expect(selected(training, "schulung")).toBe(true);
 
-    const security = await render({ thema: "iso27001" });
+    const security = await render("iso27001");
     expect(security).toContain("die Audits standhält.");
     expect(selected(security, "iso27001")).toBe(true);
 
     expect(await render()).toContain("Weniger Routinearbeit.");
+    expect(generateStaticParams().map((params) => params.thema)).toEqual(CONTACT_TOPICS.map((topic) => topic.key));
+    expect(await render()).toContain('href="/contact/kundenservice#anfrage"');
   });
 
   // 14.10.2026: „Gespräch vereinbaren“ hatte eine eigene Seite. Jetzt führt
   // es hierher; von den Seiten zum Talent Index mit dem Thema Freelancer.
   it("is the page behind every „Gespräch vereinbaren“", async () => {
-    expect(salesCallHref("hero")).toBe("/contact?thema=freelancer&von=hero");
-    const markup = await render({ thema: "freelancer", von: "hero" });
+    expect(salesCallHref("hero")).toBe("/contact/freelancer?von=hero");
+    const markup = await render("freelancer");
     expect(markup).toContain("Sprechen wir über Ihr Projekt.");
     expect(selected(markup, "freelancer")).toBe(true);
-    expect(mocks.audit).toHaveBeenCalledWith(
-      expect.objectContaining({ action: "sales_call_viewed", metadata: expect.objectContaining({ via: "hero", topic: "freelancer" }) }),
-    );
-
-    mocks.audit.mockClear();
-    await render({ von: "evil" });
-    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ metadata: expect.objectContaining({ via: "direct" }) }));
   });
 
-  it("keeps the old menu links working", async () => {
+  // Die Seite ist statisch; den Aufruf meldet der Browser (ContactNotice).
+  it("counts the visit with where it came from, the topic and the account", async () => {
+    expect((await view({ von: "hero", thema: "freelancer" })).status).toBe(204);
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({
+      action: "sales_call_viewed",
+      metadata: { via: "hero", topic: "freelancer", account: "none" },
+    }));
+
+    mocks.audit.mockClear();
+    mocks.currentUser.mockResolvedValueOnce({ id: "u1", isAnonymous: false });
+    await view({ von: "evil", thema: "<script>" });
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({
+      actorUserId: "u1",
+      metadata: { via: "direct", topic: null, account: "registered" },
+    }));
+  });
+
+  it("keeps the old menu links working", () => {
     expect(topicsFromQuery(undefined, "Compliance Check")).toEqual(["iso27001"]);
     expect(topicsFromQuery(undefined, "KI-Webinar")).toEqual(["schulung"]);
     expect(topicsFromQuery(["vertrieb,unbekannt", "LAGER"], undefined)).toEqual(["vertrieb", "lager"]);
-    expect(selected(await render({ betreff: "KI-Webinar" }), "schulung")).toBe(true);
+    expect(legacyTopicPath("?betreff=KI-Webinar")).toBe("/contact/schulung");
+    expect(legacyTopicPath("?thema=freelancer&von=hero", "#anfrage")).toBe("/contact/freelancer?von=hero#anfrage");
+    expect(legacyTopicPath("?von=hero")).toBeNull();
+    expect(legacyTopicPath("?thema=unbekannt")).toBeNull();
   });
 
-  it("posts to the contact route without JavaScript", async () => {
-    const markup = await render({ status: "sent" });
+  it("posts to the contact route without JavaScript and confirms afterwards", async () => {
+    const markup = await render();
     expect(markup).toContain('action="/api/contact"');
     expect(markup).toContain('method="post"');
-    expect(markup).toContain("Eingegangen");
+
+    const sent = renderToStaticMarkup(createElement(ContactStatusNotice, { search: "?status=sent&t=abc.def" }));
+    expect(sent).toContain("Eingegangen");
+    expect(sent).toContain('href="/contact/termin?t=abc.def"');
+    expect(renderToStaticMarkup(createElement(ContactStatusNotice, { search: "?status=sent" }))).toContain('href="/contact/termin?von=contact"');
+    expect(renderToStaticMarkup(createElement(ContactStatusNotice, { search: "?status=error" }))).toContain("Nicht gespeichert");
+    expect(renderToStaticMarkup(createElement(ContactStatusNotice, { search: "?status=invalid" }))).toContain("Bitte prüfen");
+    expect(renderToStaticMarkup(createElement(ContactStatusNotice, { search: "" }))).toBe("");
   });
 
   it("calls back when a phone number is given, otherwise answers by mail", () => {

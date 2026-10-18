@@ -34,7 +34,7 @@ describe("salesCalendarUrl", () => {
 
 describe("entries", () => {
   it("builds tracked links and rejects unknown sources", () => {
-    expect(salesCallHref("header")).toBe("/contact?thema=freelancer&von=header");
+    expect(salesCallHref("header")).toBe("/contact/freelancer?von=header");
     expect(isSalesCallEntry("pricing")).toBe(true);
     expect(isSalesCallEntry("evil")).toBe(false);
     expect(SALES_CALL_KIND).toBe("Gesprächsanfrage (Website)");

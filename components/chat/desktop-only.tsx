@@ -44,7 +44,7 @@ export function DesktopOnlyNotice() {
       <nav className={styles.legal} aria-label="Rechtliches">
         <a href="/imprint">Impressum</a>
         <a href="/privacy">Datenschutz</a>
-        <a href="/contact">Kontakt</a>
+        <Link href="/contact" prefetch={false}>Kontakt</Link>
       </nav>
     </section>
   );

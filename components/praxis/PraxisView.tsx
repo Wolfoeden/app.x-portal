@@ -1,7 +1,7 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- das Foto kommt über die eigene Profilbild-Route, schon in passender Größe. */
-import { useState } from "react";
+/* eslint-disable @next/next/no-img-element -- das Foto liegt als kleine Datei in passender Größe unter /public. */
+import { useEffect, useState } from "react";
 
 import { DemoPersonCard } from "@/components/home/DemoPersonCard";
 import { AnswerVisual, InboxVisual } from "@/components/home/MiniVisuals";
@@ -20,10 +20,17 @@ type Props = {
   cases: readonly PraxisCase[];
   slots: readonly CallSlot[];
   calendarBase: string | null;
-  token: string | null;
 };
 
-/** Zählt Interesse und Kalenderklicks; ein Fehler ändert nichts an der Seite. */
+/**
+ * Das Kürzel aus dem Mail-Link (`?t=`). Die Seite ist statisch, deshalb
+ * liest es der Browser; geprüft wird es erst in /api/praxis/event.
+ */
+function linkToken(): string | null {
+  return new URLSearchParams(window.location.search).get("t");
+}
+
+/** Zählt Aufruf, Interesse und Kalenderklicks; ein Fehler ändert nichts an der Seite. */
 function track(body: Record<string, unknown>) {
   void fetch(appPath("/api/praxis/event"), {
     method: "POST",
@@ -67,7 +74,7 @@ function CaseVisual({ kind }: { kind: PraxisCase["visual"] }) {
  * auch“. Was angeklickt ist, steht im Termin (als Notiz im Kalender) und im
  * Admin. Gebucht wird im Kalender selbst, in einem neuen Tab.
  */
-export function PraxisView({ cases, slots, calendarBase, token }: Props) {
+export function PraxisView({ cases, slots, calendarBase }: Props) {
   const { small, large } = SALES_CONTACT.photo;
   const [picked, setPicked] = useState<readonly PraxisInterest[]>([]);
   const [slot, setSlot] = useState<string | null>(slots[0]?.start ?? null);
@@ -81,15 +88,19 @@ export function PraxisView({ cases, slots, calendarBase, token }: Props) {
   const bookingHref = calendarBookingUrl(calendarBase, { start: slot, name, email, note });
   const anyTimeHref = calendarBookingUrl(calendarBase, { name, email, note });
 
+  useEffect(() => {
+    track({ t: linkToken(), kind: "view", slots: slots.length });
+  }, [slots.length]);
+
   function toggle(key: PraxisInterest) {
     const next = picked.includes(key) ? picked.filter((item) => item !== key) : [...picked, key];
     setPicked(next);
-    track({ t: token, kind: "interest", interests: next });
+    track({ t: linkToken(), kind: "interest", interests: next });
   }
 
   function calendarOpened(withSlot: boolean) {
     setOpened(true);
-    track({ t: token, kind: "calendar", slot: withSlot, interests: picked });
+    track({ t: linkToken(), kind: "calendar", slot: withSlot, interests: picked });
   }
 
   return (
