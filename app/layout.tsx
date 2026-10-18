@@ -4,6 +4,7 @@ import { Inter, Sora } from "next/font/google";
 import { CookieConsent } from "@/components/CookieConsent";
 import { GoogleAdsTag } from "@/components/GoogleAdsTag";
 import { JsonLd } from "@/components/JsonLd";
+import { CONSENT_PAINT_SCRIPT } from "@/lib/consent/consent";
 import { SITE_DESCRIPTION, SITE_URL } from "@/lib/seo";
 import { siteStructuredData } from "@/lib/structured-data";
 import "./globals.css";
@@ -47,7 +48,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="de" className={`${inter.variable} ${sora.variable}`}>
+    // `suppressHydrationWarning`: CONSENT_PAINT_SCRIPT setzt `data-consent`
+    // am Wurzelelement, bevor React übernimmt.
+    <html lang="de" className={`${inter.variable} ${sora.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: CONSENT_PAINT_SCRIPT }} />
+      </head>
       <body>
         <JsonLd data={siteStructuredData()} />
         {children}

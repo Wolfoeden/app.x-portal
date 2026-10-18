@@ -9,17 +9,26 @@
 
 export const SALES_CALL_PATH = "/contact";
 
-/** Der Kalenderknopf der Kontaktseite: zählt den Klick, leitet zum Kalender. */
+/**
+ * Der Kalender mit Vorbelegung nach einer Anfrage (`?t=` aus der
+ * Bestätigung): liest Name und Adresse zum Token und leitet weiter.
+ */
 export const SALES_CALENDAR_PATH = "/contact/termin";
+
+/**
+ * Seit 18.10.2026 öffnet „Erstgespräch buchen“ den Kalender direkt (der
+ * Umweg über /contact/termin dauerte bis zu sechs Sekunden); den Klick meldet
+ * der Browser nebenher an diese Route.
+ */
+export const SALES_CALENDAR_CLICK_PATH = "/api/sales-call/click";
 
 /** So erscheint die Anfrage im CRM; die Kontaktliste filtert nach diesem Typ. */
 export const SALES_CALL_KIND = "Gesprächsanfrage (Website)";
 
 /**
  * Woher ein Klick auf „Gespräch vereinbaren“ oder „Erstgespräch buchen“ kam.
- * Steht als `?von=` in den Links und wird beim Aufruf der Kontaktseite und
- * beim Öffnen des Kalenders (/contact/termin) gezählt; anderes wird
- * verworfen.
+ * Steht als `?von=` in den Links zur Kontaktseite und wird beim Aufruf
+ * gezählt, ebenso beim Klick auf den Kalender; anderes wird verworfen.
  */
 export const SALES_CALL_ENTRIES = [
   "header",
@@ -35,6 +44,7 @@ export const SALES_CALL_ENTRIES = [
   "mail",
   "footer",
   "praxis",
+  "contact",
 ] as const;
 export type SalesCallEntry = (typeof SALES_CALL_ENTRIES)[number];
 

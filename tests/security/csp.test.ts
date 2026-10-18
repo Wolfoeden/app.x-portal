@@ -1,7 +1,11 @@
+import { createHash } from "node:crypto";
+
 import { describe, expect, it } from "vitest";
 
+import { CONSENT_PAINT_SCRIPT } from "@/lib/consent/consent";
 import {
   buildContentSecurityPolicy,
+  CONSENT_PAINT_SCRIPT_HASH,
   CSP_REPORT_GROUP,
   CSP_REPORT_PATH,
 } from "@/lib/security/csp";
@@ -66,6 +70,16 @@ describe("content security policy", () => {
     // Eine Nonce neben 'unsafe-inline' wäre wirkungslos: Browser ignorieren
     // 'unsafe-inline', sobald eine Nonce dasteht — aber nur dann.
     expect(scriptSrc).not.toContain("'unsafe-inline'");
+  });
+
+  // 18.10.2026: das Skript, das den Cookie-Hinweis vor dem ersten Zeichnen
+  // ausblendet, wenn schon gewählt wurde. Nur die Nonce-Fassung kennt seinen
+  // Hash; in der durchgesetzten würde er 'unsafe-inline' abschalten.
+  it("allows the consent paint script by its hash, only in the nonce variant", () => {
+    const hash = `'sha256-${createHash("sha256").update(CONSENT_PAINT_SCRIPT).digest("base64")}'`;
+    expect(CONSENT_PAINT_SCRIPT_HASH).toBe(hash);
+    expect(directive(buildContentSecurityPolicy({ nonce: "abc123", isProduction: true }), "script-src")).toContain(hash);
+    expect(directive(buildContentSecurityPolicy({ isProduction: true }), "script-src")).not.toContain("sha256-");
   });
 
   it("allows eval only outside production", () => {

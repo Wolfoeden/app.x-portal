@@ -65,6 +65,7 @@ const SALES_CALL_ENTRY_LABELS: Readonly<Record<string, string>> = {
   mail: "Mail",
   footer: "Fußzeile",
   praxis: "Praxisseite",
+  contact: "Kontaktseite",
   direct: "direkt",
 };
 

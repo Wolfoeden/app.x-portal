@@ -4,6 +4,7 @@ import { after } from "next/server";
 
 import { CaptchaField } from "@/components/CaptchaField";
 import { ContactPerson } from "@/components/marketing/ContactPerson";
+import { CalendarLink } from "@/components/public/CalendarLink";
 import { PublicFooter, PublicFrame, PublicHeader } from "@/components/public/PublicChrome";
 import { ActionButton, FormField, Notice } from "@/components/ui/Primitives";
 import { actionClass } from "@/components/ui/actions";
@@ -13,7 +14,6 @@ import { CONTACT_TOPICS, topicsFromQuery, type ContactTopicKey } from "@/lib/con
 import { CONTACT_RESPONSE_PROMISE, IMPRINT_EMAIL } from "@/lib/legal/policy";
 import { SALES_CALENDAR_PATH, isSalesCallEntry } from "@/lib/sales/sales-call-model";
 import { readSalesCallToken, salesCallUrl } from "@/lib/sales/sales-call";
-import { salesContactPhotoUrl } from "@/lib/sales/sales-contact";
 import { phoneHref, SALES_CONTACT } from "@/lib/sales/sales-contact-model";
 import { CONTACT_PAGE, pageMetadata } from "@/lib/seo";
 
@@ -112,8 +112,9 @@ function heroFor(topic: ContactTopicKey | undefined) {
  * Zugleich die Seite hinter jedem „Gespräch vereinbaren“: Seit 14.10.2026
  * gibt es dafür keine zweite Seite mehr (/gespraech leitet hierher). Der
  * Aufruf zählt im Umsatzweg als „Kontaktseite aufgerufen“, mit `?von=` als
- * Herkunft; der Kalenderknopf geht über /contact/termin, damit auch der
- * Klick zählt.
+ * Herkunft; der Kalenderknopf öffnet Calendly direkt und zählt den Klick
+ * nebenher. Nur „Termin wählen“ nach dem Absenden geht über /contact/termin,
+ * das den Kalender mit Name und Adresse aus der Anfrage vorausfüllt.
  *
  * Das Formular bleibt ein gewöhnliches HTML-Formular an /api/contact, ohne
  * eigenes JavaScript. Es ist zugleich der Kontaktweg aus dem Impressum;
@@ -124,14 +125,11 @@ export default async function ContactPage({ searchParams }: { searchParams: Prom
   const status = statusOf(first(params.status));
   const topic = topicsFromQuery(params.thema, params.betreff)[0];
   const hero = heroFor(topic);
-  const calendarHref = salesCallUrl() ? SALES_CALENDAR_PATH : null;
   // Nach dem Absenden: Kalender mit Name und Adresse aus der Anfrage.
   const token = status === "sent" ? first(params.t) : undefined;
-  const bookingHref = calendarHref && token && readSalesCallToken(token) ? `${calendarHref}?t=${encodeURIComponent(token)}` : calendarHref;
-  const [photoUrl, user] = await Promise.all([
-    salesContactPhotoUrl(),
-    status ? null : getCurrentUser().catch(() => null),
-  ]);
+  const bookingQuery = token && readSalesCallToken(token) ? `t=${encodeURIComponent(token)}` : "von=contact";
+  const bookingHref = salesCallUrl() ? `${SALES_CALENDAR_PATH}?${bookingQuery}` : null;
+  const user = status ? null : await getCurrentUser().catch(() => null);
 
   if (!status) {
     const via = first(params.von);
@@ -166,11 +164,9 @@ export default async function ContactPage({ searchParams }: { searchParams: Prom
               </h1>
               <p className={styles.lead}>{hero.lead}</p>
               <div className={styles.heroActions}>
-                {calendarHref ? (
-                  <a href={calendarHref} target="_blank" rel="noopener noreferrer nofollow" className={actionClass("primary", { className: styles.bigAction })}>
-                    Gespräch vereinbaren
-                  </a>
-                ) : null}
+                <CalendarLink entry="contact" className={actionClass("primary", { className: styles.bigAction })}>
+                  Gespräch vereinbaren
+                </CalendarLink>
                 <a href="#anfrage" className={actionClass("secondary", { className: styles.bigAction })}>
                   Anfrage schreiben
                 </a>
@@ -178,7 +174,7 @@ export default async function ContactPage({ searchParams }: { searchParams: Prom
             </div>
 
             <aside className={styles.contactCard} aria-label="Ansprechpartner">
-              <ContactPerson photoUrl={photoUrl} note="" />
+              <ContactPerson photoUrl={SALES_CONTACT.photo.small} note="" />
               <dl className={styles.reach}>
                 <dt>Telefon</dt>
                 <dd><a href={phoneHref(SALES_CONTACT.phone)}>{SALES_CONTACT.phone}</a></dd>

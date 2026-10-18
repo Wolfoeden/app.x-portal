@@ -11,7 +11,6 @@ import { activeProfileCount } from "@/lib/marketing/profile-count";
 import { nextCallSlots } from "@/lib/sales/call-slots";
 import { readPraxisToken } from "@/lib/sales/praxis";
 import { salesCallUrl } from "@/lib/sales/sales-call";
-import { salesContactPhotoUrl } from "@/lib/sales/sales-contact";
 import { absoluteUrl } from "@/lib/seo";
 
 export const metadata: Metadata = {
@@ -20,8 +19,6 @@ export const metadata: Metadata = {
   alternates: { canonical: absoluteUrl("/praxis") },
   robots: { index: false, follow: false },
 };
-
-const FALLBACK_PHOTO = "/api/freelancer/avatar-image/c314d7c4-4428-45ac-ba54-1a657b9f6b62/avatar-84a397c000177b632748345e59baa596.jpg";
 
 type Query = Record<string, string | string[] | undefined>;
 
@@ -36,9 +33,8 @@ export default async function PraxisPage({ searchParams }: { searchParams: Promi
   const raw = Array.isArray(params.t) ? params.t[0] : params.t;
   const contactId = readPraxisToken(raw);
   const token = contactId ? raw!.trim() : null;
-  const [profiles, photoUrl, slots, user] = await Promise.all([
+  const [profiles, slots, user] = await Promise.all([
     activeProfileCount(),
-    salesContactPhotoUrl(),
     nextCallSlots(),
     getCurrentUser().catch(() => null),
   ]);
@@ -66,7 +62,6 @@ export default async function PraxisPage({ searchParams }: { searchParams: Promi
             slots={slots}
             calendarBase={salesCallUrl()}
             token={token}
-            photoUrl={photoUrl ?? FALLBACK_PHOTO}
           />
         </main>
       </PublicFrame>

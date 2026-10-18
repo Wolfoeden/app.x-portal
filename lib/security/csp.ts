@@ -59,6 +59,15 @@ const GOOGLE_ADS_CONNECT_ORIGINS = `${GOOGLE_ADS_SCRIPT_ORIGINS} https://google.
 const GOOGLE_ADS_FRAME_ORIGINS =
   "https://td.doubleclick.net https://bid.g.doubleclick.net https://www.googletagmanager.com";
 
+/**
+ * Das einzige eigene Inline-Skript: `CONSENT_PAINT_SCRIPT` aus
+ * `lib/consent/consent.ts` im `<head>`. Es trägt keine Nonce (die statischen
+ * Seiten entstehen beim Build), deshalb steht sein Hash in der
+ * Nonce-Fassung. Die durchgesetzte Fassung bekommt ihn nicht: Neben einem
+ * Hash ignorieren Browser `'unsafe-inline'`.
+ */
+export const CONSENT_PAINT_SCRIPT_HASH = "'sha256-OBgxnOLdoBJC7jsh6i+PGrLT/3ypWotWGIjg8F02RFs='";
+
 /** Der Gruppenname, den `Reporting-Endpoints` und `report-to` teilen müssen. */
 export const CSP_REPORT_GROUP = "csp";
 
@@ -75,7 +84,7 @@ export function buildContentSecurityPolicy({
   // durchgesetzte Fassung kennt `'strict-dynamic'` nicht und braucht die
   // Herkunft ausgeschrieben, sonst wird das Skript blockiert.
   const scriptSrc = nonce
-    ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${developmentEval}`
+    ? `script-src 'self' 'nonce-${nonce}' ${CONSENT_PAINT_SCRIPT_HASH} 'strict-dynamic'${developmentEval}`
     : `script-src 'self' 'unsafe-inline' ${HCAPTCHA_ORIGINS} ${GOOGLE_ADS_SCRIPT_ORIGINS}${developmentEval}`;
 
   return [

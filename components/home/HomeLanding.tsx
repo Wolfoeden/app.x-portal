@@ -1,8 +1,8 @@
-/* eslint-disable @next/next/no-img-element -- das Foto kommt über die eigene Profilbild-Route, schon in passender Größe. */
+/* eslint-disable @next/next/no-img-element -- das Foto liegt als kleine Datei in passender Größe unter /public. */
 import Link from "next/link";
 
+import { CalendarLink } from "@/components/public/CalendarLink";
 import { DEMO_SCENARIOS } from "@/lib/marketing/live-demo";
-import { SALES_CALENDAR_PATH } from "@/lib/sales/sales-call-links";
 import { phoneHref, SALES_CONTACT } from "@/lib/sales/sales-contact-model";
 
 import { AgentDiagram } from "./AgentDiagram";
@@ -12,18 +12,11 @@ import { ProofLinks } from "./ProofLinks";
 import { ServiceTiles } from "./ServiceTiles";
 import styles from "./home.module.css";
 
-const FALLBACK_PHOTO = "/api/freelancer/avatar-image/c314d7c4-4428-45ac-ba54-1a657b9f6b62/avatar-84a397c000177b632748345e59baa596.jpg";
-
 function CallButton({ entry, inverted = false }: { entry: "hero" | "closing" | "process"; inverted?: boolean }) {
   return (
-    <a
-      href={`${SALES_CALENDAR_PATH}?von=${entry}`}
-      target="_blank"
-      rel="noopener noreferrer nofollow"
-      className={inverted ? styles.buttonWhite : styles.buttonPrimary}
-    >
+    <CalendarLink entry={entry} className={inverted ? styles.buttonWhite : styles.buttonPrimary}>
       Erstgespräch buchen
-    </a>
+    </CalendarLink>
   );
 }
 
@@ -35,8 +28,8 @@ function CallButton({ entry, inverted = false }: { entry: "hero" | "closing" | "
  * die vier Leistungen und der Termin. Wenig Text, ein Ziel: das
  * Erstgespräch.
  */
-export function HomeLanding({ profiles, photoUrl }: { profiles: number | null; photoUrl: string | null }) {
-  const photo = photoUrl ?? FALLBACK_PHOTO;
+export function HomeLanding({ profiles }: { profiles: number | null }) {
+  const { small, large } = SALES_CONTACT.photo;
   return (
     <main id="main-content" tabIndex={-1} className={styles.main}>
       <section className={styles.hero} aria-labelledby="home-title">
@@ -53,7 +46,7 @@ export function HomeLanding({ profiles, photoUrl }: { profiles: number | null; p
               <a href="#demo" className={styles.buttonSecondary}>Live-Demo ansehen ↓</a>
             </div>
             <p className={styles.personLine}>
-              <img src={photo} alt="" width={40} height={40} />
+              <img src={small} alt="" width={40} height={40} />
               <span>{SALES_CONTACT.name}, Ihr Ansprechpartner · <a href={phoneHref(SALES_CONTACT.phone)}>{SALES_CONTACT.phone}</a></span>
             </p>
           </div>
@@ -83,7 +76,7 @@ export function HomeLanding({ profiles, photoUrl }: { profiles: number | null; p
 
       <section id="ueber" className={styles.trust} aria-label="Ihr Ansprechpartner">
         <div className={`${styles.wrap} ${styles.trustGrid}`}>
-          <img src={photo} alt={SALES_CONTACT.name} className={styles.trustPhoto} width={340} height={380} />
+          <img src={large} alt={SALES_CONTACT.name} className={styles.trustPhoto} width={340} height={380} loading="lazy" decoding="async" />
           <div className={styles.trustCopy}>
             <blockquote>„In 30 Minuten zeige ich Ihnen, wo KI bei Ihnen Zeit spart. Und wo nicht.“</blockquote>
             <p className={styles.trustName}><strong>{SALES_CONTACT.name}</strong> · XPORTAL · <a href={phoneHref(SALES_CONTACT.phone)}>{SALES_CONTACT.phone}</a></p>
@@ -114,7 +107,7 @@ export function HomeLanding({ profiles, photoUrl }: { profiles: number | null; p
               </div>
             </div>
             <figure className={styles.closingPerson}>
-              <img src={photo} alt={SALES_CONTACT.name} width={112} height={112} />
+              <img src={large} alt={SALES_CONTACT.name} width={112} height={112} loading="lazy" decoding="async" />
               <figcaption><strong>{SALES_CONTACT.name}</strong><span>nimmt sich die Zeit selbst</span></figcaption>
             </figure>
           </div>

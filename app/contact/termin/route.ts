@@ -10,12 +10,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * „Gespräch vereinbaren“ auf der Kontaktseite und „Erstgespräch buchen“ im
- * Kopf, auf der Startseite und in der Fußzeile (`?von=`): zählt den Klick
- * und leitet zum Kalender weiter. Nach einer Anfrage trägt der Link ein Token; dann ist
- * der Kalender mit Name, Adresse und Thema aus der Anfrage vorausgefüllt.
+ * „Termin wählen“ auf der Kontaktseite nach dem Absenden einer Anfrage:
+ * Der Link trägt ein Token; dann ist der Kalender mit Name, Adresse und
+ * Thema aus der Anfrage vorausgefüllt. Zählt den Klick und leitet weiter.
  * Ohne gültiges Token geht es zum Kalender ohne Vorbelegung, ohne
- * eingerichteten Kalender zurück zur Seite.
+ * eingerichteten Kalender zurück zur Seite. Alle anderen Kalenderknöpfe
+ * verlinken seit 18.10.2026 direkt (`CalendarLink`); alte Links mit `?von=`
+ * funktionieren weiter.
  */
 export async function GET(request: Request) {
   const base = salesCallUrl();

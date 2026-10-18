@@ -3868,6 +3868,9 @@ a.secondary-action {
 }
 
 .cookie-layer { position: fixed; inset: auto 0 0; z-index: 100; padding: 20px; background: linear-gradient(transparent, rgba(0, 0, 0, .24)); }
+/* Schon gewählt: CONSENT_PAINT_SCRIPT markiert das Wurzelelement vor dem
+   ersten Zeichnen, der Hinweis im HTML bleibt unsichtbar. */
+html[data-consent="set"] .cookie-layer:not(.is-settings) { display: none; }
 .cookie-layer.is-settings { inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, .54); }
 .cookie-panel { width: min(100%, 1040px); margin: auto; display: grid; grid-template-columns: 1fr auto; gap: 34px; padding: 28px; border: 1px solid #3f3f3c; background: #111; color: white; box-shadow: 0 24px 90px rgba(0, 0, 0, .3); }
 .cookie-panel h2 { margin: 0; font-size: clamp(28px, 3vw, 44px); letter-spacing: -.05em; line-height: 1; }

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
 
-import proxy from "@/proxy";
+import proxy, { config } from "@/proxy";
 
 const ID = "c314d7c4-4428-45ac-ba54-1a657b9f6b62";
 const PROJECT = "11111111-1111-4111-8111-111111111111";
@@ -28,5 +28,13 @@ describe("proxy: /chat?profil=", () => {
     expect(call("/chat").headers.get("location")).toBeNull();
     expect(call("/chat?profil=../admin").headers.get("location")).toBeNull();
     expect(call(`/fuer-unternehmen?profil=${ID}`).headers.get("location")).toBeNull();
+  });
+});
+
+// 18.10.2026: Der Proxy läuft nur noch, wo Seiten je Anfrage entstehen; die
+// öffentlichen Seiten kommen ohne Edge-Funktion aus dem CDN.
+describe("proxy: where it runs", () => {
+  it("covers the Talent Index and the profile pages, nothing else", () => {
+    expect(config.matcher.map((entry) => entry.source)).toEqual(["/chat/:path*", "/profil/:path*"]);
   });
 });

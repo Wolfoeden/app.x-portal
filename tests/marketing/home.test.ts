@@ -9,19 +9,17 @@ import { DEMO_FACES, DEMO_SCENARIOS } from "@/lib/marketing/live-demo";
 import { praxisCases } from "@/lib/marketing/praxis-cases";
 import { PROOF_SOURCES } from "@/lib/marketing/proof-sources";
 
-const PHOTO = "/api/freelancer/avatar-image/x/foto.jpg";
-
 // 16.10.2026 (Entwurf 3): die Startseite zeigt zuerst die Live-Demo, dann
 // dieselbe Technik für die eigenen Abläufe, den Ansprechpartner mit
 // Belegen, die Leistungen und den Termin.
 describe("start page", () => {
-  const html = renderToStaticMarkup(createElement(HomeLanding, { profiles: 68, photoUrl: PHOTO }));
+  const html = renderToStaticMarkup(createElement(HomeLanding, { profiles: 68 }));
 
   it("opens with one headline, the live demo and the first call", () => {
     expect(html.match(/<h1\b/gu)).toHaveLength(1);
     expect(html).toContain("Mit KI effizienter arbeiten.");
     expect(html).toContain("Demo mit 68 echten Profilen");
-    expect(html).toMatch(/href="\/contact\/termin\?von=hero"[^>]*>Erstgespräch buchen</u);
+    expect(html).toMatch(/href="https:\/\/calendly\.com\/romandering\/30min\?utm_source=x-portal"[^>]*>Erstgespräch buchen</u);
     expect(html).toContain('href="tel:+491758934338"');
     for (const scenario of DEMO_SCENARIOS) expect(html).toContain(`>${scenario.tab}</button>`);
     expect(html).toContain("68 Profile geprüft");
@@ -50,7 +48,7 @@ describe("start page", () => {
   });
 
   it("works without a database", () => {
-    const fallback = renderToStaticMarkup(createElement(HomeLanding, { profiles: null, photoUrl: null }));
+    const fallback = renderToStaticMarkup(createElement(HomeLanding, { profiles: null }));
     expect(fallback).toContain("Demo mit echten Profilen");
     expect(fallback).toContain("Alle Profile geprüft");
     expect(fallback).not.toContain("null");
@@ -81,7 +79,6 @@ describe("praxis page", () => {
     slots,
     calendarBase: "https://calendly.com/romandering/30min",
     token: null,
-    photoUrl: PHOTO,
   }));
 
   it("greets without a company or a person", () => {
@@ -113,7 +110,6 @@ describe("praxis page", () => {
       slots: [],
       calendarBase: "https://calendly.com/romandering/30min",
       token: null,
-      photoUrl: PHOTO,
     }));
     expect(fallback).toContain("Termin wählen");
     expect(fallback).toContain("Alle freien Zeiten ansehen");

@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 
 import {
   CONSENT_CHANGED_EVENT,
   CONSENT_COOKIE,
   CONSENT_MAX_AGE_SECONDS,
   consentCookieValue,
+  googleAdsId,
   optionalServicesAvailable,
   parseConsent,
   type ConsentChoice,
@@ -23,6 +23,12 @@ import {
  * seine ID gesetzt (`optionalServicesAvailable()`), fragt der Layer wieder
  * richtig — Ablehnen so leicht wie Zustimmen. Ohne ID (lokal, Vorschau)
  * bleibt es bei der Kenntnisnahme.
+ *
+ * Seit 18.10.2026 steht der Hinweis schon im HTML jeder Seite. Vorher
+ * erschien er erst nach dem JavaScript und war auf dem Telefon das größte
+ * Element, also das, auf das die Ladezeit (LCP) wartete. Wer schon gewählt
+ * hat, sieht ihn trotzdem nicht: `CONSENT_PAINT_SCRIPT` blendet ihn vor dem
+ * ersten Zeichnen aus, nach dem Laden verschwindet er ganz.
  */
 
 type ConsentView = "hidden" | "banner" | "settings";
@@ -48,7 +54,8 @@ export function CookieSettingsButton({ className = "legal-footer-button" }: { cl
 export function CookieConsent() {
   // Beim Build eingesetzt (`NEXT_PUBLIC_`); als Aufruf, damit Tests ihn setzen können.
   const OPTIONAL_SERVICES_AVAILABLE = optionalServicesAvailable();
-  const [view, setView] = useState<ConsentView>("hidden");
+  const ADS_AVAILABLE = googleAdsId() !== null;
+  const [view, setView] = useState<ConsentView>("banner");
   const [choice, setChoice] = useState<ConsentChoice>("essential");
 
   useEffect(() => {
@@ -56,11 +63,9 @@ export function CookieConsent() {
     queueMicrotask(() => {
       if (!active) return;
       const stored = currentChoice();
-      if (stored) {
-        setChoice(stored);
-        return;
-      }
-      setView("banner");
+      if (!stored) return;
+      setChoice(stored);
+      setView("hidden");
     });
     return () => {
       active = false;
@@ -120,16 +125,17 @@ export function CookieConsent() {
               {" · "}<a href="/imprint">Impressum</a>
             </p>
           ) : view === "banner" ? (
+            // Kurz, damit der Hinweis auf dem Telefon nicht die Seite verdeckt;
+            // Zweck, Empfänger, USA und Widerruf bleiben, der Rest steht in
+            // den Einstellungen und den Datenschutzhinweisen.
             <p>
-              Notwendige Cookies brauchen wir für Anmeldung, Sicherheit und Ihre
-              Auswahl. Mit Ihrer Zustimmung messen wir zusätzlich den Weg vom
-              Ergebnisbeispiel bis zur wiederkehrenden Software-Nutzung. Projekttexte,
-              Lebensläufe und Kontaktdaten werden dabei nicht als Messparameter erfasst.
-              Wenn konfiguriert, laden wir außerdem Google Ads
-              (Google Ireland Ltd.), um zu messen, welche Anzeigen zu Besuchen
-              und Registrierungen führen. Dabei können Daten in die USA
-              übertragen werden. Sie können die Zustimmung jederzeit unter
-              „Cookie-Einstellungen“ widerrufen.
+              Notwendige Cookies brauchen wir für Anmeldung und Sicherheit. Mit
+              Ihrer Zustimmung messen wir außerdem die Nutzung, ohne Projekttexte,
+              Lebensläufe und Kontaktdaten
+              {ADS_AVAILABLE
+                ? ", und mit Google Ads (Google Ireland Ltd.), welche Anzeigen zu Besuchen führen; dabei können Daten in die USA übertragen werden"
+                : ""}
+              . Sie können jederzeit unter „Cookie-Einstellungen“ widerrufen.
               {" "}<a href="/privacy">Datenschutzhinweise</a>
               {" · "}<a href="/imprint">Impressum</a>
             </p>
@@ -191,7 +197,5 @@ export function CookieConsent() {
     </div>
   ) : null;
 
-  return consentLayer && typeof document !== "undefined"
-    ? createPortal(consentLayer, document.body)
-    : null;
+  return consentLayer;
 }

@@ -26,7 +26,7 @@ describe("public navigation", () => {
   });
 
   it("books the first call from the header and shows the phone number", () => {
-    expect(header).toMatch(/href="\/contact\/termin\?von=header"[^>]*>Erstgespräch buchen</u);
+    expect(header).toMatch(/href="https:\/\/calendly\.com\/romandering\/30min\?utm_source=x-portal"[^>]*>Erstgespräch buchen</u);
     expect(header).toContain('href="tel:+491758934338"');
     expect(header).toMatch(/href="\/anmelden"[^>]*>Anmelden</u);
     expect(framed).toContain('data-framed="true"');

@@ -34,8 +34,6 @@ const processSteps = [
   { title: "Freelancer anfragen", text: "Profilbelege und offene Punkte prüfen, Auswahl speichern und den Kontakt bewusst anfragen.", icon: <StepIcon kind="contact" />, startsAt: 8.7 },
 ] as const;
 
-const FALLBACK_CONTACT_PHOTO = "https://x-portal.eu/api/freelancer/avatar-image/c314d7c4-4428-45ac-ba54-1a657b9f6b62/avatar-84a397c000177b632748345e59baa596.jpg";
-
 /** Die vier Zusagen unter dem Kopf; jede steht auch auf /preise oder /datenwege. */
 function FactIcon({ kind }: { kind: "free" | "analyses" | "evidence" | "data" }) {
   return (
@@ -50,7 +48,7 @@ function FactIcon({ kind }: { kind: "free" | "analyses" | "evidence" | "data" })
 
 const PLAN_AUDIENCE = { basic: "für einzelne Mandate", pro: "für laufende Mandate", business: "für Teams" } as const;
 
-export function FreelancerLanding({ contactPhotoUrl = null, caseStudies = publishedCaseStudies() }: { stats?: LandingStats | null; contactPhotoUrl?: string | null; caseStudies?: readonly CaseStudy[] }) {
+export function FreelancerLanding({ caseStudies = publishedCaseStudies() }: { stats?: LandingStats | null; caseStudies?: readonly CaseStudy[] }) {
   const plans = PUBLIC_PRICING_PLANS.filter((plan) => plan.billingModel === "fixed_monthly");
   const freeAnalyses = Math.floor(CREDIT_PLANS.starter.grantCredits / CREDIT_PRICES.project_brief.credits);
   const faq = landingFaq();
@@ -70,7 +68,7 @@ export function FreelancerLanding({ contactPhotoUrl = null, caseStudies = publis
             className={styles.expertCard}
             label="KI & Agenten"
             verified
-            avatar={{ src: contactPhotoUrl ?? FALLBACK_CONTACT_PHOTO, initials: "RD" }}
+            avatar={{ src: SALES_CONTACT.photo.small, initials: "RD" }}
             name="Roman D."
             role="Senior Blockchain & AI Automation Specialist · Remote"
             rows={[
