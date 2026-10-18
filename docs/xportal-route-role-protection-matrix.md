@@ -14,7 +14,7 @@ Basis: `e36d9e24e8beb41ccc8887dc3b78a529252f7c74` · 12. September 2026
 | A-SURFACE | automatisch | `tests/presentation/package-3-surfaces.test.ts`: gemeinsamer Sekundärseitenkopf, Auth-Übergang, Admin-Rahmen und vollständige Agent-Grid-Entfernung |
 | A-CONSOLIDATION | automatisch | `tests/presentation/package-4-release.test.ts`: extrahierte Chat-Verhalten, reduzierter Einstieg, flache Sidebar, fokussierter Kontodialog und freigegebene AGB |
 | A-RELEASE-VISUAL | automatisch | `pnpm test:visual-release`: Gast, Marketing, AGB, Preisdialog und Admin bei 390, 768 und 1280 px |
-| A-PERF | automatisch | `pnpm check:performance`: gzip-Budgets für JavaScript/CSS und Rohbudget für öffentliche Assets |
+| A-PERF | automatisch (CI) | `pnpm check:performance`: je öffentlicher Seite CSS/JavaScript beim ersten Aufruf und statisches Vorrendern, gzip-Gesamtbudgets für JavaScript/CSS, Rohbudget für öffentliche Assets; `pnpm measure:performance <URL>` misst Ladezeiten (Handy gedrosselt, Desktop) |
 | A-A11Y | automatisch/manuell | Rollen-Journeys plus M-A11Y-FOKUS und M-A11Y-STRUKTUR |
 | M-A11Y-FOKUS | manuell | Bei 390 px: Menü öffnen, Tab/Shift+Tab bleibt darin, Escape schließt, Fokus kehrt zum Menüknopf zurück; geschlossenes Menü erhält keinen Fokus |
 | M-A11Y-STRUKTUR | manuell | Jede öffentliche Route hat genau eine sichtbare H1; Text ist mindestens 12 px; 200 % Zoom bleibt ohne Funktionsverlust bedienbar |

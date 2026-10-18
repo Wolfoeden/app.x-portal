@@ -53,7 +53,37 @@ const publicFiles = await filesBelow(path.join(repositoryRoot, "public"));
 const publicAssets = await rawMetrics(publicFiles.filter((file) => !file.startsWith(videosDirectory + path.sep)));
 const publicVideos = await rawMetrics(publicFiles.filter((file) => file.startsWith(videosDirectory + path.sep)));
 
+// Was eine öffentliche Seite beim ersten Aufruf lädt: die Stylesheets und
+// Skripte aus ihrem vorgerenderten HTML (ohne `noModule`, das moderne Browser
+// überspringen). Fehlt das HTML, ist die Seite nicht mehr statisch und kommt
+// nicht mehr fertig aus dem CDN — auch das soll auffallen (18.10.2026).
+const staticDirectory = path.join(repositoryRoot, ".next");
+async function firstLoad(page) {
+  const html = await readFile(path.join(repositoryRoot, ".next", "server", "app", `${page}.html`), "utf8").catch(() => null);
+  if (html === null) return null;
+  const hrefs = (pattern, attribute) => [...new Set(
+    [...html.matchAll(pattern)].map((match) => match[0]).filter((tag) => !/nomodule/iu.test(tag)).map((tag) => tag.match(attribute)?.[1]).filter(Boolean),
+  )];
+  const files = (list) => list.map((href) => path.join(staticDirectory, href.replace(/^.*?\/_next\//u, "")));
+  return {
+    css: await gzipMetrics(files(hrefs(/<link\b[^>]*\brel="stylesheet"[^>]*>/gu, /href="([^"]+\.css)"/u))),
+    javascript: await gzipMetrics(files(hrefs(/<script\b[^>]*\bsrc="[^"]+\.js"[^>]*>/gu, /src="([^"]+\.js)"/u))),
+  };
+}
+const pageChecks = [];
+for (const page of budget.publicPages ?? []) {
+  const loaded = await firstLoad(page);
+  if (!loaded) {
+    pageChecks.push([`Seite /${page === "index" ? "" : page}: nicht statisch vorgerendert`, 1, 0]);
+    continue;
+  }
+  const name = `/${page === "index" ? "" : page}`;
+  pageChecks.push([`Seite ${name}: CSS beim ersten Aufruf (gzip)`, loaded.css.total, budget.publicPageCssGzipBytes]);
+  pageChecks.push([`Seite ${name}: JavaScript beim ersten Aufruf (gzip)`, loaded.javascript.total, budget.publicPageJavaScriptGzipBytes]);
+}
+
 const checks = [
+  ...pageChecks,
   ["Client-JavaScript gesamt (gzip)", javascript.total, budget.clientJavaScriptGzipTotalBytes],
   ["Groesstes Client-JavaScript (gzip)", javascript.largest, budget.clientJavaScriptGzipLargestBytes],
   ["Client-CSS gesamt (gzip)", css.total, budget.clientCssGzipTotalBytes],

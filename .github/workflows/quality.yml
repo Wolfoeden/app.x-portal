@@ -53,5 +53,10 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # Was eine öffentliche Seite beim ersten Aufruf lädt, und ob /contact,
+      # /praxis & Co. noch statisch aus dem CDN kommen (seit 18.10.2026).
+      - name: Performance budget
+        run: pnpm check:performance
+
       - name: Audit production dependencies
         run: pnpm audit --prod --audit-level=high
