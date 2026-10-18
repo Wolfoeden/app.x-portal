@@ -31,6 +31,20 @@ const GOOGLE_ADS_SCRIPT_SOURCES = [
   "https://www.google.com",
   "https://googleads.g.doubleclick.net",
 ];
+/**
+ * 18.10.2026: `connect-src` nach Googles CSP-Leitfaden für Google Ads. Ohne
+ * `ad.doubleclick.net` scheiterte nach der Einwilligung `ccm/s/collect`. Von
+ * den Länderdomains `www.google.<TLD>` nur der deutschsprachige Raum.
+ */
+const GOOGLE_ADS_CONNECT_SOURCES = [
+  ...GOOGLE_ADS_SCRIPT_SOURCES,
+  "https://google.com",
+  "https://pagead2.googlesyndication.com",
+  "https://ad.doubleclick.net",
+  "https://www.google.de",
+  "https://www.google.at",
+  "https://www.google.ch",
+];
 const GOOGLE_ADS_FRAME_SOURCES = [
   "https://td.doubleclick.net",
   "https://bid.g.doubleclick.net",
@@ -114,11 +128,31 @@ describe("content security policy", () => {
 
   it("reaches the Google Ads tag for the script and its conversion pings", () => {
     const enforced = buildContentSecurityPolicy({ isProduction: true });
+    const reportOnly = buildContentSecurityPolicy({
+      nonce: "n",
+      isProduction: true,
+      reportPath: CSP_REPORT_PATH,
+    });
 
     expect(directive(enforced, "script-src")).toContain("https://www.googletagmanager.com");
     expect(directive(enforced, "connect-src")).toContain("https://www.googleadservices.com");
     expect(directive(enforced, "connect-src")).toContain("https://googleads.g.doubleclick.net");
     expect(directive(enforced, "img-src")).toContain("https:");
+    // Der Ping, der am 18.10.2026 blockiert wurde — in beiden Fassungen.
+    expect(directive(enforced, "connect-src")).toContain("https://ad.doubleclick.net");
+    expect(directive(reportOnly, "connect-src")).toBe(directive(enforced, "connect-src"));
+  });
+
+  it("connects to exactly the listed hosts, no open endings", () => {
+    const connectSrc =
+      directive(buildContentSecurityPolicy({ isProduction: true }), "connect-src") ?? "";
+
+    expect(
+      connectSrc
+        .replace("connect-src ", "")
+        .split(" ")
+        .filter((source) => source.startsWith("https://")),
+    ).toEqual(["https://*.supabase.co", ...HCAPTCHA_SOURCES, ...GOOGLE_ADS_CONNECT_SOURCES]);
   });
 
   it("keeps the hard boundaries in every variant", () => {

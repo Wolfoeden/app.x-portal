@@ -47,15 +47,29 @@ const HCAPTCHA_ORIGINS = "https://hcaptcha.com https://*.hcaptcha.com";
 
 /**
  * Die Herkünfte des Google-Ads-Tags (gtag.js), nach Googles CSP-Leitfaden für
- * Google Ads: das Skript selbst, die Conversion-Meldungen und die Frames für
+ * Google Ads (developers.google.com/tag-platform/security/guides/csp, Stand
+ * 18.09.2026): das Skript selbst, die Conversion-Meldungen und die Frames für
  * die Zuordnung. Bilder deckt `img-src https:` schon ab.
+ *
+ * `connect-src` braucht laut Leitfaden zusätzlich `pagead2.googlesyndication.com`,
+ * `ad.doubleclick.net` und `www.google.<TLD>`. Bis 18.10.2026 fehlten die drei;
+ * nach der Einwilligung scheiterte dann `ad.doubleclick.net/ccm/s/collect`.
  *
  * Geladen wird das Tag nur nach Einwilligung (components/GoogleAdsTag.tsx);
  * die Freigabe hier erlaubt den Weg, sie lädt nichts.
  */
 const GOOGLE_ADS_SCRIPT_ORIGINS =
   "https://www.googletagmanager.com https://www.googleadservices.com https://www.google.com https://googleads.g.doubleclick.net";
-const GOOGLE_ADS_CONNECT_ORIGINS = `${GOOGLE_ADS_SCRIPT_ORIGINS} https://google.com`;
+/**
+ * gtag.js meldet zusätzlich an die Google-Domain des Landes, aus dem der
+ * Besuch kommt. CSP kennt rechts im Hostnamen keinen Platzhalter, jede Domain
+ * steht einzeln da. XPORTAL richtet sich an den deutschsprachigen Raum
+ * (`AREA_SERVED` in lib/structured-data.ts); aus anderen Ländern scheitert
+ * nur diese eine Meldung, die Seite bleibt unberührt.
+ */
+const GOOGLE_ADS_REGIONAL_ORIGINS =
+  "https://www.google.de https://www.google.at https://www.google.ch";
+const GOOGLE_ADS_CONNECT_ORIGINS = `${GOOGLE_ADS_SCRIPT_ORIGINS} https://google.com https://pagead2.googlesyndication.com https://ad.doubleclick.net ${GOOGLE_ADS_REGIONAL_ORIGINS}`;
 const GOOGLE_ADS_FRAME_ORIGINS =
   "https://td.doubleclick.net https://bid.g.doubleclick.net https://www.googletagmanager.com";
 
