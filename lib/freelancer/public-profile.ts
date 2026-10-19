@@ -99,8 +99,3 @@ export async function loadProfilePageView(profileId: string): Promise<PublicProf
   ]);
   return { ...view, documents: { cv, links }, presentation: { ...presentation, input } };
 }
-
-/** Nur die Karte, für Stellen, die keine Detailansicht brauchen. */
-export async function loadPublicProfile(profileId: string): Promise<FreelancerProfileResult | null> {
-  return (await loadPublicProfileView(profileId))?.profile ?? null;
-}

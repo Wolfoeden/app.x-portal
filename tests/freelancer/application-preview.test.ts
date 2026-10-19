@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   applicationPreviewProfile,
   EMPLOYMENT_RATE_LABEL,
-  exampleApplicationPreview,
   previewRate,
   type ApplicationPreviewInput,
 } from "@/lib/freelancer/application-preview";
@@ -61,12 +60,5 @@ describe("the live preview of an application", () => {
 
   it("shows an entered monthly salary instead of the employment fallback", () => {
     expect(previewRate({ monthlySalary: "6500", dayRate: "", hourlyRate: "", currency: "EUR", seeking: "employment" })).toMatch(/^6\.500\s€ \/ Monat$/u);
-  });
-
-  it("has a made-up example for the entry page", () => {
-    const example = exampleApplicationPreview(NOW);
-    expect(example.displayName).toBe("Anna Beispiel");
-    expect(example.verified).toBe(false);
-    expect(example.rate).not.toBeNull();
   });
 });

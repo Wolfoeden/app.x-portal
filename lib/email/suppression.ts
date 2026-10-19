@@ -73,14 +73,6 @@ export async function checkEmailSuppression(
   }
 }
 
-/**
- * Die einfache Frage für Aufrufer, die zwischen „gesperrt" und „unbekannt"
- * nicht unterscheiden müssen — sie halten in beiden Fällen an.
- */
-export async function isEmailSuppressed(email: string): Promise<boolean> {
-  return (await checkEmailSuppression(email)) !== "clear";
-}
-
 export type SuppressionOutcome =
   | { suppressed: true; wasNew: boolean }
   | { suppressed: false; reason: "invalid_email" | "write_failed" };
@@ -113,35 +105,5 @@ export async function suppressEmail(input: {
   } catch {
     logEvent("email_suppression_write_failed", { reason: input.reason });
     return { suppressed: false, reason: "write_failed" };
-  }
-}
-
-/**
- * Hebt eine Sperre auf, weil dieselbe Adresse später eine belegbare
- * Einwilligung erteilt hat — der bestätigte Double-Opt-in ist der einzige
- * Anlass, der das trägt.
- *
- * Der Eintrag wird nicht gelöscht, sondern als widerrufen markiert: wer
- * später fragt, warum wieder geschrieben wurde, bekommt beides zu sehen, den
- * Widerspruch und die Einwilligung danach.
- */
-export async function revokeEmailSuppression(input: {
-  email: string;
-  reason: string;
-}): Promise<boolean> {
-  const normalized = normalizeEmail(input.email);
-  if (!normalized) return false;
-
-  try {
-    const admin = createAdminSupabaseClient();
-    const { data, error } = await admin.rpc("revoke_email_suppression", {
-      p_email_hash: hashEmail(normalized),
-      p_reason: input.reason,
-    });
-    if (error) throw error;
-    return data === true;
-  } catch {
-    logEvent("email_suppression_revoke_failed", {});
-    return false;
   }
 }

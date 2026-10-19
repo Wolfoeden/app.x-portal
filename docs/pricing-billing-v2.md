@@ -67,11 +67,14 @@ The three supplied Stripe URLs, their Payment-Link IDs and their recurring
 Price IDs are assigned to Basic, Pro and Business in
 `lib/billing/payment-links.ts` and `.env.example`.
 
-- `NEXT_PUBLIC_STRIPE_BASIC_PAYMENT_LINK` + `STRIPE_BASIC_PAYMENT_LINK_ID`
-- `NEXT_PUBLIC_STRIPE_PRO_PAYMENT_LINK` + `STRIPE_PRO_PAYMENT_LINK_ID`
-- `NEXT_PUBLIC_STRIPE_BUSINESS_PAYMENT_LINK` + `STRIPE_BUSINESS_PAYMENT_LINK_ID`
+- `STRIPE_BASIC_PAYMENT_LINK_ID`, `STRIPE_PRO_PAYMENT_LINK_ID`,
+  `STRIPE_BUSINESS_PAYMENT_LINK_ID`
 - `STRIPE_BASIC_PRICE_ID`, `STRIPE_PRO_PRICE_ID`, `STRIPE_BUSINESS_PRICE_ID`
-- `NEXT_PUBLIC_STRIPE_CUSTOMER_PORTAL_URL`
+
+Since 2026-10-19 the public payment links and the portal link are gone from
+the code: checkout runs through `/api/billing/checkout` (Checkout Sessions)
+and the portal through `/api/billing/portal`. The IDs above only map
+incoming Stripe events to the right plan.
 
 The marketing CTA first establishes an authenticated XPORTAL account, then
 opens the selected Stripe link with its non-secret account UUID as

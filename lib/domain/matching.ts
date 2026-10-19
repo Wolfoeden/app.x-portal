@@ -320,25 +320,6 @@ export type MatchingEvaluationSnapshot = z.infer<
   typeof MatchingEvaluationSnapshotSchema
 >;
 
-export function matchingEvaluationSnapshot(
-  match: Pick<
-    ShortlistMatch,
-    | "recommendationRole"
-    | "fitScore"
-    | "coreCoverage"
-    | "requirementAssessments"
-    | "scoreBreakdown"
-  >,
-): MatchingEvaluationSnapshot {
-  return MatchingEvaluationSnapshotSchema.parse({
-    schemaVersion: 1,
-    recommendationRole: match.recommendationRole,
-    fitScore: match.fitScore,
-    coreCoverage: match.coreCoverage,
-    requirementAssessments: match.requirementAssessments,
-    scoreBreakdown: match.scoreBreakdown,
-  });
-}
 type RequirementAssessment = z.infer<typeof RequirementAssessmentSchema>;
 
 function normalize(value: string): string {
