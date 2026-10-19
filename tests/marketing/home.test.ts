@@ -5,24 +5,28 @@ import { describe, expect, it } from "vitest";
 
 import { HomeLanding } from "@/components/home/HomeLanding";
 import { PraxisView } from "@/components/praxis/PraxisView";
-import { DEMO_FACES, DEMO_SCENARIOS } from "@/lib/marketing/live-demo";
+import { DEMO_SCENARIOS } from "@/lib/marketing/live-demo";
 import { praxisCases } from "@/lib/marketing/praxis-cases";
 import { PROOF_SOURCES } from "@/lib/marketing/proof-sources";
 
-// 16.10.2026 (Entwurf 3): die Startseite zeigt zuerst die Live-Demo, dann
-// dieselbe Technik für die eigenen Abläufe, den Ansprechpartner mit
-// Belegen, die Leistungen und den Termin.
+// 19.10.2026 (Entwurf „Klarsicht“): oben Angebot und Preis mit einem
+// Postfach als Beispiel, dann Belege, die vier Leistungen mit Preis, die
+// Live-Demo, der Ablauf und der Termin mit dem Ansprechpartner.
 describe("start page", () => {
   const html = renderToStaticMarkup(createElement(HomeLanding, { profiles: 68 }));
 
-  it("opens with one headline, the live demo and the first call", () => {
+  it("opens with the offer, its price and the first call", () => {
     expect(html.match(/<h1\b/gu)).toHaveLength(1);
-    expect(html).toContain("Mit KI effizienter arbeiten.");
-    expect(html).toContain("Demo mit 68 echten Profilen");
+    expect(html).toContain("KI-Agenten für Ihre Routine.");
+    expect(html).toContain("KI-Automatisierung ab 1.900 €");
     expect(html).toMatch(/href="https:\/\/calendly\.com\/romandering\/30min\?utm_source=x-portal"[^>]*>Erstgespräch buchen</u);
     expect(html).toContain('href="tel:+491758934338"');
-    for (const scenario of DEMO_SCENARIOS) expect(html).toContain(`>${scenario.tab}</button>`);
-    expect(html).toContain("68 Profile geprüft");
+  });
+
+  it("labels the inbox as an example", () => {
+    expect(html).toContain("Postfach · Vertrieb");
+    expect(html).toContain(">Beispiel<");
+    expect(html).toContain("Entwurf fertig");
   });
 
   it("links every anchor of the header to a section here", () => {
@@ -40,17 +44,25 @@ describe("start page", () => {
     expect(html).not.toContain("GARTNER");
   });
 
-  it("shows the agent graphic and the four services", () => {
-    expect(html).toContain("Was hereinkommt");
-    expect(html).toContain("Am Ende entscheidet Ihr Team.");
-    for (const title of ["KI-Automatisierung", "KI-Schulungen", "Informationssicherheit", "Talent Index"]) expect(html).toContain(`<strong>${title}</strong>`);
+  it("lists the four services with a price and their own page", () => {
+    for (const title of ["KI-Automatisierung", "KI-Schulung", "ISO 27001", "Talent Index"]) expect(html).toContain(`>${title}</span>`);
+    for (const href of ["/contact", "/contact/schulung", "/contact/iso27001", "/fuer-unternehmen"]) expect(html).toContain(`href="${href}"`);
     expect(html).toContain("Seit Februar 2025 Pflicht (EU AI Act, Art. 4)");
     expect(html).toContain("ab 1.900 €");
+    expect(html.match(/Preis auf Anfrage/gu)).toHaveLength(2);
+    expect(html).toContain("kostenlos testen");
+  });
+
+  it("shows the live demo with real profiles", () => {
+    for (const scenario of DEMO_SCENARIOS) expect(html).toContain(`>${scenario.tab}</button>`);
+    expect(html).toContain("68 Profile geprüft");
+    expect(html).toContain("68 sind im Talent Index");
+    for (const person of DEMO_SCENARIOS[0]!.people) expect(html).toContain(person.name);
   });
 
   it("works without a database", () => {
     const fallback = renderToStaticMarkup(createElement(HomeLanding, { profiles: null }));
-    expect(fallback).toContain("Demo mit echten Profilen");
+    expect(fallback).toContain("Echte, freigegebene Profile aus dem Talent Index.");
     expect(fallback).toContain("Alle Profile geprüft");
     expect(fallback).not.toContain("null");
   });
@@ -64,7 +76,6 @@ describe("live demo data", () => {
       expect(person.name).toMatch(/^\p{Lu}\p{Ll}+ \p{Lu}\.$/u);
       expect(existsSync(new URL(`../../public${person.avatar}`, import.meta.url))).toBe(true);
     }
-    for (const face of DEMO_FACES) expect(existsSync(new URL(`../../public${face}`, import.meta.url))).toBe(true);
   });
 });
 

@@ -227,9 +227,6 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   },
 ];
 
-/** Die Gesichter in der Kachel „Talent Index“. */
-export const DEMO_FACES: readonly string[] = ["patrick", "silke", "marc", "tomas", "stefan"].map(avatar);
-
 /** „3 passen“, „1 passt“. */
 export function matchCountLabel(count: number): string {
   return `${count} ${count === 1 ? "passt" : "passen"}`;
