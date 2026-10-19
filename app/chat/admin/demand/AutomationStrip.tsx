@@ -20,20 +20,12 @@ import styles from "./demand.module.css";
  * ein Wort wie „gesperrt".
  */
 
-type Feld = "absorbUserSearches" | "resolveAddresses" | "autoInvite";
+type Feld = "absorbUserSearches";
 
 const BESCHRIFTUNG: Record<Feld, { titel: string; hilfe: string }> = {
   absorbUserSearches: {
     titel: "Kundensuche",
     hilfe: "Treffer bezahlter Suchen als Kandidaten anlegen",
-  },
-  resolveAddresses: {
-    titel: "Adressen",
-    hilfe: "zu Kandidaten ohne Adresse selbst eine suchen (~5 ct)",
-  },
-  autoInvite: {
-    titel: "Einladungen",
-    hilfe: "gefundene Adressen selbsttätig anschreiben",
   },
 };
 
@@ -109,24 +101,6 @@ export function AutomationStrip({
           </button>
         </span>
       ))}
-
-      <span className={styles.automationBudget}>
-        Tagesbudget
-        <input
-          disabled={uebertraegt}
-          max={500}
-          min={0}
-          onBlur={(event) => {
-            const wert = Number(event.target.value);
-            if (Number.isSafeInteger(wert) && wert !== stand.dailyAddressBudget) {
-              void schreibe({ dailyAddressBudget: wert });
-            }
-          }}
-          defaultValue={stand.dailyAddressBudget}
-          type="number"
-        />
-        Adressen
-      </span>
 
       <button
         className={styles.automationPause}

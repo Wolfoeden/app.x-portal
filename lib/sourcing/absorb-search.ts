@@ -1,12 +1,12 @@
 import "server-only";
 
-import type { DemandBrief } from "@/lib/freelancer/outreach";
 import { importSourcedCandidates } from "@/lib/freelancer/sourced-candidate-import";
 import type { ProjectBrief } from "@/lib/domain/brief";
 import type { ExternalFreelancerCandidate } from "@/lib/openai/external-freelancer-search";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 import { isPaused, readSourcingAutomation } from "./automation";
+import type { DemandBrief } from "./demand-brief";
 
 /**
  * Was ein Auftraggeber gesucht hat, wird zur Einladung an die Gefundenen.

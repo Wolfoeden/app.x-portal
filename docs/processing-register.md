@@ -87,10 +87,9 @@ Retention-Policies überprüfbar.
 - **Datenkategorien:** Name, Rolle, Kompetenzen, Tätigkeiten, Projekte,
   berufliche URLs, Quell-URLs, Zeitpunkt der Recherche, Ergebnis-Snapshots.
 - **Besondere Pflicht:** Information nach Art. 14 DSGVO spätestens einen Monat
-  nach der Erhebung. Der Text steht in `lib/freelancer/outreach.ts`, der
-  Versand wird von Hand ausgelöst, und der Zeitpunkt wird in
-  `freelancer_applications.outreach_sent_at` festgehalten
-  (`lib/freelancer/outreach-send.ts`).
+  nach der Erhebung. Einladungen an recherchierte Personen verschickt
+  XPORTAL nicht (der frühere Versandweg wurde am 19.10.2026 entfernt; ältere
+  Versände stehen in `sourcing_outreach`).
   Die Frist wird nicht mehr in einer Liste überwacht, sondern durch Löschung
   eingehalten: `run_sourced_candidate_cleanup()` läuft täglich um 02:45 UTC
   und entfernt jeden Kandidaten ohne Einwilligung nach 30 Tagen — also vor
