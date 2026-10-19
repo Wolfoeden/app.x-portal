@@ -11,3 +11,14 @@ export const AUTOMATION_OFFER = {
   price: "ab 1.900 €",
   terms: "Ein Ablauf, in kurzer Zeit umgesetzt. Weitere Automatisierungen danach auf Stundenbasis.",
 } as const;
+
+/**
+ * Schulung und ISO 27001 haben noch keinen veröffentlichten Preis (Stand
+ * 19.10.2026). Steht einer fest, gehört er hierher, etwa `price: "ab 1.200 €"`;
+ * bis dahin zeigt die Startseite „Preis auf Anfrage“.
+ */
+export const PRICE_ON_REQUEST = "Preis auf Anfrage";
+
+export const TRAINING_OFFER: { name: string; price: string | null } = { name: "KI-Schulung", price: null };
+
+export const ISO_OFFER: { name: string; price: string | null } = { name: "ISO 27001", price: null };

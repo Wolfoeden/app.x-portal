@@ -3,115 +3,167 @@ import Link from "next/link";
 
 import { CalendarLink } from "@/components/public/CalendarLink";
 import { DEMO_SCENARIOS } from "@/lib/marketing/live-demo";
-import { AUTOMATION_OFFER } from "@/lib/marketing/offers";
+import { AUTOMATION_OFFER, ISO_OFFER, PRICE_ON_REQUEST, TRAINING_OFFER } from "@/lib/marketing/offers";
+import { PROOF_SOURCES } from "@/lib/marketing/proof-sources";
 import { phoneHref, SALES_CONTACT } from "@/lib/sales/sales-contact-model";
 
-import { AgentDiagram } from "./AgentDiagram";
 import { ArrowIcon, PhoneIcon } from "./icons";
+import { InboxPreview } from "./InboxPreview";
 import { LiveDemo } from "./LiveDemo";
-import { ProofLinks } from "./ProofLinks";
-import { ServiceTiles } from "./ServiceTiles";
-import styles from "./home.module.css";
+import styles from "./start.module.css";
 
-function CallButton({ entry, inverted = false }: { entry: "hero" | "closing" | "process"; inverted?: boolean }) {
-  return (
-    <CalendarLink entry={entry} className={inverted ? styles.buttonWhite : styles.buttonPrimary}>
-      Erstgespräch buchen
-    </CalendarLink>
-  );
-}
+const SERVICES = [
+  {
+    title: AUTOMATION_OFFER.name,
+    text: "Ein Ablauf automatisiert, zum Beispiel Anfragen vorsortieren oder Angebote vorbereiten. Kurzes Zeitfenster bis zur Abgabe, weitere Abläufe auf Stundenbasis.",
+    price: AUTOMATION_OFFER.price,
+    href: "/contact",
+    highlight: true,
+  },
+  {
+    title: TRAINING_OFFER.name,
+    text: "Seit Februar 2025 Pflicht (EU AI Act, Art. 4). Halbtags, vor Ort oder online, mit Teilnahmebestätigung.",
+    price: TRAINING_OFFER.price ?? PRICE_ON_REQUEST,
+    href: "/contact/schulung",
+    highlight: false,
+  },
+  {
+    title: ISO_OFFER.name,
+    text: "Informationssicherheit einführen, begleitet von der Bestandsaufnahme bis zum Zertifizierungsaudit.",
+    price: ISO_OFFER.price ?? PRICE_ON_REQUEST,
+    href: "/contact/iso27001",
+    highlight: false,
+  },
+  {
+    title: "Talent Index",
+    text: "Geprüfte IT- und KI-Experten, wenn Ihnen Leute fehlen. Projekt beschreiben, passende Profile mit Begründung sehen.",
+    price: "kostenlos testen",
+    href: "/fuer-unternehmen",
+    highlight: false,
+  },
+] as const;
+
+const STEPS = [
+  { title: "Erstgespräch", text: "30 Minuten, kostenlos. Wir finden den Ablauf, bei dem KI Ihnen am meisten Zeit spart." },
+  { title: `Umsetzung ${AUTOMATION_OFFER.price}`, text: "Ein Ablauf, fester Einstiegspreis, kurzes Zeitfenster bis zur Abgabe." },
+  { title: "Weiter auf Stundenbasis", text: "Wir kennen Ihr Unternehmen dann. Jede weitere Automatisierung geht schneller." },
+] as const;
 
 /**
- * Die Startseite (Entwurf 3, 16.10.2026). Wer nach dem Anruf von Roman
- * Dering hierher kommt, soll in Sekunden sehen, dass die Technik echt ist:
- * oben die Live-Demo des eigenen Talent Index mit echten Profilen, darunter
- * dieselbe Technik für die eigenen Abläufe, der Ansprechpartner mit Belegen,
- * die vier Leistungen und der Termin. Wenig Text, ein Ziel: das
- * Erstgespräch.
+ * Die Startseite (Entwurf „Klarsicht“, 19.10.2026). Oben steht, was man kauft
+ * und was es kostet, daneben ein Postfach als Beispiel dafür. Darunter folgen
+ * die Belege, die vier Leistungen mit Preis, die Live-Demo des Talent Index
+ * mit echten Profilen, der Ablauf und der Termin. Ein Ziel: das Erstgespräch.
  */
 export function HomeLanding({ profiles }: { profiles: number | null }) {
   const { small, large } = SALES_CONTACT.photo;
   return (
     <main id="main-content" tabIndex={-1} className={styles.main}>
       <section className={styles.hero} aria-labelledby="home-title">
-        <div className={styles.wrap}>
-          <div className={styles.heroCopy}>
-            <a href="#demo" className={styles.livePill}>
-              <span className={styles.livePillBadge}><span aria-hidden="true" />Live</span>
-              {profiles ? `Demo mit ${profiles} echten Profilen` : "Demo mit echten Profilen"} <ArrowIcon />
-            </a>
-            <h1 id="home-title">Mit KI effizienter arbeiten.</h1>
-            <p className={styles.heroLead}>Sehen Sie live, was unsere KI kann. Dasselbe bauen wir für Ihr Unternehmen: {AUTOMATION_OFFER.name} {AUTOMATION_OFFER.price}.</p>
-            <div className={styles.heroActions}>
-              <CallButton entry="hero" />
-              <a href="#demo" className={styles.buttonSecondary}>Live-Demo ansehen ↓</a>
-            </div>
-            <p className={styles.personLine}>
-              <img src={small} alt="" width={40} height={40} />
-              <span>{SALES_CONTACT.name}, Ihr Ansprechpartner · <a href={phoneHref(SALES_CONTACT.phone)}>{SALES_CONTACT.phone}</a></span>
-            </p>
+        <div className={`${styles.wrap} ${styles.heroInner}`}>
+          <a href="#leistungen" className={styles.pill}>
+            <span>Neu</span>
+            {AUTOMATION_OFFER.name} {AUTOMATION_OFFER.price} <ArrowIcon />
+          </a>
+          <h1 id="home-title">KI-Agenten für Ihre Routine.</h1>
+          <p className={styles.lead}>Anfragen, Angebote, Auswertungen: Wir automatisieren einen Ablauf in Ihrem Unternehmen. In kurzer Zeit umgesetzt, danach auf Stundenbasis.</p>
+          <div className={styles.actions}>
+            <CalendarLink entry="hero" className={styles.buttonPrimary}>Erstgespräch buchen</CalendarLink>
+            <a href="#demo" className={styles.buttonSecondary}>Live-Demo ansehen</a>
           </div>
-          <div id="demo" className={styles.demo}>
-            <LiveDemo scenarios={DEMO_SCENARIOS} profiles={profiles} />
-            <p className={styles.demoNote}>
-              <span>Echte, freigegebene Profile aus unserem Talent Index. Namen gekürzt, Bilder gezeichnet.</span>
-              <Link href="/fuer-unternehmen" prefetch={false}>Selbst ausprobieren <ArrowIcon /></Link>
-            </p>
-          </div>
+          <p className={styles.person}>
+            <img src={small} alt="" width={32} height={32} />
+            <span>30 Minuten mit {SALES_CONTACT.name} · kostenlos · unverbindlich</span>
+          </p>
+          <InboxPreview />
         </div>
       </section>
 
-      <section className={styles.bridge} aria-labelledby="bridge-title">
-        <div className={styles.wrap}>
-          <div className={styles.centerHead}>
-            <p className={styles.eyebrow}>Und bei Ihnen?</p>
-            <h2 id="bridge-title">Dieselbe Technik für Ihre Abläufe.</h2>
-          </div>
-          <AgentDiagram />
-          <div className={styles.centerActions}>
-            <CallButton entry="process" />
-            <span>30 Minuten · kostenlos · unverbindlich</span>
-          </div>
-        </div>
-      </section>
-
-      <section id="ueber" className={styles.trust} aria-label="Ihr Ansprechpartner">
-        <div className={`${styles.wrap} ${styles.trustGrid}`}>
-          <img src={large} alt={SALES_CONTACT.name} className={styles.trustPhoto} width={340} height={380} loading="lazy" decoding="async" />
-          <div className={styles.trustCopy}>
-            <blockquote>„In 30 Minuten zeige ich Ihnen, wo KI bei Ihnen Zeit spart. Und wo nicht.“</blockquote>
-            <p className={styles.trustName}><strong>{SALES_CONTACT.name}</strong> · XPORTAL · <a href={phoneHref(SALES_CONTACT.phone)}>{SALES_CONTACT.phone}</a></p>
-            <div className={styles.trustProof}>
-              <p>Thesen aus meinen Studienarbeiten zu KI im Unternehmen, belegt durch</p>
-              <ProofLinks />
-            </div>
-          </div>
-        </div>
+      <section className={`${styles.wrap} ${styles.proof}`} aria-label="Belege">
+        <p>Thesen aus meinen Studienarbeiten zu KI im Unternehmen, belegt durch Studien von</p>
+        <ul>
+          {PROOF_SOURCES.map((source) => (
+            <li key={source.name}>
+              <a href={source.href} target="_blank" rel="noopener noreferrer" title={source.title}>{source.name.toUpperCase()}</a>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section id="leistungen" className={styles.services} aria-labelledby="services-title">
-        <div className={styles.wrap}>
-          <h2 id="services-title">Was wir für Sie umsetzen</h2>
-          <ServiceTiles profiles={profiles} />
+        <div className={`${styles.wrap} ${styles.sectionPad}`}>
+          <div className={styles.sectionHead}>
+            <h2 id="services-title" className={styles.h2}>Leistungen und Preise.</h2>
+            <p>Sie sehen den Preis, bevor Sie anrufen. Im Erstgespräch klären wir, was davon bei Ihnen am meisten bringt.</p>
+          </div>
+          <ol className={styles.serviceList}>
+            {SERVICES.map((service, index) => (
+              <li key={service.title}>
+                <Link href={service.href} prefetch={false} className={styles.service} data-highlight={service.highlight ? "true" : undefined}>
+                  <span className={styles.serviceNumber}>{String(index + 1).padStart(2, "0")}</span>
+                  <span className={styles.serviceTitle}>{service.title}</span>
+                  <span className={styles.serviceText}>{service.text}</span>
+                  <span className={styles.servicePrice}>
+                    {service.price}
+                    <span className={styles.serviceArrow} aria-hidden="true"><ArrowIcon size={18} /></span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section id="demo" aria-labelledby="demo-title" className={`${styles.wrap} ${styles.sectionPad}`}>
+        <div className={styles.sectionHead}>
+          <div>
+            <p className={styles.eyebrow}>Live-Demo · Talent Index</p>
+            <h2 id="demo-title" className={styles.h2}>Anfrage rein. Passende Leute raus.</h2>
+          </div>
+          <p>{profiles ? `Echte, freigegebene Profile: ${profiles} sind im Talent Index.` : "Echte, freigegebene Profile aus dem Talent Index."} Namen gekürzt, Bilder gezeichnet.</p>
+        </div>
+        <LiveDemo scenarios={DEMO_SCENARIOS} profiles={profiles} />
+        <p className={styles.demoFoot}>
+          <span>Dieselbe Technik bauen wir für Ihre Abläufe.</span>
+          <Link href="/fuer-unternehmen" prefetch={false}>Mit eigenem Projekt ausprobieren <ArrowIcon /></Link>
+        </p>
+      </section>
+
+      <section id="ablauf" className={styles.process} aria-labelledby="steps-title">
+        <div className={`${styles.wrap} ${styles.sectionPad} ${styles.processGrid}`}>
+          <div>
+            <h2 id="steps-title" className={styles.h2}>Drei Schritte. Ein Ansprechpartner.</h2>
+            <CalendarLink entry="process" className={styles.buttonPrimary}>Erstgespräch buchen</CalendarLink>
+          </div>
+          <ol className={styles.steps}>
+            {STEPS.map((step, index) => (
+              <li key={step.title}>
+                <span aria-hidden="true">{index + 1}</span>
+                <div><strong>{step.title}</strong><p>{step.text}</p></div>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
 
       <section id="termin" className={styles.closing} aria-labelledby="closing-title">
-        <div className={styles.wrap}>
-          <div className={styles.closingCard}>
-            <div className={styles.closingCopy}>
-              <h2 id="closing-title">30 Minuten. Danach wissen Sie, wo KI bei Ihnen Zeit spart.</h2>
-              <p>Kostenlos und unverbindlich, per Telefon oder Video.</p>
-              <div className={styles.closingActions}>
-                <CallButton entry="closing" inverted />
-                <a href={phoneHref(SALES_CONTACT.phone)} className={styles.closingPhone}><PhoneIcon />{SALES_CONTACT.phone}</a>
-              </div>
+        <div className={`${styles.wrap} ${styles.sectionPad} ${styles.closingGrid}`}>
+          <div className={styles.closingCopy}>
+            <h2 id="closing-title" className={styles.h2}>30 Minuten. Danach wissen Sie, wo KI bei Ihnen Zeit spart.</h2>
+            <p>Kostenlos und unverbindlich, per Telefon oder Video.</p>
+            <div className={styles.closingActions}>
+              <CalendarLink entry="closing" className={styles.buttonLight}>Erstgespräch buchen</CalendarLink>
+              <a href={phoneHref(SALES_CONTACT.phone)} className={styles.buttonOutline}><PhoneIcon />{SALES_CONTACT.phone}</a>
             </div>
-            <figure className={styles.closingPerson}>
-              <img src={large} alt={SALES_CONTACT.name} width={112} height={112} loading="lazy" decoding="async" />
-              <figcaption><strong>{SALES_CONTACT.name}</strong><span>nimmt sich die Zeit selbst</span></figcaption>
-            </figure>
           </div>
+          <figure id="ueber" className={styles.closingPerson}>
+            <img src={large} alt={SALES_CONTACT.name} width={140} height={156} loading="lazy" decoding="async" />
+            <figcaption>
+              <blockquote>„In 30 Minuten zeige ich Ihnen, wo KI bei Ihnen Zeit spart. Und wo nicht.“</blockquote>
+              <strong>{SALES_CONTACT.name}</strong>
+              <span>XPORTAL · nimmt sich die Zeit selbst</span>
+            </figcaption>
+          </figure>
         </div>
       </section>
     </main>

@@ -1,17 +1,18 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 
 import { matchCountLabel, type DemoScenario } from "@/lib/marketing/live-demo";
 
-import { DemoPersonCard } from "./DemoPersonCard";
 import { CheckIcon } from "./icons";
-import styles from "./home.module.css";
+import styles from "./start.module.css";
 
 /**
- * Die Live-Demo oben auf der Startseite: ein Fenster des Talent Index mit
- * drei Beispielanfragen zum Umschalten. Ohne JavaScript steht die erste da;
- * das Umschalten ist nur Zustand im Browser, es geht nichts an den Server.
+ * Die Live-Demo der Startseite: drei Beispielanfragen zum Umschalten, darunter
+ * was die KI erkannt hat und die passenden Profile. Ohne JavaScript steht die
+ * erste da; das Umschalten ist nur Zustand im Browser, es geht nichts an den
+ * Server.
  */
 export function LiveDemo({ scenarios, profiles }: { scenarios: readonly DemoScenario[]; profiles: number | null }) {
   const [active, setActive] = useState(scenarios[0]!.key);
@@ -19,14 +20,8 @@ export function LiveDemo({ scenarios, profiles }: { scenarios: readonly DemoScen
   const steps = ["Anfrage gelesen", "Anforderungen erkannt", profiles ? `${profiles} Profile geprüft` : "Alle Profile geprüft"];
 
   return (
-    <div className={styles.window}>
-      <div className={styles.windowBar}>
-        <span className={styles.windowDots} aria-hidden="true"><span /><span /><span /></span>
-        <strong>XPORTAL · Talent Index</strong>
-        <span className={styles.liveBadge}><span aria-hidden="true" />Live-Demo · echte Profile</span>
-      </div>
-      <div className={styles.tabs}>
-        <span>Probieren Sie es aus:</span>
+    <div>
+      <div className={styles.tabs} role="group" aria-label="Beispielanfragen">
         {scenarios.map((item) => (
           <button
             key={item.key}
@@ -39,38 +34,64 @@ export function LiveDemo({ scenarios, profiles }: { scenarios: readonly DemoScen
           </button>
         ))}
       </div>
-      <div id="live-demo-panel" className={styles.demoGrid} aria-live="polite">
-        <div className={styles.demoInput}>
-          <div>
-            <p className={styles.label}>Anfrage</p>
-            <p className={styles.request}>„{scenario.request}“</p>
-          </div>
-          <div className={styles.recognized}>
-            <p className={styles.label}>Von der KI erkannt</p>
-            <div className={styles.reqRow}>
-              <span>Muss</span>
-              {scenario.must.map((item) => <span key={item} className={styles.chipMust}>{item}</span>)}
-            </div>
-            <div className={styles.reqRow}>
-              <span>Wünschenswert</span>
-              {scenario.nice.map((item) => <span key={item} className={styles.chipNice}>{item}</span>)}
-            </div>
-            <dl className={styles.facts}>
-              {scenario.facts.map(([label, value]) => (
-                <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
-              ))}
-            </dl>
-          </div>
+      <div id="live-demo-panel" aria-live="polite">
+        <div className={styles.request}>
+          <p>„{scenario.request}“</p>
+          <dl>
+            {scenario.facts.map(([label, value]) => (
+              <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
+            ))}
+          </dl>
         </div>
-        <div className={styles.demoResults}>
-          <ol className={styles.steps}>
+        <div className={styles.analysis}>
+          <ol>
             {steps.map((step) => (
-              <li key={step}><span aria-hidden="true"><CheckIcon size={12} /></span>{step}</li>
+              <li key={step}><CheckIcon size={12} />{step}</li>
             ))}
           </ol>
-          <p className={styles.count}>{matchCountLabel(scenario.people.length)} <span>· sortiert nach Passung</span></p>
-          {scenario.people.map((person) => <DemoPersonCard key={person.name} person={person} />)}
+          <p>
+            <span>Muss:</span>
+            {scenario.must.map((item) => <span key={item} className={styles.chip}>{item}</span>)}
+            <span>Wunsch:</span>
+            {scenario.nice.map((item) => <span key={item} className={styles.chip} data-kind="nice">{item}</span>)}
+          </p>
+          <p><strong>{matchCountLabel(scenario.people.length)}</strong> · sortiert nach Passung</p>
         </div>
+        <ul className={styles.people}>
+          {scenario.people.map((person) => (
+            <li key={person.name}>
+              <article className={styles.card}>
+                <div className={styles.cardHead}>
+                  <Image src={person.avatar} alt="" width={48} height={48} unoptimized />
+                  <div>
+                    <p className={styles.cardName}>
+                      <strong>{person.name}</strong>
+                      {person.verified ? (
+                        <span className={styles.verified}><CheckIcon size={12} />geprüft</span>
+                      ) : (
+                        <span className={styles.unverified}>Angaben laut Profil</span>
+                      )}
+                    </p>
+                    <p className={styles.cardRole}>{person.role}</p>
+                  </div>
+                </div>
+                <p className={styles.cardMeta}>
+                  <span>{person.where}</span>
+                  <strong>{person.rate}</strong>
+                </p>
+                <p className={styles.cardMeta}>
+                  <span className={styles.available} data-available={person.available ? "true" : undefined}>{person.availability}</span>
+                </p>
+                <ul className={styles.chips} aria-label="Anforderungen">
+                  {person.hits.map((hit) => (
+                    <li key={hit.label} className={styles.chip} data-state={hit.state}>{hit.label}</li>
+                  ))}
+                </ul>
+                <p className={styles.why}><strong>Warum:</strong> {person.why}</p>
+              </article>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );
