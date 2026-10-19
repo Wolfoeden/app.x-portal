@@ -40,10 +40,10 @@ export default function HowXportalWorksPage() {
         <p>Das verhindert nicht jeden Interpretationsfehler. Lesen Sie die erfassten Anforderungen deshalb durch. Wenn die KI-Verarbeitung nicht verfügbar ist, kann XPORTAL eine begrenztere regelbasierte Erfassung verwenden; auch dann ist Ihre Kontrolle sinnvoll.</p>
       </ContentSection>
 
-      <ContentSection id="matching" label="Schritt 3" title="Der interne Profilabgleich folgt Regeln">
-        <p>Die strukturierten Anforderungen werden mit vorhandenen Freelancer-Profilen abgeglichen. Auswahl und Reihenfolge werden im internen Matching regelbasiert berechnet. Die KI, die den Text strukturiert, wählt keine Person aus.</p>
-        <p>Der Abgleich berücksichtigt fachliche Überschneidungen, die Art der Anforderung und hinterlegte Rahmenbedingungen. Kernkompetenzen und optionale Fähigkeiten werden unterschieden. Ausdrückliche Ausschlüsse und zwingende Anforderungen werden nach den Regeln für das jeweilige Kriterium behandelt.</p>
-        <p>Erfasste Hinweise zu Branche, Zertifikaten oder Projekterfahrung können die Einordnung ergänzen. Sie ersetzen keinen fehlenden Kernskill. Das Matching leitet auch nicht aus jedem Satz einer Erfahrungsbeschreibung eine zusätzliche Kompetenz ab.</p>
+      <ContentSection id="matching" label="Schritt 3" title="Vorauswahl und KI-Bewertung">
+        <p>Aus allen aktiven Freelancer-Profilen wählt XPORTAL zuerst die 20 aus, die Ihrer Anfrage inhaltlich am nächsten sind. Die Vorauswahl vergleicht Bedeutung, nicht nur Wörter: Gleichbedeutende Begriffe in anderer Sprache oder Schreibweise zählen mit.</p>
+        <p>Diese 20 Profile bewertet die KI gegen Ihre Anfrage. Die drei besten stehen oben, jeweils mit Begründung, welche Anforderungen das Profil belegt, und mit den Punkten, die offen sind. Alle 20 Profile der Vorauswahl können Sie aufklappen und selbst durchsehen.</p>
+        <p>Die Bewertung stützt sich nur auf die Angaben im Profil. Was dort nicht steht, nennt sie als offenen Punkt, statt es anzunehmen. Ist die KI-Bewertung einmal nicht erreichbar, stehen die inhaltlich nächsten Profile oben und sind als nicht bewertet gekennzeichnet.</p>
         <p>Weitere Erläuterungen finden Sie unter <Link href={MARKETING_PAGE.matching.path}>KI-gestütztes Freelancer-Matching</Link>.</p>
       </ContentSection>
 

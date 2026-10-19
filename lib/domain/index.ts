@@ -13,3 +13,4 @@ export type {
   RequirementPriority,
 } from "./requirements";
 export * from "./skill-taxonomy";
+export * from "./ai-shortlist";

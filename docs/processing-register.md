@@ -56,7 +56,11 @@ Retention-Policies überprüfbar.
 ### 3. Projektbeschreibung, Chat und KI-Strukturierung
 
 - **Zweck:** Überführung einer Projektbeschreibung in einen strukturierten
-  Anforderungsbrief; regelbasierter Abgleich mit Profilen.
+  Anforderungsbrief; Vorauswahl der inhaltlich nächsten Profile über
+  Embeddings und KI-Bewertung dieser Vorauswahl gegen die Anfrage (seit
+  19.10.2026). An OpenAI gehen dafür der Anfragetext und berufliche
+  Profilangaben ohne Namen; die Embeddings der Profile liegen in Supabase
+  (`freelancer_profile_embeddings`).
 - **Rechtsgrundlage:** Art. 6 Abs. 1 lit. b DSGVO; ergänzend lit. f für
   Kosten- und Missbrauchskontrolle.
 - **Betroffene:** Nutzer; mittelbar die in einer Beschreibung genannten
@@ -64,7 +68,9 @@ Retention-Policies überprüfbar.
 - **Datenkategorien:** Nachrichten, Projekte, strukturierte Anforderungen,
   Matching-Ergebnisse und Bewertungs-Snapshots, Zeitstempel.
 - **Empfänger:** Supabase; OpenAI Ireland Ltd. für den zur Strukturierung
-  erforderlichen Text nebst pseudonymer Sicherheitskennung. Anfragen laufen mit
+  erforderlichen Text nebst pseudonymer Sicherheitskennung sowie für
+  Vorauswahl und Bewertung den Anfragetext und berufliche Profilangaben der
+  vorausgewählten Freelancer ohne Namen. Anfragen laufen mit
   `store: false`; anbieterseitige Missbrauchsprotokolle bleiben davon unberührt.
 - **Fristen:** Nachrichten in inaktiven Projekten 180 Tage; inaktive Projekte
   und Match-Snapshots 365 Tage.

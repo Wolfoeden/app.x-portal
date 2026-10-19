@@ -24,7 +24,7 @@ Metadata-API, Robots, Sitemap, Route Handlers, JSON-LD und CSS Modules.
 | Aussage | Geprüfte Implementierung | Grenze für die Texte |
 | --- | --- | --- |
 | KI strukturiert die Projektangaben. | `lib/openai/brief.ts`, `lib/domain/brief.ts` | Validierung und Quellenabgleich sind implementiert; keine Fehlerfreiheit versprechen. |
-| Internes Matching ist regelbasiert. | `lib/domain/matching.ts` | Kein autonomer KI-Entscheider und keine Erfolgsprognose. |
+| Interne Suche: Vorauswahl nach inhaltlicher Nähe, danach KI-Bewertung mit Begründung (seit 19.10.2026). | `lib/search/prefilter.ts`, `lib/openai/profile-ranking.ts`, `lib/domain/ai-shortlist.ts` | Die KI schlägt vor, der Nutzer entscheidet; keine Erfolgsprognose. |
 | Match-Gründe und Lücken werden angezeigt. | `lib/presentation/chat.ts`, `components/chat/results.tsx` | Offen ist nicht automatisch unpassend; zwingende Kriterien werden je nach Feld behandelt. |
 | Erfahrungsinformationen ergänzen den Abgleich. | `lib/data/freelancers.ts` (`contextEvidenceTags`), `lib/domain/matching.ts` | Erfasste Kontextinformationen können ergänzen; sie ersetzen keine Kernkompetenz. Keine umfassende semantische Auswertung sämtlicher Projekttexte behaupten. |
 | Der Nutzer wählt ein Profil und weitere Schritte aus. | `components/ChatWorkspace.tsx`, Auth-Continuation | Keine automatische Beauftragung durch Suche oder Anmeldung. |

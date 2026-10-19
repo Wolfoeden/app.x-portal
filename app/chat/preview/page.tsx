@@ -20,6 +20,8 @@ import {
   agentShowcase,
   automationStrictBrief,
   automationStrictRequest,
+  aiPreviewCandidates,
+  aiRankedProfiles,
 } from "@/components/chat/preview-fixtures";
 
 export const metadata = {
@@ -43,6 +45,9 @@ export const metadata = {
  * `scenario=automation` spielt die Anfrage „KI & Automatisierungen“ durch:
  * `ranked` mit zwei Empfehlungen, `partial` und `no_match` mit n8n als Muss
  * und einer festen Tagessatzgrenze — mit Teiltreffern und ganz ohne.
+ *
+ * `scenario=ki` zeigt das Ergebnis der KI-Bewertung: drei Profile mit
+ * Begründung und Einschätzung, darunter alle 20 Profile der Vorauswahl.
  */
 type PreviewState = "ranked" | "no_match" | "searching" | "empty" | "partial";
 
@@ -88,6 +93,7 @@ export default async function ChatPreviewPage({
   const state = resultState(params.state);
   const authParam = Array.isArray(params.auth) ? params.auth[0] : params.auth;
   const automation = params.scenario === "automation";
+  const aiRanked = params.scenario === "ki";
   const strict = automation && (state === "partial" || state === "no_match");
   const brief = automation ? (strict ? automationStrictBrief : automationBrief) : previewBrief;
   const messages = !automation
@@ -113,7 +119,8 @@ export default async function ChatPreviewPage({
           : previewProjects,
         messages: state === "empty" ? [] : messages,
         brief,
-        profiles: automation ? automationProfiles : previewProfiles,
+        profiles: automation ? automationProfiles : aiRanked ? aiRankedProfiles : previewProfiles,
+        candidates: aiRanked ? aiPreviewCandidates : [],
         partialProfiles: automation && state === "partial" ? automationPartialProfiles : [],
         // Ohne diese Freigabe blendet das Ergebnis den Agenten aus — im leeren
         // Fall wäre die Vorschau dann genau um das ärmer, was sie zeigen soll.

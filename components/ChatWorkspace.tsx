@@ -332,6 +332,7 @@ interface ChatWorkspaceProps {
     brief: StructuredBrief;
     profiles: FreelancerProfileResult[];
     partialProfiles?: FreelancerProfileResult[];
+    candidates?: FreelancerProfileResult[];
     analysis: AiAnalysisTrace;
     usage: AiUsageSnapshot;
     /**
@@ -874,6 +875,10 @@ function normalizeProfile(value: unknown): FreelancerProfileResult | null {
           : null,
     fitScore: percentValue(value.fitScore ?? value.fit_score),
     coreCoverage: percentValue(value.coreCoverage ?? value.core_coverage),
+    ...(value.rankedBy === "ai" || value.rankedBy === "prefilter" ? { rankedBy: value.rankedBy } : {}),
+    ...(typeof value.candidateRank === "number" && Number.isInteger(value.candidateRank)
+      ? { candidateRank: value.candidateRank }
+      : {}),
     introPolicy: {
       type: introType,
       label: stringValue(
@@ -927,18 +932,28 @@ function normalizeMessage(value: unknown): ConversationMessage {
   };
 }
 
+/** Die Vorauswahl einer Suche: höchstens 20 Profile, in Anzeigereihenfolge. */
+function normalizeCandidates(value: unknown): FreelancerProfileResult[] {
+  return Array.isArray(value)
+    ? value
+        .map(normalizeProfile)
+        .filter((item): item is FreelancerProfileResult => item !== null)
+        .slice(0, 20)
+    : [];
+}
+
 export function normalizeChatResponse(value: unknown, fallbackTitle: string): ChatResponse {
   const envelope = isRecord(value) ? value : {};
   const response = isRecord(envelope.data) ? envelope.data : value;
   if (!isRecord(response)) throw new Error("Die Serverantwort hatte kein gültiges Format.");
   const matchSource = response.matches ?? response.profiles ?? response.shortlist;
+  // Kein Filter auf den Terminlink: Seit dem Vermittlungsmodell gehören
+  // Profile ohne Kalender regulär zum Pool, und der Server zeigt sie an.
+  // Hier verworfen, verschwand ein gefundenes Profil ohne Hinweis.
   const matches = Array.isArray(matchSource)
     ? matchSource
         .map(normalizeProfile)
-        .filter(
-          (item): item is FreelancerProfileResult =>
-            item !== null && item.bookingUrl !== null,
-        )
+        .filter((item): item is FreelancerProfileResult => item !== null)
     : [];
   const partialSource = response.partialMatches ?? response.partial_matches;
   const partialMatches = Array.isArray(partialSource)
@@ -966,6 +981,7 @@ export function normalizeChatResponse(value: unknown, fallbackTitle: string): Ch
     brief: normalizeBrief(response.brief),
     matches: matches.slice(0, 3),
     partialMatches: partialMatches.slice(0, 2),
+    candidates: normalizeCandidates(response.candidates),
     ...(matchingStatus ? { matchingStatus } : {}),
     mode: response.mode === "fallback" ? "fallback" : "ai",
     notice: nullableString(response.notice) ?? undefined,
@@ -1019,6 +1035,7 @@ export function normalizeProjectDetail(value: unknown): ProjectDetailResponse {
     brief: response.brief ? normalizeBrief(response.brief) : null,
     profiles: profiles.slice(0, 3),
     partialProfiles: partialProfiles.slice(0, 2),
+    candidates: normalizeCandidates(response.candidates),
     ...(matchingStatus ? { matchingStatus } : {}),
     ...(response.analysisMode === "ai" || response.analysisMode === "fallback"
       ? { analysisMode: response.analysisMode }
@@ -1208,6 +1225,8 @@ export function ChatWorkspace({
     previewNoMatch ? [] : previewData?.profiles ?? [],
   );
   const [partialProfiles, setPartialProfiles] = useState<FreelancerProfileResult[]>(previewData?.partialProfiles ?? []);
+  // Die ganze Vorauswahl der letzten Suche (bis zu 20), zum Durchsehen.
+  const [candidates, setCandidates] = useState<FreelancerProfileResult[]>(previewData?.candidates ?? []);
   const [matchingStatus, setMatchingStatus] = useState<MatchingStatus | null>(
     preview ? (previewNoMatch ? "no_reliable_match" : "ranked") : null,
   );
@@ -1720,6 +1739,7 @@ export function ChatWorkspace({
     setBrief(detail.brief);
     setProfiles(detail.profiles.slice(0, 3));
     setPartialProfiles(detail.partialProfiles.slice(0, 2));
+    setCandidates(detail.candidates ?? []);
     setMatchingStatus(detail.matchingStatus ?? null);
     setHasResult(Boolean(detail.brief));
     if (!detailsTouchedRef.current) setDetailsOpen(Boolean(detail.brief) && detailsOpenByDefault());
@@ -2148,6 +2168,7 @@ export function ChatWorkspace({
     setBrief(null);
     setProfiles([]);
     setPartialProfiles([]);
+    setCandidates([]);
     setMatchingStatus(null);
     setHasResult(false);
     setAnalysisMode(null);
@@ -2188,6 +2209,7 @@ export function ChatWorkspace({
     setBrief(null);
     setProfiles([]);
     setPartialProfiles([]);
+    setCandidates([]);
     setMatchingStatus(null);
     setHasResult(false);
     setAnalysisMode(null);
@@ -2232,6 +2254,7 @@ export function ChatWorkspace({
       setBrief(result.brief);
       setProfiles(result.matches.slice(0, 3));
       setPartialProfiles(result.partialMatches.slice(0, 2));
+      setCandidates(result.candidates ?? []);
       setMatchingStatus(result.matchingStatus ?? null);
       setHasResult(true);
       trackFunnelEvent("result_seen", result.matchingStatus ?? "unclassified");
@@ -3683,6 +3706,7 @@ export function ChatWorkspace({
                     projectId={activeProject?.id ?? null}
                     profiles={profiles}
                     partialProfiles={partialProfiles}
+                    candidates={candidates}
                     matchingStatus={matchingStatus}
                     analysis={analysisTrace}
                     analysisMode={analysisMode}

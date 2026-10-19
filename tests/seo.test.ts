@@ -184,7 +184,7 @@ describe("public SEO outputs", () => {
     const text = await response.text();
     expect(text).toMatch(/^# XPORTAL\n/u);
     expect(text).toContain("optional");
-    expect(text).toContain("regelbasiert");
+    expect(text).toContain("Vorauswahl");
     for (const page of [CHAT_PAGE, ...MARKETING_PAGES]) {
       expect(text.split("(" + absoluteUrl(page.path) + ")")).toHaveLength(2);
     }

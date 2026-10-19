@@ -34,6 +34,18 @@ export const READABLE_RULE_VERSIONS = [
   "freelancer-match-v13",
   "freelancer-match-v14",
   "freelancer-match-v15",
+  "freelancer-ai-rank-v1",
+] as const;
+
+/**
+ * Die Suche im Chat seit dem 19.10.2026 (lib/domain/ai-shortlist.ts): eine
+ * Vorauswahl über inhaltliche Nähe, danach bewertet die KI. Die Regeln dieser
+ * Datei bleiben für gespeicherte Ergebnisse und die Leadgen-Auswertung.
+ */
+export const AI_RANKING_RULE_VERSION = "freelancer-ai-rank-v1" as const;
+export const AI_RANKING_ORDER_RULE = [
+  "ai_fit_score_desc",
+  "prefilter_similarity_desc",
 ] as const;
 export const READABLE_SCORE_VERSIONS = [
   "freelancer-score-v1",
@@ -155,6 +167,14 @@ export const MatchingDecisionSnapshotSchema = z
     primaryProfileId: z.string().uuid().nullable(),
     openCoreRequirements: z.array(z.string().min(1).max(500)).max(5),
     partialProfileIds: z.array(z.string().uuid()).max(MAX_PARTIAL_MATCHES).optional(),
+    /**
+     * Nur bei der KI-Bewertung (freelancer-ai-rank-v1): die höchste
+     * Einschätzung unter den Profilen oben, null ohne Bewertung. Danach
+     * richten sich Rechercheangebot und Kataloglücke (ai-shortlist.ts).
+     */
+    bestFitScore: z.number().int().min(0).max(100).nullable().optional(),
+    /** Nur bei der KI-Bewertung: die Profile oben, in Reihenfolge. */
+    rankedProfileIds: z.array(z.string().uuid()).max(3).optional(),
   })
   .strict()
   .refine(
@@ -234,18 +254,24 @@ export const ShortlistMatchSchema = z
 export const ShortlistSchema = z
   .object({
     ruleVersion: z.enum(READABLE_RULE_VERSIONS),
-    orderingRule: z.tuple([
-      z.literal("fit_score_desc"),
-      z.literal("core_coverage_desc"),
-      z.literal("evidence_confidence_desc"),
-      z.literal("verified_required_skill_matches_desc"),
-      z.literal("commercial_constraint_confidence_desc"),
-      z.literal("availability_status_priority"),
-      z.literal("optional_skill_matches_desc"),
-      z.literal("context_evidence_matches_desc"),
-      z.literal("available_from_asc_unknown_last"),
-      z.literal("display_name_asc"),
-      z.literal("profile_id_asc"),
+    orderingRule: z.union([
+      z.tuple([
+        z.literal("fit_score_desc"),
+        z.literal("core_coverage_desc"),
+        z.literal("evidence_confidence_desc"),
+        z.literal("verified_required_skill_matches_desc"),
+        z.literal("commercial_constraint_confidence_desc"),
+        z.literal("availability_status_priority"),
+        z.literal("optional_skill_matches_desc"),
+        z.literal("context_evidence_matches_desc"),
+        z.literal("available_from_asc_unknown_last"),
+        z.literal("display_name_asc"),
+        z.literal("profile_id_asc"),
+      ]),
+      z.tuple([
+        z.literal("ai_fit_score_desc"),
+        z.literal("prefilter_similarity_desc"),
+      ]),
     ]),
     /**
      * `needs_clarification` means the brief carried no requirement to rank
@@ -1449,7 +1475,7 @@ export function evaluateProfile(
   });
 }
 
-function sourceDisclosures(profile: FreelancerProfile): {
+export function sourceDisclosures(profile: FreelancerProfile): {
   verifiedFacts: string[];
   selfReportedFacts: string[];
 } {

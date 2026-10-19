@@ -1,3 +1,4 @@
+import { effectiveResultStatus } from "@/lib/domain/ai-shortlist";
 import { ProjectBriefSchema, type ProjectBrief } from "@/lib/domain/brief";
 import { MatchingDecisionSnapshotSchema } from "@/lib/domain/matching";
 import {
@@ -183,7 +184,9 @@ function parseSearch(row: SearchDemandSourceRow): ParsedSearch | null {
     row.decision_snapshot,
   );
   return {
-    row,
+    // Eine Suche, deren bestes Profil laut KI nicht trägt, ist eine
+    // Kataloglücke wie ein leeres Ergebnis (lib/domain/ai-shortlist.ts).
+    row: { ...row, result_status: effectiveResultStatus(row.result_status, row.decision_snapshot) },
     brief: parsed.data,
     profileKey: identity.key,
     profileLabel: identity.label,

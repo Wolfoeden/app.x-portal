@@ -21,7 +21,7 @@ import {
 
 import { appPath } from "@/lib/app-path";
 import { MatchProtocol } from "@/components/product/MatchProtocol";
-import { MINIMUM_CORE_COVERAGE_BASIS_POINTS } from "@/lib/domain/matching-threshold";
+import { AI_FIT_THRESHOLD, MINIMUM_CORE_COVERAGE_BASIS_POINTS } from "@/lib/domain/matching-threshold";
 
 import {
   BRIEF_FIELDS,
@@ -237,6 +237,7 @@ export function ResultSection({
   projectId,
   profiles,
   partialProfiles,
+  candidates = [],
   matchingStatus,
   analysis,
   analysisMode,
@@ -273,6 +274,8 @@ export function ResultSection({
   projectId: string | null;
   profiles: FreelancerProfileResult[];
   partialProfiles: FreelancerProfileResult[];
+  /** Die ganze Vorauswahl (bis zu 20), aufklappbar unter den drei besten. */
+  candidates?: FreelancerProfileResult[];
   matchingStatus: MatchingStatus | null;
   analysis: AiAnalysisTrace | null;
   analysisMode: "ai" | "fallback" | null;
@@ -326,6 +329,32 @@ export function ResultSection({
   const shownProfiles = profiles.filter((profile) => !dismissedIds.has(profile.id));
   const shownPartials = partialProfiles.filter((profile) => !dismissedIds.has(profile.id));
   const allRankedDismissed = profiles.length > 0 && shownProfiles.length === 0;
+  // Bei der KI-Bewertung: Trägt selbst das beste Profil oben nicht (unter
+  // der Schwelle oder ohne Bewertung), steht die Recherche unter den Profilen.
+  const aiScores = shownProfiles
+    .filter((profile) => profile.rankedBy !== undefined)
+    .map((profile) => (profile.rankedBy === "ai" ? profile.fitScore : null));
+  const weakAiResult =
+    aiScores.length > 0 && aiScores.every((score) => score === null || score < AI_FIT_THRESHOLD);
+  const researchOffer = (note?: string) => (
+    <section className="recovery-research" aria-labelledby="recovery-research-title">
+      <p className="recovery-research-title" id="recovery-research-title">
+        Öffentlich weitersuchen · {EXTERNAL_SEARCH_CREDITS} Credits
+      </p>
+      <p className="recovery-research-lead">
+        {note ? `${note} ` : ""}Der Recherche-Agent sucht in öffentlichen Quellen nach Freelancern für genau diese Anforderungen, prüft jeden Treffer an seiner Quelle und zeigt ihn mit Link.
+      </p>
+      <ResearchFacts />
+      <AgentLaunchPanel
+        state={launchState}
+        searching={externalSearchState === "searching"}
+        failed={externalSearchState === "error"}
+        onStart={onExternalSearch}
+        onRequireLogin={onRequireLogin}
+        onNeedCredits={onNeedCredits}
+      />
+    </section>
+  );
   /**
    * Die Karte erscheint nur, wenn sie etwas sagt, das nicht schon oben steht.
    *
@@ -433,7 +462,30 @@ export function ResultSection({
               />
             )}
           />
+          {candidates.length > shownProfiles.length ? (
+            <CandidatePool
+              candidates={candidates}
+              projectId={projectId}
+              aiRanked={profiles.some((profile) => profile.rankedBy === "ai")}
+              savedFreelancerIds={savedFreelancerIds}
+              onToggleSave={onToggleSave}
+            />
+          ) : null}
           <SearchTips tips={tips} />
+          {weakAiResult && (analysis?.externalSearchAvailable ?? true) && externalSearch?.mode !== "openai"
+            ? researchOffer(
+                aiScores.every((score) => score === null)
+                  ? "Diese Profile sind noch nicht von der KI bewertet."
+                  : "Laut KI deckt keines dieser Profile Ihre Anfrage im Wesentlichen ab.",
+              )
+            : null}
+          {externalSearch ? (
+            <ExternalSearchResults
+              result={externalSearch}
+              expandedProfileUrl={expandedProfileUrl}
+              onToggleExpand={onToggleExpand}
+            />
+          ) : null}
         </>
       ) : (
         <>
@@ -530,25 +582,7 @@ export function ResultSection({
           {((matchingStatus === "no_reliable_match" &&
             (analysis?.externalSearchAvailable ?? true)) ||
             allRankedDismissed) &&
-          externalSearch?.mode !== "openai" ? (
-            <section className="recovery-research" aria-labelledby="recovery-research-title">
-              <p className="recovery-research-title" id="recovery-research-title">
-                Öffentlich weitersuchen · {EXTERNAL_SEARCH_CREDITS} Credits
-              </p>
-              <p className="recovery-research-lead">
-                Der Recherche-Agent sucht in öffentlichen Quellen nach Freelancern für genau diese Anforderungen, prüft jeden Treffer an seiner Quelle und zeigt ihn mit Link.
-              </p>
-              <ResearchFacts />
-              <AgentLaunchPanel
-                state={launchState}
-                searching={externalSearchState === "searching"}
-                failed={externalSearchState === "error"}
-                onStart={onExternalSearch}
-                onRequireLogin={onRequireLogin}
-                onNeedCredits={onNeedCredits}
-              />
-            </section>
-          ) : null}
+          externalSearch?.mode !== "openai" ? researchOffer() : null}
           {externalSearch ? (
             <ExternalSearchResults
               result={externalSearch}
@@ -561,7 +595,7 @@ export function ResultSection({
       <details className="result-method">
         <summary>Wie kommt diese Auswahl zustande?</summary>
         <MatchProtocol compact activeStep={4} structureMode={analysisMode === "fallback" ? "basis" : "ki"} label="Vom Projekttext zur prüfbaren Auswahl" />
-        <p>Die Auswahl folgt Ihren Anforderungen und den vorhandenen Profilangaben. Fehlende Angaben bleiben offen. Die KI trifft keine Einstellungsentscheidung.</p>
+        <p>Zuerst wählt XPORTAL aus allen aktiven Profilen die 20 aus, die Ihrer Anfrage inhaltlich am nächsten sind. Diese bewertet die KI gegen Ihre Anfrage und stellt die drei besten mit Begründung und offenen Punkten nach oben. Wen Sie ansprechen, entscheiden Sie.</p>
       </details>
       {/* Der Arbeitsprozess stand hier als aufklappbarer Block unter jedem
           Ergebnis und war fuer die meisten nur eine Zeile, die man wegliest.
@@ -658,9 +692,9 @@ export function analysisDisclosure(trace: AiAnalysisTrace): string {
     return "Die Anforderungen wurden mit einer bestätigten KI-Antwort strukturiert. XPORTAL unterstützt die Vorauswahl, trifft aber keine Einstellungsentscheidung und ergänzt keine fehlenden Profildaten.";
   }
   if (trace.provider.succeeded) {
-    return "Die KI-Antwort wurde nicht für die Strukturierung oder Profilauswahl verwendet. Eine konservative Basisanalyse hat die Angaben strukturiert; die Profilauswahl bleibt regelbasiert.";
+    return "Die KI-Antwort wurde nicht für die Strukturierung verwendet. Eine konservative Basisanalyse hat die Angaben strukturiert.";
   }
-  return "Die Anfrage wurde ohne bestätigte KI-Antwort verarbeitet. Eine konservative Basisanalyse hat die Angaben strukturiert; die Profilauswahl bleibt regelbasiert.";
+  return "Die Anfrage wurde ohne bestätigte KI-Antwort strukturiert. Eine konservative Basisanalyse hat die Angaben übernommen.";
 }
 
 export function visibleAnalysisSteps(
@@ -1331,7 +1365,12 @@ export function ProfileCard({
   const selfReportedFacts = profile.facts.filter((fact) => fact.verification === "self-reported");
   const check = profileCheck(profile.referenceStatus);
   const isPartial = profile.recommendationRole === "partial";
-  const presentation = profilePresentation(profile, brief);
+  // Bei einer KI-Bewertung stehen deren Begründung und offene Punkte auf der
+  // Karte. Der wörtliche Abgleich mit dem Steckbrief entfällt dann: Er sähe
+  // „ISMS“ im Profil nicht als „Informationssicherheit“ und widerspräche der
+  // Bewertung.
+  const aiRanked = profile.rankedBy !== undefined;
+  const presentation = profilePresentation(profile, aiRanked ? null : brief);
   // Optionale Wünsche zählen nicht mit: Die Leiste zeigt, was die Anfrage braucht.
   const fitSegments: FitSegment[] = presentation.evidence
     .filter((row) => row.priority !== "optional")
@@ -1413,18 +1452,33 @@ export function ProfileCard({
           </div>
           <div className="profile-badges">
             {profile.recommendationRole ? (
-              <span className={`match-role ${isPartial ? "is-warning" : ""}`}>
-                {profile.recommendationRole === "primary"
-                  ? "Hauptvorschlag"
-                  : profile.recommendationRole === "partial"
-                    ? "Teilpassung"
-                    : "Alternative"}
+              <span className={`match-role ${isPartial || profile.rankedBy === "prefilter" ? "is-warning" : ""}`}>
+                {profile.rankedBy === "prefilter"
+                  ? "Vorauswahl, nicht bewertet"
+                  : profile.recommendationRole === "primary"
+                    ? "Hauptvorschlag"
+                    : profile.recommendationRole === "partial"
+                      ? "Teilpassung"
+                      : "Alternative"}
               </span>
             ) : null}
             <span className={`availability ${presentation.availability.tone}`} title={presentation.availability.title ?? undefined}>{presentation.availability.label}</span>
           </div>
         </header>
 
+        {aiRanked && presentation.reasons.length ? (
+          <div className="profile-ai-fit">
+            <h4>
+              <span>{profile.rankedBy === "ai" ? "Warum dieses Profil passt" : "Warum es oben steht"}</span>
+              {profile.fitScore !== null ? (
+                <span className="profile-ai-score" title="Einschätzung der KI, wie gut das Profil die Anfrage abdeckt">
+                  KI-Einschätzung {profile.fitScore}/100
+                </span>
+              ) : null}
+            </h4>
+            <ul>{presentation.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+          </div>
+        ) : null}
         {presentation.evidence.length ? (
           <>
             {presentation.highlights.length ? (
@@ -1467,7 +1521,7 @@ export function ProfileCard({
         ) : null}
         {presentation.openPoints.length ? (
           <div className="profile-conversation">
-            <h4>{isPartial ? "Vor einem Gespräch prüfen" : "Im Erstgespräch klären"}</h4>
+            <h4>{isPartial ? "Vor einem Gespräch prüfen" : aiRanked ? "Offene Punkte" : "Im Erstgespräch klären"}</h4>
             <ul>{presentation.openPoints.map((point) => <li key={point}>{point}</li>)}</ul>
           </div>
         ) : null}
@@ -1503,7 +1557,7 @@ export function ProfileCard({
         {presentation.evidence.length ? (
           <div className="profile-tags">{presentation.skills.map((skill) => <span key={skill}>{skill}</span>)}</div>
         ) : null}
-        {presentation.reasons.length ? (
+        {!aiRanked && presentation.reasons.length ? (
           <div className="match-column reasons">
             <h4><span aria-hidden="true"><IconCheck size={13} /></span> Im Profil belegt</h4>
             <ul>{presentation.reasons.slice(0, 3).map((reason) => <li key={reason}>{reason}</li>)}</ul>
@@ -1625,6 +1679,90 @@ export function ProfileCard({
   );
 }
 
+
+/**
+ * Die ganze Vorauswahl einer Suche zum Durchsehen.
+ *
+ * Oben stehen die drei Profile, die die KI ausgewählt hat; hier alle
+ * Profile, die sie bewertet hat, in derselben Reihenfolge: die drei zuerst,
+ * dann nach inhaltlicher Nähe zur Anfrage. Jede Zeile führt zum vollständigen
+ * Profil und lässt sich merken.
+ */
+function CandidatePool({
+  candidates,
+  projectId,
+  aiRanked,
+  savedFreelancerIds,
+  onToggleSave,
+}: {
+  candidates: FreelancerProfileResult[];
+  projectId: string | null;
+  aiRanked: boolean;
+  savedFreelancerIds: readonly string[];
+  onToggleSave: (profile: FreelancerProfileResult) => void;
+}) {
+  return (
+    <details className="candidate-pool">
+      <summary>
+        Alle {candidates.length} Profile der Vorauswahl ansehen <IconChevronDown size={14} />
+      </summary>
+      <p className="candidate-pool-lead">
+        {aiRanked
+          ? `Die KI hat diese ${candidates.length} Profile gegen Ihre Anfrage bewertet; die drei besten stehen oben. Danach folgen die übrigen nach inhaltlicher Nähe.`
+          : `Diese ${candidates.length} Profile sind Ihrer Anfrage inhaltlich am nächsten, sortiert nach Nähe. Eine Bewertung durch die KI liegt für diese Suche nicht vor.`}
+      </p>
+      <ol className="candidate-pool-list">
+        {candidates.map((candidate) => {
+          const saved = savedFreelancerIds.includes(candidate.id);
+          const availability = profilePresentation(candidate, null).availability;
+          const page = appPath(`${profilePath(candidate.id, "chat")}${projectId ? `&projekt=${encodeURIComponent(projectId)}` : ""}`);
+          return (
+            <li className={`candidate-row${candidate.candidateRank ? " is-top" : ""}`} key={candidate.id}>
+              <div
+                className={`profile-avatar pid ${candidate.avatarUrl ? "has-image" : ""}`}
+                data-tone={monogramTone(candidate.displayName)}
+                style={avatarStyle(candidate.avatarUrl)}
+                aria-hidden="true"
+              >
+                {candidate.avatarUrl ? null : initials(candidate.displayName)}
+              </div>
+              <div className="candidate-main">
+                <p className="candidate-name">
+                  <strong>{candidate.displayName}</strong>
+                  {candidate.candidateRank ? (
+                    <span className="match-role">{aiRanked ? `KI-Auswahl Platz ${candidate.candidateRank}` : `Oben Platz ${candidate.candidateRank}`}</span>
+                  ) : null}
+                </p>
+                <p className="candidate-role">{candidate.role}</p>
+                {candidate.skillTags.length ? (
+                  <p className="candidate-skills">{candidate.skillTags.slice(0, 8).join(" · ")}</p>
+                ) : null}
+                <p className="candidate-facts">
+                  <span>{candidate.rate ?? "Honorar auf Anfrage"}</span>
+                  <span className={`availability ${availability.tone}`}>{availability.label}</span>
+                </p>
+              </div>
+              <div className="candidate-actions">
+                <a className="secondary-action" href={page} target="_blank" rel="noopener noreferrer">
+                  Profil ansehen <IconArrowRight size={13} />
+                </a>
+                <button
+                  className={`secondary-action${saved ? " is-saved" : ""}`}
+                  type="button"
+                  onClick={() => onToggleSave(candidate)}
+                  aria-pressed={saved}
+                  aria-label={saved ? `${candidate.displayName} aus der Merkliste entfernen` : `${candidate.displayName} merken`}
+                >
+                  {saved ? <><IconCheck size={13} /> Gemerkt</> : "Merken"}
+                </button>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </details>
+  );
+}
 
 /**
  * Den Link aufs Profil kopieren, um es weiterzugeben. Er trägt kein Projekt;

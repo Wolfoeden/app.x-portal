@@ -6,6 +6,7 @@ import { z } from "zod";
 import type {
   AiAnalysisProviderStatus,
   AiAnalysisTrace,
+  FreelancerProfileResult,
 } from "@/components/chat-contract";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { recordRecruitingEvent } from "@/lib/analytics/recruiting-server";
@@ -14,7 +15,7 @@ import { executeTrackedAiRequest } from "@/lib/ai/gateway";
 import { BRIEF_ANALYSIS_CREDITS } from "@/lib/ai/credit-policy";
 import { unreadConditions } from "@/lib/domain/brief-phrases";
 import { deriveWorkflowControls } from "@/lib/domain/workflow-controls";
-import { briefAnalysisResult } from "@/lib/openai/brief-billing";
+import { searchAnalysisResult } from "@/lib/openai/brief-billing";
 import { currentPeriodEndIso, getAccountPlanId } from "@/lib/ai/quota";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { attachFreelancerCvAccess } from "@/lib/data/freelancer-cvs";
@@ -22,13 +23,14 @@ import { attachProfileExtras } from "@/lib/data/profile-extras";
 import { deriveProjectTitle, presentProject, type ProjectRow } from "@/lib/data/projects";
 import { fetchActiveBookableRealProfiles } from "@/lib/data/freelancers";
 import {
-  buildShortlist,
+  aiEvaluationSnapshot,
+  aiResearchAllowed,
+  buildAiShortlist,
   FreelancerProfileSchema,
-  MATCHING_RULE_VERSION,
-  MINIMUM_CORE_COVERAGE_BASIS_POINTS,
-  matchingEvaluationSnapshot,
   ProjectBriefSchema,
   ShortlistMatchSchema,
+  type CandidateSnapshotEntry,
+  type FreelancerProfile,
   type ProjectBrief,
   type Shortlist,
   type ShortlistMatch,
@@ -44,8 +46,12 @@ import {
   estimateProjectBriefTokenCeiling,
   extractProjectBrief,
 } from "@/lib/openai";
+import { createDefaultEmbeddingClient, embeddingModel } from "@/lib/openai/embeddings";
+import { rankProfiles, type ProfileRankingResult } from "@/lib/openai/profile-ranking";
 import { resolveOpenAiConnection } from "@/lib/openai/provider";
-import { presentBrief, presentMatch } from "@/lib/presentation/chat";
+import { presentBrief, presentMatch, presentSavedProfile } from "@/lib/presentation/chat";
+import { prefilterProfiles } from "@/lib/search/prefilter";
+import { termsSharedWithRequest } from "@/lib/search/profile-text";
 import {
   assertSameOrigin,
   getClientIp,
@@ -66,6 +72,14 @@ const SERVER_BUILD_VERSION =
   process.env.COMMIT_REF?.trim().slice(0, 12) ||
   process.env.DEPLOY_ID?.trim().slice(0, 24) ||
   "development";
+
+/**
+ * Obergrenzen der KI-Bewertung für die Vorabprüfung der Tageslimits: 20
+ * Profile zu je höchstens rund 350 Token, Anfrage und Anweisung, dazu die
+ * Antwort samt Denkschritten.
+ */
+const RANKING_INPUT_TOKEN_CEILING = 12_000;
+const RANKING_OUTPUT_TOKEN_CEILING = 3_000;
 
 const PostgresUuidSchema = z
   .string()
@@ -147,105 +161,80 @@ function catalogVersion(profiles: readonly { id: string; dataVersion: string }[]
     .digest("hex");
 }
 
-function assistantText(
-  status: Shortlist["status"],
-  resultCount: number,
-  partialResultCount: number,
-  isFollowUp: boolean,
-  clarificationCode: Shortlist["clarificationCode"],
-  openCoreRequirements: readonly string[],
-  requestText: string,
-  /** Nur nach einer Basisanalyse: was im Text steht, aber nicht übernommen wurde. */
-  review: { fallback: boolean; unread: readonly string[] } = { fallback: false, unread: [] },
-): string {
-  const text = matchingText(status, resultCount, partialResultCount, isFollowUp, clarificationCode, openCoreRequirements, requestText);
-  if (!review.fallback || status === "needs_clarification") return text;
-  // Nach einem Ausfall der KI ist die Auswahl vorläufig: Die Treffer sollen
-  // nicht passender wirken, als die ausgewerteten Angaben es tragen (F01).
-  const check = review.unread.length
-    ? ` Bitte prüfen Sie diese Angaben vor der Auswahl: Wir konnten ${joinList(review.unread)} nicht zuverlässig übernehmen. Ergänzen oder bestätigen Sie sie in der Projektübersicht; anschließend aktualisieren wir die Suche. Ihre Beschreibung bleibt erhalten.`
-    : " Bitte prüfen Sie Start, Budget, Umfang und Sprache in der Projektübersicht, bevor Sie auswählen.";
-  return `Vorläufige Auswahl: Die KI-Analyse war gerade nicht verfügbar, die Basisanalyse hat Ihre Angaben übernommen.${check} ${text}`;
-}
+type SearchOutcome = {
+  status: Shortlist["status"];
+  matchCount: number;
+  candidateCount: number;
+  poolSize: number;
+  /** Die KI hat bewertet; sonst stehen die nächsten der Vorauswahl oben. */
+  aiEvaluated: boolean;
+  isFollowUp: boolean;
+  requestText: string;
+};
 
-function joinList(items: readonly string[]): string {
-  return items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} und ${items.at(-1)}`;
-}
-
-function matchingText(
-  status: Shortlist["status"],
-  resultCount: number,
-  partialResultCount: number,
-  isFollowUp: boolean,
-  clarificationCode: Shortlist["clarificationCode"],
-  openCoreRequirements: readonly string[],
-  requestText: string,
-): string {
-  if (status === "needs_clarification") {
+function assistantText(outcome: SearchOutcome): string {
+  const prefix = outcome.isFollowUp ? "Ihre Ergänzung wurde übernommen. " : "";
+  if (outcome.status === "needs_clarification") {
     // "No requirement was stated" and "nothing matched" are opposite statements
     // to a user. Collapsing them into the empty-result text below would claim
     // the catalogue was searched and found wanting, when in fact nothing was
     // searched for.
-    const clarificationPrefix = isFollowUp ? "Ihre Ergänzung wurde übernommen. " : "";
-    const domainCopy = domainClarificationCopy(requestText);
-    if (domainCopy) return `${clarificationPrefix}${domainCopy}`;
-    return clarificationCode === "ambiguous_requirement_logic"
-      ? `${clarificationPrefix}Die Anforderungen sind noch nicht eindeutig: Bitte schreiben Sie, welche Kompetenzen gemeinsam erforderlich sind und welche echte Alternativen darstellen. Danach prüft XPORTAL den internen Profilpool nach diesen festen Kriterien.`
-      : `${clarificationPrefix}Für einen belastbaren Profilabgleich fehlt noch mindestens die gewünschte Rolle oder eine Kernkompetenz. Ergänzen Sie diese Angabe gern um Sprache, Arbeitsort und Startzeitpunkt; fehlende Daten bleiben bis dahin offen.`;
+    const domainCopy = domainClarificationCopy(outcome.requestText);
+    if (domainCopy) return `${prefix}${domainCopy}`;
+    return `${prefix}Für die Suche fehlt noch eine fachliche Anforderung: Nennen Sie die gewünschte Rolle, Kompetenzen oder das Projekt, gern als Text, Ausschreibung oder Stichwortliste.`;
   }
-  if (status === "no_reliable_match") {
-    const openCriteria = openCoreRequirements.length
-      ? ` Über den gesamten internen Profilpool hinweg besonders häufig offen: ${openCoreRequirements.join(", ")}.`
-      : "";
-    const partialCopy = partialResultCount
-      ? ` Ich zeige ${partialResultCount} ${partialResultCount === 1 ? "nicht empfohlenen Teiltreffer" : "nicht empfohlene Teiltreffer"} mit den belegten Überschneidungen und den ausschlaggebenden Lücken.`
-      : "";
-    return `${isFollowUp ? "Ihre Ergänzung wurde übernommen. Der aktualisierte" : "Der"} interne Profilabgleich ist abgeschlossen. Derzeit erfüllt kein aktives, direkt buchbares Profil zugleich alle Muss-Kriterien und mindestens 70 % der Kernanforderungen.${partialCopy}${openCriteria} Kennzeichnen Sie ein genanntes Kriterium im Chat als Muss, flexibel oder optional. Wenn das interne Ergebnis danach weiterhin nicht ausreicht, können Sie die getrennte externe Recherche für 30 Credits ausdrücklich starten.`;
+  if (outcome.status === "no_reliable_match") {
+    return `${prefix}Im internen Pool ist derzeit kein aktives Profil verfügbar. Sie können die getrennte externe Recherche für 30 Credits ausdrücklich starten.`;
   }
-  return `${isFollowUp ? "Ihre Ergänzung wurde übernommen. Der aktualisierte" : "Der"} interne Profilabgleich ist abgeschlossen. ${resultCount} ${
-    resultCount === 1 ? "aktives Profil erfüllt" : "aktive Profile erfüllen"
-  } die aktuellen Muss-Kriterien und die Empfehlungsschwelle. Die Profile stehen direkt unter dieser Nachricht — mit belegten Stärken, offenen Punkten, Merkliste und eindeutigen Kontaktwegen.`;
+  const top =
+    outcome.matchCount === 1
+      ? "Das am besten passende Profil steht"
+      : `Die ${outcome.matchCount} am besten passenden Profile stehen`;
+  const all =
+    outcome.candidateCount > outcome.matchCount
+      ? ` Alle ${outcome.candidateCount} Profile der Vorauswahl können Sie darunter aufklappen.`
+      : "";
+  if (outcome.aiEvaluated) {
+    return `${prefix}Die KI hat die ${outcome.candidateCount} inhaltlich nächsten von ${outcome.poolSize} aktiven Profilen gegen Ihre Anfrage bewertet. ${top} direkt unter dieser Nachricht, mit Begründung und offenen Punkten.${all}`;
+  }
+  return `${prefix}Diese Auswahl ist nicht von der KI bewertet. ${top} oben, weil ${outcome.matchCount === 1 ? "es" : "sie"} Ihrer Anfrage inhaltlich am nächsten ${outcome.matchCount === 1 ? "ist" : "sind"}.${all} Senden Sie die Anfrage erneut, um die Profile bewerten zu lassen.`;
 }
 
 function fallbackNotice(
   reason: string,
   isAnonymous: boolean,
   fallbackReason: string | undefined,
+  aiEvaluated: boolean,
 ): string {
+  const notRanked = "Die Profile wurden vorausgewählt, aber nicht von der KI bewertet.";
   if (
     reason === "insufficient_credits" ||
     reason === "monthly_limit" ||
     reason === "monthly_usage_exhausted"
   ) {
     return isAnonymous
-      ? "Ihr kostenloses Monatsguthaben ist verbraucht. Mit einem Konto erhalten Sie deutlich mehr Guthaben. Die Anfrage wurde gespeichert und weiterhin regelbasiert mit der internen Freelancer-Datenbank abgeglichen."
-      : "Ihr Monatsguthaben ist verbraucht. Es wird zum Ersten des nächsten Monats erneuert. Die Anfrage wurde gespeichert und weiterhin regelbasiert mit der internen Freelancer-Datenbank abgeglichen.";
+      ? `Ihr kostenloses Monatsguthaben ist verbraucht. Mit einem Konto erhalten Sie deutlich mehr Guthaben. ${notRanked}`
+      : `Ihr Monatsguthaben ist verbraucht. Es wird zum Ersten des nächsten Monats erneuert. ${notRanked}`;
   }
   if (reason === "provider_monthly_budget") {
-    return "Das monatliche KI-Budget ist erreicht. Ihre Anfrage wurde gespeichert und mit der sicheren Basisanalyse gegen die interne Freelancer-Datenbank abgeglichen.";
+    return `Das monatliche KI-Budget ist erreicht. ${notRanked}`;
   }
   if (
     reason === "anonymous_user_daily_token_limit" ||
     reason === "anonymous_ip_daily_token_limit"
   ) {
-    return "Das tägliche KI-Limit für den Gastzugang ist erreicht. OpenAI wurde nicht aufgerufen; Ihre Anfrage wurde gespeichert und intern mit der sicheren Basisanalyse abgeglichen.";
+    return `Das tägliche KI-Limit für den Gastzugang ist erreicht. ${notRanked}`;
   }
   if (reason === "user_daily_token_limit") {
-    return "Das tägliche interne XPORTAL-KI-Limit für dieses Konto ist erreicht. OpenAI wurde nicht aufgerufen; Ihre Anfrage wurde gespeichert und intern mit der sicheren Basisanalyse abgeglichen.";
+    return `Das tägliche KI-Limit für dieses Konto ist erreicht. ${notRanked}`;
   }
-  if (fallbackReason === "provider_timeout") {
-    return "Die OpenAI-Analyse hat das Zeitlimit erreicht. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
-  }
-  if (fallbackReason === "invalid_output") {
-    return "Die OpenAI-Antwort war nicht zuverlässig strukturiert. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
-  }
-  if (fallbackReason === "provider_error") {
-    return "Die OpenAI-Analyse war vorübergehend nicht verfügbar. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
+  if (aiEvaluated) {
+    return "Die Projektübersicht hat die KI gerade nicht erstellt; die Auswahl der Profile hat sie trotzdem bewertet. Prüfen Sie die Angaben in der Projektübersicht.";
   }
   if (fallbackReason === "provider_unavailable") {
-    return "Der OpenAI-Provider ist nicht konfiguriert. Ihre Anfrage wurde gespeichert und das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
+    return `Der KI-Anbieter ist nicht konfiguriert. ${notRanked}`;
   }
-  return "Ihre Anfrage wurde gespeichert. Ohne bestätigte OpenAI-Analyse wurde das interne Freelancer-Matching mit der sicheren Basisanalyse ausgeführt.";
+  return `Die KI war gerade nicht erreichbar, auch nicht im zweiten Versuch. ${notRanked} Senden Sie die Anfrage erneut.`;
 }
 
 function providerFailureCategory(
@@ -270,6 +259,21 @@ function providerFailureCategory(
   }
   if (extraction.fallbackReason === "provider_timeout") return "timeout";
   return "provider_error";
+}
+
+/**
+ * Die ganze Vorauswahl in Anzeigereihenfolge, ohne Bewertung: Die drei oben
+ * tragen ihre Begründung an der eigenen Karte, hier steht nur ihr Platz.
+ */
+function presentCandidates(
+  order: readonly CandidateSnapshotEntry[],
+  prefilter: readonly { profile: FreelancerProfile }[],
+): FreelancerProfileResult[] {
+  const byId = new Map(prefilter.map(({ profile }) => [profile.id, profile]));
+  return order.flatMap((entry) => {
+    const profile = byId.get(entry.profileId);
+    return profile ? [{ ...presentSavedProfile(profile), candidateRank: entry.rank }] : [];
+  });
 }
 
 async function ownedProject(
@@ -500,9 +504,42 @@ async function processChatRequest(
     };
     const estimate = estimateProjectBriefTokenCeiling(extractionInput);
     const providerConnection = resolveOpenAiConnection();
+    // Die Suche richtet sich nach dem ganzen bisherigen Wortlaut, nicht nach
+    // dem Steckbrief: Was die Strukturierung nicht erkennt, geht trotzdem in
+    // Vorauswahl und Bewertung ein, in welchem Format die Anfrage auch kam.
+    const searchRequest = deterministic.originalRequest;
     reporter.progress("Projektanforderungen werden strukturiert");
+    const profiles = await fetchActiveBookableRealProfiles(admin);
+    const embeddingClient = createDefaultEmbeddingClient();
+    const runProfileSearch = async (providerAllowed: boolean) => {
+      reporter.progress(
+        `Vorauswahl: die inhaltlich nächsten aus ${profiles.length} aktiven Profilen werden gesucht …`,
+      );
+      // Der Fingerabdruck der Anfrage kostet einen Bruchteil eines Cents und
+      // läuft auch ohne Freigabe für die KI-Bewertung; ohne ihn bliebe nur
+      // die Vorauswahl über Wörter.
+      const prefilter = await prefilterProfiles({
+        admin,
+        profiles,
+        request: searchRequest,
+        client: embeddingClient,
+        model: embeddingModel(),
+      });
+      if (!providerAllowed || !prefilter.candidates.length) {
+        return { prefilter, ranking: { status: "unavailable", usage: [] } as ProfileRankingResult };
+      }
+      reporter.progress(`KI bewertet ${prefilter.candidates.length} vorausgewählte Profile …`);
+      const ranking = await rankProfiles({
+        request: searchRequest,
+        candidates: prefilter.candidates.map((candidate) => candidate.profile),
+        safetyIdentifier: userHash ?? undefined,
+      });
+      return { prefilter, ranking };
+    };
     // The credit balance inside executeTrackedAiRequest is the only meter.
-    // A denied reservation still runs the deterministic path below.
+    // A denied reservation still runs the search without the AI ranking.
+    // Strukturierung und Suche hängen nicht voneinander ab und laufen deshalb
+    // gleichzeitig: Die Antwort wartet nur auf die längere von beiden.
     const tracked =
       userHash && ipHash
         ? await executeTrackedAiRequest({
@@ -515,25 +552,31 @@ async function processChatRequest(
             isAdmin: user.isAdmin,
             purpose: "project_brief",
             requestedModel: estimate.model,
-            estimatedInputTokens: estimate.inputTokens,
-            estimatedOutputTokens: estimate.outputTokens,
+            estimatedInputTokens: estimate.inputTokens + RANKING_INPUT_TOKEN_CEILING,
+            estimatedOutputTokens: estimate.outputTokens + RANKING_OUTPUT_TOKEN_CEILING,
             creditReservationTokens: {
               inputTokens: estimate.inputTokens,
               outputTokens: estimate.expectedOutputTokens,
             },
             operation: async (providerAllowed) => {
-              const extraction = await extractProjectBrief({
-                ...extractionInput,
-                allowProvider: providerAllowed,
-              });
-              return briefAnalysisResult(extraction);
+              const [extraction, search] = await Promise.all([
+                extractProjectBrief({
+                  ...extractionInput,
+                  allowProvider: providerAllowed,
+                }),
+                runProfileSearch(providerAllowed),
+              ]);
+              return searchAnalysisResult({ extraction, search }, search.ranking.usage);
             },
           })
         : {
-            value: await extractProjectBrief({
-              ...extractionInput,
-              allowProvider: false,
-            }),
+            value: await Promise.all([
+              extractProjectBrief({
+                ...extractionInput,
+                allowProvider: false,
+              }),
+              runProfileSearch(false),
+            ]).then(([extraction, search]) => ({ extraction, search })),
             quota: {
               allowed: false,
               reason: "pseudonym_configuration_missing",
@@ -544,7 +587,7 @@ async function processChatRequest(
             credits: null,
             creditsCharged: null,
           };
-    const extraction = tracked.value;
+    const { extraction, search } = tracked.value;
     // Nach einer Basisanalyse: Angaben, die im Text stehen, aber nicht im
     // Steckbrief angekommen sind. Sie stehen vor der Ergebnisliste.
     const reviewNeeded =
@@ -566,27 +609,26 @@ async function processChatRequest(
       failureCategory,
       responseId: extraction.provider?.responseId ?? null,
     });
-    reporter.progress(
-      analysisCompleted
-        ? "Anforderungen sind strukturiert · interne Profile werden geladen …"
-        : "OpenAI-Analyse nicht bestätigt · sichere Basisanalyse wird intern abgeglichen …",
-    );
-
-    // The model never receives this data. Filtering and ordering are wholly
-    // deterministic. Provider failure must not disable the internal search:
-    // the conservative parser preserves only explicit facts and all missing
-    // evidence remains disclosed on the candidate card.
-    const profiles = await fetchActiveBookableRealProfiles(admin);
-    const shortlist = buildShortlist(extraction.brief, profiles);
-    reporter.progress(`${profiles.length} aktive Profile werden regelbasiert abgeglichen …`);
+    // Zwei Stufen: Die Vorauswahl grenzt den Pool auf die inhaltlich nächsten
+    // Profile ein, die KI bewertet nur diese und wählt die besten drei. Fällt
+    // die Bewertung aus, stehen die nächsten der Vorauswahl oben, als nicht
+    // bewertet gekennzeichnet (lib/domain/ai-shortlist.ts).
+    const ranking = search.ranking.status === "ok" ? search.ranking : null;
+    if (!ranking && search.ranking.usage.length) {
+      logEvent("profile_ranking_failed", { traceId, interactionId, attempts: search.ranking.usage.length });
+    }
+    const { shortlist, candidateOrder, rankedBy } = buildAiShortlist({
+      poolSize: profiles.length,
+      prefilter: search.prefilter.candidates,
+      ranking: ranking ? { searchable: ranking.searchable, picks: ranking.picks } : null,
+      sharedTerms: (profile) => termsSharedWithRequest(searchRequest, profile),
+    });
     reporter.progress(
       shortlist.status === "needs_clarification"
         ? "Noch keine Anforderung erkennbar · Rückfrage wird vorbereitet …"
         : shortlist.matches.length
-          ? `${shortlist.matches.length} passende Profile werden nachvollziehbar aufbereitet …`
-          : shortlist.partialMatches.length
-            ? `${shortlist.partialMatches.length} nicht empfohlene Teiltreffer werden transparent aufbereitet …`
-            : "Keine Empfehlung über der 70-%-Schwelle · Rückfrage wird vorbereitet …",
+          ? `${shortlist.matches.length} passende Profile werden aufbereitet …`
+          : "Kein aktives Profil im Pool · Rückfrage wird vorbereitet …",
     );
     const shortlistId = randomUUID();
     const profileCatalogVersion = catalogVersion(profiles);
@@ -599,13 +641,14 @@ async function processChatRequest(
       // Bei einer Nutzersuche ist der Suchende das Konto. Die Spalte
       // trägt bei einem Lead ein Pseudonym; siehe lib/leadgen/demand.ts.
       demand_actor: user.id,
-      matching_rule_version: MATCHING_RULE_VERSION,
+      matching_rule_version: shortlist.ruleVersion,
       brief_snapshot: extraction.brief,
       result_count: shortlist.matches.length,
       profile_catalog_version: profileCatalogVersion,
       result_status: shortlist.status,
       decision_snapshot: shortlist.decisionSnapshot,
       partial_matches_snapshot: shortlist.partialMatches.map(storedShortlistMatch),
+      candidate_snapshot: candidateOrder,
     });
     if (shortlistError) throw shortlistError;
 
@@ -630,26 +673,26 @@ async function processChatRequest(
             bookingUrl: null,
           },
         }),
-        matching_rule_version: MATCHING_RULE_VERSION,
+        matching_rule_version: shortlist.ruleVersion,
         profile_data_version: profileVersionNumber(match.profileDataVersion),
-        evaluation_snapshot: matchingEvaluationSnapshot(match),
+        evaluation_snapshot: aiEvaluationSnapshot(match, rankedBy),
       }));
       const { error } = await admin.from("matches").insert(rows);
       if (error) throw error;
     }
 
-    const text = assistantText(
-      shortlist.status,
-      shortlist.matches.length,
-      shortlist.partialMatches.length,
-      Boolean(existing),
-      shortlist.clarificationCode,
-      shortlist.decisionSnapshot.openCoreRequirements,
-      existing
+    const aiEvaluated = ranking !== null;
+    const text = assistantText({
+      status: shortlist.status,
+      matchCount: shortlist.matches.length,
+      candidateCount: candidateOrder.length,
+      poolSize: profiles.length,
+      aiEvaluated,
+      isFollowUp: Boolean(existing),
+      requestText: existing
         ? `${existing.original_request}\n${input.message}`
         : input.message,
-      { fallback: extraction.mode === "fallback", unread: reviewNeeded },
-    );
+    });
     const assistantClientMessageId = `assistant-${requestKey}`;
     const { data: insertedAssistant, error: assistantError } = await admin
       .from("messages")
@@ -661,7 +704,7 @@ async function processChatRequest(
         client_message_id: assistantClientMessageId,
         structured_payload: {
           shortlistId,
-          matchingRuleVersion: MATCHING_RULE_VERSION,
+          matchingRuleVersion: shortlist.ruleVersion,
           resultStatus: shortlist.status,
           partialResultCount: shortlist.partialMatches.length,
           requestKey,
@@ -689,7 +732,9 @@ async function processChatRequest(
         original_request: extraction.brief.originalRequest,
         structured_brief: extraction.brief,
         brief_schema_version: "freelancer-brief-v2",
-        brief_status: extraction.mode === "openai" ? "ready" : "manual",
+        // "manual" nur, wenn weder Strukturierung noch Bewertung von der KI
+        // kamen; danach richtet sich beim Neuladen der Hinweis zur Analyse.
+        brief_status: extraction.mode === "openai" || aiEvaluated ? "ready" : "manual",
         status:
           shortlist.matches.length ? "shortlisted" : "matching",
       })
@@ -709,7 +754,11 @@ async function processChatRequest(
       metadata: {
         resultCount: shortlist.matches.length,
         partialResultCount: shortlist.partialMatches.length,
-        matchingRuleVersion: MATCHING_RULE_VERSION,
+        candidateCount: candidateOrder.length,
+        prefilterMethod: search.prefilter.method,
+        rankedBy,
+        rankingStatus: search.ranking.status,
+        matchingRuleVersion: shortlist.ruleVersion,
         matchingResultStatus: shortlist.status,
         extractionMode: extraction.mode,
         providerConfigured: providerConnection.configured,
@@ -741,7 +790,7 @@ async function processChatRequest(
     const [presentedMatches, presentedPartialMatches] = await Promise.all([
       attachFreelancerCvAccess(
         admin,
-        shortlist.matches.map(presentMatch),
+        shortlist.matches.map((match) => ({ ...presentMatch(match), rankedBy })),
         user.isAnonymous,
       ).then((profiles) => attachProfileExtras(admin, profiles, projectTerms)),
       attachFreelancerCvAccess(
@@ -763,19 +812,21 @@ async function processChatRequest(
         brief: presentBrief(extraction.brief),
         matches: presentedMatches,
         partialMatches: presentedPartialMatches,
+        candidates: presentCandidates(candidateOrder, search.prefilter.candidates),
         matchingStatus: shortlist.status,
-        mode: extraction.mode === "openai" ? "ai" : "fallback",
+        mode: extraction.mode === "openai" || aiEvaluated ? "ai" : "fallback",
         notice:
-          extraction.mode === "fallback"
+          extraction.mode === "fallback" || (!aiEvaluated && shortlist.status === "ranked")
             ? fallbackNotice(
                 quota.reason,
                 user.isAnonymous,
                 extraction.fallbackReason,
+                aiEvaluated,
               )
             : undefined,
         match: {
           id: shortlistId,
-          ruleVersion: MATCHING_RULE_VERSION,
+          ruleVersion: shortlist.ruleVersion,
           profileDataVersion: profileCatalogVersion,
           createdAt: new Date().toISOString(),
           resultStatus: shortlist.status,
@@ -820,45 +871,49 @@ async function processChatRequest(
               : null,
             failureCategory,
           },
-          reviewNeeded: extraction.mode === "fallback" ? reviewNeeded : null,
+          reviewNeeded: extraction.mode === "fallback" && !aiEvaluated ? reviewNeeded : null,
           steps: [
             {
               label: "Anforderungen mit Nano strukturiert",
               detail:
                 extraction.mode === "openai"
-                  ? "GPT-5.4 nano hat ausschließlich die Nutzerangaben in das feste Projektschema eingeordnet."
-                  : "Die Anfrage wurde mit der sicheren Basislogik strukturiert; fehlende Fakten bleiben offen.",
+                  ? "GPT-5.4 nano hat die Nutzerangaben in die Projektübersicht eingeordnet."
+                  : "Die Projektübersicht wurde ohne KI erstellt; fehlende Fakten bleiben offen.",
               status: extraction.mode === "openai" ? "completed" : "warning",
             },
             {
-              label: "Interne Profile abgeglichen",
-              detail: `${profiles.length} aktive, reale und direkt buchbare Supabase-Profile wurden berücksichtigt.${analysisCompleted ? "" : " Grundlage war die konservative Basisanalyse, nicht eine bestätigte OpenAI-Antwort."}`,
-              status: "completed",
+              label: "Vorauswahl aus dem Profilpool",
+              detail:
+                search.prefilter.method === "semantic"
+                  ? `Die ${candidateOrder.length} inhaltlich nächsten von ${profiles.length} aktiven Profilen wurden über ihren Inhalts-Fingerabdruck ausgewählt.`
+                  : `Die ${candidateOrder.length} Profile mit den meisten gemeinsamen Fachbegriffen von ${profiles.length} aktiven wurden ausgewählt; der Inhalts-Fingerabdruck war nicht verfügbar.`,
+              status: search.prefilter.method === "semantic" ? "completed" : "warning",
             },
             {
               label:
-                shortlist.status === "ranked"
-                  ? extraction.mode === "fallback"
-                    ? "Vorläufige Auswahl vorbereitet"
-                    : "Verlässliche Matches vorbereitet"
-                  : shortlist.status === "needs_clarification"
-                    ? "Rückfrage erforderlich"
-                    : shortlist.partialMatches.length
-                      ? "Nicht empfohlene Teiltreffer ausgewiesen"
-                      : "Mindestpassung nicht erreicht",
+                shortlist.status === "needs_clarification"
+                  ? "Rückfrage erforderlich"
+                  : shortlist.status === "no_reliable_match"
+                    ? "Kein aktives Profil im Pool"
+                    : aiEvaluated
+                      ? "KI-Bewertung abgeschlossen"
+                      : "KI-Bewertung nicht verfügbar",
               detail:
-                shortlist.status === "ranked"
-                  ? `${shortlist.matches.length} Treffer werden nach Regel ${MATCHING_RULE_VERSION} angezeigt; offene Nachweise sind gekennzeichnet und die KI entscheidet nicht über die Auswahl.`
-                  : shortlist.status === "needs_clarification"
-                    ? "Die Anforderung wird vor einer Empfehlung präzisiert; es wird kein Profil geraten."
-                    : shortlist.partialMatches.length
-                      ? `${shortlist.partialMatches.length} Profile mit belegter Kernüberschneidung bleiben unter der Empfehlungsschwelle. Sie werden ausdrücklich nicht empfohlen und nicht zur direkten Buchung freigegeben.`
-                      : `Kein Profil erfüllt alle Muss-Kriterien und mindestens ${MINIMUM_CORE_COVERAGE_BASIS_POINTS / 100} % der Kernkompetenzgruppen.`,
-              status: "completed",
+                shortlist.status === "needs_clarification"
+                  ? "Die Anfrage enthält noch keine fachliche Anforderung; es wird kein Profil geraten."
+                  : shortlist.status === "no_reliable_match"
+                    ? "Im internen Pool ist derzeit kein aktives Profil verfügbar."
+                    : aiEvaluated
+                      ? `Die KI hat die ${candidateOrder.length} Profile der Vorauswahl gegen die Anfrage bewertet und die ${shortlist.matches.length} besten mit Begründung und offenen Punkten ausgewählt.`
+                      : "Oben stehen die inhaltlich nächsten Profile der Vorauswahl, ohne Bewertung durch die KI.",
+              status: shortlist.status === "ranked" && !aiEvaluated ? "warning" : "completed",
             },
           ],
+          // Angeboten, wenn intern nichts trägt: kein Profil im Pool, oder
+          // selbst das beste liegt laut KI unter der Schwelle (ai-shortlist.ts).
           externalSearchAvailable:
-            shortlist.status === "no_reliable_match" && deriveWorkflowControls(extraction.brief.originalRequest).externalResearch === "allowed",
+            aiResearchAllowed(shortlist.status, shortlist.decisionSnapshot, new Set()) &&
+            deriveWorkflowControls(extraction.brief.originalRequest).externalResearch === "allowed",
         } satisfies AiAnalysisTrace,
         buildVersion: SERVER_BUILD_VERSION,
       },

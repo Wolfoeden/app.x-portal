@@ -26,8 +26,8 @@ const PROTOCOLS: Record<ProtocolVariant, readonly ProtocolStep[]> = {
     {
       code: "ABGLEICH",
       owner: "Regeln",
-      title: "Profile vergleichen",
-      detail: "Feste Kriterien prüfen Belege, Ausschlüsse und offene Angaben.",
+      title: "Profile bewerten",
+      detail: "Die KI bewertet die 20 inhaltlich nächsten Profile und begründet die besten drei.",
     },
     {
       code: "ENTSCHEIDUNG",

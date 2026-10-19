@@ -154,6 +154,18 @@ export default function PrivacyPage() {
               nicht zum Training von Modellen verwendet.
             </p>
             <p>
+              Für die Profilsuche übermittelt XPORTAL außerdem den Text Ihrer
+              Anfrage und berufliche Angaben der vorausgewählten
+              Freelancer-Profile (Rolle, Kompetenzen, Branchen,
+              Qualifikationen, Sprachen, Ort, Arbeitsmodus, Verfügbarkeit,
+              Honorar und Erfahrungszusammenfassung, ohne Namen) an denselben
+              KI-Dienstleister. Aus Anfrage und Profilangaben berechnet er
+              Inhalts-Fingerabdrücke (Embeddings), die XPORTAL in der eigenen
+              Datenbank speichert, um die inhaltlich nächsten Profile
+              vorauszuwählen. Die KI bewertet diese Vorauswahl und schlägt die
+              passendsten Profile mit Begründung vor.
+            </p>
+            <p>
               Bei einer von Ihnen ausdrücklich gestarteten externen
               Freelancer-Suche wird der strukturierte Projektbrief für eine
               Websuche an denselben KI-Dienstleister übermittelt. Quellen,
@@ -181,7 +193,10 @@ export default function PrivacyPage() {
               Zweck ist, geschäftliche Projektanfragen mit nachvollziehbaren
               beruflichen Profilen abzugleichen. Rechtsgrundlage ist Art. 6 Abs.
               1 lit. f DSGVO; unser berechtigtes Interesse ist der nachvollziehbare Abgleich
-              geeigneter beruflicher Kontakte. Betroffene Freelancer können
+              geeigneter beruflicher Kontakte. Dafür werden berufliche
+              Profilangaben ohne Namen an den in Abschnitt 4 genannten
+              KI-Dienstleister übermittelt, der Profile für eine konkrete
+              Anfrage vorauswählt und bewertet. Betroffene Freelancer können
               dieser Verarbeitung aus Gründen ihrer besonderen Situation
               widersprechen und Berichtigung oder Löschung verlangen. XPORTAL
               trifft keine automatische Einstellungs- oder Vertragsentscheidung.
@@ -536,9 +551,10 @@ export default function PrivacyPage() {
             <p>
               KI unterstützt die Strukturierung Ihrer Angaben. Beim Einlesen
               eines Lebenslaufs entsteht nur ein Entwurf Ihrer eigenen
-              Angaben, den Sie prüfen und ändern; er bewertet Sie nicht. Das Matching
-              filtert und sortiert Profile anhand dokumentierter Regeln. Es
-              findet keine ausschließlich automatisierte Entscheidung mit
+              Angaben, den Sie prüfen und ändern; er bewertet Sie nicht. Für das
+              Matching wählt XPORTAL die inhaltlich nächsten Profile vor; eine
+              KI bewertet sie gegen die Anfrage und schlägt die passendsten mit
+              Begründung vor. Es findet keine ausschließlich automatisierte Entscheidung mit
               rechtlicher oder ähnlich erheblicher Wirkung im Sinne von Art. 22
               DSGVO statt. Sie entscheiden selbst, ob Sie ein Profil auswählen
               oder einen externen Buchungslink öffnen.

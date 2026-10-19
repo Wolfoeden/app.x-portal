@@ -96,7 +96,11 @@ export interface FreelancerProfileResult {
   knownGaps: string[];
   /** Null on historical matches whose evaluation was never stored. */
   recommendationRole: "primary" | "alternative" | "partial" | null;
-  /** Deterministic criterion score, not a probability of project success. */
+  /**
+   * Bei einer KI-Bewertung deren Einschätzung (0–100), wie gut das Profil die
+   * Anfrage abdeckt; bei älteren Ergebnissen der Regel-Score. Keine
+   * Erfolgswahrscheinlichkeit.
+   */
   fitScore: number | null;
   coreCoverage: number | null;
   introPolicy: {
@@ -108,6 +112,13 @@ export interface FreelancerProfileResult {
   };
   /** Fachgebiet für das Titelband der Karte; fehlt bei älteren Antworten. */
   field?: ProfileField | null;
+  /**
+   * Wer die Auswahl oben getroffen hat: "ai" die KI-Bewertung, "prefilter"
+   * nur die Vorauswahl, weil die KI ausfiel. Fehlt bei älteren Ergebnissen.
+   */
+  rankedBy?: "ai" | "prefilter";
+  /** Nur in der Vorauswahl-Liste: Platz in der Auswahl oben (1–3), sonst null. */
+  candidateRank?: number | null;
   /**
    * Ob LinkedIn bzw. GitHub hinterlegt sind — nie die Adressen selbst. Die
    * Kurzlinks öffnen sie über `/api/freelancers/<id>/link`, das das Abo prüft.
@@ -324,6 +335,8 @@ export interface ChatResponse {
   matches: FreelancerProfileResult[];
   /** Internal overlaps below the recommendation gate, with explicit gaps. */
   partialMatches: FreelancerProfileResult[];
+  /** Die ganze Vorauswahl (bis zu 20), die drei oben zuerst. */
+  candidates?: FreelancerProfileResult[];
   matchingStatus?: MatchingStatus;
   mode?: "ai" | "fallback";
   notice?: string;
@@ -364,6 +377,8 @@ export interface ProjectDetailResponse {
   brief: StructuredBrief | null;
   profiles: FreelancerProfileResult[];
   partialProfiles: FreelancerProfileResult[];
+  /** Die ganze Vorauswahl der letzten Suche, die drei oben zuerst. */
+  candidates?: FreelancerProfileResult[];
   analysisMode?: "ai" | "fallback";
   analysisNotice?: string | null;
   matchingStatus?: MatchingStatus;
