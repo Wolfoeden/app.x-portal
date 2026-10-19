@@ -47,9 +47,10 @@ function FactIcon({ kind }: { kind: "free" | "analyses" | "evidence" | "data" })
 }
 
 /**
- * Die Beispieltreffer unter dem Eingabefeld; sie wechseln sich ab (Wunsch
- * des Betreibers, 19.10.2026). Beide sind echte, freigegebene Profile.
- * „belegt“ steht nur bei Angaben, die im Profil nachgewiesen sind.
+ * Die Beispieltreffer unter dem Eingabefeld: echte, freigegebene Profile,
+ * deren Inhaber der Verwendung als Beispiel zugestimmt haben. Ab zwei Karten
+ * wechseln sie sich ab (LandingIntake). „belegt“ steht nur bei Angaben, die
+ * im Profil nachgewiesen sind.
  */
 const LANDING_EXAMPLES = [
   {
@@ -65,20 +66,6 @@ const LANDING_EXAMPLES = [
       { label: "Projektlaufzeit", detail: "im Erstgespräch klären", open: true },
     ],
     availability: "Verfügbar ab November",
-  },
-  {
-    profileId: "4290fe6a-d042-4181-9a42-ebbcafc16242",
-    name: "Marc F.",
-    label: "Informationssicherheit",
-    avatar: { src: null, initials: "MF" },
-    role: "ISO 27001 & KI-Audit · Remote",
-    rows: [
-      { label: "ISO 27001 Lead Auditor", detail: "Muss · belegt" },
-      { label: "ISMS-Aufbau", detail: "Muss · belegt" },
-      { label: "KI-Auditor (TÜV Rheinland)", detail: "Kern · belegt" },
-      { label: "Verfügbarkeit", detail: "im Erstgespräch klären", open: true },
-    ],
-    availability: "Verfügbarkeit auf Anfrage",
   },
 ] as const;
 
