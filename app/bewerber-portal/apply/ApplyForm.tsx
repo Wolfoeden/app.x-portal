@@ -255,7 +255,6 @@ export function ApplyForm({
           importProvenance: finalProvenance(provenance, { ...draftTarget(), projects: filledProjects }),
           cv,
           projects: filledProjects,
-          photo: null,
           consent,
           inviteToken,
           website: honeypot,

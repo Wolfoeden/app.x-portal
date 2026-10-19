@@ -19,16 +19,6 @@ import {
 } from "@/lib/freelancer/application";
 import { applicationPreviewProfile } from "@/lib/freelancer/application-preview";
 import { publishApplication, setApplicationStatus } from "@/lib/freelancer/applications-data";
-import {
-  APPLICATION_PHOTO_PATH_PATTERN,
-  AVATAR_OBJECT_PATH_PATTERN,
-  avatarMimeTypeFromPath,
-} from "@/lib/freelancer/avatar-limits";
-import {
-  mintApplicationPhotoPath,
-  signApplicationPhotoPath,
-  verifyApplicationPhotoPath,
-} from "@/lib/freelancer/avatar-storage";
 
 const APPLICATION_ID = "11111111-1111-4111-8111-111111111111";
 const PROFILE_ID = "22222222-2222-4222-8222-222222222222";
@@ -83,15 +73,13 @@ describe("projects and photo in the application", () => {
     expect(insert.reference_projects).toEqual([
       expect.objectContaining({ title: project.title, verified: false, source: "application", sourceUrl: null, ongoing: true }),
     ]);
-    expect(insert.photo_storage_path).toBeNull();
+    expect(insert).not.toHaveProperty("photo_storage_path");
   });
 
-  it("takes a photo only as a signed upload", () => {
-    const token = signApplicationPhotoPath(PHOTO);
-    const input = FreelancerApplicationInputSchema.parse(applicationPayload({ photo: { storagePath: PHOTO, token } }));
-    expect(applicationInsertFromInput(input, { submittedByUserId: null, consentAt: "x" }).photo_storage_path).toBe(PHOTO);
-    expect(FreelancerApplicationInputSchema.safeParse(applicationPayload({ photo: { storagePath: PHOTO, token: "nope" } })).success).toBe(false);
+  it("caps the projects and takes no photo from the form", () => {
     expect(FreelancerApplicationInputSchema.safeParse(applicationPayload({ projects: Array(9).fill(project) })).success).toBe(false);
+    // Das Foto kommt erst nach dem Login im Bewerber-Portal (`/api/freelancer/avatar-upload`).
+    expect(FreelancerApplicationInputSchema.safeParse(applicationPayload({ photo: null })).success).toBe(false);
   });
 
   it("reads stored projects defensively", () => {
@@ -123,23 +111,6 @@ describe("projects and photo in the application", () => {
       usePhoto: true,
     });
     expect(decisionDefaultsFromApplication({ full_name: "Kim" } as unknown as ApplicationRow)).toMatchObject({ projects: [], usePhoto: false });
-  });
-});
-
-describe("application photo paths", () => {
-  it("mints paths the image route never serves", () => {
-    const path = mintApplicationPhotoPath("image/png");
-    expect(path).toMatch(APPLICATION_PHOTO_PATH_PATTERN);
-    expect(path).not.toMatch(AVATAR_OBJECT_PATH_PATTERN);
-    expect(avatarMimeTypeFromPath(path)).toBe("image/png");
-  });
-
-  it("accepts only the server's own signature", () => {
-    expect(verifyApplicationPhotoPath(PHOTO, signApplicationPhotoPath(PHOTO))).toBe(true);
-    const other = PHOTO.replace("0123", "4567");
-    expect(verifyApplicationPhotoPath(other, signApplicationPhotoPath(PHOTO))).toBe(false);
-    const profilePath = `${PROFILE_ID}/avatar-0123456789abcdef0123456789abcdef.webp`;
-    expect(verifyApplicationPhotoPath(profilePath, signApplicationPhotoPath(profilePath))).toBe(false);
   });
 });
 

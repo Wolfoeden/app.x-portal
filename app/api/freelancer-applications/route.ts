@@ -15,12 +15,7 @@ import {
 import { recordInviteConversion } from "@/lib/sourcing/conversion";
 import { applicationExtrasAvailable, applicationOnboardingAvailable } from "@/lib/freelancer/applications-data";
 import { linkedIdentities } from "@/lib/auth/linked-identities";
-import { avatarMimeTypeFromPath } from "@/lib/freelancer/avatar-limits";
-import {
-  AVATAR_BUCKET,
-  inspectUploadedAvatar,
-  verifyApplicationPhotoPath,
-} from "@/lib/freelancer/avatar-storage";
+import { AVATAR_BUCKET } from "@/lib/freelancer/avatar-storage";
 import {
   hasPdfMagicBytes,
   verifyCvObjectPath,
@@ -212,30 +207,10 @@ export async function POST(request: Request) {
       );
     }
 
-    if (input.photo && !verifyApplicationPhotoPath(input.photo.storagePath, input.photo.token)) {
-      return NextResponse.json(
-        { error: "Der Foto-Upload ist ungültig. Bitte das Foto erneut hochladen." },
-        { status: 400 },
-      );
-    }
-
     const admin = createAdminSupabaseClient();
     const uploaded = input.cv
       ? await inspectUploadedCv(admin, input.cv.storagePath)
       : null;
-
-    // Das Foto zählt erst, wenn seine ersten Bytes zum Bildtyp im Pfad passen.
-    // Ein ungültiges wird gelöscht und gemeldet, nicht still verworfen.
-    if (input.photo) {
-      const photo = await inspectUploadedAvatar(admin, input.photo.storagePath);
-      if (!photo || photo.mimeType !== avatarMimeTypeFromPath(input.photo.storagePath)) {
-        await admin.storage.from(AVATAR_BUCKET).remove([input.photo.storagePath]).catch(() => undefined);
-        return NextResponse.json(
-          { error: "Das Foto ist kein gültiges Bild. Erlaubt sind JPEG, PNG oder WebP bis 5 MB." },
-          { status: 400 },
-        );
-      }
-    }
 
     // Eine Datei, die keine PDF ist, wird nicht stillschweigend verworfen: der
     // Bewerber hat sie angehängt und soll erfahren, warum sie nicht ankommt.
@@ -267,14 +242,11 @@ export async function POST(request: Request) {
       insert.cv_size_bytes = null;
     }
 
-    // Projekte und Foto nur mit Migration 20261006100000. Das Formular blendet
-    // beide ohne sie aus; was trotzdem kommt, wird nicht gespeichert.
+    // Projekte nur mit Migration 20261006100000. Das Formular blendet sie ohne
+    // sie aus; was trotzdem kommt, wird nicht gespeichert.
     const extras = await applicationExtrasAvailable(admin);
     const row: Partial<typeof insert> = { ...insert };
-    if (!extras) {
-      delete row.reference_projects;
-      delete row.photo_storage_path;
-    }
+    if (!extras) delete row.reference_projects;
 
     // Import-Herkunft, Kapazität und Wunschprojekte nur mit Migration
     // 20261007090000. „Konto verbunden“ gilt nur für einen GitHub-Namen, der
@@ -390,7 +362,6 @@ export async function POST(request: Request) {
         hasBookingUrl: Boolean(insert.booking_url),
         skillCount: insert.skills.length,
         projectCount: extras ? insert.reference_projects.length : 0,
-        hasPhoto: extras && Boolean(insert.photo_storage_path),
         replacedPending: pending.length,
         fromInvite,
       },
