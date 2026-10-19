@@ -15,7 +15,14 @@ import { writeAuditEvent } from "@/lib/audit/write";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { fetchActiveBookableRealProfiles } from "@/lib/data/freelancers";
 import type { ProjectRow } from "@/lib/data/projects";
-import { buildShortlist, ProjectBriefSchema } from "@/lib/domain";
+import {
+  AI_RANKING_RULE_VERSION,
+  aiResearchAllowed,
+  buildShortlist,
+  MatchingDecisionSnapshotSchema,
+  ProjectBriefSchema,
+  type Shortlist,
+} from "@/lib/domain";
 import { assertWorkflowOperationAllowed } from "@/lib/domain/workflow-controls";
 import {
   estimateExternalSearchTokenCeiling,
@@ -144,6 +151,29 @@ async function ownedProjectWithBrief(
   return { project: data as ProjectRow, brief: brief.data };
 }
 
+/**
+ * Die zuletzt gespeicherte Suche dieses Projekts. Stammt sie aus der
+ * KI-Bewertung, entscheidet deren Einschätzung über die Recherche; ältere
+ * Suchen bleiben bei der Regelprüfung.
+ */
+async function latestAiSearch(
+  admin: ReturnType<typeof createAdminSupabaseClient>,
+  projectId: string,
+  userId: string,
+): Promise<{ status: Shortlist["status"] | null; decision: unknown } | null> {
+  const { data, error } = await admin
+    .from("shortlists")
+    .select("matching_rule_version,result_status,decision_snapshot")
+    .eq("project_id", projectId)
+    .eq("owner_user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data || data.matching_rule_version !== AI_RANKING_RULE_VERSION) return null;
+  return { status: data.result_status, decision: data.decision_snapshot };
+}
+
 export async function POST(request: Request) {
   const traceId = randomUUID();
   let auditActorUserId: string | null = null;
@@ -242,11 +272,23 @@ export async function POST(request: Request) {
     // Search is only the explicit fallback after the current curated catalog
     // produced no eligible profile. This check prevents paid duplicate work.
     const excluded = new Set(input.excludedProfileIds ?? []);
-    const internalProfiles = (await fetchActiveBookableRealProfiles(admin)).filter(
-      (profile) => !excluded.has(profile.id),
-    );
-    const internalShortlist = buildShortlist(brief, internalProfiles);
-    if (internalShortlist.status !== "no_reliable_match") {
+    const aiSearch = await latestAiSearch(admin, project.id, user.id);
+    const decision = aiSearch
+      ? MatchingDecisionSnapshotSchema.safeParse(aiSearch.decision)
+      : null;
+    const internalStatus: Shortlist["status"] | null = aiSearch
+      ? aiResearchAllowed(aiSearch.status, decision?.success ? decision.data : null, excluded)
+        ? "no_reliable_match"
+        : aiSearch.status === "needs_clarification"
+          ? "needs_clarification"
+          : "ranked"
+      : buildShortlist(
+          brief,
+          (await fetchActiveBookableRealProfiles(admin)).filter(
+            (profile) => !excluded.has(profile.id),
+          ),
+        ).status;
+    if (internalStatus !== "no_reliable_match") {
       await writeAuditEvent({
         actorUserId: user.id,
         action: "external_freelancer_search_denied_internal_match",
@@ -258,7 +300,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            internalShortlist.status === "needs_clarification"
+            internalStatus === "needs_clarification"
               ? "Die Anforderungen müssen vor einer kostenpflichtigen Websuche präzisiert werden. Es wurden keine Credits belastet."
               : "Für dieses Projekt existiert inzwischen mindestens ein zuverlässiger interner Treffer.",
           traceId,

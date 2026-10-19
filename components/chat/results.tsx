@@ -21,7 +21,7 @@ import {
 
 import { appPath } from "@/lib/app-path";
 import { MatchProtocol } from "@/components/product/MatchProtocol";
-import { MINIMUM_CORE_COVERAGE_BASIS_POINTS } from "@/lib/domain/matching-threshold";
+import { AI_FIT_THRESHOLD, MINIMUM_CORE_COVERAGE_BASIS_POINTS } from "@/lib/domain/matching-threshold";
 
 import {
   BRIEF_FIELDS,
@@ -329,6 +329,32 @@ export function ResultSection({
   const shownProfiles = profiles.filter((profile) => !dismissedIds.has(profile.id));
   const shownPartials = partialProfiles.filter((profile) => !dismissedIds.has(profile.id));
   const allRankedDismissed = profiles.length > 0 && shownProfiles.length === 0;
+  // Bei der KI-Bewertung: Trägt selbst das beste Profil oben nicht (unter
+  // der Schwelle oder ohne Bewertung), steht die Recherche unter den Profilen.
+  const aiScores = shownProfiles
+    .filter((profile) => profile.rankedBy !== undefined)
+    .map((profile) => (profile.rankedBy === "ai" ? profile.fitScore : null));
+  const weakAiResult =
+    aiScores.length > 0 && aiScores.every((score) => score === null || score < AI_FIT_THRESHOLD);
+  const researchOffer = (note?: string) => (
+    <section className="recovery-research" aria-labelledby="recovery-research-title">
+      <p className="recovery-research-title" id="recovery-research-title">
+        Öffentlich weitersuchen · {EXTERNAL_SEARCH_CREDITS} Credits
+      </p>
+      <p className="recovery-research-lead">
+        {note ? `${note} ` : ""}Der Recherche-Agent sucht in öffentlichen Quellen nach Freelancern für genau diese Anforderungen, prüft jeden Treffer an seiner Quelle und zeigt ihn mit Link.
+      </p>
+      <ResearchFacts />
+      <AgentLaunchPanel
+        state={launchState}
+        searching={externalSearchState === "searching"}
+        failed={externalSearchState === "error"}
+        onStart={onExternalSearch}
+        onRequireLogin={onRequireLogin}
+        onNeedCredits={onNeedCredits}
+      />
+    </section>
+  );
   /**
    * Die Karte erscheint nur, wenn sie etwas sagt, das nicht schon oben steht.
    *
@@ -446,6 +472,20 @@ export function ResultSection({
             />
           ) : null}
           <SearchTips tips={tips} />
+          {weakAiResult && (analysis?.externalSearchAvailable ?? true) && externalSearch?.mode !== "openai"
+            ? researchOffer(
+                aiScores.every((score) => score === null)
+                  ? "Diese Profile sind noch nicht von der KI bewertet."
+                  : "Laut KI deckt keines dieser Profile Ihre Anfrage im Wesentlichen ab.",
+              )
+            : null}
+          {externalSearch ? (
+            <ExternalSearchResults
+              result={externalSearch}
+              expandedProfileUrl={expandedProfileUrl}
+              onToggleExpand={onToggleExpand}
+            />
+          ) : null}
         </>
       ) : (
         <>
@@ -542,25 +582,7 @@ export function ResultSection({
           {((matchingStatus === "no_reliable_match" &&
             (analysis?.externalSearchAvailable ?? true)) ||
             allRankedDismissed) &&
-          externalSearch?.mode !== "openai" ? (
-            <section className="recovery-research" aria-labelledby="recovery-research-title">
-              <p className="recovery-research-title" id="recovery-research-title">
-                Öffentlich weitersuchen · {EXTERNAL_SEARCH_CREDITS} Credits
-              </p>
-              <p className="recovery-research-lead">
-                Der Recherche-Agent sucht in öffentlichen Quellen nach Freelancern für genau diese Anforderungen, prüft jeden Treffer an seiner Quelle und zeigt ihn mit Link.
-              </p>
-              <ResearchFacts />
-              <AgentLaunchPanel
-                state={launchState}
-                searching={externalSearchState === "searching"}
-                failed={externalSearchState === "error"}
-                onStart={onExternalSearch}
-                onRequireLogin={onRequireLogin}
-                onNeedCredits={onNeedCredits}
-              />
-            </section>
-          ) : null}
+          externalSearch?.mode !== "openai" ? researchOffer() : null}
           {externalSearch ? (
             <ExternalSearchResults
               result={externalSearch}

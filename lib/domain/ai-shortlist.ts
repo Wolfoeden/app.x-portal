@@ -12,7 +12,10 @@ import {
   type Shortlist,
   type ShortlistMatch,
 } from "./matching";
+import { AI_FIT_THRESHOLD } from "./matching-threshold";
 import type { FreelancerProfile } from "./profile";
+
+export { AI_FIT_THRESHOLD } from "./matching-threshold";
 
 /**
  * Das Suchergebnis aus Vorauswahl und KI-Bewertung.
@@ -95,6 +98,49 @@ export const CandidateSnapshotSchema = z
       .strict(),
   )
   .max(50);
+
+type DecisionLike = { bestFitScore?: number | null; rankedProfileIds?: readonly string[] };
+
+/**
+ * Ob eine Suche der KI-Bewertung intern nichts Tragfähiges gefunden hat:
+ * Das beste Profil liegt unter der Schwelle, oder es gibt keine Bewertung
+ * (KI ausgefallen). Ältere Snapshots ohne das Feld gelten nicht als schwach.
+ */
+export function isWeakAiResult(decision: DecisionLike | null | undefined): boolean {
+  if (!decision || decision.bestFitScore === undefined) return false;
+  return decision.bestFitScore === null || decision.bestFitScore < AI_FIT_THRESHOLD;
+}
+
+/**
+ * Das Ergebnis, wie es die Auswertung zählt: Eine Suche mit Profilen oben,
+ * die laut KI aber nicht tragen, ist eine Kataloglücke wie ein leeres
+ * Ergebnis.
+ */
+export function effectiveResultStatus<T extends string | null>(
+  status: T,
+  decisionSnapshot: unknown,
+): T | "no_reliable_match" {
+  if (status !== "ranked") return status;
+  const decision = MatchingDecisionSnapshotSchema.safeParse(decisionSnapshot);
+  return decision.success && isWeakAiResult(decision.data) ? "no_reliable_match" : status;
+}
+
+/**
+ * Ob für eine Suche der KI-Bewertung die externe Recherche freigegeben ist:
+ * kein Profil im Pool, das beste unter der Schwelle, oder alle Profile oben
+ * hat der Nutzer als unpassend verworfen.
+ */
+export function aiResearchAllowed(
+  status: Shortlist["status"] | null,
+  decision: DecisionLike | null,
+  excludedProfileIds: ReadonlySet<string>,
+): boolean {
+  if (status === "no_reliable_match") return true;
+  if (status !== "ranked") return false;
+  if (isWeakAiResult(decision)) return true;
+  const ranked = decision?.rankedProfileIds ?? [];
+  return ranked.length > 0 && ranked.every((id) => excludedProfileIds.has(id));
+}
 
 export const PREFILTER_ONLY_GAP =
   "Die KI-Bewertung war für diese Suche nicht verfügbar; die Passung bitte im Gespräch prüfen.";
@@ -208,6 +254,11 @@ export function buildAiShortlist(input: {
     primaryProfileId: top[0]?.profile.id ?? null,
     openCoreRequirements: [],
     partialProfileIds: [],
+    bestFitScore:
+      rankedBy === "ai" && top.length
+        ? Math.max(...top.map((match) => match.fitScore ?? 0))
+        : null,
+    rankedProfileIds: top.map((match) => match.profile.id),
   });
 
   return {

@@ -24,6 +24,7 @@ import { deriveProjectTitle, presentProject, type ProjectRow } from "@/lib/data/
 import { fetchActiveBookableRealProfiles } from "@/lib/data/freelancers";
 import {
   aiEvaluationSnapshot,
+  aiResearchAllowed,
   buildAiShortlist,
   FreelancerProfileSchema,
   ProjectBriefSchema,
@@ -908,8 +909,11 @@ async function processChatRequest(
               status: shortlist.status === "ranked" && !aiEvaluated ? "warning" : "completed",
             },
           ],
+          // Angeboten, wenn intern nichts trägt: kein Profil im Pool, oder
+          // selbst das beste liegt laut KI unter der Schwelle (ai-shortlist.ts).
           externalSearchAvailable:
-            shortlist.status === "no_reliable_match" && deriveWorkflowControls(extraction.brief.originalRequest).externalResearch === "allowed",
+            aiResearchAllowed(shortlist.status, shortlist.decisionSnapshot, new Set()) &&
+            deriveWorkflowControls(extraction.brief.originalRequest).externalResearch === "allowed",
         } satisfies AiAnalysisTrace,
         buildVersion: SERVER_BUILD_VERSION,
       },

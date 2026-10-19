@@ -7,7 +7,10 @@ import { mapFreelancerProfileRow, type FreelancerProfileRow } from "@/lib/data/f
 import {
   AiEvaluationSnapshotSchema,
   aiEvaluationSnapshot,
+  aiResearchAllowed,
   buildAiShortlist,
+  effectiveResultStatus,
+  isWeakAiResult,
   CandidateSnapshotSchema,
   PREFILTER_ONLY_GAP,
   type FreelancerProfile,
@@ -335,5 +338,57 @@ describe("Chat-Antwort im Browser", () => {
       [ismsProfile.id, 1],
       [securityProfile.id, undefined],
     ]);
+  });
+});
+
+describe("Schwelle der KI-Einschätzung (70)", () => {
+  const prefilter = [
+    { profile: ismsProfile, similarity: 0.6 },
+    { profile: securityProfile, similarity: 0.5 },
+  ];
+  const sharedTerms = () => [];
+  const decisionFor = (scores: number[]) =>
+    buildAiShortlist({
+      poolSize: 68,
+      prefilter,
+      ranking: {
+        searchable: true,
+        picks: scores.map((fitScore, index) => ({
+          profileId: prefilter[index]!.profile.id,
+          fitScore,
+          reasons: ["Passt."],
+          openPoints: [],
+        })),
+      },
+      sharedTerms,
+    }).shortlist.decisionSnapshot;
+
+  it("speichert die beste Einschätzung und die Profile oben", () => {
+    const decision = decisionFor([64, 52]);
+    expect(decision.bestFitScore).toBe(64);
+    expect(decision.rankedProfileIds).toEqual([ismsProfile.id, securityProfile.id]);
+    expect(buildAiShortlist({ poolSize: 68, prefilter, ranking: null, sharedTerms }).shortlist.decisionSnapshot.bestFitScore).toBeNull();
+  });
+
+  it("zählt ein schwaches Ergebnis als Kataloglücke, ein tragendes nicht", () => {
+    expect(effectiveResultStatus("ranked", decisionFor([64]))).toBe("no_reliable_match");
+    expect(effectiveResultStatus("ranked", decisionFor([70]))).toBe("ranked");
+    expect(effectiveResultStatus("ranked", buildAiShortlist({ poolSize: 68, prefilter, ranking: null, sharedTerms }).shortlist.decisionSnapshot)).toBe("no_reliable_match");
+    // Ältere Suchen ohne KI-Feld bleiben, wie sie waren.
+    const legacy = { ...decisionFor([95]) };
+    delete (legacy as { bestFitScore?: unknown }).bestFitScore;
+    expect(effectiveResultStatus("ranked", legacy)).toBe("ranked");
+    expect(effectiveResultStatus("needs_clarification", decisionFor([10]))).toBe("needs_clarification");
+  });
+
+  it("gibt die Recherche bei schwachem Ergebnis oder verworfenen Profilen frei", () => {
+    const strong = decisionFor([88, 75]);
+    expect(isWeakAiResult(strong)).toBe(false);
+    expect(aiResearchAllowed("ranked", strong, new Set())).toBe(false);
+    expect(aiResearchAllowed("ranked", strong, new Set([ismsProfile.id]))).toBe(false);
+    expect(aiResearchAllowed("ranked", strong, new Set([ismsProfile.id, securityProfile.id]))).toBe(true);
+    expect(aiResearchAllowed("ranked", decisionFor([60]), new Set())).toBe(true);
+    expect(aiResearchAllowed("needs_clarification", decisionFor([60]), new Set())).toBe(false);
+    expect(aiResearchAllowed("no_reliable_match", null, new Set())).toBe(true);
   });
 });

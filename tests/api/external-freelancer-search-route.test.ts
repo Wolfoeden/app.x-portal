@@ -23,6 +23,8 @@ const mocks = vi.hoisted(() => ({
   quotaAllowed: true,
   eqCalls: [] as Array<[string, unknown]>,
   project: null as Record<string, unknown> | null,
+  /** Die letzte gespeicherte Suche des Projekts; null = keine (Regelprüfung). */
+  latestShortlist: null as Record<string, unknown> | null,
   user: {
     id: "00000000-0000-4000-8000-000000000001",
     email: null as string | null,
@@ -89,15 +91,20 @@ vi.mock("@/lib/ai/quota", () => ({
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminSupabaseClient: () => ({
     from: (table: string) => {
-      if (table !== "projects") throw new Error(`Unexpected table: ${table}`);
+      if (table !== "projects" && table !== "shortlists") throw new Error(`Unexpected table: ${table}`);
       const query = {
         select: () => query,
         eq: (column: string, value: unknown) => {
-          mocks.eqCalls.push([column, value]);
+          if (table === "projects") mocks.eqCalls.push([column, value]);
           return query;
         },
+        order: () => query,
+        limit: () => query,
         maybeSingle: () =>
-          Promise.resolve({ data: mocks.project, error: null }),
+          Promise.resolve({
+            data: table === "projects" ? mocks.project : mocks.latestShortlist,
+            error: null,
+          }),
       };
       return query;
     },
@@ -150,6 +157,7 @@ beforeEach(() => {
   process.env.IP_HASH_SECRET = "a-secure-test-secret-that-is-long-enough";
   process.env.NEXT_PUBLIC_SITE_URL = "https://x-portal.eu";
   mocks.project = project();
+  mocks.latestShortlist = null;
   mocks.eqCalls.length = 0;
   mocks.audit.mockClear();
   mocks.fetchProfiles.mockClear();
@@ -312,6 +320,70 @@ describe("POST /api/freelancer-search", () => {
     await POST(withExclusion);
 
     expect(mocks.buildShortlist).toHaveBeenCalledWith(expect.anything(), [kept]);
+  });
+
+  describe("nach einer Suche mit KI-Bewertung", () => {
+    const TOP = [
+      "00000000-0000-4000-8000-0000000000b1",
+      "00000000-0000-4000-8000-0000000000b2",
+    ];
+    function aiShortlist(bestFitScore: number | null) {
+      return {
+        matching_rule_version: "freelancer-ai-rank-v1",
+        result_status: "ranked",
+        decision_snapshot: {
+          schemaVersion: 2,
+          scoreVersion: "freelancer-score-v2",
+          status: "ranked",
+          minimumCoreCoverageBasisPoints: 7000,
+          evaluatedProfileCount: 68,
+          catalogEligibleProfileCount: 20,
+          reliableProfileCount: 2,
+          failureCounts: { hardConflict: 0, hardUnknown: 0, belowCoreCoverage: 0 },
+          primaryProfileId: TOP[0],
+          openCoreRequirements: [],
+          partialProfileIds: [],
+          bestFitScore,
+          rankedProfileIds: TOP,
+        },
+      };
+    }
+    function requestExcluding(excludedProfileIds: string[]) {
+      return new Request("https://x-portal.eu/api/freelancer-search", {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: "https://x-portal.eu", "x-forwarded-for": "203.0.113.5" },
+        body: JSON.stringify({ projectId: PROJECT_ID, requestId: "search-request-1", excludedProfileIds }),
+      });
+    }
+
+    it("lehnt ab, wenn das beste Profil laut KI trägt", async () => {
+      mocks.latestShortlist = aiShortlist(85);
+      const response = await POST(request());
+      expect(response.status).toBe(409);
+      expect(mocks.buildShortlist).not.toHaveBeenCalled();
+      expect(mocks.execute).not.toHaveBeenCalled();
+    });
+
+    it("gibt frei, wenn selbst das beste Profil unter 70 liegt", async () => {
+      mocks.latestShortlist = aiShortlist(55);
+      const response = await POST(request());
+      expect(response.status).not.toBe(409);
+      expect(mocks.buildShortlist).not.toHaveBeenCalled();
+      expect(mocks.execute).toHaveBeenCalled();
+    });
+
+    it("gibt frei, wenn die KI nicht bewertet hat", async () => {
+      mocks.latestShortlist = aiShortlist(null);
+      expect((await POST(request())).status).not.toBe(409);
+    });
+
+    it("gibt frei, wenn der Nutzer alle Profile oben verworfen hat", async () => {
+      mocks.latestShortlist = aiShortlist(92);
+      expect((await POST(requestExcluding([TOP[0]!]))).status).toBe(409);
+      mocks.execute.mockClear();
+      expect((await POST(requestExcluding(TOP))).status).not.toBe(409);
+      expect(mocks.execute).toHaveBeenCalled();
+    });
   });
 
   it("does not spend when the internal brief still needs clarification", async () => {

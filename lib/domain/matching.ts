@@ -167,6 +167,14 @@ export const MatchingDecisionSnapshotSchema = z
     primaryProfileId: z.string().uuid().nullable(),
     openCoreRequirements: z.array(z.string().min(1).max(500)).max(5),
     partialProfileIds: z.array(z.string().uuid()).max(MAX_PARTIAL_MATCHES).optional(),
+    /**
+     * Nur bei der KI-Bewertung (freelancer-ai-rank-v1): die höchste
+     * Einschätzung unter den Profilen oben, null ohne Bewertung. Danach
+     * richten sich Rechercheangebot und Kataloglücke (ai-shortlist.ts).
+     */
+    bestFitScore: z.number().int().min(0).max(100).nullable().optional(),
+    /** Nur bei der KI-Bewertung: die Profile oben, in Reihenfolge. */
+    rankedProfileIds: z.array(z.string().uuid()).max(3).optional(),
   })
   .strict()
   .refine(

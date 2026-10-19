@@ -3,6 +3,7 @@ import "server-only";
 import { platformAnalyticsExcludedEmails } from "@/lib/admin/analytics-exclusions";
 import { hasAdminRole } from "@/lib/auth/admin-role";
 import { contactWorkload } from "@/lib/crm/contacts-data";
+import { effectiveResultStatus } from "@/lib/domain/ai-shortlist";
 import { berlinToday } from "@/lib/crm/contacts-model";
 import { promotionalDeliveryConfigured } from "@/lib/email/deliver";
 import { readLeadAutomation, type LeadAutomation } from "@/lib/leadgen/automation";
@@ -154,7 +155,7 @@ export async function loadOverview(range: OverviewRange, now: Date = new Date())
     settle(
       admin
         .from("shortlists")
-        .select("created_at,owner_user_id,result_status")
+        .select("created_at,owner_user_id,result_status,decision_snapshot")
         .eq("source", "user_search")
         .gte("created_at", since)
         .limit(20_000),
@@ -219,7 +220,11 @@ export async function loadOverview(range: OverviewRange, now: Date = new Date())
   const searchRows = rows(searches).filter(notExcluded);
   const searchTimes = searchRows.map((row) => String(row.created_at));
   const inRange = searchRows.filter((row) => Date.parse(String(row.created_at)) >= start.getTime());
-  const reliable = inRange.filter((row) => row.result_status === "ranked").length;
+  // Ein Ergebnis, dessen bestes Profil laut KI unter der Schwelle liegt,
+  // zählt nicht als verlässlich (lib/domain/ai-shortlist.ts).
+  const reliable = inRange.filter(
+    (row) => effectiveResultStatus(row.result_status as string | null, row.decision_snapshot) === "ranked",
+  ).length;
 
   const metric = (times: readonly string[] | null): MetricWithTrend =>
     times
