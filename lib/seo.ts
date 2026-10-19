@@ -82,7 +82,7 @@ export const MARKETING_PAGE = {
     path: "/ki-freelancer-matching",
     label: "KI-Freelancer-Matching",
     title: "KI-Freelancer-Matching verständlich erklärt | XPORTAL",
-    description: "Was KI-gestütztes Freelancer-Matching bedeutet: strukturierte Anforderungen, regelbasierter Profilabgleich, nachvollziehbare Begründungen und klare Grenzen.",
+    description: "Was KI-gestütztes Freelancer-Matching bedeutet: strukturierte Anforderungen, Vorauswahl nach inhaltlicher Nähe, KI-Bewertung mit Begründung und klare Grenzen.",
     priority: 0.8,
     changeFrequency: "monthly",
   },

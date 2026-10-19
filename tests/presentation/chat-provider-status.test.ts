@@ -138,7 +138,7 @@ describe("truthful chat provider status", () => {
     expect(providerModelLabel(invalidOutput)).toBe(
       "Antwortmodell: gpt-response-snapshot",
     );
-    expect(analysisDisclosure(invalidOutput)).toContain("nicht für die Strukturierung oder Profilauswahl verwendet");
+    expect(analysisDisclosure(invalidOutput)).toContain("nicht für die Strukturierung verwendet");
   });
 });
 

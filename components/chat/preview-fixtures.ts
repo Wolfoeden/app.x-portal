@@ -709,3 +709,54 @@ export const previewDossiers: Record<string, ProfileDossier> = {
     ]),
   ),
 };
+
+/**
+ * `scenario=ki`: das Ergebnis der Suche seit dem 19.10.2026 — drei Profile
+ * mit Begründung und Einschätzung der KI, darunter die ganze Vorauswahl.
+ */
+export const aiRankedProfiles: FreelancerProfileResult[] = previewProfiles.map((profile, index) => ({
+  ...profile,
+  rankedBy: "ai",
+  coreCoverage: null,
+  matchReasons:
+    index === 0
+      ? [
+          "React, TypeScript und Next.js stehen im Profil und im Referenzprojekt.",
+          "Design Systems und SaaS decken die optionalen Wünsche ab.",
+          "Deutsch und hybrides Arbeiten in Berlin passen zur Anfrage.",
+        ]
+      : [
+          "React, TypeScript und Next.js stehen im Profil.",
+          "Performance-Optimierung passt zum Relaunch.",
+        ],
+  knownGaps:
+    index === 0
+      ? ["Projektlaufzeit und Budget sind in der Anfrage offen."]
+      : ["Vor-Ort-Termine in Berlin sind nicht bestätigt.", "Tagessatz ist im Profil nicht angegeben."],
+}));
+
+const CANDIDATE_NAMES = [
+  "Lea Hoffmann", "Jonas Richter", "Mira Schulz", "Paul Wagner", "Sofia Becker", "Elias Braun",
+  "Nina Krüger", "Felix Wolf", "Clara Neumann", "Tim Schwarz", "Lina Zimmermann", "Ben Hartmann",
+  "Emma Lange", "Noah Krause", "Ida Werner", "Leon Schmitt", "Hanna Meier", "Luis Fuchs",
+];
+
+export const aiPreviewCandidates: FreelancerProfileResult[] = [
+  ...aiRankedProfiles.map((profile, index) => ({ ...profile, candidateRank: index + 1 })),
+  ...CANDIDATE_NAMES.map((displayName, index) => ({
+    ...previewProfiles[index % previewProfiles.length]!,
+    id: `preview-candidate-${index + 1}`,
+    displayName,
+    highlight: null,
+    role: index % 3 === 0 ? "React Developer" : index % 3 === 1 ? "Fullstack Engineer" : "Frontend Engineer",
+    skillTags: index % 2 === 0 ? ["React", "TypeScript", "Node.js", "GraphQL", "Jest"] : ["Vue", "TypeScript", "Next.js", "CSS", "Accessibility"],
+    rate: index % 4 === 0 ? null : `${700 + index * 15} € / Tag`,
+    availabilityStatus: index % 3 === 0 ? ("unknown" as const) : ("available" as const),
+    matchReasons: [],
+    knownGaps: [],
+    recommendationRole: null,
+    fitScore: null,
+    coreCoverage: null,
+    candidateRank: null,
+  })),
+];

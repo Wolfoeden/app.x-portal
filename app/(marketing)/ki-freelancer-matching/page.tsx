@@ -11,12 +11,12 @@ export default function AiMatchingPage() {
       page={MARKETING_PAGE.matching}
       eyebrow="Die Matching-Mechanik"
       title="KI-gestütztes Freelancer-Matching verstehen."
-      intro="Bei XPORTAL hilft KI, eine Projektbeschreibung in strukturierte Anforderungen zu übersetzen. Der anschließende interne Profilabgleich folgt festen Regeln. Dadurch lässt sich nachvollziehen, warum ein Profil vorgeschlagen wird."
+      intro="Bei XPORTAL arbeitet KI an zwei Stellen: Sie übersetzt eine Projektbeschreibung in strukturierte Anforderungen, und sie bewertet die vorausgewählten Profile gegen Ihre Anfrage. Jeder Vorschlag kommt mit Begründung und offenen Punkten, damit nachvollziehbar bleibt, warum ein Profil oben steht."
       aside={<MatchExample />}
     >
       <ContentSection id="definition" label="Begriff" title="Was ist KI-gestütztes Freelancer-Matching?">
         <p>KI-gestütztes Freelancer-Matching bezeichnet hier die Verbindung von sprachbasierter Anforderungserfassung und einem Abgleich mit Freelancer-Profilen. Sie beschreiben die Aufgabe in eigenen Worten. Das System ordnet die Angaben so, dass sie für eine Suche genutzt werden können.</p>
-        <p>Bei XPORTAL sind diese Aufgaben getrennt: Die KI strukturiert den Projekttext. Die interne Auswahl und Reihenfolge der Profile entstehen durch einen regelbasierten Abgleich. Die KI entscheidet nicht, welche Person Sie beauftragen.</p>
+        <p>Bei XPORTAL läuft die Suche in zwei Stufen. Zuerst wählt XPORTAL aus allen aktiven Profilen die 20 aus, die Ihrer Anfrage inhaltlich am nächsten sind. Danach bewertet die KI diese Profile gegen Ihre Anfrage und stellt die drei besten mit Begründung nach oben; alle 20 bleiben einsehbar. Wen Sie ansprechen und beauftragen, entscheiden Sie.</p>
       </ContentSection>
 
       <ContentSection id="filter" title="Warum eine Filterliste nicht jede Anforderung erfasst">
@@ -28,15 +28,15 @@ export default function AiMatchingPage() {
       <ContentSection id="abgleich" label="Vom Text zum Match" title="Wie XPORTAL Anforderungen abgleicht">
         <ol className={styles.steps}>
           <li><h3>Genannte Anforderungen erfassen</h3><p>Fähigkeiten, Arbeitsmodus, Sprache, Ort, Zeitrahmen und gegebenenfalls Budget werden aus Ihren Angaben strukturiert. Nicht genannte Fakten sollen unbekannt bleiben.</p></li>
-          <li><h3>Vorhandene Profilangaben zuordnen</h3><p>Der Abgleich unterscheidet Kernkompetenzen, optionale Fähigkeiten und ausdrücklich zwingende Bedingungen. Welche fehlende oder widersprüchliche Angabe eine Empfehlung ausschließt, richtet sich nach dem jeweiligen Kriterium.</p></li>
-          <li><h3>Gründe und offene Punkte ausgeben</h3><p>Die Ergebnisse zeigen passende Angaben und bekannte Lücken. Hinterlegte Hinweise zu Branche, Zertifikaten oder Projekterfahrung können ergänzend einfließen. Sie ersetzen im Matching keine fehlende Kernkompetenz.</p></li>
+          <li><h3>Inhaltlich passende Profile vorauswählen</h3><p>Aus allen aktiven Profilen werden die 20 ausgewählt, die der Anfrage inhaltlich am nächsten sind. Gleichbedeutende Begriffe in anderer Sprache, Abkürzung oder Schreibweise zählen mit, etwa ISMS und Informationssicherheitsmanagement.</p></li>
+          <li><h3>Bewerten, begründen, offene Punkte nennen</h3><p>Die KI bewertet die Vorauswahl gegen Ihre Anfrage und nennt zu den drei besten, welche Anforderungen sie mit welchen Profilangaben belegen und was offen ist. Branche, Zertifikate und Projekterfahrung fließen ein, soweit sie im Profil stehen.</p></li>
         </ol>
       </ContentSection>
 
       <ContentSection id="match-gruende" title="Was eine Match-Begründung enthält">
         <p>Eine Begründung benennt die für die Anfrage relevanten Überschneidungen. Das können im Profil genannte Kompetenzen, die Sprache, der Arbeitsmodus oder andere hinterlegte Rahmenbedingungen sein. Ergänzende Erfahrungsinformationen werden nur berücksichtigt, soweit sie im Profilbestand als entsprechende Hinweise vorliegen.</p>
         <p>Die Begründung entsteht aus dem vorhandenen Datenstand. Sie ist weder ein vollständiges Bild der Person noch eine unabhängige Prüfung sämtlicher Profilangaben. Hinweise aus Selbstauskünften und als bestätigt hinterlegte Fakten haben unterschiedliche Aussagekraft.</p>
-        <div className={styles.note}><strong>„Nicht belegt“ heißt: Es fehlt Information.</strong><p>Es bedeutet nicht automatisch, dass jemand eine Fähigkeit nicht besitzt. Je nach Kriterium bleibt eine Lücke sichtbar oder eine ausdrücklich zwingende Bedingung verhindert eine Empfehlung.</p></div>
+        <div className={styles.note}><strong>„Nicht belegt“ heißt: Es fehlt Information.</strong><p>Es bedeutet nicht automatisch, dass jemand eine Fähigkeit nicht besitzt. Eine fehlende Angabe steht deshalb als offener Punkt beim Vorschlag, den Sie im Gespräch klären.</p></div>
       </ContentSection>
 
       <ContentSection id="grenzen" label="Grenzen" title="Die Entscheidung bleibt bei Ihnen">

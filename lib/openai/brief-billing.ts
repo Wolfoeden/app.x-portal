@@ -45,3 +45,37 @@ export function briefAnalysisResult(
         : undefined,
   };
 }
+
+/**
+ * Projektanalyse und KI-Bewertung der Profile laufen als ein Vorgang.
+ *
+ * Der Kunde zahlt weiter den Festpreis der Projektanalyse und nur, wenn sie
+ * das Modell geliefert hat; die Token der Bewertung kommen dann in denselben
+ * Verbrauchseintrag, damit die Anbieterkosten vollständig erfasst sind.
+ */
+export function searchAnalysisResult<T extends { extraction: ExtractProjectBriefResult }>(
+  value: T,
+  rankingUsage: readonly {
+    inputTokens: number;
+    cachedInputTokens: number;
+    outputTokens: number;
+  }[],
+): AiOperationResult<T> {
+  const base = briefAnalysisResult(value.extraction);
+  const usage = base.usage
+    ? rankingUsage.reduce(
+        (total, call) => ({
+          ...total,
+          inputTokens: total.inputTokens + call.inputTokens,
+          cachedInputTokens: (total.cachedInputTokens ?? 0) + call.cachedInputTokens,
+          outputTokens: total.outputTokens + call.outputTokens,
+          totalTokens:
+            total.totalTokens === undefined
+              ? undefined
+              : total.totalTokens + call.inputTokens + call.outputTokens,
+        }),
+        base.usage,
+      )
+    : undefined;
+  return { ...base, value, usage };
+}

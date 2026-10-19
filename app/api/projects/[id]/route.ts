@@ -10,7 +10,9 @@ import {
 } from "@/lib/data/freelancers";
 import { presentProject, type ProjectRow } from "@/lib/data/projects";
 import {
+  AiEvaluationSnapshotSchema,
   buildShortlist,
+  CandidateSnapshotSchema,
   FreelancerProfileSchema,
   MatchingDecisionSnapshotSchema,
   MatchingEvaluationSnapshotSchema,
@@ -20,7 +22,7 @@ import {
   type FreelancerProfile,
   type ShortlistMatch,
 } from "@/lib/domain";
-import { presentBrief, presentMatch } from "@/lib/presentation/chat";
+import { presentBrief, presentMatch, presentSavedProfile } from "@/lib/presentation/chat";
 import { writeAuditEvent } from "@/lib/audit/write";
 import {
   StoredExternalCandidateSchema,
@@ -64,6 +66,7 @@ type StoredShortlistRow = {
     | null;
   decision_snapshot: unknown | null;
   partial_matches_snapshot: unknown | null;
+  candidate_snapshot?: unknown | null;
   matching_rule_version: string;
 };
 
@@ -202,6 +205,28 @@ function restoreMatch(
   const evaluation = MatchingEvaluationSnapshotSchema.safeParse(
     row.evaluation_snapshot,
   );
+  // Ergebnisse der KI-Bewertung tragen einen eigenen, schmaleren Snapshot.
+  const aiEvaluation = evaluation.success
+    ? null
+    : AiEvaluationSnapshotSchema.safeParse(row.evaluation_snapshot);
+  if (aiEvaluation?.success) {
+    return {
+      profile,
+      matchReasons,
+      knownGaps,
+      verifiedFacts: row.verified_facts_snapshot,
+      selfReportedFacts: row.self_reported_facts_snapshot,
+      availabilityStatus: profile.availability.status,
+      availabilityCheckedAt: profile.availability.checkedAt,
+      profileDataVersion: `profile-v${row.profile_data_version}`,
+      recommendationRole: aiEvaluation.data.recommendationRole,
+      ...(aiEvaluation.data.fitScore === null ? {} : { fitScore: aiEvaluation.data.fitScore }),
+      orderingEvidence: {
+        availabilityPriority: availabilityPriority(profile.availability.status),
+        availableFrom: profile.availability.availableFrom,
+      },
+    };
+  }
   return {
     profile,
     matchReasons,
@@ -289,7 +314,7 @@ export async function GET(
         admin
           .from("shortlists")
           .select(
-            "id,result_count,result_status,decision_snapshot,partial_matches_snapshot,matching_rule_version",
+            "id,result_count,result_status,decision_snapshot,partial_matches_snapshot,candidate_snapshot,matching_rule_version",
           )
           .eq("project_id", id)
           .eq("owner_user_id", user.id)
@@ -330,6 +355,7 @@ export async function GET(
     const storedShortlist = shortlist as StoredShortlistRow | null;
     let profiles: ReturnType<typeof presentMatch>[] = [];
     let partialProfiles: ReturnType<typeof presentMatch>[] = [];
+    let candidates: ReturnType<typeof presentMatch>[] = [];
     let usedDeterministicRecovery = false;
     let matchingStatus: StoredShortlistRow["result_status"] | undefined =
       storedShortlist?.result_status ??
@@ -396,17 +422,33 @@ export async function GET(
         matchingIntegrityNotice =
           "Die gespeicherte Trefferzahl und die vorhandenen Profilzeilen weichen voneinander ab; das Ergebnis wird nur eingeschränkt dargestellt.";
       }
+      const storedCandidates = CandidateSnapshotSchema.safeParse(
+        storedShortlist.candidate_snapshot ?? [],
+      );
+      const candidateOrder = storedCandidates.success ? storedCandidates.data : [];
       const currentProfiles = await fetchRealProfilesByIds(admin, [
         ...storedRows.map((row) => row.freelancer_profile_id),
         ...partialMatches.map((match) => match.profile.id),
+        ...candidateOrder.map((entry) => entry.profileId),
       ]);
       const currentProfilesById = new Map(
         currentProfiles.map((profile) => [profile.id, profile]),
       );
-      profiles = storedRows
-        .map((row) => restoreMatch(row, currentProfilesById.get(row.freelancer_profile_id)))
-        .filter((match): match is ShortlistMatch => match !== null)
-        .map(presentMatch);
+      profiles = storedRows.flatMap((row) => {
+        const match = restoreMatch(row, currentProfilesById.get(row.freelancer_profile_id));
+        if (!match) return [];
+        const ai = AiEvaluationSnapshotSchema.safeParse(row.evaluation_snapshot);
+        return [ai.success ? { ...presentMatch(match), rankedBy: ai.data.rankedBy } : presentMatch(match)];
+      });
+      // Die Vorauswahl mit dem heutigen Stand der Profile; wer inzwischen
+      // nicht mehr aktiv oder verfügbar ist, fällt aus der Liste.
+      candidates = candidateOrder.flatMap((entry) => {
+        const current = currentProfilesById.get(entry.profileId);
+        if (!current || current.profileStatus !== "active" || current.availability.status === "unavailable") {
+          return [];
+        }
+        return [{ ...presentSavedProfile(current), candidateRank: entry.rank }];
+      });
       partialProfiles = partialMatches
         .map((match) => withCurrentBookingUrl(match, currentProfilesById.get(match.profile.id)))
         .map(presentMatch);
@@ -529,6 +571,7 @@ export async function GET(
         brief: brief.success ? presentBrief(brief.data) : null,
         profiles: cvAwareProfiles,
         partialProfiles: cvAwarePartialProfiles,
+        candidates,
         matchingStatus,
         analysisMode:
           usedDeterministicRecovery

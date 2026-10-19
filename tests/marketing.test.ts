@@ -21,7 +21,7 @@ import { MARKETING_PAGE, MARKETING_PAGES, absoluteUrl, pageMetadata } from "@/li
 const routes = [
   { Component: FindPage, page: MARKETING_PAGE.find, metadata: findMetadata, required: ["Weniger Bewerbungen", "Mehr relevante Gespräche", "Projektbeschreibung", "Roman D.", "Provisionsfrei", "Analysen kostenlos", "Belege je Anforderung", "Ihre Daten bleiben Ihre"] },
   { Component: ItPage, page: MARKETING_PAGE.it, metadata: itMetadata, required: ["IT-Freelancer", "React", "SAP", "Verfügbarkeit"] },
-  { Component: MatchingPage, page: MARKETING_PAGE.matching, metadata: matchingMetadata, required: ["regelbasiert", "KI-gestütztes", "Nicht belegt"] },
+  { Component: MatchingPage, page: MARKETING_PAGE.matching, metadata: matchingMetadata, required: ["Vorauswahl", "KI-gestütztes", "Nicht belegt"] },
   { Component: HowPage, page: MARKETING_PAGE.how, metadata: howMetadata, required: ["Requirement Extraction", "Credits", "Informationslücken"] },
   { Component: PricingPage, page: MARKETING_PAGE.pricing, metadata: pricingMetadata, required: ["14 Tage", "Karte bei Stripe", "Credits insgesamt", "keine Vermittlungsprovision"] },
 ];

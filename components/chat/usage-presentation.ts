@@ -47,6 +47,12 @@ export function publicProgressLabel(label: string): string {
   if (normalized.includes("teiltreffer")) {
     return "Teiltreffer und offene Muss-Kriterien werden aufbereitet";
   }
+  if (normalized.includes("vorauswahl")) {
+    return "Vorauswahl: inhaltlich passende Profile werden gesucht";
+  }
+  if (normalized.includes("ki bewertet")) {
+    return "Die KI bewertet die Vorauswahl";
+  }
   if (normalized.includes("kein") && normalized.includes("treffer")) {
     return "Interner Profilabgleich abgeschlossen · kein passendes Profil gefunden";
   }
