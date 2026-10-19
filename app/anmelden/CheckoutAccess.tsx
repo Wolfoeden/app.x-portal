@@ -134,6 +134,9 @@ export function CheckoutAccess({
           {plan ? <a className={styles.secondaryAction} href={`/api/billing/checkout?plan=${plan}`}>Ohne Gutschein zu Stripe</a> : null}
         </section>
       ) : (
+        <>
+        {/* Die sichtbare Überschrift steht im Dialog; diese ordnet die Seite für Screenreader und Suchmaschinen ein. */}
+        <h1 className="sr-only">Anmelden bei XPORTAL</h1>
         <AuthDialog
           initialMode={plan ? "register" : "login"}
           checkout={plan ? checkoutDialogCopy(plan) : undefined}
@@ -143,6 +146,7 @@ export function CheckoutAccess({
           onAuthenticated={continueAfterLogin}
           showToast={(message) => setNotice(message)}
         />
+        </>
       )}
       {notice ? <p className={styles.notice} role="status">{notice}</p> : null}
       {/* Impressum und Datenschutz von jeder Seite aus erreichbar, auch hier. */}

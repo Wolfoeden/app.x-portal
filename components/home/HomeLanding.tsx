@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { CalendarLink } from "@/components/public/CalendarLink";
 import { DEMO_SCENARIOS } from "@/lib/marketing/live-demo";
+import { AUTOMATION_OFFER } from "@/lib/marketing/offers";
 import { phoneHref, SALES_CONTACT } from "@/lib/sales/sales-contact-model";
 
 import { AgentDiagram } from "./AgentDiagram";
@@ -40,7 +41,7 @@ export function HomeLanding({ profiles }: { profiles: number | null }) {
               {profiles ? `Demo mit ${profiles} echten Profilen` : "Demo mit echten Profilen"} <ArrowIcon />
             </a>
             <h1 id="home-title">Mit KI effizienter arbeiten.</h1>
-            <p className={styles.heroLead}>Sehen Sie live, was unsere KI kann. Dasselbe bauen wir für Ihr Unternehmen.</p>
+            <p className={styles.heroLead}>Sehen Sie live, was unsere KI kann. Dasselbe bauen wir für Ihr Unternehmen: {AUTOMATION_OFFER.name} {AUTOMATION_OFFER.price}.</p>
             <div className={styles.heroActions}>
               <CallButton entry="hero" />
               <a href="#demo" className={styles.buttonSecondary}>Live-Demo ansehen ↓</a>

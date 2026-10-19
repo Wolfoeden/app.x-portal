@@ -8,6 +8,7 @@ import { ActionButton, FormField } from "@/components/ui/Primitives";
 import { actionClass } from "@/components/ui/actions";
 import { CONTACT_TOPICS, type ContactTopicKey } from "@/lib/contact/topics";
 import { CONTACT_RESPONSE_PROMISE, IMPRINT_EMAIL } from "@/lib/legal/policy";
+import { AUTOMATION_OFFER } from "@/lib/marketing/offers";
 import { phoneHref, SALES_CONTACT } from "@/lib/sales/sales-contact-model";
 
 import { ContactNotice } from "./ContactNotice";
@@ -52,12 +53,13 @@ const OFFERS: readonly { topic: ContactTopicKey; icon: keyof typeof ICON; title:
  * mitten auf der Seite. „Gespräch vereinbaren“ auf den Seiten zum Talent
  * Index führt auf `/contact/freelancer`.
  */
-const HEROES: Record<"agent" | "schulung" | "security" | "freelancer", { eyebrow: string; title: string; accent: string; lead: string }> = {
+const HEROES: Record<"agent" | "schulung" | "security" | "freelancer", { eyebrow: string; title: string; accent: string; lead: string; offer?: string }> = {
   agent: {
     eyebrow: "KI-Agenten · KI-Schulungen · Informationssicherheit",
     title: "Weniger Routinearbeit.",
     accent: "Mit KI-Agenten, die mitarbeiten.",
     lead: "Wir bauen KI-Agenten, die Ihrem Team wiederkehrende Arbeit abnehmen. Ist das ein Thema für Sie?",
+    offer: `${AUTOMATION_OFFER.name} ${AUTOMATION_OFFER.price}. ${AUTOMATION_OFFER.terms}`,
   },
   schulung: {
     eyebrow: "KI-Schulungen",
@@ -127,6 +129,7 @@ export function ContactView({ topic }: { topic?: ContactTopicKey }) {
                 {hero.title} <span>{hero.accent}</span>
               </h1>
               <p className={styles.lead}>{hero.lead}</p>
+              {hero.offer ? <p className={styles.offerPrice}>{hero.offer}</p> : null}
               <div className={styles.heroActions}>
                 <CalendarLink entry="contact" className={actionClass("primary", { className: styles.bigAction })}>
                   Gespräch vereinbaren

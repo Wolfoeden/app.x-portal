@@ -65,6 +65,16 @@
 .showcaseInner { display: grid; justify-items: center; gap: 18px; border-radius: 20px; background: linear-gradient(120deg, #dff3e6 0%, #eef8f1 45%, #e3f1f6 100%); padding-block: 56px 64px; }
 .showcaseLabel { margin: 0; color: #0f5f39; font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
 .profileLink { display: flex; width: min(100%, 560px); border-radius: 16px; color: inherit; text-align: left; text-decoration: none; }
+/* Die Beispielkarten liegen übereinander und wechseln per Überblendung. */
+.exampleStack { display: grid; width: min(100%, 560px); }
+.exampleStack > .profileLink { grid-area: 1 / 1; width: 100%; transition: opacity .45s ease; }
+.exampleStack > .profileLink[data-active="false"] { opacity: 0; pointer-events: none; }
+.exampleDots { display: flex; gap: 4px; }
+.exampleDots button { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
+.exampleDots button::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: color-mix(in srgb, var(--lp-brand) 25%, transparent); }
+.exampleDots button[aria-pressed="true"]::before { background: var(--lp-brand); }
+.exampleDots button:focus-visible { outline: 3px solid color-mix(in srgb, var(--lp-brand) 30%, transparent); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .exampleStack > .profileLink { transition: none; } }
 .profileLink:focus-visible { outline: 3px solid color-mix(in srgb, var(--lp-brand) 30%, transparent); outline-offset: 4px; }
 /* Abstand und Ecken kommen von der Karte selbst (match-card.module.css); eine
    zweite Angabe hier hing von der Reihenfolge der Stylesheets ab und galt nie. */

@@ -78,8 +78,9 @@ export default function DataFlowsPage() {
           <h2>3. Abgleichen</h2>
           <div>
             <p>
-              Den Abgleich mit den Freelancer-Profilen rechnet XPORTAL selbst,
-              nach festen Regeln und ohne weitere Übermittlung. Eine externe
+              Für den Abgleich gehen berufliche Profilangaben ohne Namen an
+              denselben KI-Dienstleister, der die Profile für Ihre Anfrage
+              vorauswählt und bewertet. Eine externe
               Recherche läuft nur, wenn Sie sie ausdrücklich starten; dann geht
               der strukturierte Projektbrief für eine Websuche an denselben
               KI-Dienstleister.

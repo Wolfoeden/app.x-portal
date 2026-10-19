@@ -6,9 +6,10 @@ import { ImageResponse } from "next/og";
  * Bisher gab es keines: Der Link erschien als nackte Adresse, was bei einem
  * Produkt, das über Empfehlungen weitergegeben wird, jedes Mal Vertrauen
  * kostet. Der Aufbau folgt den Rechtsseiten — heller Grund, schwarze Schrift,
- * eine Linie, kein Effekt.
+ * eine Linie, kein Effekt. Seit 19.10.2026 mit der Botschaft der Startseite
+ * (KI für den Mittelstand) statt des früheren Freelancer-Matchings.
  */
-export const alt = "XPORTAL — Freelancer finden im Dialog";
+export const alt = "XPORTAL – Mit KI effizienter arbeiten";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -49,7 +50,7 @@ export default function OpengraphImage() {
               lineHeight: 1.05,
             }}
           >
-            Beschreiben Sie das Projekt.
+            Mit KI effizienter arbeiten.
           </div>
           <div
             style={{
@@ -59,8 +60,8 @@ export default function OpengraphImage() {
               color: "#51514d",
             }}
           >
-            Passende Freelancer-Profile nach nachvollziehbaren Regeln — die
-            Auswahl treffen Sie.
+            KI-Automatisierung ab 1.900 €, KI-Schulungen und ISO 27001
+            für den Mittelstand.
           </div>
         </div>
 
@@ -73,7 +74,7 @@ export default function OpengraphImage() {
             color: "#51514d",
           }}
         >
-          KI strukturiert die Anfrage · das Matching folgt festen Regeln
+          Live-Demo mit echten Profilen · Erstgespräch in 30 Minuten
         </div>
       </div>
     ),

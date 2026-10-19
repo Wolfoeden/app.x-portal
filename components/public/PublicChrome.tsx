@@ -19,7 +19,7 @@ function PhoneIcon() {
 
 /**
  * Kopf aller öffentlichen Seiten (Entwurf 3, 16.10.2026): links die Marke
- * und vier Wege — Live-Demo, Leistungen, Preise, Über uns —, rechts
+ * und vier Wege — Live-Demo, Leistungen, Talent Index, Über uns —, rechts
  * „Anmelden“, die Telefonnummer und „Erstgespräch buchen“. Der Knopf öffnet
  * den Kalender direkt (`CalendarLink` zählt den Klick). Auf dem grünen
  * Rahmen (`framed`) ist er weiß, auf Weiß tannengrün; die frühere Limette

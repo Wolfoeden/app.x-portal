@@ -13,7 +13,7 @@ import { checkEmailSuppression } from "./suppression";
 import {
   unsubscribeConfigured,
   unsubscribeHeaders,
-  unsubscribeUrl,
+  unsubscribeOneClickUrl,
 } from "./unsubscribe";
 
 /**
@@ -216,7 +216,7 @@ export async function deliverEmail(
     // ohne funktionierenden Widerspruch darf es nicht geben, und die einzige
     // verlässliche Art, das sicherzustellen, ist, den Versand daran zu
     // hindern.
-    const url = unsubscribeUrl(publicMailOrigin(), recipient);
+    const url = unsubscribeOneClickUrl(publicMailOrigin(), recipient);
     if (!url) {
       logEvent("email_delivery_skipped", {
         reason: "unsubscribe_not_configured",

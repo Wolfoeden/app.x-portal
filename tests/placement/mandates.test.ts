@@ -163,6 +163,24 @@ describe("assigning a freelancer", () => {
     expect(mocks.updates.find((entry) => entry.table === "search_mandates")?.row).toMatchObject({ status: "in_progress", handled_by: "admin-1" });
   });
 
+  it("keeps the mandate's commercial model, so new mandates pass the database guard", async () => {
+    // Der Trigger guard_recruiting_commercial_model lehnt `legacy_placement`
+    // für jeden Auftrag ab, der nicht selbst historisch ist. Bis 19.10.2026
+    // scheiterte daran jede Zuordnung zu einem neuen Auftrag.
+    const mandate = (commercial_model: string) => () => ({
+      data: { id: MANDATE, project_id: PROJECT, owner_user_id: USER, contact_email: "kunde@firma.invalid", status: "open", created_at: "2026-10-02T09:00:00.000Z", commercial_model },
+      error: null,
+    });
+
+    mocks.answers.set("search_mandates:read", mandate("no_fee"));
+    await assignFreelancer(MANDATE, PROFILE, "admin-1");
+    expect(mocks.inserts.at(-1)?.row).toMatchObject({ commercial_model: "no_fee", legacy_mandate_id: MANDATE });
+
+    mocks.answers.set("search_mandates:read", mandate("legacy_placement"));
+    await assignFreelancer(MANDATE, PROFILE, "admin-1");
+    expect(mocks.inserts.at(-1)?.row).toMatchObject({ commercial_model: "legacy_placement", legacy_mandate_id: MANDATE });
+  });
+
   it("refuses a closed mandate, an unavailable profile and a freelancer already requested", async () => {
     mocks.answers.set("search_mandates:read", () => ({ data: { id: MANDATE, status: "closed" }, error: null }));
     await expect(assignFreelancer(MANDATE, PROFILE, "admin-1")).rejects.toMatchObject({ status: 409 });

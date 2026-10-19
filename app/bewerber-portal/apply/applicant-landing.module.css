@@ -14,6 +14,10 @@
 .note { margin: 0; color: var(--xp-muted); font-size: 14px; }
 
 .gateActions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
+/* Im Kopf ist auf dem Telefon nur Platz für einen Knopf; „Anmelden“ steht
+   direkt darunter im ersten Bildschirm (vorher wurde der Hauptknopf
+   abgeschnitten, 19.10.2026). Grenze wie im Seitenkopf. */
+@media (max-width: 680px) { .gateActions .headerLogin, .gateActions .headerWide { display: none; } }
 .hero .gateActions > button:first-child { min-height: 52px; padding-inline: 26px; font-size: 17px; }
 .loginLink { border: 0; background: none; padding: 6px 0; color: var(--xp-ink); font: inherit; font-size: 16px; font-weight: 500; text-decoration: underline; text-underline-offset: 5px; cursor: pointer; }
 .loginLink:hover { color: var(--xp-brand); }

@@ -3,7 +3,9 @@ import "@/app/styles/legal.css";
 import { PublicDocumentIntro, PublicFooter, PublicHeader } from "@/components/public/PublicChrome";
 import { BUSINESS_ONLY_NOTICE, PROVIDER_ADDRESS, SAAS_TERMS_REVIEW, SAAS_TERMS_VERSION } from "@/lib/legal/policy";
 import { CREDIT_PLANS, PUBLIC_PRICING_PLANS, TRIAL_CREDITS, TRIAL_DAYS } from "@/lib/billing/plans";
-export const metadata = { title: "Bedingungen der Recruiting-Software | XPORTAL", description: "Bedingungen für die provisionsfreie Recruiting-Software und den 14-Tage-Trial mit Karte.", robots: { index: false, follow: true } };
+import { absoluteUrl } from "@/lib/seo";
+// Die gültigen Bedingungen; seit 19.10.2026 auffindbar (vorher `noindex`, obwohl in der Sitemap).
+export const metadata = { title: "AGB: Bedingungen der Recruiting-Software | XPORTAL", description: "Bedingungen für die provisionsfreie Recruiting-Software und den 14-Tage-Trial mit Karte.", alternates: { canonical: absoluteUrl("/terms") } };
 export default function TermsPage() { return <div className="xlegal" lang="de"><PublicHeader context={`SaaS-Bedingungen · ${SAAS_TERMS_VERSION}`} /><main className="xlegal-document">
   <PublicDocumentIntro eyebrow="Bedingungen der Recruiting-Software" title="Sie bezahlen die Software-Nutzung." signal={{ label: "Status", value: SAAS_TERMS_REVIEW.label }}><p>Diese Fassung beschreibt das neue Software-Abonnement für regelmäßig arbeitende Recruiter und IT-Personaldienstleister. {BUSINESS_ONLY_NOTICE}</p></PublicDocumentIntro>
   <section><h2>1. Anbieter und Geltungsbereich</h2><div><p>Anbieter ist XPORTAL — 300, Roman Dering, Einzelunternehmen, {PROVIDER_ADDRESS}. Kontakt: <a href="mailto:info@x-portal.eu">info@x-portal.eu</a>.</p><p>Für historische Konten und Vorgänge bleiben die jeweils wirksam vereinbarten Bedingungen, Rechnungen und Guthaben maßgeblich. Diese Überarbeitung ändert sie nicht rückwirkend. Die frühere <Link href="/terms/historisch">AGB-Fassung 1.1</Link> und die <Link href="/vermittlungsbedingungen">historischen Vermittlungsbedingungen</Link> bleiben einsehbar.</p></div></section>

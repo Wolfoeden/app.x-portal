@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { DEMO_FACES } from "@/lib/marketing/live-demo";
+import { AUTOMATION_OFFER } from "@/lib/marketing/offers";
 
 import { Tag } from "./MiniVisuals";
 import { ArrowIcon, CheckIcon, ShieldIcon, SparkIcon } from "./icons";
@@ -84,7 +85,7 @@ function TalentVisual({ profiles }: { profiles: number | null }) {
  */
 export function ServiceTiles({ profiles }: { profiles: number | null }) {
   const tiles = [
-    { visual: <AgentVisual />, title: "KI-Agenten", text: "Übernehmen Routine: Anfragen, Angebote, Auswertungen.", href: "#termin", link: "Im Erstgespräch klären" },
+    { visual: <AgentVisual />, title: AUTOMATION_OFFER.name, text: "KI-Agenten übernehmen Routine: Anfragen, Angebote, Auswertungen.", price: `${AUTOMATION_OFFER.price} · ${AUTOMATION_OFFER.terms}`, href: "#termin", link: "Im Erstgespräch klären" },
     { visual: <SchoolVisual />, title: "KI-Schulungen", text: "Seit Februar 2025 Pflicht (EU AI Act, Art. 4). Halbtags, vor Ort oder online.", href: "#termin", link: "Im Erstgespräch klären" },
     { visual: <SecurityVisual />, title: "Informationssicherheit", text: "ISO 27001 einführen, begleitet bis zum Audit.", href: "#termin", link: "Im Erstgespräch klären" },
     { visual: <TalentVisual profiles={profiles} />, title: "Talent Index", text: "Geprüfte IT- und KI-Experten, wenn Ihnen Leute fehlen.", href: "/fuer-unternehmen", link: "Selbst ausprobieren" },
@@ -98,6 +99,7 @@ export function ServiceTiles({ profiles }: { profiles: number | null }) {
             <span className={styles.tileText}>
               <strong>{tile.title}</strong>
               <span>{tile.text}</span>
+              {"price" in tile ? <span className={styles.tilePrice}>{tile.price}</span> : null}
               <span className={styles.tileLink}>{tile.link} <ArrowIcon /></span>
             </span>
           </Link>

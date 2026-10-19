@@ -43,8 +43,9 @@ describe("start page", () => {
   it("shows the agent graphic and the four services", () => {
     expect(html).toContain("Was hereinkommt");
     expect(html).toContain("Am Ende entscheidet Ihr Team.");
-    for (const title of ["KI-Agenten", "KI-Schulungen", "Informationssicherheit", "Talent Index"]) expect(html).toContain(`<strong>${title}</strong>`);
+    for (const title of ["KI-Automatisierung", "KI-Schulungen", "Informationssicherheit", "Talent Index"]) expect(html).toContain(`<strong>${title}</strong>`);
     expect(html).toContain("Seit Februar 2025 Pflicht (EU AI Act, Art. 4)");
+    expect(html).toContain("ab 1.900 €");
   });
 
   it("works without a database", () => {

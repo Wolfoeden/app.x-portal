@@ -23,6 +23,12 @@ const DEMO_DELAY_MS = 600;
 /** Bis zu dieser Höhe wächst das Feld mit dem Text; erst darüber scrollt es. */
 const FIELD_MAX_HEIGHT = 320;
 
+/** So lange steht ein Beispielprofil, bevor das nächste kommt. */
+const EXAMPLE_INTERVAL_MS = 6000;
+
+/** Ein Beispieltreffer unter dem Eingabefeld: Karte und das Profil dahinter. */
+export type LandingExample = { profileId: string; name: string; card: ReactNode };
+
 /**
  * Kopf der Startseite nach dem Vorbild von apollo.io (Oktober 2026): Titel in
  * der Mitte, ein Satz, die Wahl zwischen Projekt abgleichen und Gespräch,
@@ -31,11 +37,10 @@ const FIELD_MAX_HEIGHT = 320;
  * Server (FreelancerLanding); hier liegt nur, was im Browser läuft: die Demo
  * im Eingabefeld und das Mitnehmen des Entwurfs in den Talent Index.
  */
-export function LandingIntake({ profileId, note, roleChips, profileCard }: {
-  profileId: string;
+export function LandingIntake({ examples, note, roleChips }: {
+  examples: readonly LandingExample[];
   note: string;
   roleChips: ReactNode;
-  profileCard: ReactNode;
 }) {
   const [draft, setDraft] = useState("");
   const [demoDraft, setDemoDraft] = useState("");
@@ -44,6 +49,20 @@ export function LandingIntake({ profileId, note, roleChips, profileCard }: {
   const userInteracted = useRef(false);
   const fieldRef = useRef<HTMLTextAreaElement>(null);
   const visibleDraft = userEditing ? draft : demoDraft;
+  const [activeExample, setActiveExample] = useState(0);
+  const [examplesPaused, setExamplesPaused] = useState(false);
+
+  // Die Beispielprofile wechseln sich ab (Wunsch 19.10.2026). Steht die Maus
+  // darauf, liegt der Fokus darin oder wählt jemand einen Punkt, bleibt die
+  // Karte stehen; bei reduzierter Bewegung wechselt nichts von selbst.
+  useEffect(() => {
+    if (examples.length < 2 || examplesPaused) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setInterval(() => {
+      setActiveExample((current) => (current + 1) % examples.length);
+    }, EXAMPLE_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [examples.length, examplesPaused]);
 
   // Eine Zeile hoch, wächst mit dem Text: kein Scrollbalken im Feld
   // (Rückmeldung 14.10.2026: „zu dick“, „ohne diesen Scroll“).
@@ -165,18 +184,48 @@ export function LandingIntake({ profileId, note, roleChips, profileCard }: {
         </div>
       </header>
 
-      <section className={styles.showcase} aria-label="Beispiel für einen Treffer">
+      <section className={styles.showcase} aria-label="Beispiele für Treffer">
         <div className={`${styles.wrap} ${styles.showcaseInner}`}>
           <p className={styles.showcaseLabel}>So sieht ein Treffer aus</p>
-          <Link
-            href={`/profil/${profileId}`}
-            prefetch={false}
-            className={styles.profileLink}
-            aria-label="Profil von Roman D. öffnen"
-            onClick={() => saveProjectDraft(visibleDraft)}
+          <div
+            className={styles.exampleStack}
+            onMouseEnter={() => setExamplesPaused(true)}
+            onMouseLeave={() => setExamplesPaused(false)}
+            onFocus={() => setExamplesPaused(true)}
+            onBlur={() => setExamplesPaused(false)}
           >
-            {profileCard}
-          </Link>
+            {examples.map((example, index) => (
+              <Link
+                key={example.profileId}
+                href={`/profil/${example.profileId}`}
+                prefetch={false}
+                className={styles.profileLink}
+                aria-label={`Profil von ${example.name} öffnen`}
+                aria-hidden={index === activeExample ? undefined : true}
+                inert={index !== activeExample}
+                data-active={index === activeExample ? "true" : "false"}
+                onClick={() => saveProjectDraft(visibleDraft)}
+              >
+                {example.card}
+              </Link>
+            ))}
+          </div>
+          {examples.length > 1 ? (
+            <div className={styles.exampleDots} role="group" aria-label="Beispielprofil wählen">
+              {examples.map((example, index) => (
+                <button
+                  key={example.profileId}
+                  type="button"
+                  aria-label={`Beispiel ${index + 1}: ${example.name}`}
+                  aria-pressed={index === activeExample}
+                  onClick={() => {
+                    setActiveExample(index);
+                    setExamplesPaused(true);
+                  }}
+                />
+              ))}
+            </div>
+          ) : null}
         </div>
       </section>
     </>

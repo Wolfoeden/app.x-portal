@@ -18,6 +18,7 @@ import { ApplyForm } from "./ApplyForm";
 import { RememberReferral } from "./RememberReferral";
 import { REFERRAL_PATTERN } from "@/lib/freelancer/limits";
 import { referralWelcome } from "@/lib/freelancer/referrals";
+import { absoluteUrl } from "@/lib/seo";
 import { ApplicantLanding } from "./ApplicantLanding";
 import { APPLY_HERO } from "./applicant-copy";
 import { GateActions } from "./GateActions";
@@ -32,6 +33,8 @@ export const metadata: Metadata = {
   description:
     "Kostenlos ein Profil bei XPORTAL anlegen – für Freelance-Projekte, eine feste Stelle oder den Weg in die Selbstständigkeit. Bestehende Profile hier verwalten.",
   robots: { index: true, follow: true },
+  // Eine Adresse für die Suche, auch wenn Einladungen Parameter anhängen.
+  alternates: { canonical: absoluteUrl("/bewerber-portal/apply") },
 };
 
 export const dynamic = "force-dynamic";

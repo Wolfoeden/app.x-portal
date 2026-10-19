@@ -70,7 +70,7 @@ export default function HowXportalWorksPage() {
 
       <ContentSection id="fragen" title="Häufige Fragen zu XPORTAL">
         <Questions items={[
-          { question: "Was macht die KI und was macht der Matcher?", answer: <p>Die KI unterstützt die Strukturierung Ihres Textes. Der interne Matcher gleicht die erfassten Anforderungen nach festen Regeln mit vorhandenen Profilangaben ab. Auswahl und Beauftragung bleiben Ihre Entscheidung.</p> },
+          { question: "Was macht die KI und was macht der Matcher?", answer: <p>Die KI strukturiert Ihren Text. XPORTAL wählt die 20 inhaltlich nächsten Profile vor, und die KI bewertet sie gegen Ihre Anfrage, mit Begründung und offenen Punkten. Auswahl und Beauftragung bleiben Ihre Entscheidung.</p> },
           { question: "Kann ich ein erkanntes Detail korrigieren?", answer: <p>Ja. Sie können die Projektangaben im Dialog ergänzen oder korrigieren. Prüfen Sie danach die aktualisierte Übersicht, insbesondere bei Muss-Anforderungen, Alternativen oder Ausschlüssen.</p> },
           { question: "Sind sämtliche Freelancer unabhängig geprüft?", answer: <p>Eine solche pauschale Zusage macht XPORTAL hier nicht. Einzelne Fakten können als bestätigt hinterlegt sein, andere beruhen auf Profilangaben oder Selbstauskünften. Prüfen Sie die für Ihr Projekt entscheidenden Nachweise im weiteren Austausch.</p> },
           { question: "Startet nach der Anmeldung automatisch eine Recherche?", answer: <p>Nein. Eine externe Recherche wird separat bestätigt. Die Anmeldung allein startet weder eine AI-Agent-Recherche noch eine Beauftragung.</p> },
