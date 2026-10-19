@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { CREDIT_PLANS } from "@/lib/ai/credit-policy";
-import { ENTERPRISE_BILLING, ENTERPRISE_START_EURO } from "@/lib/billing/payment-links";
 import { TERMS_REVIEW, TERMS_STATUS } from "@/lib/legal/policy";
 
 const publicContractFiles = [
@@ -16,12 +15,7 @@ const publicContractFiles = [
 
 describe("zentrale Produktwahrheit", () => {
   it("hält den historischen Enterprise-Vertrag getrennt", () => {
-    expect(ENTERPRISE_START_EURO).toBe(CREDIT_PLANS.enterprise_legacy.euro);
-    expect(ENTERPRISE_BILLING).toMatchObject({
-      model: "fixed_monthly",
-      priceNetEuro: CREDIT_PLANS.enterprise_legacy.euro,
-      interval: "month",
-    });
+    expect(CREDIT_PLANS.enterprise_legacy.billingModel).toBe("fixed_monthly");
     expect(CREDIT_PLANS.enterprise_legacy.monthlyCredits).toBe(3_000);
     expect(CREDIT_PLANS.enterprise_flex.billingModel).toBe("metered");
     expect(CREDIT_PLANS.enterprise_flex.euroPerCreditCents).toBe(2);

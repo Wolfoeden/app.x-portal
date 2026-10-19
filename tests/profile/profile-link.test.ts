@@ -20,20 +20,10 @@ describe("profile links", () => {
 });
 
 describe("the button on the profile page", () => {
-  const base = { profileId: ID, hasCalendar: true, isAccountUser: false, projectId: null, via: null };
-
-  // Wie in der Lead-Mail: ohne Anmeldung zum Kalender, mit Zuordnung zur Mail.
-  it("books directly while the placement model is off", () => {
-    expect(profilePageAction({ ...base, placement: false, via: "lead" })).toMatchObject({
-      kind: "booking",
-      href: `/api/freelancers/${ID}/book?via=lead`,
-      label: "Erstgespräch vereinbaren",
-    });
-    expect(profilePageAction({ ...base, placement: false, hasCalendar: false }).kind).toBe("none");
-  });
+  const base = { profileId: ID, hasCalendar: true, isAccountUser: false, projectId: null };
 
   it("requests through the project the link came from", () => {
-    expect(profilePageAction({ ...base, placement: true, isAccountUser: true, projectId: PROJECT })).toMatchObject({
+    expect(profilePageAction({ ...base, isAccountUser: true, projectId: PROJECT })).toMatchObject({
       kind: "request",
       projectId: PROJECT,
       label: "Freelancer anfragen",
@@ -41,7 +31,7 @@ describe("the button on the profile page", () => {
   });
 
   it("sends a guest through sign-in back to the same profile in that project", () => {
-    const action = profilePageAction({ ...base, placement: true, projectId: PROJECT });
+    const action = profilePageAction({ ...base, projectId: PROJECT });
 
     expect(action.kind).toBe("link");
     const href = new URL(`https://x-portal.eu${action.kind === "link" ? action.href : ""}`);
@@ -52,28 +42,28 @@ describe("the button on the profile page", () => {
   });
 
   it("sends users without a project to describe one in the Talent Index", () => {
-    expect(profilePageAction({ ...base, placement: true })).toMatchObject({
+    expect(profilePageAction({ ...base })).toMatchObject({
       kind: "link",
       href: "/chat",
       label: "Projekt beschreiben",
     });
-    expect(profilePageAction({ ...base, placement: true, isAccountUser: true, directBooking: false })).toMatchObject({
+    expect(profilePageAction({ ...base, isAccountUser: true, directBooking: false })).toMatchObject({
       href: "/chat",
     });
   });
 
   it("lets paying customers book the calendar directly", () => {
     expect(
-      profilePageAction({ ...base, placement: true, isAccountUser: true, hasCalendar: true, directBooking: true }),
+      profilePageAction({ ...base, isAccountUser: true, hasCalendar: true, directBooking: true }),
     ).toMatchObject({ kind: "booking", href: `/api/freelancers/${ID}/book`, label: "Termin buchen" });
   });
 
   it("does not offer direct booking without a calendar or account", () => {
     expect(
-      profilePageAction({ ...base, placement: true, isAccountUser: true, hasCalendar: false, directBooking: true }).kind,
+      profilePageAction({ ...base, isAccountUser: true, hasCalendar: false, directBooking: true }).kind,
     ).toBe("link");
     expect(
-      profilePageAction({ ...base, placement: true, isAccountUser: false, hasCalendar: true, directBooking: true }).kind,
+      profilePageAction({ ...base, isAccountUser: false, hasCalendar: true, directBooking: true }).kind,
     ).toBe("link");
   });
 });

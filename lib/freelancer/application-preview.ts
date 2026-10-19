@@ -1,6 +1,5 @@
 import type { ShowcaseProfile } from "@/lib/freelancer/showcase";
 import type { AvailabilityStatus, Seeking, WorkMode } from "@/lib/freelancer/limits";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 import { summaryExcerpt } from "@/lib/profile/excerpt";
 import type { ProfileField } from "@/lib/profile/identity";
 import { pickHighlight, projectMatchScore, projectTeaser, type ProfileProject } from "@/lib/profile/project-limits";
@@ -85,7 +84,7 @@ export function applicationPreviewProfile(input: ApplicationPreviewInput, now: D
       updatedAt: now.toISOString(),
       availableFrom: input.availabilityFrom || null,
     },
-    contact: placementRequestsEnabled() ? "request" : input.bookingUrl.trim() ? "calendar" : "none",
+    contact: "request",
     location: input.locationText.trim() || null,
     workModes: [...input.workModes],
     verified: false,
@@ -95,48 +94,4 @@ export function applicationPreviewProfile(input: ApplicationPreviewInput, now: D
     highlight: highlight ? projectTeaser(highlight, projectMatchScore(highlight, input.queryTerms ?? []) > 0) : null,
     projectCount: shown.length,
   };
-}
-
-/** Ein ausgedachtes Profil für die Einstiegsseite, deutlich als Beispiel markiert. */
-export function exampleApplicationPreview(now: Date): ShowcaseProfile {
-  return applicationPreviewProfile(
-    {
-      fullName: "Anna Beispiel",
-      roleTitle: "Senior Frontend-Entwicklerin",
-      skills: ["React", "TypeScript", "Next.js", "Design Systems"],
-      locationText: "Leipzig",
-      workModes: ["remote", "hybrid"],
-      monthlySalary: "",
-      hourlyRate: "",
-      dayRate: "760",
-      currency: "EUR",
-      availabilityStatus: "available",
-      availabilityFrom: "",
-      // Ohne Vermittlungsmodell zeigte die Karte sonst „kein direkter Kontaktweg“.
-      bookingUrl: "https://cal.com/anna-beispiel",
-      seeking: "both",
-      experienceSummary:
-        "Baut seit acht Jahren Weboberflächen für Banken und Versicherer, zuletzt ein Designsystem für 40 Produktteams.",
-      field: "frontend",
-      projects: [
-        {
-          title: "Designsystem für eine Direktbank",
-          client: null,
-          industry: "Banken",
-          role: "Lead Frontend",
-          startedOn: "2023-04",
-          endedOn: "2025-02",
-          ongoing: false,
-          technologies: ["React", "TypeScript", "Storybook"],
-          outcome: null,
-          link: null,
-          isPublic: true,
-          verified: false,
-          source: "application",
-          sourceUrl: null,
-        },
-      ],
-    },
-    now,
-  );
 }

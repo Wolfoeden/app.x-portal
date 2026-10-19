@@ -1,7 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { avatarImageUrl } from "@/lib/freelancer/avatar-limits";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 import {
   FreelancerProfileSchema,
   type FactSource,
@@ -239,15 +238,13 @@ export function mapFreelancerProfileRow(
 export async function fetchActiveBookableRealProfiles(
   supabase: SupabaseClient,
 ): Promise<FreelancerProfile[]> {
-  const requestsViaXportal = placementRequestsEnabled();
   const base = supabase
     .from("freelancer_profiles")
     .select(FREELANCER_PROFILE_SELECT)
     .eq("profile_status", "active")
     .eq("demo_status", "real")
     .neq("seeking", "employment");
-  const query = requestsViaXportal ? base : base.not("booking_url", "is", null);
-  const { data, error } = await query.in("availability_status", ["available", "limited", "unknown"]);
+  const { data, error } = await base.in("availability_status", ["available", "limited", "unknown"]);
 
   if (error) throw error;
   return (data as FreelancerProfileRow[])
@@ -256,7 +253,7 @@ export async function fetchActiveBookableRealProfiles(
         row.profile_status === "active" &&
         row.demo_status === "real" &&
         row.availability_status !== "unavailable" &&
-        (requestsViaXportal ? row.booking_url === null || isSecureBookingUrl(row.booking_url) : isSecureBookingUrl(row.booking_url)),
+        (row.booking_url === null || isSecureBookingUrl(row.booking_url)),
     )
     .map(mapFreelancerProfileRow);
 }

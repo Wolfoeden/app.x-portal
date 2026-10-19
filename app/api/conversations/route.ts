@@ -4,7 +4,6 @@ import { z } from "zod";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { readAnswerToken } from "@/lib/placement/answer-token";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 import {
   answerConversation,
   conversationForToken,
@@ -30,7 +29,6 @@ export const dynamic = "force-dynamic";
  * Link, auch ohne Anmeldung und auf einem anderen Gerät.
  */
 export async function GET(request: Request) {
-  if (!placementRequestsEnabled()) return new Response(null, { status: 404 });
   try {
     const token = new URL(request.url).searchParams.get("t");
     const user = await getCurrentUser();
@@ -65,7 +63,6 @@ const AnswerSchema = z
 
 /** Die Antwort auf „Kam es zur Beauftragung?“, aus „Gespräche“. */
 export async function POST(request: Request) {
-  if (!placementRequestsEnabled()) return new Response(null, { status: 404 });
   try {
     assertSameOrigin(request);
     const limit = await consumeRateLimit(

@@ -119,7 +119,7 @@ describe("the role showcases", () => {
   });
 
   it("answers on the card why a conversation is worth it: evidence, rate, dated availability, contact", () => {
-    const [card] = selectShowcase("ai-agents", [agent], registered, NOW, { placement: false }).profiles;
+    const [card] = selectShowcase("ai-agents", [agent], registered, NOW).profiles;
     expect(card).toEqual({
       id: agent.id,
       displayName: "Kim Agent",
@@ -132,7 +132,7 @@ describe("the role showcases", () => {
       ],
       rate: expect.stringMatching(/^800\s€ \/ Tag$/u),
       availability: { status: "available", updatedAt: FRESH, availableFrom: null },
-      contact: "calendar",
+      contact: "request",
       location: "Berlin",
       workModes: ["remote", "hybrid"],
       verified: true,
@@ -145,11 +145,9 @@ describe("the role showcases", () => {
     const withoutCalendar = profile(ID(20), "Ohne Kalender", "AI Engineer", ["AI Agents"], {
       introPolicy: { type: "premium", label: "Über XPORTAL", bookingUrl: null },
     });
-    const pick = (placement: boolean) =>
-      selectShowcase("ai-agents", [agent, withoutCalendar], new Set([...registered, withoutCalendar.id]), NOW, { placement })
-        .profiles.map((entry) => entry.contact);
-    expect(pick(false)).toEqual(["calendar", "none"]);
-    expect(pick(true)).toEqual(["request", "request"]);
+    const contacts = selectShowcase("ai-agents", [agent, withoutCalendar], new Set([...registered, withoutCalendar.id]), NOW)
+      .profiles.map((entry) => entry.contact);
+    expect(contacts).toEqual(["request", "request"]);
   });
 
   it("puts fresh availability first, then more evidence, then a stated rate, then the name", () => {

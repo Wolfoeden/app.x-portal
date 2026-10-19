@@ -30,12 +30,12 @@ describe("bookingActionState with direct booking", () => {
   const withCalendar = { bookingUrl: "https://x-portal.eu/api/freelancers/abc/book" };
 
   it("lets paying customers book a calendar directly in the placement model", () => {
-    expect(bookingActionState(withCalendar, true, true, true)).toMatchObject({ kind: "bookable", label: "Termin buchen" });
+    expect(bookingActionState(withCalendar, true, true)).toMatchObject({ kind: "bookable", label: "Termin buchen" });
   });
 
   it("keeps the request for everyone else", () => {
-    expect(bookingActionState(withCalendar, true, true, false).kind).toBe("request");
-    expect(bookingActionState(withCalendar, false, true, true).kind).toBe("request");
-    expect(bookingActionState({ bookingUrl: null }, true, true, true).kind).toBe("request");
+    expect(bookingActionState(withCalendar, true, false).kind).toBe("request");
+    expect(bookingActionState(withCalendar, false, true).kind).toBe("request");
+    expect(bookingActionState({ bookingUrl: null }, true, true).kind).toBe("request");
   });
 });

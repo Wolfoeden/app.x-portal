@@ -15,7 +15,6 @@ import {
 import { loadBookingDestination } from "@/lib/freelancer/profile-data";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { appPath } from "@/lib/app-path";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 import { placementBookingAllowed } from "@/lib/placement/requests";
 
 export const dynamic = "force-dynamic";
@@ -73,11 +72,9 @@ export default async function BookingHandoffPage({
 
   // Dieselbe Sperre wie in `/api/freelancers/<id>/book`: Die Seite zeigt die
   // Adresse des Kalenders, also erst nach der Vorstellung.
-  if (placementRequestsEnabled()) {
-    const user = await getCurrentUser().catch(() => null);
-    const allowed = await placementBookingAllowed(user, id).catch(() => false);
-    if (!allowed) redirect(`${appPath("/chat")}?booking=request`);
-  }
+  const user = await getCurrentUser().catch(() => null);
+  const allowed = await placementBookingAllowed(user, id).catch(() => false);
+  if (!allowed) redirect(`${appPath("/chat")}?booking=request`);
 
   const destination = await loadBookingDestination(id).catch(() => null);
 

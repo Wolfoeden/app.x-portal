@@ -326,17 +326,6 @@ function candidatesFor(
   }
 }
 
-/** Offene Aufträge, für „Zu erledigen“ in der Übersicht. */
-export async function countOpenMandates(): Promise<number> {
-  const admin = createAdminSupabaseClient();
-  const { count, error } = await admin
-    .from("search_mandates")
-    .select("id", { count: "exact", head: true })
-    .in("status", [...OPEN_MANDATE_STATUSES]);
-  if (error) throw error;
-  return count ?? 0;
-}
-
 /**
  * Ordnet einem Auftrag einen Freelancer zu. Daraus wird eine gewöhnliche
  * Anfrage (`manual_review`), die der Betreiber unter „Vermittlungen“ wie jede

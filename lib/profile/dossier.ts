@@ -111,7 +111,6 @@ function groupFacts(profile: FreelancerProfile): DossierFactGroup[] {
 export function buildProfileDossier(
   profile: FreelancerProfile,
   extras: DossierExtras,
-  options: { placement: boolean },
 ): ProfileDossier {
   const seen = new Set<string>();
   const skills = profile.skillTags
@@ -144,7 +143,7 @@ export function buildProfileDossier(
       updatedAt: profile.availability.checkedAt,
       availableFrom: profile.availability.availableFrom,
     },
-    contact: options.placement ? "request" : profile.introPolicy.bookingUrl ? "calendar" : "none",
+    contact: "request",
     projects: extras.projects ?? [],
     links: extras.links ?? [],
   };

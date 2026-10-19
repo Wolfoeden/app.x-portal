@@ -13,13 +13,7 @@ describe("SOURCING_AUTOMATION_DEFAULT", () => {
     // etwas entscheidet — und dann soll nichts passieren. Auch ein Ausfall
     // der Datenbank fällt auf diesen Wert zurück.
     expect(SOURCING_AUTOMATION_DEFAULT.absorbUserSearches).toBe(false);
-    expect(SOURCING_AUTOMATION_DEFAULT.resolveAddresses).toBe(false);
-    expect(SOURCING_AUTOMATION_DEFAULT.autoInvite).toBe(false);
-  });
-
-  it("begrenzt die Adresssuche auch dann", () => {
-    expect(SOURCING_AUTOMATION_DEFAULT.dailyAddressBudget).toBeGreaterThan(0);
-    expect(SOURCING_AUTOMATION_DEFAULT.dailyAddressBudget).toBeLessThanOrEqual(500);
+    expect(SOURCING_AUTOMATION_DEFAULT.pausedUntil).toBeNull();
   });
 });
 

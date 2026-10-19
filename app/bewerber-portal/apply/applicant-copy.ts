@@ -23,21 +23,17 @@ export const APPLY_HERO = {
  * (docs/operator-runbook.md). Kontaktdaten stehen in keinem öffentlichen
  * Profil (ShowcaseProfile in lib/freelancer/showcase.ts, ProfileDossier).
  */
-export function onboardingFacts(placement: boolean): ReadonlyArray<{ term: string; chip: string; text: string }> {
+export function onboardingFacts(): ReadonlyArray<{ term: string; chip: string; text: string }> {
   return [
     {
       term: "Kosten",
       chip: "Kostenlos",
-      text: placement
-        ? "Keine. Registrierung, Profil und Kontaktanfragen sind für Sie kostenlos, eine Provision fällt für niemanden an."
-        : "Keine. Registrierung und Profil sind für Sie kostenlos.",
+      text: "Keine. Registrierung, Profil und Kontaktanfragen sind für Sie kostenlos, eine Provision fällt für niemanden an.",
     },
     {
       term: "Kontakt",
       chip: "Kontaktdaten bleiben privat",
-      text: placement
-        ? "Unternehmen sehen Ihr freigegebenes Profil ohne E-Mail-Adresse und Telefonnummer. Passt eine Anfrage, meldet sich XPORTAL bei Ihnen und stellt Sie per E-Mail vor."
-        : "Unternehmen sehen Ihr freigegebenes Profil ohne E-Mail-Adresse und Telefonnummer. Haben Sie einen Kalenderlink hinterlegt, können sie darüber ein Erstgespräch buchen.",
+      text: "Unternehmen sehen Ihr freigegebenes Profil ohne E-Mail-Adresse und Telefonnummer. Passt eine Anfrage, meldet sich XPORTAL bei Ihnen und stellt Sie per E-Mail vor.",
     },
     {
       term: "Ablauf",

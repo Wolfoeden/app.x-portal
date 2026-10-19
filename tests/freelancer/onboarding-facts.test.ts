@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest";
 import { ApplicantLanding } from "@/app/bewerber-portal/apply/ApplicantLanding";
 import { APPLICANT_FAQ, onboardingFacts } from "@/app/bewerber-portal/apply/applicant-copy";
 
-function fact(term: string, placement = true): string {
-  return onboardingFacts(placement).find((entry) => entry.term === term)!.text;
+function fact(term: string): string {
+  return onboardingFacts().find((entry) => entry.term === term)!.text;
 }
 
 // Audit P2: Bewerber sollen Kosten, Unterlagen, Prüfumfang und Ablauf vor der
@@ -14,21 +14,18 @@ function fact(term: string, placement = true): string {
 // (Kosten, Kontakt) vor dem Prüfprozess.
 describe("freelancer onboarding before registration", () => {
   it("names costs and contact first, then the process, the check and the documents", () => {
-    expect(onboardingFacts(true).map((entry) => entry.term)).toEqual(["Kosten", "Kontakt", "Ablauf", "Prüfung", "Unterlagen"]);
+    expect(onboardingFacts().map((entry) => entry.term)).toEqual(["Kosten", "Kontakt", "Ablauf", "Prüfung", "Unterlagen"]);
   });
 
   it("explains how companies get in touch without exposing contact details", () => {
     expect(fact("Kontakt")).toContain("ohne E-Mail-Adresse und Telefonnummer");
     expect(fact("Kontakt")).toContain("stellt Sie per E-Mail vor");
-    expect(fact("Kontakt", false)).toContain("Kalenderlink");
-    expect(fact("Kontakt", false)).not.toContain("stellt Sie per E-Mail vor");
   });
 
   it("promises no fee to anyone", () => {
     // Neue Vorgänge sind provisionsfrei, auch für Auftraggeber.
     expect(fact("Kosten")).toContain("eine Provision fällt für niemanden an");
     expect(fact("Kosten")).not.toContain("Vermittlungshonorar");
-    expect(fact("Kosten", false)).not.toContain("Vermittlungshonorar");
   });
 
   it("states what the form actually requires", () => {
@@ -58,7 +55,7 @@ describe("freelancer onboarding before registration", () => {
 
   it("states every fact before registration openly, the process as steps and the questions as cards", () => {
     const markup = renderToStaticMarkup(createElement(ApplicantLanding));
-    for (const fact of onboardingFacts(true).filter((entry) => entry.term !== "Ablauf")) {
+    for (const fact of onboardingFacts().filter((entry) => entry.term !== "Ablauf")) {
       expect(markup).toContain(fact.chip);
       expect(markup).toContain(fact.text);
     }

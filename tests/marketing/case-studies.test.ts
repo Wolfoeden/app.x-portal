@@ -22,7 +22,6 @@ describe("case studies on the landing page", () => {
   });
 
   it("shows requirement, evidence, open point and outcome for each approved case", () => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     const html = renderToStaticMarkup(createElement(FreelancerLanding, { caseStudies: approvedAll }));
     const section = html.slice(html.indexOf('id="fallbeispiele"'));
     for (const entry of CASE_STUDIES) {

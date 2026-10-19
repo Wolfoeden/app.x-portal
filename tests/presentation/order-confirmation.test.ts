@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { CREDIT_PLANS } from "@/lib/ai/credit-policy";
 import { orderConfirmationMessage } from "@/lib/billing/order-confirmation";
-import { ENTERPRISE_START_EURO } from "@/lib/billing/payment-links";
 import {
   BUSINESS_ONLY_NOTICE,
   IMPRINT_EMAIL,
@@ -30,7 +29,7 @@ describe("Vertragsbestätigung in Textform", () => {
     // Nettoangabe zulässig — aber nur zusammen mit dem Hinweis.
     expect(message.text).toContain("50,00");
     expect(message.text).toContain("Umsatzsteuer");
-    expect(ENTERPRISE_START_EURO).toBe(50);
+    expect(CREDIT_PLANS.enterprise_legacy.euro).toBe(50);
   });
 
   it("benennt die Laufzeit und ihre Verlängerung", () => {

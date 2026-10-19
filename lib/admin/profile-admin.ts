@@ -14,7 +14,6 @@ import {
 import type { FreelancerProfile } from "@/lib/domain";
 import { attachAvatar, removeAvatar } from "@/lib/freelancer/profile-data";
 import { profileStrength, type ProfileStrength } from "@/lib/freelancer/profile-strength";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 import { presentSavedProfile } from "@/lib/presentation/chat";
 import { buildProfileDossier, type ProfileDossier } from "@/lib/profile/dossier";
 import type { ProfileLink, ProfileProject } from "@/lib/profile/project-limits";
@@ -162,7 +161,6 @@ export async function loadAdminProfile(id: string, now = new Date()): Promise<Ad
       projects: projects.filter((project) => project.isPublic && project.approved !== false).map(toDossierProject),
       links: toDossierLinks(links),
     },
-    { placement: placementRequestsEnabled() },
   );
 
   return {

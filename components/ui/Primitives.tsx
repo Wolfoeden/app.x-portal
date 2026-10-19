@@ -22,29 +22,6 @@ export function Notice({
   );
 }
 
-export function EmptyState({
-  eyebrow,
-  title,
-  children,
-  action,
-  compact = false,
-}: {
-  eyebrow?: string;
-  title: string;
-  children: ReactNode;
-  action?: ReactNode;
-  compact?: boolean;
-}) {
-  return (
-    <section className={`${styles.emptyState}${compact ? ` ${styles.compact}` : ""}`}>
-      {eyebrow ? <p>{eyebrow}</p> : null}
-      <h2>{title}</h2>
-      <div>{children}</div>
-      {action ? <div className={styles.emptyAction}>{action}</div> : null}
-    </section>
-  );
-}
-
 /** Der Hauptknopf eines Formulars, im Stil der öffentlichen Seiten. */
 export function ActionButton({ className = "", ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
   return <button {...props} className={actionClass("primary", { className: className || undefined })} />;

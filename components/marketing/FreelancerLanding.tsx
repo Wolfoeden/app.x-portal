@@ -6,7 +6,6 @@ import { actionClass } from "@/components/ui/actions";
 import { MatchCard } from "@/components/ui/MatchCard";
 import { CREDIT_PRICES } from "@/lib/ai/credit-policy";
 import { CREDIT_PLANS, PUBLIC_PRICING_PLANS, TRIAL_CREDITS, TRIAL_DAYS } from "@/lib/billing/plans";
-import type { LandingStats } from "@/lib/marketing/landing-stats";
 import { publishedCaseStudies, type CaseStudy } from "@/lib/marketing/case-studies";
 import { SALES_CONTACT } from "@/lib/sales/sales-contact-model";
 import { MARKETING_PAGE, MARKETING_PAGES } from "@/lib/seo";
@@ -71,7 +70,7 @@ const LANDING_EXAMPLES = [
 
 const PLAN_AUDIENCE = { basic: "für einzelne Mandate", pro: "für laufende Mandate", business: "für Teams" } as const;
 
-export function FreelancerLanding({ caseStudies = publishedCaseStudies() }: { stats?: LandingStats | null; caseStudies?: readonly CaseStudy[] }) {
+export function FreelancerLanding({ caseStudies = publishedCaseStudies() }: { caseStudies?: readonly CaseStudy[] }) {
   const plans = PUBLIC_PRICING_PLANS.filter((plan) => plan.billingModel === "fixed_monthly");
   const freeAnalyses = Math.floor(CREDIT_PLANS.starter.grantCredits / CREDIT_PRICES.project_brief.credits);
   const faq = landingFaq();

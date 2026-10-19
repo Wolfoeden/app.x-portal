@@ -239,12 +239,6 @@ async function followUpCandidates(admin: Admin): Promise<FollowUpRow[]> {
   return rows.map((row) => ({ ...row, hasEngagement: withEngagement.has(row.id) }));
 }
 
-/** Wie viele Nachfragen heute fällig sind. Für die Admin-Seite. */
-export async function countDueFollowUps(now = new Date()): Promise<number> {
-  const rows = await followUpCandidates(createAdminSupabaseClient());
-  return rows.filter((row) => followUpDue(candidateOf(row), now)).length;
-}
-
 function candidateOf(row: FollowUpRow) {
   return {
     status: row.status,

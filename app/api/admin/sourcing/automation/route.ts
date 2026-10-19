@@ -15,15 +15,12 @@ export const dynamic = "force-dynamic";
  *
  * `updateSourcingAutomation()` schreibt ein Audit-Ereignis mit. Das ist hier
  * kein Selbstzweck: Wer angeschaltet hat, dass fremde Menschen selbsttätig
- * erfasst und angeschrieben werden, muss später benennbar sein.
+ * als Kandidaten erfasst werden, muss später benennbar sein.
  */
 
 const InputSchema = z
   .object({
     absorbUserSearches: z.boolean().optional(),
-    resolveAddresses: z.boolean().optional(),
-    autoInvite: z.boolean().optional(),
-    dailyAddressBudget: z.number().int().min(0).max(500).optional(),
     pausedUntil: z.string().datetime().nullable().optional(),
   })
   .strict()

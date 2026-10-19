@@ -1,10 +1,5 @@
-import {
-  CREDIT_PRICES,
-  affordableCount,
-  countLabel,
-  creditPlan,
-} from "@/lib/ai/credit-policy";
-import { PUBLIC_PRICING_PLANS, TRIAL_CREDITS } from "@/lib/billing/plans";
+import { CREDIT_PRICES, creditPlan } from "@/lib/ai/credit-policy";
+import { PUBLIC_PRICING_PLANS } from "@/lib/billing/plans";
 
 import type { AiUsageSnapshot } from "../chat-contract";
 
@@ -37,14 +32,6 @@ export function entryMonthlyEuro(): number {
       plan.billingModel === "fixed_monthly" ? [plan.euro] : [],
     ),
   );
-}
-
-/** „3 AI-Agent-Recherchen oder 30 Analysen" — in Leistungen, nicht in Credits. */
-export function startCreditOutcome(): string {
-  return `${countLabel(affordableCount(TRIAL_CREDITS, "research"), "research")} oder ${countLabel(
-    affordableCount(TRIAL_CREDITS, "project_brief"),
-    "project_brief",
-  )}`;
 }
 
 export type ExhaustedNotice = {

@@ -4,44 +4,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import { FreelancerLanding } from "@/components/marketing/FreelancerLanding";
-import { MIN_FIELD_PROFILES, summarizeLandingStats } from "@/lib/marketing/landing-stats";
 
 afterEach(() => vi.unstubAllEnvs());
-
-function rows(role: string, count: number) {
-  return Array.from({ length: count }, () => ({ role_title: role, skill_tags: [] }));
-}
-
-describe("summarizeLandingStats", () => {
-  it("counts every active profile and groups them by field, largest first", () => {
-    const stats = summarizeLandingStats(
-      [...rows("AI Engineer", 5), ...rows("Business Analyst", 4), ...rows("SAP S/4HANA Beraterin", 2), ...rows("", 3)],
-      213,
-    );
-    expect(stats.profiles).toBe(14);
-    expect(stats.projects).toBe(213);
-    expect(stats.fields.map((field) => [field.field, field.count])).toEqual([
-      ["ai", 5],
-      ["requirements", 4],
-    ]);
-  });
-
-  it("leaves out thin fields and the catch-all instead of promising a pool", () => {
-    const stats = summarizeLandingStats([...rows("SAP S/4HANA Beraterin", MIN_FIELD_PROFILES - 1), ...rows("IT-Support", 9)], 0);
-    expect(stats.fields).toEqual([]);
-  });
-});
 
 describe("landing page inventory total", () => {
   // Desktop-Entwurf (Oktober 2026): Unter dem Kopf stehen vier Zusagen statt
   // einer Bestandszahl; die Seite nennt keine Profilzahl mehr.
   it("shows commitments instead of an inventory number", () => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
-    const html = renderToStaticMarkup(
-      createElement(FreelancerLanding, {
-        stats: { profiles: 67, projects: 1213, fields: [{ field: "ai", label: "KI & Agenten", count: 18 }] },
-      }),
-    );
+    const html = renderToStaticMarkup(createElement(FreelancerLanding));
     for (const commitment of ["Provisionsfrei", "Analysen kostenlos", "Belege je Anforderung", "Ihre Daten bleiben Ihre"]) expect(html).toContain(commitment);
     expect(html).not.toContain("Profile live");
     expect(html).not.toContain("67 freigegebene Profile");
@@ -50,14 +20,12 @@ describe("landing page inventory total", () => {
   });
 
   it("keeps the former workflow block out", () => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     const html = renderToStaticMarkup(createElement(FreelancerLanding));
     expect(html).not.toContain("Ein Arbeitsablauf für Ihre Mandate");
     expect(html).not.toContain("Von der Ausschreibung zur nachvollziehbaren Auswahl");
   });
 
   it("offers the sales call next to the self-service path with tracked entries", () => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     const html = renderToStaticMarkup(createElement(FreelancerLanding));
     for (const entry of ["hero", "closing"]) {
       expect(html).toContain(`href="/contact/freelancer?von=${entry}"`);

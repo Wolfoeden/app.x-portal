@@ -45,7 +45,6 @@ function ziel(response: Response) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
   mocks.audit.mockResolvedValue("trace");
   mocks.rateLimit.mockResolvedValue({ allowed: true, retryAfterSeconds: 0 });
   mocks.currentUser.mockResolvedValue(KONTO);
@@ -90,7 +89,6 @@ describe("GET /api/freelancers/[id]/link", () => {
   });
 
   it("prüft die Freigabe auch bei ausgeschaltetem historischen Schalter", async () => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "false");
     mocks.allowed.mockResolvedValue(false);
     expect(ziel(await aufruf())).toBe(GESPRAECH);
     expect(mocks.allowed).toHaveBeenCalledWith(KONTO, PROFIL_ID);

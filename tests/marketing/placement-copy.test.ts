@@ -10,8 +10,7 @@ afterEach(() => vi.unstubAllEnvs());
 const landing = () => renderToStaticMarkup(createElement(FreelancerLanding));
 const pricing = () => renderToStaticMarkup(createElement(PricingPage));
 describe("recruiting SaaS commercial contract", () => {
-  it.each(["true", "false"])("never revives new commissions with legacy flag %s", flag => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", flag);
+  it("never revives new commissions", () => {
     for (const html of [landing(), pricing()]) {
       expect(html).toContain("provisionsfrei");
       expect(html).not.toMatch(/10 % Honorar|Zahlen bei Beauftragung|Kostenlos bis zur Beauftragung/u);

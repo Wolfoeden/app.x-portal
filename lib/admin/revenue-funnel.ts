@@ -1,6 +1,5 @@
 import "server-only";
 
-import { placementRequestsEnabled } from "@/lib/placement/config";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 import {
@@ -41,7 +40,5 @@ export async function getRevenueFunnel(
     if (page.length < PAGE_SIZE) break;
     if (offset + PAGE_SIZE >= ROW_MAX) truncated = true;
   }
-  return buildRevenueFunnel(rows, excludedUserIds, truncated, {
-    placement: placementRequestsEnabled(),
-  });
+  return buildRevenueFunnel(rows, excludedUserIds, truncated);
 }

@@ -7,7 +7,6 @@ import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { isAllowedBookingHost } from "@/lib/freelancer/booking-hosts";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 import { placementBookingAllowed } from "@/lib/placement/requests";
 import {
   loadBookingDestination,
@@ -38,27 +37,22 @@ export async function GET(
     // oder mit bezahltem Tarif. Wer sonst hier landet — aus einem alten
     // Link, einer Lead-Mail oder von Hand —, kommt auf die Profilseite und
     // fragt dort an.
-    if (placementRequestsEnabled()) {
-      const user = await getCurrentUser().catch(() => null);
-      if (!(await placementBookingAllowed(user, parsed.data))) {
-        return NextResponse.redirect(
-          new URL(appPath(profilePath(parsed.data, "share")), request.url),
-          302,
-        );
-      }
+    const user = await getCurrentUser().catch(() => null);
+    if (!(await placementBookingAllowed(user, parsed.data))) {
+      return NextResponse.redirect(
+        new URL(appPath(profilePath(parsed.data, "share")), request.url),
+        302,
+      );
     }
 
     const destination = await loadBookingDestination(parsed.data);
     if (!destination) {
       // Ohne Kalender stellt XPORTAL vor: die Profilseite mit ihrer
       // Anfrage, statt einer leeren Fehlerseite.
-      if (placementRequestsEnabled()) {
-        return NextResponse.redirect(
-          new URL(appPath(profilePath(parsed.data, "share")), request.url),
-          302,
-        );
-      }
-      return new Response("Nicht gefunden.", { status: 404 });
+      return NextResponse.redirect(
+        new URL(appPath(profilePath(parsed.data, "share")), request.url),
+        302,
+      );
     }
 
     const ipHash = pseudonymizeIp(getClientIp(request));

@@ -10,7 +10,6 @@ import {
   FreelancerProfileSchema,
   type LabeledFact,
 } from "./profile";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 
 import { roleFamilyLabels, roleFit } from "./role-taxonomy";
 import { skillFamilyKey, skillTerms } from "./skill-taxonomy";
@@ -321,25 +320,6 @@ export type MatchingEvaluationSnapshot = z.infer<
   typeof MatchingEvaluationSnapshotSchema
 >;
 
-export function matchingEvaluationSnapshot(
-  match: Pick<
-    ShortlistMatch,
-    | "recommendationRole"
-    | "fitScore"
-    | "coreCoverage"
-    | "requirementAssessments"
-    | "scoreBreakdown"
-  >,
-): MatchingEvaluationSnapshot {
-  return MatchingEvaluationSnapshotSchema.parse({
-    schemaVersion: 1,
-    recommendationRole: match.recommendationRole,
-    fitScore: match.fitScore,
-    coreCoverage: match.coreCoverage,
-    requirementAssessments: match.requirementAssessments,
-    scoreBreakdown: match.scoreBreakdown,
-  });
-}
 type RequirementAssessment = z.infer<typeof RequirementAssessmentSchema>;
 
 function normalize(value: string): string {
@@ -559,16 +539,6 @@ function isDeliveryCapacityConstraint(value: string): boolean {
       key,
     )
   );
-}
-
-function secureBookingUrl(profile: FreelancerProfile): boolean {
-  const value = profile.introPolicy.bookingUrl;
-  if (!value) return false;
-  try {
-    return new URL(value).protocol === "https:";
-  } catch {
-    return false;
-  }
 }
 
 function availabilityPriority(
@@ -1046,11 +1016,8 @@ export function evaluateProfile(
   if (profile.demoStatus !== "real") {
     rejectionReasons.push("Profil ist kein reales Produktionsprofil.");
   }
-  // Im Vermittlungsmodell fragt der Kunde über XPORTAL an, und die Vorstellung
-  // läuft per Mail; ein Kalender ist dann Komfort, keine Voraussetzung.
-  if (!secureBookingUrl(profile) && !placementRequestsEnabled()) {
-    rejectionReasons.push("Profil hat keinen sicheren direkten Booking-Link.");
-  }
+  // Der Kunde fragt über XPORTAL an, und die Vorstellung läuft per Mail; ein
+  // Kalender ist Komfort, keine Voraussetzung.
 
   // An exclusion is a filter, never a score component. "Keine Angular-Leute"
   // has to remove those profiles outright — ranking them lower would still put

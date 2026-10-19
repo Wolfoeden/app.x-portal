@@ -86,13 +86,11 @@ import { rememberFunnelEntry, trackFunnelEvent } from "./chat/funnel-events";
 import {
   AuthDialog,
   ConfirmDeleteDialog,
-  ContactDialog,
   CreateProjectDialog,
   ManageChatDialog,
 } from "./chat/dialogs";
 import { ConversationsPage } from "./chat/conversations";
 import { PlacementDialog } from "./chat/placement-dialog";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 import {
   initials,
   isRecord,
@@ -2650,7 +2648,7 @@ export function ChatWorkspace({
    * Seitenleiste braucht die Liste auf jeder Seite, nicht nur auf der eigenen.
    */
   const loadConversations = useCallback(async () => {
-    if (preview || !placementRequestsEnabled()) return;
+    if (preview) return;
     const token = new URLSearchParams(window.location.search).get("t");
     const url = token ? `${apiPaths.conversations}?t=${encodeURIComponent(token)}` : apiPaths.conversations;
     try {
@@ -2779,10 +2777,8 @@ export function ChatWorkspace({
   };
 
   const requestBooking = (profile: FreelancerProfileResult) => {
-    // Im Vermittlungsmodell ist der Knopf eine Anfrage, auch ohne Kalender:
-    // Er öffnet den Anfrage-Dialog, für Gäste nach der Anmeldung.
-    const placement = placementRequestsEnabled();
-    if (!placement && !profile.bookingUrl) return;
+    // Der Knopf ist eine Anfrage, auch ohne Kalender: Er öffnet den
+    // Anfrage-Dialog, für Gäste nach der Anmeldung.
     if (!isAccountUser) {
       setPendingBookingProfileId(profile.id);
       openAuth(
@@ -2793,7 +2789,7 @@ export function ChatWorkspace({
     }
     // Zahlende Kunden buchen direkt: Der Link öffnet den Kalender, hier wird
     // nur die Vorstellung daneben festgehalten.
-    if (placement && !(directBooking && profile.bookingUrl)) {
+    if (!(directBooking && profile.bookingUrl)) {
       setSelectedProfileId(profile.id);
       setContactOpen(true);
       return;
@@ -3309,25 +3305,23 @@ export function ChatWorkspace({
               <span className="sidebar-row-label">Chats durchsuchen</span>
             </button>
           )}
-          {placementRequestsEnabled() ? (
-            <a
-              className={`sidebar-row${isConversationsView ? " is-active" : ""}`}
-              href="/gespraeche"
-              aria-current={isConversationsView ? "page" : undefined}
-              onClick={() => setSidebarOpen(false)}
-              data-sidebar-primary="conversations"
-              title={railSidebar ? "Gespräche" : undefined}
-            >
-              <IconChat size={18} />
-              <span className="sidebar-row-label">Gespräche</span>
-              {openQuestions ? (
-                <span className="sidebar-row-badge">
-                  {openQuestions}
-                  <span className="sr-only"> offene {openQuestions === 1 ? "Frage" : "Fragen"}</span>
-                </span>
-              ) : null}
-            </a>
-          ) : null}
+          <a
+            className={`sidebar-row${isConversationsView ? " is-active" : ""}`}
+            href="/gespraeche"
+            aria-current={isConversationsView ? "page" : undefined}
+            onClick={() => setSidebarOpen(false)}
+            data-sidebar-primary="conversations"
+            title={railSidebar ? "Gespräche" : undefined}
+          >
+            <IconChat size={18} />
+            <span className="sidebar-row-label">Gespräche</span>
+            {openQuestions ? (
+              <span className="sidebar-row-badge">
+                {openQuestions}
+                <span className="sr-only"> offene {openQuestions === 1 ? "Frage" : "Fragen"}</span>
+              </span>
+            ) : null}
+          </a>
           <a
             className={`sidebar-row${isTeamView ? " is-active" : ""}`}
             href="/mein-team"
@@ -3934,22 +3928,15 @@ export function ChatWorkspace({
       ) : null}
 
       {contactOpen && selectedProfile ? (
-        placementRequestsEnabled() ? (
-          <PlacementDialog
-            profile={selectedProfile}
-            projectId={activeProject?.id ?? null}
-            introductionsPath={apiPaths.introductions}
-            preview={preview}
-            guest={!isAccountUser}
-            onRequested={() => void loadConversations()}
-            onClose={() => setContactOpen(false)}
-          />
-        ) : (
-          <ContactDialog
-            profile={selectedProfile}
-            onClose={() => setContactOpen(false)}
-          />
-        )
+        <PlacementDialog
+          profile={selectedProfile}
+          projectId={activeProject?.id ?? null}
+          introductionsPath={apiPaths.introductions}
+          preview={preview}
+          guest={!isAccountUser}
+          onRequested={() => void loadConversations()}
+          onClose={() => setContactOpen(false)}
+        />
       ) : null}
 
       {deleteOpen ? (

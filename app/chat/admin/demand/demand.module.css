@@ -724,22 +724,6 @@
   opacity: 0.55;
   cursor: default;
 }
-.automationBudget {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-.automationBudget input {
-  width: 52px;
-  min-height: 26px;
-  border: 1px solid #d5d7cd;
-  border-radius: 7px;
-  background: #fff;
-  padding: 0 6px;
-  color: #33352f;
-  font: inherit;
-  font-weight: 650;
-}
 .automationPause {
   min-height: 26px;
   border: 1px solid #d5d7cd;

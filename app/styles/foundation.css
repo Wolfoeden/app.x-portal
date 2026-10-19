@@ -202,7 +202,6 @@ a {
 .danger-action:focus-visible,
 .external-search-button:focus-visible,
 .selected-side-card button:focus-visible,
-.calendar-consent button:focus-visible,
 .booking-link-action:focus-visible {
   outline-color: var(--ink);
   box-shadow: 0 0 0 2px var(--surface);

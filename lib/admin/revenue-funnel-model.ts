@@ -140,7 +140,6 @@ export function buildRevenueFunnel(
   rows: readonly RevenueFunnelRow[],
   excludedUserIds: ReadonlySet<string>,
   truncated = false,
-  options: { placement?: boolean } = {},
 ): RevenueFunnel {
   const people = new Map<string, Set<string>>();
   const pricingReasons = new Map<string, Set<string>>();
@@ -248,19 +247,17 @@ export function buildRevenueFunnel(
     .map(([reason, set]) => `${numberFormat.format(set.size)} ${PRICING_REASON_LABELS[reason] ?? reason}`)
     .join(" · ");
 
-  const placementSteps: RevenueFunnelStep[] = options.placement
-    ? PLACEMENT_STEPS.map((step) => ({
-        key: step.key,
-        label: step.label,
-        people: count(step.key),
-        detail:
-          step.key === "placement_engaged" && agreed
-            ? `${euroFormat.format(agreed / 100)} Honorar vereinbart`
-            : step.key === "placement_fee_paid" && paid
-              ? `${euroFormat.format(paid / 100)} eingegangen`
-              : null,
-      }))
-    : [];
+  const placementSteps: RevenueFunnelStep[] = PLACEMENT_STEPS.map((step) => ({
+    key: step.key,
+    label: step.label,
+    people: count(step.key),
+    detail:
+      step.key === "placement_engaged" && agreed
+        ? `${euroFormat.format(agreed / 100)} Honorar vereinbart`
+        : step.key === "placement_fee_paid" && paid
+          ? `${euroFormat.format(paid / 100)} eingegangen`
+          : null,
+  }));
 
   const clientSteps: RevenueFunnelStep[] = CLIENT_STEPS.map((step) => ({
     key: step.key,

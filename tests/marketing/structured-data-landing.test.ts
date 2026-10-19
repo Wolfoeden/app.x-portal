@@ -36,7 +36,6 @@ afterEach(() => vi.unstubAllEnvs());
 // Leistung und Fragen als strukturierte Daten — nur, was dort auch sichtbar ist.
 describe("landing page structured data", () => {
   it("mirrors the visible FAQ question for question", () => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     const html = renderToStaticMarkup(createElement(FreelancerLanding));
     const faq = jsonLd(html).find((node) => node["@type"] === "FAQPage")!;
     const entities = faq.mainEntity as { name: string; acceptedAnswer: { text: string } }[];
@@ -62,13 +61,10 @@ describe("landing page structured data", () => {
     expect(software).not.toHaveProperty("aggregateRating");
   });
 
-  it("cannot reintroduce commission through the legacy flag", () => {
-    for (const flag of ["true", "false"]) {
-      vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", flag);
-      const html = renderToStaticMarkup(createElement(FreelancerLanding));
-      expect(JSON.stringify(jsonLd(html))).not.toContain("10 %");
-      expect(html).toContain("provisionsfrei");
-    }
+  it("names no commission", () => {
+    const html = renderToStaticMarkup(createElement(FreelancerLanding));
+    expect(JSON.stringify(jsonLd(html))).not.toContain("10 %");
+    expect(html).toContain("provisionsfrei");
   });
 
   it("states the imprint address and the regions without social proof", () => {

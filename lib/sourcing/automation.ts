@@ -6,12 +6,13 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 /**
  * Die Betriebsarten der Beschaffung.
  *
- * Alles hier ist in der Vorgabe **aus**. Das ist kein Zögern, sondern die
- * Reihenfolge, in der die Sache verantwortbar ist: Mit dem Anlegen eines
- * Kandidaten beginnt für einen Menschen, der von XPORTAL nichts weiß, die
- * Frist aus Art. 14 DSGVO; das Auflösen seiner Adresse kostet Geld; und eine
- * Einladung erreicht ihn. Wer das anschaltet, soll es getan haben, nicht
- * geerbt haben.
+ * Alles hier ist in der Vorgabe **aus**: Mit dem Anlegen eines Kandidaten
+ * beginnt für einen Menschen, der von XPORTAL nichts weiß, die Frist aus
+ * Art. 14 DSGVO. Wer das anschaltet, soll es getan haben, nicht geerbt haben.
+ *
+ * Die früheren Schalter für Adresssuche, Tagesbudget und selbsttätige
+ * Einladungen las kein Code; sie sind seit 19.10.2026 entfernt (die Spalten
+ * in `sourcing_automation` bleiben vorerst stehen).
  *
  * Der Knopf im Adminbereich wirkt in jeder Betriebsart. „Aus" heißt „von
  * selbst passiert nichts", nicht „geht nicht".
@@ -19,24 +20,17 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export type SourcingAutomation = {
   absorbUserSearches: boolean;
-  resolveAddresses: boolean;
-  dailyAddressBudget: number;
-  autoInvite: boolean;
   pausedUntil: string | null;
   updatedAt: string | null;
 };
 
 export const SOURCING_AUTOMATION_DEFAULT: SourcingAutomation = {
   absorbUserSearches: false,
-  resolveAddresses: false,
-  dailyAddressBudget: 20,
-  autoInvite: false,
   pausedUntil: null,
   updatedAt: null,
 };
 
-const COLUMNS =
-  "absorb_user_searches,resolve_addresses,daily_address_budget,auto_invite,paused_until,updated_at";
+const COLUMNS = "absorb_user_searches,paused_until,updated_at";
 
 /**
  * Liest die Einstellung. Fehlt die Zeile oder ist die Datenbank nicht
@@ -56,9 +50,6 @@ export async function readSourcingAutomation(): Promise<SourcingAutomation> {
   const zeile = data as Record<string, unknown>;
   return {
     absorbUserSearches: Boolean(zeile.absorb_user_searches),
-    resolveAddresses: Boolean(zeile.resolve_addresses),
-    dailyAddressBudget: Number(zeile.daily_address_budget ?? 20),
-    autoInvite: Boolean(zeile.auto_invite),
     pausedUntil: (zeile.paused_until as string | null) ?? null,
     updatedAt: (zeile.updated_at as string | null) ?? null,
   };
@@ -76,9 +67,6 @@ export function isPaused(
 
 export type SourcingAutomationPatch = Partial<{
   absorbUserSearches: boolean;
-  resolveAddresses: boolean;
-  dailyAddressBudget: number;
-  autoInvite: boolean;
   pausedUntil: string | null;
 }>;
 
@@ -91,16 +79,6 @@ export async function updateSourcingAutomation(
   if (patch.absorbUserSearches !== undefined) {
     zeile.absorb_user_searches = patch.absorbUserSearches;
   }
-  if (patch.resolveAddresses !== undefined) {
-    zeile.resolve_addresses = patch.resolveAddresses;
-  }
-  if (patch.dailyAddressBudget !== undefined) {
-    zeile.daily_address_budget = Math.min(
-      Math.max(Math.round(patch.dailyAddressBudget), 0),
-      500,
-    );
-  }
-  if (patch.autoInvite !== undefined) zeile.auto_invite = patch.autoInvite;
   if (patch.pausedUntil !== undefined) zeile.paused_until = patch.pausedUntil;
 
   const { error } = await admin.from("sourcing_automation").upsert(zeile);

@@ -45,14 +45,12 @@ export type ProfilePageAction =
  */
 export function profilePageAction(input: {
   profileId: string;
-  placement: boolean;
   hasCalendar: boolean;
   isAccountUser: boolean;
   projectId: string | null;
-  via: ProfileLinkSource | null;
   directBooking?: boolean;
 }): ProfilePageAction {
-  if (input.placement && input.directBooking && input.isAccountUser && input.hasCalendar) {
+  if (input.directBooking && input.isAccountUser && input.hasCalendar) {
     return {
       kind: "booking",
       href: `/api/freelancers/${input.profileId}/book`,
@@ -60,22 +58,6 @@ export function profilePageAction(input: {
       hint: "In Ihrem Tarif enthalten · Sie wählen den Termin im Kalender des Freelancers",
     };
   }
-  if (!input.placement) {
-    if (!input.hasCalendar) {
-      return {
-        kind: "none",
-        label: "Aktuell nicht buchbar",
-        hint: "Für dieses Profil ist gerade kein Kalender freigegeben.",
-      };
-    }
-    return {
-      kind: "booking",
-      href: `/api/freelancers/${input.profileId}/book${input.via === "lead" ? "?via=lead" : ""}`,
-      label: "Erstgespräch vereinbaren",
-      hint: "Kostenloses Erstgespräch · Sie wählen den Termin selbst",
-    };
-  }
-
   if (input.projectId && input.isAccountUser) {
     return {
       kind: "request",

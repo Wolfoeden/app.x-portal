@@ -46,14 +46,12 @@ afterEach(() => vi.unstubAllEnvs());
 
 describe("profiles without a calendar", () => {
   it("remain discoverable without a shared calendar independent of the obsolete fee flag", async () => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "false");
     const { client: supabase, calls } = client([row]);
     expect((await fetchActiveBookableRealProfiles(supabase)).map((profile) => profile.id)).toEqual([row.id]);
     expect(calls).not.toContain("not booking_url");
   });
 
   it("are found and recommended once clients request through XPORTAL", async () => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     const { client: supabase, calls } = client([row, { ...row, id: "00000000-0000-4000-8000-000000000011", booking_url: "http://unsicher.example" }]);
     const profiles = await fetchActiveBookableRealProfiles(supabase);
     expect(profiles.map((profile) => profile.id)).toEqual([row.id]);
@@ -66,7 +64,6 @@ describe("profiles without a calendar", () => {
   });
 
   it("keeps an evidence match even when consent must precede contact", () => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "false");
     const profile = FreelancerProfileSchema.parse({
       ...profileFixtures[0],
       introPolicy: { ...profileFixtures[0].introPolicy, bookingUrl: null },

@@ -450,7 +450,6 @@ describe("POST /api/freelancers/[id]/cv", () => {
   });
 
   it("requires paid access in the placement model before touching the project", async () => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     mocks.allowed.mockResolvedValue(false);
 
     const response = await POST(request(), context());
@@ -470,7 +469,6 @@ describe("POST /api/freelancers/[id]/cv", () => {
   });
 
   it("downloads with paid access in the placement model", async () => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
 
     const response = await POST(request(), context());
 

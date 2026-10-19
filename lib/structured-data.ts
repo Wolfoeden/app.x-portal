@@ -83,55 +83,6 @@ export type ServiceRole = {
 };
 
 /**
- * Die Leistung der Startseite: Freelancer finden und vorstellen. Rollen und
- * Konditionen kommen von der Seite selbst, damit hier nichts steht, was dort
- * nicht steht.
- */
-export function serviceStructuredData({
-  page,
-  roles,
-  offer,
-}: {
-  page: PublicPage;
-  roles: readonly ServiceRole[];
-  /** Die Konditionen in einem Satz; ohne: kein Angebot ausgewiesen. */
-  offer?: string;
-}) {
-  return {
-    "@context": "https://schema.org",
-    "@type": "Service",
-    "@id": absoluteUrl(page.path) + "#service",
-    name: "Freelancer finden und vermitteln",
-    serviceType: "Freelancer-Vermittlung",
-    description: page.description,
-    url: absoluteUrl(page.path),
-    provider: { "@id": ORGANIZATION_ID },
-    areaServed: AREA_SERVED,
-    availableLanguage: "de",
-    audience: {
-      "@type": "BusinessAudience",
-      audienceType: "Recruiter, Personaldienstleister und Unternehmen",
-    },
-    hasOfferCatalog: {
-      "@type": "OfferCatalog",
-      name: "Gesuchte Rollen",
-      itemListElement: roles.map((role) => ({
-        "@type": "Offer",
-        itemOffered: {
-          "@type": "Service",
-          name: role.name,
-          description: role.description,
-          ...(role.alternateNames?.length ? { alternateName: [...role.alternateNames] } : {}),
-        },
-      })),
-    },
-    ...(offer
-      ? { offers: { "@type": "Offer", price: "0", priceCurrency: "EUR", description: offer } }
-      : {}),
-  };
-}
-
-/**
  * Fragen und Antworten, die sichtbar auf der Seite stehen. Google zeigt dafür
  * kaum noch Rich Results; Bing und KI-Suchsysteme lesen sie trotzdem.
  */

@@ -6,7 +6,6 @@ import {
   formatWholeEuro,
   placementExampleFeeCents,
   placementFeeCents,
-  placementRequestsEnabled,
   placementTermsSummary,
 } from "@/lib/placement/config";
 
@@ -15,15 +14,6 @@ afterEach(() => {
 });
 
 describe("placement model settings", () => {
-  it("keeps consent and historical conversations available independently of the obsolete fee switch", () => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "");
-    expect(placementRequestsEnabled()).toBe(true);
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "1");
-    expect(placementRequestsEnabled()).toBe(true);
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
-    expect(placementRequestsEnabled()).toBe(true);
-  });
-
   // Das Beispiel aus dem Plan: 592 € Median-Tagessatz, 60 Projekttage.
   it("charges 10 % of the first three months, capped at 60 project days", () => {
     expect(placementFeeCents(59_200, 60)).toBe(355_200);
@@ -42,13 +32,10 @@ describe("placement model settings", () => {
     expect(text).not.toContain(`${PLACEMENT_TERMS.feePercent} %`);
   });
 
-  it("keeps the freelancer's calendar out of the browser once the switch is on", () => {
+  it("keeps the freelancer's calendar out of the browser", () => {
     const calendar = "https://calendly.com/beispiel";
 
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "false");
     expect(clientBookingUrl("p1", calendar, "https://x-portal.eu")).toBe("https://x-portal.eu/api/freelancers/p1/book");
-
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     expect(clientBookingUrl("p1", calendar, "https://x-portal.eu/")).toBe(
       "https://x-portal.eu/api/freelancers/p1/book",
     );

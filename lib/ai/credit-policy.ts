@@ -94,8 +94,6 @@ export type CreditPriceId = keyof typeof CREDIT_PRICES;
 
 export const BRIEF_ANALYSIS_CREDITS = CREDIT_PRICES.project_brief.credits;
 export const EXTERNAL_SEARCH_CREDITS = CREDIT_PRICES.research.credits;
-export const LEADGEN_OUTREACH_CREDITS = CREDIT_PRICES.leadgen_outreach.credits;
-
 /**
  * Wie oft ein Guthaben für diese Funktion noch reicht. Abgerundet, denn eine
  * halbe Recherche gibt es nicht.

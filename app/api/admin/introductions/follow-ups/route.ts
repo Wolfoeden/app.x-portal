@@ -4,7 +4,6 @@ import { NextResponse } from "next/server";
 
 import { writeAuditEvent } from "@/lib/audit/write";
 import { requireAdminUser } from "@/lib/auth/current-user";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 import { sendDueFollowUps } from "@/lib/placement/engagements";
 import { assertSameOrigin } from "@/lib/security/request";
 import { SITE_URL } from "@/lib/seo";
@@ -44,7 +43,6 @@ async function actor(request: Request): Promise<string | null> {
  * steht in „Gespräche“; die Mail führt nur dorthin.
  */
 export async function POST(request: Request) {
-  if (!placementRequestsEnabled()) return new Response(null, { status: 404 });
   try {
     const actorUserId = await actor(request);
     const result = await sendDueFollowUps(SITE_URL);

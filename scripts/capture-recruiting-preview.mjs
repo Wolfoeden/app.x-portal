@@ -8,7 +8,7 @@ try {
   const context = await browser.newContext({viewport:{width:1280,height:900}});
   await context.addCookies([{name:"xportal_cookie_consent",value:"v3.essential",domain:"127.0.0.1",path:"/"}]);
   const page = await context.newPage();
-  for (const [name,path] of [["landing","/fuer-unternehmen"],["preise","/preise"],["trial-beispiel","/chat/preview/billing"],["ergebnis-beispiel","/chat/preview?state=ranked&plan=pro"]]) {
+  for (const [name,path] of [["landing","/fuer-unternehmen"],["preise","/preise"],["ergebnis-beispiel","/chat/preview?state=ranked&plan=pro"]]) {
     await page.goto(`http://127.0.0.1:3107${path}`,{waitUntil:"networkidle"});
     await page.screenshot({path:resolve(output,`${name}.png`),fullPage:true});
     console.log(JSON.stringify({name,url:page.url(),overflow:await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth)}));

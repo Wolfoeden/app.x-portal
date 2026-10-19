@@ -14,7 +14,6 @@ import {
   recordLeadMatch,
 } from "@/lib/leadgen/demand";
 import { extractProjectBrief } from "@/lib/openai/brief";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 import { profileUrl } from "@/lib/profile/profile-link";
 import {
   claimPreparedDraft,
@@ -42,7 +41,6 @@ import {
 import {
   buildMatchEmail,
   buildMatchSubject,
-  leadBookingUrl,
   leadSearchUrl,
   type MatchFacts,
 } from "@/lib/leadgen/outreach-message";
@@ -410,17 +408,9 @@ export async function runLeadPreparePass(
       // Anforderung, samt dem, was offen ist.
       requirements: best.requirementAssessments ?? [],
       profileUrl: profileUrl(origin, best.profile.id, "lead"),
-      // Nur für direkt buchbare Profile mit Kalender. Ein Profil mit
-      // Freigabe durch den Betreiber („premium") bekommt keinen Weg an ihr
-      // vorbei. Der Link führt über die eigene Domain, die beim Klick erneut
-      // prüft, ob das Profil noch buchbar ist. Im Vermittlungsmodell gibt es
-      // keinen Kalender vor der Vorstellung; die Mail führt dann zur Suche.
-      bookingUrl:
-        !placementRequestsEnabled() &&
-        best.profile.introPolicy.type === "free" &&
-        best.profile.introPolicy.bookingUrl
-          ? leadBookingUrl({ origin, profileId: best.profile.id })
-          : null,
+      // Vor der Vorstellung gibt es keinen Kalender; die Mail führt zur
+      // Profilseite und dort zur Anfrage.
+      bookingUrl: null,
     });
 
     if (!options.dryRun) {

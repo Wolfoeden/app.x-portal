@@ -7,27 +7,14 @@
  * dabei den Vermittlungsbedingungen zu, XPORTAL stellt vor. Kommt es zur
  * Beauftragung, wird das Honorar fällig.
  *
- * Alles hängt an einem Schalter. Ist er aus, bleibt der bisherige Weg — der
- * Terminknopf führt direkt in den Kalender des Freelancers — unverändert.
- * Eingeschaltet werden darf er erst, wenn die Bedingungen rechtlich geprüft
- * sind; bis dahin steht über ihnen sichtbar „Entwurf“. Am 30.09.2026 als
- * geprüft und freigegeben bestätigt; eingeschaltet für die Produktion in
- * netlify.toml.
+ * Seit 08.10.2026 sind neue Kontakte provisionsfrei; die Gebührenlogik gilt
+ * nur noch für historische Vorgänge. Der frühere Schalter
+ * `NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED` war danach fest eingeschaltet und
+ * ist seit 19.10.2026 entfernt: Anfragen laufen immer über XPORTAL.
  *
  * Die Datei ist bewusst ohne Serverabhängigkeit: Oberfläche und Routen lesen
  * dieselben Zahlen.
  */
-
-/**
- * Der Schalter. `NEXT_PUBLIC_`, weil auch die Oberfläche ihn braucht; der Wert
- * wird beim Build eingesetzt, eine Änderung braucht also ein neues Deploy.
- * Als Funktion, damit Tests ihn je Fall setzen können.
- */
-export function placementRequestsEnabled(): boolean {
-  // Contact consent and historical conversations stay available in the SaaS.
-  // The old public deployment flag cannot re-enable fee-bearing creation.
-  return true;
-}
 
 export const RECRUITING_COMMERCIAL_MODEL = "no_fee" as const;
 export type RecruitingCommercialModel = "no_fee" | "legacy_placement";
@@ -78,7 +65,7 @@ export function clientBookingUrl(
   bookingUrl: string | null,
   siteUrl: string,
 ): string | null {
-  if (!bookingUrl || !placementRequestsEnabled()) return bookingUrl;
+  if (!bookingUrl) return bookingUrl;
   return `${siteUrl.replace(/\/+$/u, "")}/api/freelancers/${profileId}/book`;
 }
 

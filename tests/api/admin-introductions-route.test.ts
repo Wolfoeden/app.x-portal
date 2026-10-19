@@ -40,7 +40,6 @@ function call(body: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
   process.env.NEXT_PUBLIC_SITE_URL = "https://x-portal.eu";
   mocks.admin.mockResolvedValue({ id: "admin-1", isAdmin: true, isAnonymous: false });
   mocks.approve.mockResolvedValue({ freelancerReachable: true, freelancerNotified: true, clientNotified: true, hasCalendar: true });
@@ -88,7 +87,6 @@ describe("POST /api/admin/introductions/[id]", () => {
   });
 
   it("keeps historical administration available without the old deployment flag", async () => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "false");
     expect((await call({ action: "approve" })).status).toBe(200);
     expect(mocks.approve).toHaveBeenCalled();
   });

@@ -1,5 +1,4 @@
 import { skillFamilyKey } from "@/lib/domain/skill-taxonomy";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 
 import { availabilityNotice, AVAILABILITY_CONFIRMED_REASON, type AvailabilityNotice } from "./availability";
 import type {
@@ -177,7 +176,7 @@ export function profilePresentation(
 
   const availability = availabilityNotice(profile.availabilityStatus, profile.availabilityUpdatedAt, now, {
     availableFrom: profile.availableFrom ?? null,
-    confirmedBy: placementRequestsEnabled() ? "introduction" : "call",
+    confirmedBy: "introduction",
   });
 
   // Der Start stammt aus der Angabe des Freelancers, nicht aus einer Prüfung

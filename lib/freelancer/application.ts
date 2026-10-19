@@ -247,15 +247,6 @@ export const FreelancerApplicationInputSchema = z
       .default(null),
     /** Freiwillig; „geprüft“ und Herkunft setzt der Server, nicht das Formular. */
     projects: ProjectListSchema.default([]),
-    /** Freiwilliges Foto, hochgeladen über `/api/freelancer-applications/photo-upload`. */
-    photo: z
-      .object({
-        storagePath: z.string().trim().min(1).max(300),
-        token: z.string().trim().regex(/^[0-9a-f]{64}$/u),
-      })
-      .strict()
-      .nullable()
-      .default(null),
     consent: z.literal(true),
     /**
      * Das Kennzeichen aus einer Einladung, falls die Person über eine kam.
@@ -313,9 +304,8 @@ export type ApplicationInsert = {
   source: "apply_form";
   seeking: Seeking;
   referral: string | null;
-  /** Migration 20261006100000; ohne sie lässt die Route beide Felder weg. */
+  /** Migration 20261006100000; ohne sie lässt die Route das Feld weg. */
   reference_projects: ProfileProject[];
-  photo_storage_path: string | null;
   /** Migration 20261007090000; ohne sie lässt die Route die drei Felder weg. */
   import_provenance: ImportProvenance | null;
   capacity_days_per_week: number | null;
@@ -377,7 +367,6 @@ export function applicationInsertFromInput(
     seeking: input.seeking,
     referral: input.referral,
     reference_projects: input.projects.map(asApplicantProject),
-    photo_storage_path: input.photo?.storagePath ?? null,
     import_provenance: input.importProvenance,
     capacity_days_per_week: input.capacityDaysPerWeek,
     desired_projects: input.desiredProjects,

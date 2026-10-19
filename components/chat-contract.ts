@@ -441,10 +441,6 @@ export interface ChatApiPaths {
   /** Explicit, separately disclosed web search offered only after no reliable internal match. */
   freelancerSearch: string;
   profileFeedback: string;
-  emailLogin: string;
-  emailRegister: string;
-  providerLogin: string;
-  logout: string;
   exportData: string;
   deleteData: string;
   introductions: string;
@@ -493,10 +489,6 @@ export const defaultChatApiPaths: ChatApiPaths = {
   adminFreelancers: appPath("/chat/admin/freelancers"),
   freelancerSearch: appPath("/api/freelancer-search"),
   profileFeedback: appPath("/api/profile-feedback"),
-  emailLogin: appPath("/api/auth/login"),
-  emailRegister: appPath("/api/auth/register"),
-  providerLogin: appPath("/auth/sign-in"),
-  logout: appPath("/api/auth/logout"),
   exportData: appPath("/api/account/export"),
   deleteData: appPath("/api/account/delete"),
   introductions: appPath("/api/introductions"),
