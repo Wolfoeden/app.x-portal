@@ -9,7 +9,6 @@ import { summaryExcerpt } from "@/lib/profile/excerpt";
 import { profileField } from "@/lib/profile/field";
 import type { ProfileField } from "@/lib/profile/identity";
 import type { ProjectTeaser } from "@/lib/profile/project-limits";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 import { formatProfileRate } from "@/lib/presentation/chat";
 
 /**
@@ -170,11 +169,6 @@ function themeEvidence(profile: FreelancerProfile, theme: ThemeDefinition): Show
   return [...required, ...related];
 }
 
-function contactFor(profile: FreelancerProfile, placement: boolean): ShowcaseContact {
-  if (placement) return "request";
-  return profile.introPolicy.bookingUrl ? "calendar" : "none";
-}
-
 /** Angegeben innerhalb der Frist, ab der die Karte zur Bestätigung rät. */
 function freshAvailability(profile: FreelancerProfile, now: Date): boolean {
   const { status, checkedAt } = profile.availability;
@@ -202,11 +196,10 @@ export function selectShowcase(
   profiles: readonly FreelancerProfile[],
   registeredProfileIds: ReadonlySet<string>,
   now: Date = new Date(),
-  options: { limit?: number; placement?: boolean } = {},
+  options: { limit?: number } = {},
 ): RegisteredShowcase {
   const definition = THEMES[theme];
   const limit = options.limit ?? SHOWCASE_LIMIT;
-  const placement = options.placement ?? placementRequestsEnabled();
 
   const eligible = profiles
     .filter(
@@ -248,7 +241,7 @@ export function selectShowcase(
         updatedAt: profile.availability.checkedAt,
         availableFrom: profile.availability.availableFrom,
       },
-      contact: contactFor(profile, placement),
+      contact: "request",
       location: profile.location?.value ?? null,
       workModes: [...profile.workModes],
       verified: profile.referenceStatus === "verified",

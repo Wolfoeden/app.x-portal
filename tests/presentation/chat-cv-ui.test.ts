@@ -1,6 +1,6 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   bookingActionState,
@@ -80,7 +80,6 @@ function shortcuts(markup: string): string {
 
 /** Produktion: Vermittlungsmodell an, die Kurzlinks brauchen ein Abo. */
 function inPlacementModel() {
-  beforeEach(() => vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true"));
   afterEach(() => vi.unstubAllEnvs());
 }
 
@@ -209,8 +208,7 @@ describe("Kurzlinks auf der Profilkarte", () => {
     ]);
   });
 
-  it("öffnet ohne Vermittlungsmodell, wie bisher Kalender und Lebenslauf, mit Konto", () => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "false");
+  it("öffnet die Kurzlinks mit bezahltem Konto und zeigt Gästen den Weg zu den Tarifen", () => {
     expect(shortcuts(renderProfile(withLinks, true, { paid: true }))).toContain('href="/api/freelancers/profile/cv-test/link?kind=linkedin"');
     const guest = renderProfile(withLinks, false);
     expect(shortcuts(guest)).toContain("LinkedIn: Im Abo enthalten – Tarife ansehen");
@@ -292,8 +290,8 @@ describe("CV download request", () => {
 
 describe("booking button in the placement model", () => {
   it("asks for an introduction instead of opening a calendar, with or without an account", () => {
-    const account = bookingActionState({ bookingUrl: null }, true, true);
-    const guest = bookingActionState({ bookingUrl: "https://x-portal.eu/api/freelancers/p/book" }, false, true);
+    const account = bookingActionState({ bookingUrl: null }, true);
+    const guest = bookingActionState({ bookingUrl: "https://x-portal.eu/api/freelancers/p/book" }, false);
 
     expect(account).toEqual({
       kind: "request",
@@ -303,9 +301,5 @@ describe("booking button in the placement model", () => {
     });
     expect(guest.kind).toBe("request");
     expect(guest.hint).toContain("Bestätigtes Konto und aktiver Trial oder Tarif erforderlich");
-  });
-
-  it("keeps the direct booking when the switch is off", () => {
-    expect(bookingActionState({ bookingUrl: "https://calendly.com/x" }, true, false).kind).toBe("bookable");
   });
 });

@@ -123,8 +123,7 @@ describe("chat presentation", () => {
   // Im Vermittlungsmodell verlässt die Kalenderadresse den Server nicht; der
   // Browser bekommt nur den eigenen Link, der erst nach der Vorstellung
   // weiterleitet.
-  it("sends only the guarded booking route once the placement switch is on", () => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
+  it("sends only the guarded booking route", () => {
     vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://x-portal.eu");
     try {
       const brief = makeBrief({ requiredSkills: ["React"], language: "German", workMode: "remote" });

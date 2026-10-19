@@ -4,7 +4,6 @@ import { z } from "zod";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { requireAdminUser } from "@/lib/auth/current-user";
 import { StripeRequestError } from "@/lib/billing/stripe-api";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 import {
   recordEngagement,
   recordFeeStatus,
@@ -62,7 +61,6 @@ export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  if (!placementRequestsEnabled()) return new Response(null, { status: 404 });
   try {
     assertSameOrigin(request);
     const [{ id: rawId }, admin] = await Promise.all([context.params, requireAdminUser()]);

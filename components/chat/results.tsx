@@ -39,7 +39,6 @@ import {
   type DismissedProfile,
   type ProfileFeedbackReason,
 } from "@/lib/freelancer/profile-feedback";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 import { profilePath } from "@/lib/profile/profile-link";
 import { monogramTone, PROFILE_FIELD_LABELS } from "@/lib/profile/identity";
 import { FitBar, type FitSegment } from "../profile/FitBar";
@@ -1068,17 +1067,16 @@ export const DirectBookingContext = createContext(false);
  * guest left the product without the selection ever being recorded. A guest is
  * now taken through the sign-in first and returns to this exact profile.
  *
- * Im Vermittlungsmodell führt der Knopf zur Anfrage, auch ohne Kalender: Die
- * Vorstellung übernimmt dann der Betreiber. Ausnahme: Kunden mit bezahltem
- * Tarif (`directBooking`) buchen bei Profilen mit Kalender direkt.
+ * Der Knopf führt zur Anfrage, auch ohne Kalender: Die Vorstellung übernimmt
+ * dann der Betreiber. Ausnahme: Kunden mit bezahltem Tarif (`directBooking`)
+ * buchen bei Profilen mit Kalender direkt.
  */
 export function bookingActionState(
   profile: Pick<FreelancerProfileResult, "bookingUrl">,
   isAccountUser: boolean,
-  placement: boolean = placementRequestsEnabled(),
   directBooking = false,
 ): BookingActionState {
-  if (placement && directBooking && isAccountUser && profile.bookingUrl) {
+  if (directBooking && isAccountUser && profile.bookingUrl) {
     return {
       kind: "bookable",
       label: "Termin buchen",
@@ -1086,38 +1084,12 @@ export function bookingActionState(
       disabled: false,
     };
   }
-  if (placement) {
-    return {
-      kind: "request",
-      label: "Freelancer anfragen",
-      hint: isAccountUser
-        ? "Provisionsfrei · Freelancer entscheidet über Kontaktfreigabe"
-        : "Bestätigtes Konto und aktiver Trial oder Tarif erforderlich",
-      disabled: false,
-    };
-  }
-  // Without a calendar there is no other way to request a conversation, so
-  // the button says so instead of promising one.
-  if (!profile.bookingUrl) {
-    return {
-      kind: "unavailable",
-      label: "Aktuell nicht buchbar",
-      hint: "Dieses Profil ist aktuell nicht direkt buchbar.",
-      disabled: true,
-    };
-  }
-  if (!isAccountUser) {
-    return {
-      kind: "login_required",
-      label: "Erstgespräch vereinbaren",
-      hint: "E-Mail bestätigen, kein Passwort nötig · Sie wählen und buchen den Termin selbst.",
-      disabled: false,
-    };
-  }
   return {
-    kind: "bookable",
-    label: "Erstgespräch vereinbaren",
-    hint: "Die Terminseite des Freelancers öffnet sich in einem neuen Tab.",
+    kind: "request",
+    label: "Freelancer anfragen",
+    hint: isAccountUser
+      ? "Provisionsfrei · Freelancer entscheidet über Kontaktfreigabe"
+      : "Bestätigtes Konto und aktiver Trial oder Tarif erforderlich",
     disabled: false,
   };
 }
@@ -1380,12 +1352,11 @@ export function ProfileCard({
     }));
   const cvAction = cvActionState(profile, isAccountUser);
   const directBooking = useContext(DirectBookingContext);
-  const placement = placementRequestsEnabled();
-  const bookingAction = bookingActionState(profile, isAccountUser, placement, directBooking);
-  const shortcutUpsell = placement ? "/preise" : null;
+  const bookingAction = bookingActionState(profile, isAccountUser, directBooking);
+  const shortcutUpsell = "/preise";
   const shortcutStates = profileShortcutStates({
-    unlocked: placement ? directBooking && isAccountUser : isAccountUser,
-    lockedHint: placement ? SHORTCUT_LOCKED_HINT : "Nur mit Konto",
+    unlocked: directBooking && isAccountUser,
+    lockedHint: SHORTCUT_LOCKED_HINT,
     contactLinks: profile.contactLinks,
     hasCalendar: Boolean(profile.bookingUrl),
     cvAccess: cvAction.kind,
@@ -1671,7 +1642,7 @@ export function ProfileCard({
             </p>
           ) : null}
           <p className="profile-booking-hint">{bookingAction.hint}</p>
-          {shortcutUpsell ? <ShortcutUpsell states={shortcutStates} href={shortcutUpsell} /> : null}
+          <ShortcutUpsell states={shortcutStates} href={shortcutUpsell} />
           {onDismiss ? <ProfileDismiss displayName={profile.displayName} onDismiss={onDismiss} /> : null}
         </footer>
       </div>

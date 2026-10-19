@@ -1,7 +1,7 @@
 # Vermittlungshonorar: Rechnung über Stripe
 
-Seit dem 30.09.2026 ist das Vermittlungsmodell für die Produktion
-eingeschaltet (`NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED` in `netlify.toml`).
+Seit dem 08.10.2026 sind neue Kontakte provisionsfrei. Dieses Dokument gilt
+nur noch für historische Vorgänge aus dem Vermittlungsmodell (30.09.–07.10.2026).
 Kunden fragen Freelancer über XPORTAL an, der Betreiber stellt vor, und bei
 einer Beauftragung fällt einmalig das Honorar nach
 `lib/placement/config.ts` an (10 % der ersten 3 Monate, höchstens 60
@@ -112,7 +112,6 @@ Beide nur hinzufügend bzw. lockernd und idempotent.
 
 ## Lokal ansehen
 
-`pnpm dev` mit `NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED=true`, dann
-`/chat/preview/vermittlung` (Panel mit Testdaten) und
-`/freelancer/apply?preview=form&quelle=arbeitsagentur` (Bewerbungsformular).
-Beide Vorschauen gibt es nur in der Entwicklung.
+`pnpm dev`, dann `/bewerber-portal/apply?preview=form&quelle=arbeitsagentur`
+(Bewerbungsformular, nur in der Entwicklung). Die frühere Vorschau
+`/chat/preview/vermittlung` ist seit 19.10.2026 entfernt.

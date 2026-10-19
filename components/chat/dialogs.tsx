@@ -28,21 +28,16 @@ import {
   type OauthProviderName,
 } from "@/lib/auth/browser";
 import { ACCOUNT_NAME_MAX_LENGTH } from "@/lib/auth/account-name";
-import { appPath } from "@/lib/app-path";
 import { BUSINESS_ONLY_NOTICE } from "@/lib/legal/policy";
 
 import type {
-  FreelancerProfileResult,
   ProjectCollectionItem,
   ProjectListItem,
 } from "../chat-contract";
 import {
   IconAlertTriangle,
-  IconArrowRight,
-  IconCalendar,
   IconCheck,
   IconClose,
-  IconPlus,
 } from "../icons";
 import { authErrorMessage, isServiceSideAuthFailure } from "./auth-errors";
 import {
@@ -56,7 +51,6 @@ import {
   GITHUB_AUTH_ENABLED,
   GOOGLE_AUTH_ENABLED,
   LINKEDIN_AUTH_ENABLED,
-  initials,
   MICROSOFT_AUTH_ENABLED,
   type AuthDialogMode,
   type ToastState,
@@ -635,49 +629,6 @@ export function ManageChatDialog({
             <button className="danger-text-action" type="button" disabled={busy} onClick={() => setConfirmDelete(true)}>Chat löschen</button>
           )}
           <button className="secondary-action" type="button" onClick={onClose} disabled={busy}>Schließen</button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-export function ContactDialog({ profile, onClose }: { profile: FreelancerProfileResult; onClose: () => void }) {
-  return (
-    <Modal titleId="contact-title" onClose={onClose} size="large">
-      <div className="contact-dialog">
-        <div className="contact-dialog-header">
-          <div
-            className={`contact-profile-avatar ${profile.avatarUrl ? "has-image" : ""}`}
-            style={profile.avatarUrl ? { backgroundImage: `url(${JSON.stringify(profile.avatarUrl)})` } : undefined}
-            aria-hidden="true"
-          >
-            {profile.avatarUrl ? null : initials(profile.displayName)}
-          </div>
-          <div><span className="dialog-eyebrow">Reales Profil ausgewählt</span><h2 id="contact-title">Termin mit {profile.displayName}</h2><p>{profile.role}</p></div>
-        </div>
-        <div className="contact-layout">
-          <div className="contact-copy">
-            <div className="continue-note"><span aria-hidden="true"><IconPlus size={17} /></span><p><strong>Noch etwas ergänzen?</strong>Schließen Sie dieses Fenster und schreiben Sie frei im Chat weiter. Die Terminoption bleibt sichtbar.</p></div>
-          </div>
-          <div className="calendar-area">
-            <div className="calendar-consent">
-              <div className="calendar-symbol" aria-hidden="true"><span><IconCalendar size={26} /></span><small>BOOKING</small></div>
-              <h3>{profile.bookingUrl ? "Direkt Termin wählen" : "Aktuell nicht buchbar"}</h3>
-              <p>{profile.bookingUrl ? `Die Buchungsseite von ${profile.displayName} wird erst nach Ihrem Klick in einem neuen Tab geöffnet.` : "Der frühere Treffer bleibt zur Nachvollziehbarkeit sichtbar, aber es ist kein aktueller Booking-Link freigegeben."}</p>
-              {profile.bookingUrl ? (
-                <a
-                  className="booking-link-action"
-                  href={appPath(`/api/freelancers/${profile.id}/book`)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Meeting buchen <IconArrowRight size={13} />
-                </a>
-              ) : (
-                <span className="booking-unavailable">Aktuell kein direkter Booking-Link</span>
-              )}
-            </div>
-          </div>
         </div>
       </div>
     </Modal>

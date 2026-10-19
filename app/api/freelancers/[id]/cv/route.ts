@@ -10,7 +10,6 @@ import {
   safeCvDownloadFilename,
 } from "@/lib/data/freelancer-cvs";
 import { MatchingEvaluationSnapshotSchema } from "@/lib/domain";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 import { placementBookingAllowed } from "@/lib/placement/requests";
 import { partialProfileFromSnapshot } from "@/lib/placement/shown-profile";
 import {
@@ -107,7 +106,7 @@ export async function POST(
     // Im Vermittlungsmodell ist der Lebenslauf wie Kalender und Profil-Links
     // ein direkter Weg zum Freelancer: mit bezahltem Tarif, nach einer
     // Vorstellung durch den Betreiber oder als Betreiber.
-    if (placementRequestsEnabled() && !(await placementBookingAllowed(user, profileId))) {
+    if (!(await placementBookingAllowed(user, profileId))) {
       await writeAuditEvent({
         actorUserId: user.id,
         action: "freelancer_cv_download_denied",

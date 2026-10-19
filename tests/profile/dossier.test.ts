@@ -26,7 +26,6 @@ describe("building the dossier", () => {
   const dossier = buildProfileDossier(
     anna,
     { avatarUrl: null, field: "frontend", rate: "680 € / Tag", referencesSummary: "  Zwei Projekte für einen Versicherer.  " },
-    { placement: true },
   );
 
   it("keeps verified and stated apart, verified first", () => {
@@ -49,7 +48,6 @@ describe("building the dossier", () => {
 
   it("names the contact path of the model and trims the reference note", () => {
     expect(dossier.contact).toBe("request");
-    expect(buildProfileDossier(anna, { avatarUrl: null, field: null, rate: null }, { placement: false }).contact).toBe("calendar");
     expect(dossier.referencesSummary).toBe("Zwei Projekte für einen Versicherer.");
     expect(dossier.projects).toEqual([]);
   });

@@ -1,6 +1,5 @@
 import type { ShowcaseProfile } from "@/lib/freelancer/showcase";
 import type { AvailabilityStatus, Seeking, WorkMode } from "@/lib/freelancer/limits";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 import { summaryExcerpt } from "@/lib/profile/excerpt";
 import type { ProfileField } from "@/lib/profile/identity";
 import { pickHighlight, projectMatchScore, projectTeaser, type ProfileProject } from "@/lib/profile/project-limits";
@@ -85,7 +84,7 @@ export function applicationPreviewProfile(input: ApplicationPreviewInput, now: D
       updatedAt: now.toISOString(),
       availableFrom: input.availabilityFrom || null,
     },
-    contact: placementRequestsEnabled() ? "request" : input.bookingUrl.trim() ? "calendar" : "none",
+    contact: "request",
     location: input.locationText.trim() || null,
     workModes: [...input.workModes],
     verified: false,

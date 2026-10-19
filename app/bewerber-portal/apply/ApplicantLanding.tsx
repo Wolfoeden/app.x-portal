@@ -2,7 +2,6 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 
 import { MatchCard } from "@/components/ui/MatchCard";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 
 import { APPLICANT_FAQ, APPLY_HERO, onboardingFacts } from "./applicant-copy";
 import { GateActions } from "./GateActions";
@@ -23,7 +22,7 @@ const STEPS = [
  */
 export function ApplicantLanding({ notices = null }: { notices?: ReactNode }) {
   // „Ablauf“ steht ausführlich in den vier Schritten.
-  const facts = onboardingFacts(placementRequestsEnabled()).filter((fact) => fact.term !== "Ablauf");
+  const facts = onboardingFacts().filter((fact) => fact.term !== "Ablauf");
   return (
     <>
       <header id="start" className={styles.hero}>

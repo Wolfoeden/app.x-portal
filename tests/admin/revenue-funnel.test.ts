@@ -157,7 +157,7 @@ describe("revenue funnel", () => {
   it("shows empty steps as zero instead of hiding them", () => {
     const funnel = buildRevenueFunnel([], new Set());
 
-    expect(funnel.steps.map((entry) => entry.people)).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    expect(funnel.steps.map((entry) => entry.people)).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     expect(funnel.steps.every((entry) => entry.detail === null)).toBe(true);
   });
 
@@ -171,8 +171,6 @@ describe("revenue funnel", () => {
         { ...row("placement_fee_paid", "admin-1", { clientUserId: "client-1", feeMinor: 355_200 }), target_id: "req-1" },
       ],
       new Set(["admin-1"]),
-      false,
-      { placement: true },
     );
 
     expect(funnel.steps.map((entry) => entry.key)).toEqual([
@@ -208,8 +206,6 @@ describe("revenue funnel", () => {
         { ...row("placement_introduced", "admin-1", { clientUserId: "admin-1" }), target_id: "req-1" },
       ],
       new Set(["admin-1"]),
-      false,
-      { placement: true },
     );
 
     expect(step(funnel, "placement_requested")?.people).toBe(0);
@@ -238,11 +234,5 @@ describe("revenue funnel", () => {
       people: 2,
       detail: "1 per Gutschein",
     });
-  });
-
-  it("shows no placement stages while the switch is off", () => {
-    const funnel = buildRevenueFunnel([], new Set());
-
-    expect(funnel.steps.some((entry) => entry.key.startsWith("placement_"))).toBe(false);
   });
 });

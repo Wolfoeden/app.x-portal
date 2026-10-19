@@ -1,6 +1,5 @@
 import { BRIEF_ANALYSIS_CREDITS } from "@/lib/ai/credit-policy";
 import { START_CREDITS } from "@/lib/billing/plans";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 
 export type AuthIntent =
   | "generic"
@@ -151,19 +150,11 @@ export function authIntentCopy(intent: AuthIntent) {
         afterConfirmation: "Danach öffnet sich der Kontaktweg zu diesem Profil.",
       };
     case "book_profile":
-      if (placementRequestsEnabled()) {
-        return {
-          eyebrow: "Anfrage fortsetzen",
-          title: "E-Mail bestätigen und Freelancer anfragen",
-          body: "Ihre Anfrage und das gewählte Profil bleiben erhalten. Nach der Anmeldung können Sie mit aktivem Trial oder Tarif bewusst eine provisionsfreie Kontaktanfrage senden. Der Freelancer entscheidet selbst über Kontaktfreigabe und Verfügbarkeit.",
-          afterConfirmation: "Danach senden Sie die Anfrage zu diesem Profil.",
-        };
-      }
       return {
-        eyebrow: "Termin fortsetzen",
-        title: "E-Mail bestätigen und Terminweg öffnen",
-        body: "Ihre Anfrage und das gewählte Profil bleiben erhalten. Nach der Bestätigung per E-Mail öffnen wir den Terminweg – es wird nichts automatisch gebucht.",
-        afterConfirmation: "Danach öffnet sich der Terminweg zu diesem Profil.",
+        eyebrow: "Anfrage fortsetzen",
+        title: "E-Mail bestätigen und Freelancer anfragen",
+        body: "Ihre Anfrage und das gewählte Profil bleiben erhalten. Nach der Anmeldung können Sie mit aktivem Trial oder Tarif bewusst eine provisionsfreie Kontaktanfrage senden. Der Freelancer entscheidet selbst über Kontaktfreigabe und Verfügbarkeit.",
+        afterConfirmation: "Danach senden Sie die Anfrage zu diesem Profil.",
       };
     case "save_search":
       return {

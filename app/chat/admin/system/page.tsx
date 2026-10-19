@@ -11,7 +11,6 @@ import { getCurrentUser } from "@/lib/auth/current-user";
 import { promotionalDeliveryConfigured } from "@/lib/email/deliver";
 import { leadAutomationSummary, readLeadAutomation } from "@/lib/leadgen/automation";
 import { LEAD_BULK_SEND_LIMIT } from "@/lib/leadgen/limits";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 
 export const metadata: Metadata = {
   title: "System | XPORTAL Admin",
@@ -56,7 +55,6 @@ export default async function SystemPage() {
     { label: "KI-Analyse", ok: secretSet("OPENAI_API_KEY"), detail: "OPENAI_API_KEY" },
     { label: "Zahlungen", ok: secretSet("STRIPE_SECRET_KEY"), detail: "STRIPE_SECRET_KEY" },
     { label: "Datenbank-Dienstzugang", ok: secretSet("SUPABASE_SERVICE_ROLE_KEY"), detail: "SUPABASE_SERVICE_ROLE_KEY" },
-    { label: "Vermittlungsmodell", ok: placementRequestsEnabled(), detail: "NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED" },
   ];
 
   return (

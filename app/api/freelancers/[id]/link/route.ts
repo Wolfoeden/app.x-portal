@@ -4,7 +4,6 @@ import { z } from "zod";
 import { appPath } from "@/lib/app-path";
 import { writeAuditEvent } from "@/lib/audit/write";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 import { placementBookingAllowed } from "@/lib/placement/requests";
 import { contactLinkTarget, isContactLinkKind } from "@/lib/profile/contact-links";
 import { profilePath } from "@/lib/profile/profile-link";
@@ -41,7 +40,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   try {
     const user = await getCurrentUser().catch(() => null);
     if (!user || user.isAnonymous) return fallback();
-    if (placementRequestsEnabled() && !(await placementBookingAllowed(user, profileId))) return fallback();
+    if (!(await placementBookingAllowed(user, profileId))) return fallback();
 
     const limit = await consumeRateLimit(`freelancer-link:${user.id}`, 60, 60 * 60_000);
     if (!limit.allowed) {

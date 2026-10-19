@@ -36,7 +36,6 @@ describe("landing page inventory total", () => {
   // Desktop-Entwurf (Oktober 2026): Unter dem Kopf stehen vier Zusagen statt
   // einer Bestandszahl; die Seite nennt keine Profilzahl mehr.
   it("shows commitments instead of an inventory number", () => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     const html = renderToStaticMarkup(
       createElement(FreelancerLanding, {
         stats: { profiles: 67, projects: 1213, fields: [{ field: "ai", label: "KI & Agenten", count: 18 }] },
@@ -50,14 +49,12 @@ describe("landing page inventory total", () => {
   });
 
   it("keeps the former workflow block out", () => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     const html = renderToStaticMarkup(createElement(FreelancerLanding));
     expect(html).not.toContain("Ein Arbeitsablauf für Ihre Mandate");
     expect(html).not.toContain("Von der Ausschreibung zur nachvollziehbaren Auswahl");
   });
 
   it("offers the sales call next to the self-service path with tracked entries", () => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
     const html = renderToStaticMarkup(createElement(FreelancerLanding));
     for (const entry of ["hero", "closing"]) {
       expect(html).toContain(`href="/contact/freelancer?von=${entry}"`);

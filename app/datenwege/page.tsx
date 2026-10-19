@@ -7,7 +7,6 @@ import {
   PublicFooter,
   PublicHeader,
 } from "@/components/public/PublicChrome";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 
 export const metadata: Metadata = {
   title: "Datenwege | XPORTAL",
@@ -25,7 +24,6 @@ export const metadata: Metadata = {
  * Dienstleister heißen hier wie dort nach Aufgabe und Sitz.
  */
 export default function DataFlowsPage() {
-  const placement = placementRequestsEnabled();
   return (
     <div className="xlegal" lang="de">
       <PublicHeader context="Datenwege" />
@@ -105,14 +103,12 @@ export default function DataFlowsPage() {
           <h2>5. Weitergeben, nur auf Ihren Schritt</h2>
           <div>
             <ul>
-              {placement ? (
-                <li>
-                  <strong>Anfrage an einen Freelancer:</strong> Bei der
-                  Vorstellung erhält der Freelancer Ihren Namen, Ihre
-                  E-Mail-Adresse und den Titel Ihres Projekts, nicht die ganze
-                  Beschreibung.
-                </li>
-              ) : null}
+              <li>
+                <strong>Anfrage an einen Freelancer:</strong> Bei der
+                Vorstellung erhält der Freelancer Ihren Namen, Ihre
+                E-Mail-Adresse und den Titel Ihres Projekts, nicht die ganze
+                Beschreibung.
+              </li>
               <li>
                 <strong>E-Mails</strong> wie Bestätigungen verschickt ein
                 Dienstleister mit Sitz in Deutschland; die Verarbeitung findet

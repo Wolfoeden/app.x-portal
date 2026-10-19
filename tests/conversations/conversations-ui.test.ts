@@ -110,14 +110,10 @@ describe("request without an account", () => {
 });
 
 describe("sidebar and landing page in the placement model", () => {
-  it("adds Gespräche to the sidebar only with the placement model", () => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
-    const on = renderToStaticMarkup(createElement(ChatWorkspace));
-    expect(on).toContain('data-sidebar-primary="conversations"');
-    expect(on).toContain('href="/gespraeche"');
-
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "false");
-    expect(renderToStaticMarkup(createElement(ChatWorkspace))).toContain('data-sidebar-primary="conversations"');
+  it("lists Gespräche in the sidebar", () => {
+    const html = renderToStaticMarkup(createElement(ChatWorkspace));
+    expect(html).toContain('data-sidebar-primary="conversations"');
+    expect(html).toContain('href="/gespraeche"');
   });
 
   it("offers a bounded self-service trial", () => {

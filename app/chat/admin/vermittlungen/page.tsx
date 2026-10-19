@@ -8,7 +8,7 @@ import {
 } from "@/components/admin/AdminDataPrimitives";
 import { appPath } from "@/lib/app-path";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { PLACEMENT_TERMS, placementRequestsEnabled } from "@/lib/placement/config";
+import { PLACEMENT_TERMS } from "@/lib/placement/config";
 import { PLACEMENT_OUTCOME_LABELS } from "@/lib/placement/follow-up-rules";
 import { placementInvoicingReady } from "@/lib/placement/invoices";
 import {
@@ -182,9 +182,6 @@ function MandateCard({
  * Seiten; das ist der Nachweis, auf dem ein späteres Honorar beruht.
  */
 export default async function PlacementRequestsPage() {
-  // Suchaufträge laufen auch ohne Vermittlungsmodell (provisionsfrei); die
-  // Seite bleibt deshalb immer erreichbar.
-  const placement = placementRequestsEnabled();
   const currentUser = await getCurrentUser();
   if (!currentUser || currentUser.isAnonymous) {
     redirect(`${appPath("/chat")}?admin-login=1`);
@@ -223,7 +220,7 @@ export default async function PlacementRequestsPage() {
           </p>
         }
       />
-      {placement && PLACEMENT_TERMS.status !== "approved" ? (
+      {PLACEMENT_TERMS.status !== "approved" ? (
         <p className={styles.draft}>
           Die Vermittlungsbedingungen sind ein Entwurf. Vor dem Einschalten für Kunden rechtlich prüfen lassen.
         </p>

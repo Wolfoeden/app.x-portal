@@ -18,7 +18,6 @@ import { getCurrentUser } from "@/lib/auth/current-user";
 import { refreshProfilePresentation } from "@/lib/freelancer/profile-presentation";
 import { loadProfilePageView, type PublicProfileView } from "@/lib/freelancer/public-profile";
 import { placementBookingAllowed } from "@/lib/placement/requests";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 import {
   isProfileLinkSource,
   profilePageAction,
@@ -139,11 +138,9 @@ export default async function ProfilePage({ params, searchParams }: Params & Sea
   const { profile, shownAt } = view;
   const action = profilePageAction({
     profileId: profile.id,
-    placement: placementRequestsEnabled(),
     hasCalendar: Boolean(profile.bookingUrl),
     isAccountUser,
     projectId,
-    via,
     directBooking,
   });
 

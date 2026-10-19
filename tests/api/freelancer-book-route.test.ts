@@ -96,7 +96,6 @@ describe("GET /api/freelancers/[id]/book", () => {
 
 describe("GET /api/freelancers/[id]/book im Vermittlungsmodell", () => {
   beforeEach(() => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
   });
 
   // Der Kalender vor der Vorstellung (und ohne bezahlten Tarif) wäre der Weg
@@ -121,15 +120,6 @@ describe("GET /api/freelancers/[id]/book im Vermittlungsmodell", () => {
     const response = await aufruf();
 
     expect(mocks.allowed).toHaveBeenCalledWith(kunde, PROFIL_ID);
-    expect(response.headers.get("location")).toBe("https://calendly.com/beispiel");
-  });
-
-  it("bleibt ohne Schalter beim direkten Weg", async () => {
-    vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "false");
-
-    const response = await aufruf();
-
-    expect(mocks.allowed).toHaveBeenCalled();
     expect(response.headers.get("location")).toBe("https://calendly.com/beispiel");
   });
 });

@@ -55,7 +55,6 @@ function answer(body: unknown) {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.user = null;
-  vi.stubEnv("NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED", "true");
   vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://x-portal.eu");
   vi.stubEnv("IP_HASH_SECRET", "a-secure-test-secret-that-is-long-enough");
   vi.stubEnv("EMAIL_UNSUBSCRIBE_SECRET", "a-long-enough-secret-for-the-tests-0123456789");

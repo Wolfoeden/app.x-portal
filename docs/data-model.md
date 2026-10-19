@@ -265,10 +265,10 @@ affected card and rank below confirmed availability. `version` increments on
 every profile update and the availability timestamp refreshes when status or
 availability changes.
 
-`intro_policy` remains either `free` or `manual_approval`. Without the placement
-switch (`NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED`), every eligible real profile
-with a booking URL exposes that URL directly and no payment or manual approval
-blocks the meeting.
+`intro_policy` remains either `free` or `manual_approval`. Customers always
+request contact through XPORTAL; a booking URL opens only for paying customers
+(`placementBookingAllowed`). The former switch
+`NEXT_PUBLIC_PLACEMENT_REQUESTS_ENABLED` was removed on 2026-10-19.
 
 With the switch on (`lib/placement/`), a client requests an introduction and
 accepts the placement terms; the consent is an append-only

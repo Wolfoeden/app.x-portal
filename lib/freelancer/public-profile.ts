@@ -8,7 +8,6 @@ import { contactLinkFlags, isContactLinkKind, type ContactLinkFlags } from "@/li
 import { loadProfilePresentation, type PresentationLookup } from "@/lib/freelancer/profile-presentation";
 import type { PresentationInput } from "@/lib/openai/profile-presentation";
 import type { ProfileLink, ProfileProject } from "@/lib/profile/project-limits";
-import { placementRequestsEnabled } from "@/lib/placement/config";
 import { presentSavedProfile } from "@/lib/presentation/chat";
 import { buildProfileDossier, type ProfileDossier } from "@/lib/profile/dossier";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -65,11 +64,10 @@ export async function loadPublicProfileView(profileId: string): Promise<PublicPr
     fetchProjects(admin, [profile.id], { publicOnly: true }).catch(() => new Map<string, ProfileProject[]>()),
     fetchProfileLinks(admin, [profile.id]).catch(() => new Map<string, ProfileLink[]>()),
   ]);
-  const placement = placementRequestsEnabled();
-  // Im Vermittlungsmodell sind LinkedIn und GitHub ein direkter Weg zum
-  // Freelancer: Sie öffnen sich über die Kurzlinks im Suchergebnis, mit Abo.
-  // Auf der öffentlichen Seite stünden sie an der Abo-Grenze vorbei.
-  const publicLinks = (links.get(profile.id) ?? []).filter((link) => !placement || !isContactLinkKind(link.kind));
+  // LinkedIn und GitHub sind ein direkter Weg zum Freelancer: Sie öffnen sich
+  // über die Kurzlinks im Suchergebnis, mit Abo. Auf der öffentlichen Seite
+  // stünden sie an der Abo-Grenze vorbei.
+  const publicLinks = (links.get(profile.id) ?? []).filter((link) => !isContactLinkKind(link.kind));
   const dossier = buildProfileDossier(
     profile,
     {
@@ -80,7 +78,6 @@ export async function loadPublicProfileView(profileId: string): Promise<PublicPr
       projects: (projects.get(profile.id) ?? []).map(toDossierProject),
       links: toDossierLinks(publicLinks),
     },
-    { placement },
   );
   return { profile: { ...presented, ...cardExtrasFor(profile.id, references, projects) }, dossier };
 }
