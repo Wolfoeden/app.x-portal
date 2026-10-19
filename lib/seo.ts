@@ -8,7 +8,7 @@ export const SITE_URL =
   "https://x-portal.eu";
 
 export const SITE_DESCRIPTION =
-  "Freelancer finden für Recruiter und Unternehmen: Projekt beschreiben und passende Freelancer-Profile nach nachvollziehbaren Regeln erhalten.";
+  "KI für den Mittelstand: KI-Automatisierung, KI-Schulungen und ISO 27001. Dazu der Talent Index mit geprüften IT- und KI-Freelancern.";
 
 export type PublicPage = {
   path: `/${string}`;
@@ -114,20 +114,49 @@ export const MARKETING_PAGES = Object.values(MARKETING_PAGE);
 export const CONTACT_PAGE = {
   path: "/contact",
   label: "Kontakt",
-  title: "Kontakt: Freelancer, KI-Agenten, KI-Schulungen, ISO 27001 | XPORTAL",
+  title: "KI-Automatisierung ab 1.900 € und Erstgespräch | XPORTAL",
   description:
-    "Erstgespräch in 30 Minuten: passende Freelancer aus dem Talent Index, KI-Agenten für Kundenservice, Vertrieb und Daten, KI-Schulungen und ISMS nach ISO 27001.",
+    "KI-Agenten übernehmen Anfragen, Angebote und Auswertungen. KI-Automatisierung ab 1.900 €, in kurzer Zeit umgesetzt. Erstgespräch in 30 Minuten, auch zu KI-Schulungen und ISO 27001.",
   priority: 0.9,
   changeFrequency: "monthly",
 } as const satisfies PublicPage;
+
+/**
+ * Die Leistungsseiten, die als Ziel von Anzeigen und Suchtreffern taugen
+ * (19.10.2026): eigener Titel, eigene Beschreibung, eigene kanonische
+ * Adresse. Die übrigen Themen (`/contact/vertrieb`, …) bleiben Varianten
+ * von /contact.
+ */
+export const CONTACT_TOPIC_PAGE = {
+  schulung: {
+    path: "/contact/schulung",
+    label: "KI-Schulungen",
+    title: "KI-Schulungen für Teams und Führungskräfte (Art. 4 KI-Verordnung) | XPORTAL",
+    description:
+      "KI sicher im Alltag nutzen: Schulungen als Webinar oder vor Ort, passend zur Pflicht aus Art. 4 der KI-Verordnung. Erstgespräch in 30 Minuten.",
+    priority: 0.8,
+    changeFrequency: "monthly",
+  },
+  iso27001: {
+    path: "/contact/iso27001",
+    label: "ISO 27001",
+    title: "ISMS und ISO 27001 einführen, begleitet bis zum Audit | XPORTAL",
+    description:
+      "Informationssicherheit, die Audits standhält: Anforderungen aus NIS2 und Kundenverträgen erfassen, ISMS aufbauen, Zertifizierung nach ISO 27001 vorbereiten.",
+    priority: 0.8,
+    changeFrequency: "monthly",
+  },
+} as const satisfies Record<string, PublicPage>;
 
 export const SITEMAP_ENTRIES = [
   HOME_PAGE,
   CHAT_PAGE,
   ...MARKETING_PAGES,
   CONTACT_PAGE,
+  ...Object.values(CONTACT_TOPIC_PAGE),
   { path: "/bewerber-portal/apply", priority: 0.7, changeFrequency: "monthly" },
-  { path: "/vermittlungsbedingungen", priority: 0.4, changeFrequency: "yearly" },
+  // /vermittlungsbedingungen gilt nur noch für Altfälle und steht seit
+  // 19.10.2026 nicht mehr in der Sitemap.
   { path: "/terms", priority: 0.3, changeFrequency: "yearly" },
   { path: "/privacy", priority: 0.3, changeFrequency: "yearly" },
   { path: "/datenwege", priority: 0.3, changeFrequency: "yearly" },

@@ -15,23 +15,22 @@ import {
   placementExampleFeeCents,
 } from "@/lib/placement/config";
 
+/**
+ * Historische Fassung: Neue Kontakte sind provisionsfrei. Die Seite bleibt
+ * für Altfälle abrufbar (Mails, Rechnungen), gehört aber seit 19.10.2026 in
+ * keinen Suchindex mehr.
+ */
 export const metadata: Metadata = {
-  title: "Vermittlungsbedingungen | XPORTAL",
+  title: "Vermittlungsbedingungen (historisch) | XPORTAL",
   description:
-    "Wann bei einer Vermittlung über XPORTAL ein Honorar anfällt: nur bei Beauftragung, einmalig.",
-  // Solange die Fassung ein Entwurf ist, gehört sie in keinen Suchindex.
-  robots:
-    PLACEMENT_TERMS.status === "approved"
-      ? undefined
-      : { index: false, follow: false },
+    "Frühere Vermittlungsbedingungen von XPORTAL für bereits vereinbarte Vorgänge. Neue Kontakte sind provisionsfrei.",
+  robots: { index: false, follow: false },
 };
 
 /**
- * Die Bedingungen, denen ein Kunde bei jeder Anfrage zustimmt.
- *
- * Ohne den Schalter gibt es die Seite nicht: Sie beschreibt ein Verfahren,
- * das es dann nicht gibt. Die Zahlen kommen aus `lib/placement/config.ts`,
- * damit Seite, Anfrage-Dialog und Rechnung nicht auseinanderlaufen können.
+ * Die Bedingungen, denen Kunden bei früheren Anfragen zugestimmt haben. Die
+ * Zahlen kommen aus `lib/placement/config.ts`, damit Seite, Anfrage-Dialog
+ * und Rechnung nicht auseinanderlaufen können.
  */
 export default function PlacementTermsPage() {
   const t = PLACEMENT_TERMS;

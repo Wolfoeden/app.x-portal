@@ -250,6 +250,7 @@
 .tileText { display: flex; flex: 1; flex-direction: column; gap: 6px; padding: 0 8px; }
 .tileText strong { font-size: 19px; }
 .tileText > span:nth-child(2) { color: var(--xp-muted); }
+.tilePrice { color: var(--xp-brand); font-size: 14px; font-weight: 600; line-height: 1.45; }
 .tileLink { display: inline-flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 10px; font-weight: 600; }
 
 .flow { display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--xp-brand); }

@@ -47,7 +47,7 @@ export default function AiMatchingPage() {
 
       <ContentSection id="fragen" title="Häufige Fragen zum Matching">
         <Questions items={[
-          { question: "Bewertet die KI die Freelancer?", answer: <p>Im internen Matching strukturiert die KI Ihre Projektangaben. Die Auswahl und Sortierung der Profile werden anschließend nach implementierten Regeln berechnet. Eine automatische Beauftragung findet nicht statt.</p> },
+          { question: "Bewertet die KI die Freelancer?", answer: <p>Ja. Die KI strukturiert Ihre Projektangaben, XPORTAL wählt die 20 inhaltlich nächsten Profile vor, und die KI bewertet sie gegen Ihre Anfrage, mit Begründung und offenen Punkten. Die Auswahl treffen Sie; eine automatische Beauftragung findet nicht statt.</p> },
           { question: "Werden fehlende Profilangaben ergänzt?", answer: <p>Fehlende Angaben sollen nicht als Tatsachen angenommen werden. XPORTAL zeigt bekannte Informationslücken an. Ob eine offene Angabe eine Empfehlung verhindert, hängt von der Anforderung und dem Kriterium ab.</p> },
           { question: "Ist eine Match-Begründung eine Qualitätsgarantie?", answer: <p>Nein. Sie erklärt eine Zuordnung anhand vorhandener Daten. Die konkrete Eignung für Ihr Projekt klären Sie im Gespräch und anhand der für Sie erforderlichen Nachweise.</p> },
         ]} />

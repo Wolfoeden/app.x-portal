@@ -46,6 +46,42 @@ function FactIcon({ kind }: { kind: "free" | "analyses" | "evidence" | "data" })
   );
 }
 
+/**
+ * Die Beispieltreffer unter dem Eingabefeld; sie wechseln sich ab (Wunsch
+ * des Betreibers, 19.10.2026). Beide sind echte, freigegebene Profile.
+ * „belegt“ steht nur bei Angaben, die im Profil nachgewiesen sind.
+ */
+const LANDING_EXAMPLES = [
+  {
+    profileId: SALES_CONTACT.profileId,
+    name: "Roman D.",
+    label: "KI & Agenten",
+    avatar: { src: SALES_CONTACT.photo.small, initials: "RD" },
+    role: "Senior Blockchain & AI Automation Specialist · Remote",
+    rows: [
+      { label: "Blockchain", detail: "Muss · belegt" },
+      { label: "KI-Agenten", detail: "Muss · belegt" },
+      { label: "Automation", detail: "Kern · belegt" },
+      { label: "Projektlaufzeit", detail: "im Erstgespräch klären", open: true },
+    ],
+    availability: "Verfügbar ab November",
+  },
+  {
+    profileId: "4290fe6a-d042-4181-9a42-ebbcafc16242",
+    name: "Marc F.",
+    label: "Informationssicherheit",
+    avatar: { src: null, initials: "MF" },
+    role: "ISO 27001 & KI-Audit · Remote",
+    rows: [
+      { label: "ISO 27001 Lead Auditor", detail: "Muss · belegt" },
+      { label: "ISMS-Aufbau", detail: "Muss · belegt" },
+      { label: "KI-Auditor (TÜV Rheinland)", detail: "Kern · belegt" },
+      { label: "Verfügbarkeit", detail: "im Erstgespräch klären", open: true },
+    ],
+    availability: "Verfügbarkeit auf Anfrage",
+  },
+] as const;
+
 const PLAN_AUDIENCE = { basic: "für einzelne Mandate", pro: "für laufende Mandate", business: "für Teams" } as const;
 
 export function FreelancerLanding({ caseStudies = publishedCaseStudies() }: { stats?: LandingStats | null; caseStudies?: readonly CaseStudy[] }) {
@@ -57,32 +93,30 @@ export function FreelancerLanding({ caseStudies = publishedCaseStudies() }: { st
       <JsonLd data={breadcrumbStructuredData(MARKETING_PAGE.find)} />
       <JsonLd data={{ "@context": "https://schema.org", "@type": "SoftwareApplication", name: "XPORTAL", applicationCategory: "BusinessApplication", operatingSystem: "Web", description: "Recruiting-Software für nachvollziehbare Freelancer-Auswahl und wiederkehrende Kundenmandate.", offers: plans.map(plan => ({ "@type": "Offer", price: plan.euro, priceCurrency: "EUR", description: `${plan.label}: netto pro Monat nach ${TRIAL_DAYS} Tagen Trial mit Karte, ${TRIAL_CREDITS} Trial-Credits insgesamt.` })) }} />
       <LandingIntake
-        profileId={SALES_CONTACT.profileId}
         note={`${freeAnalyses} Projektanalysen kostenlos · ohne Kreditkarte · provisionsfrei`}
         roleChips={EXAMPLE_BRIEFS.map((example) => (
           <Link key={example.key} href={exampleBriefPath(example.key)} prefetch={false}>{example.label}</Link>
         ))}
-        profileCard={
+        examples={LANDING_EXAMPLES.map((example) => ({
+          profileId: example.profileId,
+          name: example.name,
           // Dieselbe Kartenform wie die Ergebnisse im Talent Index.
-          <MatchCard
-            className={styles.expertCard}
-            label="KI & Agenten"
-            verified
-            avatar={{ src: SALES_CONTACT.photo.small, initials: "RD" }}
-            name="Roman D."
-            role="Senior Blockchain & AI Automation Specialist · Remote"
-            rows={[
-              { label: "Blockchain", detail: "Muss · belegt" },
-              { label: "KI-Agenten", detail: "Muss · belegt" },
-              { label: "Automation", detail: "Kern · belegt" },
-              { label: "Projektlaufzeit", detail: "im Erstgespräch klären", open: true },
-            ]}
-            footer={<>
-              <span className={styles.cardAvailability}>Verfügbar ab November</span>
-              <span className={styles.cardAction}>Experte kontaktieren</span>
-            </>}
-          />
-        }
+          card: (
+            <MatchCard
+              className={styles.expertCard}
+              label={example.label}
+              verified
+              avatar={example.avatar}
+              name={example.name}
+              role={example.role}
+              rows={[...example.rows]}
+              footer={<>
+                <span className={styles.cardAvailability}>{example.availability}</span>
+                <span className={styles.cardAction}>Experte kontaktieren</span>
+              </>}
+            />
+          ),
+        }))}
       />
 
       <section className={styles.facts} aria-label="Auf einen Blick">

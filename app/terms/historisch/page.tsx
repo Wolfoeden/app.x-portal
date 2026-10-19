@@ -8,24 +8,31 @@ import {
   PublicHeader,
 } from "@/components/public/PublicChrome";
 import { Notice } from "@/components/ui/Primitives";
-import { TERMS_EFFECTIVE_DATE, TERMS_REVIEW, TERMS_VERSION } from "@/lib/legal/policy";
+import { SAAS_TERMS_EFFECTIVE_DATE, TERMS_EFFECTIVE_DATE, TERMS_VERSION } from "@/lib/legal/policy";
 
+/**
+ * Die frühere AGB-Fassung 1.1. Sie gilt nur noch für Vorgänge, die vor den
+ * SaaS-Bedingungen vereinbart wurden, und bleibt dafür abrufbar. Seit
+ * 19.10.2026 sagt sie das oben deutlich und steht nicht mehr in der Suche:
+ * Vorher sah sie aus wie die gültige AGB und war indexierbar.
+ */
 export const metadata: Metadata = {
-  title: "Allgemeine Geschäftsbedingungen | XPORTAL",
+  title: `AGB Fassung ${TERMS_VERSION} (nicht mehr gültig) | XPORTAL`,
   description:
-    "Allgemeine Geschäftsbedingungen für XPORTAL. Das Angebot richtet sich ausschließlich an Unternehmer.",
+    `Frühere Allgemeine Geschäftsbedingungen von XPORTAL, Fassung ${TERMS_VERSION}. Sie gelten nur noch für Vorgänge vor dem ${SAAS_TERMS_EFFECTIVE_DATE}.`,
+  robots: { index: false, follow: true },
 };
 
 export default function TermsPage() {
   return (
     <div className="xlegal" lang="de">
-      <PublicHeader context={`AGB · Fassung ${TERMS_VERSION}`} />
+      <PublicHeader context={`AGB · Fassung ${TERMS_VERSION} · nicht mehr gültig`} />
 
       <main className="xlegal-document">
         <PublicDocumentIntro
           eyebrow="Allgemeine Geschäftsbedingungen"
           title="Was gilt, wenn Sie XPORTAL nutzen."
-          signal={{ label: "Status", value: TERMS_REVIEW.label }}
+          signal={{ label: "Status", value: "Nicht mehr gültig" }}
         >
           <p>
             Diese Bedingungen regeln die Nutzung der Website und der Anwendung
@@ -34,10 +41,12 @@ export default function TermsPage() {
           </p>
         </PublicDocumentIntro>
 
-        <Notice title={TERMS_REVIEW.label} tone="success" role="status">
+        <Notice title="Nicht mehr gültig" tone="warning" role="status">
           <p>
-            Diese Fassung wurde rechtlich geprüft und ist seit dem{" "}
-            {TERMS_EFFECTIVE_DATE} für XPORTAL freigegeben.
+            Diese Fassung {TERMS_VERSION} vom {TERMS_EFFECTIVE_DATE} gilt nur noch
+            für Vorgänge, die vor dem {SAAS_TERMS_EFFECTIVE_DATE} vereinbart
+            wurden. Für alle neuen Verträge gelten die{" "}
+            <Link href="/terms">aktuellen Bedingungen</Link>.
           </p>
         </Notice>
 

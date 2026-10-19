@@ -5,6 +5,7 @@ import { CheckoutAccess } from "./CheckoutAccess";
 
 export const metadata: Metadata = {
   title: "Anmelden | XPORTAL",
+  description: "Bei XPORTAL anmelden oder ein Konto anlegen: Projekte, Merkliste und Gespräche bleiben gespeichert.",
   robots: { index: false, follow: false },
 };
 

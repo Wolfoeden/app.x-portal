@@ -6,19 +6,20 @@ import { PublicFooter, PublicHeader } from "@/components/public/PublicChrome";
 import nextConfig from "@/next.config";
 import { MARKETING_PAGE } from "@/lib/seo";
 
-// 16.10.2026 (Entwurf 3): oben nur Live-Demo, Leistungen, Preise, Über uns;
-// rechts Anmelden, Telefon und „Erstgespräch buchen“ (weiß, keine Limette).
+// 16.10.2026 (Entwurf 3): oben nur vier Wege; rechts Anmelden, Telefon und
+// „Erstgespräch buchen“ (weiß, keine Limette). Seit 19.10.2026 steht dort der
+// Talent Index statt der Preise, die nur für die Software gelten.
 describe("public navigation", () => {
   const header = renderToStaticMarkup(createElement(PublicHeader));
   const framed = renderToStaticMarkup(createElement(PublicHeader, { framed: true }));
   const footer = renderToStaticMarkup(createElement(PublicFooter));
   const bar = header.slice(header.indexOf('aria-label="Hauptnavigation"'), header.indexOf("</nav>"));
 
-  it("shows four ways in the bar, all leading into the start page or the prices", () => {
+  it("shows four ways in the bar: the start page sections and the Talent Index", () => {
     expect([...bar.matchAll(/<a [^>]*href="([^"]+)"[^>]*>([^<]+)</gu)].map((match) => [match[2], match[1]])).toEqual([
       ["Live-Demo", "/#demo"],
       ["Leistungen", "/#leistungen"],
-      ["Preise", "/preise"],
+      ["Talent Index", "/fuer-unternehmen"],
       ["Über uns", "/#ueber"],
     ]);
     expect(header).not.toContain("Für Unternehmen");
@@ -32,9 +33,10 @@ describe("public navigation", () => {
     expect(framed).toContain('data-framed="true"');
   });
 
-  it("keeps Talent Index, Kontakt and Bewerber-Portal in the phone menu and the footer", () => {
+  it("keeps the software prices, Kontakt and Bewerber-Portal in the phone menu and the footer", () => {
     for (const html of [header, footer]) {
       expect(html).toMatch(/href="\/fuer-unternehmen"[^>]*>Talent Index</u);
+      expect(html).toMatch(/href="\/preise"[^>]*>Preise Talent Index</u);
       expect(html).toMatch(/href="\/contact"[^>]*>Kontakt</u);
       expect(html).toMatch(/href="\/bewerber-portal\/apply"[^>]*>Bewerber-Portal</u);
     }

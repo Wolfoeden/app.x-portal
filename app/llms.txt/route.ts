@@ -1,5 +1,5 @@
 import { PROVIDER_ADDRESS } from "@/lib/legal/policy";
-import { PLACEMENT_TERMS, placementRequestsEnabled } from "@/lib/placement/config";
+import { AUTOMATION_OFFER } from "@/lib/marketing/offers";
 import { SALES_CONTACT } from "@/lib/sales/sales-contact-model";
 import { LLMS_DATA_FACTS } from "@/lib/marketing/llms-facts";
 import { CHAT_PAGE, MARKETING_PAGES, absoluteUrl } from "@/lib/seo";
@@ -8,14 +8,12 @@ export const dynamic = "force-static";
 
 export function GET() {
   const pages = [CHAT_PAGE, ...MARKETING_PAGES];
-  const placement = placementRequestsEnabled();
-  const t = PLACEMENT_TERMS;
   const text = [
     "# XPORTAL",
     "",
-    "> Freelancer finden für Recruiter, Personaldienstleister und Unternehmen – mit nachvollziehbarer Match-Begründung. Anbieter mit Sitz in Deutschland.",
+    "> KI für den Mittelstand: KI-Automatisierung, KI-Schulungen und ISO 27001. Dazu der Talent Index, mit dem Recruiter und Unternehmen passende Freelancer mit Begründung finden. Anbieter mit Sitz in Deutschland.",
     "",
-    "XPORTAL unterstützt Unternehmen bei der Suche nach Freelancern. KI strukturiert Projektangaben. Aus den freigegebenen Profilen wählt XPORTAL die 20 inhaltlich nächsten vor; eine KI bewertet sie gegen die Anfrage und stellt die drei passendsten mit Begründung und offenen Punkten nach oben. Die Auswahl trifft der Nutzer; eine Beauftragung erfolgt nicht automatisch.",
+    "XPORTAL baut KI-Agenten, die Unternehmen wiederkehrende Arbeit abnehmen, schult Teams im Umgang mit KI und begleitet ISO-27001-Projekte. Der eigene Talent Index unterstützt die Suche nach Freelancern. KI strukturiert Projektangaben. Aus den freigegebenen Profilen wählt XPORTAL die 20 inhaltlich nächsten vor; eine KI bewertet sie gegen die Anfrage und stellt die drei passendsten mit Begründung und offenen Punkten nach oben. Die Auswahl trifft der Nutzer; eine Beauftragung erfolgt nicht automatisch.",
     "",
     "Diese Übersicht ist ein optionales Leseangebot für Systeme, die llms.txt unterstützen. Sie ersetzt weder die Website noch robots.txt und ist kein Rankingversprechen.",
     "",
@@ -25,12 +23,13 @@ export function GET() {
     "- Geschäftskunden in Deutschland, Österreich, der Schweiz und der übrigen EU; Sprache der Website und der Zusammenarbeit ist Deutsch.",
     "",
     "## Leistungen",
+    `- ${AUTOMATION_OFFER.name}: KI-Agenten übernehmen Anfragen, Angebote und Auswertungen. ${AUTOMATION_OFFER.price}; ${AUTOMATION_OFFER.terms}`,
+    "- KI-Schulungen: für Teams und Führungskräfte, als Webinar oder vor Ort, passend zur Pflicht aus Art. 4 der KI-Verordnung.",
+    "- Informationssicherheit: ISMS aufbauen und ISO 27001 einführen, begleitet bis zum Audit.",
     "- Freelancer finden: Eine Projekt- oder Kundenanfrage wird mit freigegebenen Freelancer-Profilen abgeglichen. Zu den Vorschlägen stehen Belege, Honorarangaben und offene Punkte.",
-    "- Freelancer für KI-Agenten (AI Agents) finden: Entwicklerinnen und Entwickler für Agenten auf Basis von Sprachmodellen, angebunden an die Systeme und Daten des Kunden, etwa mit RAG und Freigabeschritten. Auf der Startseite ist das die Rolle „AI-Agent-Entwickler finden“.",
+    "- Freelancer für KI-Agenten (AI Agents) finden: Entwicklerinnen und Entwickler für Agenten auf Basis von Sprachmodellen, angebunden an die Systeme und Daten des Kunden, etwa mit RAG und Freigabeschritten. Auf der Seite für Recruiter ist das die Rolle „AI-Agent-Entwickler finden“.",
     "- IT-Freelancer: Softwareentwicklung (z. B. React und TypeScript), SAP und Integration, KI und Automatisierung, Anforderungen und Prozesse.",
-    ...(placement
-      ? [`- Vermittlung: Gespräch, Anfrage und Vorstellung sind kostenlos. Nur wenn ein vorgestellter Freelancer beauftragt wird, fällt einmalig ${t.feePercent} % des vereinbarten Honorars der ersten ${t.feeMonths} Monate an, höchstens ${t.maxFeeDays} Projekttage, netto. Der Vertrag entsteht direkt zwischen Kunde und Freelancer.`]
-      : []),
+    "- Provisionsfrei: Für neue Kontakte zu Freelancern entsteht keine Vermittlungsprovision. Bezahlt wird die Software-Nutzung; der Vertrag entsteht direkt zwischen Kunde und Freelancer.",
     "- Selbst suchen: Projektanalysen und Recherchen mit Credits; Startguthaben ohne Abo, danach Monatstarife.",
     "",
     "## KI und AI Agents bei XPORTAL",
@@ -49,7 +48,7 @@ export function GET() {
     "",
     "## Anbieter und Kontakt",
     `- [Impressum](${absoluteUrl("/imprint")}): Anbieterangaben.`,
-    `- [Kontakt](${absoluteUrl("/contact")}): Kontakt zu XPORTAL.`,
+    `- [Kontakt](${absoluteUrl("/contact")}): Erstgespräch zu KI-Automatisierung, KI-Schulungen und ISO 27001.`,
     `- [Datenschutz](${absoluteUrl("/privacy")}): Informationen zur Datenverarbeitung.`,
     "",
   ].join("\n");

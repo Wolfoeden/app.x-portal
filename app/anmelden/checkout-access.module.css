@@ -68,3 +68,12 @@
   font-size: 13px;
   transform: translateX(-50%);
 }
+
+/* Auf dem Telefon ist das Anmeldefenster ein Blatt am unteren Rand. Die
+   Pflichtlinks lagen dort über Passwortfeld und Anmeldeknopf; seit
+   19.10.2026 endet das Blatt über ihnen. */
+@media (max-width: 620px) {
+  .shell :global(.modal-backdrop) { padding-bottom: 92px; }
+  .shell :global(.modal-card) { max-height: calc(100dvh - 92px - 64px); border-radius: 18px; }
+  .shell .legal { bottom: 10px; padding: 6px 12px; font-size: 12px; }
+}

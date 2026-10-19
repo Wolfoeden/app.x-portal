@@ -265,8 +265,9 @@ describe("promotional email delivery", () => {
     expect(options.headers["List-Unsubscribe-Post"]).toBe(
       "List-Unsubscribe=One-Click",
     );
+    // Der Ein-Klick-POST muss die Route treffen; die Seite nimmt keinen POST an.
     expect(options.headers["List-Unsubscribe"]).toContain(
-      "https://x-portal.eu/unsubscribe?t=",
+      "https://x-portal.eu/api/unsubscribe?t=",
     );
     // Ohne HTTP-Unterstützung im Mailprogramm bleibt der Postweg.
     expect(options.headers["List-Unsubscribe"]).toContain("mailto:");

@@ -31,6 +31,13 @@ import { normalizeEmail } from "./address";
 /** Der Pfad, auf dem der Link landet. */
 export const UNSUBSCRIBE_PATH = "/unsubscribe";
 
+/**
+ * Wohin der „Abbestellen“-Knopf von Gmail, Yahoo und Outlook seinen POST
+ * schickt (RFC 8058). Das muss die Route sein, nicht die Seite: Eine Seite
+ * nimmt keinen POST an, und bis 19.10.2026 lief der Knopf dort ins Leere.
+ */
+export const UNSUBSCRIBE_ONE_CLICK_PATH = "/api/unsubscribe";
+
 /** Genug für die längste zulässige Adresse plus Signatur, mit Reserve. */
 const TOKEN_MAX_LENGTH = 512;
 
@@ -103,9 +110,18 @@ export function readUnsubscribeToken(token: unknown): string | null {
 
 /** Die vollständige Adresse des Links, wie sie in der Nachricht steht. */
 export function unsubscribeUrl(baseUrl: string, email: string): string | null {
+  return tokenUrl(UNSUBSCRIBE_PATH, baseUrl, email);
+}
+
+/** Die Adresse für die Kopfzeile `List-Unsubscribe` (Ein-Klick-POST). */
+export function unsubscribeOneClickUrl(baseUrl: string, email: string): string | null {
+  return tokenUrl(UNSUBSCRIBE_ONE_CLICK_PATH, baseUrl, email);
+}
+
+function tokenUrl(path: string, baseUrl: string, email: string): string | null {
   const token = mintUnsubscribeToken(email);
   if (!token) return null;
-  const url = new URL(UNSUBSCRIBE_PATH, baseUrl);
+  const url = new URL(path, baseUrl);
   url.searchParams.set("t", token);
   return url.toString();
 }

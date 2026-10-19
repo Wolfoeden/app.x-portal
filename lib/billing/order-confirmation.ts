@@ -6,6 +6,8 @@ import {
   BUSINESS_ONLY_NOTICE,
   IMPRINT_EMAIL,
   PROVIDER_IMPRINT_LINES,
+  SAAS_TERMS_EFFECTIVE_DATE,
+  SAAS_TERMS_VERSION,
   TERMS_EFFECTIVE_DATE,
   TERMS_VERSION,
 } from "@/lib/legal/policy";
@@ -72,7 +74,9 @@ export function orderConfirmationMessage(
       "",
       "GRUNDLAGE",
       `Es gelten die Allgemeinen Geschäftsbedingungen in der Fassung ${termsVersion}`,
-      `(Stand: ${TERMS_EFFECTIVE_DATE}), abrufbar unter https://x-portal.eu/terms.`,
+      termsVersion === SAAS_TERMS_VERSION
+        ? `(Stand: ${SAAS_TERMS_EFFECTIVE_DATE}), abrufbar unter https://x-portal.eu/terms.`
+        : `(Stand: ${TERMS_EFFECTIVE_DATE}), abrufbar unter https://x-portal.eu/terms/historisch.`,
       BUSINESS_ONLY_NOTICE,
       "",
       "Bei Fragen zur Abrechnung antworten Sie einfach auf diese Nachricht.",

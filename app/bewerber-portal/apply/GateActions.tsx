@@ -22,12 +22,12 @@ export function GateActions({ variant }: { variant: "header" | "hero" | "closing
   const compact = variant === "header";
   const register = (
     <button className={actionClass("primary", { compact })} type="button" onClick={() => setDialogMode("register")}>
-      Kostenlos Profil anlegen
+      {compact ? <><span className={styles.headerWide}>Kostenlos </span>Profil anlegen</> : "Kostenlos Profil anlegen"}
     </button>
   );
   const login = (
     <button
-      className={variant === "hero" ? styles.loginLink : variant === "closing" ? styles.loginOnDark : actionClass("secondary", { compact })}
+      className={variant === "hero" ? styles.loginLink : variant === "closing" ? styles.loginOnDark : actionClass("secondary", { compact, className: styles.headerLogin })}
       type="button"
       onClick={() => setDialogMode("login")}
     >

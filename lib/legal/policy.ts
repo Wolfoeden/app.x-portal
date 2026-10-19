@@ -41,9 +41,10 @@ export const TERMS_REVIEW = TERMS_REVIEW_STATES[TERMS_STATUS];
 
 /** New SaaS offer only; the approved historical 1.1 terms remain immutable. */
 export const SAAS_TERMS_VERSION = "saas-2026-10-1";
+export const SAAS_TERMS_EFFECTIVE_DATE = "8. Oktober 2026";
 /** Vom Betreiber am 08.10.2026 freigegeben; damit ist der Live-Checkout offen. */
 export const SAAS_TERMS_REVIEW = {
-  label: "Gültig ab 8. Oktober 2026",
+  label: `Gültig ab ${SAAS_TERMS_EFFECTIVE_DATE}`,
   status: "approved",
   checkoutEnabled: true,
 } as const;

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { after } from "next/server";
+import { cache } from "react";
 import "@/app/styles/legal.css";
 import "@/app/styles/app-surface";
 
@@ -69,10 +70,14 @@ function previewView(id: string): PublicProfileView | null {
   };
 }
 
-async function loadProfile(id: string): Promise<(PublicProfileView & { shownAt: Date }) | null> {
+/**
+ * Titel und Seite brauchen dasselbe Profil. `cache` lädt es je Aufruf nur
+ * einmal; vorher fragte die Seite die Datenbank für beide getrennt ab.
+ */
+const loadProfile = cache(async (id: string): Promise<(PublicProfileView & { shownAt: Date }) | null> => {
   const view = previewView(id) ?? (UUID.test(id) ? await loadProfilePageView(id).catch(() => null) : null);
   return view ? { ...view, shownAt: new Date() } : null;
-}
+});
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;

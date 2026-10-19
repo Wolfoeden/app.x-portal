@@ -380,7 +380,11 @@ export async function assignFreelancer(
   const requestId = randomUUID();
   const { error: insertError } = await admin.from("intro_bookings").insert({
     id: requestId,
-    commercial_model: "legacy_placement",
+    // Die Anfrage erbt das Modell des Auftrags. Neue Aufträge sind
+    // provisionsfrei; bis 19.10.2026 stand hier fest `legacy_placement`, und
+    // der Trigger `guard_recruiting_commercial_model` lehnte jede Zuordnung
+    // zu einem neuen Auftrag ab.
+    commercial_model: mandate.commercial_model === "legacy_placement" ? "legacy_placement" : "no_fee",
     legacy_mandate_id: mandateId,
     project_id: String(mandate.project_id),
     owner_user_id: String(mandate.owner_user_id),
