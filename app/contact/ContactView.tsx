@@ -41,7 +41,7 @@ const OFFERS: readonly { topic: ContactTopicKey; icon: keyof typeof ICON; title:
   { topic: "daten", icon: "data", title: "Daten und Störungen", text: "Berichte erstellen, Abweichungen früh melden." },
   { topic: "wissen", icon: "book", title: "Mitarbeiterwissen", text: "Antworten aus Ihren eigenen Unterlagen, mit Quelle." },
   { topic: "lager", icon: "warehouse", title: "Lager und Logistik", text: "Lagerplätze, Engpässe und Kommissionierwege." },
-  { topic: "schulung", icon: "school", title: "KI-Schulungen", text: "Für Teams und Führungskräfte, passend zu Art. 4 KI-Verordnung." },
+  { topic: "schulung", icon: "school", title: "KI-Schulungen", text: "Für Teams und Führungskräfte. Fördert die KI-Kompetenz nach Art. 4 KI-Verordnung." },
   { topic: "cybersecurity", icon: "list", title: "Cybersecurity-Anforderungen", text: "Aus NIS2, Normen und Verträgen erfassen und nachverfolgen." },
   { topic: "iso27001", icon: "shield", title: "ISMS und ISO 27001", text: "Aufbauen, Zertifizierung vorbereiten, Audits begleiten." },
 ];
@@ -65,7 +65,7 @@ const HEROES: Record<"agent" | "schulung" | "security" | "freelancer", { eyebrow
     eyebrow: "KI-Schulungen",
     title: "KI sicher im Alltag nutzen.",
     accent: "Schulungen für Teams und Führungskräfte.",
-    lead: "Als Webinar oder vor Ort, passend zur Pflicht aus Art. 4 der KI-Verordnung.",
+    lead: "Als Webinar oder vor Ort. Art. 4 der KI-Verordnung verlangt, die KI-Kompetenz der Mitarbeitenden zu fördern.",
   },
   security: {
     eyebrow: "Cybersecurity · ISMS · ISO 27001",

@@ -133,7 +133,7 @@ export const CONTACT_TOPIC_PAGE = {
     label: "KI-Schulungen",
     title: "KI-Schulungen für Teams und Führungskräfte (Art. 4 KI-Verordnung) | XPORTAL",
     description:
-      "KI sicher im Alltag nutzen: Schulungen als Webinar oder vor Ort, passend zur Pflicht aus Art. 4 der KI-Verordnung. Erstgespräch in 30 Minuten.",
+      "KI sicher im Alltag nutzen: Schulungen als Webinar oder vor Ort, um die KI-Kompetenz nach Art. 4 der KI-Verordnung zu fördern. Erstgespräch in 30 Minuten.",
     priority: 0.8,
     changeFrequency: "monthly",
   },

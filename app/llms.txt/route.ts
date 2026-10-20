@@ -24,7 +24,7 @@ export function GET() {
     "",
     "## Leistungen",
     `- ${AUTOMATION_OFFER.name}: KI-Agenten übernehmen Anfragen, Angebote und Auswertungen. ${AUTOMATION_OFFER.price}; ${AUTOMATION_OFFER.terms}`,
-    "- KI-Schulungen: für Teams und Führungskräfte, als Webinar oder vor Ort, passend zur Pflicht aus Art. 4 der KI-Verordnung.",
+    "- KI-Schulungen: für Teams und Führungskräfte, als Webinar oder vor Ort. Art. 4 der KI-Verordnung verlangt von Anbietern und Betreibern von KI-Systemen, die KI-Kompetenz ihres Personals zu fördern; ein bestimmtes Niveau müssen sie nicht garantieren. Eine Schulung ist ein Weg dazu.",
     "- Informationssicherheit: ISMS aufbauen und ISO 27001 einführen, begleitet bis zum Audit.",
     "- Freelancer finden: Eine Projekt- oder Kundenanfrage wird mit freigegebenen Freelancer-Profilen abgeglichen. Zu den Vorschlägen stehen Belege, Honorarangaben und offene Punkte.",
     "- Freelancer für KI-Agenten (AI Agents) finden: Entwicklerinnen und Entwickler für Agenten auf Basis von Sprachmodellen, angebunden an die Systeme und Daten des Kunden, etwa mit RAG und Freigabeschritten. Auf der Seite für Recruiter ist das die Rolle „AI-Agent-Entwickler finden“.",

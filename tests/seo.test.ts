@@ -16,6 +16,7 @@ import {
   SITEMAP_ENTRIES,
   AI_CRAWLER_POLICY,
   CHAT_PAGE,
+  CONTACT_TOPIC_PAGE,
   MARKETING_PAGES,
   ROBOTS_DISALLOW_PATHS,
   absoluteUrl,
@@ -193,6 +194,21 @@ describe("public SEO outputs", () => {
     for (const [, link] of links) {
       expect(INDEXABLE_PATHS).toContain(new URL(link).pathname);
     }
+  });
+
+  // 20.10.2026: Seit der Verordnung (EU) 2026/1744 (in Kraft seit dem
+  // 27.07.2026) verlangt Art. 4 der KI-Verordnung nur noch, die KI-Kompetenz
+  // des Personals zu fördern, ohne ein bestimmtes Niveau zu garantieren. Die
+  // Texte behaupten deshalb keine Schulungspflicht, drohen keine Bußgelder an
+  // und schreiben nicht „AI-Act-konform“.
+  it("describes Art. 4 of the AI Act as promoting AI literacy, not as a duty to train", async () => {
+    const llms = (await llmsText().text()).split("\n").find((line) => line.startsWith("- KI-Schulungen:"));
+    for (const text of [llms, CONTACT_TOPIC_PAGE.schulung.description]) {
+      expect(text).toMatch(/Art\. 4 der KI-Verordnung/u);
+      expect(text).toMatch(/KI-Kompetenz .*zu fördern/u);
+      expect(text).not.toMatch(/Pflicht|Bußgeld|AI[- ]Act[- ]konform/iu);
+    }
+    expect(llms).toContain("ein bestimmtes Niveau müssen sie nicht garantieren");
   });
 
   it("describes only the real brand and website, with no invented social proof", () => {

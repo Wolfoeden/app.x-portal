@@ -22,7 +22,7 @@ const SERVICES = [
   },
   {
     title: TRAINING_OFFER.name,
-    text: "Seit Februar 2025 Pflicht (EU AI Act, Art. 4). Halbtags, vor Ort oder online, mit Teilnahmebestätigung.",
+    text: "Art. 4 der KI-Verordnung verlangt, die KI-Kompetenz der Mitarbeitenden zu fördern. Eine Schulung ist ein Weg dazu: halbtags, vor Ort oder online, mit Teilnahmebestätigung.",
     price: TRAINING_OFFER.price ?? PRICE_ON_REQUEST,
     href: "/contact/schulung",
     highlight: false,

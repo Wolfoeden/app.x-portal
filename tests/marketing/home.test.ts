@@ -47,7 +47,8 @@ describe("start page", () => {
   it("lists the four services with a price and their own page", () => {
     for (const title of ["KI-Automatisierung", "KI-Schulung", "ISO 27001", "Talent Index"]) expect(html).toContain(`>${title}</span>`);
     for (const href of ["/contact", "/contact/schulung", "/contact/iso27001", "/fuer-unternehmen"]) expect(html).toContain(`href="${href}"`);
-    expect(html).toContain("Seit Februar 2025 Pflicht (EU AI Act, Art. 4)");
+    expect(html).toContain("Art. 4 der KI-Verordnung verlangt, die KI-Kompetenz der Mitarbeitenden zu fördern.");
+    expect(html).not.toMatch(/Pflicht/u);
     expect(html).toContain("ab 1.900 €");
     expect(html.match(/Preis auf Anfrage/gu)).toHaveLength(2);
     expect(html).toContain("kostenlos testen");

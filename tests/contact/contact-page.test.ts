@@ -85,6 +85,8 @@ describe("contact page", () => {
   it("puts the topic of the page into the headline and the form", async () => {
     const training = await render("schulung");
     expect(training).toContain("KI sicher im Alltag nutzen.");
+    expect(training).toContain("Art. 4 der KI-Verordnung verlangt, die KI-Kompetenz der Mitarbeitenden zu fördern.");
+    expect(training).not.toMatch(/Pflicht aus Art\. 4/u);
     expect(selected(training, "schulung")).toBe(true);
 
     const security = await render("iso27001");
