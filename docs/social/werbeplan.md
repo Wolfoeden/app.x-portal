@@ -23,12 +23,20 @@ aus dem Büroalltag, der ernste Post danach nimmt genau diesen Ärger auf und
 zeigt die Lösung. Er beginnt mit **„Jetzt im Ernst:“**, so wird der Wechsel
 von lustig zu ernst zur erkennbaren Serie.
 
-Profil auf X:
+## Profile
 
-- **Angepinnt:** der Angebotspost vom 22.10. (KI-Automatisierung ab 1.900 €).
-- **Bio** (137 Zeichen): „KI-Agenten für den Mittelstand. KI-Automatisierung ab 1.900 €,
-  KI-Schulungen, ISO 27001. Dazu der Talent Index für IT- und KI-Freelancer.“
-- **Link im Profil:** x-portal.eu
+Überall ist der Link im Profil x-portal.eu; darauf verweist „Link im Profil“
+in den Posts.
+
+| Kanal | Text | Grenze |
+| --- | --- | --- |
+| X | KI-Agenten für den Mittelstand. KI-Automatisierung ab 1.900 €, KI-Schulungen, ISO 27001. Dazu der Talent Index für IT- und KI-Freelancer. | 160 |
+| LinkedIn (Slogan der Seite) | KI-Agenten für den Mittelstand: KI-Automatisierung ab 1.900 €, KI-Schulungen und ISO 27001. | 120 |
+| Instagram | KI-Agenten für den Mittelstand. / KI-Automatisierung ab 1.900 € · KI-Schulungen · ISO 27001 / Erstgespräch kostenlos: Link unten (drei Zeilen) | 150 |
+| TikTok | KI-Agenten für den Mittelstand. Büroalltag, aber automatisiert. | 80 |
+| Reddit (Romans eigenes Konto) | Roman, baut mit XPORTAL KI-Agenten für den Mittelstand. Hier als Person, nicht als Werbekonto. | 200 |
+
+Auf X angepinnt: der Angebotspost vom 22.10. (KI-Automatisierung ab 1.900 €).
 
 ## Rhythmus pro Werktag
 
