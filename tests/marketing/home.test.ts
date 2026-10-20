@@ -18,7 +18,7 @@ describe("start page", () => {
   it("opens with the offer, its price and the first call", () => {
     expect(html.match(/<h1\b/gu)).toHaveLength(1);
     expect(html).toContain("KI-Agenten für Ihre Routine.");
-    expect(html).toContain("KI-Automatisierung ab 1.900 €");
+    expect(html).toContain("KI-Automatisierung ab 90 €");
     expect(html).toMatch(/href="https:\/\/calendly\.com\/romandering\/30min\?utm_source=x-portal"[^>]*>Erstgespräch buchen</u);
     expect(html).toContain('href="tel:+491758934338"');
   });
@@ -48,7 +48,8 @@ describe("start page", () => {
     for (const title of ["KI-Automatisierung", "KI-Schulung", "ISO 27001", "Talent Index"]) expect(html).toContain(`>${title}</span>`);
     for (const href of ["/contact", "/contact/schulung", "/contact/iso27001", "/fuer-unternehmen"]) expect(html).toContain(`href="${href}"`);
     expect(html).toContain("Seit Februar 2025 Pflicht (EU AI Act, Art. 4)");
-    expect(html).toContain("ab 1.900 €");
+    expect(html).toContain("ab 90 €");
+    expect(html).not.toContain("1.900");
     expect(html.match(/Preis auf Anfrage/gu)).toHaveLength(2);
     expect(html).toContain("kostenlos testen");
   });

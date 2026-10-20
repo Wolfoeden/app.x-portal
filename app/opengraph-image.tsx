@@ -1,5 +1,7 @@
 import { ImageResponse } from "next/og";
 
+import { AUTOMATION_OFFER } from "@/lib/marketing/offers";
+
 /**
  * Das Vorschaubild, wenn jemand einen XPORTAL-Link in einem Chat teilt.
  *
@@ -60,8 +62,7 @@ export default function OpengraphImage() {
               color: "#51514d",
             }}
           >
-            KI-Automatisierung ab 1.900 €, KI-Schulungen und ISO 27001
-            für den Mittelstand.
+            {`${AUTOMATION_OFFER.name} ${AUTOMATION_OFFER.price}, KI-Schulungen und ISO 27001 für den Mittelstand.`}
           </div>
         </div>
 

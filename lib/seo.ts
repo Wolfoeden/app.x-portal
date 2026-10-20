@@ -1,6 +1,7 @@
 import type { Metadata, MetadataRoute } from "next";
 
 import { START_CREDITS } from "@/lib/billing/plans";
+import { AUTOMATION_OFFER } from "@/lib/marketing/offers";
 
 /** Public URLs, metadata and crawler policy share this registry. */
 export const SITE_URL =
@@ -114,9 +115,9 @@ export const MARKETING_PAGES = Object.values(MARKETING_PAGE);
 export const CONTACT_PAGE = {
   path: "/contact",
   label: "Kontakt",
-  title: "KI-Automatisierung ab 1.900 € und Erstgespräch | XPORTAL",
+  title: `KI-Automatisierung ${AUTOMATION_OFFER.price} und Erstgespräch | XPORTAL`,
   description:
-    "KI-Agenten übernehmen Anfragen, Angebote und Auswertungen. KI-Automatisierung ab 1.900 €, in kurzer Zeit umgesetzt. Erstgespräch in 30 Minuten, auch zu KI-Schulungen und ISO 27001.",
+    `KI-Agenten übernehmen Anfragen, Angebote und Auswertungen. KI-Automatisierung ${AUTOMATION_OFFER.price}, in kurzer Zeit umgesetzt. Erstgespräch in 30 Minuten, auch zu KI-Schulungen und ISO 27001.`,
   priority: 0.9,
   changeFrequency: "monthly",
 } as const satisfies PublicPage;
