@@ -64,7 +64,7 @@ es bei 02, 03, 04 und 07 schon gemacht wurde.
 | 05 | Herr Müller und AGI | Dave Brandt (echte Person) | Reserve, neues Motiv |
 | 01 | Welche Excel ist aktuell? | Charlie Day, Serienszene | Reserve, neues Motiv |
 | 06 | Sabine hat Urlaub | „This is Fine“-Hund von KC Green | Reserve, neues Motiv |
-| 12 | Lebenslauf nochmal eingeben | SpongeBob (Nickelodeon) | Reserve, neues Motiv |
+| 12 | Lebenslauf nochmal eingeben | SpongeBob (Nickelodeon) | Reserve für Freelancer-Werbung, neues Motiv und neuer Posttext |
 
 KW 44 und 45 kommen nur mit den sechs freien Bildern aus; der Start hängt an
 keinem neuen Motiv.
@@ -277,10 +277,25 @@ Alle vier brauchen zuerst ein eigenes Motiv.
 - **06 Sabine hat Urlaub:** vor einen Post über Wissen, das nur in einem Kopf
   steckt (Kontaktthema „Mitarbeiterwissen“, Lufthansa-Beispiel zum
   Servicewissen auf `/praxis`).
-- **12 Lebenslauf nochmal eingeben:** nur für Werbung an Freelancer. Im
-  Bewerbungsweg von XPORTAL liest die KI den Lebenslauf ein und füllt leere
-  Felder vor (`docs/freelancer-onboarding-import.md`); vorher prüfen, dass
-  das live ist.
+- **12 Lebenslauf nochmal eingeben:** für Werbung an Freelancer, damit der
+  Talent Index wächst. Bei XPORTAL lädt man den Lebenslauf hoch, und die KI
+  schreibt daraus das Profil (Betreiber, 20.10.2026). Neuer Posttext, weil
+  der aus dem Paket Konto und E-Mail-Bestätigung verspottet, die auch
+  XPORTAL verlangt:
+
+  ```text
+  der lebenslauf liegt doch schon da. als pdf. mit allem drin.
+  ```
+
+  Ernster Post am Tag danach:
+
+  ```text
+  Jetzt im Ernst: Bei uns laden Sie den Lebenslauf hoch, und die KI schreibt daraus Ihr Profil. Kein Werdegang zum Abtippen.
+
+  Kostenlos und ohne Provision. Ihre Kontaktdaten bleiben privat, und Unternehmen sehen das Profil erst nach unserer Prüfung.
+
+  x-portal.eu/bewerber-portal/apply
+  ```
 
 ## Neue Motive: Prompts
 
@@ -303,6 +318,12 @@ Create one ORIGINAL office photo meme, square 1024x1024, cinematic still look. C
 
 ```text
 Create one ORIGINAL internet meme, square 1024x1024, documentary photo look. An ordinary middle-aged craftsman in work clothes stands in a small, tidy carpenter's workshop with a modest, proud smile. Original unnamed person, must not resemble any real person or existing meme subject. White caption band on top, exactly two lines: 'andere bauen AGI' / 'unser agent sortiert die anfragen von Herrn Müller'. Bottom text in white Impact with black outline, exactly: "It ain't much, but it's honest work." German umlauts correct. No logo, no watermark, no other text.
+```
+
+**12 Lebenslauf nochmal eingeben**
+
+```text
+Create one ORIGINAL cartoon meme, square 1024x1024, simple TV-cartoon screenshot look. An original, unnamed cartoon character (a round orange cat wearing a loose office tie) gets up from a worn green armchair in a plain living room with a calm, resigned expression, ready to leave. Must not resemble SpongeBob or any existing cartoon character, set or franchise. White caption band on top with black lettering, exactly: 'Lebenslauf erfolgreich hochgeladen. Bitte tragen Sie jetzt Ihren beruflichen Werdegang manuell ein.' Bottom text in white Impact with black outline, exactly: 'ight imma head out'. German umlauts correct. No logo, no watermark, no other text.
 ```
 
 ## Was die Posts sagen dürfen
