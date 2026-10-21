@@ -8,12 +8,19 @@ import {
   applicationInsertFromInput,
   CV_BUCKET,
   CV_MAX_BYTES,
+  CONSENT_INSERT_FIELDS,
   CV_MIME_TYPES,
   FreelancerApplicationInputSchema,
   ONBOARDING_INSERT_FIELDS,
 } from "@/lib/freelancer/application";
 import { recordInviteConversion } from "@/lib/sourcing/conversion";
-import { applicationExtrasAvailable, applicationOnboardingAvailable } from "@/lib/freelancer/applications-data";
+import {
+  applicationExtrasAvailable,
+  applicationOnboardingAvailable,
+  applicationSelfPublishAvailable,
+} from "@/lib/freelancer/applications-data";
+import { AUTO_PUBLISH_BLOCKER_TEXT, autoPublishEnabled } from "@/lib/freelancer/auto-publish";
+import { concludeApplication } from "@/lib/freelancer/self-publish";
 import { linkedIdentities } from "@/lib/auth/linked-identities";
 import { AVATAR_BUCKET } from "@/lib/freelancer/avatar-storage";
 import {
@@ -118,9 +125,11 @@ async function discardUploadedCv(admin: AdminClient, objectPath: string) {
 /**
  * Public freelancer application.
  *
- * Nothing here becomes visible on the platform: the row lands in
- * `freelancer_applications` and waits for an administrator to review and
- * publish it.
+ * The row lands in `freelancer_applications`. Since 21.10.2026 a complete
+ * application goes live at once as a self-reported profile
+ * (lib/freelancer/self-publish.ts); anything else waits for an administrator
+ * as before. Without migration 20261021120000 every application waits and the
+ * CV stays mandatory.
  */
 export async function POST(request: Request) {
   const traceId = randomUUID();
@@ -188,7 +197,9 @@ export async function POST(request: Request) {
     }
 
     const input = parsed.data;
-    if (!input.cv) {
+    const admin = createAdminSupabaseClient();
+    const selfPublish = await applicationSelfPublishAvailable(admin);
+    if (!input.cv && !selfPublish) {
       return NextResponse.json(
         { error: "Bitte laden Sie Ihren Lebenslauf als PDF hoch." },
         { status: 400 },
@@ -207,7 +218,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const admin = createAdminSupabaseClient();
     const uploaded = input.cv
       ? await inspectUploadedCv(admin, input.cv.storagePath)
       : null;
@@ -247,6 +257,7 @@ export async function POST(request: Request) {
     const extras = await applicationExtrasAvailable(admin);
     const row: Partial<typeof insert> = { ...insert };
     if (!extras) delete row.reference_projects;
+    if (!selfPublish) for (const field of CONSENT_INSERT_FIELDS) delete row[field];
 
     // Import-Herkunft, Kapazität und Wunschprojekte nur mit Migration
     // 20261007090000. „Konto verbunden“ gilt nur für einen GitHub-Namen, der
@@ -350,6 +361,16 @@ export async function POST(request: Request) {
       applicationId: data.id as string,
     });
 
+    // Sofort sichtbar, wenn alles stimmt; sonst wartet die Bewerbung auf das
+    // Team. Beides endet mit einer Mail an die Person.
+    const outcome = await concludeApplication(admin, {
+      applicationId: data.id as string,
+      userId: user.id,
+      email: user.email,
+      name: insert.full_name,
+      autoPublish: selfPublish && autoPublishEnabled(),
+    });
+
     await writeAuditEvent({
       actorUserId: user.id,
       action: "freelancer_application_submitted",
@@ -364,10 +385,17 @@ export async function POST(request: Request) {
         projectCount: extras ? insert.reference_projects.length : 0,
         replacedPending: pending.length,
         fromInvite,
+        autoPublished: outcome.status === "published",
+        blockers: outcome.status === "received" ? outcome.blockers.join(",") : "",
       },
     });
 
-    return NextResponse.json({ status: "received" }, { status: 201 });
+    return NextResponse.json(
+      outcome.status === "published"
+        ? outcome
+        : { status: "received", reasons: outcome.blockers.map((blocker) => AUTO_PUBLISH_BLOCKER_TEXT[blocker]) },
+      { status: 201 },
+    );
   } catch (error) {
     if (error instanceof Response) return error;
     await writeAuditEvent({

@@ -18,7 +18,7 @@
    direkt darunter im ersten Bildschirm (vorher wurde der Hauptknopf
    abgeschnitten, 19.10.2026). Grenze wie im Seitenkopf. */
 @media (max-width: 680px) { .gateActions .headerLogin, .gateActions .headerWide { display: none; } }
-.hero .gateActions > button:first-child { min-height: 52px; padding-inline: 26px; font-size: 17px; }
+.hero .gateActions > :first-child { min-height: 52px; padding-inline: 26px; font-size: 17px; }
 .loginLink { border: 0; background: none; padding: 6px 0; color: var(--xp-ink); font: inherit; font-size: 16px; font-weight: 500; text-decoration: underline; text-underline-offset: 5px; cursor: pointer; }
 .loginLink:hover { color: var(--xp-brand); }
 .loginOnDark { display: inline-flex; align-items: center; min-height: var(--xp-action-height); padding: 0 22px; border: 1px solid #5d7a6b; border-radius: var(--xp-action-radius); background: none; color: #fff; font: inherit; font-size: var(--xp-action-font-size); font-weight: var(--xp-action-weight); cursor: pointer; }
@@ -46,6 +46,9 @@
 .factsRow dd { margin: 0; color: var(--xp-muted); font-size: 15px; line-height: 1.55; }
 
 .section { scroll-margin-top: 76px; }
+/* Das Formular direkt unter dem ersten Bildschirm (21.10.2026). */
+.formSection { scroll-margin-top: 76px; border-bottom: 1px solid var(--xp-mint-line); }
+.formSection > .wrap { padding-block: 56px 72px; }
 .section > .wrap { padding-block: 104px; }
 .tinted { border-block: 1px solid var(--xp-line); background: #f7f8f7; }
 

@@ -10,6 +10,7 @@ import {
   APPLICATION_COLUMNS,
   APPLICATION_EXTRA_COLUMNS,
   APPLICATION_ONBOARDING_COLUMNS,
+  APPLICATION_SELF_PUBLISH_COLUMNS,
   profileInsertFromDecision,
   storedApplicationProjects,
   slugFromName,
@@ -91,6 +92,26 @@ export async function countApplicationsByStatus(): Promise<
 
 let extrasProbe: { at: number; available: boolean } | null = null;
 let onboardingProbe: { at: number; available: boolean } | null = null;
+let selfPublishProbe: { at: number; available: boolean } | null = null;
+
+/**
+ * Ob Bewerbungen ohne Lebenslauf, mit Einwilligungen und ohne Sichtung live
+ * gehen können (Migration 20261021120000); fünf Minuten gemerkt. Ohne sie
+ * bleibt der Lebenslauf Pflicht und jede Bewerbung wartet auf das Team.
+ */
+export async function applicationSelfPublishAvailable(
+  admin: SupabaseClient = createAdminSupabaseClient(),
+  now = Date.now(),
+): Promise<boolean> {
+  if (selfPublishProbe && now - selfPublishProbe.at < 5 * 60_000) return selfPublishProbe.available;
+  const { error } = await admin
+    .from("freelancer_applications")
+    .select("auto_published_at", { head: true, count: "exact" })
+    .limit(1);
+  const available = !error || !isMissingSchema(error);
+  selfPublishProbe = { at: now, available };
+  return available;
+}
 
 /**
  * Ob Import-Herkunft, Kapazität und Wunschprojekte gespeichert werden können
@@ -136,8 +157,11 @@ export async function getApplication(
   const admin = createAdminSupabaseClient();
   const read = (columns: string) =>
     admin.from("freelancer_applications").select(columns).eq("id", id).maybeSingle();
-  let { data, error } = await read(`${APPLICATION_COLUMNS},${APPLICATION_EXTRA_COLUMNS},${APPLICATION_ONBOARDING_COLUMNS}`);
+  let { data, error } = await read(`${APPLICATION_COLUMNS},${APPLICATION_EXTRA_COLUMNS},${APPLICATION_ONBOARDING_COLUMNS},${APPLICATION_SELF_PUBLISH_COLUMNS}`);
   // Vor den Migrationen ohne die neueren Felder, statt die Prüfseite zu sperren.
+  if (error && isMissingSchema(error)) {
+    ({ data, error } = await read(`${APPLICATION_COLUMNS},${APPLICATION_EXTRA_COLUMNS},${APPLICATION_ONBOARDING_COLUMNS}`));
+  }
   if (error && isMissingSchema(error)) {
     ({ data, error } = await read(`${APPLICATION_COLUMNS},${APPLICATION_EXTRA_COLUMNS}`));
   }
@@ -283,15 +307,18 @@ async function transferPhotoToProfile(
  */
 async function transferProjectsToProfile(
   admin: SupabaseClient,
-  input: { application: ApplicationRow; decision: PublishDecision; profileId: string; reviewerUserId: string },
+  input: { application: ApplicationRow; decision: PublishDecision; profileId: string; reviewerUserId: string | null },
 ): Promise<number> {
   const stored = storedApplicationProjects(input.application.reference_projects);
+  // Ohne Prüfer (Selbstfreigabe) warten die Projekte auf das Team, wie jedes
+  // Projekt, das ein Freelancer im Dashboard anlegt.
+  const approved = input.reviewerUserId ? undefined : false;
   const chosen = input.decision.projects
     .filter((entry) => stored[entry.index])
-    .map((entry) => ({ ...stored[entry.index]!, verified: entry.verified }));
+    .map((entry) => ({ ...stored[entry.index]!, verified: entry.verified, approved }));
   if (!chosen.length) return 0;
   try {
-    await replaceProjects(admin, input.profileId, chosen, input.reviewerUserId);
+    await replaceProjects(admin, input.profileId, chosen, input.reviewerUserId ?? input.application.submitted_by_user_id ?? "");
     return chosen.length;
   } catch {
     return 0;
@@ -367,7 +394,8 @@ export type PublishResult = {
 export async function publishApplication(input: {
   application: ApplicationRow;
   decision: PublishDecision;
-  reviewerUserId: string;
+  /** `null`: Selbstfreigabe ohne Sichtung (lib/freelancer/auto-publish.ts). */
+  reviewerUserId: string | null;
 }): Promise<PublishResult> {
   if (input.application.published_profile_id) {
     throw new PublishConflictError(
@@ -394,6 +422,8 @@ export async function publishApplication(input: {
       reviewed_by_user_id: input.reviewerUserId,
       reviewed_at: now,
       published_profile_id: profile.id,
+      // Ohne Prüfer verlangt die Datenbank diesen Vermerk.
+      ...(input.reviewerUserId ? {} : { auto_published_at: now }),
     })
     .eq("id", input.application.id)
     .is("published_profile_id", null)
@@ -447,6 +477,18 @@ export async function publishApplication(input: {
     await admin
       .from("freelancer_profiles")
       .update({ capacity_days_per_week: capacity, desired_projects: desired })
+      .eq("id", profile.id)
+      .then(() => undefined, () => undefined);
+  }
+
+  // Die Einwilligungen gehören zur Person, nicht zur Entscheidung des Teams.
+  if (input.application.consent_search_index || input.application.consent_market_stats) {
+    await admin
+      .from("freelancer_profiles")
+      .update({
+        consent_search_index: Boolean(input.application.consent_search_index),
+        consent_market_stats: Boolean(input.application.consent_market_stats),
+      })
       .eq("id", profile.id)
       .then(() => undefined, () => undefined);
   }

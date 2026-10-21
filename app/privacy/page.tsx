@@ -259,6 +259,21 @@ export default function PrivacyPage() {
               freiwillige Angaben. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b
               DSGVO (vorvertragliche Maßnahmen auf Ihre Anfrage).
             </p>
+            <p>
+              Füllen Sie die Bewerbung vor der Anmeldung aus, bleiben die
+              Angaben bis zu 24 Stunden nur in Ihrem Browser gespeichert und
+              werden erst nach der Bestätigung Ihres Kontos übermittelt. Ein
+              vollständiges Profil veröffentlichen wir sofort nach dem
+              Absenden, gekennzeichnet als Angaben laut Freelancer; ein
+              unvollständiges sieht sich vorher unser Team an. Zwei
+              Einwilligungen sind freiwillig und jederzeit per E-Mail an uns
+              widerrufbar (Art. 6 Abs. 1 lit. a DSGVO): dass Suchmaschinen Ihre
+              Profilseite ohne Kontaktdaten aufnehmen dürfen, und dass Honorar,
+              Kompetenzen und Verfügbarkeit anonymisiert in Marktstatistiken
+              einfließen. In solche Statistiken gehen nur Gruppen von
+              mindestens zehn Personen ein; einzelne Profile sind daraus nicht
+              erkennbar.
+            </p>
           </div>
         </section>
 
@@ -574,7 +589,7 @@ export default function PrivacyPage() {
           </div>
         </section>
 
-        <p className="xlegal-updated">Stand: 14. Oktober 2026</p>
+        <p className="xlegal-updated">Stand: 21. Oktober 2026</p>
       </main>
 
       <PublicFooter />

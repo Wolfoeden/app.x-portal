@@ -394,7 +394,7 @@
   line-height: 1.6;
 }
 
-.success ol {
+.success ol, .success ul {
   margin: 16px 0 0;
   padding-left: 18px;
   color: var(--muted);
@@ -679,6 +679,20 @@
 .blankConfirm { display: grid; gap: 8px; border: 1px solid #d8c99f; border-radius: 12px; background: #fffaf0; padding: 16px; }
 .blankConfirm p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .blankConfirm > div { display: flex; gap: 10px; }
+
+/* Formular vor der Anmeldung (21.10.2026): Vorschläge unter den Chips,
+   Verfügbarkeit und Ort in einer Zeile, Links nach der Veröffentlichung. */
+.suggestions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.suggestions button { min-height: 28px; border: 1px dashed #b9d7c8; border-radius: 7px; background: #f6fbf8; padding: 0 9px; color: #176141; cursor: pointer; font: inherit; font-size: 12px; }
+.suggestions button:hover { border-style: solid; }
+.availabilityRow { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.plainFieldset { display: grid; gap: 6px; margin: 0; border: 0; padding: 0; min-width: 0; }
+/* Rechts stehende „i“ öffnen nach links, sonst ragt die Blase über den Rand. */
+.sectionHeading .infoBubble > [role="tooltip"], .connectionHeading .infoBubble > [role="tooltip"] { right: 0; left: auto; }
+.plainFieldset legend { margin-bottom: 8px; padding: 0; color: var(--xp-ink); font-size: var(--xp-label-size); font-weight: var(--xp-label-weight); }
+.successLinks { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 18px !important; font-weight: 650; }
+.successLinks a { color: var(--xp-brand); }
+.consent + .consent { margin-top: 10px; }
 
 @media (max-width: 900px) {
   .simpleForm { grid-template-columns: 1fr; }

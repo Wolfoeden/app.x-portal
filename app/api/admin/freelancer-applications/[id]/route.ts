@@ -4,6 +4,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { writeAuditEvent } from "@/lib/audit/write";
+import { deliverEmail } from "@/lib/email/deliver";
+import { profileLiveMessage } from "@/lib/freelancer/application-mails";
+import { profileUrl } from "@/lib/profile/profile-link";
+import { absoluteUrl, SITE_URL } from "@/lib/seo";
 import { runLeadRematchPass } from "@/lib/leadgen/rematch";
 import { requireAdminUser } from "@/lib/auth/current-user";
 import { PublishDecisionSchema } from "@/lib/freelancer/application";
@@ -100,6 +104,22 @@ export async function POST(
         () => null,
       );
 
+      // Die Person erfährt, dass ihr Profil online ist. Recherchierte
+      // Kandidaten haben nichts eingereicht und bekommen keine Mail.
+      const liveMail =
+        application.source === "apply_form" && application.contact_email
+          ? await deliverEmail({
+              to: application.contact_email,
+              ...profileLiveMessage({
+                name: parsed.data.displayName,
+                profileUrl: profileUrl(SITE_URL, result.profileId),
+                portalUrl: absoluteUrl("/bewerber-portal/apply"),
+                reviewed: true,
+              }),
+              kind: "transactional",
+            }).catch(() => null)
+          : null;
+
       await writeAuditEvent({
         actorUserId: admin.id,
         action: "freelancer_application_published",
@@ -118,6 +138,7 @@ export async function POST(
           projectsTransferred: result.projectsTransferred,
           projectsVerified: parsed.data.projects.filter((entry) => entry.verified).length,
           photoTransferred: result.photoTransferred,
+          liveMailDelivered: liveMail?.delivered ?? null,
           rematchExamined: wiederbelebt?.examined ?? null,
           rematchRevived: wiederbelebt?.revived ?? null,
         },

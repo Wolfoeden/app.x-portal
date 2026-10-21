@@ -35,7 +35,8 @@ describe("freelancer onboarding before registration", () => {
   });
 
   it("does not promise a competence check", () => {
-    expect(fact("Prüfung")).toContain("gleicht einzelne mit Nachweisen ab");
+    expect(fact("Prüfung")).toContain("gleicht einzelne später mit Nachweisen ab");
+    expect(fact("Prüfung")).toContain("Angaben laut Freelancer");
     expect(fact("Prüfung")).not.toMatch(/Kompetenz(prüfung|test)/u);
   });
 
@@ -59,8 +60,9 @@ describe("freelancer onboarding before registration", () => {
       expect(markup).toContain(fact.chip);
       expect(markup).toContain(fact.text);
     }
-    for (const step of ["Konto anlegen", "Profil ausfüllen", "Prüfung durch XPORTAL", "Gefunden werden"]) expect(markup).toContain(step);
-    expect(markup).toContain("Lebenslauf und GitHub füllen den Entwurf vor");
+    // Seit 21.10.2026 erst das Formular, dann das Konto, dann sofort sichtbar.
+    for (const step of ["Profil ausfüllen", "Konto bestätigen", "Sofort sichtbar", "Gefunden werden"]) expect(markup).toContain(step);
+    expect(markup).toContain("Drei Minuten, ohne Lebenslauf.");
     for (const entry of APPLICANT_FAQ) {
       expect(markup).toContain(entry.question);
       expect(markup).toContain(entry.answer);

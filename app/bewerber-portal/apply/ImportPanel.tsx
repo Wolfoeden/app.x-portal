@@ -69,7 +69,7 @@ export function ImportPanel({ githubLogin, linkedinConnected, onDraft }: {
         )}
       </div>
       <div className={styles.connectionCard} data-connected={linkedinConnected}>
-        <div className={styles.sourceHead}><Image src="/images/auth/linkedin.png" alt="" width={28} height={28} /><div><div className={styles.sourceTitle}><strong>LinkedIn</strong><InfoTip label="Hinweis zur LinkedIn-Auswertung">Nach der Verbindung wird ein KI-Agent die öffentlich erreichbare LinkedIn-Seite scrapen und relevante berufliche Informationen in das Profil übernehmen.</InfoTip></div><span>{linkedinConnected ? "Profil verbunden" : "Berufserfahrung und Branchen ergänzen"}</span></div></div>
+        <div className={styles.sourceHead}><Image src="/images/auth/linkedin.png" alt="" width={28} height={28} /><div><div className={styles.sourceTitle}><strong>LinkedIn</strong><InfoTip label="Hinweis zu LinkedIn">LinkedIn bestätigt, dass das Konto Ihnen gehört. Angaben aus Ihrem LinkedIn-Profil übernimmt XPORTAL nicht; tragen Sie sie bitte oben selbst ein.</InfoTip></div><span>{linkedinConnected ? "Profil verbunden" : "Identität bestätigen"}</span></div></div>
         {linkedinConnected ? <span className={styles.connectedMark}>Verbunden</span> : (
           <button type="button" onClick={() => void connect("linkedin")} disabled={Boolean(busy)}>{busy === "linkedin" ? "Weiterleitung …" : "LinkedIn verbinden"}</button>
         )}

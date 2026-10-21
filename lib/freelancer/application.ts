@@ -248,6 +248,9 @@ export const FreelancerApplicationInputSchema = z
     /** Freiwillig; „geprüft“ und Herkunft setzt der Server, nicht das Formular. */
     projects: ProjectListSchema.default([]),
     consent: z.literal(true),
+    /** Freiwillig und getrennt von den AGB; ohne Häkchen bleibt beides aus. */
+    consentSearchIndex: z.boolean().default(false),
+    consentMarketStats: z.boolean().default(false),
     /**
      * Das Kennzeichen aus einer Einladung, falls die Person über eine kam.
      *
@@ -310,6 +313,9 @@ export type ApplicationInsert = {
   import_provenance: ImportProvenance | null;
   capacity_days_per_week: number | null;
   desired_projects: string | null;
+  /** Migration 20261021120000; ohne sie lässt die Route beide Felder weg. */
+  consent_search_index: boolean;
+  consent_market_stats: boolean;
 };
 
 /** Was aus dem Formular kommt, ist eine Angabe: nie geprüft, Herkunft Bewerbung. */
@@ -370,15 +376,24 @@ export function applicationInsertFromInput(
     import_provenance: input.importProvenance,
     capacity_days_per_week: input.capacityDaysPerWeek,
     desired_projects: input.desiredProjects,
+    consent_search_index: input.consentSearchIndex,
+    consent_market_stats: input.consentMarketStats,
   };
 }
 
 /** Die Felder aus Migration 20261007090000. */
 export const ONBOARDING_INSERT_FIELDS = ["import_provenance", "capacity_days_per_week", "desired_projects"] as const;
 
+/** Die Einwilligungen aus Migration 20261021120000. */
+export const CONSENT_INSERT_FIELDS = ["consent_search_index", "consent_market_stats"] as const;
+
 export type ApplicationRow = Omit<
   ApplicationInsert,
-  "reference_projects" | "photo_storage_path" | "monthly_salary_minor" | (typeof ONBOARDING_INSERT_FIELDS)[number]
+  | "reference_projects"
+  | "photo_storage_path"
+  | "monthly_salary_minor"
+  | (typeof ONBOARDING_INSERT_FIELDS)[number]
+  | (typeof CONSENT_INSERT_FIELDS)[number]
 > & {
   /** Fehlt in Zeilen/Fixtures vor Migration 20261010120000. */
   monthly_salary_minor?: number | null;
@@ -389,6 +404,10 @@ export type ApplicationRow = Omit<
   import_provenance?: unknown;
   capacity_days_per_week?: number | null;
   desired_projects?: string | null;
+  /** Fehlen, solange Migration 20261021120000 nicht eingespielt ist. */
+  consent_search_index?: boolean;
+  consent_market_stats?: boolean;
+  auto_published_at?: string | null;
   id: string;
   review_notes: string | null;
   reviewed_by_user_id: string | null;
@@ -406,6 +425,9 @@ export const APPLICATION_EXTRA_COLUMNS = "reference_projects,photo_storage_path"
 
 /** Import-Herkunft, Kapazität und Wunschprojekte (Migration 20261007090000). */
 export const APPLICATION_ONBOARDING_COLUMNS = ONBOARDING_INSERT_FIELDS.join(",");
+
+/** Einwilligungen und Selbstfreigabe (Migration 20261021120000). */
+export const APPLICATION_SELF_PUBLISH_COLUMNS = [...CONSENT_INSERT_FIELDS, "auto_published_at"].join(",");
 
 /** Die gespeicherte Herkunft, erneut geprüft; Kaputtes zählt als keine. */
 export function storedImportProvenance(value: unknown): ImportProvenance | null {

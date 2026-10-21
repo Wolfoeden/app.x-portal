@@ -5,7 +5,7 @@ import "@/app/styles/app-surface";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { linkedIdentities } from "@/lib/auth/linked-identities";
 import { PublicFooter, PublicHeader } from "@/components/public/PublicChrome";
-import { applicationExtrasAvailable } from "@/lib/freelancer/applications-data";
+import { applicationExtrasAvailable, applicationSelfPublishAvailable } from "@/lib/freelancer/applications-data";
 import { loadFreelancerPortalState } from "@/lib/freelancer/profile-data";
 import { openInvite } from "@/lib/sourcing/conversion";
 import type {
@@ -137,6 +137,8 @@ export default async function FreelancerApplyPage({
   // Die Formular-Vorschau zeigt beide Abschnitte auch ohne Datenbank.
   const showsForm = Boolean(user && !user.isAnonymous && portalState?.kind !== "profile");
   const extrasAvailable = formPreview || (showsForm && (await applicationExtrasAvailable().catch(() => false)));
+  // Ohne Migration 20261021120000 bleibt der Lebenslauf Pflicht.
+  const cvRequired = !formPreview && !gatePreview && !preview && !(await applicationSelfPublishAvailable().catch(() => false));
   // Für den Importkasten: Ist die KI eingerichtet, und mit welchen Anbietern
   // ist das Konto verknüpft? (GitHub-Name vorbelegen, LinkedIn-Hinweis.)
   const identities = showsForm || portalState?.kind === "profile" ? await linkedIdentities() : { providers: [], githubLogin: null };
@@ -148,7 +150,8 @@ export default async function FreelancerApplyPage({
   const welcome = referralWelcome(referral);
   const linkError = signedInLinkError(Array.isArray(params.auth_error) ? params.auth_error[0] : params.auth_error);
   // Abgemeldet zeigt die Seite den Einstieg (ApplicantLanding) über die volle
-  // Breite; die Anmeldeknöpfe darin und im Kopf öffnen den Dialog im Browser.
+  // Breite, mit dem Formular gleich unter dem ersten Bildschirm. Das Konto
+  // entsteht beim Absenden; „Anmelden“ öffnet den Dialog im Browser.
   const signedOut = !preview && !formPreview && (!user || user.isAnonymous);
 
   const notices = (
@@ -174,7 +177,10 @@ export default async function FreelancerApplyPage({
       <PublicHeader context="Bewerber-Portal" authenticated={!signedOut} actions={signedOut ? <GateActions variant="header" /> : undefined} />
       {signedOut ? (
         <main className={styles.landingShell} lang="de">
-          <ApplicantLanding notices={notices} />
+          <ApplicantLanding
+            notices={notices}
+            form={<ApplyForm guest referral={referral} cvRequired={cvRequired} />}
+          />
         </main>
       ) : (
       <main className={styles.shell} lang="de">
@@ -200,7 +206,7 @@ export default async function FreelancerApplyPage({
             availabilityUpdatedAt={new Date().toISOString()}
           />
         ) : formPreview ? (
-          <ApplyForm referral={referral} extrasAvailable={extrasAvailable} previewMode {...importProps} />
+          <ApplyForm referral={referral} extrasAvailable={extrasAvailable} previewMode cvRequired={cvRequired} {...importProps} />
         ) : !user || user.isAnonymous ? null : portalState?.kind === "profile" ? (
           <FreelancerDashboard
             initialProfile={portalState.profile}
@@ -220,13 +226,13 @@ export default async function FreelancerApplyPage({
             />
             {portalState.status === "rejected" ? (
               <div className={styles.reapply}>
-                <ApplyForm accountEmail={user.email ?? ""} accountName={user.displayName} inviteToken={invite ? inviteToken ?? null : null} referral={referral} extrasAvailable={extrasAvailable} {...importProps} />
+                <ApplyForm accountEmail={user.email ?? ""} accountName={user.displayName} inviteToken={invite ? inviteToken ?? null : null} referral={referral} extrasAvailable={extrasAvailable} cvRequired={cvRequired} {...importProps} />
               </div>
             ) : null}
           </>
         ) : (
           <>
-            <ApplyForm accountEmail={user.email ?? ""} accountName={user.displayName} inviteToken={invite ? inviteToken ?? null : null} referral={referral} extrasAvailable={extrasAvailable} {...importProps} />
+            <ApplyForm accountEmail={user.email ?? ""} accountName={user.displayName} inviteToken={invite ? inviteToken ?? null : null} referral={referral} extrasAvailable={extrasAvailable} cvRequired={cvRequired} {...importProps} />
           </>
         )}
 

@@ -171,11 +171,23 @@ An incorrect path, MIME type, byte size or cache TTL therefore fails closed.
 
 ## Review a freelancer self-registration
 
-Freelancers can apply themselves at `/freelancer/apply`. The application is
-stored in `freelancer_applications` and is invisible to customers until an
-administrator publishes it. Use the application screen at
+Freelancers can apply themselves at `/bewerber-portal/apply`. The application
+is stored in `freelancer_applications`. Use the application screen at
 `/chat/admin/freelancers` rather than Studio for this flow: it writes both the
 catalogue row and the decision record in one audited step.
+
+**Self-publishing (since 21.10.2026, migration 20261021120000).** A complete
+application goes live without review (`lib/freelancer/auto-publish.ts`): email
+confirmed, role, a summary of at least 40 characters, at least one skill,
+language and work mode, a euro rate within 40–250 €/h or 320–2,000 €/day, not
+looking for employment, no profile with the same name or account in the
+catalogue and no earlier rejected application from the same account. It is published with `verification_status='unverified'`, no
+verified facts, a CV that customers cannot download and projects that still
+wait for approval; the application row carries `auto_published_at` instead of
+a reviewer. Review these profiles as usual and promote individual facts with
+evidence. Everything else lands in the queue below, and the applicant receives
+a mail either way. Set `FREELANCER_AUTO_PUBLISH=off` in the Netlify
+environment to send every application to the queue again.
 
 1. Sign in with the administrator account (`app_metadata.role='admin'` or an
    entry in `ADMIN_USER_IDS`) and open **Freelancer-Bewerbungen prüfen** from
@@ -213,7 +225,8 @@ catalogue row and the decision record in one audited step.
     `incoming/` in the same bucket.
 11. Use **Ablehnen** with an internal note when the application fails review.
     The applicant is not notified automatically; contact them separately if the
-    process requires it.
+    process requires it. A published application sends the applicant a mail
+    that the profile is online.
 
 A published application can no longer be changed from this screen. Later
 corrections follow *Edit an active profile* below, and deletions follow the
