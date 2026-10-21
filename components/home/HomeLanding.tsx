@@ -3,45 +3,17 @@ import Link from "next/link";
 
 import { CalendarLink } from "@/components/public/CalendarLink";
 import { DEMO_SCENARIOS } from "@/lib/marketing/live-demo";
-import { AUTOMATION_OFFER, ISO_OFFER, PRICE_ON_REQUEST, TRAINING_OFFER } from "@/lib/marketing/offers";
+import { JsonLd } from "@/components/JsonLd";
+import { HOME_SERVICES } from "@/lib/marketing/home-services";
+import { AUTOMATION_OFFER } from "@/lib/marketing/offers";
 import { PROOF_SOURCES } from "@/lib/marketing/proof-sources";
 import { phoneHref, SALES_CONTACT } from "@/lib/sales/sales-contact-model";
+import { homeServicesStructuredData } from "@/lib/structured-data";
 
 import { ArrowIcon, PhoneIcon } from "./icons";
 import { InboxPreview } from "./InboxPreview";
 import { LiveDemo } from "./LiveDemo";
 import styles from "./start.module.css";
-
-const SERVICES = [
-  {
-    title: AUTOMATION_OFFER.name,
-    text: "Ein Ablauf automatisiert, zum Beispiel Anfragen vorsortieren oder Angebote vorbereiten. Kurzes Zeitfenster bis zur Abgabe, weitere Abläufe auf Stundenbasis.",
-    price: AUTOMATION_OFFER.price,
-    href: "/contact",
-    highlight: true,
-  },
-  {
-    title: TRAINING_OFFER.name,
-    text: "Seit Februar 2025 Pflicht (EU AI Act, Art. 4). Halbtags, vor Ort oder online, mit Teilnahmebestätigung.",
-    price: TRAINING_OFFER.price ?? PRICE_ON_REQUEST,
-    href: "/contact/schulung",
-    highlight: false,
-  },
-  {
-    title: ISO_OFFER.name,
-    text: "Informationssicherheit einführen, begleitet von der Bestandsaufnahme bis zum Zertifizierungsaudit.",
-    price: ISO_OFFER.price ?? PRICE_ON_REQUEST,
-    href: "/contact/iso27001",
-    highlight: false,
-  },
-  {
-    title: "Talent Index",
-    text: "Geprüfte IT- und KI-Experten, wenn Ihnen Leute fehlen. Projekt beschreiben, passende Profile mit Begründung sehen.",
-    price: "kostenlos testen",
-    href: "/fuer-unternehmen",
-    highlight: false,
-  },
-] as const;
 
 const STEPS = [
   { title: "Erstgespräch", text: "30 Minuten, kostenlos. Wir finden den Ablauf, bei dem KI Ihnen am meisten Zeit spart." },
@@ -59,6 +31,7 @@ export function HomeLanding({ profiles }: { profiles: number | null }) {
   const { small, large } = SALES_CONTACT.photo;
   return (
     <main id="main-content" tabIndex={-1} className={styles.main}>
+      <JsonLd data={homeServicesStructuredData()} />
       <section className={styles.hero} aria-labelledby="home-title">
         <div className={`${styles.wrap} ${styles.heroInner}`}>
           <a href="#leistungen" className={styles.pill}>
@@ -97,7 +70,7 @@ export function HomeLanding({ profiles }: { profiles: number | null }) {
             <p>Sie sehen den Preis, bevor Sie anrufen. Im Erstgespräch klären wir, was davon bei Ihnen am meisten bringt.</p>
           </div>
           <ol className={styles.serviceList}>
-            {SERVICES.map((service, index) => (
+            {HOME_SERVICES.map((service, index) => (
               <li key={service.title}>
                 <Link href={service.href} prefetch={false} className={styles.service} data-highlight={service.highlight ? "true" : undefined}>
                   <span className={styles.serviceNumber}>{String(index + 1).padStart(2, "0")}</span>

@@ -32,7 +32,7 @@ export const MENU_EXTRA_LINKS: readonly ChromeLink[] = [
 export const SERVICE_LINKS: readonly ChromeLink[] = [
   { label: "KI-Agenten", href: CONTACT_PATH },
   { label: "KI-Schulungen", href: `${CONTACT_PATH}/schulung` },
-  { label: "Informationssicherheit", href: `${CONTACT_PATH}/iso27001` },
+  { label: "ISMS", href: `${CONTACT_PATH}/iso27001` },
   { label: "Talent Index", href: "/fuer-unternehmen" },
 ];
 

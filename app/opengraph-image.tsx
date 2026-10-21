@@ -11,7 +11,7 @@ import { AUTOMATION_OFFER } from "@/lib/marketing/offers";
  * eine Linie, kein Effekt. Seit 19.10.2026 mit der Botschaft der Startseite
  * (KI für den Mittelstand) statt des früheren Freelancer-Matchings.
  */
-export const alt = "XPORTAL – Mit KI effizienter arbeiten";
+export const alt = "XPORTAL – KI-Agenten für Ihre Routine";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -52,7 +52,7 @@ export default function OpengraphImage() {
               lineHeight: 1.05,
             }}
           >
-            Mit KI effizienter arbeiten.
+            KI-Agenten für Ihre Routine.
           </div>
           <div
             style={{
@@ -62,7 +62,7 @@ export default function OpengraphImage() {
               color: "#51514d",
             }}
           >
-            {`${AUTOMATION_OFFER.name} ${AUTOMATION_OFFER.price}, KI-Schulungen und ISO 27001 für den Mittelstand.`}
+            {`${AUTOMATION_OFFER.name} ${AUTOMATION_OFFER.price}, KI-Schulungen und ISMS für den Mittelstand.`}
           </div>
         </div>
 

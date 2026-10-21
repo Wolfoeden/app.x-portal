@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { HomeLanding } from "@/components/home/HomeLanding";
 import { PraxisView } from "@/components/praxis/PraxisView";
 import { DEMO_SCENARIOS } from "@/lib/marketing/live-demo";
+import { AUTOMATION_OFFER } from "@/lib/marketing/offers";
 import { praxisCases } from "@/lib/marketing/praxis-cases";
 import { PROOF_SOURCES } from "@/lib/marketing/proof-sources";
 
@@ -18,7 +19,8 @@ describe("start page", () => {
   it("opens with the offer, its price and the first call", () => {
     expect(html.match(/<h1\b/gu)).toHaveLength(1);
     expect(html).toContain("KI-Agenten für Ihre Routine.");
-    expect(html).toContain("KI-Automatisierung ab 90 €");
+    expect(html).toContain(`KI-Automatisierung ${AUTOMATION_OFFER.price}`);
+    expect(AUTOMATION_OFFER.price).toBe("ab 490 €");
     expect(html).toMatch(/href="https:\/\/calendly\.com\/romandering\/30min\?utm_source=x-portal"[^>]*>Erstgespräch buchen</u);
     expect(html).toContain('href="tel:+491758934338"');
   });
@@ -45,13 +47,26 @@ describe("start page", () => {
   });
 
   it("lists the four services with a price and their own page", () => {
-    for (const title of ["KI-Automatisierung", "KI-Schulung", "ISO 27001", "Talent Index"]) expect(html).toContain(`>${title}</span>`);
+    for (const title of ["KI-Automatisierung", "KI-Schulung", "ISMS", "Talent Index"]) expect(html).toContain(`>${title}</span>`);
     for (const href of ["/contact", "/contact/schulung", "/contact/iso27001", "/fuer-unternehmen"]) expect(html).toContain(`href="${href}"`);
     expect(html).toContain("Seit Februar 2025 Pflicht (EU AI Act, Art. 4)");
-    expect(html).toContain("ab 90 €");
-    expect(html).not.toContain("1.900");
+    expect(html).toContain("ab 490 €");
+    expect(html).not.toMatch(/ab (?:90|1\.900) €/u);
+    expect(html).toContain("Zertifizierung nach ISO 27001");
     expect(html.match(/Preis auf Anfrage/gu)).toHaveLength(2);
     expect(html).toContain("kostenlos testen");
+  });
+
+  it("describes the services for search engines with the price shown on the page", () => {
+    const block = html.match(/<script type="application\/ld\+json">(.*?)<\/script>/u)?.[1];
+    const data = JSON.parse(block!) as { "@graph": { "@type": string; name: string; url: string; offers?: { price: number; priceCurrency: string } }[] };
+    expect(data["@graph"].map((service) => service.name)).toEqual(["KI-Automatisierung", "KI-Schulung", "ISMS"]);
+    expect(data["@graph"].every((service) => service["@type"] === "Service")).toBe(true);
+    expect(data["@graph"][0]!.offers).toMatchObject({ price: AUTOMATION_OFFER.fromEuro, priceCurrency: "EUR" });
+    expect(data["@graph"][0]!.url).toMatch(/\/contact$/u);
+    // Kein Preis, den die Seite nicht nennt.
+    expect(data["@graph"][1]!.offers).toBeUndefined();
+    expect(data["@graph"][2]!.offers).toBeUndefined();
   });
 
   it("shows the live demo with real profiles", () => {

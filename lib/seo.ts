@@ -9,7 +9,7 @@ export const SITE_URL =
   "https://x-portal.eu";
 
 export const SITE_DESCRIPTION =
-  "KI für den Mittelstand: KI-Automatisierung, KI-Schulungen und ISO 27001. Dazu der Talent Index mit geprüften IT- und KI-Freelancern.";
+  `KI für den Mittelstand: KI-Agenten und KI-Automatisierung ${AUTOMATION_OFFER.price}, KI-Schulungen nach EU AI Act und ISMS nach ISO 27001. Dazu der Talent Index mit geprüften IT- und KI-Freelancern.`;
 
 export type PublicPage = {
   path: `/${string}`;
@@ -23,16 +23,18 @@ export type PublicPage = {
 };
 
 /**
- * Die Startseite (seit 16.10.2026, Entwurf 3): KI für den Mittelstand mit der
- * Live-Demo des Talent Index. Vorher leitete `/` auf /fuer-unternehmen.
+ * Die Startseite (seit 16.10.2026; Entwurf „Klarsicht“ seit 20.10.2026):
+ * KI-Agenten für den Mittelstand mit Preis, dazu die Live-Demo des Talent
+ * Index. Titel und Beschreibung sagen, was die Seite oben sagt: was man kauft
+ * und ab welchem Preis. Vorher leitete `/` auf /fuer-unternehmen.
  */
 export const HOME_PAGE = {
   path: "/",
   label: "Startseite",
-  title: "Mit KI effizienter arbeiten: KI-Agenten, Schulungen, ISO 27001 | XPORTAL",
+  title: `KI-Agenten für den Mittelstand ${AUTOMATION_OFFER.price} | XPORTAL`,
   description:
-    "Sehen Sie live, was unsere KI kann: der Talent Index mit echten Profilen. Dasselbe bauen wir für Ihr Unternehmen – KI-Agenten, KI-Schulungen, Informationssicherheit. Erstgespräch in 30 Minuten.",
-  keywords: ["KI im Mittelstand", "KI-Agenten", "KI-Schulung", "EU AI Act Art. 4", "ISO 27001", "Talent Index"],
+    `KI-Agenten übernehmen Ihre Routine: Anfragen, Angebote, Auswertungen. KI-Automatisierung ${AUTOMATION_OFFER.price}, KI-Schulungen nach EU AI Act, ISMS nach ISO 27001.`,
+  keywords: ["KI-Agenten", "KI-Automatisierung", "KI im Mittelstand", "KI-Schulung", "EU AI Act Art. 4", "ISMS", "ISO 27001", "Talent Index"],
   priority: 1,
   changeFrequency: "weekly",
 } as const satisfies PublicPage;
@@ -117,7 +119,7 @@ export const CONTACT_PAGE = {
   label: "Kontakt",
   title: `KI-Automatisierung ${AUTOMATION_OFFER.price} und Erstgespräch | XPORTAL`,
   description:
-    `KI-Agenten übernehmen Anfragen, Angebote und Auswertungen. KI-Automatisierung ${AUTOMATION_OFFER.price}, in kurzer Zeit umgesetzt. Erstgespräch in 30 Minuten, auch zu KI-Schulungen und ISO 27001.`,
+    `KI-Agenten übernehmen Anfragen, Angebote und Auswertungen. KI-Automatisierung ${AUTOMATION_OFFER.price}, in kurzer Zeit umgesetzt. Erstgespräch in 30 Minuten, auch zu KI-Schulungen und ISMS.`,
   priority: 0.9,
   changeFrequency: "monthly",
 } as const satisfies PublicPage;
@@ -138,12 +140,14 @@ export const CONTACT_TOPIC_PAGE = {
     priority: 0.8,
     changeFrequency: "monthly",
   },
+  // Die Leistung heißt seit 21.10.2026 „ISMS“; ISO 27001 ist die Norm dafür.
+  // Die Adresse bleibt, damit Links und Anzeigen weiter stimmen.
   iso27001: {
     path: "/contact/iso27001",
-    label: "ISO 27001",
-    title: "ISMS und ISO 27001 einführen, begleitet bis zum Audit | XPORTAL",
+    label: "ISMS",
+    title: "ISMS aufbauen und nach ISO 27001 zertifizieren | XPORTAL",
     description:
-      "Informationssicherheit, die Audits standhält: Anforderungen aus NIS2 und Kundenverträgen erfassen, ISMS aufbauen, Zertifizierung nach ISO 27001 vorbereiten.",
+      "Informationssicherheits-Managementsystem (ISMS), das Audits standhält: Anforderungen aus NIS2 und Kundenverträgen erfassen, ISMS aufbauen, Zertifizierung nach ISO 27001 vorbereiten.",
     priority: 0.8,
     changeFrequency: "monthly",
   },
