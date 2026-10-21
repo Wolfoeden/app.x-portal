@@ -5,6 +5,8 @@ import { loadAdminProfile } from "@/lib/admin/profile-admin";
 import { appPath } from "@/lib/app-path";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { referencesVisible } from "@/lib/data/profile-extras";
+import { claimPath, mintClaimToken } from "@/lib/freelancer/claim-token";
+import { absoluteUrl } from "@/lib/seo";
 
 import { ProfileDetailView } from "./ProfileDetailView";
 
@@ -37,8 +39,15 @@ export default async function AdminProfilePage({ params }: { params: Promise<{ i
   const loaded = await load(id);
   if (!loaded) notFound();
   const { detail, shownAt } = loaded;
+  // Angelegte Profile bekommen einen Übernahme-Link für die Person selbst.
+  const claimToken = detail.selfRegistered ? null : mintClaimToken(detail.id);
 
   return (
-    <ProfileDetailView detail={detail} shownAt={shownAt} referencesPublic={referencesVisible()} />
+    <ProfileDetailView
+      detail={detail}
+      shownAt={shownAt}
+      referencesPublic={referencesVisible()}
+      claimUrl={claimToken ? absoluteUrl(claimPath(claimToken)) : null}
+    />
   );
 }

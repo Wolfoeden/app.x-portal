@@ -33,6 +33,8 @@ import { ProjectListEditor } from "@/components/profile/ProjectListEditor";
 import { profileStrength } from "@/lib/freelancer/profile-strength";
 import { freelancerActions, FREELANCER_COMMAND_DONE, type FreelancerProfileCommand } from "@/lib/freelancer/presence";
 import type { ProfileProject } from "@/lib/profile/project-limits";
+import { personalReferralCode } from "@/lib/freelancer/referrals";
+import { SITE_URL } from "@/lib/seo";
 
 import styles from "./apply.module.css";
 import { ImportPanel } from "./ImportPanel";
@@ -159,6 +161,8 @@ export function FreelancerDashboard({
   const [strengthAt] = useState(() => new Date());
   const [previewAt] = useState(() => new Date());
   const [testQuery, setTestQuery] = useState(() => initialProfile.skills.slice(0, 2).join(" "));
+  const [referralCopied, setReferralCopied] = useState(false);
+  const referralUrl = `${SITE_URL}/bewerber-portal/apply?quelle=${personalReferralCode(initialProfile.id)}`;
   const discoveryProfile = useMemo(() => {
     const queryTerms = testQuery.split(/[^\p{L}\p{N}+#.]+/u).filter(Boolean);
     const base = applicationPreviewProfile({
@@ -966,6 +970,20 @@ export function FreelancerDashboard({
         <div id="anfragen" className={work.inquiries}>
           <strong>Anfragen</strong>
           <p>Noch keine Anfrage hier. Passt eine, meldet sich XPORTAL per E-Mail und stellt Sie vor.</p>
+        </div>
+        <div id="einladen" className={work.inquiries}>
+          <strong>Kolleginnen und Kollegen einladen</strong>
+          <p>Mehr KI-Profile ziehen mehr Projektanfragen an, auch für Sie. Teilen Sie Ihren Link:</p>
+          <code className={styles.referralLink}>{referralUrl}</code>
+          <button
+            type="button"
+            className={work.textButton}
+            onClick={() => {
+              void navigator.clipboard?.writeText(referralUrl).then(() => setReferralCopied(true), () => setReferralCopied(false));
+            }}
+          >
+            {referralCopied ? "Kopiert" : "Link kopieren"}
+          </button>
         </div>
       </aside>
     </div>

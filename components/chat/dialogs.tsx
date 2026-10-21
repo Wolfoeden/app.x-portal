@@ -128,6 +128,7 @@ export function AuthDialog({
   destination = "/chat",
   voucher,
   audience = "client",
+  freelancerCopy,
   onClose,
   onAuthenticated,
   showToast,
@@ -142,6 +143,8 @@ export function AuthDialog({
   voucher?: { value: string; onChange: (value: string) => void };
   /** `freelancer`: Registrierung für ein Profil, nicht für eine Anfrage. */
   audience?: AuthAudience;
+  /** Nur für `freelancer`: eigene Überschrift und Texte, etwa beim Übernehmen eines Profils. */
+  freelancerCopy?: { title?: string; body?: string; afterConfirmation?: string };
   onClose: () => void;
   onAuthenticated: (mode: AuthDialogMode) => void;
   showToast: (message: string, tone?: ToastState["tone"]) => void;
@@ -169,7 +172,7 @@ export function AuthDialog({
     github ? "GitHub" : null,
     GOOGLE_AUTH_ENABLED ? "Google" : null,
   ].filter((value): value is string => Boolean(value));
-  const intentCopy = freelancer ? FREELANCER_AUTH_COPY : checkout ?? authIntentCopy(intent);
+  const intentCopy = freelancer ? { ...FREELANCER_AUTH_COPY, ...freelancerCopy } : checkout ?? authIntentCopy(intent);
   const plan = checkout?.plan ?? null;
   const destinationForMode = (currentMode: AuthDialogMode) => {
     const separator = destination.includes("?") ? "&" : "?";
