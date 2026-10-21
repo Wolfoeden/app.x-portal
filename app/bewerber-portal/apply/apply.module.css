@@ -693,6 +693,10 @@
 .successLinks { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 18px !important; font-weight: 650; }
 .successLinks a { color: var(--xp-brand); }
 .consent + .consent { margin-top: 10px; }
+/* Profil übernehmen (21.10.2026). */
+.claimSteps { margin: 0 0 14px; padding-left: 20px; color: var(--ink-soft); font-size: 14px; line-height: 1.7; }
+.claimForm { display: grid; gap: 10px; margin-top: 18px; }
+.referralLink { display: block; overflow-wrap: anywhere; margin: 8px 0; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 12px; user-select: all; }
 
 @media (max-width: 900px) {
   .simpleForm { grid-template-columns: 1fr; }

@@ -233,6 +233,19 @@ corrections follow *Edit an active profile* below, and deletions follow the
 retention procedure — a rejected application's CV object under `incoming/` must
 be removed together with the application row.
 
+## Hand an operator-created profile to its owner
+
+Profiles created by the operator have no `owner_user_id`: nobody can maintain
+them, and requests only reach the person if the operator knows the address.
+Since 21.10.2026 the admin profile page (`/chat/admin/profile/<id>`) shows a
+**Übernahme-Link** for such profiles (`lib/freelancer/claim-token.ts`, valid
+90 days). Send it personally (LinkedIn, phone, an address you already have;
+no cold mass mail). The person signs in, confirms and takes the profile over
+with their own account (`/api/freelancer/claim`): `owner_user_id` is set once,
+only while it is empty and only if the account has no profile yet. The audit
+log records `freelancer_profile_claimed`. If the wrong person claimed a
+profile, set `owner_user_id` back to `null` in Studio and send a new link.
+
 ## Edit an active profile
 
 1. Confirm the correct row by `id`, `slug` and display name.

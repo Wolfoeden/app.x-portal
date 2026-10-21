@@ -179,6 +179,8 @@ export const NON_INDEXABLE_PREFIXES = [
   "/auth/",
   // Die Praxisseite kommt per Mail nach einem Anruf, nicht über die Suche.
   "/praxis",
+  // Der Übernahme-Link für angelegte Profile ist persönlich.
+  "/profil-uebernehmen",
   // Consistent with the existing noindex headers for /chat/* in netlify.toml.
   "/chat/",
 ] as const;

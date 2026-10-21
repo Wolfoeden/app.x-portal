@@ -2,6 +2,7 @@ import { AdminPageHeader, AdminSurface } from "@/components/admin/AdminDataPrimi
 import { Card, StatusBadge, cockpitStyles as styles } from "@/components/admin/Cockpit";
 import { ProfileDossier } from "@/components/profile/ProfileDossier";
 import type { AdminProfileDetail } from "@/lib/admin/profile-admin";
+import { CLAIM_LINK_MAX_AGE_DAYS } from "@/lib/freelancer/claim-token";
 
 import { ProfileEditor } from "./ProfileEditor";
 
@@ -14,10 +15,13 @@ export function ProfileDetailView({
   detail,
   shownAt,
   referencesPublic,
+  claimUrl = null,
 }: {
   detail: AdminProfileDetail;
   shownAt: Date;
   referencesPublic: boolean;
+  /** Nur bei angelegten Profilen; `null`, wenn kein Geheimnis eingerichtet ist. */
+  claimUrl?: string | null;
 }) {
   return (
     <AdminSurface label="Administration · Profil pflegen">
@@ -46,6 +50,21 @@ export function ProfileDetailView({
           </div>
         </Card>
         <div style={{ display: "grid", gap: 16 }}>
+          {detail.selfRegistered ? null : (
+            <Card title="Übernahme-Link">
+              {claimUrl ? (
+                <>
+                  <p className={styles.listMeta}>
+                    Persönlich an die Person schicken (LinkedIn, Mail an eine bekannte Adresse, Telefon). Wer den Link öffnet,
+                    meldet sich an und übernimmt das Profil mit dem eigenen Konto. Gültig {CLAIM_LINK_MAX_AGE_DAYS} Tage, einmal nutzbar.
+                  </p>
+                  <code style={{ display: "block", overflowWrap: "anywhere", userSelect: "all", padding: "8px 10px", border: "1px solid var(--border)", borderRadius: 8 }}>{claimUrl}</code>
+                </>
+              ) : (
+                <p className={styles.listMeta}>Kein Link möglich: EMAIL_UNSUBSCRIBE_SECRET ist nicht eingerichtet.</p>
+              )}
+            </Card>
+          )}
           <Card title="Profilstärke">
             <ul className={styles.list}>
               {detail.strength.steps.map((step) => (
