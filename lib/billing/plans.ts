@@ -54,11 +54,14 @@ export const CREDIT_PLANS = {
    * Tarif kam damit nie in Sicht. Bestehende Konten behalten ihr Guthaben;
    * die Werte gelten für neu angelegte Zugänge.
    */
+  // Seit 21.10.2026 eine Projektanalyse ohne Konto (3 Credits, fest in
+  // get_ai_credit_snapshot, Migration 20261021150000). Kontaktfreigaben und
+  // Lebensläufe bleiben Konten mit Trial oder Tarif vorbehalten.
   guest: {
     id: "guest",
     label: "Gastzugang",
     billingModel: "one_time",
-    grantCredits: 0,
+    grantCredits: 3,
     monthlyCredits: 0,
     priceNetCents: 0,
     purchasable: false,

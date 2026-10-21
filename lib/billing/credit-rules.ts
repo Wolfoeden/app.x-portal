@@ -15,7 +15,9 @@ import { CREDIT_PLANS, TRIAL_CREDITS, TRIAL_DAYS } from "./plans";
  * darüber sprechen, übernehmen sie von hier.
  */
 export const CREDIT_RULES = {
-  guest: "Ohne Karte ist ein gekennzeichnetes Ergebnisbeispiel verfügbar. Neue Gäste erhalten kein Bonusguthaben.",
+  // Seit 21.10.2026 (Migration 20261021150000): eine Analyse ohne Konto; wer
+  // sich danach registriert, behält die drei Starter-Analysen.
+  guest: "Ohne Konto ist eine Projektanalyse kostenlos. Für weitere Analysen genügt ein kostenloses Konto; die Gastanalyse wird nicht angerechnet.",
   account: `Ein bestätigtes Konto erhält einmalig ${CREDIT_PLANS.starter.grantCredits} Starter-Credits für drei Projektanalysen. Der ${TRIAL_DAYS}-Tage-Trial beginnt nach serverseitig verifizierter Kartenhinterlegung bei Stripe mit zusätzlich einmalig ${TRIAL_CREDITS} Credits insgesamt.`,
   noRefill: "Verbrauchte Trial-Credits füllen sich nicht auf und lösen keine vorzeitige Abbuchung aus. Legitim zugesagtes Bestandsguthaben bleibt erhalten.",
   failures: `Fällt die KI-Analyse aus, kostet sie nichts; eine technisch gescheiterte Recherche ebenfalls nicht. Eine Analyse kostet sonst ${CREDIT_PRICES.project_brief.credits} Credits, eine Recherche ${CREDIT_PRICES.research.credits}.`,

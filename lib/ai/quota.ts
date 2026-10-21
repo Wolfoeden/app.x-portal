@@ -157,12 +157,12 @@ export function currentPeriodEndIso(now: Date = new Date()): string {
  *
  * `10`, `63`, `100` und `300` stammen aus früheren Stufen. Sie bleiben
  * zulässig, weil abgelaufene Perioden Historie sind und nicht rückwirkend
- * geändert werden. `30` und `90` sind das heutige Gast- und Startguthaben; die
- * Kontingentfunktionen in der Datenbank prüfen nur noch auf nicht negative
- * Werte, die Liste ist die Sicherung auf Anwendungsseite.
+ * geändert werden. `3` ist die Gastanalyse (seit 21.10.2026), `9` das
+ * Startguthaben; die Kontingentfunktionen in der Datenbank prüfen nur noch auf
+ * nicht negative Werte, die Liste ist die Sicherung auf Anwendungsseite.
  */
 export const ALLOWED_MONTHLY_CREDIT_TOTALS: readonly number[] = [
-  0, 9, 10, 30, 63, 90, 100, 300, 500, 1_250, 3_000, 4_000,
+  0, 3, 9, 10, 30, 63, 90, 100, 300, 500, 1_250, 3_000, 4_000,
 ];
 
 /**
@@ -174,9 +174,10 @@ export const ALLOWED_MONTHLY_CREDIT_TOTALS: readonly number[] = [
  * Umgebung getippt hat, ist deutlich besser als gar keines.
  */
 export function configuredInitialCredits(isAnonymous: boolean): number {
-  // Gäste bleiben ohne Guthaben. Ein registriertes Konto erhält einmalig die
-  // drei kostenlosen Analysen des Starter-Tarifs; Umgebungsvariablen dürfen
-  // dieses feste Produktversprechen weder erhöhen noch abschalten.
+  // Ein Gast bekommt einmalig eine Analyse, ein registriertes Konto die drei
+  // kostenlosen Analysen des Starter-Tarifs. Beides steht fest in
+  // get_ai_credit_snapshot; Umgebungsvariablen ändern es nicht. Gastanalysen
+  // stoppt notfalls AI_PROVIDER_DAILY_TOKEN_SAFETY_LIMIT_GUEST=0.
   return isAnonymous ? GUEST_MONTHLY_CREDITS : ACCOUNT_MONTHLY_CREDITS;
 }
 

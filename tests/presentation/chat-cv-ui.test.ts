@@ -300,6 +300,7 @@ describe("booking button in the placement model", () => {
       disabled: false,
     });
     expect(guest.kind).toBe("request");
-    expect(guest.hint).toContain("Bestätigtes Konto und aktiver Trial oder Tarif erforderlich");
+    // 21.10.2026: Gäste fragen ohne Konto an (GuestRequestDialog).
+    expect(guest.hint).toContain("Ohne Konto");
   });
 });

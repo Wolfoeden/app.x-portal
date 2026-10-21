@@ -45,6 +45,12 @@ insert into auth.users (
     'c6666666-6666-4666-8666-666666666666',
     'authenticated', 'authenticated', null, '', true,
     now(), now(), now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000000',
+    'c7777777-7777-4777-8777-777777777777',
+    'authenticated', 'authenticated', null, '', true,
+    now(), now(), now()
   );
 
 set local role service_role;
@@ -95,8 +101,67 @@ select is(
       'c6666666-6666-4666-8666-666666666666', true, 500
     ) s
   ),
-  '0:0',
-  'new guests receive no credits from legacy initial allocations'
+  '3:3',
+  'new guests receive exactly one project analysis, whatever the caller passes'
+);
+
+-- 21.10.2026: Die erste Suche ohne Konto. Gäste dürfen eine Analyse laufen
+-- lassen, aber nie Kontaktfreigaben oder Lebensläufe nutzen.
+select is(
+  (
+    select e.can_run_ai::text || ':' || e.can_use_recruiting || ':' || e.source
+    from public.get_recruiting_entitlement('c6666666-6666-4666-8666-666666666666') e
+  ),
+  'true:false:guest',
+  'a new guest may run one analysis but never use recruiting features'
+);
+
+select lives_ok(
+  $$select * from public.get_ai_credit_snapshot(
+      'c7777777-7777-4777-8777-777777777777', true, 0
+    )$$,
+  'a second guest account is created through the snapshot RPC'
+);
+
+reset role;
+update public.user_ai_credit_accounts
+  set credits_used = 3
+  where user_id = 'c7777777-7777-4777-8777-777777777777';
+set local role service_role;
+
+select is(
+  (
+    select e.can_run_ai::text || ':' || e.reason
+    from public.get_recruiting_entitlement('c7777777-7777-4777-8777-777777777777') e
+  ),
+  'false:insufficient_credits',
+  'the guest analysis can be used only once'
+);
+
+reset role;
+update auth.users
+  set is_anonymous = false, email = 'converted-guest@example.invalid'
+  where id = 'c7777777-7777-4777-8777-777777777777';
+set local role service_role;
+
+select is(
+  (
+    select s.credits_total::text || ':' || s.credits_used || ':' || s.credits_remaining
+    from public.get_ai_credit_snapshot(
+      'c7777777-7777-4777-8777-777777777777', false, 0
+    ) s
+  ),
+  '12:3:9',
+  'registering after the guest analysis keeps all three starter analyses'
+);
+
+select is(
+  (
+    select e.can_use_recruiting::text || ':' || e.source
+    from public.get_recruiting_entitlement('c7777777-7777-4777-8777-777777777777') e
+  ),
+  'true:starter',
+  'the converted guest becomes a regular starter account'
 );
 
 -- Trusted historical fixtures preserve ledger coverage without automatic signup bonuses.

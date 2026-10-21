@@ -90,6 +90,7 @@ import {
   ManageChatDialog,
 } from "./chat/dialogs";
 import { ConversationsPage } from "./chat/conversations";
+import { GuestRequestDialog } from "./chat/guest-request-dialog";
 import { PlacementDialog } from "./chat/placement-dialog";
 import {
   initials,
@@ -1240,6 +1241,8 @@ export function ChatWorkspace({
   const [draft, setDraft] = useState("");
   /** Von der Startseite abgeschickt (`?start=1`): Die Analyse startet ohne zweiten Klick. */
   const [autoStartDraft, setAutoStartDraft] = useState(false);
+  /** Ein Gast fragt ein Profil ohne Konto an (GuestRequestDialog). */
+  const [guestRequestProfile, setGuestRequestProfile] = useState<FreelancerProfileResult | null>(null);
   const [criteriaRequest, setCriteriaRequest] = useState(0);
   useEffect(() => {
     if (preview || workspaceView !== "chat" || new URLSearchParams(window.location.search).has("project")) return;
@@ -2721,10 +2724,23 @@ export function ChatWorkspace({
     };
   }, [isAccountUser, loadTeam, preview]);
 
+  /** Die Anmeldung, wenn ein Gast doch lieber mit Konto anfragt. */
+  const requestWithAccount = (profile: FreelancerProfileResult) => {
+    setPendingProfileId(profile.id);
+    openAuth(
+      "contact_profile",
+      createAuthContinuation("contact_profile", activeProject?.id, profile.id),
+    );
+  };
+
   const requestProfileSelection = (profile: FreelancerProfileResult) => {
-    // Im Vermittlungsmodell fragen Gäste ohne Konto an; der Dialog fragt
-    // dann nach E-Mail und Firma. 18 von 30 Suchenden wollten anfragen, 5
-    // haben die Registrierung davor geschafft.
+    // Gäste fragen ohne Konto an: E-Mail genügt, die Anfrage wird ein
+    // Suchauftrag mit dem Profil (21.10.2026). 18 von 30 Suchenden wollten
+    // anfragen, 5 haben die Registrierung davor geschafft.
+    if (!isAccountUser && activeProject?.id && !preview) {
+      setGuestRequestProfile(profile);
+      return;
+    }
     if (!isAccountUser) {
       setPendingProfileId(profile.id);
       openAuth(
@@ -2778,7 +2794,11 @@ export function ChatWorkspace({
 
   const requestBooking = (profile: FreelancerProfileResult) => {
     // Der Knopf ist eine Anfrage, auch ohne Kalender: Er öffnet den
-    // Anfrage-Dialog, für Gäste nach der Anmeldung.
+    // Anfrage-Dialog; Gäste fragen ohne Konto an (siehe oben).
+    if (!isAccountUser && activeProject?.id && !preview) {
+      setGuestRequestProfile(profile);
+      return;
+    }
     if (!isAccountUser) {
       setPendingBookingProfileId(profile.id);
       openAuth(
@@ -3924,6 +3944,19 @@ export function ChatWorkspace({
           }}
           onAuthenticated={(mode) => void handleAuthenticated(mode)}
           showToast={showToast}
+        />
+      ) : null}
+
+      {guestRequestProfile && activeProject?.id ? (
+        <GuestRequestDialog
+          projectId={activeProject.id}
+          profile={{ id: guestRequestProfile.id, name: guestRequestProfile.displayName }}
+          onClose={() => setGuestRequestProfile(null)}
+          onPreferAccount={() => {
+            const profile = guestRequestProfile;
+            setGuestRequestProfile(null);
+            requestWithAccount(profile);
+          }}
         />
       ) : null}
 
