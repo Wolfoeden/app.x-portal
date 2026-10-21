@@ -19,7 +19,8 @@ export const APPLY_HERO = {
  * Kosten, Kontakt, Ablauf, Prüfumfang und Unterlagen — in dieser Reihenfolge,
  * damit der Nutzen vor dem Prüfprozess steht. Die Angaben folgen dem
  * Formular: Lebenslauf und Kalenderlink sind optional (ApplyForm.tsx,
- * lib/freelancer/application.ts), geprüft wird jede Angabe einzeln
+ * lib/freelancer/application.ts), ein vollständiges Profil geht sofort live
+ * (lib/freelancer/auto-publish.ts), geprüft wird jede Angabe einzeln
  * (docs/operator-runbook.md). Kontaktdaten stehen in keinem öffentlichen
  * Profil (ShowcaseProfile in lib/freelancer/showcase.ts, ProfileDossier).
  */
@@ -38,17 +39,17 @@ export function onboardingFacts(): ReadonlyArray<{ term: string; chip: string; t
     {
       term: "Ablauf",
       chip: "So läuft es ab",
-      text: "Konto anlegen und E-Mail bestätigen, Profil in vier Abschnitten ausfüllen, Prüfung durch XPORTAL mit Rückfragen per E-Mail. Nach der Freigabe ist Ihr Profil im Matching auffindbar.",
+      text: "Profil ausfüllen, Konto mit Google, LinkedIn oder E-Mail bestätigen, fertig: Ein vollständiges Profil ist sofort im Matching. Fehlt etwas, sieht es sich erst unser Team an und fragt per E-Mail nach.",
     },
     {
       term: "Prüfung",
-      chip: "Geprüft vor Freigabe",
-      text: "XPORTAL sichtet Ihre Angaben und gleicht einzelne mit Nachweisen ab, etwa Lebenslauf oder öffentlichem Berufsprofil. Nur diese erscheinen als „Von XPORTAL geprüft“; alles andere bleibt Ihre Angabe.",
+      chip: "Sofort sichtbar, später geprüft",
+      text: "Ihre Angaben erscheinen als Angaben laut Freelancer. XPORTAL gleicht einzelne später mit Nachweisen ab, etwa Lebenslauf oder öffentlichem Berufsprofil; nur diese erscheinen als „Von XPORTAL geprüft“.",
     },
     {
       term: "Unterlagen",
       chip: "Lebenslauf hilft, ist kein Muss",
-      text: "Rolle, Kompetenzen, Sprachen, Verfügbarkeit und Honorar. Ein Lebenslauf als PDF (bis 10 MB) hilft bei der Prüfung, ein Kalenderlink ist optional.",
+      text: "Rolle, Kompetenzen, Sprachen, Verfügbarkeit und Honorar. Ein Lebenslauf als PDF (bis 10 MB) hilft, ist aber kein Muss; ein Kalenderlink ist optional.",
     },
   ];
 }

@@ -207,13 +207,15 @@ export type AuthAudience = "client" | "freelancer";
 
 export const FREELANCER_AUTH_COPY = {
   eyebrow: "Kostenlos für Sie",
-  title: "Konto anlegen und Profil erstellen",
+  title: "Konto anlegen und Profil veröffentlichen",
   loginTitle: "Anmelden und Profil bearbeiten",
-  body: "Nach der Bestätigung Ihrer E-Mail-Adresse geht es direkt zum Profilformular. Sichtbar wird Ihr Profil erst, wenn XPORTAL es freigegeben hat.",
-  afterConfirmation: "Danach öffnet sich das Profilformular.",
+  // Seit 21.10.2026 steht das Formular vor dem Konto: Die Angaben warten im
+  // Browser und gehen nach der Bestätigung ab (apply-draft.ts).
+  body: "Ihre Angaben aus dem Formular bleiben erhalten. Nach der Bestätigung geht Ihr Profil ab; ist es vollständig, ist es sofort sichtbar.",
+  afterConfirmation: "Danach geht Ihr Profil ab.",
   recoverBody: "Wir senden einen sicheren Link an Ihre E-Mail-Adresse. Ihre Profilangaben bleiben dabei erhalten.",
   linkBody: "Wir senden einen Anmeldelink an die Adresse Ihres Kontos.",
   loggedIn: "Anmeldung erfolgreich.",
   accountReady: "Ihr Konto ist eingerichtet.",
-  privacy: "Das Konto schützt Ihre Profilangaben, bis XPORTAL das Profil freigibt.",
+  privacy: "Mit dem Konto können nur Sie Ihr Profil ändern, pausieren oder löschen.",
 } as const;

@@ -8,6 +8,8 @@ export type TagInputClasses = {
   tag: string;
   hint: string;
   optional?: string;
+  /** Die Vorschläge unter dem Feld, falls es welche gibt. */
+  suggestions?: string;
 };
 
 /**
@@ -24,6 +26,7 @@ export function TagInput({
   values,
   max,
   required,
+  suggestions = [],
   onChange,
   classes,
 }: {
@@ -33,6 +36,8 @@ export function TagInput({
   values: string[];
   max: number;
   required?: boolean;
+  /** Ein Klick fügt den Wert hinzu; schon gewählte stehen nicht mehr da. */
+  suggestions?: readonly string[];
   onChange: (next: string[]) => void;
   classes: TagInputClasses;
 }) {
@@ -58,6 +63,11 @@ export function TagInput({
     onChange(next);
     setDraft("");
   }
+
+  const open = suggestions.filter(
+    (suggestion) =>
+      !values.some((value) => value.toLocaleLowerCase("de-DE") === suggestion.toLocaleLowerCase("de-DE")),
+  );
 
   return (
     <div className={classes.field}>
@@ -102,6 +112,15 @@ export function TagInput({
         {hint ? `${hint} · ` : ""}Mit Enter oder Komma bestätigen ·{" "}
         {values.length}/{max}
       </span>
+      {open.length && values.length < max ? (
+        <div className={classes.suggestions}>
+          {open.map((suggestion) => (
+            <button key={suggestion} type="button" onClick={() => onChange([...values, suggestion])}>
+              + {suggestion}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

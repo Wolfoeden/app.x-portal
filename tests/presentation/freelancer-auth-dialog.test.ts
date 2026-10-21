@@ -26,9 +26,10 @@ function dialog(initialMode: "register" | "login" | "link" | "recover", audience
 describe("sign-up dialog for freelancers", () => {
   it("talks about the profile, not about a request", () => {
     const markup = dialog("register", "freelancer");
-    expect(markup).toContain("Konto anlegen und Profil erstellen");
-    expect(markup).toContain("direkt zum Profilformular");
-    expect(markup).toContain("erst, wenn XPORTAL es freigegeben hat");
+    expect(markup).toContain("Konto anlegen und Profil veröffentlichen");
+    // Seit 21.10.2026 kommt das Formular zuerst; die Angaben warten im Browser.
+    expect(markup).toContain("Ihre Angaben aus dem Formular bleiben erhalten");
+    expect(markup).toContain("ist es sofort sichtbar");
     expect(markup).not.toContain("Anfrage");
     expect(markup).not.toContain("Ihre bisherige Arbeit");
   });

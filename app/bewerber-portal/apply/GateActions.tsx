@@ -13,17 +13,19 @@ type Notice = { message: string; tone: "success" | "error" } | null;
 
 /**
  * „Kostenlos Profil anlegen“ und „Anmelden“ für abgemeldete Besucher: im
- * Seitenkopf, im ersten Bildschirm und im Abschluss. Beide öffnen denselben
+ * Seitenkopf, im ersten Bildschirm und im Abschluss. „Anmelden“ öffnet den
  * Anmeldedialog; der Rest des Einstiegs rendert auf dem Server.
  */
 export function GateActions({ variant }: { variant: "header" | "hero" | "closing" }) {
   const [dialogMode, setDialogMode] = useState<AuthDialogMode | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const compact = variant === "header";
+  // Seit 21.10.2026 führt „Profil anlegen“ zum Formular auf derselben Seite;
+  // das Konto entsteht erst beim Absenden.
   const register = (
-    <button className={actionClass("primary", { compact })} type="button" onClick={() => setDialogMode("register")}>
+    <a className={actionClass("primary", { compact })} href="#profil">
       {compact ? <><span className={styles.headerWide}>Kostenlos </span>Profil anlegen</> : "Kostenlos Profil anlegen"}
-    </button>
+    </a>
   );
   const login = (
     <button

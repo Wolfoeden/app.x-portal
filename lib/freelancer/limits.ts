@@ -83,6 +83,12 @@ export type CvMimeType = (typeof CV_MIME_TYPES)[number];
  * one.
  */
 export const MAX_SUMMARY_LENGTH = 2_000;
+/**
+ * Ab dieser Länge geht ein Profil ohne Sichtung live (lib/freelancer/
+ * auto-publish.ts): ein, zwei Sätze, damit Unternehmen mehr sehen als
+ * Schlagworte.
+ */
+export const MIN_SELF_PUBLISH_SUMMARY = 40;
 
 export const MAX_SKILLS = 25;
 export const MAX_LANGUAGES = 8;

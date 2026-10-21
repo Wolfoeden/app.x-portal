@@ -8,19 +8,20 @@ import { GateActions } from "./GateActions";
 import styles from "./applicant-landing.module.css";
 
 const STEPS = [
-  { title: "Konto anlegen", text: "Mit E-Mail registrieren und die Adresse bestätigen." },
-  { title: "Profil ausfüllen", text: "Vier Abschnitte: Rolle, Kompetenzen, Verfügbarkeit und Honorar, Projekte. Lebenslauf und GitHub füllen den Entwurf vor, LinkedIn lässt sich verbinden." },
-  { title: "Prüfung durch XPORTAL", text: "XPORTAL sichtet Ihre Angaben. Rückfragen kommen per E-Mail." },
-  { title: "Gefunden werden", text: "Nach der Freigabe ist Ihr Profil im Matching. Passt eine Anfrage, meldet sich XPORTAL." },
+  { title: "Profil ausfüllen", text: "Rolle, Kompetenzen, Sprachen, Verfügbarkeit, Honorar und ein, zwei Sätze über Sie. Drei Minuten, ohne Lebenslauf." },
+  { title: "Konto bestätigen", text: "Mit Google, LinkedIn oder E-Mail. Ihre Angaben bleiben dabei erhalten." },
+  { title: "Sofort sichtbar", text: "Ist alles vollständig, ist Ihr Profil gleich im Matching, als Angaben laut Freelancer. Sonst sieht es sich erst unser Team an." },
+  { title: "Gefunden werden", text: "Passt eine Anfrage, meldet sich XPORTAL per E-Mail. Referenzprojekte und GitHub im Dashboard machen Ihr Profil stärker." },
 ] as const;
 
 /**
  * Einstieg ins Bewerber-Portal für abgemeldete Besucher (Desktop-Entwurf,
- * Oktober 2026): Kernbotschaft und Beispielkarte, dann die Fakten vor der
- * Registrierung, der Ablauf, der Abgleich und die häufigen Fragen. Rendert
- * auf dem Server; nur die Anmeldeknöpfe (GateActions) laufen im Browser.
+ * Oktober 2026): Kernbotschaft und Beispielkarte, seit 21.10.2026 gleich
+ * darunter das Formular, dann die Fakten vor der Registrierung, der Ablauf,
+ * der Abgleich und die häufigen Fragen. Rendert auf dem Server; nur das
+ * Formular und die Anmeldeknöpfe (GateActions) laufen im Browser.
  */
-export function ApplicantLanding({ notices = null }: { notices?: ReactNode }) {
+export function ApplicantLanding({ notices = null, form = null }: { notices?: ReactNode; form?: ReactNode }) {
   // „Ablauf“ steht ausführlich in den vier Schritten.
   const facts = onboardingFacts().filter((fact) => fact.term !== "Ablauf");
   return (
@@ -64,6 +65,12 @@ export function ApplicantLanding({ notices = null }: { notices?: ReactNode }) {
       </header>
 
       {notices ? <div className={styles.wrap}>{notices}</div> : null}
+
+      {form ? (
+        <section id="profil" className={styles.formSection} aria-label="Profil anlegen">
+          <div className={styles.wrap}>{form}</div>
+        </section>
+      ) : null}
 
       <section className={styles.facts} aria-label="Gut zu wissen">
         <dl className={`${styles.wrap} ${styles.factsRow}`}>
