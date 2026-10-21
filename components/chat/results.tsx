@@ -1089,7 +1089,7 @@ export function bookingActionState(
     label: "Freelancer anfragen",
     hint: isAccountUser
       ? "Provisionsfrei · Freelancer entscheidet über Kontaktfreigabe"
-      : "Bestätigtes Konto und aktiver Trial oder Tarif erforderlich",
+      : "Ohne Konto · Wir stellen Sie per E-Mail vor, provisionsfrei",
     disabled: false,
   };
 }

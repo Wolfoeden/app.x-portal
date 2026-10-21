@@ -85,6 +85,8 @@ export function profilePageAction(input: {
     kind: "link",
     href: "/chat",
     label: "Projekt beschreiben",
-    hint: "Im Talent Index Anforderungen hinterlegen, dann den Kontakt selbstständig anfragen",
+    // Seit 21.10.2026 geht die erste Analyse ohne Konto, die Anfrage danach
+    // auch (GuestRequestDialog).
+    hint: "Erste Analyse ohne Konto · passende Freelancer direkt anfragen",
   };
 }

@@ -48,9 +48,9 @@ describe("provider cost reconciliation", () => {
     expect(calculateProviderCostCents(1_000_000, 1_000_000)).toBe(1540);
   });
 
-  it("keeps guests at zero and gives registered accounts three analyses", () => {
-    expect(GUEST_MONTHLY_CREDITS).toBe(0);
-    expect(configuredInitialCredits(true)).toBe(0);
+  it("gives guests one analysis and registered accounts three", () => {
+    expect(GUEST_MONTHLY_CREDITS).toBe(3);
+    expect(configuredInitialCredits(true)).toBe(3);
     expect(ACCOUNT_MONTHLY_CREDITS).toBe(9);
     expect(configuredInitialCredits(false)).toBe(9);
   });
@@ -58,7 +58,7 @@ describe("provider cost reconciliation", () => {
   it("derives the three starter analyses from the registered allowance", () => {
     // Die Zahl, die in der Oberfläche steht, muss aus den Kontingenten
     // folgen — sonst verspricht die Seite etwas, das die Abrechnung nicht hält.
-    expect(Math.floor(GUEST_MONTHLY_CREDITS / BRIEF_ANALYSIS_CREDITS)).toBe(0);
+    expect(Math.floor(GUEST_MONTHLY_CREDITS / BRIEF_ANALYSIS_CREDITS)).toBe(1);
     expect(
       Math.floor(ACCOUNT_MONTHLY_CREDITS / BRIEF_ANALYSIS_CREDITS),
     ).toBe(3);
@@ -70,7 +70,9 @@ describe("provider cost reconciliation", () => {
     process.env.AI_MONTHLY_PROVIDER_BUDGET_CENTS = "0";
     process.env.AI_UNKNOWN_MODEL_ESTIMATED_COST_CENTS = "0";
 
-    expect(configuredInitialCredits(true)).toBe(0);
+    // Die Gastanalyse steht fest in der Datenbank; abschalten lässt sie sich
+    // über das Tageslimit für Gäste.
+    expect(configuredInitialCredits(true)).toBe(GUEST_MONTHLY_CREDITS);
     expect(configuredDailyTokenLimit(true)).toBe(0);
     expect(configuredMonthlyProviderBudgetCents()).toBe(0);
     expect(configuredUnknownModelEstimatedCostCents()).toBe(0);
@@ -93,7 +95,7 @@ describe("Kontingente, die die Datenbank auch annimmt", () => {
   it("jede erlaubte Zahl ist auch in der Datenbank erlaubt", () => {
     // Die Aufzählung ist die Kopie einer Prüfregel im Schema. Ändert sie sich
     // dort, muss sie sich hier mitändern — dieser Test ist die Erinnerung.
-    expect(ALLOWED_MONTHLY_CREDIT_TOTALS).toEqual([0, 9, 10, 30, 63, 90, 100, 300, 500, 1_250, 3_000, 4_000]);
+    expect(ALLOWED_MONTHLY_CREDIT_TOTALS).toEqual([0, 3, 9, 10, 30, 63, 90, 100, 300, 500, 1_250, 3_000, 4_000]);
     expect(ALLOWED_MONTHLY_CREDIT_TOTALS).toContain(ACCOUNT_MONTHLY_CREDITS);
     expect(ALLOWED_MONTHLY_CREDIT_TOTALS).toContain(GUEST_MONTHLY_CREDITS);
   });
@@ -126,8 +128,8 @@ describe("Kontingente, die die Datenbank auch annimmt", () => {
     // Steht in Netlify noch AI_CREDITS_GUEST_TOTAL=100, gilt dieser Wert
     // weiter. Das kleinere Gastguthaben wirkt erst, wenn die Variable fehlt.
     process.env.AI_CREDITS_GUEST_TOTAL = "100";
-    expect(configuredInitialCredits(true)).toBe(0);
+    expect(configuredInitialCredits(true)).toBe(GUEST_MONTHLY_CREDITS);
     delete process.env.AI_CREDITS_GUEST_TOTAL;
-    expect(configuredInitialCredits(true)).toBe(0);
+    expect(configuredInitialCredits(true)).toBe(GUEST_MONTHLY_CREDITS);
   });
 });

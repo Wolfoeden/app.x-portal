@@ -10,7 +10,8 @@ describe("Pricing- und Billingmodell", () => {
     expect(CREDIT_PLANS.trial.monthlyCredits).toBe(0);
     expect(CREDIT_PLANS.starter).toMatchObject({ billingModel: "one_time", grantCredits: 9, euro: 0 });
     expect(START_CREDITS).toBe(9);
-    expect(CREDIT_PLANS.guest.grantCredits).toBe(0);
+    // 21.10.2026: eine Analyse ohne Konto.
+    expect(CREDIT_PLANS.guest.grantCredits).toBe(BRIEF_ANALYSIS_CREDITS);
   });
 
   it("definiert die drei Monatspläne zentral", () => {
